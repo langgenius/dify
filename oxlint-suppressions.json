@@ -2085,11 +2085,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/components/rename-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/documents/create-from-pipeline/data-source-options/option-card.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
