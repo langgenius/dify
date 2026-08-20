@@ -37,15 +37,6 @@ def test_inspect_audio_stream_rejects_unsupported_reported_mime_type() -> None:
         inspect_audio_stream([TTSAudioChunk(b"audio", "application/octet-stream")])
 
 
-def test_inspect_audio_stream_accepts_the_future_graphon_tts_chunk_shape() -> None:
-    chunk = SimpleNamespace(data=b"RIFF\x24\x00\x00\x00WAVEfmt ", mime_type="audio/wav")
-
-    stream, mime_type = inspect_audio_stream([chunk])
-
-    assert mime_type == "audio/wav"
-    assert list(stream) == [chunk.data]
-
-
 def test_resolve_audio_mime_type_falls_back_to_the_declared_model_type() -> None:
     assert resolve_audio_mime_type(b"unrecognised", "audio/ogg") == "audio/ogg"
 

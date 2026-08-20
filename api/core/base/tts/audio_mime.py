@@ -3,6 +3,7 @@ from collections.abc import Generator, Iterable
 from itertools import chain
 from typing import TYPE_CHECKING
 
+from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 if TYPE_CHECKING:
@@ -99,15 +100,13 @@ def _normalize_reported_mime_type(mime_type: object | None, source: str) -> str 
     return normalized_mime_type
 
 
-def _extract_audio_chunk(chunk: object) -> tuple[bytes, str | None]:
-    """Accept old bytes, the compatibility carrier, and Graphon's future TTSChunk."""
-    if isinstance(chunk, (bytes, bytearray, memoryview)):
-        return bytes(chunk), getattr(chunk, "mime_type", None)
+def _extract_audio_chunk(chunk: bytes | bytearray | memoryview | TTSAudioChunk) -> tuple[bytes, str | None]:
+    """Accept old byte chunks and the compatibility carrier for current Graphon."""
+    if isinstance(chunk, TTSAudioChunk):
+        return bytes(chunk), chunk.mime_type
 
-    data = getattr(chunk, "data", None)
-    mime_type = getattr(chunk, "mime_type", None)
-    if isinstance(data, (bytes, bytearray, memoryview)):
-        return bytes(data), mime_type
+    if isinstance(chunk, (bytes, bytearray, memoryview)):
+        return bytes(chunk), None
 
     raise TTSMIMETypeError("TTS provider returned a chunk that is not audio bytes")
 
@@ -150,7 +149,7 @@ def resolve_audio_mime_type(
 
 
 def inspect_audio_stream(
-    audio_stream: Iterable[object], declared_mime_type: str | None = None
+    audio_stream: Iterable[bytes | bytearray | memoryview | TTSAudioChunk], declared_mime_type: str | None = None
 ) -> tuple[Generator[bytes, None, None], str]:
     """Peek at and validate a TTS stream without dropping its leading bytes."""
     iterator = iter(audio_stream)
