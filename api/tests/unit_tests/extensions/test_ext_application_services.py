@@ -15,6 +15,7 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_repository import SQLAlchemyAccountRepository
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -149,6 +150,21 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+def test_build_application_services_wires_account_profile_repository(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    accounts = services.accounts.profile._accounts
+    assert isinstance(accounts, SQLAlchemyAccountRepository)
+    assert accounts._session_factory is sqlite_session_factory
 
 
 @pytest.mark.parametrize(
@@ -300,3 +316,49 @@ def test_build_application_services_does_not_hide_unknown_enterprise_errors(
             services.webapp_access.get_access_mode(app_id="app-1", app_code=None)
 
     assert raised.value is failure
+
+
+def test_build_application_services_wires_webapp_permission(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    with (
+        patch(
+            "extensions.ext_application_services.FeatureService.is_webapp_auth_enabled", return_value=True
+        ) as enabled,
+        patch(
+            "extensions.ext_application_services.EnterpriseService.WebAppAuth.get_app_access_mode_by_id",
+            return_value=SimpleNamespace(access_mode="private"),
+        ) as get_access_mode,
+        patch(
+            "extensions.ext_application_services.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
+            return_value=False,
+        ) as is_user_allowed,
+    ):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+        requires_permission = services.webapp_access.requires_permission_check("app-1")
+        allowed = services.webapp_access.is_user_allowed(user_id="user-1", app_id="app-1")
+
+    assert requires_permission is True
+    assert allowed is False
+    enabled.assert_called_once_with()
+    get_access_mode.assert_called_once_with("app-1")
+    is_user_allowed.assert_called_once_with("user-1", "app-1")
+
+
+def test_webapp_permission_adapter_maps_connection_failure() -> None:
+    failure = httpx.ConnectError("connection failed")
+    with (
+        patch(
+            "extensions.ext_application_services.EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp",
+            side_effect=failure,
+        ),
+        pytest.raises(WebAppAccessUnavailableError) as raised,
+    ):
+        ext_application_services._is_user_allowed_to_access_webapp("user-1", "app-1")
+
+    assert raised.value.__cause__ is failure

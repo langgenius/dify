@@ -7,33 +7,29 @@ from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
-from controllers.common import fields
 from controllers.common.errors import InvalidArgumentError
-from controllers.common.fields import AccessModeResponse, Parameters
+from controllers.common.fields import AccessModeResponse, BooleanResultResponse, Parameters
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AgentNotPublishedError,
     AppUnavailableError,
     WebAppAccessServiceUnavailableError,
+    WebAppAuthRequiredError,
     WebAppNotFoundError,
 )
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser
 from services.app_definition_query_service import AppDefinitionNotPublishedError, AppDefinitionUnavailableError
-from services.enterprise.enterprise_service import EnterpriseService
-from services.feature_service import FeatureService
 from services.webapp_access_query_service import (
     WebAppAccessAppNotFoundError,
     WebAppAccessReferenceRequiredError,
     WebAppAccessUnavailableError,
 )
-from services.webapp_auth_service import WebAppAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +60,7 @@ register_response_schema_models(
     Parameters,
     AppMetaResponse,
     AccessModeResponse,
-    fields.BooleanResultResponse,
+    BooleanResultResponse,
 )
 
 
@@ -165,21 +161,23 @@ class AppWebAuthPermission(Resource):
             400: "Bad Request",
             401: "Unauthorized",
             500: "Internal Server Error",
+            503: "Web App Access Service Unavailable",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[fields.BooleanResultResponse.__name__])
+    @web_ns.response(200, "Success", web_ns.models[BooleanResultResponse.__name__])
     def get(self):
-        user_id = "visitor"
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         app_id = request.args.get("appId")
         if not app_id or not app_code:
             raise ValueError("appId must be provided")
 
-        require_permission_check = WebAppAuthService.is_app_require_permission_check(
-            app_id=app_id, session=db.session()
-        )
-        if not require_permission_check:
-            return {"result": True}
+        webapp_access = application_services().webapp_access
+        try:
+            requires_permission_check = webapp_access.requires_permission_check(app_id)
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
+        if not requires_permission_check:
+            return dump_response(BooleanResultResponse, {"result": True})
 
         try:
             tk = extract_webapp_passport(app_code, request)
@@ -188,16 +186,13 @@ class AppWebAuthPermission(Resource):
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
-            raise
+            raise WebAppAuthRequiredError() from None
         except Exception:
             logger.exception("Unexpected error during auth verification")
             raise
 
-        features = FeatureService.get_system_features()
-        if not features.webapp_auth.enabled:
-            return {"result": True}
-
-        res = True
-        if WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session()):
-            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_id)
-        return {"result": res}
+        try:
+            is_allowed = webapp_access.is_user_allowed(user_id=str(user_id), app_id=app_id)
+        except WebAppAccessUnavailableError:
+            raise WebAppAccessServiceUnavailableError() from None
+        return dump_response(BooleanResultResponse, {"result": is_allowed})
