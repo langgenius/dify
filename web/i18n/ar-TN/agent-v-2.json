@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "مثلاً مساعد بحث",
   "roster.createSuccess": "تم إنشاء الوكيل.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "ستتم إزالة هذا Agent من قائمة Agent.",
+  "roster.deleteDialog.description": "سيؤدي هذا إلى حذف {{name}} نهائيًا. سيتوقف تطبيق الويب الخاص به، والوصول عبر API، وجميع عمليات سير العمل التي تستخدمه عن العمل فورًا.",
   "roster.deleteDialog.title": "حذف {{name}}؟",
   "roster.deleteFailed": "فشل حذف الوكيل.",
   "roster.deleteSuccess": "تم حذف الوكيل.",

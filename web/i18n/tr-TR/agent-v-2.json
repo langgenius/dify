@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "örn. Araştırma Asistanı",
   "roster.createSuccess": "Ajan oluşturuldu.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Bu Agent, Agent listesinden kaldırılacak.",
+  "roster.deleteDialog.description": "Bu işlem {{name}} adlı Agent'ı kalıcı olarak siler. Bu Agent'ın web uygulaması ve API erişimi ile onu kullanan iş akışları hemen çalışmayı durdurur.",
   "roster.deleteDialog.title": "{{name}} silinsin mi?",
   "roster.deleteFailed": "Ajan silinemedi.",
   "roster.deleteSuccess": "Ajan silindi.",
