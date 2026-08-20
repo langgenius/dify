@@ -1425,11 +1425,36 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(queryClient.getQueryData(composerQueryKey)).toEqual(savedComposerState)
   })
 
-  it('should invalidate invite option lists after deleting an agent', async () => {
+  it('should clear deleted agent queries and invalidate invite option lists', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const deletedAgent = createAgent()
+    const otherAgent = createAgent({ id: 'agent-2' })
+    const deletedAgentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
+      input: {
+        params: {
+          agent_id: deletedAgent.id,
+        },
+      },
+    })
+    const deletedAgentComposerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+      input: {
+        params: {
+          agent_id: deletedAgent.id,
+        },
+      },
+    })
+    const otherAgentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
+      input: {
+        params: {
+          agent_id: otherAgent.id,
+        },
+      },
+    })
+    queryClient.setQueryData(deletedAgentDetailQueryKey, deletedAgent)
+    queryClient.setQueryData(deletedAgentComposerQueryKey, createComposerState())
+    queryClient.setQueryData(otherAgentDetailQueryKey, otherAgent)
 
     const mutationOptions = consoleQuery.agent.byAgentId.delete.mutationOptions()
     await mutationOptions.onSuccess?.(
@@ -1446,6 +1471,9 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
+    expect(queryClient.getQueryData(deletedAgentDetailQueryKey)).toBeUndefined()
+    expect(queryClient.getQueryData(deletedAgentComposerQueryKey)).toBeUndefined()
+    expect(queryClient.getQueryData(otherAgentDetailQueryKey)).toEqual(otherAgent)
   })
 })
 

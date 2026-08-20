@@ -19,6 +19,7 @@ type DeleteAgentDialogProps = {
   agentName: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  onDeleted?: () => void
 }
 
 export function DeleteAgentDialog({
@@ -26,6 +27,7 @@ export function DeleteAgentDialog({
   agentName,
   open,
   onOpenChange,
+  onDeleted,
 }: DeleteAgentDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
@@ -44,6 +46,7 @@ export function DeleteAgentDialog({
         onSuccess: () => {
           toast.success(t(($) => $['roster.deleteSuccess']))
           onOpenChange(false)
+          onDeleted?.()
         },
         onError: () => {
           toast.error(t(($) => $['roster.deleteFailed']))
