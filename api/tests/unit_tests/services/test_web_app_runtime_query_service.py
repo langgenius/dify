@@ -43,12 +43,14 @@ def _site_configuration() -> AppSiteConfiguration:
 
 def _runtime_record(
     *,
+    mode: str = "agent-chat",
     tenant_status: str = "normal",
     tenant_custom_config_json: str | None = '{"remove_webapp_brand":true,"replace_webapp_logo":"file-2"}',
 ) -> WebAppRuntimeRecord:
     return WebAppRuntimeRecord(
         app_id="app-1",
         tenant_id="tenant-1",
+        mode=mode,
         enable_site=True,
         site=_site_configuration(),
         plan="pro",
@@ -84,17 +86,6 @@ def test_get_bootstrap_rejects_unavailable_runtime(record: WebAppRuntimeRecord |
     with pytest.raises(WebAppRuntimeUnavailableError, match="Site not found"):
         _service(runtime).get_bootstrap("app-1")
 
-    runtime.resolve_compatible_app_mode.assert_not_called()
-
-
-def test_get_bootstrap_rejects_missing_compatible_mode() -> None:
-    runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
-    runtime.get_runtime_record.return_value = _runtime_record()
-    runtime.resolve_compatible_app_mode.return_value = None
-
-    with pytest.raises(WebAppRuntimeUnavailableError, match="Site not found"):
-        _service(runtime).get_bootstrap("app-1")
-
 
 def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     workspace_features: MagicMock,
@@ -105,7 +96,6 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
     features.billing.enabled = True
     events: list[str] = []
     runtime.get_runtime_record.side_effect = lambda _app_id: events.append("record") or record
-    runtime.resolve_compatible_app_mode.side_effect = lambda _app_id: events.append("mode") or "agent-chat"
     workspace_features.side_effect = lambda _tenant_id, **_kwargs: events.append("features") or features
     file_service = MagicMock(spec=FileService)
     file_service.get_icon_url.side_effect = lambda *_args, **_kwargs: events.append("icon") or "https://icon"
@@ -133,7 +123,7 @@ def test_get_bootstrap_applies_feature_and_branding_policy_after_record_load(
             "replace_webapp_logo": "https://files.example.com/files/workspaces/tenant-1/webapp-logo",
         },
     )
-    assert events == ["record", "features", "mode", "icon"]
+    assert events == ["record", "features", "icon"]
     workspace_features.assert_called_once_with("tenant-1")
     file_service.get_icon_url.assert_called_once_with("file-1", "tenant-1")
 
@@ -144,7 +134,6 @@ def test_get_bootstrap_skips_legacy_custom_config_when_branding_is_not_allowed(
     runtime: MagicMock = create_autospec(WebAppRuntimeQuery, instance=True, spec_set=True)
     record = _runtime_record(tenant_custom_config_json="not-json")
     runtime.get_runtime_record.return_value = record
-    runtime.resolve_compatible_app_mode.return_value = "chat"
 
     workspace_features.return_value = FeatureModel(can_replace_logo=False)
 

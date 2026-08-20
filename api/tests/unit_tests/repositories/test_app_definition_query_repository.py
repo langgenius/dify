@@ -348,15 +348,24 @@ def test_get_site_configuration_maps_site_fields(sqlite_session_factory: session
     )
 
 
-def test_get_runtime_record_maps_app_tenant_and_site(
+@pytest.mark.parametrize(
+    ("tenant_status", "expected_mode"),
+    [
+        (TenantStatus.NORMAL, AppMode.AGENT_CHAT.value),
+        (TenantStatus.ARCHIVE, AppMode.CHAT.value),
+    ],
+)
+def test_get_runtime_record_maps_app_tenant_site_and_compatible_mode(
     sqlite_session_factory: sessionmaker[Session],
+    tenant_status: TenantStatus,
+    expected_mode: str,
 ) -> None:
     tenant_custom_config = '{"remove_webapp_brand":true,"replace_webapp_logo":"logo-file"}'
     with sqlite_session_factory.begin() as session:
         tenant = Tenant(
             name="Test Tenant",
             plan="pro",
-            status=TenantStatus.NORMAL,
+            status=tenant_status,
             custom_config=tenant_custom_config,
         )
         tenant.id = _TENANT_ID
@@ -391,6 +400,7 @@ def test_get_runtime_record_maps_app_tenant_and_site(
     assert repository.get_runtime_record(_APP_ID) == WebAppRuntimeRecord(
         app_id=_APP_ID,
         tenant_id=_TENANT_ID,
+        mode=expected_mode,
         enable_site=True,
         site=AppSiteConfiguration(
             title="Test Site",
@@ -410,10 +420,9 @@ def test_get_runtime_record_maps_app_tenant_and_site(
             use_icon_as_answer_icon=False,
         ),
         plan="pro",
-        tenant_status=TenantStatus.NORMAL.value,
+        tenant_status=tenant_status.value,
         tenant_custom_config_json=tenant_custom_config,
     )
-    assert repository.resolve_compatible_app_mode(_APP_ID) == AppMode.AGENT_CHAT.value
 
 
 def test_get_runtime_record_returns_none_for_missing_app(

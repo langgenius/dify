@@ -9,7 +9,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Tenant
+from models.account import Tenant, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -198,22 +198,19 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             plan = tenant.plan
             tenant_status = tenant.status.value
             tenant_custom_config_json = tenant.custom_config
+            mode = AppMode.value_of(app.mode).value
+            if tenant.status != TenantStatus.ARCHIVE:
+                mode = AppMode.value_of(app.mode_compatible_with_agent_with_session(session=session)).value
             return WebAppRuntimeRecord(
                 app_id=app_id,
                 tenant_id=tenant_id,
+                mode=mode,
                 enable_site=enable_site,
                 site=site_configuration,
                 plan=plan,
                 tenant_status=tenant_status,
                 tenant_custom_config_json=tenant_custom_config_json,
             )
-
-    def resolve_compatible_app_mode(self, app_id: str) -> str | None:
-        with self._session_factory() as session:
-            app = session.get(App, app_id)
-            if app is None:
-                return None
-            return AppMode.value_of(app.mode_compatible_with_agent_with_session(session=session)).value
 
     @staticmethod
     def _get_tools(session: Session, app: App) -> list[dict[str, Any]]:

@@ -12,6 +12,7 @@ from services.file_service import FileService
 class WebAppRuntimeRecord(NamedTuple):
     app_id: str
     tenant_id: str
+    mode: str
     enable_site: bool
     site: AppSiteConfiguration
     plan: str
@@ -32,8 +33,6 @@ class WebAppBootstrap(NamedTuple):
 
 class WebAppRuntimeQuery(Protocol):
     def get_runtime_record(self, app_id: str) -> WebAppRuntimeRecord | None: ...
-
-    def resolve_compatible_app_mode(self, app_id: str) -> str | None: ...
 
 
 class WebAppRuntimeUnavailableError(ValueError):
@@ -63,9 +62,6 @@ class WebAppRuntimeQueryService:
             raise WebAppRuntimeUnavailableError("Site not found")
 
         features = self._workspace_features(record.tenant_id)
-        mode = self._runtime.resolve_compatible_app_mode(app_id)
-        if mode is None:
-            raise WebAppRuntimeUnavailableError("Site not found")
         site_icon_url = (
             self._file_service.get_icon_url(record.site.icon, record.tenant_id)
             if record.site.icon_type == "image" and record.site.icon
@@ -97,7 +93,7 @@ class WebAppRuntimeQueryService:
 
         return WebAppBootstrap(
             app_id=record.app_id,
-            mode=mode,
+            mode=record.mode,
             enable_site=record.enable_site,
             site=site,
             plan=record.plan,
