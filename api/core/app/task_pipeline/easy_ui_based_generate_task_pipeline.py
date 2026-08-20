@@ -210,7 +210,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         audio_msg = publisher.check_and_get_audio()
         if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
             # audio_str = audio_msg.audio.decode('utf-8', errors='ignore')
-            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
+            return MessageAudioStreamResponse(audio=audio_msg.audio, audio_type=audio_msg.audio_type, task_id=task_id)
         return None
 
     def _wrapper_process_stream_response(
@@ -252,9 +252,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 break
             else:
                 start_listener_time = time.time()
-                yield MessageAudioStreamResponse(audio=audio.audio, task_id=task_id)
+                yield MessageAudioStreamResponse(audio=audio.audio, audio_type=audio.audio_type, task_id=task_id)
         if publisher:
-            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+            yield MessageAudioEndStreamResponse(audio="", audio_type=publisher.audio_mime_type, task_id=task_id)
 
     def _process_stream_response(
         self, publisher: AppGeneratorTTSPublisher | None, trace_manager: TraceQueueManager | None = None

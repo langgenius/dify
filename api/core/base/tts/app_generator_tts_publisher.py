@@ -14,15 +14,22 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     WorkflowQueueMessage,
 )
+from core.base.tts.audio_mime import (
+    DEFAULT_TTS_AUDIO_MIME_TYPE,
+    get_model_audio_mime_type,
+    inspect_audio_stream,
+    supports_incremental_tts_playback,
+)
 from core.model_manager import ModelInstance, ModelManager
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class AudioTrunk:
-    def __init__(self, status: str, audio):
+    def __init__(self, status: str, audio, audio_type: str | None = None):
         self.audio = audio
         self.status = status
+        self.audio_type = audio_type
 
 
 def _invoice_tts(text_content: str, model_instance: ModelInstance, voice: str):
@@ -34,7 +41,9 @@ def _invoice_tts(text_content: str, model_instance: ModelInstance, voice: str):
 def _process_future(
     future_queue: queue.Queue[concurrent.futures.Future[Iterable[bytes] | None] | None],
     audio_queue: queue.Queue[AudioTrunk],
+    declared_mime_type: str | None = None,
 ):
+    audio_type = declared_mime_type or DEFAULT_TTS_AUDIO_MIME_TYPE
     while True:
         try:
             future = future_queue.get()
@@ -43,13 +52,14 @@ def _process_future(
             invoke_result = future.result()
             if not invoke_result:
                 continue
-            for audio in invoke_result:
+            audio_stream, audio_type = inspect_audio_stream(invoke_result, declared_mime_type)
+            for audio in audio_stream:
                 audio_base64 = base64.b64encode(bytes(audio))
-                audio_queue.put(AudioTrunk("responding", audio=audio_base64))
+                audio_queue.put(AudioTrunk("responding", audio=audio_base64, audio_type=audio_type))
         except Exception as e:
             logging.getLogger(__name__).warning(e)
             break
-    audio_queue.put(AudioTrunk("finish", b""))
+    audio_queue.put(AudioTrunk("finish", b"", audio_type=audio_type))
 
 
 class AppGeneratorTTSPublisher:
@@ -64,6 +74,8 @@ class AppGeneratorTTSPublisher:
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
+        self.audio_mime_type = get_model_audio_mime_type(self.model_instance) or DEFAULT_TTS_AUDIO_MIME_TYPE
+        self._supports_incremental_playback = supports_incremental_tts_playback(self.audio_mime_type)
         self.voices = self.model_instance.get_tts_voices(language=language)
         values = [voice.get("value") for voice in self.voices]
         self.voice = voice
@@ -80,7 +92,7 @@ class AppGeneratorTTSPublisher:
 
     def _runtime(self):
         future_queue: queue.Queue[concurrent.futures.Future[Iterable[bytes] | None] | None] = queue.Queue()
-        threading.Thread(target=_process_future, args=(future_queue, self._audio_queue)).start()
+        threading.Thread(target=_process_future, args=(future_queue, self._audio_queue, self.audio_mime_type)).start()
         while True:
             try:
                 message = self._msg_queue.get()
@@ -115,7 +127,7 @@ class AppGeneratorTTSPublisher:
                                 self.msg_text += output
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
-                if len(sentence_arr) >= min(self.max_sentence, 7):
+                if self._supports_incremental_playback and len(sentence_arr) >= min(self.max_sentence, 7):
                     self.max_sentence += 1
                     text_content = "".join(sentence_arr)
                     futures_result = self.executor.submit(_invoice_tts, text_content, self.model_instance, self.voice)
@@ -140,6 +152,9 @@ class AppGeneratorTTSPublisher:
             if audio and audio.status == "finish":
                 self.executor.shutdown(wait=False)
             if audio:
+                if audio.audio_type:
+                    self.audio_mime_type = audio.audio_type
+                    self._supports_incremental_playback = supports_incremental_tts_playback(audio.audio_type)
                 self._last_audio_event = audio
             return audio
         except queue.Empty:

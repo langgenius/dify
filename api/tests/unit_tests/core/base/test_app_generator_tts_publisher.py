@@ -1,5 +1,6 @@
 import base64
 import queue
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +12,7 @@ from core.base.tts.app_generator_tts_publisher import (
     _invoice_tts,
     _process_future,
 )
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
 # =========================
 # Fixtures
@@ -167,6 +169,16 @@ class TestAppGeneratorTTSPublisher:
         assert result.status == "responding"
         assert publisher._last_audio_event == trunk
 
+    def test_check_and_get_audio_disables_incremental_playback_for_detected_wav(self, mock_model_manager):
+        publisher = AppGeneratorTTSPublisher("tenant", "voice1")
+        publisher._supports_incremental_playback = True
+        publisher._audio_queue.put(AudioTrunk("responding", b"abc", audio_type="audio/wav"))
+
+        publisher.check_and_get_audio()
+
+        assert publisher.audio_mime_type == "audio/wav"
+        assert publisher._supports_incremental_playback is False
+
     def test_check_and_get_audio_finish_event(self, mock_model_manager):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")
         publisher.executor = MagicMock()
@@ -246,6 +258,31 @@ class TestAppGeneratorTTSPublisher:
         publisher._runtime()
 
         assert publisher.executor.submit.called
+
+    def test_runtime_waits_for_the_complete_message_when_model_declares_wav(self, mock_model_manager, mocker):
+        mock_model_manager.get_default_model_instance.return_value.get_model_schema.return_value = SimpleNamespace(
+            model_properties={ModelPropertyKey.AUDIO_TYPE: "wav"}
+        )
+        publisher = AppGeneratorTTSPublisher("tenant", "voice1")
+        publisher.executor = MagicMock()
+        mocker.patch.object(publisher, "_extract_sentence", return_value=(["Hello.", " World."], ""))
+
+        from core.app.entities.queue_entities import QueueTextChunkEvent
+
+        event = MagicMock()
+        event.event = MagicMock(spec=QueueTextChunkEvent)
+        event.event.text = "Hello. World."
+        publisher._msg_queue.put(event)
+        publisher._msg_queue.put(None)
+
+        publisher._runtime()
+
+        publisher.executor.submit.assert_called_once_with(
+            _invoice_tts,
+            "Hello. World.",
+            publisher.model_instance,
+            publisher.voice,
+        )
 
     def test_runtime_handles_text_chunk_event(self, mock_model_manager):
         publisher = AppGeneratorTTSPublisher("tenant", "voice1")

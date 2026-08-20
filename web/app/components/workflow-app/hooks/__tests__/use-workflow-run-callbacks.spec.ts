@@ -136,9 +136,9 @@ describe('useWorkflowRun callbacks helpers', () => {
       workflowData,
     )
 
-    callbacks.onTTSChunk?.('message-1', 'audio-chunk')
+    callbacks.onTTSChunk?.('message-1', 'audio-chunk', 'audio/wav')
     expect(getOrCreatePlayer).toHaveBeenCalled()
-    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
+    expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true, 'audio/wav')
     expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
 
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)

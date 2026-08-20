@@ -245,17 +245,21 @@ export const createBaseWorkflowRunCallbacks = ({
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
     },
-    onTTSChunk: (messageId: string, audio: string) => {
+    onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
       const audioPlayer = getOrCreatePlayer()
       if (audioPlayer) {
-        audioPlayer.playAudioWithAudio(audio, true)
+        if (audioType) audioPlayer.playAudioWithAudio(audio, true, audioType)
+        else audioPlayer.playAudioWithAudio(audio, true)
         AudioPlayerManager.getInstance().resetMsgId(messageId)
       }
     },
-    onTTSEnd: (_messageId: string, audio: string) => {
+    onTTSEnd: (_messageId: string, audio: string, audioType?: string) => {
       const audioPlayer = getOrCreatePlayer()
-      if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
+      if (audioPlayer) {
+        if (audioType) audioPlayer.playAudioWithAudio(audio, false, audioType)
+        else audioPlayer.playAudioWithAudio(audio, false)
+      }
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
@@ -430,13 +434,15 @@ export const createFinalWorkflowRunCallbacks = ({
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
     },
-    onTTSChunk: (messageId: string, audio: string) => {
+    onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
-      player?.playAudioWithAudio(audio, true)
+      if (audioType) player?.playAudioWithAudio(audio, true, audioType)
+      else player?.playAudioWithAudio(audio, true)
       AudioPlayerManager.getInstance().resetMsgId(messageId)
     },
-    onTTSEnd: (_messageId: string, audio: string) => {
-      player?.playAudioWithAudio(audio, false)
+    onTTSEnd: (_messageId: string, audio: string, audioType?: string) => {
+      if (audioType) player?.playAudioWithAudio(audio, false, audioType)
+      else player?.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
