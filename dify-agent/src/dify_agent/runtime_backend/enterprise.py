@@ -99,10 +99,6 @@ async def _gateway_request(
     return payload if isinstance(payload, dict) else None
 
 
-def _not_implemented() -> NotImplementedError:
-    return NotImplementedError("Enterprise Gateway does not implement immutable Home Snapshot operations")
-
-
 @dataclass(slots=True)
 class EnterpriseHomeSnapshotBackend:
     """Manage immutable Home Snapshots through the Gateway's snapshot endpoints."""
@@ -137,8 +133,18 @@ class EnterpriseHomeSnapshotBackend:
         return snapshot_ref
 
     async def delete(self, snapshot_ref: str) -> None:
-        del snapshot_ref
-        raise _not_implemented()
+        """Delete one snapshot's artifacts, treating an absent snapshot as done."""
+        try:
+            _ = await _gateway_request(
+                endpoint=self.gateway_endpoint,
+                auth_token=self.auth_token,
+                timeout=self.snapshot_timeout,
+                method="DELETE",
+                path=f"/v1/home-snapshots/{quote(snapshot_ref, safe='/')}",
+                absent_status=404,
+            )
+        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
+            raise BindingDestroyError(str(exc)) from exc
 
 
 @dataclass(slots=True)

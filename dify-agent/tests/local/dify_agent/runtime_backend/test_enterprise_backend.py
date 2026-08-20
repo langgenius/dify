@@ -545,3 +545,57 @@ async def test_enterprise_snapshot_create_rejects_a_reply_without_a_ref(
             source=lease,
         )
     await bindings.release(lease)
+
+
+@pytest.mark.anyio
+async def test_enterprise_snapshot_delete_keeps_ref_slashes_and_escapes_the_rest(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    _ = _mock_http(monkeypatch, handler)
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    await snapshots.delete("tenant-1/agent-1/home-2")
+    await snapshots.delete("tenant-1/agent-1/home 2?x=1")
+
+    assert [request.method for request in requests] == ["DELETE", "DELETE"]
+    assert requests[0].url.raw_path == b"/v1/home-snapshots/tenant-1/agent-1/home-2"
+    assert requests[1].url.raw_path == b"/v1/home-snapshots/tenant-1/agent-1/home%202%3Fx%3D1"
+    assert requests[0].headers["X-Inner-Api-Key"] == "secret"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("status_code", [200, 404])
+async def test_enterprise_snapshot_delete_is_idempotent(
+    monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
+) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status_code, json={})
+
+    _ = _mock_http(monkeypatch, handler)
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    await snapshots.delete("tenant-1/agent-1/home-2")
+
+
+@pytest.mark.anyio
+async def test_enterprise_snapshot_delete_propagates_real_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            500,
+            json={"code": 500, "reason": "snapshot_delete_failed", "message": "object store unreachable"},
+        )
+
+    _ = _mock_http(monkeypatch, handler)
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(BindingDestroyError, match="snapshot_delete_failed"):
+        await snapshots.delete("tenant-1/agent-1/home-2")
