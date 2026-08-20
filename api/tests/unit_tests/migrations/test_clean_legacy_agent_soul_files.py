@@ -52,7 +52,7 @@ def test_upgrade_makes_legacy_build_draft_valid_for_first_message() -> None:
         )
     metadata.create_all(engine)
 
-    legacy_soul = {
+    legacy_soul: dict[str, object] = {
         "files": {"files": [], "skills": []},
         "prompt": {"system_prompt": "Build mode"},
     }
