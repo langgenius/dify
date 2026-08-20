@@ -609,9 +609,7 @@ class TestWorkflowTrace:
         assert attrs["dify.parent.workflow.run_id"] == "outer-run-001"
         assert attrs["dify.parent.app.id"] == "outer-app-001"
 
-    def test_node_executions_read_through_repository(
-        self, trace_handler: EnterpriseOtelTrace, mock_exporter
-    ):
+    def test_node_executions_read_through_repository(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
         """Node executions must be read through the repository factory so the active storage backend
         (e.g. LogStore/Aliyun SLS) is honoured, not via a direct DB query that only sees the RDBMS."""
         mock_repo = MagicMock()
