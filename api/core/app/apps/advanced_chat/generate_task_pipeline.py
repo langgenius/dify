@@ -780,6 +780,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             with self._database_session() as session:
                 # Save message
                 self._save_message(session=session, graph_runtime_state=resolved_state)
+            self._emit_message_trace()
 
             yield workflow_finish_resp
         elif event.stopped_by in (
@@ -790,6 +791,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             with self._database_session() as session:
                 # Save message
                 self._save_message(session=session)
+            self._emit_message_trace()
 
         yield self._message_end_to_stream_response()
 
@@ -817,6 +819,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if not self._message_saved_on_pause:
             with self._database_session() as session:
                 self._save_message(session=session, graph_runtime_state=resolved_state)
+            self._emit_message_trace()
 
         yield self._message_end_to_stream_response()
 
@@ -1102,6 +1105,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             )
         session.add_all(message_files)
 
+    def _emit_message_trace(self) -> None:
         trace_manager = self._application_generate_entity.trace_manager
         if trace_manager:
             trace_manager.add_trace_task(

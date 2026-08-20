@@ -221,7 +221,9 @@ class MessageService:
 
         session.commit()
         if rating:
-            cls._emit_feedback_telemetry(app_model=app_model, message=message, user=user, rating=rating, content=content)
+            cls._emit_feedback_telemetry(
+                app_model=app_model, message=message, user=user, rating=rating, content=content
+            )
 
         return feedback
 

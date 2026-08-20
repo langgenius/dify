@@ -7,7 +7,6 @@ Initialized once during Flask extension init (single-threaded via ext_enterprise
 Accessed via ``ext_enterprise_telemetry.get_enterprise_exporter()`` from any thread/process.
 """
 
-from configs import DifyConfig
 import logging
 import socket
 import uuid
@@ -35,7 +34,7 @@ from opentelemetry.semconv.attributes import service_attributes
 from opentelemetry.trace import SpanContext, TraceFlags
 from opentelemetry.util.types import Attributes, AttributeValue
 
-from configs import dify_config
+from configs import DifyConfig, dify_config
 from enterprise.telemetry.entities import EnterpriseTelemetryCounter, EnterpriseTelemetryHistogram
 from enterprise.telemetry.id_generator import (
     CorrelationIdGenerator,

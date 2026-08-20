@@ -301,28 +301,24 @@ class EnterpriseOtelTrace:
         """Query node executions from the DB and emit child spans under the workflow run."""
         from collections.abc import Mapping as MappingABC
 
-        from sqlalchemy import select
-        from sqlalchemy.orm import Session
+        from sqlalchemy.orm import sessionmaker
 
         from extensions.ext_database import db
         from graphon.enums import WorkflowNodeExecutionMetadataKey
-        from models.workflow import WorkflowNodeExecutionModel
+        from repositories.factory import DifyAPIRepositoryFactory
 
         metadata = self._metadata(workflow_info)
         tenant_id, app_id, user_id = self._context_ids(workflow_info, metadata)
 
         try:
-            with Session(db.engine) as session:
-                rows = (
-                    session.execute(
-                        select(WorkflowNodeExecutionModel).where(
-                            WorkflowNodeExecutionModel.workflow_run_id == workflow_info.workflow_run_id,
-                            WorkflowNodeExecutionModel.tenant_id == (tenant_id or ""),
-                        )
-                    )
-                    .scalars()
-                    .all()
-                )
+            repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                sessionmaker(bind=db.engine, expire_on_commit=False)
+            )
+            rows = repository.get_executions_by_workflow_run(
+                tenant_id=tenant_id or "",
+                app_id=app_id or "",
+                workflow_run_id=workflow_info.workflow_run_id,
+            )
         except Exception:
             logger.exception("Failed to query node executions for workflow_run_id=%s", workflow_info.workflow_run_id)
             return
