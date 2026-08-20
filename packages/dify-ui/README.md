@@ -276,13 +276,13 @@ See the [web overlay guide] for the web app overlay best practices.
 
 ## Development
 
-- `vp check packages/dify-ui` (from the repository root) — formatting and lint for the package plus the repository-wide TypeScript diagnostics configured by Vite+.
-- `pnpm -C packages/dify-ui test` — Vitest unit tests for primitives.
-- `pnpm -C packages/dify-ui storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
-- `pnpm -C packages/dify-ui test:storybook` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
-- `pnpm -C packages/dify-ui type-check` — TypeScript 7 native type checking for this package only.
+Run `vp check packages/dify-ui` from the repository root for package formatting, lint, and repository-wide TypeScript diagnostics. Run the remaining commands from `packages/dify-ui/`:
 
-Both test projects run in Playwright Chromium Browser Mode; choose `unit` or `storybook` by behavior owner, not runtime.
+- `vp test --project unit` — Vitest unit tests for primitives.
+- `vp run storybook` — Storybook on the default port. Each primitive has `index.stories.tsx`.
+- `vp test --project storybook --run` — Storybook component tests in Vitest browser mode. Stories without `play` are render and a11y smoke tests; stories with `play` should cover public UI contracts such as opening overlays, keyboard navigation, disabled/loading guards, form submission, and controlled state updates.
+
+Both test projects run in Playwright Chromium Browser Mode; choose `unit` or `storybook` by behavior owner, not runtime. Bare `vp test` runs both projects.
 
 ### Test Boundary
 

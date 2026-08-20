@@ -104,7 +104,7 @@ We use [Vitest] and [React Testing Library] for Unit Testing.
 > [!IMPORTANT]
 > As we are using Vite+, the `vitest` command is not available.
 > Please make sure to run tests with `vp` commands.
-> For example, use `npx vp test` instead of `npx vitest`.
+> For example, use `vp test` instead of `vitest`.
 
 Run test:
 
@@ -113,7 +113,7 @@ cd web
 vp test run --project unit
 ```
 
-The default unit suite runs in `happy-dom`. Browser Mode is reserved for behavior that depends on a real browser; see the [Frontend Testing Guide] for its admission criteria and commands.
+The standard unit command runs in `happy-dom`. Browser Mode is reserved for behavior that depends on a real browser; see the [Frontend Testing Guide] for its admission criteria and commands. Always select a project explicitly: bare `vp test` runs every registered project, including Browser Mode.
 
 If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 

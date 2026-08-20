@@ -43,7 +43,7 @@ Test the behavior owner. Barrel exports, pass-through wrappers, and purely prese
 
 ### Browser Mode Admission
 
-`happy-dom` is the default environment for `web/`. Use the `unit` project for pure logic, hooks, and DOM-observable component or feature behavior that does not depend on a browser's rendering engine. This split follows [Vitest test projects] and [Why Browser Mode].
+`happy-dom` is the default choice for tests under `web/`. Use the `unit` project for pure logic, hooks, and DOM-observable component or feature behavior that does not depend on a browser's rendering engine. This split follows [Vitest test projects] and [Why Browser Mode].
 
 Use the `browser` project only when the asserted contract depends on browser-owned behavior that `happy-dom` cannot represent faithfully, such as:
 
@@ -115,7 +115,7 @@ Mocks must preserve the public contract needed by the test. Do not mock interact
 
 ## Dify Test Setup
 
-- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. The default `unit` project runs in `happy-dom` and loads `web/vitest.setup.ts`; the opt-in `browser` project runs matching `app/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`.
+- Following [Vite+ testing configuration], tests under `web/` use two explicit projects in `web/vite.config.ts`. Supported commands and CI select one project explicitly: `unit` runs in `happy-dom` and loads `web/vitest.setup.ts`, while `browser` runs matching `app/**/*.browser.spec.{ts,tsx}` files in Playwright Chromium and loads `web/vitest.browser.setup.ts`. Bare `vp test` runs both registered projects.
 - Browser failures keep screenshots and Playwright traces under `web/.vitest-browser/`. CI uploads that directory only when failure artifacts exist; Browser Mode does not own coverage or report merging.
 - Tests under `packages/dify-ui/` use two Chromium Browser Mode projects: `unit` owns focused primitive contracts and loads the package styles through `vitest.setup.ts`; `storybook` owns story render, play, and accessibility contracts through `@storybook/addon-vitest`. The names identify behavior owners, not different runtimes.
 - New component and feature specs should generally use a sibling `__tests__/` directory. Existing colocated utility and hook specs may follow their owning module's convention. Cross-feature integration specs belong in `web/__tests__/`.
@@ -153,7 +153,7 @@ vp test watch --project unit path/to/spec
 vp test run --project unit --coverage path/to/spec-or-directory
 ```
 
-The `pnpm test` script selects the `unit` project. Run `pnpm run test:browser` explicitly for Browser Mode; use the direct `vp` commands above for watch mode and coverage.
+Always pass `--project unit` or `--project browser`. Bare `vp test` runs both registered projects and is not the standard Web test command.
 
 ## Review Checklist
 
