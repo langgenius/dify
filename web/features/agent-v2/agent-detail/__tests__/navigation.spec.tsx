@@ -81,7 +81,9 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  api_base_url: 'https://api.example.com/v1',
   app_id: 'app-1',
+  created_at: 1781660000,
   description: 'Find and summarize market materials.',
   enable_api: true,
   enable_site: true,
@@ -93,6 +95,8 @@ const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
   mode: 'agent',
   name: 'Research Agent',
   role: 'Research Assistant',
+  updated_at: 1781660000,
+  use_icon_as_answer_icon: false,
   ...overrides,
 })
 

@@ -1,6 +1,7 @@
 'use client'
 import type {
   AppDetailWithSite,
+  AppPartial,
   WorkflowResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { FileUpload } from '@/app/components/base/features/types'
@@ -159,7 +160,7 @@ function buildWorkflowSchema(
 }
 
 type UseAppInputsFormSchemaParams = {
-  appDetail: Pick<AppDetailWithSite, 'id' | 'mode'>
+  appDetail: Pick<AppPartial, 'id' | 'mode'>
 }
 
 type UseAppInputsFormSchemaResult = {

@@ -280,12 +280,17 @@ describe('useConfiguration', () => {
       input: { params: { app_id: 'app-1' } },
     })
     queryClient.setQueryData(detailQueryKey, {
+      api_base_url: 'https://api.example.com/v1',
+      created_at: 1781660000,
+      description: 'Cached app description',
       enable_api: false,
       enable_site: false,
       icon_url: null,
       id: 'app-1',
       mode: 'chat',
       name: 'Cached app',
+      updated_at: 1781660000,
+      use_icon_as_answer_icon: false,
     })
 
     await waitFor(() => {

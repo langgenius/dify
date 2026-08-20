@@ -179,6 +179,8 @@ vi.mock('@/service/client', () => ({
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
     access_ready: true,
+    created_at: 1781660000,
+    description: 'Support Agent description',
     enable_api: true,
     enable_site: true,
     icon_url: null,
@@ -189,6 +191,8 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
+    updated_at: 1781660000,
+    use_icon_as_answer_icon: false,
     site: {
       access_token: 'site-token',
       app_base_url: 'https://chat.example.test',
@@ -559,20 +563,6 @@ describe('Agent access surface cards', () => {
 
       expect(
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
-      ).toBeDisabled()
-    })
-
-    it('should keep customize disabled until the generated contract provides the required fields', () => {
-      renderWithQueryClient(
-        <WebAppAccessCard
-          agent={createAgent({ api_base_url: null })}
-          agentId="agent-1"
-          isLoading={false}
-        />,
-      )
-
-      expect(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
       ).toBeDisabled()
     })
 

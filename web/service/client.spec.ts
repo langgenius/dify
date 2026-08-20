@@ -1,4 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
@@ -109,6 +110,8 @@ const getRetryFn = (queryOptions: object): RetryFn => {
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
   access_ready: overrides.access_ready ?? true,
+  api_base_url: overrides.api_base_url ?? 'https://api.example.com/v1',
+  created_at: overrides.created_at ?? 1781660000,
   debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
   debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,
@@ -120,6 +123,8 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
   mode: overrides.mode ?? 'agent',
   name: overrides.name ?? 'Agent',
   role: overrides.role ?? 'Assistant',
+  updated_at: overrides.updated_at ?? 1781660000,
+  use_icon_as_answer_icon: overrides.use_icon_as_answer_icon ?? false,
 })
 
 const createComposerState = (
@@ -671,13 +676,18 @@ describe('consoleQuery app mutation defaults', () => {
       input: { params: { app_id: 'app-2' } },
     })
     const updatedApp = {
+      api_base_url: 'https://api.example.com/v1',
+      created_at: 1781660000,
+      description: 'Updated description',
       enable_api: false,
       enable_site: false,
       icon_url: null,
       id: 'app-1',
       mode: 'chat',
       name: 'Updated app',
-    }
+      updated_at: 1781660000,
+      use_icon_as_answer_icon: false,
+    } satisfies AppDetailWithSite
     queryClient.setQueryData(detailQueryKey, { ...updatedApp, name: 'Old app' })
     queryClient.setQueryData(otherDetailQueryKey, { ...updatedApp, id: 'app-2', name: 'Other app' })
 
