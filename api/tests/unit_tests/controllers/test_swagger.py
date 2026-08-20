@@ -576,6 +576,40 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
+def test_console_account_profile_patch_and_deprecated_aliases(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    paths = payload["paths"]
+
+    profile_patch = paths["/account/profile"]["patch"]
+    assert profile_patch.get("deprecated") is not True
+    profile_patch_schema = _json_body_schema(payload, profile_patch)
+    assert profile_patch_schema["type"] == "object"
+    assert profile_patch_schema["additionalProperties"] is False
+    assert "required" not in profile_patch_schema
+    assert profile_patch_schema["properties"]["name"]["type"] == "string"
+
+    for path in (
+        "/account/name",
+        "/account/avatar",
+        "/account/interface-language",
+        "/account/interface-theme",
+        "/account/timezone",
+    ):
+        assert paths[path]["post"]["deprecated"] is True
+
+    assert paths["/account/avatar"]["get"].get("deprecated") is not True
+
+
 def test_console_agent_debug_conversation_refresh_has_no_body(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.console import bp as console_bp

@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "ຕົວຢ່າງ: ຜູ້ຊ່ວຍການວິໄຈ",
   "roster.createSuccess": "ສ້າງຕົວແທນສຳເລັດ.",
   "roster.dateTimeFormat": "DD/MM/YYYY hh:mm:ss A",
-  "roster.deleteDialog.description": "ຕົວແທນນີ້ຈະຖືກລຶບອອກຈາກລາຍຊື່ຕົວແທນ.",
+  "roster.deleteDialog.description": "ການດຳເນີນການນີ້ຈະລຶບ {{name}} ຢ່າງຖາວອນ. ເວັບແອັບ ແລະ ການເຂົ້າເຖິງ API ຂອງຕົວແທນນີ້, ພ້ອມທັງເວີກໂຟລທີ່ໃຊ້ຕົວແທນນີ້, ຈະຢຸດໃຊ້ງານທັນທີ.",
   "roster.deleteDialog.title": "ລຶບ {{name}} ບໍ?",
   "roster.deleteFailed": "ລຶບຕົວແທນບໍ່ສຳເລັດ.",
   "roster.deleteSuccess": "ລຶບຕົວແທນສຳເລັດ.",
