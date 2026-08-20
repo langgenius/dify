@@ -24,7 +24,7 @@ export function defaultCredentialId(slot: CredentialSlot) {
   return slot.candidates.length === 1 ? slot.candidates[0]?.credential_id : undefined
 }
 
-export function defaultEnvironmentVariableSelection(
+function defaultEnvironmentVariableSelection(
   slot: EnvironmentVariableSlot,
 ): DeploymentConfigurationValues['environmentVariables'][string] {
   if (slot.has_configured_value) {
