@@ -35,6 +35,7 @@ from controllers.inner_api.plugin.plugin import (
 )
 from core.workflow.file_reference import build_file_reference
 from models import Account, Tenant
+from models.account import TenantStatus
 
 
 def _tenant() -> Tenant:
@@ -380,6 +381,23 @@ class TestPluginDownloadFileRequestApi:
             "size": 123,
             "download_url": expected_url,
         }
+
+    @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
+    def test_post_rejects_provisioning_workspace(
+        self,
+        api_instance,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        tenant = Tenant(name="Provisioning Tenant", status=TenantStatus.PROVISIONING)
+        sqlite_session.add(tenant)
+        sqlite_session.commit()
+        monkeypatch.setattr(plugin_module.db, "session", sqlite_session)
+        payload = MagicMock(tenant_id=tenant.id)
+
+        with pytest.raises(ValueError, match="tenant not found"):
+            _extract_raw_post(PluginDownloadFileRequestApi)(api_instance, payload=payload)
 
 
 class TestPluginFetchAppInfoApi:

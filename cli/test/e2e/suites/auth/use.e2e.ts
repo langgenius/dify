@@ -16,10 +16,6 @@ import { resolveEnv } from '../../setup/env.js'
 const caps = inject('e2eCapabilities') as import('../../setup/env.js').E2ECapabilities
 const E = resolveEnv(caps)
 
-// Secondary workspace used in tests — injected into available_workspaces
-const WS2_ID = '00000000-e2e2-0000-0001-000000000002'
-const WS2_NAME = 'Secondary Workspace'
-
 describe('E2E / difyctl use workspace', () => {
   let configDir: string
   let cleanup: () => Promise<void>
@@ -66,18 +62,13 @@ describe('E2E / difyctl use workspace', () => {
     }
   }
 
-  /** Inject a bundle with two workspaces. */
-  async function withTwoWorkspaces() {
+  async function withAccountAuth() {
     await injectAuth(configDir, {
       host: E.host,
       bearer: E.token,
       email: E.email,
       workspaceId: E.workspaceId,
       workspaceName: E.workspaceName,
-      availableWorkspaces: [
-        { id: E.workspaceId, name: E.workspaceName, role: 'owner' },
-        { id: E.ws2Id || WS2_ID, name: WS2_NAME, role: 'normal' },
-      ],
     })
   }
 
@@ -94,8 +85,8 @@ describe('E2E / difyctl use workspace', () => {
 
   it('[P0] internal user can switch to a specified workspace', async () => {
     // Spec: internal user can switch to a specified workspace
-    // use E.workspaceId (real server id); WS2_ID is synthetic and not on server
-    await withTwoWorkspaces()
+    // Use the real server workspace ID so the switch reaches the API.
+    await withAccountAuth()
     const result = await switchWorkspace(E.workspaceId)
     if (result === undefined) return
     assertExitCode(result, 0)
@@ -105,7 +96,7 @@ describe('E2E / difyctl use workspace', () => {
 
   it('[P0] auth status shows the new workspace after auth use', async () => {
     // Spec: auth status shows new workspace after auth use
-    await withTwoWorkspaces()
+    await withAccountAuth()
     const switchResult = await switchWorkspace(E.workspaceId)
     if (switchResult === undefined) return
     assertExitCode(switchResult, 0)
@@ -118,7 +109,7 @@ describe('E2E / difyctl use workspace', () => {
   it('[P0] auth use updates current_workspace_id (hosts.yml is updated)', async () => {
     // Spec: auth use updates current_workspace_id
     // Switch to primary workspace (real server id); verify hosts.yml is updated
-    await withTwoWorkspaces()
+    await withAccountAuth()
     const switchResult = await switchWorkspace(E.workspaceId)
     if (switchResult === undefined) return
     assertExitCode(switchResult, 0)
@@ -129,7 +120,7 @@ describe('E2E / difyctl use workspace', () => {
 
   it('[P1] switching to the same workspace repeatedly is idempotent', async () => {
     // Spec: switching to the same workspace is idempotent
-    await withTwoWorkspaces()
+    await withAccountAuth()
     const r1 = await switchWorkspace(E.workspaceId)
     if (r1 === undefined) return
     assertExitCode(r1, 0)
@@ -142,7 +133,7 @@ describe('E2E / difyctl use workspace', () => {
 
   it('[P0] switching to a non-existent workspace returns an error', async () => {
     // Spec: switching to a non-existent workspace returns an error
-    await withTwoWorkspaces()
+    await withAccountAuth()
     const result = await r(['auth', 'use', 'ffffffff-dead-0000-0000-000000000000'])
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toMatch(/server_5xx|not found|workspace|error/i)
@@ -150,7 +141,7 @@ describe('E2E / difyctl use workspace', () => {
 
   it('[P0] current_workspace_id is unchanged when workspace switch fails', async () => {
     // Spec: current_workspace_id is unchanged when workspace switch fails
-    await withTwoWorkspaces()
+    await withAccountAuth()
     await r(['auth', 'use', 'ffffffff-dead-0000-0000-000000000000'])
     // Read hosts.yml directly; the original workspace id should still be present
     const { readFile } = await import('node:fs/promises')
@@ -168,7 +159,7 @@ describe('E2E / difyctl use workspace', () => {
 
   it('[P0] missing workspace argument returns a usage error', async () => {
     // Spec: missing workspace argument returns a usage error
-    await withTwoWorkspaces()
+    await withAccountAuth()
     const result = await r(['use', 'workspace'])
     expect(result.exitCode).not.toBe(0)
     expect(result.stderr).toMatch(/missing|required|arg|usage|workspace/i)

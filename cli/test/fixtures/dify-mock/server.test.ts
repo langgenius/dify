@@ -59,7 +59,7 @@ describe('dify-mock fixture server', () => {
       workspaces: Array<{
         id: string
         name: string
-        role: string
+        roles: Array<{ id: string; name: string }>
         status: string
         current: boolean
       }>
@@ -68,6 +68,7 @@ describe('dify-mock fixture server', () => {
     expect(body.workspaces[0]?.id).toBe('550e8400-e29b-41d4-a716-446655440000')
     expect(body.workspaces[0]?.status).toBe('normal')
     expect(body.workspaces[0]?.current).toBe(true)
+    expect(body.workspaces[0]?.roles).toEqual([{ id: 'owner', name: 'owner' }])
     expect(body.workspaces[1]?.current).toBe(false)
   })
 

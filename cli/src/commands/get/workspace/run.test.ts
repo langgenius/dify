@@ -12,7 +12,11 @@ const baseActive: ActiveContext = {
   email: 'tester@dify.ai',
   ctx: {
     account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-    workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+    workspace: {
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      name: 'Default',
+      roles: [{ id: 'owner', name: 'Owner' }],
+    },
   },
   scheme: 'http',
 }
@@ -43,9 +47,9 @@ describe('runGetWorkspace', () => {
     )
   }
 
-  it('default format renders ID NAME ROLE STATUS CURRENT table', async () => {
+  it('default format renders ID NAME ROLES STATUS CURRENT table', async () => {
     const out = await render()
-    expect(out).toMatch(/^ID\s+NAME\s+ROLE\s+STATUS\s+CURRENT/)
+    expect(out).toMatch(/^ID\s+NAME\s+ROLES\s+STATUS\s+CURRENT/)
     expect(out).toContain('550e8400-e29b-41d4-a716-446655440000')
     expect(out).toContain('550e8400-e29b-41d4-a716-446655440001')
     expect(out).toContain('Default')
@@ -57,7 +61,7 @@ describe('runGetWorkspace', () => {
     expect(WorkspaceListOutput.tableColumns().map((column) => column.name)).toEqual([
       'ID',
       'NAME',
-      'ROLE',
+      'ROLES',
       'STATUS',
       'CURRENT',
     ])
@@ -77,7 +81,11 @@ describe('runGetWorkspace', () => {
       ...baseActive,
       ctx: {
         ...baseActive.ctx,
-        workspace: { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Other', role: 'normal' },
+        workspace: {
+          id: '550e8400-e29b-41d4-a716-446655440001',
+          name: 'Other',
+          roles: [{ id: 'normal', name: 'Member' }],
+        },
       },
     }
     const out = await render('', overridden)

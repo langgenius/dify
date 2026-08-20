@@ -65,7 +65,6 @@ from services.entities.knowledge_entities.knowledge_entities import KnowledgeCon
 from services.file_service import FileService
 from services.vector_space_admission_service import get_vector_space_admission_error_fields
 from tasks.generate_summary_index_task import generate_summary_index_task
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 from ..app.error import (
     ProviderModelCurrentlyNotSupportError,
@@ -695,7 +694,6 @@ class DatasetInitApi(Resource):
                 dataset.id,
                 ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
             )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
 
         return dump_response(
             DatasetAndDocumentResponse,

@@ -11,7 +11,6 @@ from services.account_activation_service import AccountActivationRepository
 from services.entities.account_activation_entities import (
     AccountInvitation,
     AccountSetup,
-    ActivationPersistenceResult,
     InvitationToken,
 )
 
@@ -42,13 +41,15 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 return None
 
             return AccountInvitation(
+                token=invitation.token,
                 account_id=account.id,
                 account_email=account.email,
                 account_status=account.status.value,
                 workspace_id=tenant.id,
                 workspace_name=tenant.name,
                 role=invitation.role,
-                requires_setup=invitation.requires_setup,
+                inviter_id=invitation.inviter_id,
+                rbac_role_id=invitation.rbac_role_id,
             )
 
     @override
@@ -56,9 +57,9 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
         self,
         invitation: AccountInvitation,
         *,
-        role: str,
         setup: AccountSetup | None,
-    ) -> ActivationPersistenceResult | None:
+        membership_role: str,
+    ) -> bool:
         with self._session_factory.begin() as session:
             tenant_id = session.scalar(
                 select(Tenant.id).where(
@@ -75,7 +76,9 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 .with_for_update()
             )
             if tenant_id is None or account is None:
-                return None
+                return False
+            if account.status not in (AccountStatus.PENDING, AccountStatus.ACTIVE):
+                return False
 
             membership = session.scalar(
                 select(TenantAccountJoin).where(
@@ -83,16 +86,17 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                     TenantAccountJoin.account_id == account.id,
                 )
             )
-            membership_created = membership is None
+            should_switch_workspace = membership is None or account.status == AccountStatus.PENDING
             if membership is None:
                 membership = TenantAccountJoin(
                     tenant_id=tenant_id,
                     account_id=account.id,
-                    role=TenantAccountRole(role),
+                    role=TenantAccountRole(membership_role),
+                    invited_by=invitation.inviter_id,
                 )
                 session.add(membership)
 
-            if setup is not None:
+            if setup is not None and account.status == AccountStatus.PENDING:
                 account.name = setup.name
                 account.interface_language = setup.interface_language
                 account.timezone = setup.timezone
@@ -100,15 +104,16 @@ class SQLAlchemyAccountActivationRepository(AccountActivationRepository):
                 account.status = AccountStatus.ACTIVE
                 account.initialized_at = naive_utc_now()
 
-            session.execute(
-                update(TenantAccountJoin)
-                .where(
-                    TenantAccountJoin.account_id == account.id,
-                    TenantAccountJoin.tenant_id != tenant_id,
+            if should_switch_workspace:
+                session.execute(
+                    update(TenantAccountJoin)
+                    .where(
+                        TenantAccountJoin.account_id == account.id,
+                        TenantAccountJoin.tenant_id != tenant_id,
+                    )
+                    .values(current=False)
                 )
-                .values(current=False)
-            )
-            membership.current = True
-            membership.last_opened_at = naive_utc_now()
+                membership.current = True
+                membership.last_opened_at = naive_utc_now()
 
-            return ActivationPersistenceResult(membership_created=membership_created)
+            return True

@@ -1,5 +1,10 @@
-import type { MemberListResponse, MemberResponse } from '@dify/contracts/api/openapi/types.gen'
+import type {
+  MemberListResponse,
+  MemberResponse,
+  WorkspaceRoleResponse,
+} from '@dify/contracts/api/openapi/types.gen'
 import type { TableCell, TableColumn } from '@/framework/output'
+import { formatRoles } from '@/workspace/roles'
 
 export const MEMBER_MODE_KEY = 'member'
 const CURRENT_MARKER = '*'
@@ -8,7 +13,7 @@ export const MEMBER_COLUMNS: readonly TableColumn[] = [
   { name: 'ID', priority: 0 },
   { name: 'NAME', priority: 0 },
   { name: 'EMAIL', priority: 0 },
-  { name: 'ROLE', priority: 0 },
+  { name: 'ROLES', priority: 0 },
   { name: 'STATUS', priority: 0 },
   { name: 'CURRENT', priority: 0 },
 ]
@@ -17,7 +22,7 @@ export class MemberRow {
   readonly id: string
   readonly displayName: string
   readonly email: string
-  readonly role: string
+  readonly roles: readonly WorkspaceRoleResponse[]
   readonly status: string
   readonly current: boolean
 
@@ -25,7 +30,7 @@ export class MemberRow {
     this.id = member.id
     this.displayName = member.name
     this.email = member.email
-    this.role = member.role
+    this.roles = member.roles
     this.status = member.status
     this.current = current
   }
@@ -35,7 +40,7 @@ export class MemberRow {
       this.id,
       this.displayName,
       this.email,
-      this.role,
+      formatRoles(this.roles),
       this.status,
       this.current ? CURRENT_MARKER : '',
     ]
@@ -50,7 +55,7 @@ export class MemberRow {
       id: this.id,
       name: this.displayName,
       email: this.email,
-      role: this.role,
+      roles: this.roles,
       status: this.status,
       current: this.current,
     }

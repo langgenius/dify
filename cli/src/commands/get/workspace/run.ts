@@ -43,7 +43,7 @@ export async function runGetWorkspace(
           new WorkspaceRow(
             w.id,
             w.name,
-            w.role,
+            w.roles,
             w.status,
             w.current || (currentId !== '' && w.id === currentId),
           ),

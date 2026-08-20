@@ -31,7 +31,7 @@ export const zAppDescribeInfo = z.object({
  *
  * Empty / omitted → all blocks. Unknown member → ValidationError → 422.
  */
-export const zAppDescribeQuery = z.object({
+export const zAppDescribeQuery = z.strictObject({
   fields: z.string().optional(),
 })
 
@@ -68,7 +68,7 @@ export const zAppDslExportResponse = z.object({
  *
  * Request body for POST /workspaces/<workspace_id>/apps/imports.
  */
-export const zAppDslImportPayload = z.object({
+export const zAppDslImportPayload = z.strictObject({
   app_id: z.string().nullish(),
   description: z.string().nullish(),
   icon: z.string().nullish(),
@@ -277,7 +277,7 @@ export const zFileResponse = z.object({
  * pins `additionalProperties: false` so the generated contract is an exact `{}` rather
  * than an under-annotated open object.
  */
-export const zFormSubmitResponse = z.record(z.string(), z.never())
+export const zFormSubmitResponse = z.strictObject({})
 
 /**
  * Github
@@ -357,7 +357,7 @@ export const zMemberActionResponse = z.object({
 /**
  * MemberInvitePayload
  */
-export const zMemberInvitePayload = z.object({
+export const zMemberInvitePayload = z.strictObject({
   email: z.string(),
   role: z.enum(['admin', 'normal']),
 })
@@ -379,38 +379,15 @@ export const zMemberInviteResponse = z.object({
  *
  * Strict (extra='forbid').
  */
-export const zMemberListQuery = z.object({
+export const zMemberListQuery = z.strictObject({
   limit: z.int().gte(1).lte(200).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
 
 /**
- * MemberResponse
- */
-export const zMemberResponse = z.object({
-  avatar: z.string().nullish(),
-  email: z.string(),
-  id: z.string(),
-  name: z.string(),
-  role: z.string(),
-  status: z.string(),
-})
-
-/**
- * MemberListResponse
- */
-export const zMemberListResponse = z.object({
-  data: z.array(zMemberResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
-})
-
-/**
  * MemberRoleUpdatePayload
  */
-export const zMemberRoleUpdatePayload = z.object({
+export const zMemberRoleUpdatePayload = z.strictObject({
   role: z.enum(['admin', 'normal']),
 })
 
@@ -515,7 +492,7 @@ export const zServerVersionResponse = z.object({
  *
  * Pagination for GET /account/sessions. Strict (extra='forbid').
  */
-export const zSessionListQuery = z.object({
+export const zSessionListQuery = z.strictObject({
   limit: z.int().gte(1).lte(200).optional().default(100),
   page: z.int().gte(1).optional().default(1),
 })
@@ -592,7 +569,7 @@ export const zAppListQuery = z.object({
  *
  * Strict (extra='forbid').
  */
-export const zPermittedExternalAppsListQuery = z.object({
+export const zPermittedExternalAppsListQuery = z.strictObject({
   limit: z.int().gte(1).lte(200).optional().default(20),
   mode: zSupportedAppType.nullish(),
   name: z.string().max(200).nullish(),
@@ -644,6 +621,37 @@ export const zWorkflowRunData = z.object({
 })
 
 /**
+ * WorkspaceRoleResponse
+ */
+export const zWorkspaceRoleResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * MemberResponse
+ */
+export const zMemberResponse = z.object({
+  avatar: z.string().nullish(),
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
+  roles: z.array(zWorkspaceRoleResponse),
+  status: z.string(),
+})
+
+/**
+ * MemberListResponse
+ */
+export const zMemberListResponse = z.object({
+  data: z.array(zMemberResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * WorkspaceDetailResponse
  */
 export const zWorkspaceDetailResponse = z.object({
@@ -651,7 +659,7 @@ export const zWorkspaceDetailResponse = z.object({
   current: z.boolean(),
   id: z.string(),
   name: z.string(),
-  role: z.string(),
+  roles: z.array(zWorkspaceRoleResponse),
   status: z.string(),
 })
 
@@ -661,7 +669,7 @@ export const zWorkspaceDetailResponse = z.object({
 export const zWorkspacePayload = z.object({
   id: z.string(),
   name: z.string(),
-  role: z.string(),
+  roles: z.array(zWorkspaceRoleResponse),
 })
 
 /**
@@ -698,7 +706,7 @@ export const zWorkspaceSummaryResponse = z.object({
   current: z.boolean(),
   id: z.string(),
   name: z.string(),
-  role: z.string(),
+  roles: z.array(zWorkspaceRoleResponse),
   status: z.string(),
 })
 

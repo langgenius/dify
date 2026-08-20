@@ -32,15 +32,10 @@ type InviteModalProps = {
   onSend: (invitationResults: MemberInviteResponse['invitation_results']) => void
 }
 
-type InviteFieldName = 'emails' | 'role'
 type InviteFormValues = {
   emails: string
   role: string
 }
-type SubmissionError =
-  | { kind: 'fields'; errors: Partial<Record<InviteFieldName, string>> }
-  | { kind: 'form'; message: string }
-  | null
 
 type InviteFormProps = Omit<InviteModalProps, 'open' | 'trigger'>
 
@@ -51,8 +46,9 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   const { data: features } = useQuery(consoleQuery.features.get.queryOptions())
   const [recipients, setRecipients] = useState<EmailRecipient[]>([])
   const [draft, setDraft] = useState('')
-  const [submissionError, setSubmissionError] = useState<SubmissionError>(null)
-  const fieldErrors = submissionError?.kind === 'fields' ? submissionError.errors : undefined
+  const [submissionError, setSubmissionError] = useState<'role' | 'form' | null>(null)
+  const roleError =
+    submissionError === 'role' ? t(($) => $['members.invalidRole'], { ns: 'common' }) : undefined
   const memberLimit = features?.workspace_members.enabled
     ? features.workspace_members
     : features?.billing.enabled && features.members.limit > 0
@@ -69,10 +65,6 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
       context: { silent: true },
     }),
   )
-
-  const clearEmailSubmissionError = () => {
-    setSubmissionError((error) => (error?.kind === 'fields' && error.errors.emails ? null : error))
-  }
 
   const handleSubmit = ({ role }: InviteFormValues) => {
     if (isPending) return
@@ -96,27 +88,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           onSend(response.invitation_results)
         },
         onError: (error) => {
-          switch (getInviteErrorCode(error)) {
-            case 'limit_exceeded':
-              setSubmissionError({
-                kind: 'fields',
-                errors: {
-                  emails: t(($) => $['members.inviteLimitExceeded'], { ns: 'common' }),
-                },
-              })
-              break
-            case 'invalid_role':
-              setSubmissionError({
-                kind: 'fields',
-                errors: { role: t(($) => $['members.invalidRole'], { ns: 'common' }) },
-              })
-              break
-            default:
-              setSubmissionError({
-                kind: 'form',
-                message: t(($) => $['members.inviteFailed'], { ns: 'common' }),
-              })
-          }
+          setSubmissionError(getInviteErrorCode(error) === 'invalid_role' ? 'role' : 'form')
         },
       },
     )
@@ -125,7 +97,7 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
   return (
     <Form<InviteFormValues>
       aria-label={t(($) => $['members.inviteTeamMember'], { ns: 'common' })}
-      errors={fieldErrors}
+      errors={roleError ? { role: roleError } : undefined}
       className="grid gap-5 pt-5"
       onFormSubmit={handleSubmit}
     >
@@ -142,10 +114,9 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
         draft={draft}
         onRecipientsChange={setRecipients}
         onDraftChange={setDraft}
-        onChange={clearEmailSubmissionError}
         disabled={isPending}
       />
-      <RoleSelector hasServerError={Boolean(fieldErrors?.role)} disabled={isPending} />
+      <RoleSelector hasServerError={Boolean(roleError)} disabled={isPending} />
       {exceedsRemainingSeats && (
         <div
           role="status"
@@ -162,9 +133,9 @@ function InviteForm({ isEmailSetup, onOpenChange, onSend }: InviteFormProps) {
           </span>
         </div>
       )}
-      {submissionError?.kind === 'form' && (
+      {submissionError === 'form' && (
         <div role="alert" className="body-xs-regular text-text-destructive">
-          {submissionError.message}
+          {t(($) => $['members.inviteFailed'], { ns: 'common' })}
         </div>
       )}
       <Button

@@ -1,7 +1,7 @@
 'use client'
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { Member } from '@/models/common'
+import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -20,9 +20,9 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
+import { useWorkspacePermissions } from '@/service/use-workspace'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
-import InviteButton from './invite-button'
 import { InviteModal } from './invite-modal'
 import InvitedModal from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
@@ -54,19 +54,37 @@ const MembersPage = () => {
     enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
   const [showTransferOwnershipModal, setShowTransferOwnershipModal] = useState(false)
-  const [detailsMember, setDetailsMember] = useState<Member | null>(null)
+  const [detailsMemberId, setDetailsMemberId] = useState<string | null>(null)
+  const detailsMember = accounts.find(({ id }) => id === detailsMemberId)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+  const canAssignRoles = hasPermission(workspacePermissionKeys, 'workspace.role.manage')
+  const workspacePermissions = useWorkspacePermissions(
+    currentWorkspace.id,
+    systemFeatures.branding.enabled,
+  )
+  const enterpriseAllowsMemberInvite =
+    !systemFeatures.branding.enabled ||
+    (workspacePermissions.isSuccess && workspacePermissions.data.allow_member_invite)
+  const enterpriseAllowsOwnerTransfer =
+    !systemFeatures.branding.enabled ||
+    (workspacePermissions.isSuccess && workspacePermissions.data.allow_owner_transfer)
+  const canInviteMembers =
+    canManageMembers &&
+    (!systemFeatures.rbac_enabled || canAssignRoles) &&
+    enterpriseAllowsMemberInvite
+  const canTransferOwnership =
+    isCurrentWorkspaceOwner && isAllowTransferWorkspace && enterpriseAllowsOwnerTransfer
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'common' })
     : t(($) => $['members.role'], { ns: 'common' })
 
-  const handleOpenDetails = useCallback((member: Member) => {
-    setDetailsMember(member)
+  const handleOpenDetails = useCallback((memberId: string) => {
+    setDetailsMemberId(memberId)
   }, [])
 
   const handleCloseDetails = useCallback(() => {
-    setDetailsMember(null)
+    setDetailsMemberId(null)
   }, [])
 
   const { mutateAsync: updateRolesOfMember } = useUpdateRolesOfMember()
@@ -93,6 +111,10 @@ const MembersPage = () => {
   const handleTransferOwnership = useCallback(() => {
     setShowTransferOwnershipModal(true)
   }, [])
+
+  if (!canInviteMembers && inviteModalVisible) setInviteModalVisible(false)
+  if (!canTransferOwnership && showTransferOwnershipModal) setShowTransferOwnershipModal(false)
+  if (detailsMemberId && !detailsMember) setDetailsMemberId(null)
 
   return (
     <>
@@ -157,10 +179,15 @@ const MembersPage = () => {
           </div>
           {isMemberFull && <UpgradeBtn className="mr-2" loc="member-invite" />}
           <div className="shrink-0">
-            {canManageMembers && (
+            {canInviteMembers && (
               <InviteModal
                 open={inviteModalVisible}
-                trigger={<InviteButton />}
+                trigger={
+                  <Button variant="primary">
+                    <span aria-hidden="true" className="i-ri-user-add-line size-4" />
+                    {t(($) => $['members.invite'], { ns: 'common' })}
+                  </Button>
+                }
                 isEmailSetup={systemFeatures.is_email_setup}
                 onOpenChange={setInviteModalVisible}
                 onSend={setInvitationResults}
@@ -185,10 +212,10 @@ const MembersPage = () => {
               <MemberRow
                 key={account.id}
                 member={account}
-                roles={account.roles}
                 isCurrentUser={userProfileEmail === account.email}
-                canManage={canManageMembers}
-                canTransferOwnership={isCurrentWorkspaceOwner && isAllowTransferWorkspace}
+                canAssignRoles={canAssignRoles}
+                canRemove={canManageMembers}
+                canTransferOwnership={canTransferOwnership}
                 allowMultipleRoles={systemFeatures.rbac_enabled}
                 onOpenDetails={handleOpenDetails}
                 onTransferOwnership={handleTransferOwnership}
@@ -206,7 +233,7 @@ const MembersPage = () => {
       {editWorkspaceModalVisible && (
         <EditWorkspaceModal onCancel={() => setEditWorkspaceModalVisible(false)} />
       )}
-      {showTransferOwnershipModal && (
+      {canTransferOwnership && showTransferOwnershipModal && (
         <TransferOwnershipModal
           show={showTransferOwnershipModal}
           onClose={() => setShowTransferOwnershipModal(false)}
@@ -216,7 +243,8 @@ const MembersPage = () => {
         <MemberDetailsModal
           member={detailsMember}
           canAssignRoles={
-            canManageMembers &&
+            canAssignRoles &&
+            detailsMember.status !== 'pending' &&
             detailsMember.role !== 'owner' &&
             userProfileEmail !== detailsMember.email
           }

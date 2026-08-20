@@ -191,7 +191,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       subject_type: 'account',
       subject_email: ACCOUNT.email,
       account: { id: ACCOUNT.id, email: ACCOUNT.email, name: ACCOUNT.name },
-      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
+      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, roles: w.roles })),
       default_workspace_id: ACCOUNT.current_workspace_id,
     })
   })
@@ -228,7 +228,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       workspaces: WORKSPACES.map((w) => ({
         id: w.id,
         name: w.name,
-        role: w.role,
+        roles: w.roles,
         status: w.status,
         current: w.is_current,
       })),
@@ -582,7 +582,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
         token: 'dfoa_test',
         subject_type: 'account',
         account: { id: ACCOUNT.id, email: '', name: '' },
-        workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
+        workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, roles: w.roles })),
         default_workspace_id: ACCOUNT.current_workspace_id,
         token_id: 'tok-1',
       })
@@ -591,7 +591,7 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       token: 'dfoa_test',
       subject_type: 'account',
       account: ACCOUNT,
-      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, role: w.role })),
+      workspaces: WORKSPACES.map((w) => ({ id: w.id, name: w.name, roles: w.roles })),
       default_workspace_id: ACCOUNT.current_workspace_id,
       token_id: 'tok-1',
     })

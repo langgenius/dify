@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Lời mời đã được gửi, và họ có thể đăng nhập vào Dify để truy cập vào dữ liệu nhóm của bạn.",
   "members.invite": "Mời",
   "members.inviteFailed": "Không thể gửi lời mời. Vui lòng thử lại.",
-  "members.inviteLimitExceeded": "Không đủ chỗ cho tất cả người nhận.",
   "members.inviteTeamMember": "Mời thành viên nhóm",
   "members.inviteTeamMemberTip": "Sau khi đăng nhập, họ có thể truy cập trực tiếp vào dữ liệu nhóm của bạn.",
   "members.invitedAsRole": "Được mời với vai trò {{role}}",

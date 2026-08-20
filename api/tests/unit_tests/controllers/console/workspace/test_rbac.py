@@ -5,17 +5,18 @@ The controllers here are thin: almost every non-trivial behaviour lives in
 therefore focus on the Flask-layer concerns the service layer cannot exercise:
 
 * ``_current_ids`` raises 404 when the session has no tenant.
+* Tenant-scoped response hydration cannot leak foreign workspace members.
 * The pydantic request models accept / reject bodies as expected.
+* RBAC management routes carry the correct shared authorization policy.
 
-We explicitly avoid "happy-path" integration tests through the full
-decorator stack — those belong in e2e tests where a real Dify session is
-available — to keep this suite fast and resilient to ancillary auth wiring
-changes.
+We call unwrapped handlers for transport-only behaviour and leave the full
+decorator stack to e2e tests where a real Dify session is available.
 """
 
 from __future__ import annotations
 
 import inspect
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -27,7 +28,7 @@ from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
-from models import Account
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 
 
 @pytest.fixture
@@ -50,6 +51,31 @@ def _account() -> Account:
     account = Account(name="RBAC User", email="rbac@example.com")
     account.id = "acct-1"
     return account
+
+
+_USER_ACCESS_POLICY_CASES = [
+    (
+        rbac_mod.RBACAppUserAccessPolicyAssignmentApi,
+        "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_user_access_policies",
+        "app-1",
+    ),
+    (
+        rbac_mod.RBACDatasetUserAccessPolicyAssignmentApi,
+        "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_user_access_policies",
+        "dataset-1",
+    ),
+]
+
+_WORKSPACE_BINDING_CASES = [
+    (
+        rbac_mod.RBACWorkspaceAppBindingsApi,
+        "controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.replace_app_bindings",
+    ),
+    (
+        rbac_mod.RBACWorkspaceDatasetBindingsApi,
+        "controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.replace_dataset_bindings",
+    ),
+]
 
 
 class TestCurrentIds:
@@ -87,23 +113,75 @@ class TestMyPermissions:
 
 
 class TestAccessMatrixAccountNames:
+    @pytest.mark.parametrize(
+        ("resource_class", "service_owner", "service_method", "result_attribute", "resource_id"),
+        [
+            (rbac_mod.RBACAppMatrixApi, rbac_mod.svc.RBACService.AppAccess, "matrix", "items", "app-1"),
+            (
+                rbac_mod.RBACAppUserAccessPoliciesApi,
+                rbac_mod.svc.RBACService.AppAccess,
+                "user_access_policies",
+                "data",
+                "app-1",
+            ),
+            (rbac_mod.RBACDatasetMatrixApi, rbac_mod.svc.RBACService.DatasetAccess, "matrix", "items", "dataset-1"),
+            (
+                rbac_mod.RBACDatasetUserAccessPoliciesApi,
+                rbac_mod.svc.RBACService.DatasetAccess,
+                "user_access_policies",
+                "data",
+                "dataset-1",
+            ),
+        ],
+    )
+    def test_resource_reads_hydrate_tenant_members(
+        self,
+        resource_class,
+        service_owner,
+        service_method,
+        result_attribute,
+        resource_id,
+    ):
+        result = SimpleNamespace(**{result_attribute: []})
+        hydrator = (
+            "_hydrate_access_matrix_account_names"
+            if result_attribute == "items"
+            else "_hydrate_resource_user_account_names"
+        )
+        with (
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch.object(service_owner, service_method, return_value=result) as fetch,
+            patch.object(rbac_mod, hydrator) as hydrate,
+            patch.object(rbac_mod, "_dump", return_value={}),
+        ):
+            response = inspect.unwrap(resource_class.get)(resource_class(), resource_id)
+
+        assert response == {}
+        fetch.assert_called_once_with("tenant-1", "acct-actor", resource_id)
+        hydrate.assert_called_once_with("tenant-1", vars(result)[result_attribute])
+
     def test_hydrates_missing_account_names(self):
         items = [
             rbac_mod.svc.AccessMatrixItem(
                 accounts=[
-                    {"account_id": "acct-1", "account_name": "Alice", "binding_id": "binding-1"},
+                    {"account_id": "acct-1", "account_name": "forged", "binding_id": "binding-1"},
                     {"account_id": "acct-2", "account_name": "", "binding_id": "binding-2"},
+                    {"account_id": "foreign", "account_name": "Foreign", "binding_id": "binding-3"},
                 ]
             )
         ]
 
         with patch(
             "controllers.console.workspace.rbac._account_names_by_ids",
-            return_value={"acct-2": {"name": "Bob", "avatar": "ava"}},
+            return_value={
+                "acct-1": {"name": "Alice", "avatar": "", "email": "alice@example.com"},
+                "acct-2": {"name": "Bob", "avatar": "ava", "email": "bob@example.com"},
+            },
         ) as mock_names:
-            rbac_mod._hydrate_access_matrix_account_names(items)
+            rbac_mod._hydrate_access_matrix_account_names("tenant-1", items)
 
-        mock_names.assert_called_once_with(["acct-2"])
+        mock_names.assert_called_once_with("tenant-1", ["acct-1", "acct-2", "foreign"])
+        assert [account.account_id for account in items[0].accounts] == ["acct-1", "acct-2"]
         assert items[0].accounts[0].account_id == "acct-1"
         assert items[0].accounts[0].account_name == "Alice"
         assert items[0].accounts[1].account_id == "acct-2"
@@ -121,11 +199,151 @@ class TestAccessMatrixAccountNames:
 
         with patch(
             "controllers.console.workspace.rbac._account_names_by_ids",
-            return_value={"acct-1": {"name": "Alice", "avatar": ""}},
+            return_value={"acct-1": {"name": "Alice", "avatar": "", "email": "alice@example.com"}},
         ):
-            rbac_mod._hydrate_resource_user_account_names(items)
+            rbac_mod._hydrate_resource_user_account_names("tenant-1", items)
 
         assert items[0].account.account_name == "Alice"
+
+    def test_account_names_are_scoped_to_tenant(self, sqlite_session):
+        current_tenant = Tenant(name="Current")
+        foreign_tenant = Tenant(name="Foreign")
+        current_account = Account(name="Current", email="current@example.com")
+        foreign_account = Account(name="Foreign", email="foreign@example.com")
+        sqlite_session.add_all([current_tenant, foreign_tenant, current_account, foreign_account])
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                TenantAccountJoin(
+                    tenant_id=current_tenant.id,
+                    account_id=current_account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+                TenantAccountJoin(
+                    tenant_id=foreign_tenant.id,
+                    account_id=foreign_account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+
+        result = rbac_mod._account_names_by_ids(
+            current_tenant.id,
+            [current_account.id, foreign_account.id],
+        )
+
+        assert set(result) == {current_account.id}
+
+
+class TestTenantScopedMemberReads:
+    @pytest.mark.parametrize(
+        ("resource_class", "service_method", "method_args", "resource_type"),
+        [
+            (
+                rbac_mod.RBACAppMemberBindingsApi,
+                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.list_member_bindings",
+                ("app-1", "policy-1"),
+                "app",
+            ),
+            (
+                rbac_mod.RBACDatasetMemberBindingsApi,
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.list_member_bindings",
+                ("dataset-1", "policy-1"),
+                "dataset",
+            ),
+            (
+                rbac_mod.RBACWorkspaceAppMemberBindingsApi,
+                "controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.list_app_member_bindings",
+                ("policy-1",),
+                "app",
+            ),
+            (
+                rbac_mod.RBACWorkspaceDatasetMemberBindingsApi,
+                "controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.list_dataset_member_bindings",
+                ("policy-1",),
+                "dataset",
+            ),
+        ],
+    )
+    def test_member_binding_reads_filter_foreign_accounts(
+        self,
+        resource_class,
+        service_method,
+        method_args,
+        resource_type,
+    ):
+        bindings = rbac_mod.svc.MemberBindingsResponse(
+            data=[
+                {
+                    "id": "binding-1",
+                    "access_policy_id": "policy-1",
+                    "resource_type": resource_type,
+                    "account_id": "acct-1",
+                    "account_name": "forged",
+                },
+                {
+                    "id": "binding-2",
+                    "access_policy_id": "policy-1",
+                    "resource_type": resource_type,
+                    "account_id": "foreign",
+                    "account_name": "Foreign",
+                },
+            ]
+        )
+
+        with (
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(service_method, return_value=bindings),
+            patch(
+                "controllers.console.workspace.rbac._account_names_by_ids",
+                return_value={"acct-1": {"name": "Alice", "avatar": "avatar", "email": "alice@example.com"}},
+            ),
+        ):
+            response = inspect.unwrap(resource_class.get)(resource_class(), *method_args)
+
+        assert [binding["account_id"] for binding in response["data"]] == ["acct-1"]
+        assert response["data"][0]["account_name"] == "Alice"
+
+    def test_role_member_pagination_uses_local_workspace_members(self, app):
+        members = [
+            SimpleNamespace(
+                id="acct-3",
+                name="Carol",
+                roles=(SimpleNamespace(id="role-1"),),
+            ),
+            SimpleNamespace(
+                id="acct-1",
+                name="Alice",
+                roles=(SimpleNamespace(id="role-1"),),
+            ),
+            SimpleNamespace(
+                id="acct-2",
+                name="Bob",
+                roles=(SimpleNamespace(id="role-2"),),
+            ),
+        ]
+        member_queries = SimpleNamespace(list_for_workspace=lambda *_: members)
+
+        with (
+            app.test_request_context("/?page=2&limit=1"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(
+                "controllers.console.workspace.rbac.application_services",
+                return_value=SimpleNamespace(workspace_member_queries=member_queries),
+            ),
+        ):
+            response = inspect.unwrap(rbac_mod.ListMembersByRole.get)(rbac_mod.ListMembersByRole(), "role-1")
+
+        assert response == {
+            "data": [{"account_id": "acct-3", "account_name": "Carol"}],
+            "pagination": {
+                "total_count": 2,
+                "per_page": 1,
+                "current_page": 2,
+                "total_pages": 2,
+            },
+        }
 
 
 class TestPydanticModels:
@@ -183,6 +401,16 @@ class TestPydanticModels:
     def test_replace_bindings_keeps_role_binding_contract(self):
         parsed = rbac_mod._ReplaceBindingsRequest.model_validate({"role_ids": None})
         assert parsed.role_ids == []
+
+    def test_user_access_policy_payload_rejects_batch_account_ids(self):
+        with pytest.raises(ValidationError):
+            rbac_mod._ReplaceUserAccessPoliciesPayload.model_validate(
+                {"access_policy_ids": ["policy-1"], "account_ids": ["foreign-account"]}
+            )
+
+    def test_user_access_policy_payload_coerces_null_ids(self):
+        payload = rbac_mod._ReplaceUserAccessPoliciesPayload.model_validate({"access_policy_ids": None})
+        assert payload.access_policy_ids == []
 
     def test_replace_member_roles_coerce_null_list(self):
         parsed = rbac_mod._ReplaceMemberRolesRequest.model_validate({"role_ids": None})
@@ -319,89 +547,87 @@ class TestPaginationMapping:
 
 
 class TestResourceAccessScopeBindings:
-    def test_app_whitelist_all_schedules_member_policy_sync(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/apps/app-1/whitelist",
-                method="PUT",
-                json={"scope": "all"},
+    @pytest.mark.parametrize(
+        ("resource_class", "service_method", "resource_id"),
+        [
+            (
+                rbac_mod.RBACAppWhitelistApi,
+                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.whitelist",
+                "app-1",
             ),
+            (
+                rbac_mod.RBACDatasetWhitelistApi,
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.whitelist",
+                "dataset-1",
+            ),
+        ],
+    )
+    def test_whitelist_get_filters_foreign_accounts(self, app, resource_class, service_method, resource_id):
+        whitelist = rbac_mod.svc.ResourceWhitelist(account_ids=["acct-1", "foreign"])
+        with (
+            app.test_request_context("/"),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(service_method, return_value=whitelist) as mock_whitelist,
             patch(
-                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
+                "controllers.console.workspace.rbac._account_names_by_ids",
+                return_value={"acct-1": {"name": "Alice", "avatar": "", "email": "alice@example.com"}},
             ),
-            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
         ):
-            inspect.unwrap(rbac_mod.RBACAppWhitelistApi.put)(rbac_mod.RBACAppWhitelistApi(), "app-1")
+            response = inspect.unwrap(resource_class.get)(resource_class(), resource_id)
 
-        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", "app-1")
+        assert response["account_ids"] == ["acct-1"]
+        mock_whitelist.assert_called_once_with("tenant-1", "acct-actor", resource_id)
 
-    def test_dataset_whitelist_all_schedules_member_policy_sync(self, app):
-        # Widening a dataset to the whole workspace only records the scope; without granting the
-        # default policy to the current members nobody actually gains access.
+    @pytest.mark.parametrize(
+        ("resource_class", "service_method", "resource_id"),
+        _USER_ACCESS_POLICY_CASES,
+    )
+    def test_user_access_policy_assignment_forwards_ids(
+        self,
+        app,
+        resource_class,
+        service_method,
+        resource_id,
+    ):
         with (
             app.test_request_context(
-                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
-                method="PUT",
-                json={"scope": "all"},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
-            ),
-            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
-        ):
-            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
-
-        mock_sync_task.delay.assert_called_once_with("tenant-1", "acct-actor", dataset_id="dataset-1")
-
-    def test_dataset_whitelist_specific_does_not_schedule_member_policy_sync(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/datasets/dataset-1/whitelist",
-                method="PUT",
-                json={"scope": "specific"},
-            ),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
-                return_value=rbac_mod.svc.ResourceWhitelist(),
-            ),
-            patch("controllers.console.workspace.rbac.initialize_created_app_rbac_access_task") as mock_sync_task,
-        ):
-            inspect.unwrap(rbac_mod.RBACDatasetWhitelistApi.put)(rbac_mod.RBACDatasetWhitelistApi(), "dataset-1")
-
-        mock_sync_task.delay.assert_not_called()
-
-    def test_app_user_access_policy_assignment_forwards_ids(self, app):
-        with (
-            app.test_request_context(
-                "/workspaces/current/rbac/apps/app-1/users/acct-target/access-policies",
+                "/",
                 method="PUT",
                 json={"access_policy_ids": ["policy-1", "policy-2"]},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch(
-                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_user_access_policies"
-            ) as mock_replace,
+            patch(service_method) as mock_replace,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
         ):
-            inspect.unwrap(rbac_mod.RBACAppUserAccessPolicyAssignmentApi.put)(
-                rbac_mod.RBACAppUserAccessPolicyAssignmentApi(),
-                "app-1",
-                "acct-target",
-            )
+            inspect.unwrap(resource_class.put)(resource_class(), resource_id, "acct-target")
 
-        tenant_id, actor_id, app_id, target_id, payload = mock_replace.call_args.args
-        assert (tenant_id, actor_id, app_id, target_id) == (
+        tenant_id, actor_id, actual_resource_id, target_id, payload = mock_replace.call_args.args
+        assert (tenant_id, actor_id, actual_resource_id, target_id) == (
             "tenant-1",
             "acct-actor",
-            "app-1",
+            resource_id,
             "acct-target",
         )
         assert payload.access_policy_ids == ["policy-1", "policy-2"]
+
+    @pytest.mark.parametrize(
+        ("resource_class", "service_method", "resource_id"),
+        _USER_ACCESS_POLICY_CASES,
+    )
+    def test_user_access_policy_assignment_rejects_foreign_accounts(
+        self,
+        app,
+        resource_class,
+        service_method,
+        resource_id,
+    ):
+        with (
+            app.test_request_context("/", method="PUT", json={"access_policy_ids": ["policy-1"]}),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(service_method, side_effect=rbac_mod.MemberNotInTenantError("Member not in tenant.")),
+            pytest.raises(NotFound, match="Member not in tenant"),
+        ):
+            inspect.unwrap(resource_class.put)(resource_class(), resource_id, "foreign")
 
     def test_app_member_bindings_delete_forwards_account_ids(self, app):
         with (
@@ -446,6 +672,64 @@ class TestResourceAccessScopeBindings:
         tenant_id, actor_id, dataset_id, policy_id, payload = mock_delete.call_args.args
         assert (tenant_id, actor_id, dataset_id, policy_id) == ("tenant-1", "acct-actor", "dataset-1", "policy-1")
         assert payload.account_ids == ["acct-2"]
+
+
+class TestWorkspaceBindings:
+    @pytest.mark.parametrize(
+        ("resource_class", "service_method"),
+        _WORKSPACE_BINDING_CASES,
+    )
+    def test_replace_bindings_filters_foreign_accounts(
+        self,
+        app,
+        resource_class,
+        service_method,
+    ):
+        result = rbac_mod.svc.AccessMatrixItem(
+            accounts=[
+                {"account_id": "acct-1", "account_name": "forged", "binding_id": "binding-1"},
+                {"account_id": "foreign", "account_name": "Foreign", "binding_id": "binding-2"},
+            ]
+        )
+
+        with (
+            app.test_request_context(
+                "/",
+                method="PUT",
+                json={"role_ids": ["role-1"], "account_ids": ["acct-1", "foreign"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(service_method, return_value=result) as mock_replace,
+            patch(
+                "controllers.console.workspace.rbac._account_names_by_ids",
+                return_value={"acct-1": {"name": "Alice", "avatar": "avatar", "email": "alice@example.com"}},
+            ),
+        ):
+            response = inspect.unwrap(resource_class.put)(resource_class(), "policy-1")
+
+        assert [account["account_id"] for account in response["accounts"]] == ["acct-1"]
+        assert response["accounts"][0]["account_name"] == "Alice"
+        tenant_id, actor_id, policy_id, payload = mock_replace.call_args.args
+        assert (tenant_id, actor_id, policy_id) == ("tenant-1", "acct-actor", "policy-1")
+        assert payload.role_ids == ["role-1"]
+        assert payload.account_ids == ["acct-1", "foreign"]
+
+    @pytest.mark.parametrize(
+        ("resource_class", "service_method"),
+        _WORKSPACE_BINDING_CASES,
+    )
+    def test_replace_bindings_rejects_foreign_accounts(self, app, resource_class, service_method):
+        with (
+            app.test_request_context(
+                "/",
+                method="PUT",
+                json={"role_ids": [], "account_ids": ["foreign"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch(service_method, side_effect=rbac_mod.MemberNotInTenantError("Member not in tenant.")),
+            pytest.raises(rbac_mod.BadRequest, match="Member not in tenant"),
+        ):
+            inspect.unwrap(resource_class.put)(resource_class(), "policy-1")
 
 
 class TestPaginationForwarding:
@@ -557,28 +841,201 @@ class TestWorkspaceRbacGuards:
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
         ):
             with pytest.raises(Forbidden):
-                rbac_mod.RBACRolesApi().post()
+                rbac_mod.RBACRolesApi(api=SimpleNamespace(_validate=False)).dispatch_request()
 
         mock_create.assert_not_called()
 
-    def test_access_policy_create_requires_workspace_role_manage(self, app):
+    @pytest.mark.parametrize(
+        ("policy_class", "legacy_gate", "resource_type", "permission", "resource_required"),
+        [
+            (
+                rbac_mod._AppAccessConfigResource,
+                rbac_mod.edit_permission_required,
+                rbac_mod.RBACResourceScope.APP,
+                rbac_mod.RBACPermission.APP_ACCESS_CONFIG,
+                True,
+            ),
+            (
+                rbac_mod._DatasetAccessConfigResource,
+                rbac_mod.is_admin_or_owner_required,
+                rbac_mod.RBACResourceScope.DATASET,
+                rbac_mod.RBACPermission.DATASET_ACCESS_CONFIG,
+                True,
+            ),
+            (
+                rbac_mod._WorkspaceRoleManageResource,
+                rbac_mod.is_admin_or_owner_required,
+                rbac_mod.RBACResourceScope.WORKSPACE,
+                rbac_mod.RBACPermission.WORKSPACE_ROLE_MANAGE,
+                False,
+            ),
+        ],
+    )
+    def test_shared_management_policy(
+        self,
+        policy_class,
+        legacy_gate,
+        resource_type,
+        permission,
+        resource_required,
+    ):
+        permission_gate, actual_legacy_gate, auth_gate = policy_class.method_decorators
+        closure = inspect.getclosurevars(permission_gate).nonlocals
+
+        assert actual_legacy_gate is legacy_gate
+        assert auth_gate is rbac_mod.login_required
+        assert closure["resource_required"] is resource_required
+        assert closure["resource_type"] is resource_type
+        assert closure["scene"] is permission
+
+    @pytest.mark.parametrize(
+        ("policy_class", "resource_classes"),
+        [
+            (
+                rbac_mod._AppAccessConfigResource,
+                (
+                    rbac_mod.RBACAppMatrixApi,
+                    rbac_mod.RBACAppWhitelistApi,
+                    rbac_mod.RBACAppUserAccessPoliciesApi,
+                    rbac_mod.RBACAppUserAccessPolicyAssignmentApi,
+                    rbac_mod.RBACAppRoleBindingsApi,
+                    rbac_mod.RBACAppMemberBindingsApi,
+                ),
+            ),
+            (
+                rbac_mod._DatasetAccessConfigResource,
+                (
+                    rbac_mod.RBACDatasetMatrixApi,
+                    rbac_mod.RBACDatasetWhitelistApi,
+                    rbac_mod.RBACDatasetUserAccessPoliciesApi,
+                    rbac_mod.RBACDatasetUserAccessPolicyAssignmentApi,
+                    rbac_mod.RBACDatasetRoleBindingsApi,
+                    rbac_mod.RBACDatasetMemberBindingsApi,
+                ),
+            ),
+            (
+                rbac_mod._WorkspaceRoleManageResource,
+                (
+                    rbac_mod.RBACRolesApi,
+                    rbac_mod.RBACRoleItemApi,
+                    rbac_mod.RBACRoleCopyApi,
+                    rbac_mod.RBACAccessPoliciesApi,
+                    rbac_mod.RBACAccessPolicyItemApi,
+                    rbac_mod.RBACAccessPolicyCopyApi,
+                    rbac_mod.RBACAccessPolicyBindingLockApi,
+                    rbac_mod.RBACAccessPolicyBindingUnlockApi,
+                    rbac_mod.RBACWorkspaceAppMatrixApi,
+                    rbac_mod.RBACWorkspaceAppRoleBindingsApi,
+                    rbac_mod.RBACWorkspaceAppBindingsApi,
+                    rbac_mod.RBACWorkspaceAppMemberBindingsApi,
+                    rbac_mod.RBACWorkspaceDatasetMatrixApi,
+                    rbac_mod.RBACWorkspaceDatasetRoleBindingsApi,
+                    rbac_mod.RBACWorkspaceDatasetBindingsApi,
+                    rbac_mod.RBACWorkspaceDatasetMemberBindingsApi,
+                    rbac_mod.ListMembersByRole,
+                ),
+            ),
+        ],
+    )
+    def test_management_routes_share_policy(self, policy_class, resource_classes):
+        assert all(issubclass(resource_class, policy_class) for resource_class in resource_classes)
+
+    def test_member_role_update_requires_workspace_role_manage(self, app):
         with (
             app.test_request_context(
-                "/workspaces/current/rbac/access-policies",
-                method="POST",
-                json={"name": "full_access", "resource_type": "app", "permission_keys": []},
+                "/workspaces/current/rbac/members/00000000-0000-0000-0000-000000000002/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["role-1"]},
             ),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
                 return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
-            patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,
+            patch("controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace_user_roles") as mock_replace,
         ):
             with pytest.raises(Forbidden):
-                rbac_mod.RBACAccessPoliciesApi().post()
+                rbac_mod.RBACMemberRolesApi().put("00000000-0000-0000-0000-000000000002")
 
-        mock_create.assert_not_called()
+        mock_replace.assert_not_called()
+
+    def test_member_role_read_remains_available_without_role_manage(self, app):
+        response = rbac_mod.svc.MemberRolesResponse(account_id="acct-2")
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/00000000-0000-0000-0000-000000000002/rbac-roles"
+            ),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.get",
+                return_value=response,
+            ) as mock_get,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check") as mock_check,
+        ):
+            result = rbac_mod.RBACMemberRolesApi(api=SimpleNamespace(_validate=False)).dispatch_request(
+                member_id="00000000-0000-0000-0000-000000000002",
+            )
+
+        assert isinstance(result, dict)
+        assert result["account_id"] == "acct-2"
+        mock_get.assert_called_once()
+        mock_check.assert_not_called()
+
+    def test_member_role_read_maps_foreign_member_to_not_found(self, app):
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.get",
+                side_effect=rbac_mod.MemberNotInTenantError("missing"),
+            ),
+            pytest.raises(NotFound, match="missing"),
+        ):
+            inspect.unwrap(rbac_mod.RBACMemberRolesApi.get)(rbac_mod.RBACMemberRolesApi(), "foreign")
+
+    def test_member_role_update_returns_updated_roles(self, app):
+        updated = rbac_mod.svc.MemberRolesResponse(account_id="acct-2")
+        with (
+            app.test_request_context("/", method="PUT", json={"role_ids": ["role-1"]}),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace_user_roles",
+                return_value=updated,
+            ) as mock_replace,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACMemberRolesApi.put)(rbac_mod.RBACMemberRolesApi(), "acct-2")
+
+        assert response["account_id"] == "acct-2"
+        mock_replace.assert_called_once_with("tenant-1", "acct-1", "acct-2", role_ids=["role-1"])
+
+    @pytest.mark.parametrize(
+        ("error", "http_error"),
+        [
+            (rbac_mod.CannotOperateSelfError("self"), rbac_mod.BadRequest),
+            (rbac_mod.RoleAlreadyAssignedError("assigned"), rbac_mod.BadRequest),
+            (rbac_mod.NoPermissionError("denied"), rbac_mod.Forbidden),
+            (rbac_mod.MemberNotInTenantError("missing"), rbac_mod.NotFound),
+        ],
+    )
+    def test_member_role_update_maps_service_errors(self, app, error, http_error):
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/00000000-0000-0000-0000-000000000002/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["role-1"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.MemberRoles.replace_user_roles",
+                side_effect=error,
+            ),
+        ):
+            with pytest.raises(http_error):
+                inspect.unwrap(rbac_mod.RBACMemberRolesApi.put)(
+                    rbac_mod.RBACMemberRolesApi(),
+                    "00000000-0000-0000-0000-000000000002",
+                )
 
 
 class TestDumpHelper:

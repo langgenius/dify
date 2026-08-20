@@ -16,7 +16,7 @@ from controllers.console.auth.oauth import (
 )
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
-from services.errors.account import AccountRegisterError
+from services.errors.account import AccountLoginError, AccountRegisterError
 
 
 @pytest.fixture(autouse=True)
@@ -278,7 +278,6 @@ class TestOAuthCallback:
             id="123", name="Test User", email="User@Example.com"
         )
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
-        mock_register_service.is_valid_invite_token.return_value = True
         mock_register_service.get_invitation_if_token_valid.return_value = {
             "account": oauth_setup["account"],
             "data": {"email": "user@example.com"},
@@ -293,17 +292,21 @@ class TestOAuthCallback:
         mock_register_service.get_invitation_if_token_valid.assert_called_once_with(
             None, None, "invite123", session=ANY
         )
+        mock_account_service.login.assert_called_once_with(
+            account=oauth_setup["account"],
+            session=ANY,
+            ip_address=ANY,
+            activate_pending=False,
+        )
         mock_redirect.assert_called_once_with("http://localhost:3000/signin/invite-settings?invite_token=invite123")
 
     @pytest.mark.parametrize(
         ("account_status", "expected_redirect"),
         [
             (AccountStatus.BANNED, "http://localhost:3000/signin?message=Account is banned."),
-            # CLOSED status: Currently NOT handled, will proceed to login (security issue)
-            # This documents actual behavior. See test_defensive_check_for_closed_account_status for details
             (
                 AccountStatus.CLOSED.value,
-                "http://localhost:3000?oauth_new_user=false",
+                "http://localhost:3000/signin?message=Account is not active.",
             ),
         ],
     )
@@ -332,6 +335,8 @@ class TestOAuthCallback:
         account.status = account_status
         account.id = "123"
         mock_generate_account.return_value = (account, False)
+        if account_status == AccountStatus.CLOSED:
+            mock_account_service.activate_pending_account.side_effect = AccountLoginError("Account is not active.")
 
         # Mock login for CLOSED status
         mock_token_pair = MagicMock()
@@ -363,7 +368,10 @@ class TestOAuthCallback:
 
         mock_account = MagicMock()
         mock_account.status = AccountStatus.PENDING
+        mock_account.id = "123"
         mock_generate_account.return_value = (mock_account, False)
+        activated_account = MagicMock(status=AccountStatus.ACTIVE)
+        mock_account_service.activate_pending_account.return_value = activated_account
 
         mock_token_pair = MagicMock()
         mock_token_pair.access_token = "jwt_access_token"
@@ -374,75 +382,7 @@ class TestOAuthCallback:
         with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
             resource.get("github")
 
-        assert mock_account.status == AccountStatus.ACTIVE
-        assert mock_account.initialized_at is not None
-
-    @patch("controllers.console.auth.oauth.get_oauth_providers")
-    @patch("controllers.console.auth.oauth._generate_account")
-    @patch("controllers.console.auth.oauth.TenantService")
-    @patch("controllers.console.auth.oauth.AccountService")
-    @patch("controllers.console.auth.oauth.redirect")
-    def test_defensive_check_for_closed_account_status(
-        self,
-        mock_redirect,
-        mock_account_service,
-        mock_tenant_service,
-        mock_generate_account,
-        mock_get_providers,
-        resource: OAuthCallback,
-        app: Flask,
-        oauth_setup,
-    ):
-        """Defensive test for CLOSED account status handling in OAuth callback.
-
-        This is a defensive test documenting expected security behavior for CLOSED accounts.
-
-        Current behavior: CLOSED status is NOT checked, allowing closed accounts to login.
-        Expected behavior: CLOSED accounts should be rejected like BANNED accounts.
-
-        Context:
-        - AccountStatus.CLOSED is defined in the enum but never used in production
-        - The close_account() method exists but is never called
-        - Account deletion uses external service instead of status change
-        - All authentication services (OAuth, password, email) don't check CLOSED status
-
-        TODO: If CLOSED status is implemented in the future:
-        1. Update OAuth callback to check for CLOSED status
-        2. Add similar checks to all authentication services for consistency
-        3. Update this test to verify the rejection behavior
-
-        Security consideration: Until properly implemented, CLOSED status provides no protection.
-        """
-        # Setup
-        mock_get_providers.return_value = {"github": oauth_setup["provider"]}
-
-        # Create account with CLOSED status
-        closed_account = MagicMock()
-        closed_account.status = AccountStatus.CLOSED
-        closed_account.id = "123"
-        closed_account.name = "Closed Account"
-        mock_generate_account.return_value = (closed_account, False)
-
-        # Mock successful login (current behavior)
-        mock_token_pair = MagicMock()
-        mock_token_pair.access_token = "jwt_access_token"
-        mock_token_pair.refresh_token = "jwt_refresh_token"
-        mock_token_pair.csrf_token = "csrf_token"
-        mock_account_service.login.return_value = mock_token_pair
-
-        # Execute OAuth callback
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
-            resource.get("github")
-
-        # Verify current behavior: login succeeds (this is NOT ideal)
-        mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=false")
-        mock_account_service.login.assert_called_once()
-
-        # Document expected behavior in comments:
-        # Expected: mock_redirect.assert_called_once_with(
-        #     "http://localhost:3000/signin?message=Account is closed."
-        # )
-        # Expected: mock_account_service.login.assert_not_called()
+        mock_account_service.activate_pending_account.assert_called_once_with(mock_account.id, session=ANY)
 
 
 class TestAccountGeneration:
@@ -659,4 +599,4 @@ class TestAccountGeneration:
 
             assert result == mock_account
             assert oauth_new_user is False
-            mock_tenant_service.create_owner_tenant.assert_called_once_with(mock_account, session=ANY)
+            mock_tenant_service.create_owner_tenant_if_not_exist.assert_called_once_with(mock_account, session=ANY)

@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session
 
 from controllers.inner_api.agent.files import (
     AgentFileDownloadRequestApi,
+    AgentFileRequestHttpError,
     AgentFileUploadRequestApi,
     AgentFileUploadRequestPayload,
 )
 from core.workflow.file_reference import build_file_reference
+from models.account import TenantStatus
 from services.file_request_service import DownloadFileRequestResult
 
 MODULE = "controllers.inner_api.agent.files"
@@ -32,7 +34,7 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         "conversation_id": "conversation-1",
         "max_size": 64 * 1024 * 1024,
     }
-    tenant = SimpleNamespace(id="tenant-1")
+    tenant = SimpleNamespace(id="tenant-1", status=TenantStatus.NORMAL)
     user = SimpleNamespace(id="canonical-end-user-1")
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
@@ -89,7 +91,7 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unboun
             patch(f"{MODULE}.TenantService") as tenant_service,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = MagicMock()
+            tenant_service.get_tenant_by_id.return_value = MagicMock(status=TenantStatus.NORMAL)
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",
@@ -132,7 +134,7 @@ def test_download_request_binds_frontend_url(
             patch(f"{MODULE}.TenantService") as tenant_service,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = MagicMock()
+            tenant_service.get_tenant_by_id.return_value = MagicMock(status=TenantStatus.NORMAL)
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",
@@ -142,3 +144,49 @@ def test_download_request_binds_frontend_url(
             response = _raw(AgentFileDownloadRequestApi.post)(AgentFileDownloadRequestApi(), session)
 
     assert response["download_uri"] == "https://files.example.com/files/tools/tool-file-1.pdf?sign=1"
+
+
+@pytest.mark.parametrize(
+    ("api", "payload"),
+    [
+        (
+            AgentFileUploadRequestApi(),
+            {
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "filename": "report.pdf",
+                "mimetype": "application/pdf",
+                "max_size": 1,
+            },
+        ),
+        (
+            AgentFileDownloadRequestApi(),
+            {
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "user_from": "account",
+                "invoke_from": "debugger",
+                "file": {
+                    "transfer_method": "tool_file",
+                    "reference": build_file_reference(record_id="tool-file-1"),
+                },
+                "for_frontend": False,
+            },
+        ),
+    ],
+)
+def test_file_request_rejects_provisioning_workspace(
+    app: Flask,
+    unbound_session: Session,
+    api: AgentFileUploadRequestApi | AgentFileDownloadRequestApi,
+    payload: dict[str, object],
+) -> None:
+    with (
+        app.test_request_context("/", method="POST", json=payload),
+        patch(f"{MODULE}.TenantService") as tenant_service,
+    ):
+        tenant_service.get_tenant_by_id.return_value = SimpleNamespace(status=TenantStatus.PROVISIONING)
+        with pytest.raises(AgentFileRequestHttpError) as exc_info:
+            _raw(api.post)(api, unbound_session)
+
+    assert exc_info.value.error_code == "tenant_not_found"

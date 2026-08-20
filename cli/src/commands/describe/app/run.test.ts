@@ -18,7 +18,7 @@ function active(): ActiveContext {
     email: 't@d.ai',
     ctx: {
       account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
-      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+      workspace: { id: 'ws-1', name: 'Default', roles: [{ id: 'owner', name: 'Owner' }] },
     },
   }
 }

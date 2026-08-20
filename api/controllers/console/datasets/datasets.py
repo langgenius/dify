@@ -57,7 +57,6 @@ from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.rbac_service import RBACResourceWhitelistScope, ReplaceMemberBindings
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_response_schema_models(console_ns, ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse)
 
@@ -621,7 +620,6 @@ class DatasetListApi(Resource):
                     dataset.id,
                     ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
                 )
-                initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
             else:
                 enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
                     current_tenant_id,

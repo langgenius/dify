@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
 from libs.login import current_user
-from models.account import Tenant
+from models.account import Tenant, TenantStatus
 from models.enums import EndUserType
 from models.model import DefaultEndUserSessionID, EndUser
 
@@ -106,7 +106,7 @@ def get_user_tenant[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
         tenant_model = db.session.get(Tenant, tenant_id)
 
-        if not tenant_model:
+        if tenant_model is None or tenant_model.status != TenantStatus.NORMAL:
             raise ValueError("tenant not found")
 
         kwargs["tenant_model"] = tenant_model

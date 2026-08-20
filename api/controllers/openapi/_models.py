@@ -158,10 +158,15 @@ class AccountPayload(BaseModel):
     name: str
 
 
+class WorkspaceRoleResponse(BaseModel):
+    id: str
+    name: str
+
+
 class WorkspacePayload(BaseModel):
     id: str
     name: str
-    role: str
+    roles: list[WorkspaceRoleResponse]
 
 
 class DeviceTokenResponse(BaseModel):
@@ -219,7 +224,7 @@ class RevokeResponse(BaseModel):
 class WorkspaceSummaryResponse(BaseModel):
     id: str
     name: str
-    role: str
+    roles: list[WorkspaceRoleResponse]
     status: str
     current: bool
 
@@ -231,7 +236,7 @@ class WorkspaceListResponse(BaseModel):
 class WorkspaceDetailResponse(BaseModel):
     id: str
     name: str
-    role: str
+    roles: list[WorkspaceRoleResponse]
     status: str
     current: bool
     created_at: str | None = None
@@ -393,7 +398,7 @@ class MemberResponse(BaseModel):
     id: str
     name: str
     email: str
-    role: str
+    roles: list[WorkspaceRoleResponse]
     status: str
     avatar: str | None = None
 

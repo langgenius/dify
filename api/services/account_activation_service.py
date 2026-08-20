@@ -1,5 +1,7 @@
 """Application service for checking and accepting account invitations."""
 
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from typing import Protocol
 
 from services.entities.account_activation_entities import (
@@ -8,7 +10,6 @@ from services.entities.account_activation_entities import (
     ActivationCheckData,
     ActivationCheckResult,
     ActivationCommand,
-    ActivationPersistenceResult,
     InvitationLookup,
     InvitationToken,
 )
@@ -16,12 +17,15 @@ from services.entities.account_activation_entities import (
 _DEFAULT_ROLE = "normal"
 _NON_OWNER_ROLES = frozenset({"admin", "editor", "normal", "dataset_operator"})
 _PENDING_ACCOUNT_STATUS = "pending"
+_ACTIVATABLE_ACCOUNT_STATUSES = frozenset({_PENDING_ACCOUNT_STATUS, "active"})
+
+InvitationMembershipAssigner = Callable[[AccountInvitation, str], AbstractContextManager[str]]
 
 
 class InvitationTokenStore(Protocol):
     def find(self, invitation: InvitationLookup) -> InvitationToken | None: ...
 
-    def revoke(self, invitation: InvitationLookup) -> None: ...
+    def revoke(self, token: str) -> None: ...
 
 
 class AccountActivationRepository(Protocol):
@@ -31,9 +35,9 @@ class AccountActivationRepository(Protocol):
         self,
         invitation: AccountInvitation,
         *,
-        role: str,
         setup: AccountSetup | None,
-    ) -> ActivationPersistenceResult | None: ...
+        membership_role: str,
+    ) -> bool: ...
 
 
 class WorkspaceInvitePolicy(Protocol):
@@ -42,10 +46,6 @@ class WorkspaceInvitePolicy(Protocol):
 
 class AccountActivationEligibility(Protocol):
     def is_frozen(self, email: str) -> bool: ...
-
-
-class WorkspaceMembershipCache(Protocol):
-    def invalidate(self, workspace_id: str) -> None: ...
 
 
 class InvalidInvitationError(Exception):
@@ -68,17 +68,17 @@ class AccountActivationService:
         accounts: AccountActivationRepository,
         workspace_policy: WorkspaceInvitePolicy,
         eligibility: AccountActivationEligibility,
-        membership_cache: WorkspaceMembershipCache,
+        membership_assigner: InvitationMembershipAssigner,
     ) -> None:
         self._tokens = tokens
         self._accounts = accounts
         self._workspace_policy = workspace_policy
         self._eligibility = eligibility
-        self._membership_cache = membership_cache
+        self._membership_assigner = membership_assigner
 
     def check(self, invitation: InvitationLookup) -> ActivationCheckResult:
         resolved = self._resolve(invitation)
-        if resolved is None:
+        if resolved is None or resolved.account_status not in _ACTIVATABLE_ACCOUNT_STATUSES:
             return ActivationCheckResult(is_valid=False)
 
         self._workspace_policy.ensure_allowed(resolved.workspace_id)
@@ -89,7 +89,7 @@ class AccountActivationService:
                 workspace_id=resolved.workspace_id,
                 email=resolved.account_email,
                 account_status=resolved.account_status,
-                requires_setup=self._requires_setup(resolved),
+                requires_setup=resolved.account_status == _PENDING_ACCOUNT_STATUS,
             ),
         )
 
@@ -101,56 +101,35 @@ class AccountActivationService:
         if authenticated_account_id is not None and authenticated_account_id != invitation.account_id:
             raise InvitationAccountMismatchError
 
+        if invitation.account_status not in _ACTIVATABLE_ACCOUNT_STATUSES:
+            raise InvalidInvitationError
+
+        self._workspace_policy.ensure_allowed(invitation.workspace_id)
+
         if self._eligibility.is_frozen(invitation.account_email):
             raise FrozenAccountError
 
         setup = self._resolve_setup(invitation, command)
-        raw_role = invitation.role
-        role = raw_role if raw_role is not None and raw_role in _NON_OWNER_ROLES else _DEFAULT_ROLE
+        role = invitation.role if invitation.role in _NON_OWNER_ROLES else _DEFAULT_ROLE
 
-        normalized_email = command.invitation.email.lower() if command.invitation.email else None
-        self._tokens.revoke(
-            InvitationLookup(
-                workspace_id=command.invitation.workspace_id,
-                email=normalized_email,
-                token=command.invitation.token,
+        with self._membership_assigner(invitation, role) as membership_role:
+            activated = self._accounts.activate(
+                invitation,
+                setup=setup,
+                membership_role=membership_role,
             )
-        )
-        result = self._accounts.activate(invitation, role=role, setup=setup)
-        if result is None:
-            raise InvalidInvitationError
-        if result.membership_created:
-            self._membership_cache.invalidate(invitation.workspace_id)
+            if not activated:
+                raise InvalidInvitationError
+
+        self._tokens.revoke(command.invitation.token)
 
     def _resolve(self, invitation: InvitationLookup) -> AccountInvitation | None:
         token = self._tokens.find(invitation)
-        resolved = self._accounts.resolve(token) if token is not None else None
-        if resolved is not None:
-            return resolved
-
-        if invitation.email is None or invitation.email == invitation.email.lower():
-            return None
-
-        token = self._tokens.find(
-            InvitationLookup(
-                workspace_id=invitation.workspace_id,
-                email=invitation.email.lower(),
-                token=invitation.token,
-            )
-        )
-        if token is None:
-            return None
-        return self._accounts.resolve(token)
+        return self._accounts.resolve(token) if token is not None else None
 
     @staticmethod
-    def _requires_setup(invitation: AccountInvitation) -> bool:
-        if invitation.requires_setup is not None:
-            return invitation.requires_setup
-        return invitation.account_status == _PENDING_ACCOUNT_STATUS
-
-    @classmethod
-    def _resolve_setup(cls, invitation: AccountInvitation, command: ActivationCommand) -> AccountSetup | None:
-        if not cls._requires_setup(invitation):
+    def _resolve_setup(invitation: AccountInvitation, command: ActivationCommand) -> AccountSetup | None:
+        if invitation.account_status != _PENDING_ACCOUNT_STATUS:
             return None
         if not command.name or not command.interface_language or not command.timezone:
             raise InvalidInvitationError

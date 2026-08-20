@@ -9,6 +9,7 @@ from extensions.ext_database import db
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from services.account_service import AccountService, RegisterService, TenantService
+from services.workspace_membership_lock import account_membership_mutation_lock
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -44,10 +45,13 @@ def reset_password(email, new_password, password_confirm):
     # encrypt password with salt
     password_hashed = hash_password(new_password, salt)
     base64_password_hashed = base64.b64encode(password_hashed).decode()
-    with Session(db.engine) as session:
-        account = session.merge(account)
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
+    with account_membership_mutation_lock(account.id), Session(db.engine) as session:
+        fresh_account = TenantService.get_membership_eligible_account(account.id, session=session)
+        if fresh_account is None:
+            click.echo(click.style("Account is not active.", fg="red"))
+            return
+        fresh_account.password = base64_password_hashed
+        fresh_account.password_salt = base64_salt
         session.commit()
     AccountService.reset_login_error_rate_limit(normalized_email)
     click.echo(click.style("Password reset successfully.", fg="green"))
@@ -79,9 +83,12 @@ def reset_email(email, new_email, email_confirm):
         click.echo(click.style(f"Invalid email: {new_email}", fg="red"))
         return
 
-    with Session(db.engine) as session:
-        account = session.merge(account)
-        account.email = normalized_new_email
+    with account_membership_mutation_lock(account.id), Session(db.engine) as session:
+        fresh_account = TenantService.get_membership_eligible_account(account.id, session=session)
+        if fresh_account is None:
+            click.echo(click.style("Account is not active.", fg="red"))
+            return
+        fresh_account.email = normalized_new_email
         session.commit()
     click.echo(click.style("Email updated successfully.", fg="green"))
 

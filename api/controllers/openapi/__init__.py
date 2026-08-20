@@ -70,6 +70,7 @@ from controllers.openapi._models import (
     WorkspaceDetailResponse,
     WorkspaceListResponse,
     WorkspacePayload,
+    WorkspaceRoleResponse,
     WorkspaceSummaryResponse,
 )
 from fields.file_fields import FileResponse
@@ -110,6 +111,7 @@ register_response_schema_models(
     CheckDependenciesResult,
     WorkflowRunData,
     AccountPayload,
+    WorkspaceRoleResponse,
     WorkspacePayload,
     AccountResponse,
     SessionRow,

@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Приглашение отправлено, и они могут войти в Dify, чтобы получить доступ к данным вашей команды.",
   "members.invite": "Добавить",
   "members.inviteFailed": "Не удалось отправить приглашения. Повторите попытку.",
-  "members.inviteLimitExceeded": "Для всех получателей недостаточно свободных мест.",
   "members.inviteTeamMember": "Добавить участника команды",
   "members.inviteTeamMemberTip": "Они могут получить доступ к данным вашей команды сразу после входа в систему.",
   "members.invitedAsRole": "Приглашен как {{role}}",

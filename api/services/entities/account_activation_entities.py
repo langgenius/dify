@@ -12,22 +12,26 @@ class InvitationLookup:
 
 @dataclass(frozen=True, slots=True)
 class InvitationToken:
+    token: str
     account_id: str
     email: str
     workspace_id: str
-    role: str | None = None
-    requires_setup: bool | None = None
+    role: str
+    inviter_id: str
+    rbac_role_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class AccountInvitation:
+    token: str
     account_id: str
     account_email: str
     account_status: str
     workspace_id: str
     workspace_name: str | None
-    role: str | None
-    requires_setup: bool | None
+    role: str
+    inviter_id: str
+    rbac_role_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,8 +62,3 @@ class ActivationCheckData:
 class ActivationCheckResult:
     is_valid: bool
     data: ActivationCheckData | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class ActivationPersistenceResult:
-    membership_created: bool

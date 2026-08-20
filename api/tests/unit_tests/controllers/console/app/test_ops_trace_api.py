@@ -180,7 +180,7 @@ def test_trace_config_mutations_require_rbac_permission(
     owned_app.use_icon_as_answer_icon = False
     sqlite_session.add(owned_app)
     sqlite_session.commit()
-    monkeypatch.setattr(common_wraps.db, "session", sqlite_session)
+    monkeypatch.setattr(common_wraps.session_factory, "create_session", lambda: nullcontext(sqlite_session))
     monkeypatch.setattr(common_wraps.RBACService.CheckAccess, "check", MagicMock(return_value=False))
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)

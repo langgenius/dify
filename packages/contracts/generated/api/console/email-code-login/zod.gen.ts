@@ -25,6 +25,7 @@ export const zSimpleResultDataResponse = z.object({
 export const zEmailCodeLoginPayload = z.object({
   code: z.string(),
   email: z.string(),
+  invite_token: z.string().nullish(),
   language: z.string().nullish(),
   timezone: z.string().nullish(),
   token: z.uuid(),

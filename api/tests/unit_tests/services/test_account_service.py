@@ -1,14 +1,16 @@
 import json
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Iterator
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from threading import Barrier
+from unittest.mock import ANY, MagicMock, call, patch
 from uuid import UUID
 
 import pytest
+from redis.crc import key_slot
 from sqlalchemy import event, select
-from sqlalchemy.engine import Connection
-from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.exceptions import Conflict
 
 from configs import dify_config
 from enums import DeploymentEdition
@@ -21,7 +23,8 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from services.account_service import AccountService, RegisterService, TenantService
+from services import account_service as account_service_module
+from services.account_service import AccountService, InvitationData, RegisterService, TenantService, _invitation_lock
 from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -29,8 +32,13 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    MemberNotInTenantError,
     NoPermissionError,
+    SeatsLimitExceededError,
+    WorkspaceMembersLimitExceededError,
 )
+from services.errors.enterprise import EnterpriseAPIError
+from services.workspace_member_query_service import WorkspaceInvitationRecord
 
 type _MockDependencies = dict[str, MagicMock]
 
@@ -75,6 +83,19 @@ def _tenant(session: Session | None = None) -> Tenant:
     return tenant
 
 
+def _deletable_account(session: Session, *roles: TenantAccountRole) -> tuple[Account, list[str]]:
+    account = Account(name="Delete Me", email="delete@example.com")
+    tenants = [Tenant(name=f"Workspace {index}") for index in range(len(roles))]
+    session.add_all([account, *tenants])
+    session.flush()
+    session.add_all(
+        TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=role)
+        for tenant, role in zip(tenants, roles, strict=True)
+    )
+    session.commit()
+    return account, sorted(tenant.id for tenant in tenants)
+
+
 class TestAccountService:
     """
     Comprehensive unit tests for AccountService methods.
@@ -116,6 +137,233 @@ class TestAccountService:
                 "passport_service": mock_passport_service,
             }
 
+    def test_delete_account_queues_snapshot_then_task_before_closing(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        events: list[str] = []
+
+        @contextmanager
+        def tracked_account_lock(_account_id: str) -> Generator[None]:
+            events.append("account lock")
+            yield
+
+        @contextmanager
+        def tracked_workspace_locks(_workspace_ids: list[str]) -> Generator[None]:
+            events.append("workspace locks")
+            yield
+
+        with sqlite_session_factory() as session:
+            account, workspace_ids = _deletable_account(
+                session,
+                TenantAccountRole.NORMAL,
+                TenantAccountRole.ADMIN,
+            )
+            with (
+                patch("services.account_service.account_membership_mutation_lock", tracked_account_lock),
+                patch("services.account_service.workspace_membership_mutation_locks", tracked_workspace_locks),
+                patch(
+                    "services.enterprise.account_deletion_sync.sync_account_deletion",
+                    side_effect=lambda **_kwargs: events.append("cleanup") or True,
+                ) as sync_account_deletion,
+                patch.object(
+                    account_service_module.delete_account_task,
+                    "delay",
+                    side_effect=lambda _account_id: events.append("delete task"),
+                ) as delete_account,
+            ):
+                AccountService.delete_account(account, session=session)
+            account_id = account.id
+
+        sync_account_deletion.assert_called_once_with(
+            account_id=account_id,
+            workspace_ids=workspace_ids,
+            source="account_deleted",
+        )
+        delete_account.assert_called_once_with(account_id)
+        assert events == ["account lock", "workspace locks", "cleanup", "delete task"]
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.CLOSED
+
+    def test_delete_account_aborts_when_cleanup_cannot_be_queued(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            account, _ = _deletable_account(session, TenantAccountRole.NORMAL)
+            account_id = account.id
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_locks", return_value=nullcontext()),
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion", return_value=False),
+                patch.object(account_service_module.delete_account_task, "delay") as delete_account,
+                pytest.raises(RuntimeError, match="Failed to queue enterprise account cleanup"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        delete_account.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.ACTIVE
+
+    def test_delete_account_rejects_workspace_owner_before_queueing(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            account, _ = _deletable_account(session, TenantAccountRole.NORMAL)
+            account_id = account.id
+
+            @contextmanager
+            def transfer_ownership_while_waiting(_workspace_ids: list[str]) -> Generator[None]:
+                membership = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id))
+                assert membership is not None
+                membership.role = TenantAccountRole.OWNER
+                session.flush()
+                yield
+
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch(
+                    "services.account_service.workspace_membership_mutation_locks",
+                    side_effect=transfer_ownership_while_waiting,
+                ),
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion") as queue_cleanup,
+                patch.object(account_service_module.delete_account_task, "delay") as delete_account,
+                pytest.raises(Conflict, match="Transfer workspace ownership"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        queue_cleanup.assert_not_called()
+        delete_account.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.ACTIVE
+
+    def test_delete_account_rejects_remote_rbac_owner_before_queueing(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        with sqlite_session_factory() as session:
+            account, workspace_ids = _deletable_account(
+                session,
+                TenantAccountRole.NORMAL,
+                TenantAccountRole.NORMAL,
+            )
+            account_id = account.id
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_locks", return_value=nullcontext()),
+                patch.object(
+                    AccountService,
+                    "get_rbac_workspace_owner_account_id",
+                    side_effect=["other-owner", account_id],
+                ) as get_owner,
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion") as queue_cleanup,
+                patch.object(account_service_module.delete_account_task, "delay") as delete_account,
+                pytest.raises(Conflict, match="Transfer workspace ownership"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        assert get_owner.call_args_list == [call(workspace_id) for workspace_id in sorted(workspace_ids)]
+        queue_cleanup.assert_not_called()
+        delete_account.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.ACTIVE
+
+    def test_delete_account_checks_workspace_owners_concurrently(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        barrier = Barrier(2)
+        with sqlite_session_factory() as session:
+            account, workspace_ids = _deletable_account(
+                session,
+                TenantAccountRole.NORMAL,
+                TenantAccountRole.NORMAL,
+            )
+
+            def get_owner(_workspace_id: str) -> str:
+                barrier.wait(timeout=2)
+                return "other-owner"
+
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_locks", return_value=nullcontext()),
+                patch.object(AccountService, "get_rbac_workspace_owner_account_id", side_effect=get_owner),
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion", return_value=True),
+                patch.object(account_service_module.delete_account_task, "delay"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        assert len(workspace_ids) == 2
+
+    def test_delete_account_fails_closed_when_rbac_owner_resolution_fails(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        with sqlite_session_factory() as session:
+            account, workspace_ids = _deletable_account(session, TenantAccountRole.NORMAL)
+            account_id = account.id
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_locks", return_value=nullcontext()),
+                patch.object(
+                    AccountService,
+                    "get_rbac_workspace_owner_account_id",
+                    side_effect=RuntimeError("owner unavailable"),
+                ) as get_owner,
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion") as queue_cleanup,
+                patch.object(account_service_module.delete_account_task, "delay") as delete_account,
+                pytest.raises(RuntimeError, match="owner unavailable"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        get_owner.assert_called_once_with(workspace_ids[0])
+        queue_cleanup.assert_not_called()
+        delete_account.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.ACTIVE
+
+    def test_delete_account_broker_failure_does_not_close_account(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            account, _ = _deletable_account(session, TenantAccountRole.NORMAL)
+            account_id = account.id
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_locks", return_value=nullcontext()),
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion", return_value=True),
+                patch.object(account_service_module.delete_account_task, "delay", side_effect=RuntimeError("broker")),
+                pytest.raises(RuntimeError, match="broker"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.ACTIVE
+
+    def test_delete_account_commit_failure_rolls_back_after_scheduling(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            account, _ = _deletable_account(session, TenantAccountRole.NORMAL)
+            account_id = account.id
+            with (
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_locks", return_value=nullcontext()),
+                patch("services.enterprise.account_deletion_sync.sync_account_deletion", return_value=True),
+                patch.object(account_service_module.delete_account_task, "delay") as delete_account,
+                patch.object(session, "commit", side_effect=RuntimeError("database")),
+                pytest.raises(RuntimeError, match="database"),
+            ):
+                AccountService.delete_account(account, session=session)
+
+        delete_account.assert_called_once_with(account_id)
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(Account.status).where(Account.id == account_id)) == AccountStatus.ACTIVE
+
     # ==================== Authentication Tests ====================
 
     def test_authenticate_success(self, sqlite_session: Session, mock_password_dependencies: _MockDependencies) -> None:
@@ -154,6 +402,21 @@ class TestAccountService:
 
         with pytest.raises(AccountLoginError):
             AccountService.authenticate("banned@example.com", "password", session=sqlite_session)
+
+    @pytest.mark.parametrize("status", [AccountStatus.CLOSED, AccountStatus.UNINITIALIZED])
+    def test_authenticate_rejects_inactive_account(self, sqlite_session: Session, status: AccountStatus) -> None:
+        account = Account(
+            name="Inactive User",
+            email="inactive@example.com",
+            password="hashed_password",
+            password_salt="salt",
+            status=status,
+        )
+        sqlite_session.add(account)
+        sqlite_session.commit()
+
+        with pytest.raises(AccountLoginError, match="not active"):
+            AccountService.authenticate(account.email, "password", "invite-token", session=sqlite_session)
 
     def test_authenticate_password_error(
         self, sqlite_session: Session, mock_password_dependencies: _MockDependencies
@@ -201,6 +464,97 @@ class TestAccountService:
             assert persisted_account is not None
             assert persisted_account.status == AccountStatus.ACTIVE
             assert persisted_account.initialized_at is not None
+
+    def test_activate_pending_account_does_not_revive_concurrently_closed_account(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Pending User", email="closing@example.com", status=AccountStatus.PENDING)
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
+            service_session.get(Account, account_id)
+
+            with sqlite_session_factory() as deletion_session:
+                persisted_account = deletion_session.get(Account, account_id)
+                assert persisted_account is not None
+                persisted_account.status = AccountStatus.CLOSED
+                deletion_session.commit()
+
+            with pytest.raises(AccountLoginError, match="not active"):
+                AccountService.activate_pending_account(account_id, session=service_session)
+
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.status == AccountStatus.CLOSED
+
+    def test_update_account_does_not_revive_concurrently_closed_account(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory() as stale_session:
+            stale_account = Account(name="Original", email="closing@example.com")
+            stale_session.add(stale_account)
+            stale_session.commit()
+            account_id = stale_account.id
+
+        with sqlite_session_factory() as deletion_session:
+            persisted_account = deletion_session.get(Account, account_id)
+            assert persisted_account is not None
+            persisted_account.status = AccountStatus.CLOSED
+            deletion_session.commit()
+
+        with (
+            sqlite_session_factory() as update_session,
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+            pytest.raises(AccountLoginError, match="not active"),
+        ):
+            AccountService.update_account(stale_account, name="Stale update", session=update_session)
+
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.status == AccountStatus.CLOSED
+            assert persisted_account.name == "Original"
+
+    def test_update_account_rejects_non_profile_fields(self, unbound_session: Session) -> None:
+        account = Account(name="Test User", email="test@example.com")
+
+        with pytest.raises(AttributeError, match="Invalid field: status"):
+            AccountService.update_account(account, status=AccountStatus.CLOSED, session=unbound_session)
+
+    def test_authenticate_pending_invitee_stays_pending_until_activation(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_password_dependencies: _MockDependencies,
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            account = Account(
+                name="Pending User",
+                email="pending@example.com",
+                password="hashed_password",
+                password_salt="salt",
+                status=AccountStatus.PENDING,
+            )
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
+            mock_password_dependencies["compare_password"].return_value = True
+
+            AccountService.authenticate(
+                "pending@example.com",
+                "password",
+                "current-invite-token",
+                session=service_session,
+            )
+
+        with sqlite_session_factory() as assertion_session:
+            persisted_account = assertion_session.get(Account, account_id)
+            assert persisted_account is not None
+            assert persisted_account.status == AccountStatus.PENDING
+            assert persisted_account.initialized_at is None
 
     # ==================== Account Creation Tests ====================
 
@@ -508,11 +862,11 @@ class TestAccountService:
 
         assert result is None
 
-    def test_load_user_banned(self, sqlite_session: Session) -> None:
-        """Test user loading when user is banned."""
+    @pytest.mark.parametrize("status", [AccountStatus.BANNED, AccountStatus.CLOSED, AccountStatus.UNINITIALIZED])
+    def test_load_user_rejects_inactive_status(self, sqlite_session: Session, status: AccountStatus) -> None:
         from werkzeug.exceptions import Unauthorized
 
-        account = Account(name="Banned User", email="banned@example.com", status=AccountStatus.BANNED)
+        account = Account(name="Inactive User", email="inactive@example.com", status=status)
         sqlite_session.add(account)
         sqlite_session.commit()
 
@@ -584,7 +938,7 @@ class TestAccountService:
         assert archived_join.current is False
         assert available_join.current is True
 
-    def test_load_user_returns_none_without_normal_tenant(self, sqlite_session: Session) -> None:
+    def test_load_user_authenticates_account_without_normal_tenant(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
         archived_tenant = Tenant(name="Archived Workspace", status=TenantStatus.ARCHIVE)
         sqlite_session.add_all([account, archived_tenant])
@@ -598,9 +952,11 @@ class TestAccountService:
         sqlite_session.add(archived_join)
         sqlite_session.commit()
 
-        result = AccountService.load_user(account.id, sqlite_session)
+        with patch.object(AccountService, "_refresh_account_last_active"):
+            result = AccountService.load_user(account.id, sqlite_session)
 
-        assert result is None
+        assert result is account
+        assert result.current_tenant_id is None
         assert archived_join.current is False
 
     def test_load_user_keeps_tenant_accessible_with_expiring_session(self, sqlite_session: Session) -> None:
@@ -627,15 +983,16 @@ class TestAccountService:
         assert result is not None
         assert result.current_tenant_id == tenant_id
 
-    def test_load_user_no_tenants(self, sqlite_session: Session) -> None:
-        """Test user loading when user has no tenants at all."""
+    def test_load_user_authenticates_account_without_tenants(self, sqlite_session: Session) -> None:
         account = Account(name="Test User", email="test@example.com")
         sqlite_session.add(account)
         sqlite_session.commit()
 
-        result = AccountService.load_user(account.id, sqlite_session)
+        with patch.object(AccountService, "_refresh_account_last_active"):
+            result = AccountService.load_user(account.id, sqlite_session)
 
-        assert result is None
+        assert result is account
+        assert result.current_tenant_id is None
 
     def test_refresh_account_last_active_uses_redis_gate_and_conditional_update(
         self, sqlite_session_factory: sessionmaker[Session]
@@ -775,53 +1132,6 @@ class TestTenantService:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
-    def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session) -> None:
-        tenant_id = "00000000-0000-0000-0000-000000000001"
-        account_ids = [
-            "00000000-0000-0000-0000-000000000011",
-            "00000000-0000-0000-0000-000000000012",
-            "00000000-0000-0000-0000-000000000013",
-        ]
-        joins = [
-            TenantAccountJoin(
-                tenant_id=tenant_id,
-                account_id=account_id,
-                role=TenantAccountRole.NORMAL,
-                current=False,
-            )
-            for account_id in account_ids
-        ]
-        for index, join in enumerate(joins, start=21):
-            join.id = f"00000000-0000-0000-0000-{index:012d}"
-        sqlite_session.add_all(joins)
-        sqlite_session.commit()
-
-        pagination_parameters: list[tuple[int, int]] = []
-
-        def record_sql(
-            _conn: Connection,
-            _cursor: DBAPICursor,
-            statement: str,
-            parameters: Sequence[object],
-            _context: ExecutionContext | None,
-            _executemany: bool,
-        ) -> None:
-            if "FROM tenant_account_joins" in statement:
-                limit, offset = parameters[-2:]
-                assert isinstance(limit, int)
-                assert isinstance(offset, int)
-                pagination_parameters.append((limit, offset))
-
-        bind = sqlite_session.get_bind()
-        event.listen(bind, "before_cursor_execute", record_sql)
-        try:
-            batches = list(TenantService.iter_member_account_id_batches(tenant_id, 2, session=sqlite_session))
-        finally:
-            event.remove(bind, "before_cursor_execute", record_sql)
-
-        assert batches == [account_ids[:2], account_ids[2:]]
-        assert pagination_parameters == [(2, 0), (2, 2), (2, 4)]
-
     # ==================== get_account_role_in_tenant Tests ====================
     # Backs the auth pipeline's `load_workspace_role`: None => non-member
     # (pipeline maps to 404), otherwise the caller's role (out-of-set role => 403).
@@ -870,6 +1180,22 @@ class TestTenantService:
 
     # ==================== Tenant Creation Tests ====================
 
+    def test_stage_tenant_provisions_key_before_database_transaction(
+        self,
+        sqlite_session: Session,
+        mock_rsa_dependencies: MagicMock,
+    ) -> None:
+        def generate_key_pair(_tenant_id: str) -> str:
+            assert not sqlite_session.in_transaction()
+            return "mock_public_key"
+
+        mock_rsa_dependencies.side_effect = generate_key_pair
+        with patch("services.credit_pool_service.CreditPoolService.create_default_pool"):
+            tenant = TenantService._stage_tenant("Test Workspace", TenantStatus.PROVISIONING, session=sqlite_session)
+
+        assert tenant.encrypt_public_key == "mock_public_key"
+        assert sqlite_session.in_transaction()
+
     def test_create_owner_tenant_if_not_exist_new_user(
         self,
         sqlite_session_factory: sessionmaker[Session],
@@ -877,8 +1203,6 @@ class TestTenantService:
         mock_external_service_dependencies: _MockDependencies,
     ) -> None:
         """Creating an owner workspace persists both the tenant and owner membership."""
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
@@ -887,15 +1211,22 @@ class TestTenantService:
 
         with (
             patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.workspace_membership_mutation_lock", return_value=nullcontext()),
             patch("services.account_service.tenant_was_created.send") as mock_tenant_was_created,
         ):
             with sqlite_session_factory() as service_session:
-                TenantService.create_owner_tenant_if_not_exist(mock_account, session=service_session)
+                account = Account(name="Test User", email="test@example.com")
+                service_session.add(account)
+                service_session.commit()
+                account_id = account.id
+                TenantService.create_owner_tenant_if_not_exist(account, session=service_session)
                 tenant = service_session.scalar(select(Tenant).where(Tenant.name == "Test User's Workspace"))
                 assert tenant is not None
                 tenant_id = tenant.id
-                assert mock_account.current_tenant_id == tenant.id
-                mock_tenant_was_created.assert_called_once_with(tenant)
+                assert account.current_tenant_id == tenant.id
+                assert mock_tenant_was_created.call_count == 1
+                assert mock_tenant_was_created.call_args.args[0].id == tenant.id
 
         mock_rsa_dependencies.assert_called_once_with(tenant_id)
 
@@ -907,7 +1238,7 @@ class TestTenantService:
             tenant_account_join = assertion_session.scalar(
                 select(TenantAccountJoin).where(
                     TenantAccountJoin.tenant_id == tenant_id,
-                    TenantAccountJoin.account_id == "user-123",
+                    TenantAccountJoin.account_id == account_id,
                 )
             )
             assert tenant_account_join is not None
@@ -926,7 +1257,11 @@ class TestTenantService:
             account_id = account.id
             service_session.commit()
 
-            result = TenantService.create_tenant_member(tenant, account, service_session, "normal")
+            with patch(
+                "services.account_service.account_workspace_membership_mutation_lock",
+                return_value=nullcontext(),
+            ):
+                result = TenantService.create_tenant_member(tenant, account, service_session, "normal")
             tenant_account_join_id = result.id
 
         with sqlite_session_factory() as assertion_session:
@@ -961,22 +1296,28 @@ class TestTenantService:
             service_session.flush()
             tenant_id = tenant.id
             member_id = pending_member.id
+            operator_id = operator.id
             member_join_id = member_join.id
             service_session.commit()
 
             with (
                 patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+                patch.object(
+                    account_service_module,
+                    "account_workspace_membership_mutation_lock",
+                    return_value=nullcontext(),
+                ) as mutation_lock,
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
 
                 TenantService.remove_member_from_tenant(
-                    tenant,
-                    pending_member,
-                    operator,
-                    session=service_session,
+                    tenant_id,
+                    member_id,
+                    operator_id,
                 )
 
+                mutation_lock.assert_called_once_with(member_id, tenant_id)
                 mock_sync.assert_called_once_with(
                     workspace_id=tenant_id,
                     member_id=member_id,
@@ -1014,6 +1355,7 @@ class TestTenantService:
             service_session.flush()
             tenant_id = tenant.id
             member_id = pending_member.id
+            operator_id = operator.id
             member_join_id = member_join.id
             other_member_join_id = other_member_join.id
             service_session.commit()
@@ -1025,10 +1367,9 @@ class TestTenantService:
                 mock_sync.return_value = True
 
                 TenantService.remove_member_from_tenant(
-                    tenant,
-                    pending_member,
-                    operator,
-                    session=service_session,
+                    tenant_id,
+                    member_id,
+                    operator_id,
                 )
 
                 mock_sync.assert_called_once_with(
@@ -1040,6 +1381,43 @@ class TestTenantService:
         with sqlite_session_factory() as assertion_session:
             assert assertion_session.get(TenantAccountJoin, member_join_id) is None
             assert assertion_session.get(TenantAccountJoin, other_member_join_id) is not None
+            assert assertion_session.get(Account, member_id) is not None
+
+    def test_remove_pending_member_keeps_account_invited_to_another_workspace(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as service_session:
+            tenant = Tenant(name="Test Workspace")
+            operator = Account(name="Operator", email="operator-invite@example.com")
+            pending_member = Account(
+                name="Pending Member",
+                email="pending-elsewhere@example.com",
+                status=AccountStatus.PENDING,
+            )
+            service_session.add_all([tenant, operator, pending_member])
+            service_session.flush()
+            self._add_tenant_account_join(service_session, tenant, operator.id, TenantAccountRole.OWNER)
+            member_join = self._add_tenant_account_join(
+                service_session,
+                tenant,
+                pending_member.id,
+                TenantAccountRole.NORMAL,
+            )
+            service_session.commit()
+            tenant_id = tenant.id
+            operator_id = operator.id
+            member_id = pending_member.id
+            member_join_id = member_join.id
+
+        with (
+            patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal", return_value=True),
+            patch.object(RegisterService, "has_other_current_invitation", return_value=True),
+        ):
+            TenantService.remove_member_from_tenant(tenant_id, member_id, operator_id)
+
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.get(TenantAccountJoin, member_join_id) is None
             assert assertion_session.get(Account, member_id) is not None
 
     def test_remove_active_member_preserves_account(self, sqlite_session_factory: sessionmaker[Session]) -> None:
@@ -1060,6 +1438,7 @@ class TestTenantService:
             service_session.flush()
             tenant_id = tenant.id
             member_id = active_member.id
+            operator_id = operator.id
             member_join_id = member_join.id
             service_session.commit()
 
@@ -1070,10 +1449,9 @@ class TestTenantService:
                 mock_sync.return_value = True
 
                 TenantService.remove_member_from_tenant(
-                    tenant,
-                    active_member,
-                    operator,
-                    session=service_session,
+                    tenant_id,
+                    member_id,
+                    operator_id,
                 )
 
                 mock_sync.assert_called_once_with(
@@ -1085,6 +1463,171 @@ class TestTenantService:
         with sqlite_session_factory() as assertion_session:
             assert assertion_session.get(TenantAccountJoin, member_join_id) is None
             assert assertion_session.get(Account, member_id) is not None
+
+    def test_remove_pending_invitation_without_membership_deletes_orphan_account(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            operator = Account(name="Owner", email="owner@example.com")
+            pending = Account(name="Pending", email="pending-invite@example.com", status=AccountStatus.PENDING)
+            session.add_all([tenant, operator, pending])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            session.commit()
+            tenant_id = tenant.id
+            operator_id = operator.id
+            pending_id = pending.id
+
+        invitation: InvitationData = {
+            "account_id": pending_id,
+            "email": pending.email,
+            "workspace_id": tenant_id,
+            "role": "normal",
+            "inviter_id": operator_id,
+        }
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch.object(RegisterService, "_current_invitation_token", return_value="token"),
+            patch.object(RegisterService, "get_invitation_by_token", return_value=invitation),
+            patch.object(RegisterService, "has_other_current_invitation", return_value=False),
+            patch.object(RegisterService, "invalidate_member_invitation") as invalidate,
+            patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as queue_cleanup,
+        ):
+            TenantService.remove_member_from_tenant(tenant_id, pending_id, operator_id)
+
+        invalidate.assert_called_once_with(tenant_id, pending_id)
+        queue_cleanup.assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.get(Account, pending_id) is None
+
+    def test_remove_pending_invitation_preserves_account_invited_elsewhere(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            operator = Account(name="Owner", email="owner-2@example.com")
+            pending = Account(name="Pending", email="pending-2@example.com", status=AccountStatus.PENDING)
+            session.add_all([tenant, operator, pending])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            session.commit()
+            tenant_id = tenant.id
+            operator_id = operator.id
+            pending_id = pending.id
+
+        invitation: InvitationData = {
+            "account_id": pending_id,
+            "email": pending.email,
+            "workspace_id": tenant_id,
+            "role": "normal",
+            "inviter_id": operator_id,
+        }
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch.object(RegisterService, "_current_invitation_token", return_value="token"),
+            patch.object(RegisterService, "get_invitation_by_token", return_value=invitation),
+            patch.object(RegisterService, "has_other_current_invitation", return_value=True),
+            patch.object(RegisterService, "invalidate_member_invitation"),
+        ):
+            TenantService.remove_member_from_tenant(tenant_id, pending_id, operator_id)
+
+        with sqlite_session_factory() as session:
+            assert session.get(Account, pending_id) is not None
+
+    def test_remove_pending_rbac_invitation_cleans_orphan_remote_binding(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            operator = Account(name="Owner", email="rbac-invite-owner@example.com")
+            pending = Account(name="Pending", email="rbac-pending@example.com", status=AccountStatus.PENDING)
+            session.add_all([tenant, operator, pending])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            session.commit()
+            tenant_id, operator_id, pending_id = tenant.id, operator.id, pending.id
+
+        invitation: InvitationData = {
+            "account_id": pending_id,
+            "email": pending.email,
+            "workspace_id": tenant_id,
+            "role": "normal",
+            "inviter_id": operator_id,
+        }
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch.object(RegisterService, "_current_invitation_token", return_value="token"),
+            patch.object(RegisterService, "get_invitation_by_token", return_value=invitation),
+            patch.object(RegisterService, "has_other_current_invitation", return_value=False),
+            patch.object(RegisterService, "invalidate_member_invitation"),
+            patch("services.account_service.require_tenant_members") as require_members,
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.member.manage"},
+            ),
+            patch("services.account_service.RBACService.MemberRoles.delete_rbac_bindings") as delete_bindings,
+        ):
+            TenantService.remove_member_from_tenant(tenant_id, pending_id, operator_id)
+
+        require_members.assert_called_once_with(tenant_id, [operator_id])
+        delete_bindings.assert_called_once_with(tenant_id, operator_id, pending_id)
+
+    def test_remove_member_aborts_when_enterprise_cleanup_cannot_be_queued(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Test Workspace")
+            operator = Account(name="Operator", email="operator@example.com")
+            member = Account(name="Member", email="member@example.com")
+            session.add_all([tenant, operator, member])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            membership = self._add_tenant_account_join(session, tenant, member.id, TenantAccountRole.NORMAL)
+            tenant_id = tenant.id
+            operator_id = operator.id
+            member_id = member.id
+            membership_id = membership.id
+            session.commit()
+
+        lock_held = False
+
+        @contextmanager
+        def tracked_lock(_account_id: str, _tenant_id: str) -> Generator[None]:
+            nonlocal lock_held
+            lock_held = True
+            try:
+                yield
+            finally:
+                lock_held = False
+
+        events: list[str] = []
+
+        def invalidate_invitation(*_args) -> None:
+            assert lock_held
+            events.append("invalidate")
+
+        def reject_cleanup(**_kwargs) -> bool:
+            assert lock_held
+            events.append("queue")
+            return False
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch("services.account_service.account_workspace_membership_mutation_lock", side_effect=tracked_lock),
+            patch.object(RegisterService, "invalidate_member_invitation", side_effect=invalidate_invitation),
+            patch(
+                "services.enterprise.account_deletion_sync.sync_workspace_member_removal",
+                side_effect=reject_cleanup,
+            ),
+            pytest.raises(RuntimeError, match="Failed to queue enterprise workspace member cleanup"),
+        ):
+            TenantService.remove_member_from_tenant(tenant_id, member_id, operator_id)
+
+        with sqlite_session_factory() as assertion_session:
+            assert assertion_session.get(TenantAccountJoin, membership_id) is not None
+            assert assertion_session.get(Account, member_id) is not None
+        assert events == ["queue"]
 
     # ==================== Tenant Switching Tests ====================
 
@@ -1130,101 +1673,404 @@ class TestTenantService:
 
     # ==================== Role Management Tests ====================
 
-    def test_update_member_role_success(self, sqlite_session_factory: sessionmaker[Session]) -> None:
-        """Test successful member role update."""
+    def test_legacy_owner_transfer_uses_membership_lock(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         with sqlite_session_factory() as service_session:
             tenant = Tenant(name="Test Workspace")
-            service_session.add(tenant)
+            member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+            operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+            service_session.add_all([tenant, member, operator])
             service_session.flush()
             target_join = self._add_tenant_account_join(
                 service_session,
                 tenant,
-                "member-789",
+                member.id,
                 TenantAccountRole.NORMAL,
             )
-            self._add_tenant_account_join(
+            owner_join = self._add_tenant_account_join(
                 service_session,
                 tenant,
-                "operator-123",
+                operator.id,
                 TenantAccountRole.OWNER,
             )
             service_session.flush()
+            tenant_id = tenant.id
+            member_id = member.id
+            operator_id = operator.id
             target_join_id = target_join.id
+            owner_join_id = owner_join.id
             service_session.commit()
 
-            mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
-            mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
-
+        with patch.object(
+            account_service_module,
+            "workspace_membership_mutation_lock",
+            return_value=nullcontext(),
+        ) as mutation_lock:
             TenantService.update_member_role(
-                tenant,
-                mock_member,
-                "admin",
-                mock_operator,
-                session=service_session,
+                tenant_id,
+                member_id,
+                "owner",
+                operator_id,
+                allow_owner_transfer=True,
             )
+
+        mutation_lock.assert_called_once_with(tenant_id)
 
         with sqlite_session_factory() as assertion_session:
             persisted_target_join = assertion_session.get(TenantAccountJoin, target_join_id)
+            persisted_owner_join = assertion_session.get(TenantAccountJoin, owner_join_id)
             assert persisted_target_join is not None
-            assert persisted_target_join.role == TenantAccountRole.ADMIN
+            assert persisted_owner_join is not None
+            assert persisted_target_join.role == TenantAccountRole.OWNER
+            assert persisted_owner_join.role == TenantAccountRole.ADMIN
 
     def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        sqlite_session: Session,
+        mock_rsa_dependencies: MagicMock,
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
+        account = Account(name="RBAC User", email="rbac@example.com")
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
             "feature_service"
         ].get_license.return_value.workspaces.is_available.return_value = True
 
-        mock_tenant = Tenant(name="RBAC User's Workspace")
-        mock_tenant.id = "tenant-rbac"
-        sqlite_session.add(mock_tenant)
-        sqlite_session.flush()
+        sqlite_session.add(account)
+        sqlite_session.commit()
+        account_id = account.id
+
+        caller_session = Session(bind=sqlite_session.get_bind(), expire_on_commit=True)
+        account = caller_session.get(Account, account_id)
+        assert account is not None
+        assert caller_session.in_transaction()
+
+        def generate_key(_tenant_id: str) -> str:
+            assert not caller_session.in_transaction()
+            return "mock_public_key"
+
+        def bootstrap_owner(*_args: str) -> None:
+            assert not caller_session.in_transaction()
+
+        mock_rsa_dependencies.side_effect = generate_key
 
         with (
+            patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
             patch("services.account_service.dify_config.RBAC_ENABLED", True),
-            patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
-            patch(
-                "services.account_service.AccountService._resolve_legacy_role_id",
-                return_value="rbac-owner-id",
-            ),
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.workspace_membership_mutation_lock", return_value=nullcontext()),
             patch("services.account_service.RBACService") as mock_rbac_service,
             patch("services.account_service.tenant_was_created.send"),
         ):
-            TenantService.create_owner_tenant(mock_account, is_setup=True, session=sqlite_session)
+            mock_rbac_service.MemberRoles.bootstrap_owner.side_effect = bootstrap_owner
+            tenant = TenantService.create_owner_tenant(account, is_setup=True, session=caller_session)
 
-        mock_rbac_service.MemberRoles.replace.assert_called_once_with(
-            tenant_id="tenant-rbac",
-            account_id="user-rbac",
-            member_account_id="user-rbac",
-            role_ids=["rbac-owner-id"],
-            session=sqlite_session,
+        mock_rbac_service.MemberRoles.bootstrap_owner.assert_called_once_with(tenant.id, account_id)
+        assert tenant.status == TenantStatus.NORMAL
+        membership = sqlite_session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account_id,
+            )
         )
+        assert membership is not None
+        assert membership.role == TenantAccountRole.OWNER
+        assert membership.current is True
+        caller_session.close()
+
+    @pytest.mark.parametrize(
+        ("method_name", "create"),
+        [
+            ("create_owner_tenant", TenantService.create_owner_tenant),
+            ("create_owner_tenant_if_not_exist", TenantService.create_owner_tenant_if_not_exist),
+        ],
+    )
+    def test_owner_tenant_creation_resumes_provisioning_after_rbac_failure(
+        self,
+        method_name: str,
+        create: Callable[..., Tenant],
+        sqlite_session_factory: sessionmaker[Session],
+        mock_rsa_dependencies: MagicMock,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_rsa_dependencies.return_value = "mock_public_key"
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_license.return_value.workspaces.is_available.return_value = True
+
+        with sqlite_session_factory() as service_session:
+            account = Account(name="RBAC User", email=f"rbac-retry-{method_name}@example.com")
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
+
+            bootstrap_tenant_ids: list[str] = []
+
+            def bootstrap_owner(tenant_id: str, _account_id: str) -> None:
+                assert not service_session.in_transaction()
+                bootstrap_tenant_ids.append(tenant_id)
+                if len(bootstrap_tenant_ids) == 1:
+                    raise EnterpriseAPIError("unavailable", status_code=503)
+
+            with (
+                patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
+                patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                patch("services.account_service.workspace_membership_mutation_lock", return_value=nullcontext()),
+                patch(
+                    "services.account_service.RBACService.MemberRoles.bootstrap_owner",
+                    side_effect=bootstrap_owner,
+                ),
+                patch("services.account_service.tenant_was_created.send") as tenant_created,
+            ):
+                with pytest.raises(EnterpriseAPIError, match="unavailable"):
+                    create(account, is_setup=True, session=service_session)
+
+                with sqlite_session_factory() as assertion_session:
+                    provisioning_tenant = assertion_session.scalar(
+                        select(Tenant)
+                        .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                        .where(TenantAccountJoin.account_id == account_id)
+                    )
+                    assert provisioning_tenant is not None
+                    assert provisioning_tenant.status == TenantStatus.PROVISIONING
+                    provisioning_tenant_id = provisioning_tenant.id
+
+                tenant = create(account, is_setup=True, session=service_session)
+
+            assert tenant.id == provisioning_tenant_id
+            assert tenant.status == TenantStatus.NORMAL
+            assert bootstrap_tenant_ids == [provisioning_tenant_id, provisioning_tenant_id]
+            assert tenant_created.call_count == 1
+            assert tenant_created.call_args.args[0].id == tenant.id
+
+        with sqlite_session_factory() as assertion_session:
+            memberships = assertion_session.scalars(
+                select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)
+            ).all()
+            assert len(memberships) == 1
+            assert memberships[0].tenant_id == provisioning_tenant_id
+            assert memberships[0].role == TenantAccountRole.OWNER
+            assert memberships[0].current is True
+
+    def test_owner_tenant_creation_retries_activation_commit_on_same_tenant(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        mock_rsa_dependencies: MagicMock,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        mock_rsa_dependencies.return_value = "mock_public_key"
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_license.return_value.workspaces.is_available.return_value = True
+
+        with sqlite_session_factory() as service_session:
+            account = Account(name="Commit Retry", email="commit-retry@example.com")
+            service_session.add(account)
+            service_session.commit()
+            account_id = account.id
+
+            failed = False
+
+            def fail_first_activation(commit_session: Session) -> None:
+                nonlocal failed
+                activating = any(
+                    isinstance(value, Tenant) and value.status == TenantStatus.NORMAL for value in commit_session.dirty
+                )
+                if activating and not failed:
+                    failed = True
+                    raise RuntimeError("commit failed")
+
+            event.listen(sqlite_session_factory.class_, "before_commit", fail_first_activation)
+            try:
+                with (
+                    patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
+                    patch("services.account_service.dify_config.RBAC_ENABLED", True),
+                    patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+                    patch("services.account_service.workspace_membership_mutation_lock", return_value=nullcontext()),
+                    patch("services.account_service.RBACService.MemberRoles.bootstrap_owner") as bootstrap_owner,
+                    patch("services.account_service.tenant_was_created.send") as tenant_created,
+                ):
+                    with pytest.raises(RuntimeError, match="commit failed"):
+                        TenantService.create_owner_tenant(account, is_setup=True, session=service_session)
+
+                    with sqlite_session_factory() as assertion_session:
+                        provisioning_tenant = assertion_session.scalar(
+                            select(Tenant)
+                            .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
+                            .where(TenantAccountJoin.account_id == account_id)
+                        )
+                        assert provisioning_tenant is not None
+                        assert provisioning_tenant.status == TenantStatus.PROVISIONING
+                        provisioning_tenant_id = provisioning_tenant.id
+
+                    tenant = TenantService.create_owner_tenant(account, is_setup=True, session=service_session)
+            finally:
+                event.remove(sqlite_session_factory.class_, "before_commit", fail_first_activation)
+
+            assert tenant.id == provisioning_tenant_id
+            assert tenant.status == TenantStatus.NORMAL
+            assert bootstrap_owner.call_args_list == [
+                call(provisioning_tenant_id, account_id),
+                call(provisioning_tenant_id, account_id),
+            ]
+            assert tenant_created.call_count == 1
+            assert tenant_created.call_args.args[0].id == tenant.id
+
+    def test_create_owner_tenant_if_not_exist_repairs_existing_normal_owner(
+        self,
+        sqlite_session: Session,
+    ) -> None:
+        account = Account(name="Existing Owner", email="existing-owner@example.com")
+        tenant = Tenant(name="Existing Workspace")
+        sqlite_session.add_all([account, tenant])
+        sqlite_session.flush()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.OWNER,
+                current=True,
+            )
+        )
+        sqlite_session.commit()
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.workspace_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.RBACService.MemberRoles.bootstrap_owner") as bootstrap_owner,
+        ):
+            result = TenantService.create_owner_tenant_if_not_exist(account, session=sqlite_session)
+
+        assert result.id == tenant.id
+        bootstrap_owner.assert_called_once_with(tenant.id, account.id)
+        assert sqlite_session.scalar(select(Tenant).where(Tenant.id != tenant.id)) is None
+
+    def test_create_owner_tenant_if_not_exist_refreshes_stale_caller_snapshot(
+        self,
+        sqlite_session: Session,
+    ) -> None:
+        account = Account(name="Concurrent Owner", email="concurrent-owner@example.com")
+        tenant = Tenant(name="Concurrent Workspace")
+        sqlite_session.add_all([account, tenant])
+        sqlite_session.flush()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.OWNER,
+                current=True,
+            )
+        )
+        sqlite_session.commit()
+        caller_session = MagicMock(spec=Session)
+        caller_session.get.side_effect = [None, tenant]
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+        ):
+            result = TenantService.create_owner_tenant_if_not_exist(account, session=caller_session)
+
+        assert result is tenant
+        caller_session.commit.assert_called_once_with()
+        assert caller_session.get.call_count == 2
+
+    def test_owner_tenant_creation_ignores_post_commit_notification_failure(
+        self,
+        sqlite_session: Session,
+        mock_rsa_dependencies: MagicMock,
+        mock_external_service_dependencies: _MockDependencies,
+    ) -> None:
+        account = Account(name="Signal Failure", email="signal-failure@example.com")
+        sqlite_session.add(account)
+        sqlite_session.commit()
+        mock_rsa_dependencies.return_value = "mock_public_key"
+        mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_license.return_value.workspaces.is_available.return_value = True
+
+        with (
+            patch("services.credit_pool_service.CreditPoolService.create_default_pool"),
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.workspace_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.tenant_was_created.send", side_effect=RuntimeError("queue unavailable")),
+        ):
+            tenant = TenantService.create_owner_tenant(account, is_setup=True, session=sqlite_session)
+            retried_tenant = TenantService.create_owner_tenant_if_not_exist(account, session=sqlite_session)
+
+        assert tenant.status == TenantStatus.NORMAL
+        assert retried_tenant.id == tenant.id
+
+    def test_ensure_member_capacity_counts_members_and_pending_candidates(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        with sqlite_session_factory.begin() as session:
+            tenant = Tenant(name="Workspace")
+            member = Account(name="Member", email="capacity-member@example.com")
+            pending_one = Account(
+                name="Pending One",
+                email="capacity-pending-1@example.com",
+                status=AccountStatus.PENDING,
+            )
+            pending_two = Account(
+                name="Pending Two",
+                email="capacity-pending-2@example.com",
+                status=AccountStatus.PENDING,
+            )
+            closed = Account(
+                name="Closed",
+                email="capacity-closed@example.com",
+                status=AccountStatus.CLOSED,
+            )
+            session.add_all([tenant, member, pending_one, pending_two, closed])
+            session.flush()
+            session.add(
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=member.id,
+                    role=TenantAccountRole.NORMAL,
+                )
+            )
+            tenant_id = tenant.id
+            pending_one_candidate = {pending_one.id: pending_one.email}
+            pending_two_candidate = {pending_two.id: pending_two.email}
+            closed_candidate = {closed.id: closed.email}
+
+        features = MagicMock()
+        features.members.limit = 2
+        with (
+            patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("services.account_service.FeatureService.get_features", return_value=features),
+        ):
+            TenantService.ensure_member_capacity(tenant_id, pending_one_candidate | closed_candidate)
+            with pytest.raises(WorkspaceMembersLimitExceededError):
+                TenantService.ensure_member_capacity(tenant_id, pending_one_candidate | pending_two_candidate)
 
     def test_admin_can_update_admin_member_role(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """Test admin can update another non-owner member, including an admin."""
         with sqlite_session_factory() as service_session:
             tenant = Tenant(name="Test Workspace")
-            service_session.add(tenant)
-            service_session.flush()
             mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
             mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+            service_session.add_all([tenant, mock_member, mock_operator])
+            service_session.flush()
             target_join = self._add_tenant_account_join(
                 service_session, tenant, mock_member.id, TenantAccountRole.ADMIN
             )
             self._add_tenant_account_join(service_session, tenant, mock_operator.id, TenantAccountRole.ADMIN)
             service_session.flush()
+            tenant_id = tenant.id
+            member_id = mock_member.id
+            operator_id = mock_operator.id
             target_join_id = target_join.id
             service_session.commit()
 
-            TenantService.update_member_role(
-                tenant,
-                mock_member,
-                "editor",
-                mock_operator,
-                session=service_session,
-            )
+        TenantService.update_member_role(tenant_id, member_id, "editor", operator_id)
 
         with sqlite_session_factory() as assertion_session:
             persisted_target_join = assertion_session.get(TenantAccountJoin, target_join_id)
@@ -1234,16 +2080,16 @@ class TestTenantService:
     def test_admin_cannot_update_owner_member_role(self, sqlite_session: Session) -> None:
         """Test admin cannot update an owner member."""
         tenant = Tenant(name="Test Workspace")
-        sqlite_session.add(tenant)
-        sqlite_session.flush()
         mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        sqlite_session.add_all([tenant, mock_member, mock_operator])
+        sqlite_session.flush()
         self._add_tenant_account_join(sqlite_session, tenant, mock_member.id, TenantAccountRole.OWNER)
         self._add_tenant_account_join(sqlite_session, tenant, mock_operator.id, TenantAccountRole.ADMIN)
         sqlite_session.commit()
 
         with pytest.raises(NoPermissionError):
-            TenantService.update_member_role(tenant, mock_member, "editor", mock_operator, session=sqlite_session)
+            TenantService.update_member_role(tenant.id, mock_member.id, "editor", mock_operator.id)
 
     def test_admin_cannot_promote_member_to_owner(self, sqlite_session: Session) -> None:
         """Test admin cannot promote a non-owner member to owner."""
@@ -1257,7 +2103,133 @@ class TestTenantService:
         sqlite_session.commit()
 
         with pytest.raises(NoPermissionError):
-            TenantService.update_member_role(tenant, mock_member, "owner", mock_operator, session=sqlite_session)
+            TenantService.update_member_role(tenant.id, mock_member.id, "owner", mock_operator.id)
+
+    def test_rbac_update_resolves_requested_role(self, sqlite_session: Session) -> None:
+        tenant = Tenant(name="Test Workspace")
+        member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
+        sqlite_session.add(tenant)
+        sqlite_session.flush()
+        self._add_tenant_account_join(sqlite_session, tenant, member.id, TenantAccountRole.NORMAL)
+        self._add_tenant_account_join(sqlite_session, tenant, operator.id, TenantAccountRole.OWNER)
+        sqlite_session.commit()
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.TenantService.check_member_permission"),
+            patch(
+                "services.account_service.AccountService._resolve_legacy_role_id",
+                return_value="editor-role",
+            ) as mock_resolve,
+            patch("services.account_service.RBACService.MemberRoles.replace_user_roles") as mock_replace,
+        ):
+            TenantService.update_member_role(tenant.id, member.id, "editor", operator.id)
+
+        mock_resolve.assert_called_once_with(
+            tenant_id=tenant.id,
+            account_id=operator.id,
+            role=TenantAccountRole.EDITOR,
+        )
+        mock_replace.assert_called_once_with(
+            tenant_id=tenant.id,
+            account_id=operator.id,
+            member_account_id=member.id,
+            role_ids=["editor-role"],
+        )
+
+    def test_rbac_owner_transfer_projects_local_owner_and_is_retryable(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            old_owner = TestAccountAssociatedDataFactory.create_account_mock(account_id="old-owner")
+            new_owner = TestAccountAssociatedDataFactory.create_account_mock(account_id="new-owner")
+            session.add_all([tenant, old_owner, new_owner])
+            session.flush()
+            old_join = self._add_tenant_account_join(session, tenant, old_owner.id, TenantAccountRole.OWNER)
+            new_join = self._add_tenant_account_join(session, tenant, new_owner.id, TenantAccountRole.ADMIN)
+            session.commit()
+            tenant_id = tenant.id
+            old_join_id = old_join.id
+            new_join_id = new_join.id
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.account_service.account_workspace_membership_mutation_locks",
+                return_value=nullcontext(),
+            ),
+            patch("services.account_service.RBACService.MemberRoles.transfer_owner") as transfer_owner,
+        ):
+            for _ in range(2):
+                TenantService.update_member_role(
+                    tenant_id,
+                    "new-owner",
+                    "owner",
+                    "old-owner",
+                    allow_owner_transfer=True,
+                )
+
+        assert transfer_owner.call_args_list == [
+            call(tenant_id, "old-owner", "new-owner"),
+            call(tenant_id, "old-owner", "new-owner"),
+        ]
+        with sqlite_session_factory() as session:
+            assert (
+                session.scalar(select(TenantAccountJoin.role).where(TenantAccountJoin.id == old_join_id))
+                == TenantAccountRole.NORMAL
+            )
+            assert (
+                session.scalar(select(TenantAccountJoin.role).where(TenantAccountJoin.id == new_join_id))
+                == TenantAccountRole.OWNER
+            )
+
+    def test_rbac_owner_transfer_remote_failure_keeps_local_owner(
+        self, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            old_owner = TestAccountAssociatedDataFactory.create_account_mock(account_id="old-owner")
+            new_owner = TestAccountAssociatedDataFactory.create_account_mock(account_id="new-owner")
+            session.add_all([tenant, old_owner, new_owner])
+            session.flush()
+            old_join = self._add_tenant_account_join(session, tenant, old_owner.id, TenantAccountRole.OWNER)
+            new_join = self._add_tenant_account_join(session, tenant, new_owner.id, TenantAccountRole.NORMAL)
+            session.commit()
+            tenant_id = tenant.id
+            old_join_id = old_join.id
+            new_join_id = new_join.id
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.account_service.account_workspace_membership_mutation_locks",
+                return_value=nullcontext(),
+            ),
+            patch(
+                "services.account_service.RBACService.MemberRoles.transfer_owner",
+                side_effect=EnterpriseAPIError("unavailable", status_code=503),
+            ),
+            pytest.raises(EnterpriseAPIError),
+        ):
+            TenantService.update_member_role(
+                tenant_id,
+                "new-owner",
+                "owner",
+                "old-owner",
+                allow_owner_transfer=True,
+            )
+
+        with sqlite_session_factory() as session:
+            assert (
+                session.scalar(select(TenantAccountJoin.role).where(TenantAccountJoin.id == old_join_id))
+                == TenantAccountRole.OWNER
+            )
+            assert (
+                session.scalar(select(TenantAccountJoin.role).where(TenantAccountJoin.id == new_join_id))
+                == TenantAccountRole.NORMAL
+            )
 
     # ==================== Permission Check Tests ====================
 
@@ -1319,88 +2291,133 @@ class TestTenantService:
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(tenant, mock_operator, mock_member, "remove", session=sqlite_session)
 
-    def test_rbac_member_can_remove_non_owner_member(self, sqlite_session: Session) -> None:
-        """Test RBAC workspace.member.manage allows removing a non-owner member."""
-        mock_tenant = _tenant(sqlite_session)
-        mock_tenant.id = "tenant-456"
-        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
-        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+    def test_rbac_member_can_remove_non_owner_member(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        events: list[str] = []
 
-        mock_permissions = MagicMock()
-        mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            operator = Account(name="Owner", email="rbac-owner@example.com")
+            member = Account(name="Member", email="rbac-member@example.com")
+            session.add_all([tenant, operator, member])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            self._add_tenant_account_join(session, tenant, member.id, TenantAccountRole.NORMAL)
+            session.commit()
+            tenant_id, operator_id, member_id = tenant.id, operator.id, member.id
 
-        with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
-            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
-            patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=False),
-        ):
-            TenantService.check_member_permission(
-                mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
-            )
-
-    def test_rbac_member_cannot_remove_without_permission(self, sqlite_session: Session) -> None:
-        """Test RBAC permission check rejects removal without workspace.member.manage."""
-        mock_tenant = _tenant(sqlite_session)
-        mock_tenant.id = "tenant-456"
-        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
-        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
-
-        mock_permissions = MagicMock()
-        mock_permissions.workspace = MagicMock(permission_keys=["workspace.role.manage"])
+        def fail_delete_bindings(*_args) -> None:
+            events.append("delete_bindings")
+            raise RuntimeError("authorized")
 
         with (
             patch("services.account_service.dify_config.RBAC_ENABLED", True),
-            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
+            patch("services.account_service.account_workspace_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.require_tenant_members"),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.member.manage"},
+            ),
+            patch(
+                "services.account_service.AccountService.get_rbac_workspace_owner_account_id",
+                return_value=operator_id,
+            ),
+            patch.object(
+                RegisterService,
+                "invalidate_member_invitation",
+                side_effect=lambda *_args: events.append("invalidate"),
+            ),
+            patch(
+                "services.account_service.RBACService.MemberRoles.delete_rbac_bindings",
+                side_effect=fail_delete_bindings,
+            ) as delete_bindings,
+            pytest.raises(RuntimeError, match="authorized"),
         ):
-            with pytest.raises(NoPermissionError):
-                TenantService.check_member_permission(
-                    mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
-                )
+            TenantService.remove_member_from_tenant(tenant_id, member_id, operator_id)
 
-    def test_rbac_member_cannot_remove_owner_member(self, sqlite_session: Session) -> None:
-        """Test RBAC permission check rejects removing an owner member."""
-        mock_tenant = _tenant(sqlite_session)
-        mock_tenant.id = "tenant-456"
-        mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
-        mock_member = TestAccountAssociatedDataFactory.create_account_mock(account_id="member-789")
+        delete_bindings.assert_called_once_with(tenant_id, operator_id, member_id)
+        assert events == ["invalidate", "delete_bindings"]
 
-        mock_permissions = MagicMock()
-        mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
+    def test_rbac_member_cannot_remove_without_permission(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            operator = Account(name="Owner", email="rbac-owner-2@example.com")
+            member = Account(name="Member", email="rbac-member-2@example.com")
+            session.add_all([tenant, operator, member])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            self._add_tenant_account_join(session, tenant, member.id, TenantAccountRole.NORMAL)
+            session.commit()
+            tenant_id, operator_id, member_id = tenant.id, operator.id, member.id
 
         with (
             patch("services.account_service.dify_config.RBAC_ENABLED", True),
-            patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
-            patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
+            patch("services.account_service.account_workspace_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.require_tenant_members"),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.role.manage"},
+            ),
+            patch("services.account_service.RBACService.MemberRoles.delete_rbac_bindings") as delete_bindings,
+            pytest.raises(NoPermissionError),
         ):
-            with pytest.raises(NoPermissionError):
-                TenantService.check_member_permission(
-                    mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
-                )
+            TenantService.remove_member_from_tenant(tenant_id, member_id, operator_id)
+
+        delete_bindings.assert_not_called()
+
+    def test_rbac_member_cannot_remove_owner_member(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        with sqlite_session_factory() as session:
+            tenant = Tenant(name="Workspace")
+            operator = Account(name="Owner", email="rbac-owner-3@example.com")
+            member = Account(name="Member", email="rbac-member-3@example.com")
+            session.add_all([tenant, operator, member])
+            session.flush()
+            self._add_tenant_account_join(session, tenant, operator.id, TenantAccountRole.OWNER)
+            self._add_tenant_account_join(session, tenant, member.id, TenantAccountRole.NORMAL)
+            session.commit()
+            tenant_id, operator_id, member_id = tenant.id, operator.id, member.id
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch("services.account_service.account_workspace_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.require_tenant_members"),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.member.manage"},
+            ),
+            patch(
+                "services.account_service.AccountService.get_rbac_workspace_owner_account_id",
+                return_value=member_id,
+            ),
+            patch("services.account_service.RBACService.MemberRoles.delete_rbac_bindings") as delete_bindings,
+            pytest.raises(NoPermissionError),
+        ):
+            TenantService.remove_member_from_tenant(tenant_id, member_id, operator_id)
+
+        delete_bindings.assert_not_called()
 
     def test_get_rbac_workspace_owner_account_id(self, sqlite_session: Session) -> None:
-        mock_roles = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
-        mock_rbac_roles = MagicMock()
-        mock_rbac_roles.members.return_value = mock_roles
+        sqlite_session.add(
+            TenantAccountJoin(tenant_id="tenant-1", account_id="owner-account", role=TenantAccountRole.OWNER)
+        )
+        sqlite_session.commit()
+        remote_owners = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
 
         with (
             patch(
                 "services.account_service.AccountService._resolve_legacy_role_id",
-                return_value="owner-role-id",
+                return_value="owner-role",
             ),
-            patch("services.account_service.RBACService.Roles", mock_rbac_roles),
+            patch("services.account_service.RBACService.Roles.members", return_value=remote_owners) as mock_members,
         ):
-            owner_account_id = AccountService.get_rbac_workspace_owner_account_id(
-                "tenant-1", "acct-1", session=sqlite_session
-            )
+            owner_account_id = AccountService.get_rbac_workspace_owner_account_id("tenant-1")
 
         assert owner_account_id == "owner-account"
         assert not sqlite_session.in_transaction()
-        call = mock_rbac_roles.members.call_args
-        assert call.kwargs["tenant_id"] == "tenant-1"
-        assert call.kwargs["account_id"] == "acct-1"
-        assert call.kwargs["role_id"] == "owner-role-id"
-        assert call.kwargs["options"].page_number == 1
-        assert call.kwargs["options"].results_per_page == 1
+        call = mock_members.call_args.kwargs
+        assert call["tenant_id"] == "tenant-1"
+        assert call["account_id"] is None
+        assert call["role_id"] == "owner-role"
+        assert call["options"].results_per_page == 2
 
 
 class TestRegisterService:
@@ -1441,6 +2458,32 @@ class TestRegisterService:
         """Mock setup for task dependencies."""
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
             yield mock_send_mail
+
+    @staticmethod
+    def _persist_on_register(account: Account) -> Callable[..., Account]:
+        def register(*_args: object, session: Session, **_kwargs: object) -> Account:
+            session.add(account)
+            session.commit()
+            return account
+
+        return register
+
+    def test_invitation_lock_rejects_concurrent_invitation(self) -> None:
+        lock = MagicMock()
+        lock.acquire.return_value = False
+        with (
+            patch("services.account_service.redis_client.lock", return_value=lock) as create_lock,
+            pytest.raises(Conflict),
+        ):
+            with _invitation_lock("invite:test", timeout=123):
+                pass
+
+        create_lock.assert_called_once_with("invite:test", timeout=123)
+        lock.acquire.assert_called_once_with(
+            blocking=True,
+            blocking_timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
+        )
+        lock.release.assert_not_called()
 
     # ==================== Setup Tests ====================
 
@@ -1810,7 +2853,7 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+            patch("services.account_service.TenantService.create_owner_tenant") as mock_create_tenant,
             patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
         ):
             mock_create_account.return_value = mock_account
@@ -1850,7 +2893,7 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
-            patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
+            patch("services.account_service.TenantService.create_owner_tenant") as mock_create_tenant,
             patch("services.enterprise.enterprise_service.try_join_default_workspace") as mock_join_default_workspace,
         ):
             mock_create_account.return_value = mock_account
@@ -1884,41 +2927,23 @@ class TestRegisterService:
         with (
             patch("services.account_service.AccountService.create_account") as mock_create_account,
             patch("services.account_service.AccountService.link_account_integrate") as mock_link_account,
+            patch("services.account_service.TenantService.create_owner_tenant") as mock_create_workspace,
         ):
             mock_create_account.return_value = mock_account
+            mock_create_workspace.return_value = Tenant(name="Test User's Workspace")
 
-            # Mock TenantService methods
-            with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
-            ):
-                mock_tenant = Tenant(name="Test User's Workspace")
-                sqlite_session.add(mock_tenant)
-                sqlite_session.flush()
-                mock_create_tenant.return_value = mock_tenant
-                mock_create_member.side_effect = lambda tenant, account, session, role: session.add(
-                    TenantAccountJoin(
-                        tenant_id=tenant.id,
-                        account_id=account.id,
-                        role=TenantAccountRole(role),
-                    )
-                )
+            result = RegisterService.register(
+                email="test@example.com",
+                name="Test User",
+                password=None,
+                open_id="oauth123",
+                provider="google",
+                language="en-US",
+                session=sqlite_session,
+            )
 
-                # Execute test
-                result = RegisterService.register(
-                    email="test@example.com",
-                    name="Test User",
-                    password=None,
-                    open_id="oauth123",
-                    provider="google",
-                    language="en-US",
-                    session=sqlite_session,
-                )
-
-                # Verify results
-                assert result == mock_account
-                mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
+            assert result == mock_account
+            mock_link_account.assert_called_once_with("google", "oauth123", mock_account, session=sqlite_session)
 
     def test_register_with_pending_status(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -1934,42 +2959,24 @@ class TestRegisterService:
 
         # Mock AccountService.create_account
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
-        with patch("services.account_service.AccountService.create_account") as mock_create_account:
+        with (
+            patch("services.account_service.AccountService.create_account") as mock_create_account,
+            patch("services.account_service.TenantService.create_owner_tenant") as mock_create_workspace,
+        ):
             mock_create_account.return_value = mock_account
+            mock_create_workspace.return_value = Tenant(name="Test User's Workspace")
 
-            # Mock TenantService methods
-            with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
-            ):
-                mock_tenant = Tenant(name="Test User's Workspace")
-                sqlite_session.add(mock_tenant)
-                sqlite_session.flush()
-                mock_create_tenant.return_value = mock_tenant
-                mock_create_member.side_effect = lambda tenant, account, session, role: session.add(
-                    TenantAccountJoin(
-                        tenant_id=tenant.id,
-                        account_id=account.id,
-                        role=TenantAccountRole(role),
-                    )
-                )
+            result = RegisterService.register(
+                email="test@example.com",
+                name="Test User",
+                password="password123",
+                language="en-US",
+                status=AccountStatus.PENDING,
+                session=sqlite_session,
+            )
 
-                # Execute test with pending status
-                from models.account import AccountStatus
-
-                result = RegisterService.register(
-                    email="test@example.com",
-                    name="Test User",
-                    password="password123",
-                    language="en-US",
-                    status=AccountStatus.PENDING,
-                    session=sqlite_session,
-                )
-
-                # Verify results
-                assert result == mock_account
-                assert result.status == "pending"
+            assert result == mock_account
+            assert result.status == "pending"
 
     def test_register_workspace_not_allowed(
         self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -1991,7 +2998,7 @@ class TestRegisterService:
             # Execute test and verify exception
             from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
-            with patch("services.account_service.TenantService.create_tenant") as mock_create_tenant:
+            with patch("services.account_service.TenantService.create_owner_tenant") as mock_create_tenant:
                 mock_create_tenant.side_effect = WorkSpaceNotAllowedCreateError()
 
                 with pytest.raises(AccountRegisterError):
@@ -2031,58 +3038,6 @@ class TestRegisterService:
 
     # ==================== Member Invitation Tests ====================
 
-    @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_new_account(self, sqlite_session: Session) -> None:
-        """Test inviting a new member who doesn't have an account."""
-        # Setup test data
-        mock_tenant = _tenant(sqlite_session)
-        mock_tenant.id = "tenant-456"
-        mock_tenant.name = "Test Workspace"
-        mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
-
-        with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-        ):
-            mock_lookup.return_value = None
-
-            # Mock RegisterService.register
-            mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
-                account_id="new-user-456", email="newuser@example.com", name="newuser", status="pending"
-            )
-            with patch("services.account_service.RegisterService.register") as mock_register:
-                mock_register.return_value = mock_new_account
-
-                # Mock TenantService methods
-                with (
-                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
-                    patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
-                ):
-                    mock_generate_token.return_value = "invite-token-123"
-
-                    # Execute test
-                    result = RegisterService.invite_new_member(
-                        tenant=mock_tenant,
-                        email="newuser@example.com",
-                        language="en-US",
-                        role="normal",
-                        inviter=mock_inviter,
-                        session=sqlite_session,
-                    )
-
-                    # Verify results
-                    assert result == "invite-token-123"
-                    mock_register.assert_called_once_with(
-                        email="newuser@example.com",
-                        name="newuser",
-                        language="en-US",
-                        status=AccountStatus.PENDING,
-                        is_setup=True,
-                        session=sqlite_session,
-                    )
-                    mock_lookup.assert_called_once_with("newuser@example.com", session=sqlite_session)
-
     def test_invite_new_member_normalizes_new_account_email(
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
     ) -> None:
@@ -2090,6 +3045,8 @@ class TestRegisterService:
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
         mixed_email = "Invitee@Example.com"
 
         with (
@@ -2100,47 +3057,47 @@ class TestRegisterService:
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-789", email="invitee@example.com", name="invitee", status="pending"
             )
-            with patch("services.account_service.RegisterService.register") as mock_register:
-                mock_register.return_value = mock_new_account
+            with patch(
+                "services.account_service.RegisterService.register",
+                side_effect=self._persist_on_register(mock_new_account),
+            ) as mock_register:
                 with (
                     patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
                     patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
                 ):
                     mock_generate_token.return_value = "invite-token-abc"
 
-                    RegisterService.invite_new_member(
-                        tenant=mock_tenant,
+                    result = RegisterService.invite_new_member(
+                        tenant_id=mock_tenant.id,
                         email=mixed_email,
                         language="en-US",
                         role="normal",
-                        inviter=mock_inviter,
-                        session=sqlite_session,
+                        inviter_id=mock_inviter.id,
                     )
 
+                    assert result == "invite-token-abc"
                     mock_register.assert_called_once_with(
                         email="invitee@example.com",
                         name="invitee",
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
-                        session=sqlite_session,
+                        create_workspace_required=False,
+                        auto_join_default_workspace=False,
+                        session=ANY,
                     )
-                    mock_lookup.assert_called_once_with(mixed_email, session=sqlite_session)
-                    mock_check_permission.assert_called_once_with(
-                        mock_tenant,
-                        mock_inviter,
-                        None,
-                        "add",
-                        session=sqlite_session,
-                    )
-                    mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "normal")
-                    mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id, session=sqlite_session)
+                    assert mock_lookup.call_count == 2
+                    assert mock_check_permission.call_count == 2
                     mock_generate_token.assert_called_once_with(
-                        mock_tenant, mock_new_account, "normal", requires_setup=True
+                        tenant_id=mock_tenant.id,
+                        account_id=mock_new_account.id,
+                        email=mock_new_account.email,
+                        role="normal",
+                        rbac_role_id=None,
+                        inviter_id=mock_inviter.id,
                     )
                     mock_task_dependencies.delay.assert_called_once()
+                    assert sqlite_session.scalar(select(TenantAccountJoin)) is None
 
     def test_invite_new_member_existing_account(
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
@@ -2151,9 +3108,13 @@ class TestRegisterService:
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-user-456", email="existing@example.com", status="pending"
         )
+        sqlite_session.add(mock_existing_account)
+        sqlite_session.commit()
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
@@ -2163,29 +3124,32 @@ class TestRegisterService:
             # Mock TenantService methods
             with (
                 patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
             ):
                 mock_generate_token.return_value = "invite-token-123"
 
                 # Execute test
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant_id=mock_tenant.id,
                     email="existing@example.com",
                     language="en-US",
                     role="normal",
-                    inviter=mock_inviter,
-                    session=sqlite_session,
+                    inviter_id=mock_inviter.id,
                 )
 
                 # Verify results
                 assert result == "invite-token-123"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_existing_account, sqlite_session, "normal")
                 mock_generate_token.assert_called_once_with(
-                    mock_tenant, mock_existing_account, "normal", requires_setup=True
+                    tenant_id=mock_tenant.id,
+                    account_id=mock_existing_account.id,
+                    email=mock_existing_account.email,
+                    role="normal",
+                    rbac_role_id=None,
+                    inviter_id=mock_inviter.id,
                 )
                 mock_task_dependencies.delay.assert_called_once()
-                mock_lookup.assert_called_once_with("existing@example.com", session=sqlite_session)
+                mock_lookup.assert_called_once_with("existing@example.com", session=ANY)
+                assert sqlite_session.scalar(select(TenantAccountJoin)) is None
 
     def test_invite_existing_active_account_requires_acceptance_before_joining(
         self, sqlite_session: Session, mock_task_dependencies: MagicMock
@@ -2195,42 +3159,93 @@ class TestRegisterService:
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
+        sqlite_session.add(mock_existing_account)
+        sqlite_session.commit()
 
         with patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup:
             mock_lookup.return_value = mock_existing_account
 
             with (
                 patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
             ):
                 mock_generate_token.return_value = "invite-token-123"
 
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant_id=mock_tenant.id,
                     email="existing@example.com",
                     language="en-US",
                     role="admin",
-                    inviter=mock_inviter,
-                    session=sqlite_session,
+                    inviter_id=mock_inviter.id,
                 )
 
                 assert result == "invite-token-123"
-                mock_check_permission.assert_called_once_with(
-                    mock_tenant,
-                    mock_inviter,
-                    mock_existing_account,
-                    "add",
-                    session=sqlite_session,
-                )
-                mock_create_member.assert_not_called()
+                assert mock_check_permission.call_count == 2
                 mock_generate_token.assert_called_once_with(
-                    mock_tenant, mock_existing_account, "admin", requires_setup=False
+                    tenant_id=mock_tenant.id,
+                    account_id=mock_existing_account.id,
+                    email=mock_existing_account.email,
+                    role="admin",
+                    rbac_role_id=None,
+                    inviter_id=mock_inviter.id,
                 )
                 mock_task_dependencies.delay.assert_called_once()
+                assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+
+    @pytest.mark.parametrize(
+        "account_status",
+        [AccountStatus.BANNED, AccountStatus.CLOSED, AccountStatus.UNINITIALIZED],
+    )
+    def test_invite_rejects_non_activatable_account_before_side_effects(
+        self,
+        sqlite_session: Session,
+        mock_task_dependencies: MagicMock,
+        config_overrides: Callable[..., None],
+        account_status: AccountStatus,
+    ) -> None:
+        config_overrides(
+            RBAC_ENABLED=False,
+            ENTERPRISE_RBAC_REQUEST_TIMEOUT=5,
+            ENTERPRISE_REQUEST_TIMEOUT=7,
+        )
+        tenant = _tenant(sqlite_session)
+        tenant.id = "tenant-456"
+        inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-123", name="Inviter")
+        account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="ineligible-user",
+            email="ineligible@example.com",
+            status=account_status,
+        )
+        sqlite_session.add_all([inviter, account])
+        sqlite_session.commit()
+
+        with (
+            patch("libs.workspace_permission.check_workspace_member_invite_permission"),
+            patch("services.account_service._invitation_lock", return_value=nullcontext()) as invitation_lock,
+            patch(
+                "services.account_service.AccountService.get_account_by_email_with_case_fallback",
+                return_value=account,
+            ),
+            patch("services.account_service.TenantService.check_member_permission"),
+            patch("services.account_service.RegisterService.generate_invite_token") as generate_token,
+            pytest.raises(AccountRegisterError, match="not eligible"),
+        ):
+            RegisterService.invite_new_member(
+                tenant_id=tenant.id,
+                email=account.email,
+                language="en-US",
+                inviter_id=inviter.id,
+            )
+
+        generate_token.assert_not_called()
+        mock_task_dependencies.delay.assert_not_called()
+        invitation_lock.assert_called_once_with(ANY, timeout=2 * 5 + 7 + 60)
+        assert sqlite_session.scalar(select(TenantAccountJoin)) is None
 
     def test_invite_new_member_already_in_tenant(self, sqlite_session: Session) -> None:
         """Test inviting a member who is already in the tenant."""
@@ -2242,12 +3257,16 @@ class TestRegisterService:
             account_id="existing-user-456", email="existing@example.com", status="active"
         )
 
-        sqlite_session.add(
-            TenantAccountJoin(
-                tenant_id=mock_tenant.id,
-                account_id=mock_existing_account.id,
-                role=TenantAccountRole.NORMAL,
-            )
+        sqlite_session.add_all(
+            [
+                mock_inviter,
+                mock_existing_account,
+                TenantAccountJoin(
+                    tenant_id=mock_tenant.id,
+                    account_id=mock_existing_account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
         )
         sqlite_session.commit()
 
@@ -2260,16 +3279,15 @@ class TestRegisterService:
             # Execute test and verify exception
             with pytest.raises(AccountAlreadyInTenantError):
                 RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant_id=mock_tenant.id,
                     email="existing@example.com",
                     language="en-US",
                     role="normal",
-                    inviter=mock_inviter,
-                    session=sqlite_session,
+                    inviter_id=mock_inviter.id,
                 )
             mock_lookup.assert_called_once()
 
-    def test_invite_new_member_no_inviter(self, unbound_session: Session) -> None:
+    def test_invite_new_member_no_inviter(self) -> None:
         """Test inviting a member without providing an inviter."""
         # Setup test data
         mock_tenant = _tenant()
@@ -2277,13 +3295,143 @@ class TestRegisterService:
         # Execute test and verify exception
         with pytest.raises(ValueError):
             RegisterService.invite_new_member(
-                tenant=mock_tenant,
+                tenant_id=mock_tenant.id,
                 email="test@example.com",
                 language="en-US",
                 role="normal",
-                inviter=None,
-                session=unbound_session,
+                inviter_id=None,
             )
+
+    def test_enterprise_invite_rechecks_local_account_count_inside_creation_lock(self, sqlite_session: Session) -> None:
+        tenant = _tenant(sqlite_session)
+        tenant.id = "tenant-789"
+        inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456")
+        sqlite_session.add(inviter)
+        sqlite_session.commit()
+        seats = MagicMock(enabled=True, limit=1, size=0)
+        license = MagicMock(seats=seats)
+
+        with (
+            patch("libs.workspace_permission.check_workspace_member_invite_permission"),
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch(
+                "services.account_service.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.ENTERPRISE,
+            ),
+            patch("services.account_service.FeatureService.get_license", return_value=license),
+            patch("services.account_service.TenantService.check_member_permission"),
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback", return_value=None),
+            patch(
+                "services.account_service._invitation_lock",
+                side_effect=lambda *_args, **_kwargs: nullcontext(),
+            ),
+            patch("services.account_service.RegisterService.register") as register,
+            pytest.raises(SeatsLimitExceededError),
+        ):
+            RegisterService.invite_new_member(
+                tenant_id=tenant.id,
+                email="new@example.com",
+                language="en-US",
+                inviter_id=inviter.id,
+            )
+
+        register.assert_not_called()
+
+    def test_legacy_invite_removes_created_pending_account_when_second_permission_check_fails(
+        self, sqlite_session: Session
+    ) -> None:
+        tenant = _tenant(sqlite_session)
+        tenant.id = "tenant-789"
+        inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456")
+        sqlite_session.add(inviter)
+        sqlite_session.commit()
+        account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="new-user",
+            email="new@example.com",
+            status=AccountStatus.PENDING,
+        )
+
+        with (
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch(
+                "services.account_service.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback", return_value=None),
+            patch(
+                "services.account_service.RegisterService.register",
+                side_effect=self._persist_on_register(account),
+            ),
+            patch(
+                "services.account_service.TenantService.check_member_permission",
+                side_effect=[None, NoPermissionError("permission changed")],
+            ),
+            patch(
+                "services.account_service._invitation_lock",
+                side_effect=lambda *_args, **_kwargs: nullcontext(),
+            ),
+            patch("services.account_service.account_membership_mutation_lock", return_value=nullcontext()),
+            patch("services.account_service.RegisterService.generate_invite_token") as generate_token,
+            pytest.raises(NoPermissionError, match="permission changed"),
+        ):
+            RegisterService.invite_new_member(
+                tenant_id=tenant.id,
+                email=account.email,
+                language="en-US",
+                inviter_id=inviter.id,
+            )
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(Account, account.id) is None
+        generate_token.assert_not_called()
+
+    def test_invite_rbac_requires_role_manage_before_account_lookup(self) -> None:
+        with (
+            patch("libs.workspace_permission.check_workspace_member_invite_permission"),
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.member.manage"},
+            ),
+            patch("services.account_service.require_tenant_members") as mock_require,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            patch("services.account_service.RBACService.MemberRoles.ensure_role_assignable") as mock_roles,
+            pytest.raises(NoPermissionError),
+        ):
+            RegisterService.invite_new_member(
+                tenant_id="tenant-789",
+                email="rbac@example.com",
+                language="en-US",
+                role="rbac-role-id",
+                inviter_id="inviter-456",
+            )
+
+        mock_require.assert_called_once_with("tenant-789", ["inviter-456"])
+        mock_lookup.assert_not_called()
+        mock_roles.assert_not_called()
+
+    def test_invite_rbac_rejects_nonmember_inviter_before_permission_lookup(self) -> None:
+        with (
+            patch("libs.workspace_permission.check_workspace_member_invite_permission"),
+            patch("services.account_service.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.account_service.require_tenant_members",
+                side_effect=MemberNotInTenantError("Member not in tenant."),
+            ),
+            patch("services.account_service.AccountService.get_workspace_permission_keys") as mock_permissions,
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
+            pytest.raises(MemberNotInTenantError),
+        ):
+            RegisterService.invite_new_member(
+                tenant_id="tenant-789",
+                email="rbac@example.com",
+                language="en-US",
+                role="rbac-role-id",
+                inviter_id="foreign-account",
+            )
+
+        mock_permissions.assert_not_called()
+        mock_lookup.assert_not_called()
 
     # ==================== RBAC Member Invitation Tests ====================
 
@@ -2291,265 +3439,537 @@ class TestRegisterService:
     def test_invite_new_member_rbac_enabled_new_account(
         self, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """When RBAC is enabled, create the member join and replace RBAC member roles."""
+        """RBAC invitations defer membership and role assignment until activation."""
         config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
-
-        with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-        ):
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
+        with patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup:
             mock_lookup.return_value = None
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-rbac", email="rbac@example.com", name="rbacuser", status="pending"
             )
             with (
-                patch("services.account_service.RegisterService.register") as mock_register,
-                patch("services.account_service.TenantService.check_member_permission"),
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.TenantService.switch_tenant"),
-                patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
-                patch("services.account_service.RBACService") as mock_rbac_service,
+                patch(
+                    "services.account_service.RegisterService.register",
+                    side_effect=self._persist_on_register(mock_new_account),
+                ) as mock_register,
+                patch(
+                    "services.account_service.RegisterService.generate_invite_token",
+                    return_value="rbac-token",
+                ) as generate_token,
+                patch(
+                    "services.account_service.AccountService.get_workspace_permission_keys",
+                    return_value={"workspace.member.manage", "workspace.role.manage"},
+                ),
+                patch("services.account_service.require_tenant_members"),
+                patch("services.account_service.RBACService.MemberRoles.ensure_role_assignable"),
+                patch(
+                    "services.account_service._invitation_lock",
+                    side_effect=lambda *_args, **_kwargs: nullcontext(),
+                ),
             ):
-                mock_register.return_value = mock_new_account
-
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant_id=mock_tenant.id,
                     email="rbac@example.com",
                     language="en-US",
                     role="rbac-role-id-123",
-                    inviter=mock_inviter,
-                    session=sqlite_session,
+                    inviter_id=mock_inviter.id,
                 )
 
                 assert result == "rbac-token"
-                mock_create_member.assert_called_once_with(
-                    mock_tenant, mock_new_account, sqlite_session, TenantAccountRole.NORMAL.value
-                )
-                mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+                generate_token.assert_called_once_with(
                     tenant_id=mock_tenant.id,
-                    account_id=mock_inviter.id,
-                    member_account_id=mock_new_account.id,
-                    role_ids=["rbac-role-id-123"],
-                    session=sqlite_session,
+                    account_id=mock_new_account.id,
+                    email=mock_new_account.email,
+                    role="rbac-role-id-123",
+                    rbac_role_id="rbac-role-id-123",
+                    inviter_id=mock_inviter.id,
                 )
+                assert sqlite_session.scalar(select(TenantAccountJoin)) is None
+                mock_register.assert_called_once_with(
+                    email="rbac@example.com",
+                    name="rbac",
+                    language="en-US",
+                    status=AccountStatus.PENDING,
+                    is_setup=True,
+                    create_workspace_required=False,
+                    auto_join_default_workspace=False,
+                    session=ANY,
+                )
+
+    def test_invite_mail_failure_revokes_token_and_removes_new_pending_account(
+        self,
+        sqlite_session: Session,
+        config_overrides: Callable[..., None],
+        mock_task_dependencies: MagicMock,
+    ) -> None:
+        config_overrides(RBAC_ENABLED=True)
+        tenant = _tenant(sqlite_session)
+        tenant.id = "tenant-789"
+        inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
+        sqlite_session.add(inviter)
+        sqlite_session.commit()
+        account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="new-user-rbac",
+            email="rbac@example.com",
+            status=AccountStatus.PENDING,
+        )
+        mock_task_dependencies.delay.side_effect = RuntimeError("mail unavailable")
+        invitation_lock_held = False
+
+        @contextmanager
+        def tracked_invitation_lock(*_args, **_kwargs) -> Generator[None]:
+            nonlocal invitation_lock_held
+            invitation_lock_held = True
+            try:
+                yield
+            finally:
+                invitation_lock_held = False
+
+        @contextmanager
+        def cleanup_account_lock(*_args, **_kwargs) -> Generator[None]:
+            assert invitation_lock_held
+            yield
+
+        with (
+            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback", return_value=None),
+            patch(
+                "services.account_service.RegisterService.register",
+                side_effect=self._persist_on_register(account),
+            ),
+            patch(
+                "services.account_service.AccountService.get_workspace_permission_keys",
+                return_value={"workspace.member.manage", "workspace.role.manage"},
+            ),
+            patch("services.account_service.require_tenant_members"),
+            patch("services.account_service.RBACService.MemberRoles.ensure_role_assignable"),
+            patch(
+                "services.account_service._invitation_lock",
+                side_effect=tracked_invitation_lock,
+            ),
+            patch("services.account_service.account_membership_mutation_lock", side_effect=cleanup_account_lock),
+            patch(
+                "services.account_service.RegisterService.generate_invite_token",
+                return_value="rbac-token",
+            ),
+            patch("services.account_service.RegisterService.revoke_token") as revoke_token,
+            pytest.raises(RuntimeError, match="mail unavailable"),
+        ):
+            RegisterService.invite_new_member(
+                tenant_id=tenant.id,
+                email=account.email,
+                language="en-US",
+                role="rbac-role-id-123",
+                inviter_id=inviter.id,
+            )
+
+        sqlite_session.expire_all()
+        assert sqlite_session.get(Account, "new-user-rbac") is None
+        assert not invitation_lock_held
+        revoke_token.assert_called_once_with("rbac-token")
 
     @pytest.mark.usefixtures("mock_task_dependencies")
     def test_invite_new_member_rbac_enabled_existing_account(
         self, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
+        """A pending pre-existing membership can be re-invited without mutation."""
         config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-rbac", email="existing-rbac@example.com", status="pending"
         )
+        membership = TenantAccountJoin(
+            tenant_id=mock_tenant.id,
+            account_id=mock_existing_account.id,
+            role=TenantAccountRole.NORMAL,
+            invited_by="original-inviter",
+        )
+        sqlite_session.add_all([mock_existing_account, membership])
+        sqlite_session.commit()
 
-        with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-        ):
+        with patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup:
             mock_lookup.return_value = mock_existing_account
 
             with (
-                patch("services.account_service.TenantService.check_member_permission"),
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.RegisterService.generate_invite_token", return_value="rbac-token"),
-                patch("services.account_service.RBACService") as mock_rbac_service,
+                patch(
+                    "services.account_service.RegisterService.generate_invite_token",
+                    return_value="rbac-token",
+                ) as generate_token,
+                patch(
+                    "services.account_service.AccountService.get_workspace_permission_keys",
+                    return_value={"workspace.member.manage", "workspace.role.manage"},
+                ),
+                patch("services.account_service.require_tenant_members"),
+                patch("services.account_service.RBACService.MemberRoles.ensure_role_assignable"),
+                patch(
+                    "services.account_service._invitation_lock",
+                    side_effect=lambda *_args, **_kwargs: nullcontext(),
+                ),
             ):
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant_id=mock_tenant.id,
                     email="existing-rbac@example.com",
                     language="en-US",
                     role="rbac-role-id-456",
-                    inviter=mock_inviter,
-                    session=sqlite_session,
+                    inviter_id=mock_inviter.id,
                 )
 
                 assert result == "rbac-token"
-                mock_create_member.assert_called_once_with(
-                    mock_tenant,
-                    mock_existing_account,
-                    sqlite_session,
-                    TenantAccountRole.NORMAL.value,
-                )
-                mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+                generate_token.assert_called_once_with(
                     tenant_id=mock_tenant.id,
-                    account_id=mock_inviter.id,
-                    member_account_id=mock_existing_account.id,
-                    role_ids=["rbac-role-id-456"],
-                    session=sqlite_session,
+                    account_id=mock_existing_account.id,
+                    email=mock_existing_account.email,
+                    role="rbac-role-id-456",
+                    rbac_role_id="rbac-role-id-456",
+                    inviter_id=mock_inviter.id,
                 )
+                sqlite_session.refresh(membership)
+                assert membership.role == TenantAccountRole.NORMAL
+                assert membership.invited_by == "original-inviter"
 
-    def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
+    def test_invite_new_member_rbac_enabled_existing_active_account_defers_join_until_acceptance(
         self,
         sqlite_session: Session,
         mock_task_dependencies: MagicMock,
         config_overrides: Callable[..., None],
     ) -> None:
-        """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
+        """Active accounts receive a token carrying the role but no membership before acceptance."""
         config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
         mock_existing_account = TestAccountAssociatedDataFactory.create_account_mock(
             account_id="existing-rbac", email="existing-rbac@example.com", status=AccountStatus.ACTIVE
         )
+        sqlite_session.add(mock_existing_account)
+        sqlite_session.commit()
 
-        with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-        ):
+        with patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup:
             mock_lookup.return_value = mock_existing_account
 
             with (
-                patch("services.account_service.TenantService.check_member_permission"),
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.RBACService") as mock_rbac_service,
+                patch(
+                    "services.account_service.AccountService.get_workspace_permission_keys",
+                    return_value={"workspace.member.manage", "workspace.role.manage"},
+                ),
+                patch("services.account_service.require_tenant_members"),
+                patch("services.account_service.RBACService.MemberRoles.ensure_role_assignable"),
+                patch(
+                    "services.account_service.RegisterService.generate_invite_token",
+                    return_value="rbac-token",
+                ) as mock_generate_token,
             ):
-                with pytest.raises(AccountAlreadyInTenantError):
-                    RegisterService.invite_new_member(
-                        tenant=mock_tenant,
-                        email="existing-rbac@example.com",
-                        language="en-US",
-                        role="rbac-role-id-456",
-                        inviter=mock_inviter,
-                        session=sqlite_session,
-                    )
-
-                mock_create_member.assert_called_once_with(
-                    mock_tenant,
-                    mock_existing_account,
-                    sqlite_session,
-                    TenantAccountRole.NORMAL.value,
-                )
-                mock_rbac_service.MemberRoles.replace.assert_called_once_with(
+                result = RegisterService.invite_new_member(
                     tenant_id=mock_tenant.id,
-                    account_id=mock_inviter.id,
-                    member_account_id=mock_existing_account.id,
-                    role_ids=["rbac-role-id-456"],
-                    session=sqlite_session,
+                    email="existing-rbac@example.com",
+                    language="en-US",
+                    role="rbac-role-id-456",
+                    inviter_id=mock_inviter.id,
                 )
-                mock_task_dependencies.delay.assert_not_called()
+
+                assert result == "rbac-token"
+                mock_generate_token.assert_called_once_with(
+                    tenant_id=mock_tenant.id,
+                    account_id=mock_existing_account.id,
+                    email=mock_existing_account.email,
+                    role="rbac-role-id-456",
+                    rbac_role_id="rbac-role-id-456",
+                    inviter_id=mock_inviter.id,
+                )
+                mock_task_dependencies.delay.assert_called_once()
 
     @pytest.mark.usefixtures("mock_task_dependencies")
     def test_invite_new_member_rbac_disabled_uses_legacy_role(
         self, sqlite_session: Session, config_overrides: Callable[..., None]
     ) -> None:
-        """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
+        """Legacy invitations persist the requested role only in the token."""
         config_overrides(RBAC_ENABLED=False)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-legacy"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789", name="Inviter")
+        sqlite_session.add(mock_inviter)
+        sqlite_session.commit()
 
-        with (
-            patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-        ):
+        with patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup:
             mock_lookup.return_value = None
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="legacy-user", email="legacy@example.com", name="legacyuser", status="pending"
             )
             with (
-                patch("services.account_service.RegisterService.register") as mock_register,
+                patch(
+                    "services.account_service.RegisterService.register",
+                    side_effect=self._persist_on_register(mock_new_account),
+                ) as mock_register,
                 patch("services.account_service.TenantService.check_member_permission"),
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.TenantService.switch_tenant"),
-                patch("services.account_service.RegisterService.generate_invite_token", return_value="legacy-token"),
-                patch("services.account_service.RBACService") as mock_rbac_service,
+                patch(
+                    "services.account_service.RegisterService.generate_invite_token",
+                    return_value="legacy-token",
+                ) as generate_token,
             ):
-                mock_register.return_value = mock_new_account
-
                 result = RegisterService.invite_new_member(
-                    tenant=mock_tenant,
+                    tenant_id=mock_tenant.id,
                     email="legacy@example.com",
                     language="en-US",
                     role="editor",
-                    inviter=mock_inviter,
-                    session=sqlite_session,
+                    inviter_id=mock_inviter.id,
                 )
 
                 assert result == "legacy-token"
-                mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, sqlite_session, "editor")
-                mock_rbac_service.MemberRoles.replace.assert_not_called()
+                generate_token.assert_called_once_with(
+                    tenant_id=mock_tenant.id,
+                    account_id=mock_new_account.id,
+                    email=mock_new_account.email,
+                    role="editor",
+                    rbac_role_id=None,
+                    inviter_id=mock_inviter.id,
+                )
+                assert mock_lookup.call_count == 2
+                mock_register.assert_called_once_with(
+                    email="legacy@example.com",
+                    name="legacy",
+                    language="en-US",
+                    status=AccountStatus.PENDING,
+                    is_setup=True,
+                    create_workspace_required=False,
+                    auto_join_default_workspace=False,
+                    session=ANY,
+                )
+                assert sqlite_session.scalar(select(TenantAccountJoin)) is None
 
     # ==================== Token Management Tests ====================
 
     def test_generate_invite_token_success(self, mock_redis_dependencies: MagicMock) -> None:
         """Test successful invite token generation."""
-        # Setup test data
-        mock_tenant = _tenant()
-        mock_tenant.id = "tenant-456"
-        mock_account = TestAccountAssociatedDataFactory.create_account_mock(
-            account_id="user-123", email="test@example.com"
-        )
-
-        # Mock uuid generation
-        with patch("services.account_service.uuid.uuid4") as mock_uuid:
+        account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-123")
+        inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789")
+        tenant = Tenant(name="Test Workspace")
+        tenant.id = "tenant-456"
+        session = MagicMock(spec=Session)
+        session.get.return_value = tenant
+        with (
+            patch("services.account_service.uuid.uuid4") as mock_uuid,
+            patch("services.account_service.dify_config.RBAC_ENABLED", False),
+            patch(
+                "services.account_service.account_workspace_membership_mutation_lock",
+                return_value=nullcontext(),
+            ) as lock,
+            patch("services.account_service.session_factory.create_session", return_value=nullcontext(session)),
+            patch(
+                "services.account_service.TenantService.get_membership_eligible_account",
+                side_effect=[account, inviter],
+            ),
+            patch("services.account_service.TenantService.check_member_permission"),
+            patch("services.account_service.TenantService.account_belongs_to_tenant", return_value=False),
+            patch.object(
+                RegisterService,
+                "list_for_workspace",
+                return_value=(
+                    WorkspaceInvitationRecord(
+                        account_id="already-invited",
+                        email="pending@example.com",
+                        legacy_role="normal",
+                    ),
+                ),
+            ),
+            patch("services.account_service.TenantService.ensure_member_capacity") as ensure_capacity,
+        ):
             mock_uuid.return_value = "test-uuid-123"
+            mock_redis_dependencies.get.return_value = None
 
-            # Execute test
-            result = RegisterService.generate_invite_token(mock_tenant, mock_account, "admin", requires_setup=True)
+            result = RegisterService.generate_invite_token(
+                tenant_id="tenant-456",
+                account_id="user-123",
+                email="test@example.com",
+                role="admin",
+                rbac_role_id="role-456",
+                inviter_id="inviter-789",
+            )
 
             # Verify results
             assert result == "test-uuid-123"
-            mock_redis_dependencies.setex.assert_called_once()
+            lock.assert_called_once_with("user-123", "tenant-456")
+            ensure_capacity.assert_called_once_with(
+                "tenant-456",
+                {
+                    "already-invited": "pending@example.com",
+                    "user-123": "test@example.com",
+                },
+            )
+            mock_redis_dependencies.pipeline.assert_called_once_with(transaction=True)
+            pipeline = mock_redis_dependencies.pipeline.return_value
+            assert pipeline.setex.call_count == 2
 
             # Verify the stored data
-            call_args = mock_redis_dependencies.setex.call_args
-            assert call_args[0][0] == "member_invite:token:test-uuid-123"
+            call_args = pipeline.setex.call_args_list[0]
+            assert call_args[0][0] == "member_invite:{invitation}:token:test-uuid-123"
             stored_data = json.loads(call_args[0][2])
             assert stored_data["account_id"] == "user-123"
             assert stored_data["email"] == "test@example.com"
             assert stored_data["workspace_id"] == "tenant-456"
             assert stored_data["role"] == "admin"
-            assert stored_data["requires_setup"] is True
+            assert stored_data["rbac_role_id"] == "role-456"
+            assert stored_data["inviter_id"] == "inviter-789"
+            pipeline.setex.assert_has_calls(
+                [
+                    call(
+                        "member_invite:{invitation}:current:tenant-456:user-123",
+                        dify_config.INVITE_EXPIRY_HOURS * 60 * 60,
+                        "test-uuid-123",
+                    )
+                ]
+            )
+            pipeline.hset.assert_has_calls(
+                [
+                    call("member_invite:{invitation}:workspace:tenant-456", "user-123", "test-uuid-123"),
+                    call("member_invite:{invitation}:account:user-123", "tenant-456", "test-uuid-123"),
+                ]
+            )
+            assert pipeline.expire.call_count == 2
+            pipeline.execute.assert_called_once_with()
+            assert key_slot(call_args[0][0].encode()) == key_slot(
+                b"member_invite:{invitation}:current:tenant-456:user-123"
+            )
+            assert key_slot(call_args[0][0].encode()) == key_slot(b"member_invite:{invitation}:workspace:tenant-456")
 
-    def test_is_valid_invite_token_valid(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test checking valid invite token."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = b'{"test": "data"}'
+    def test_revoke_token_atomically_deletes_authoritative_invitation(self, mock_redis_dependencies: MagicMock) -> None:
+        mock_redis_dependencies.get.return_value = json.dumps(
+            {
+                "account_id": "account-123",
+                "email": "invitee@example.com",
+                "workspace_id": "workspace-123",
+                "role": "normal",
+                "inviter_id": "inviter-123",
+            }
+        )
+        mock_redis_dependencies.eval.return_value = 1
 
-        # Execute test
-        result = RegisterService.is_valid_invite_token("valid-token")
+        RegisterService.revoke_token("token-123")
 
-        # Verify results
-        assert result is True
-        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:valid-token")
+        mock_redis_dependencies.eval.assert_called_once()
+        assert mock_redis_dependencies.eval.call_args.args[1:6] == (
+            4,
+            "member_invite:{invitation}:current:workspace-123:account-123",
+            "member_invite:{invitation}:token:token-123",
+            "member_invite:{invitation}:workspace:workspace-123",
+            "member_invite:{invitation}:account:account-123",
+        )
+        mock_redis_dependencies.delete.assert_not_called()
 
-    def test_is_valid_invite_token_invalid(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test checking invalid invite token."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = None
+    def test_invalidate_member_invitation_deletes_token_pointer_and_indexes(
+        self, mock_redis_dependencies: MagicMock
+    ) -> None:
+        mock_redis_dependencies.get.return_value = b"token-123"
+        mock_redis_dependencies.eval.return_value = 1
 
-        # Execute test
-        result = RegisterService.is_valid_invite_token("invalid-token")
+        RegisterService.invalidate_member_invitation("workspace-123", "account-123")
 
-        # Verify results
-        assert result is False
-        mock_redis_dependencies.get.assert_called_once_with("member_invite:token:invalid-token")
+        mock_redis_dependencies.eval.assert_called_once()
 
-    def test_revoke_token_with_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test revoking token with workspace ID and email."""
-        # Execute test
-        RegisterService.revoke_token("workspace-123", "test@example.com", "token-123")
+    def test_list_for_workspace_returns_current_invitations_and_cleans_stale_index(
+        self, mock_redis_dependencies: MagicMock
+    ) -> None:
+        mock_redis_dependencies.hgetall.return_value = {
+            b"account-123": b"current-token",
+            b"stale-account": b"stale-token",
+        }
+        invitation: InvitationData = {
+            "account_id": "account-123",
+            "email": "invitee@example.com",
+            "workspace_id": "workspace-123",
+            "role": "admin",
+            "inviter_id": "inviter-123",
+        }
+        with patch.object(RegisterService, "get_invitation_by_token", side_effect=[invitation, None]):
+            result = RegisterService.list_for_workspace("workspace-123")
 
-        # Verify results
-        mock_redis_dependencies.delete.assert_called_once()
-        call_args = mock_redis_dependencies.delete.call_args
-        assert "workspace-123" in call_args[0][0]
-        # The email is hashed, so we check for the hash pattern instead
-        assert "member_invite_token:" in call_args[0][0]
+        assert result == (
+            WorkspaceInvitationRecord(
+                account_id="account-123",
+                email="invitee@example.com",
+                legacy_role="admin",
+            ),
+        )
+        mock_redis_dependencies.eval.assert_called_once()
 
-    def test_revoke_token_without_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test revoking token without workspace ID and email."""
-        # Execute test
-        RegisterService.revoke_token("", "", "token-123")
+    def test_current_invitation_rejects_superseded_pointer(self) -> None:
+        invitation: InvitationData = {
+            "account_id": "account-123",
+            "email": "invitee@example.com",
+            "workspace_id": "workspace-123",
+            "role": "normal",
+            "inviter_id": "inviter-123",
+        }
+        account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="account-123",
+            email="invitee@example.com",
+        )
+        tenant = Tenant(name="Test Workspace")
+        tenant.id = "workspace-123"
+        session = MagicMock(spec=Session)
+        session.get.return_value = tenant
+        with (
+            patch(
+                "services.account_service.account_workspace_membership_mutation_lock",
+                return_value=nullcontext(),
+            ) as lock,
+            patch("services.account_service.session_factory.create_session", return_value=nullcontext(session)),
+            patch(
+                "services.account_service.TenantService.get_membership_eligible_account",
+                return_value=account,
+            ),
+            patch.object(RegisterService, "get_invitation_by_token", return_value=None) as lookup,
+            RegisterService.current_invitation("old-token", invitation) as is_current,
+        ):
+            assert is_current is False
 
-        # Verify results
-        mock_redis_dependencies.delete.assert_called_once_with("member_invite:token:token-123")
+        lock.assert_called_once_with("account-123", "workspace-123")
+        lookup.assert_called_once_with("old-token")
+
+    def test_current_invitation_rejects_closed_account_after_lock(self) -> None:
+        invitation: InvitationData = {
+            "account_id": "account-123",
+            "email": "invitee@example.com",
+            "workspace_id": "workspace-123",
+            "role": "normal",
+            "inviter_id": "inviter-123",
+        }
+        session = MagicMock(spec=Session)
+        session.get.return_value = Tenant(name="Test Workspace")
+        locked = False
+
+        @contextmanager
+        def tracked_lock(*_ids: str) -> Generator[None]:
+            nonlocal locked
+            locked = True
+            yield
+
+        def closed_account(*_args, **_kwargs) -> None:
+            assert locked
+
+        with (
+            patch("services.account_service.account_workspace_membership_mutation_lock", tracked_lock),
+            patch("services.account_service.session_factory.create_session", return_value=nullcontext(session)),
+            patch(
+                "services.account_service.TenantService.get_membership_eligible_account",
+                side_effect=closed_account,
+            ),
+            patch.object(RegisterService, "get_invitation_by_token") as lookup,
+            RegisterService.current_invitation("token", invitation) as is_current,
+        ):
+            assert is_current is False
+
+        lookup.assert_not_called()
 
     # ==================== Invitation Validation Tests ====================
 
@@ -2569,7 +3989,7 @@ class TestRegisterService:
             mock_get_invitation_by_token.return_value = invitation_data
 
             result = RegisterService.get_invitation_if_token_valid(
-                tenant.id, "test@example.com", "token-123", session=sqlite_session
+                tenant.id, "Test@Example.com", "token-123", session=sqlite_session
             )
 
             assert result is not None
@@ -2592,6 +4012,36 @@ class TestRegisterService:
         # Verify results
         assert result is None
 
+    @pytest.mark.parametrize(
+        ("workspace_id", "email"),
+        [("other-tenant", "test@example.com"), ("tenant-456", "other@example.com")],
+    )
+    def test_get_invitation_if_token_valid_rejects_context_mismatch(
+        self,
+        unbound_session: Session,
+        workspace_id: str,
+        email: str,
+    ) -> None:
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+            "role": "normal",
+            "inviter_id": "inviter-789",
+        }
+        with patch(
+            "services.account_service.RegisterService.get_invitation_by_token",
+            return_value=invitation_data,
+        ):
+            result = RegisterService.get_invitation_if_token_valid(
+                workspace_id,
+                email,
+                "token-123",
+                session=unbound_session,
+            )
+
+        assert result is None
+
     def test_get_invitation_if_token_valid_tenant_not_found(
         self, sqlite_session: Session, mock_redis_dependencies: MagicMock
     ) -> None:
@@ -2601,8 +4051,10 @@ class TestRegisterService:
             "account_id": "user-123",
             "email": "test@example.com",
             "workspace_id": "tenant-456",
+            "role": "normal",
+            "inviter_id": "inviter-789",
         }
-        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+        mock_redis_dependencies.get.side_effect = [json.dumps(invitation_data).encode(), b"token-123"]
 
         result = RegisterService.get_invitation_if_token_valid(
             "tenant-456", "test@example.com", "token-123", session=sqlite_session
@@ -2624,8 +4076,10 @@ class TestRegisterService:
             "account_id": "user-123",
             "email": "test@example.com",
             "workspace_id": tenant.id,
+            "role": "normal",
+            "inviter_id": "inviter-789",
         }
-        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+        mock_redis_dependencies.get.side_effect = [json.dumps(invitation_data).encode(), b"token-123"]
 
         result = RegisterService.get_invitation_if_token_valid(
             tenant.id, "test@example.com", "token-123", session=sqlite_session
@@ -2648,8 +4102,10 @@ class TestRegisterService:
             "account_id": "user-123",
             "email": "test@example.com",
             "workspace_id": tenant.id,
+            "role": "normal",
+            "inviter_id": "inviter-789",
         }
-        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+        mock_redis_dependencies.get.side_effect = [json.dumps(invitation_data).encode(), b"token-123"]
 
         result = RegisterService.get_invitation_if_token_valid(
             tenant.id, "test@example.com", "token-123", session=sqlite_session
@@ -2658,76 +4114,63 @@ class TestRegisterService:
         # Verify results
         assert result is None
 
-    def test_get_invitation_with_case_fallback_returns_initial_match(self, sqlite_session: Session) -> None:
-        """Fallback helper should return the initial invitation when present."""
-        invitation = {"workspace_id": "tenant-456"}
+    @pytest.mark.parametrize(
+        "status",
+        [AccountStatus.BANNED, AccountStatus.CLOSED, AccountStatus.UNINITIALIZED],
+    )
+    def test_get_invitation_if_token_valid_rejects_ineligible_account_status(
+        self,
+        sqlite_session: Session,
+        status: AccountStatus,
+    ) -> None:
+        tenant = Tenant(name="Test Workspace")
+        account = Account(name="Test User", email="test@example.com", status=status)
+        sqlite_session.add_all([tenant, account])
+        sqlite_session.commit()
+        invitation_data = {
+            "account_id": account.id,
+            "email": account.email,
+            "workspace_id": tenant.id,
+        }
+
         with patch(
-            "services.account_service.RegisterService.get_invitation_if_token_valid", return_value=invitation
-        ) as mock_get:
-            result = RegisterService.get_invitation_with_case_fallback(
-                "tenant-456", "User@Test.com", "token-123", session=sqlite_session
+            "services.account_service.RegisterService.get_invitation_by_token",
+            return_value=invitation_data,
+        ):
+            result = RegisterService.get_invitation_if_token_valid(
+                tenant.id,
+                account.email,
+                "token-123",
+                session=sqlite_session,
             )
 
-        assert result == invitation
-        mock_get.assert_called_once_with(
-            "tenant-456", "User@Test.com", "token-123", session=mock_get.call_args.kwargs["session"]
-        )
+        assert result is None
 
-    def test_get_invitation_with_case_fallback_retries_with_lowercase(self, sqlite_session: Session) -> None:
-        """Fallback helper should retry with lowercase email when needed."""
-        invitation = {"workspace_id": "tenant-456"}
-        with patch("services.account_service.RegisterService.get_invitation_if_token_valid") as mock_get:
-            mock_get.side_effect = [None, invitation]
-            result = RegisterService.get_invitation_with_case_fallback(
-                "tenant-456", "User@Test.com", "token-123", session=sqlite_session
-            )
-
-        assert result == invitation
-        assert mock_get.call_args_list == [
-            (("tenant-456", "User@Test.com", "token-123"), {"session": mock_get.call_args_list[0].kwargs["session"]}),
-            (("tenant-456", "user@test.com", "token-123"), {"session": mock_get.call_args_list[1].kwargs["session"]}),
-        ]
-
-    # ==================== Helper Method Tests ====================
-
-    def test_get_invitation_token_key(self) -> None:
-        """Test the _get_invitation_token_key helper method."""
-        # Execute test
-        result = RegisterService._get_invitation_token_key("test-token")
-
-        # Verify results
-        assert result == "member_invite:token:test-token"
-
-    def test_get_invitation_by_token_with_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test get_invitation_by_token with workspace ID and email."""
-        # Setup mock
-        mock_redis_dependencies.get.return_value = b"user-123"
-
-        # Execute test
-        result = RegisterService.get_invitation_by_token("token-123", "workspace-456", "test@example.com")
-
-        # Verify results
-        assert result is not None
-        assert result["account_id"] == "user-123"
-        assert result["email"] == "test@example.com"
-        assert result["workspace_id"] == "workspace-456"
-
-    def test_get_invitation_by_token_without_workspace_and_email(self, mock_redis_dependencies: MagicMock) -> None:
-        """Test get_invitation_by_token without workspace ID and email."""
-        # Setup mock
+    def test_get_invitation_by_token_requires_current_pointer(self, mock_redis_dependencies: MagicMock) -> None:
         invitation_data = {
             "account_id": "user-123",
             "email": "test@example.com",
             "workspace_id": "tenant-456",
+            "role": "normal",
+            "inviter_id": "inviter-789",
         }
-        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+        mock_redis_dependencies.get.side_effect = [json.dumps(invitation_data).encode(), b"token-123"]
 
-        # Execute test
         result = RegisterService.get_invitation_by_token("token-123")
 
-        # Verify results
-        assert result is not None
         assert result == invitation_data
+
+    def test_get_invitation_by_token_rejects_superseded_token(self, mock_redis_dependencies: MagicMock) -> None:
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+            "role": "normal",
+            "inviter_id": "inviter-789",
+        }
+        mock_redis_dependencies.get.side_effect = [json.dumps(invitation_data).encode(), b"newer-token"]
+
+        assert RegisterService.get_invitation_by_token("old-token") is None
 
     def test_get_invitation_by_token_no_data(self, mock_redis_dependencies: MagicMock) -> None:
         """Test get_invitation_by_token with no data."""
@@ -2820,40 +4263,6 @@ class TestSessionInjectedGetters:
 
     def test_account_belongs_to_tenant_false_when_no_join(self, sqlite_session: Session) -> None:
         assert TenantService.account_belongs_to_tenant("user-1", "tenant-1", session=sqlite_session) is False
-
-    def test_get_account_memberships_returns_join_tenant_pairs(self, sqlite_session: Session) -> None:
-        """Returns every ``(TenantAccountJoin, Tenant)`` pair for an account."""
-        tenant = Tenant(name="Joined Workspace")
-        other_tenant = Tenant(name="Other Workspace")
-        sqlite_session.add_all([tenant, other_tenant])
-        sqlite_session.flush()
-        join = self._add_tenant_account_join(sqlite_session, tenant, "user-123", TenantAccountRole.NORMAL, current=True)
-        self._add_tenant_account_join(sqlite_session, other_tenant, "other-user", TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        out = TenantService.get_account_memberships("user-123", session=sqlite_session)
-
-        assert len(out) == 1
-        assert out[0][0] is join
-        assert out[0][1] is tenant
-
-    def test_get_workspaces_for_account_uses_session_execute(self, sqlite_session: Session) -> None:
-        """The list endpoint orders by ``Tenant.created_at``; the helper
-        returns ``(Tenant, TenantAccountJoin)`` rows in that order.
-        """
-        newer_tenant = Tenant(name="Newer Workspace")
-        older_tenant = Tenant(name="Older Workspace")
-        sqlite_session.add_all([newer_tenant, older_tenant])
-        sqlite_session.flush()
-        newer_tenant.created_at = datetime(2026, 1, 2, 0, 0, 0)
-        older_tenant.created_at = datetime(2026, 1, 1, 0, 0, 0)
-        newer_join = self._add_tenant_account_join(sqlite_session, newer_tenant, "user-123", TenantAccountRole.ADMIN)
-        older_join = self._add_tenant_account_join(sqlite_session, older_tenant, "user-123", TenantAccountRole.NORMAL)
-        sqlite_session.commit()
-
-        out = TenantService.get_workspaces_for_account("user-123", session=sqlite_session)
-
-        assert [(row[0], row[1]) for row in out] == [(older_tenant, older_join), (newer_tenant, newer_join)]
 
     def test_get_tenant_by_id_is_plain_session_get(self, sqlite_session_factory: sessionmaker[Session]) -> None:
         """``get_tenant_by_id`` must NOT apply a status filter — the

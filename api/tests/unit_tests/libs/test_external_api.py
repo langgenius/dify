@@ -8,6 +8,7 @@ from core.plugin.impl.exc import PluginRuntimeError
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from libs.rate_limit import _BearerRateLimited
+from services.errors.enterprise import EnterpriseAPIError, EnterpriseServiceError
 
 
 def _create_api_app():
@@ -29,6 +30,16 @@ def _create_api_app():
     class ValErr(Resource):
         def get(self):
             raise ValueError("boom")
+
+    @api.route("/enterprise-error")
+    class EnterpriseError(Resource):
+        def get(self):
+            raise EnterpriseAPIError("RBAC unavailable", status_code=503)
+
+    @api.route("/enterprise-error-without-status")
+    class EnterpriseErrorWithoutStatus(Resource):
+        def get(self):
+            raise EnterpriseServiceError("RBAC unavailable")
 
     @api.route("/quota")
     class Quota(Resource):
@@ -104,6 +115,30 @@ def test_external_api_error_handlers_basic_paths():
     res = client.get("/api/general")
     assert res.status_code == 500
     assert res.get_json()["status"] == 500
+
+
+def test_external_api_preserves_enterprise_error_status():
+    client = _create_api_app().test_client()
+
+    res = client.get("/api/enterprise-error")
+
+    assert res.status_code == 503
+    assert res.get_json() == {
+        "code": "enterprise_api_error",
+        "message": "RBAC unavailable",
+        "status": 503,
+    }
+
+
+def test_external_api_defaults_enterprise_error_to_bad_gateway():
+    res = _create_api_app().test_client().get("/api/enterprise-error-without-status")
+
+    assert res.status_code == 502
+    assert res.get_json() == {
+        "code": "enterprise_service_error",
+        "message": "RBAC unavailable",
+        "status": 502,
+    }
 
 
 def test_external_api_json_message_and_bad_request_rewrite():

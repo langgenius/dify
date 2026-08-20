@@ -1,5 +1,6 @@
 from typing import cast
 
+import pytest
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
@@ -22,13 +23,15 @@ def _persist_invitation_state(session: Session) -> tuple[Account, Tenant]:
 
 def _invitation() -> AccountInvitation:
     return AccountInvitation(
+        token="token-1",
         account_id="account-1",
         account_email="invitee@example.com",
         account_status="pending",
         workspace_id="workspace-1",
         workspace_name="Workspace",
         role="admin",
-        requires_setup=True,
+        inviter_id="inviter-1",
+        rbac_role_id="role-1",
     )
 
 
@@ -43,11 +46,13 @@ class TestResolveInvitation:
 
         result = repository.resolve(
             InvitationToken(
+                token="token-1",
                 account_id="account-1",
                 email="invitee@example.com",
                 workspace_id="workspace-1",
                 role="admin",
-                requires_setup=True,
+                inviter_id="inviter-1",
+                rbac_role_id="role-1",
             )
         )
 
@@ -63,9 +68,12 @@ class TestResolveInvitation:
 
         result = repository.resolve(
             InvitationToken(
+                token="token-1",
                 account_id="different-account",
                 email="invitee@example.com",
                 workspace_id="workspace-1",
+                role="admin",
+                inviter_id="inviter-1",
             )
         )
 
@@ -78,7 +86,15 @@ class TestPersistActivation:
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        _persist_invitation_state(sqlite_session)
+        account, tenant = _persist_invitation_state(sqlite_session)
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.ADMIN,
+            )
+        )
+        sqlite_session.commit()
         repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
         statements: list[ClauseElement] = []
 
@@ -87,11 +103,11 @@ class TestPersistActivation:
 
         event.listen(sqlite_session_factory.class_, "do_orm_execute", capture_statement)
         try:
-            result = repository.activate(_invitation(), role="admin", setup=None)
+            result = repository.activate(_invitation(), setup=None, membership_role="admin")
         finally:
             event.remove(sqlite_session_factory.class_, "do_orm_execute", capture_statement)
 
-        assert result is not None
+        assert result is True
         account_selects = [
             str(statement.compile(dialect=postgresql.dialect()))
             for statement in statements
@@ -100,7 +116,7 @@ class TestPersistActivation:
         assert len(account_selects) == 1
         assert "FOR UPDATE" in account_selects[0]
 
-    def test_creates_membership_initializes_account_and_switches_workspace(
+    def test_initializes_account_and_switches_preassigned_membership(
         self,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
@@ -118,17 +134,23 @@ class TestPersistActivation:
                 current=True,
             )
         )
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id="workspace-1",
+                account_id=account.id,
+                role=TenantAccountRole.ADMIN,
+            )
+        )
         sqlite_session.commit()
         repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
 
         result = repository.activate(
             _invitation(),
-            role="admin",
             setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
+            membership_role="admin",
         )
 
-        assert result is not None
-        assert result.membership_created is True
+        assert result is True
         sqlite_session.expire_all()
         persisted_account = sqlite_session.get(Account, "account-1")
         assert persisted_account is not None
@@ -150,29 +172,146 @@ class TestPersistActivation:
         ]
         assert memberships[0].last_opened_at is not None
 
-    def test_keeps_existing_membership_role(
+    def test_active_account_replay_keeps_profile_role_and_current_workspace(
         self,
         sqlite_session: Session,
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
         account, tenant = _persist_invitation_state(sqlite_session)
+        other_tenant = Tenant(name="Other Workspace")
+        other_tenant.id = "workspace-2"
+        sqlite_session.add(other_tenant)
+        sqlite_session.flush()
         sqlite_session.add(
             TenantAccountJoin(
                 tenant_id=tenant.id,
                 account_id=account.id,
                 role=TenantAccountRole.EDITOR,
+                invited_by="original-inviter",
+            )
+        )
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=other_tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+                current=True,
             )
         )
         account.status = AccountStatus.ACTIVE
         sqlite_session.commit()
         repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
 
-        result = repository.activate(_invitation(), role="admin", setup=None)
+        result = repository.activate(
+            _invitation(),
+            setup=AccountSetup(name="Stale Name", interface_language="zh-Hans", timezone="Asia/Shanghai"),
+            membership_role="admin",
+        )
 
-        assert result is not None
-        assert result.membership_created is False
+        assert result is True
+        sqlite_session.expire_all()
+        memberships = sqlite_session.scalars(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.account_id == account.id)
+            .order_by(TenantAccountJoin.tenant_id)
+        ).all()
+        assert [(membership.tenant_id, membership.role, membership.current) for membership in memberships] == [
+            (tenant.id, TenantAccountRole.EDITOR, False),
+            (other_tenant.id, TenantAccountRole.NORMAL, True),
+        ]
+        assert memberships[0].invited_by == "original-inviter"
+        assert memberships[0].last_opened_at is None
+        persisted_account = sqlite_session.get(Account, account.id)
+        assert persisted_account is not None
+        assert persisted_account.name == "Invited"
+        assert persisted_account.interface_language is None
+        assert persisted_account.timezone is None
+        assert persisted_account.initialized_at is None
+
+    @pytest.mark.parametrize(
+        "account_status",
+        [AccountStatus.BANNED, AccountStatus.CLOSED, AccountStatus.UNINITIALIZED],
+    )
+    def test_rejects_non_activatable_account_without_mutation(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        account_status: AccountStatus,
+    ) -> None:
+        account, tenant = _persist_invitation_state(sqlite_session)
+        account.status = account_status
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.EDITOR,
+                current=False,
+            )
+        )
+        sqlite_session.commit()
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.activate(
+            _invitation(),
+            setup=AccountSetup(name="Stale Name", interface_language="zh-Hans", timezone="Asia/Shanghai"),
+            membership_role="admin",
+        )
+
+        assert result is False
+        sqlite_session.expire_all()
+        persisted_account = sqlite_session.get(Account, account.id)
+        assert persisted_account is not None
+        assert persisted_account.status == account_status
+        assert persisted_account.name == "Invited"
+        assert persisted_account.interface_language is None
+        assert persisted_account.timezone is None
+        assert persisted_account.initialized_at is None
+        membership = sqlite_session.scalar(select(TenantAccountJoin))
+        assert membership is not None
+        assert membership.current is False
+        assert membership.last_opened_at is None
+
+    def test_creates_membership_and_activation_atomically(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, _ = _persist_invitation_state(sqlite_session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.activate(
+            _invitation(),
+            setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
+            membership_role="admin",
+        )
+
+        assert result is True
         sqlite_session.expire_all()
         membership = sqlite_session.scalar(select(TenantAccountJoin))
         assert membership is not None
-        assert membership.role == TenantAccountRole.EDITOR
+        assert membership.role == TenantAccountRole.ADMIN
+        assert membership.invited_by == "inviter-1"
         assert membership.current is True
+        persisted_account = sqlite_session.get(Account, account.id)
+        assert persisted_account is not None
+        assert persisted_account.status == AccountStatus.ACTIVE
+        assert persisted_account.name == "John Doe"
+
+    def test_rejects_stale_account_snapshot_without_creating_membership(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        account, _ = _persist_invitation_state(sqlite_session)
+        account.email = "changed@example.com"
+        sqlite_session.commit()
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+
+        result = repository.activate(
+            _invitation(),
+            setup=AccountSetup(name="John Doe", interface_language="en-US", timezone="UTC"),
+            membership_role="admin",
+        )
+
+        assert result is False
+        assert sqlite_session.scalar(select(TenantAccountJoin)) is None

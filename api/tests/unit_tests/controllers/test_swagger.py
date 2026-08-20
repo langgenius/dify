@@ -612,7 +612,7 @@ def test_console_member_invite_documents_bad_request_response(monkeypatch: pytes
     assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
         "properties": {
             "code": {
-                "enum": ["invalid_param", "invalid_role", "limit_exceeded"],
+                "enum": ["invalid_param", "invalid_role"],
                 "title": "Code",
                 "type": "string",
             },

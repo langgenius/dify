@@ -60,7 +60,6 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
@@ -539,7 +538,6 @@ class DatasetListApi(DatasetApiResource):
                     dataset.id,
                     ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
                 )
-                initialize_created_app_rbac_access_task.delay(tenant_id, current_user.id, dataset_id=dataset.id)
             else:
                 RBACService.DatasetAccess.replace_whitelist(
                     tenant_id,

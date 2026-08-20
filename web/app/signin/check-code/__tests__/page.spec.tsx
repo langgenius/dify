@@ -252,6 +252,31 @@ describe('CheckCode', () => {
     expect(turnstileMocks.render).not.toHaveBeenCalled()
   })
 
+  it('keeps the invitation token in the email-code login request', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    navigationMocks.searchParams = new URLSearchParams({
+      email: 'user@example.com',
+      invite_token: 'invite-token',
+      token: 'email-login-token',
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    expect(emailLoginWithCode).toHaveBeenCalledWith(
+      expect.objectContaining({ invite_token: 'invite-token' }),
+    )
+    expect(navigationMocks.replace).toHaveBeenCalledWith(
+      '/signin/invite-settings?email=user%40example.com&invite_token=invite-token&token=email-login-token',
+    )
+  })
+
   it('does not resend while verification is in progress', async () => {
     const user = userEvent.setup()
     const queryClient = createQueryClient()

@@ -21,7 +21,7 @@ function makeRegistry(): Registry {
   const reg = Registry.empty('file')
   reg.upsert('cloud.dify.ai', 'tester@dify.ai', {
     account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Tester' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+    workspace: { id: 'ws-1', name: 'Default', roles: [{ id: 'owner', name: 'Owner' }] },
   })
   reg.setHost('cloud.dify.ai')
   reg.setAccount('tester@dify.ai')
@@ -38,7 +38,7 @@ function makeDetail(over: Partial<WorkspaceDetailResponse> = {}): WorkspaceDetai
   return {
     id: '00000000-0000-0000-0000-000000000002',
     name: 'Two',
-    role: 'owner',
+    roles: [{ id: 'owner', name: 'Owner' }],
     status: 'normal',
     current: true,
     created_at: '2026-05-18T00:00:00Z',
@@ -57,11 +57,17 @@ function fakeClient(opts: {
         (() =>
           Promise.resolve({
             workspaces: [
-              { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
+              {
+                id: 'ws-1',
+                name: 'Default',
+                roles: [{ id: 'owner', name: 'Owner' }],
+                status: 'normal',
+                current: true,
+              },
               {
                 id: '00000000-0000-0000-0000-000000000002',
                 name: 'Two',
-                role: 'owner',
+                roles: [{ id: 'owner', name: 'Owner' }],
                 status: 'normal',
                 current: false,
               },
@@ -103,7 +109,7 @@ describe('runUseWorkspace', () => {
     expect(activeCtx?.ctx.workspace).toEqual({
       id: '00000000-0000-0000-0000-000000000002',
       name: 'Two',
-      role: 'owner',
+      roles: [{ id: 'owner', name: 'Owner' }],
     })
     expect(
       (activeCtx?.ctx as Record<string, unknown> | undefined)?.available_workspaces,
@@ -173,7 +179,7 @@ describe('runUseWorkspace', () => {
     selectFromListMock.mockResolvedValue({
       id: '00000000-0000-0000-0000-000000000002',
       name: 'Two',
-      role: 'owner',
+      roles: [{ id: 'owner', name: 'Owner' }],
     })
 
     await runUseWorkspace(
@@ -185,8 +191,12 @@ describe('runUseWorkspace', () => {
     expect(selectFromListMock).toHaveBeenCalledOnce()
     const passed = selectFromListMock.mock.calls[0]![0]
     expect(passed.items).toEqual([
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: '00000000-0000-0000-0000-000000000002', name: 'Two', role: 'owner' },
+      { id: 'ws-1', name: 'Default', roles: [{ id: 'owner', name: 'Owner' }] },
+      {
+        id: '00000000-0000-0000-0000-000000000002',
+        name: 'Two',
+        roles: [{ id: 'owner', name: 'Owner' }],
+      },
     ])
     expect(client.switch).toHaveBeenCalledExactlyOnceWith('00000000-0000-0000-0000-000000000002')
 

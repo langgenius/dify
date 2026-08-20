@@ -36,7 +36,7 @@ from core.tools.signature import bind_file_uri, get_signed_file_uri_for_plugin
 from extensions.ext_database import db
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import length_prefixed_response
-from models import Account, Tenant
+from models import Account, Tenant, TenantStatus
 from models.model import EndUser
 from services.file_request_service import FileRequestService
 
@@ -464,7 +464,7 @@ class PluginDownloadFileRequestApi(Resource):
         the existing backward-invocation envelope.
         """
         tenant_model = db.session.get(Tenant, payload.tenant_id)
-        if tenant_model is None:
+        if tenant_model is None or tenant_model.status != TenantStatus.NORMAL:
             raise ValueError("tenant not found")
 
         result = FileRequestService().request_download(

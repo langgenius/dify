@@ -8,7 +8,9 @@ function active(workspaceId?: string): ActiveContext {
     email: 'e',
     ctx: {
       account: { id: '', email: 'e', name: '' },
-      workspace: workspaceId ? { id: workspaceId, name: 'W', role: 'owner' } : undefined,
+      workspace: workspaceId
+        ? { id: workspaceId, name: 'W', roles: [{ id: 'owner', name: 'Owner' }] }
+        : undefined,
     },
   }
 }

@@ -29,7 +29,7 @@ import {
   assertNoAnsi,
   assertPipeFriendlyJson,
 } from '../../helpers/assert.js'
-import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { injectSsoAuth, run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -309,22 +309,7 @@ describe('E2E / agent skill — get app -o json (auth required)', () => {
   itWithSso('[P0] [SSO] dfoe_ get app -o json → permitted-apps list envelope', async () => {
     const tc = await withTempConfig()
     try {
-      const { mkdir, writeFile } = await import('node:fs/promises')
-      const { join } = await import('node:path')
-      await mkdir(tc.configDir, { recursive: true })
-      await writeFile(
-        join(tc.configDir, 'hosts.yml'),
-        `${[
-          `current_host: ${E.host}`,
-          'token_storage: file',
-          'tokens:',
-          `  bearer: ${E.ssoToken}`,
-          'external_subject:',
-          '  email: sso@example.com',
-          '  issuer: https://issuer.example.com',
-        ].join('\n')}\n`,
-        { mode: 0o600 },
-      )
+      await injectSsoAuth(tc.configDir, { host: E.host, bearer: E.ssoToken })
       const r = await run(['get', 'app', '-o', 'json'], { configDir: tc.configDir })
       assertExitCode(r, 0)
       const parsed = assertJson<{ data: unknown[] }>(r)

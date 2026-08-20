@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import click
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -74,91 +73,63 @@ def _iter_tenant_member_batches(
 ) -> Iterator[tuple[str, str, list[tuple[str, str]]]]:
     """Yield legacy member roles in tenant-scoped API-sized batches.
 
-    Rows are projected to primitive values and streamed from the database, so
-    the command never materializes every TenantAccountJoin ORM object. The
-    iterator only keeps one tenant's API-sized batches in memory while it
-    finds that tenant's owner account.
+    Each database page is materialized in a short session before yielding so
+    RBAC requests never hold a database connection or transaction open.
     """
-    with session_factory.create_session() as session:
-        stmt = (
-            select(TenantAccountJoin.tenant_id, TenantAccountJoin.account_id, TenantAccountJoin.role)
-            .order_by(TenantAccountJoin.tenant_id.asc(), TenantAccountJoin.id.asc())
-            .execution_options(yield_per=db_batch_size)
-        )
-        if tenant_id:
-            stmt = stmt.where(TenantAccountJoin.tenant_id == tenant_id)
-
-        current_tenant_id: str | None = None
-        owner_account_id: str | None = None
-        batches: list[list[tuple[str, str]]] = []
-        batch: list[tuple[str, str]] = []
-
-        def flush_current_tenant() -> Iterator[tuple[str, str, list[tuple[str, str]]]]:
+    last_tenant_id: str | None = None
+    while True:
+        with session_factory.create_session() as session:
+            tenant_stmt = select(TenantAccountJoin.tenant_id).order_by(TenantAccountJoin.tenant_id).limit(1)
+            if tenant_id:
+                tenant_stmt = tenant_stmt.where(TenantAccountJoin.tenant_id == tenant_id)
+            elif last_tenant_id is not None:
+                tenant_stmt = tenant_stmt.where(TenantAccountJoin.tenant_id > last_tenant_id)
+            current_tenant_id = session.scalar(tenant_stmt)
             if current_tenant_id is None:
                 return
-            if batch:
-                batches.append(batch.copy())
-            if not owner_account_id:
-                raise ValueError(f"Workspace owner not found for tenant={current_tenant_id}")
-            for item in batches:
-                yield current_tenant_id, owner_account_id, item
+            owner_account_id = session.scalar(
+                select(TenantAccountJoin.account_id)
+                .where(
+                    TenantAccountJoin.tenant_id == current_tenant_id,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+                .limit(1)
+            )
+        if owner_account_id is None:
+            raise ValueError(f"Workspace owner not found for tenant={current_tenant_id}")
 
-        for row in session.execute(stmt):
-            workspace_id = str(row.tenant_id)
-            if current_tenant_id is not None and workspace_id != current_tenant_id:
-                yield from flush_current_tenant()
-                owner_account_id = None
-                batches = []
-                batch = []
-            current_tenant_id = workspace_id
-            account_id = str(row.account_id)
-            role = str(row.role)
-            if role == TenantAccountRole.OWNER.value:
-                owner_account_id = account_id
-            batch.append((account_id, role))
-            if len(batch) >= api_batch_size:
-                batches.append(batch)
-                batch = []
+        last_join_id: str | None = None
+        batch: list[tuple[str, str]] = []
+        while True:
+            with session_factory.create_session() as session:
+                member_stmt = (
+                    select(TenantAccountJoin.id, TenantAccountJoin.account_id, TenantAccountJoin.role)
+                    .where(TenantAccountJoin.tenant_id == current_tenant_id)
+                    .order_by(TenantAccountJoin.id)
+                    .limit(db_batch_size)
+                )
+                if last_join_id is not None:
+                    member_stmt = member_stmt.where(TenantAccountJoin.id > last_join_id)
+                rows = list(session.execute(member_stmt))
+            if not rows:
+                break
 
-        yield from flush_current_tenant()
+            for row in rows:
+                batch.append((str(row.account_id), str(row.role)))
+                if len(batch) == api_batch_size:
+                    yield str(current_tenant_id), str(owner_account_id), batch
+                    batch = []
+            last_join_id = str(rows[-1].id)
+
+        if batch:
+            yield str(current_tenant_id), str(owner_account_id), batch
+        if tenant_id:
+            return
+        last_tenant_id = str(current_tenant_id)
 
 
 def _member_already_has_role(current_roles_by_account_id: dict[str, set[str]], account_id: str, role_id: str) -> bool:
     return current_roles_by_account_id.get(account_id) == {role_id}
-
-
-def _replace_member_role(
-    tenant_id: str,
-    operator_account_id: str,
-    member_account_id: str,
-    role_id: str,
-    *,
-    session: Session,
-) -> str:
-    RBACService.MemberRoles.replace(
-        tenant_id=tenant_id,
-        account_id=operator_account_id,
-        member_account_id=member_account_id,
-        role_ids=[role_id],
-        session=session,
-    )
-    return member_account_id
-
-
-def _replace_member_role_with_new_session(
-    tenant_id: str,
-    operator_account_id: str,
-    member_account_id: str,
-    role_id: str,
-) -> str:
-    with session_factory.create_session() as session:
-        return _replace_member_role(
-            tenant_id=tenant_id,
-            operator_account_id=operator_account_id,
-            member_account_id=member_account_id,
-            role_id=role_id,
-            session=session,
-        )
 
 
 @click.command(
@@ -235,25 +206,23 @@ def migrate_member_roles_to_rbac(
 
         if replace_jobs:
             if workers == 1:
-                with session_factory.create_session() as session:
-                    for member_account_id, resolved_role_id in replace_jobs:
-                        _replace_member_role(
-                            workspace_id,
-                            owner_account_id,
-                            member_account_id,
-                            resolved_role_id,
-                            session=session,
-                        )
-                        migrated_count += 1
+                for member_account_id, resolved_role_id in replace_jobs:
+                    RBACService.MemberRoles.replace(
+                        workspace_id,
+                        owner_account_id,
+                        member_account_id,
+                        [resolved_role_id],
+                    )
+                    migrated_count += 1
             else:
                 with ThreadPoolExecutor(max_workers=workers) as executor:
                     futures = [
                         executor.submit(
-                            _replace_member_role_with_new_session,
+                            RBACService.MemberRoles.replace,
                             workspace_id,
                             owner_account_id,
                             member_account_id,
-                            resolved_role_id,
+                            [resolved_role_id],
                         )
                         for member_account_id, resolved_role_id in replace_jobs
                     ]

@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Invitation sent, and they can sign in to Dify to access your team data.",
   "members.invite": "Add",
   "members.inviteFailed": "Invitations could not be sent. Try again.",
-  "members.inviteLimitExceeded": "There are not enough member seats for these invitations.",
   "members.inviteTeamMember": "Add team member",
   "members.inviteTeamMemberTip": "They can access your team data directly after signing in.",
   "members.invitedAsRole": "Invited as {{role}}",

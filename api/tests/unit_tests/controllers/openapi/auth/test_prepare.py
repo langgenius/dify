@@ -142,12 +142,12 @@ class TestLoadTenant:
 
         assert data.tenant is tenant
 
-    @pytest.mark.parametrize("persist_archived", [True, False])
-    def test_rejects_archived_or_missing_tenant(self, sqlite_session: Session, persist_archived: bool) -> None:
+    @pytest.mark.parametrize("tenant_status", [None, TenantStatus.ARCHIVE, TenantStatus.PROVISIONING])
+    def test_rejects_unavailable_tenant(self, sqlite_session: Session, tenant_status: TenantStatus | None) -> None:
         app = _app()
         models: list[object] = [app]
-        if persist_archived:
-            models.append(_tenant(status=TenantStatus.ARCHIVE))
+        if tenant_status is not None:
+            models.append(_tenant(status=tenant_status))
         _persist(sqlite_session, *models)
 
         with pytest.raises(Forbidden, match="workspace unavailable"):
@@ -196,6 +196,12 @@ class TestLoadAccount:
         assert data.caller is account
 
     def test_rejects_missing_account(self) -> None:
+        with pytest.raises(Unauthorized, match="account not found"):
+            load_account(_make_auth_data(account_id=uuid.UUID(ACCOUNT_ID)))
+
+    def test_rejects_closed_account(self, sqlite_session: Session) -> None:
+        _persist(sqlite_session, _account(status=AccountStatus.CLOSED))
+
         with pytest.raises(Unauthorized, match="account not found"):
             load_account(_make_auth_data(account_id=uuid.UUID(ACCOUNT_ID)))
 
@@ -288,8 +294,8 @@ class TestLoadTenantFromRequest:
             with app.test_request_context("/test"), pytest.raises(NotFound, match="workspace not found"):
                 load_tenant_from_request(_make_auth_data(path_params=path_params))
 
-    @pytest.mark.parametrize("tenant_status", [None, TenantStatus.ARCHIVE])
-    def test_rejects_missing_or_archived_tenant(
+    @pytest.mark.parametrize("tenant_status", [None, TenantStatus.ARCHIVE, TenantStatus.PROVISIONING])
+    def test_rejects_unavailable_tenant(
         self,
         app: Flask,
         sqlite_session: Session,

@@ -143,7 +143,7 @@ class TestTenantListApi:
         )
         plans = MagicMock()
         plans.resolve_many.return_value = {"workspace-1": CloudPlan.TEAM}
-        workspace_queries = WorkspaceQueryService(workspaces=workspaces, plans=plans)
+        workspace_queries = WorkspaceQueryService(workspaces=workspaces, plans=plans, roles=MagicMock())
         application_services_mock = SimpleNamespace(workspace_queries=workspace_queries)
 
         with patch(

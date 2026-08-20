@@ -44,7 +44,9 @@ from controllers.openapi._models import (
     DevicePollRequest,
     DeviceTokenResponse,
     WorkspacePayload,
+    WorkspaceRoleResponse,
 )
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import extract_remote_ip
@@ -56,7 +58,6 @@ from libs.rate_limit import (
     rate_limit,
 )
 from models import Account
-from services.account_service import TenantService
 from services.oauth_device_flow import (
     ACCOUNT_ISSUER_SENTINEL,
     DEFAULT_POLL_INTERVAL_SECONDS,
@@ -245,12 +246,17 @@ class DeviceApproveApi(Resource):
                 )
             except MintPolicyViolation as e:
                 raise BadRequest(description=str(e)) from None
+            account_id = str(account.id)
+            account_email = account.email
+            account_name = account.name
+            db.session.remove()
+            workspaces, default_workspace_id = _account_workspaces(account_id, tenant)
             ttl_days = oauth_ttl_days(tenant_id=tenant)
             mint = mint_oauth_token(
                 redis_client,
-                subject_email=account.email,
+                subject_email=account_email,
                 subject_issuer=ACCOUNT_ISSUER_SENTINEL,
-                account_id=str(account.id),
+                account_id=account_id,
                 client_id=state.client_id,
                 device_label=state.device_label,
                 prefix=profile.prefix,
@@ -258,12 +264,19 @@ class DeviceApproveApi(Resource):
                 session=db.session(),
             )
 
-            poll_payload = _build_account_poll_payload(account, tenant, mint)
+            poll_payload = _build_account_poll_payload(
+                account_id,
+                account_email,
+                account_name,
+                mint,
+                workspaces,
+                default_workspace_id,
+            )
             try:
                 store.approve(
                     device_code,
-                    subject_email=account.email,
-                    account_id=str(account.id),
+                    subject_email=account_email,
+                    account_id=account_id,
                     subject_issuer=ACCOUNT_ISSUER_SENTINEL,
                     minted_token=mint.token,
                     token_id=str(mint.token_id),
@@ -277,7 +290,7 @@ class DeviceApproveApi(Resource):
         finally:
             redis_client.delete(guard_key)
 
-        _emit_approve_audit(state, account, tenant, mint)
+        _emit_approve_audit(state, account_id, account_email, tenant, mint)
         return {"status": "approved"}, 200
 
 
@@ -341,38 +354,49 @@ def _audit_cross_ip_if_needed(state) -> None:
         )
 
 
-def _build_account_poll_payload(account, tenant, mint) -> PollPayload:
-    rows = TenantService.get_workspaces_for_account(str(account.id), session=db.session())
-    workspaces = [WorkspacePayload(id=str(t.id), name=t.name, role=getattr(m, "role", "")) for t, m in rows]
-    # Prefer active session tenant → DB-flagged current join → first membership.
-    default_ws_id = None
-    if tenant and any(w.id == str(tenant) for w in workspaces):
-        default_ws_id = str(tenant)
-    if default_ws_id is None:
-        for _t, m in rows:
-            if getattr(m, "current", False):
-                default_ws_id = str(m.tenant_id)
-                break
-    if default_ws_id is None and workspaces:
-        default_ws_id = workspaces[0].id
+def _account_workspaces(account_id: str, tenant_id: str | None) -> tuple[list[WorkspacePayload], str | None]:
+    summaries = application_services().workspace_queries.list_for_account_with_roles(account_id)
+    workspaces = [
+        WorkspacePayload(
+            id=workspace.id,
+            name=workspace.name or "",
+            roles=[WorkspaceRoleResponse(id=role.id, name=role.name) for role in workspace.roles],
+        )
+        for workspace in summaries
+    ]
+    default_workspace_id = tenant_id if tenant_id and any(item.id == tenant_id for item in workspaces) else None
+    if default_workspace_id is None:
+        default_workspace_id = next((workspace.id for workspace in summaries if workspace.current), None)
+    if default_workspace_id is None and workspaces:
+        default_workspace_id = workspaces[0].id
+    return workspaces, default_workspace_id
 
+
+def _build_account_poll_payload(
+    account_id: str,
+    account_email: str,
+    account_name: str,
+    mint,
+    workspaces: list[WorkspacePayload],
+    default_workspace_id: str | None,
+) -> PollPayload:
     payload: PollPayload = {
         "token": mint.token,
         "expires_at": mint.expires_at.isoformat(),
         "subject_type": SubjectType.ACCOUNT,
-        "account": AccountPayload(id=str(account.id), email=account.email, name=account.name).model_dump(mode="json"),
+        "account": AccountPayload(id=account_id, email=account_email, name=account_name).model_dump(mode="json"),
         "workspaces": [w.model_dump(mode="json") for w in workspaces],
-        "default_workspace_id": default_ws_id,
+        "default_workspace_id": default_workspace_id,
         "token_id": str(mint.token_id),
     }
     return payload
 
 
-def _emit_approve_audit(state, account, tenant, mint) -> None:
+def _emit_approve_audit(state, account_id: str, account_email: str, tenant, mint) -> None:
     logger.warning(
         "audit: oauth.device_flow_approved token_id=%s subject=%s client_id=%s device_label=%s rotated=? expires_at=%s",
         mint.token_id,
-        account.email,
+        account_email,
         state.client_id,
         state.device_label,
         mint.expires_at,
@@ -381,8 +405,8 @@ def _emit_approve_audit(state, account, tenant, mint) -> None:
             "event": "oauth.device_flow_approved",
             "token_id": str(mint.token_id),
             "subject_type": SubjectType.ACCOUNT,
-            "subject_email": account.email,
-            "account_id": str(account.id),
+            "subject_email": account_email,
+            "account_id": account_id,
             "tenant_id": tenant,
             "client_id": state.client_id,
             "device_label": state.device_label,

@@ -27,7 +27,13 @@ describe('WorkspacesClient.list', () => {
         200,
         {
           workspaces: [
-            { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', current: true },
+            {
+              id: 'ws-1',
+              name: 'Default',
+              roles: [{ id: 'owner', name: 'Owner' }],
+              status: 'normal',
+              current: true,
+            },
           ],
         },
         cap,

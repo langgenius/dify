@@ -568,7 +568,7 @@ export const zAppVariableConfig = z.object({
  *
  * Stable Agent Soul reference to one config file payload.
  */
-export const zAgentConfigFileRefConfig = z.object({
+export const zAgentConfigFileRefConfig = z.strictObject({
   file_id: z.string().max(255).optional().default(''),
   file_kind: z.enum(['tool_file', 'upload_file']),
   hash: z.string().nullish(),
@@ -583,7 +583,7 @@ export const zAgentConfigFileRefConfig = z.object({
  *
  * Stable Agent Soul reference to one normalized skill archive.
  */
-export const zAgentConfigSkillRefConfig = z.object({
+export const zAgentConfigSkillRefConfig = z.strictObject({
   description: z.string().optional().default(''),
   file_id: z.string().max(255).optional().default(''),
   file_kind: z.literal('tool_file').optional().default('tool_file'),
@@ -625,7 +625,7 @@ export const zAgentComposerBindingResponse = z.object({
  *
  * File-type output metadata. Both lists empty means "any file accepted".
  */
-export const zDeclaredOutputFileConfig = z.object({
+export const zDeclaredOutputFileConfig = z.strictObject({
   extensions: z.array(z.string()).optional(),
   mime_types: z.array(z.string()).optional(),
 })
@@ -651,10 +651,10 @@ export const zDeclaredOutputType = z.enum([
  * are rejected so the runtime type checker and JSON Schema stay easy to reason
  * about. Stage 4 §4.2.
  */
-export const zDeclaredArrayItem = z.object({
+export const zDeclaredArrayItem = z.strictObject({
   children: z
     .array(
-      z.object({
+      z.strictObject({
         array_item: z
           .object({
             children: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -894,7 +894,7 @@ export const zOutputErrorStrategy = z.enum(['default_value', 'fail_branch', 'sto
  *
  * Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
  */
-export const zDeclaredOutputRetryConfig = z.object({
+export const zDeclaredOutputRetryConfig = z.strictObject({
   enabled: z.boolean().optional().default(false),
   max_retries: z.int().gte(0).lte(10).optional().default(0),
   retry_interval_ms: z.int().gte(0).lte(60000).optional().default(0),
@@ -908,7 +908,7 @@ export const zDeclaredOutputRetryConfig = z.object({
  * A single strategy applies to both ``type_check`` and ``output_check`` failures
  * (PRD does not distinguish them at the UX level). Stage 4 §4.4.
  */
-export const zDeclaredOutputFailureStrategy = z.object({
+export const zDeclaredOutputFailureStrategy = z.strictObject({
   default_value: z.unknown().optional(),
   on_failure: zOutputErrorStrategy.optional().default('stop'),
   retry: zDeclaredOutputRetryConfig.optional(),
@@ -1019,7 +1019,7 @@ export const zAgentCliToolConfig = z.object({
 /**
  * AgentComposerKnowledgeDatasetCandidateResponse
  */
-export const zAgentComposerKnowledgeDatasetCandidateResponse = z.object({
+export const zAgentComposerKnowledgeDatasetCandidateResponse = z.strictObject({
   description: z.string().nullish(),
   id: z.string().max(255).nullish(),
   missing: z.boolean().optional().default(false),
@@ -1116,7 +1116,7 @@ export const zAgentSuggestedQuestionsAfterAnswerFeatureConfig = z.object({
 /**
  * AgentKnowledgeDatasetConfig
  */
-export const zAgentKnowledgeDatasetConfig = z.object({
+export const zAgentKnowledgeDatasetConfig = z.strictObject({
   description: z.string().nullish(),
   id: z.string().max(255).nullish(),
   name: z.string().max(255).nullish(),
@@ -1169,7 +1169,7 @@ export const zAgentSoulModelConfig = z.object({
  *
  * Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
  */
-export const zDeclaredOutputCheckConfig = z.object({
+export const zDeclaredOutputCheckConfig = z.strictObject({
   benchmark_file_ref: zAgentFileRefConfig.nullish(),
   enabled: z.boolean().optional().default(false),
   model_ref: zAgentSoulModelConfig.nullish(),
@@ -1185,12 +1185,12 @@ export const zDeclaredOutputCheckConfig = z.object({
  * stage 3), and ``failure_strategy`` defaults to a populated value so runtime
  * code can call ``output.failure_strategy.on_failure`` without None-guards.
  */
-export const zDeclaredOutputConfig = z.object({
+export const zDeclaredOutputConfig = z.strictObject({
   array_item: zDeclaredArrayItem.nullish(),
   check: zDeclaredOutputCheckConfig.nullish(),
   children: z
     .array(
-      z.object({
+      z.strictObject({
         array_item: z
           .object({
             children: z.array(z.record(z.string(), z.unknown())).optional(),
@@ -1219,7 +1219,7 @@ export const zDeclaredOutputConfig = z.object({
 /**
  * WorkflowNodeJobConfig
  */
-export const zWorkflowNodeJobConfig = z.object({
+export const zWorkflowNodeJobConfig = z.strictObject({
   declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   metadata: zWorkflowNodeJobMetadata.optional(),
@@ -1354,7 +1354,7 @@ export const zAgentSoulAppFeaturesConfig = z.object({
 /**
  * AgentKnowledgeModelConfig
  */
-export const zAgentKnowledgeModelConfig = z.object({
+export const zAgentKnowledgeModelConfig = z.strictObject({
   completion_params: z.record(z.string(), z.unknown()).optional(),
   mode: z.string().min(1).max(64),
   name: z.string().min(1).max(255),
@@ -1377,7 +1377,7 @@ export const zAgentKnowledgeQueryMode = z.enum(['generated_query', 'user_query']
  * requiring ``value`` for ``user_query``, is enforced by composer publish
  * validation so draft saves can persist partially configured knowledge sets.
  */
-export const zAgentKnowledgeQueryConfig = z.object({
+export const zAgentKnowledgeQueryConfig = z.strictObject({
   mode: zAgentKnowledgeQueryMode,
   value: z.string().nullish(),
 })
@@ -1385,7 +1385,7 @@ export const zAgentKnowledgeQueryConfig = z.object({
 /**
  * AgentKnowledgeRerankingModelConfig
  */
-export const zAgentKnowledgeRerankingModelConfig = z.object({
+export const zAgentKnowledgeRerankingModelConfig = z.strictObject({
   model: z.string().min(1).max(255),
   provider: z.string().min(1).max(255),
 })
@@ -1409,7 +1409,7 @@ export const zAgentKnowledgeWeightedScoreConfig = z.object({
  * ``multiple`` or a model for ``single``, is enforced by composer publish
  * validation so draft saves can persist partially configured knowledge sets.
  */
-export const zAgentKnowledgeRetrievalConfig = z.object({
+export const zAgentKnowledgeRetrievalConfig = z.strictObject({
   mode: z.enum(['multiple', 'single']),
   model: zAgentKnowledgeModelConfig.nullish(),
   reranking_enable: z.boolean().optional().default(true),
@@ -1431,7 +1431,7 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
  * state but are stripped before building the Agent runtime request, whose
  * DTO only accepts ``name``/``comparison_operator``/``value``.
  */
-export const zAgentKnowledgeMetadataCondition = z.object({
+export const zAgentKnowledgeMetadataCondition = z.strictObject({
   comparison_operator: z.enum([
     '<',
     '=',
@@ -1461,7 +1461,7 @@ export const zAgentKnowledgeMetadataCondition = z.object({
 /**
  * AgentKnowledgeMetadataConditions
  */
-export const zAgentKnowledgeMetadataConditions = z.object({
+export const zAgentKnowledgeMetadataConditions = z.strictObject({
   conditions: z.array(zAgentKnowledgeMetadataCondition).optional(),
   logical_operator: z.enum(['and', 'or']).optional().default('and'),
 })
@@ -1477,7 +1477,7 @@ export const zAgentKnowledgeMetadataConditions = z.object({
  * Mode-dependent completeness is enforced by composer publish validation so
  * draft saves can persist partially configured metadata filters.
  */
-export const zAgentKnowledgeMetadataFilteringConfig = z.object({
+export const zAgentKnowledgeMetadataFilteringConfig = z.strictObject({
   conditions: zAgentKnowledgeMetadataConditions.nullish(),
   mode: z.enum(['automatic', 'disabled', 'manual']).optional().default('disabled'),
   model_config: zAgentKnowledgeModelConfig.nullish(),
@@ -1493,7 +1493,7 @@ export const zAgentKnowledgeMetadataFilteringConfig = z.object({
  * set must contain at least one dataset id even though the overall knowledge
  * section may be empty, which is how callers express "no knowledge layer".
  */
-export const zAgentKnowledgeSetConfig = z.object({
+export const zAgentKnowledgeSetConfig = z.strictObject({
   datasets: z.array(zAgentKnowledgeDatasetConfig),
   description: z.string().nullish(),
   id: z.string().min(1).max(255),
@@ -1514,14 +1514,14 @@ export const zAgentKnowledgeSetConfig = z.object({
  * uniqueness stays case-insensitive because runtime selection addresses sets
  * by name.
  */
-export const zAgentSoulKnowledgeConfig = z.object({
+export const zAgentSoulKnowledgeConfig = z.strictObject({
   sets: z.array(zAgentKnowledgeSetConfig).optional(),
 })
 
 /**
  * AgentSoulConfig
  */
-export const zAgentSoulConfig = z.object({
+export const zAgentSoulConfig = z.strictObject({
   app_features: zAgentSoulAppFeaturesConfig.optional(),
   app_variables: z.array(zAppVariableConfig).optional(),
   config_files: z.array(zAgentConfigFileRefConfig).optional(),

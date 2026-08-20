@@ -16,7 +16,13 @@ import {
   assertNoAnsi,
   assertPipeFriendlyJson,
 } from '../../helpers/assert.js'
-import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import {
+  injectAuth,
+  injectSsoAuth,
+  run,
+  withAuthFixture,
+  withTempConfig,
+} from '../../helpers/cli.js'
 import { withRetry } from '../../helpers/retry.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
@@ -221,21 +227,9 @@ describe('E2E / difyctl get app (list)', () => {
     // A dfoe_ token lists apps via the permitted-external surface
     // (apps:read:permitted-external scope), with no workspace scoping.
     // Uses DIFY_E2E_SSO_TOKEN (itWithSso skips when not configured).
-    const { mkdir, writeFile } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `external_subject:`,
-        `  email: sso@example.com`,
-        `  issuer: https://issuer.example.com`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectSsoAuth(ssoTmp.configDir, { host: E.host, bearer: E.ssoToken })
       const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
       assertExitCode(result, 0)
       expect(result.stdout).toMatch(/NAME\s+ID\s+MODE/i)
@@ -326,26 +320,14 @@ describe('E2E / difyctl get app (list)', () => {
 
   it('[P1] network error on get app returns non-zero exit and error message (3.27)', async () => {
     // Spec 3.27: unreachable host → network error, exit non-0.
-    const { writeFile, mkdir } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const networkTmp = await withTempConfig()
     try {
-      await mkdir(networkTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: http://127.0.0.1:19999`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: dfoa_fake_token_network_test`,
-        `workspace:`,
-        `  id: ${E.workspaceId}`,
-        `  name: "E2E Test Workspace"`,
-        `  role: owner`,
-        `available_workspaces:`,
-        `  - id: ${E.workspaceId}`,
-        `    name: "E2E Test Workspace"`,
-        `    role: owner`,
-      ].join('\n')}\n`
-      await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(networkTmp.configDir, {
+        host: 'http://127.0.0.1:19999',
+        bearer: 'dfoa_fake_token_network_test',
+        workspaceId: E.workspaceId,
+        workspaceName: E.workspaceName,
+      })
       const result = await run(['get', 'app'], { configDir: networkTmp.configDir, timeout: 15_000 })
       expect(result.exitCode, 'unreachable host should cause non-zero exit').not.toBe(0)
       expect(result.stderr.length, 'stderr should contain error message').toBeGreaterThan(0)

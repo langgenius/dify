@@ -239,6 +239,36 @@ describe('MemberDetailsModal', () => {
       ])
     })
 
+    it('should close role assignment and clear pending roles when permission is revoked', async () => {
+      const user = userEvent.setup()
+      const modalProps = { member, onClose: vi.fn(), onAssignSubmit: vi.fn() }
+      const view = render(<MemberDetailsModal {...modalProps} canAssignRoles />)
+
+      await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
+      await user.click(screen.getByRole('checkbox', { name: /Second role/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
+      expect(screen.getByText('Second role')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
+      expect(
+        screen.getByRole('dialog', { name: /common\.members\.assignRoles/i }),
+      ).toBeInTheDocument()
+
+      view.rerender(<MemberDetailsModal {...modalProps} canAssignRoles={false} />)
+
+      expect(
+        screen.queryByRole('dialog', { name: /common\.members\.assignRoles/i }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText('Second role')).not.toBeInTheDocument()
+
+      view.rerender(<MemberDetailsModal {...modalProps} canAssignRoles />)
+
+      expect(
+        screen.queryByRole('dialog', { name: /common\.members\.assignRoles/i }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText('Second role')).not.toBeInTheDocument()
+    })
+
     it('should replace the selected role when multiple roles are not allowed', async () => {
       const user = userEvent.setup()
       const handleAssignSubmit = vi.fn()

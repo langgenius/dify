@@ -163,7 +163,7 @@ class AppSiteApi(WebApiResource):
             raise Forbidden()
 
         tenant = app_model.tenant
-        if tenant is None or tenant.status == TenantStatus.ARCHIVE:
+        if tenant is None or tenant.status != TenantStatus.NORMAL:
             raise Forbidden()
 
         features = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True)

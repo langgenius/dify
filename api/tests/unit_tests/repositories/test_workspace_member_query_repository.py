@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
-from services.workspace_member_query_service import WorkspaceMemberRecord
+from services.workspace_member_query_service import WorkspaceInvitationRecord, WorkspaceMemberRecord
 
 
 def make_account(
@@ -124,3 +124,31 @@ def test_list_for_workspace_returns_empty_tuple_without_membership(
     result = WorkspaceMemberQueryRepository(sqlite_session_factory).list_for_workspace("workspace-1")
 
     assert result == ()
+
+
+def test_list_invited_accounts_projects_only_eligible_accounts_as_pending(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    created_at = datetime(2026, 1, 1)
+    active = make_account("active", status=AccountStatus.ACTIVE, created_at=created_at)
+    pending = make_account("pending", status=AccountStatus.PENDING, created_at=created_at)
+    closed = make_account("closed", status=AccountStatus.CLOSED, created_at=created_at)
+    renamed = make_account("renamed", status=AccountStatus.ACTIVE, created_at=created_at)
+    with sqlite_session_factory() as session:
+        session.add_all([active, pending, closed, renamed])
+        session.commit()
+
+    result = WorkspaceMemberQueryRepository(sqlite_session_factory).list_invited_accounts(
+        [
+            WorkspaceInvitationRecord(account_id=active.id, email=active.email, legacy_role="admin"),
+            WorkspaceInvitationRecord(account_id=pending.id, email=pending.email, legacy_role="normal"),
+            WorkspaceInvitationRecord(account_id=closed.id, email=closed.email, legacy_role="normal"),
+            WorkspaceInvitationRecord(account_id=renamed.id, email="old@example.com", legacy_role="normal"),
+        ]
+    )
+
+    by_id = {member.id: member for member in result}
+    assert set(by_id) == {active.id, pending.id}
+    assert by_id[active.id].status == AccountStatus.PENDING.value
+    assert by_id[active.id].legacy_role == "admin"
+    assert by_id[pending.id].status == AccountStatus.PENDING.value

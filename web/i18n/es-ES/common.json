@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Invitación enviada, y pueden iniciar sesión en Dify para acceder a tus datos del equipo.",
   "members.invite": "Agregar",
   "members.inviteFailed": "No se pudieron enviar las invitaciones. Inténtalo de nuevo.",
-  "members.inviteLimitExceeded": "No hay suficientes plazas disponibles para todos los destinatarios.",
   "members.inviteTeamMember": "Agregar miembro del equipo",
   "members.inviteTeamMemberTip": "Pueden acceder a tus datos del equipo directamente después de iniciar sesión.",
   "members.invitedAsRole": "Invitado como {{role}}",

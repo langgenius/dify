@@ -19,7 +19,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from libs.password import compare_password, hash_password, valid_password
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 
 
 class TestAccountModelValidation:
@@ -399,6 +399,25 @@ class TestTenantRelationshipIntegrity:
         assert account.current_tenant is tenant
         assert account.role == TenantAccountRole.ADMIN
 
+    def test_set_tenant_id_with_session_rejects_provisioning_tenant(self, sqlite_session: Session) -> None:
+        account = Account(name="Test User", email="test@example.com")
+        tenant = Tenant(name="Provisioning Tenant", status=TenantStatus.PROVISIONING)
+        sqlite_session.add_all([account, tenant])
+        sqlite_session.flush()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.OWNER,
+            )
+        )
+        sqlite_session.flush()
+
+        account.set_tenant_id_with_session(tenant.id, session=sqlite_session)
+
+        assert account.current_tenant is None
+        assert account.role is None
+
 
 class TestAccountRolePermissions:
     """Test suite for account role permissions."""
@@ -693,6 +712,7 @@ class TestTenantStatusEnum:
         from models.account import TenantStatus
 
         # Assert
+        assert TenantStatus.PROVISIONING == "provisioning"
         assert TenantStatus.NORMAL == "normal"
         assert TenantStatus.ARCHIVE == "archive"
 

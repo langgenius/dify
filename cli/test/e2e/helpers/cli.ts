@@ -170,9 +170,6 @@ export type AuthInjectionOptions = {
   /** Primary workspace to write into the bundle. */
   workspaceId: string
   workspaceName: string
-  workspaceRole?: string
-  /** Full available workspace list. Defaults to the primary workspace only. */
-  availableWorkspaces?: Array<{ id: string; name: string; role: string }>
   /**
    * Server-side session UUID (OAuthAccessToken.id).
    * When provided, written as `token_id` in hosts.yml so that
@@ -229,8 +226,6 @@ async function writeFileToken(
 export async function injectAuth(configDir: string, opts: AuthInjectionOptions): Promise<void> {
   await mkdir(configDir, { recursive: true, mode: 0o700 })
 
-  const role = opts.workspaceRole ?? 'owner'
-
   // ── Derive bare host and scheme ───────────────────────────────────────────
   // difyctl stores the bare hostname (no scheme) as the registry key.
   // The scheme is stored separately in the host entry so hostWithScheme()
@@ -238,14 +233,6 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
   const { bare, scheme } = splitHost(opts.host)
   const email = opts.email ?? 'e2e@example.com'
   const accountName = opts.accountName ?? email.split('@')[0] ?? ''
-  const availableWorkspaces = opts.availableWorkspaces ?? [
-    {
-      id: opts.workspaceId,
-      name: opts.workspaceName,
-      role,
-    },
-  ]
-
   // ── hosts.yml ────────────────────────────────────────────────────────────
   // difyctl 0.1.0-rc.1 uses a nested registry format:
   //   token_storage / current_host / hosts.<bareHost>.accounts.<email>.(workspace|...)
@@ -273,13 +260,9 @@ export async function injectAuth(configDir: string, opts: AuthInjectionOptions):
     `        workspace:`,
     `          id: ${opts.workspaceId}`,
     `          name: "${opts.workspaceName}"`,
-    `          role: ${role}`,
-    `        available_workspaces:`,
-    ...availableWorkspaces.flatMap((workspace) => [
-      `          - id: ${workspace.id}`,
-      `            name: "${workspace.name}"`,
-      `            role: ${workspace.role}`,
-    ]),
+    `          roles:`,
+    `            - id: owner`,
+    `              name: Owner`,
   ].join('\n')}\n`
 
   await writeFile(join(configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })

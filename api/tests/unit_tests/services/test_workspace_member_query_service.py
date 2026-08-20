@@ -5,6 +5,7 @@ import pytest
 
 from machinery.context import RequestContext
 from services.workspace_member_query_service import (
+    WorkspaceInvitationRecord,
     WorkspaceMemberQueryService,
     WorkspaceMemberRecord,
     WorkspaceMemberRole,
@@ -43,13 +44,39 @@ def make_member(
 
 
 class RecordingMemberQuery:
-    def __init__(self, records: Sequence[WorkspaceMemberRecord]) -> None:
+    def __init__(
+        self,
+        records: Sequence[WorkspaceMemberRecord],
+        invited_accounts: Sequence[WorkspaceMemberRecord] = (),
+    ) -> None:
         self.records = tuple(records)
+        self.invited_accounts = tuple(invited_accounts)
         self.workspace_ids: list[str] = []
+        self.invitations: list[tuple[WorkspaceInvitationRecord, ...]] = []
 
     def list_for_workspace(self, workspace_id: str) -> Sequence[WorkspaceMemberRecord]:
         self.workspace_ids.append(workspace_id)
         return self.records
+
+    def list_invited_accounts(
+        self, invitations: Sequence[WorkspaceInvitationRecord]
+    ) -> Sequence[WorkspaceMemberRecord]:
+        self.invitations.append(tuple(invitations))
+        return self.invited_accounts
+
+
+class RecordingInvitationQuery:
+    def __init__(self, invitations: Sequence[WorkspaceInvitationRecord] = ()) -> None:
+        self.invitations = tuple(invitations)
+        self.workspace_ids: list[str] = []
+        self.invalidated: list[tuple[str, str]] = []
+
+    def list_for_workspace(self, workspace_id: str) -> Sequence[WorkspaceInvitationRecord]:
+        self.workspace_ids.append(workspace_id)
+        return self.invitations
+
+    def invalidate_member_invitation(self, workspace_id: str, account_id: str) -> None:
+        self.invalidated.append((workspace_id, account_id))
 
 
 class RecordingRoleResolver:
@@ -84,8 +111,15 @@ class RoleResolutionError(Exception):
 
 def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
     active = make_member("active", legacy_role="owner")
-    pending = make_member("pending", status="pending")
-    members = RecordingMemberQuery([active, pending])
+    pending = make_member("pending", status="pending", legacy_role="admin")
+    members = RecordingMemberQuery([active], [pending])
+    invitations = RecordingInvitationQuery(
+        [
+            WorkspaceInvitationRecord(account_id="active", email="active@example.com", legacy_role="normal"),
+            WorkspaceInvitationRecord(account_id="pending", email="pending@example.com", legacy_role="admin"),
+            WorkspaceInvitationRecord(account_id="missing", email="missing@example.com", legacy_role="normal"),
+        ]
+    )
     roles = RecordingRoleResolver(
         {
             active.id: [
@@ -94,7 +128,7 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
             ]
         }
     )
-    service = WorkspaceMemberQueryService(members=members, roles=roles)
+    service = WorkspaceMemberQueryService(members=members, invitations=invitations, roles=roles)
 
     result = service.list_current(make_context())
 
@@ -122,29 +156,43 @@ def test_list_current_projects_members_and_merges_roles_by_account_id() -> None:
         (
             "workspace-1",
             "actor-1",
-            (
-                WorkspaceMemberRoleSubject(account_id=active.id, legacy_role=active.legacy_role),
-                WorkspaceMemberRoleSubject(account_id=pending.id, legacy_role=pending.legacy_role),
-            ),
+            (WorkspaceMemberRoleSubject(account_id=active.id, legacy_role=active.legacy_role),),
         )
+    ]
+    assert members.invitations == [
+        (
+            WorkspaceInvitationRecord(account_id="pending", email="pending@example.com", legacy_role="admin"),
+            WorkspaceInvitationRecord(account_id="missing", email="missing@example.com", legacy_role="normal"),
+        )
+    ]
+    assert invitations.workspace_ids == ["workspace-1"]
+    assert invitations.invalidated == [
+        ("workspace-1", "active"),
+        ("workspace-1", "missing"),
     ]
 
 
 def test_list_current_rejects_missing_workspace_before_calling_ports() -> None:
     members = RecordingMemberQuery([])
     roles = RecordingRoleResolver({})
-    service = WorkspaceMemberQueryService(members=members, roles=roles)
+    invitations = RecordingInvitationQuery()
+    service = WorkspaceMemberQueryService(members=members, invitations=invitations, roles=roles)
 
     with pytest.raises(RuntimeError, match="Console account admission did not resolve an active workspace"):
         service.list_current(make_context(workspace_id=None))
 
     assert members.workspace_ids == []
+    assert invitations.workspace_ids == []
     assert roles.calls == []
 
 
 def test_list_current_propagates_role_resolution_failure() -> None:
     members = RecordingMemberQuery([make_member("member-1")])
-    service = WorkspaceMemberQueryService(members=members, roles=FailingRoleResolver())
+    service = WorkspaceMemberQueryService(
+        members=members,
+        invitations=RecordingInvitationQuery(),
+        roles=FailingRoleResolver(),
+    )
 
     with pytest.raises(RoleResolutionError):
         service.list_current(make_context())

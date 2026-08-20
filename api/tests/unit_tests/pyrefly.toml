@@ -915,7 +915,6 @@ project-excludes = [
   "tasks/test_enable_segment_index_tasks.py",
   "tasks/test_enterprise_telemetry_task.py",
   "tasks/test_human_input_timeout_tasks.py",
-  "tasks/test_initialize_created_app_rbac_access_task.py",
   "tasks/test_install_default_plugins_task.py",
   "tasks/test_mail_human_input_delivery_task.py",
   "tasks/test_mail_send_task.py",

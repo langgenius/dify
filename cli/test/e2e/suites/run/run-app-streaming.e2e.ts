@@ -246,26 +246,14 @@ describe('E2E / difyctl run app --stream (specialisation)', () => {
   it('[P0] streaming with unreachable host returns network error (exit code non-zero)', async () => {
     // Spec 4.2.13: unreachable host → network error, exit code non-zero
     // 127.0.0.1:19999 is a local port with nothing listening — ECONNREFUSED immediately.
-    const { writeFile, mkdir } = await import('node:fs/promises')
-    const { join } = await import('node:path')
     const networkTmp = await withTempConfig()
     try {
-      await mkdir(networkTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: http://127.0.0.1:19999`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: dfoa_fake_token_network_test`,
-        `workspace:`,
-        `  id: ${E.workspaceId}`,
-        `  name: "E2E Test Workspace"`,
-        `  role: owner`,
-        `available_workspaces:`,
-        `  - id: ${E.workspaceId}`,
-        `    name: "E2E Test Workspace"`,
-        `    role: owner`,
-      ].join('\n')}\n`
-      await writeFile(join(networkTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectAuth(networkTmp.configDir, {
+        host: 'http://127.0.0.1:19999',
+        bearer: 'dfoa_fake_token_network_test',
+        workspaceId: E.workspaceId,
+        workspaceName: E.workspaceName,
+      })
       const result = await run(['run', 'app', E.chatAppId, 'hello', '--stream'], {
         configDir: networkTmp.configDir,
         timeout: 15_000,

@@ -45,10 +45,6 @@ describe('E2E / difyctl auth session state', () => {
       accountId: 'acct-e2e',
       workspaceId: wsId,
       workspaceName: wsName,
-      availableWorkspaces: [
-        { id: E.workspaceId, name: E.workspaceName, role: 'owner' },
-        { id: '747729d0-c476-4ba3-b44a-52bdf962c4f6', name: 'Workspace 2', role: 'member' },
-      ],
     })
   }
 

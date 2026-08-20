@@ -11,12 +11,12 @@ workspace membership and optional role requirements via the auth pipeline.
 
 from __future__ import annotations
 
-from itertools import starmap
+from collections.abc import Sequence
 from urllib import parse
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.session import with_session
@@ -33,13 +33,17 @@ from controllers.openapi._models import (
     MemberRoleUpdatePayload,
     WorkspaceDetailResponse,
     WorkspaceListResponse,
+    WorkspaceRoleResponse,
     WorkspaceSummaryResponse,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, RBACRequirement
+from core.db.session_factory import session_factory
+from core.rbac import RBACPermission, RBACResourceScope
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from libs.oauth_bearer import Scope, TokenType
-from models import Account, Tenant, TenantAccountJoin
-from models.account import TenantAccountRole, TenantStatus
+from models.account import TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -50,71 +54,50 @@ from services.errors.account import (
     NoPermissionError,
     RoleAlreadyAssignedError,
     SeatsLimitExceededError,
+    WorkspaceMembersLimitExceededError,
 )
-from services.feature_service import FeatureService
+from services.workspace_member_query_service import WorkspaceMemberRole, WorkspaceMemberSummary
+from services.workspace_query_service import WorkspaceWithRoles
 
 
-def _member_response(account: Account) -> MemberResponse:
+def _role_responses(roles: Sequence[WorkspaceMemberRole]) -> list[WorkspaceRoleResponse]:
+    return [WorkspaceRoleResponse(id=role.id, name=role.name) for role in roles]
+
+
+def _member_response(member: WorkspaceMemberSummary) -> MemberResponse:
     return MemberResponse(
-        id=str(account.id),
-        name=account.name,
-        email=account.email,
-        role=account.role.value if account.role else "",
-        status=account.status.value if account.status else "",
-        avatar=account.avatar,
+        id=member.id,
+        name=member.name,
+        email=member.email,
+        roles=_role_responses(member.roles),
+        status=member.status,
+        avatar=member.avatar,
     )
-
-
-def _load_tenant(session: Session, workspace_id: str) -> Tenant:
-    tenant = TenantService.get_tenant_by_id(workspace_id, session=session)
-    if tenant is None or tenant.status != TenantStatus.NORMAL:
-        raise NotFound("workspace not found")
-    return tenant
-
-
-def _load_account(session: Session, account_id: object) -> Account:
-    account = AccountService.get_account_by_id(str(account_id), session=session) if account_id else None
-    if account is None:
-        raise RuntimeError("authenticated account_id has no Account row")
-    return account
-
-
-def _check_member_invite_quota(tenant_id: str) -> None:
-    features = FeatureService.get_features(tenant_id)
-
-    if features.billing.enabled:
-        members = features.members
-        if 0 < members.limit <= members.size:
-            raise MemberLimitExceeded()
-
-    if features.workspace_members.enabled and not features.workspace_members.is_available(1):
-        raise MemberLicenseExceeded()
 
 
 @openapi_ns.route("/workspaces")
 class WorkspacesApi(Resource):
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceListResponse, description="Workspace list")
-    @with_session(write=False)
-    def get(self, session: Session, *, auth_data: AuthData):
-        rows = TenantService.get_workspaces_for_account(str(auth_data.account_id), session=session)
-
-        return WorkspaceListResponse(workspaces=list(starmap(_workspace_summary, rows)))
+    def get(self, *, auth_data: AuthData):
+        assert auth_data.account_id is not None
+        workspaces = application_services().workspace_queries.list_for_account_with_roles(str(auth_data.account_id))
+        return WorkspaceListResponse(workspaces=[_workspace_summary(workspace) for workspace in workspaces])
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>")
 class WorkspaceByIdApi(Resource):
     @auth_router.guard(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
-    @with_session(write=False)
-    def get(self, session: Session, workspace_id: str, *, auth_data: AuthData):
-        row = TenantService.find_workspace_for_account(str(auth_data.account_id), workspace_id, session=session)
+    def get(self, workspace_id: str, *, auth_data: AuthData):
+        assert auth_data.account_id is not None
+        workspace = application_services().workspace_queries.get_for_account_with_roles(
+            str(auth_data.account_id), workspace_id
+        )
         # 404 (not 403) on non-member so workspace IDs don't leak across tenants.
-        if row is None:
+        if workspace is None:
             raise NotFound("workspace not found")
-
-        tenant, membership = row
-        return _workspace_detail(tenant, membership)
+        return _workspace_detail(workspace)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>:switch")
@@ -128,20 +111,22 @@ class WorkspaceSwitchApi(Resource):
 
     @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, WorkspaceDetailResponse, description="Workspace detail")
-    @with_session
-    def post(self, session: Session, workspace_id: str, *, auth_data: AuthData):
-        account = _load_account(session, auth_data.account_id)
-
+    def post(self, workspace_id: str, *, auth_data: AuthData):
+        assert auth_data.account_id is not None
+        account_id = str(auth_data.account_id)
         try:
-            TenantService.switch_tenant(account, workspace_id, session=session)
+            with session_factory.create_session() as session:
+                account = AccountService.get_account_by_id(account_id, session=session)
+                if account is None:
+                    raise RuntimeError("authenticated account_id has no Account row")
+                TenantService.switch_tenant(account, workspace_id, session=session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
-        row = TenantService.find_workspace_for_account(str(auth_data.account_id), workspace_id, session=session)
-        if row is None:
+        workspace = application_services().workspace_queries.get_for_account_with_roles(account_id, workspace_id)
+        if workspace is None:
             raise NotFound("workspace not found")
-        tenant, membership = row
-        return _workspace_detail(tenant, membership)
+        return _workspace_detail(workspace)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members")
@@ -155,10 +140,12 @@ class WorkspaceMembersApi(Resource):
     @auth_router.guard_workspace(scope=Scope.WORKSPACE_READ, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, MemberListResponse, description="Member list")
     @accepts(query=MemberListQuery)
-    @with_session(write=False)
-    def get(self, session: Session, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
-        tenant = _load_tenant(session, workspace_id)
-        members = TenantService.get_tenant_members(tenant, session=session)
+    def get(self, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
+        assert auth_data.account_id is not None
+        members = application_services().workspace_member_queries.list_for_workspace(
+            workspace_id,
+            str(auth_data.account_id),
+        )
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
@@ -174,31 +161,37 @@ class WorkspaceMembersApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+            resource_required=False,
+        ),
     )
     @returns(201, MemberInviteResponse, description="Member invited")
     @accepts(body=MemberInvitePayload)
     @with_session
     def post(self, session: Session, workspace_id: str, *, auth_data: AuthData, body: MemberInvitePayload):
-        inviter = _load_account(session, auth_data.account_id)
-        tenant = _load_tenant(session, workspace_id)
-
-        _check_member_invite_quota(str(tenant.id))
+        assert auth_data.account_id is not None
+        inviter_id = str(auth_data.account_id)
 
         try:
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=workspace_id,
                 email=body.email,
                 language=None,
                 role=body.role,
-                inviter=inviter,
-                session=session,
+                inviter_id=inviter_id,
             )
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise Forbidden(str(exc))
         except SeatsLimitExceededError:
             raise BadRequest("licensed seats limit exceeded")
+        except WorkspaceMembersLimitExceededError as exc:
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
+                raise MemberLicenseExceeded() from exc
+            raise MemberLimitExceeded() from exc
         except AccountRegisterError as exc:
             raise BadRequest(str(exc))
 
@@ -215,7 +208,7 @@ class WorkspaceMembersApi(Resource):
             role=body.role,
             member_id=str(member.id),
             invite_url=invite_url,
-            tenant_id=str(tenant.id),
+            tenant_id=workspace_id,
         )
 
 
@@ -233,21 +226,18 @@ class WorkspaceMemberApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.WORKSPACE_MEMBER_MANAGE,
+            resource_required=False,
+        ),
     )
     @returns(200, MemberActionResponse, description="Member removed")
-    @with_session
-    def delete(self, session: Session, workspace_id: str, member_id: str, *, auth_data: AuthData):
-        operator = _load_account(session, auth_data.account_id)
-        tenant = _load_tenant(session, workspace_id)
-        member = AccountService.get_account_by_id(member_id, session=session)
-        if member is None:
-            raise NotFound("member not found")
-
+    def delete(self, workspace_id: str, member_id: str, *, auth_data: AuthData):
+        assert auth_data.account_id is not None
         try:
-            TenantService.remove_member_from_tenant(tenant, member, operator, session=session)
-        except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
-        except NoPermissionError as exc:
+            TenantService.remove_member_from_tenant(workspace_id, member_id, str(auth_data.account_id))
+        except (CannotOperateSelfError, NoPermissionError) as exc:
             raise BadRequest(str(exc))
         except MemberNotInTenantError as exc:
             raise NotFound(str(exc))
@@ -258,55 +248,49 @@ class WorkspaceMemberApi(Resource):
         scope=Scope.WORKSPACE_WRITE,
         allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
         allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN}),
+        rbac=RBACRequirement(
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.WORKSPACE_ROLE_MANAGE,
+            resource_required=False,
+        ),
     )
     @returns(200, MemberActionResponse, description="Role updated")
     @accepts(body=MemberRoleUpdatePayload)
-    @with_session
     def patch(
         self,
-        session: Session,
         workspace_id: str,
         member_id: str,
         *,
         auth_data: AuthData,
         body: MemberRoleUpdatePayload,
     ):
-        operator = _load_account(session, auth_data.account_id)
-        tenant = _load_tenant(session, workspace_id)
-        member = AccountService.get_account_by_id(member_id, session=session)
-        if member is None:
-            raise NotFound("member not found")
-
+        assert auth_data.account_id is not None
         try:
-            TenantService.update_member_role(tenant, member, body.role, operator, session=session)
-        except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
-        except NoPermissionError as exc:
+            TenantService.update_member_role(workspace_id, member_id, body.role, str(auth_data.account_id))
+        except (CannotOperateSelfError, NoPermissionError, RoleAlreadyAssignedError) as exc:
             raise BadRequest(str(exc))
         except MemberNotInTenantError as exc:
             raise NotFound(str(exc))
-        except RoleAlreadyAssignedError as exc:
-            raise BadRequest(str(exc))
 
         return MemberActionResponse()
 
 
-def _workspace_summary(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceSummaryResponse:
+def _workspace_summary(workspace: WorkspaceWithRoles) -> WorkspaceSummaryResponse:
     return WorkspaceSummaryResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        role=getattr(membership, "role", ""),
-        status=tenant.status,
-        current=getattr(membership, "current", False),
+        id=workspace.id,
+        name=workspace.name or "",
+        roles=_role_responses(workspace.roles),
+        status=workspace.status,
+        current=workspace.current,
     )
 
 
-def _workspace_detail(tenant: Tenant, membership: TenantAccountJoin) -> WorkspaceDetailResponse:
+def _workspace_detail(workspace: WorkspaceWithRoles) -> WorkspaceDetailResponse:
     return WorkspaceDetailResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        role=getattr(membership, "role", ""),
-        status=tenant.status,
-        current=getattr(membership, "current", False),
-        created_at=tenant.created_at.isoformat() if tenant.created_at else None,
+        id=workspace.id,
+        name=workspace.name or "",
+        roles=_role_responses(workspace.roles),
+        status=workspace.status,
+        current=workspace.current,
+        created_at=workspace.created_at.isoformat(),
     )

@@ -14,7 +14,6 @@ from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
 from enums import DeploymentEdition
 from extensions.ext_database import db
-from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, decode_oauth_state
@@ -26,7 +25,12 @@ from libs.token import (
 from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountLoginError,
+    AccountNotFoundError,
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -129,12 +133,13 @@ def _preferred_interface_language(language: str | None = None) -> str:
     return languages[0]
 
 
-def _redirect_with_console_session(account: Account, target_url: str) -> Response:
+def _redirect_with_console_session(account: Account, target_url: str, *, activate_pending: bool = True) -> Response:
     """Create a console session and attach its cookies to a redirect response."""
     token_pair = AccountService.login(
         account=account,
         session=db.session(),
         ip_address=extract_remote_ip(request),
+        activate_pending=activate_pending,
     )
     response = redirect(target_url)
     set_access_token_to_cookie(request, response, token_pair.access_token)
@@ -210,7 +215,7 @@ class OAuthCallback(Resource):
             logger.warning("OAuth error with %s", provider, exc_info=True)
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={urllib.parse.quote(str(e))}")
 
-        if invite_token and RegisterService.is_valid_invite_token(invite_token):
+        if invite_token:
             invitation = RegisterService.get_invitation_if_token_valid(
                 None,
                 None,
@@ -228,9 +233,12 @@ class OAuthCallback(Resource):
             if account.status == AccountStatus.BANNED:
                 return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
 
-            AccountService.link_account_integrate(provider, user_info.id, account, session=db.session())
-            target_url = f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}"
-            return _redirect_with_console_session(account, target_url)
+            with RegisterService.current_invitation(invite_token, invitation["data"]) as invitation_is_current:
+                if not invitation_is_current:
+                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
+                AccountService.link_account_integrate(provider, user_info.id, account, session=db.session())
+                target_url = f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}"
+                return _redirect_with_console_session(account, target_url, activate_pending=False)
 
         try:
             account, oauth_new_user = _generate_account(
@@ -252,14 +260,14 @@ class OAuthCallback(Resource):
         except AccountRegisterError as e:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
-        # Check account status
         if account.status == AccountStatus.BANNED:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
 
-        if account.status == AccountStatus.PENDING:
-            account.status = AccountStatus.ACTIVE
-            account.initialized_at = naive_utc_now()
-            db.session.commit()
+        # Re-read and activate under the shared account lock so CLOSED is monotonic.
+        try:
+            account = AccountService.activate_pending_account(account.id, session=db.session())
+        except AccountLoginError:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is not active.")
 
         try:
             TenantService.create_owner_tenant_if_not_exist(account, session=db.session())
@@ -303,7 +311,7 @@ def _generate_account(
             if not FeatureService.is_workspace_creation_allowed():
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                TenantService.create_owner_tenant(account, session=db.session())
+                TenantService.create_owner_tenant_if_not_exist(account, session=db.session())
 
     if not account:
         normalized_email = user_info.email.lower()

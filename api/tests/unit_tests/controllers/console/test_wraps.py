@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
-from controllers.common.wraps import _extract_resource_id
+from controllers.common.wraps import _extract_resource_id, _is_resource_owned_by_current_user
 from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -340,8 +340,27 @@ class TestCurrentContextInjection:
 class TestRbacPermissionRequired:
     """Test enterprise RBAC decorator."""
 
+    def test_dataset_owner_check_reads_dataset_maintainer(self):
+        session = MagicMock()
+        session.scalar.return_value = "account-1"
+
+        assert _is_resource_owned_by_current_user(
+            "tenant-1",
+            "account-1",
+            RBACResourceScope.DATASET,
+            "dataset-1",
+            session=session,
+        )
+        session.scalar.assert_called_once()
+
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")
+        session_context = MagicMock()
+        session = session_context.__enter__.return_value
+
+        def check_access(*args, **kwargs):
+            assert session_context.__exit__.called
+            return True
 
         @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
         def protected_view(**kwargs):
@@ -349,15 +368,19 @@ class TestRbacPermissionRequired:
 
         with (
             patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.common.wraps.session_factory.create_session", return_value=session_context
+            ) as mock_session,
             patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-1")),
             patch("controllers.common.wraps._extract_resource_id", return_value="app-123") as mock_extract,
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=False) as mock_owned,
-            patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=True) as mock_check,
+            patch("controllers.common.wraps.RBACService.CheckAccess.check", side_effect=check_access) as mock_check,
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_extract.assert_called_once_with(RBACResourceScope.APP, "tenant-1", {"app_id": "app-123"})
-        mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123")
+        mock_session.assert_called_once_with()
+        mock_extract.assert_called_once_with(RBACResourceScope.APP, "tenant-1", {"app_id": "app-123"}, session=session)
+        mock_owned.assert_called_once_with("tenant-1", "account-1", "app", "app-123", session=session)
         mock_check.assert_called_once_with(
             "tenant-1",
             "account-1",
@@ -420,6 +443,7 @@ class TestRbacPermissionRequired:
 
     def test_resource_owned_app_skips_rbac_check(self):
         current_user = make_account("account-4")
+        session_context = MagicMock()
 
         @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
         def protected_view(**kwargs):
@@ -427,6 +451,7 @@ class TestRbacPermissionRequired:
 
         with (
             patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.session_factory.create_session", return_value=session_context),
             patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-4")),
             patch("controllers.common.wraps._extract_resource_id", return_value="app-123"),
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
@@ -434,11 +459,15 @@ class TestRbacPermissionRequired:
         ):
             assert protected_view(app_id="app-123") == "ok"
 
-        mock_owned.assert_called_once_with("tenant-4", "account-4", "app", "app-123")
+        mock_owned.assert_called_once_with(
+            "tenant-4", "account-4", "app", "app-123", session=session_context.__enter__.return_value
+        )
+        session_context.__exit__.assert_called_once()
         mock_check.assert_not_called()
 
     def test_resource_owned_dataset_skips_rbac_check(self):
         current_user = make_account("account-5")
+        session_context = MagicMock()
 
         @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
         def protected_view(**kwargs):
@@ -446,6 +475,7 @@ class TestRbacPermissionRequired:
 
         with (
             patch("controllers.common.wraps.dify_config.RBAC_ENABLED", True),
+            patch("controllers.common.wraps.session_factory.create_session", return_value=session_context),
             patch("controllers.common.wraps.current_account_with_tenant", return_value=(current_user, "tenant-5")),
             patch("controllers.common.wraps._extract_resource_id", return_value="dataset-123"),
             patch("controllers.common.wraps._is_resource_owned_by_current_user", return_value=True) as mock_owned,
@@ -453,7 +483,10 @@ class TestRbacPermissionRequired:
         ):
             assert protected_view(dataset_id="dataset-123") == "ok"
 
-        mock_owned.assert_called_once_with("tenant-5", "account-5", "dataset", "dataset-123")
+        mock_owned.assert_called_once_with(
+            "tenant-5", "account-5", "dataset", "dataset-123", session=session_context.__enter__.return_value
+        )
+        session_context.__exit__.assert_called_once()
         mock_check.assert_not_called()
 
     def test_extract_resource_id_prefers_path_args(self):
@@ -462,7 +495,7 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/"):
             request.view_args = {"app_id": "view-app"}
 
-            assert _extract_resource_id("app", "tenant-1", {"app_id": "path-app"}) == "path-app"
+            assert _extract_resource_id("app", "tenant-1", {"app_id": "path-app"}, session=MagicMock()) == "path-app"
 
     def test_extract_resource_id_falls_back_to_request_view_args(self):
         app = Flask(__name__)
@@ -470,18 +503,18 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/"):
             request.view_args = {"app_id": "view-app"}
 
-            assert _extract_resource_id("app", "tenant-1") == "view-app"
+            assert _extract_resource_id("app", "tenant-1", session=MagicMock()) == "view-app"
 
     def test_extract_resource_id_supports_legacy_route_aliases(self):
         app = Flask(__name__)
 
         with app.test_request_context("/apps/app-1/api-keys"):
             request.view_args = {"resource_id": "app-1"}
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "app-1"
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1", session=MagicMock()) == "app-1"
 
         with app.test_request_context("/datasets/dataset-1/api-keys"):
             request.view_args = {"resource_id": "dataset-1"}
-            assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
+            assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1", session=MagicMock()) == "dataset-1"
 
     def test_extract_resource_id_scopes_pipeline_resolution_to_the_calling_tenant(self, sqlite_session: Session):
         app = Flask(__name__)
@@ -506,15 +539,16 @@ class TestRbacPermissionRequired:
         unscoped_dataset = sqlite_session.scalar(select(Dataset).where(Dataset.pipeline_id == pipeline_id))
         assert unscoped_dataset is foreign_dataset
 
-        with (
-            app.test_request_context("/rag/pipelines/pipeline-1"),
-            patch("controllers.common.wraps.db", SimpleNamespace(session=sqlite_session)),
-        ):
+        with app.test_request_context("/rag/pipelines/pipeline-1"):
             request.view_args = {"pipeline_id": pipeline_id}
-            assert _extract_resource_id(RBACResourceScope.DATASET, current_tenant_id) == current_dataset.id
+            assert (
+                _extract_resource_id(RBACResourceScope.DATASET, current_tenant_id, session=sqlite_session)
+                == current_dataset.id
+            )
 
     def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
         app = Flask(__name__)
+        session = MagicMock()
 
         with (
             app.test_request_context("/agent/agent-1/chat-messages"),
@@ -523,11 +557,13 @@ class TestRbacPermissionRequired:
             request.view_args = {"agent_id": "agent-1"}
             mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
 
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "parent-app-1"
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1", session=session) == "parent-app-1"
+            mock_service.assert_called_once_with(session)
 
     def test_extract_resource_id_scopes_agent_resolution_to_the_calling_tenant(self):
         """The tenant must reach the resolver, or an Agent id from any tenant resolves."""
         app = Flask(__name__)
+        session = MagicMock()
 
         with (
             app.test_request_context("/agent/agent-1/chat-messages"),
@@ -536,7 +572,7 @@ class TestRbacPermissionRequired:
             request.view_args = {"agent_id": "agent-1"}
             mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
 
-            _extract_resource_id(RBACResourceScope.APP, "tenant-9")
+            _extract_resource_id(RBACResourceScope.APP, "tenant-9", session=session)
 
             mock_service.return_value.peek_authz_app_id.assert_called_once_with(
                 tenant_id="tenant-9", agent_id="agent-1"
@@ -544,6 +580,7 @@ class TestRbacPermissionRequired:
 
     def test_extract_resource_id_keeps_agent_id_when_the_agent_does_not_resolve(self):
         app = Flask(__name__)
+        session = MagicMock()
 
         with (
             app.test_request_context("/agent/agent-1/chat-messages"),
@@ -552,7 +589,7 @@ class TestRbacPermissionRequired:
             request.view_args = {"agent_id": "agent-1"}
             mock_service.return_value.peek_authz_app_id.return_value = None
 
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1", session=session) == "agent-1"
 
     def test_legacy_admin_decorator_noops_when_rbac_enabled(self):
         @is_admin_or_owner_required

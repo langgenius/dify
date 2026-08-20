@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Undangan terkirim, dan mereka dapat masuk ke Dify untuk mengakses data tim Anda.",
   "members.invite": "Tambah",
   "members.inviteFailed": "Undangan tidak dapat dikirim. Coba lagi.",
-  "members.inviteLimitExceeded": "Slot yang tersedia tidak cukup untuk semua penerima.",
   "members.inviteTeamMember": "Tambahkan anggota tim",
   "members.inviteTeamMemberTip": "Mereka dapat mengakses data tim Anda langsung setelah masuk.",
   "members.invitedAsRole": "Diundang sebagai {{role}}",

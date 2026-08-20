@@ -10126,7 +10126,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
-| 400 | Invalid role or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
+| 400 | Invalid role | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
 #### Request Body
@@ -11241,7 +11241,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
+|  Yes | **application/json**: [_ReplaceUserAccessPoliciesPayload](#_replaceuseraccesspoliciespayload)<br> |
 
 #### Responses
 
@@ -11369,7 +11369,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
+|  Yes | **application/json**: [_ReplaceUserAccessPoliciesPayload](#_replaceuseraccesspoliciespayload)<br> |
 
 #### Responses
 
@@ -17206,6 +17206,7 @@ Portable DSL reference that could not be restored in the target workspace.
 | ---- | ---- | ----------- | -------- |
 | code | string |  | Yes |
 | email | string |  | Yes |
+| invite_token | string | Invitation token | No |
 | language | string |  | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
@@ -18583,7 +18584,7 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "invalid_param", "invalid_role", "limit_exceeded" | *Enum:* `"invalid_param"`, `"invalid_role"`, `"limit_exceeded"` | Yes |
+| code | string, <br>**Available values:** "invalid_param", "invalid_role" | *Enum:* `"invalid_param"`, `"invalid_role"` | Yes |
 | message | string |  | Yes |
 | status | integer |  | Yes |
 
@@ -20807,13 +20808,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string | URL to fetch | Yes |
-
-#### ReplaceUserAccessPolicies
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_policy_ids | [ string ] |  | No |
-| account_ids | [ string ] |  | No |
 
 #### ReplaceUserAccessPoliciesResponse
 
@@ -24029,13 +24023,6 @@ Workflow tool configuration
 | data | [ [MembersInRole](#membersinrole) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
 
-#### _RBACRoleAccountList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [RBACRoleAccount](#rbacroleaccount) ] |  | No |
-| pagination | [Pagination](#pagination) |  | No |
-
 #### _RBACRoleList
 
 | Name | Type | Description | Required |
@@ -24055,6 +24042,12 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | role_ids | [ string ], <br>**Default:**  |  | No |
+
+#### _ReplaceUserAccessPoliciesPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_ids | [ string ] |  | No |
 
 #### _ResourceAccessScopeRequest
 

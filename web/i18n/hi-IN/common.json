@@ -242,7 +242,6 @@
   "members.invitationSentTip": "आमंत्रण भेजा गया, और वे साइन इन करके आपकी टीम डेटा तक पहुंच सकते हैं।",
   "members.invite": "जोड़ें",
   "members.inviteFailed": "आमंत्रण नहीं भेजे जा सके। फिर से कोशिश करें।",
-  "members.inviteLimitExceeded": "सभी प्राप्तकर्ताओं के लिए पर्याप्त सीटें उपलब्ध नहीं हैं।",
   "members.inviteTeamMember": "टीम सदस्य जोड़ें",
   "members.inviteTeamMemberTip": "वे साइन इन करने के बाद सीधे आपकी टीम डेटा तक पहुंच सकते हैं।",
   "members.invitedAsRole": "{{role}} के रूप में आमंत्रित किया गया",

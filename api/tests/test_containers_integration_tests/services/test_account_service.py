@@ -1,5 +1,4 @@
 import json
-from hashlib import sha256
 from unittest.mock import patch
 
 import pytest
@@ -1147,11 +1146,14 @@ class TestAccountService:
 
             # Verify sync was called
             mock_sync.assert_called_once_with(
-                account_id=account.id, source="account_deleted", session=db_session_with_containers
+                account_id=account.id,
+                workspace_ids=[],
+                source="account_deleted",
             )
 
             # Verify task was added to queue
             mock_delete_task.delay.assert_called_once_with(account.id)
+            assert account.status == AccountStatus.CLOSED
 
     def test_generate_account_deletion_verification_code(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1901,9 +1903,7 @@ class TestTenantService:
         ):
             mock_sync.return_value = True
 
-            TenantService.remove_member_from_tenant(
-                tenant, member_account, owner_account, session=db_session_with_containers
-            )
+            TenantService.remove_member_from_tenant(str(tenant.id), str(member_account.id), str(owner_account.id))
 
             # Verify sync was called
             mock_sync.assert_called_once_with(
@@ -1955,7 +1955,7 @@ class TestTenantService:
 
         # Try to remove self
         with pytest.raises(Exception, match="Cannot operate self"):
-            TenantService.remove_member_from_tenant(tenant, account, account, session=db_session_with_containers)
+            TenantService.remove_member_from_tenant(str(tenant.id), str(account.id), str(account.id))
 
     def test_remove_member_from_tenant_not_member(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -1996,9 +1996,7 @@ class TestTenantService:
 
         # Try to remove non-member
         with pytest.raises(Exception, match="Member not in tenant"):
-            TenantService.remove_member_from_tenant(
-                tenant, non_member_account, owner_account, session=db_session_with_containers
-            )
+            TenantService.remove_member_from_tenant(str(tenant.id), str(non_member_account.id), str(owner_account.id))
 
     def test_update_member_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2037,9 +2035,7 @@ class TestTenantService:
         TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
 
         # Update member role
-        TenantService.update_member_role(
-            tenant, member_account, "admin", owner_account, session=db_session_with_containers
-        )
+        TenantService.update_member_role(str(tenant.id), str(member_account.id), "admin", str(owner_account.id))
 
         # Verify role was updated
         from models.account import TenantAccountJoin
@@ -2089,7 +2085,11 @@ class TestTenantService:
 
         # Update member role to owner
         TenantService.update_member_role(
-            tenant, member_account, "owner", owner_account, session=db_session_with_containers
+            str(tenant.id),
+            str(member_account.id),
+            "owner",
+            str(owner_account.id),
+            allow_owner_transfer=True,
         )
 
         # Verify roles were updated correctly
@@ -2148,9 +2148,7 @@ class TestTenantService:
 
         # Try to update member role to already assigned role
         with pytest.raises(Exception, match="The provided role is already assigned to the member"):
-            TenantService.update_member_role(
-                tenant, member_account, "admin", owner_account, session=db_session_with_containers
-            )
+            TenantService.update_member_role(str(tenant.id), str(member_account.id), "admin", str(owner_account.id))
 
     def test_get_tenant_count_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -2451,6 +2449,7 @@ class TestRegisterService:
             mock_feature_service.is_workspace_creation_allowed.return_value = True
             mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
             mock_feature_service.get_license.return_value.seats.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.enabled = False
             mock_billing_service.is_email_in_freeze.return_value = False
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
 
@@ -2832,12 +2831,11 @@ class TestRegisterService:
 
             # Execute invitation
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=new_member_email,
                 language=language,
                 role="normal",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
             # Verify token was generated
@@ -2855,14 +2853,20 @@ class TestRegisterService:
         assert new_account.name == new_member_email.split("@")[0]  # Default name from email
         assert new_account.status == "pending"
 
-        # Verify tenant member was created
+        # Invitations do not create workspace membership before acceptance.
         tenant_join = (
             db_session_with_containers.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=new_account.id)
             .first()
         )
-        assert tenant_join is not None
-        assert tenant_join.role == "normal"
+        assert tenant_join is None
+
+        invitation = RegisterService.get_invitation_if_token_valid(
+            None, None, token, session=db_session_with_containers
+        )
+        assert invitation is not None
+        assert invitation["account"].id == new_account.id
+        assert invitation["data"]["role"] == "normal"
 
     def test_invite_new_member_existing_account(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -2908,12 +2912,11 @@ class TestRegisterService:
             mock_send_mail.delay.return_value = None
 
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=existing_member_email,
                 language=language,
                 role="admin",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
             assert token is not None
@@ -2936,7 +2939,6 @@ class TestRegisterService:
         assert invitation is not None
         assert invitation["account"].id == existing_account.id
         assert invitation["data"]["role"] == "admin"
-        assert invitation["data"]["requires_setup"] is False
 
     def test_invite_new_member_existing_member(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -2989,12 +2991,11 @@ class TestRegisterService:
 
             # Execute invitation (should resend email for pending member)
             token = RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=existing_pending_member_email,
                 language=language,
                 role="normal",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
             # Verify token was generated
@@ -3003,34 +3004,6 @@ class TestRegisterService:
 
             # Verify email task was called
             mock_send_mail.delay.assert_called_once()
-
-    def test_invite_new_member_no_inviter(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test inviting a member without providing an inviter.
-        """
-        fake = Faker()
-        tenant_name = fake.company()
-        new_member_email = fake.email()
-        language = fake.random_element(elements=("en-US", "zh-CN"))
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create tenant
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
-
-        # Execute invitation without inviter (should fail)
-        with pytest.raises(ValueError, match="Inviter is required"):
-            RegisterService.invite_new_member(
-                tenant=tenant,
-                email=new_member_email,
-                language=language,
-                role="normal",
-                inviter=None,
-                session=db_session_with_containers,
-            )
 
     def test_invite_new_member_account_already_in_tenant(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -3080,12 +3053,11 @@ class TestRegisterService:
         # Execute invitation (should fail for active member)
         with pytest.raises(AccountAlreadyInTenantError, match="Account already in tenant."):
             RegisterService.invite_new_member(
-                tenant=tenant,
+                tenant_id=str(tenant.id),
                 email=already_in_tenant_email,
                 language=language,
                 role="normal",
-                inviter=inviter,
-                session=db_session_with_containers,
+                inviter_id=str(inviter.id),
             )
 
     def test_generate_invite_token_success(
@@ -3112,9 +3084,19 @@ class TestRegisterService:
             password=password,
             session=db_session_with_containers,
         )
+        inviter = AccountService.create_account(
+            email=f"inviter-{email}",
+            name=f"Inviter {name}",
+            interface_language="en-US",
+            password=password,
+            session=db_session_with_containers,
+        )
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Execute token generation
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email, inviter_id=str(inviter.id)
+        )
 
         # Verify token was generated
         assert token is not None
@@ -3128,17 +3110,15 @@ class TestRegisterService:
         assert stored_data is not None
 
         # Verify stored data contains correct information
-        import json
-
         invitation_data = json.loads(stored_data.decode("utf-8"))
         assert invitation_data["account_id"] == str(account.id)
         assert invitation_data["email"] == account.email
         assert invitation_data["workspace_id"] == tenant.id
 
-    def test_is_valid_invite_token_valid(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test validation of valid invite token.
-        """
+    def test_revoke_token_deletes_authoritative_token(
+        self, db_session_with_containers: Session, mock_external_service_dependencies
+    ):
+        """Revoking an invitation deletes its sole authoritative token record."""
         fake = Faker()
         tenant_name = fake.company()
         email = fake.email()
@@ -3157,57 +3137,19 @@ class TestRegisterService:
             password=password,
             session=db_session_with_containers,
         )
-
-        # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
-
-        # Execute validation
-        is_valid = RegisterService.is_valid_invite_token(token)
-
-        # Verify token is valid
-        assert is_valid is True
-
-    def test_is_valid_invite_token_invalid(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test validation of invalid invite token.
-        """
-        fake = Faker()
-        invalid_token = fake.uuid4()
-        # Execute validation with non-existent token
-        is_valid = RegisterService.is_valid_invite_token(invalid_token)
-
-        # Verify token is invalid
-        assert is_valid is False
-
-    def test_revoke_token_with_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test revoking token with workspace ID and email.
-        """
-        fake = Faker()
-        tenant_name = fake.company()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
-        account = AccountService.create_account(
-            email=email,
-            name=name,
+        inviter = AccountService.create_account(
+            email=f"inviter-{email}",
+            name=f"Inviter {name}",
             interface_language="en-US",
             password=password,
             session=db_session_with_containers,
         )
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email, inviter_id=str(inviter.id)
+        )
 
         # Verify token exists in Redis before revocation
         from extensions.ext_redis import redis_client
@@ -3215,58 +3157,8 @@ class TestRegisterService:
         token_key = RegisterService._get_invitation_token_key(token)
         assert redis_client.get(token_key) is not None
 
-        # Execute token revocation
-        RegisterService.revoke_token(
-            workspace_id=tenant.id,
-            email=account.email,
-            token=token,
-        )
+        RegisterService.revoke_token(token)
 
-        # Verify token was not deleted from Redis
-        assert redis_client.get(token_key) is not None
-
-    def test_revoke_token_without_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test revoking token without workspace ID and email.
-        """
-        fake = Faker()
-        tenant_name = fake.company()
-        email = fake.email()
-        name = fake.name()
-        password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=password,
-            session=db_session_with_containers,
-        )
-
-        # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
-
-        # Verify token exists in Redis before revocation
-        from extensions.ext_redis import redis_client
-
-        token_key = RegisterService._get_invitation_token_key(token)
-        assert redis_client.get(token_key) is not None
-
-        # Execute token revocation without workspace and email
-        RegisterService.revoke_token(
-            workspace_id="",
-            email="",
-            token=token,
-        )
-
-        # Verify token was deleted from Redis
         assert redis_client.get(token_key) is None
 
     def test_get_invitation_if_token_valid_success(
@@ -3293,16 +3185,19 @@ class TestRegisterService:
             password=password,
             session=db_session_with_containers,
         )
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
+        inviter = AccountService.create_account(
+            email=f"inviter-{email}",
+            name=f"Inviter {name}",
+            interface_language="en-US",
+            password=password,
+            session=db_session_with_containers,
+        )
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
 
         # Generate a real token
-        token = RegisterService.generate_invite_token(tenant, account)
-
-        email_hash = sha256(account.email.encode()).hexdigest()
-        cache_key = f"member_invite_token:{tenant.id}, {email_hash}:{token}"
-        from extensions.ext_redis import redis_client
-
-        redis_client.setex(cache_key, 24 * 60 * 60, account.id)
+        token = RegisterService.generate_invite_token(
+            tenant_id=str(tenant.id), account_id=str(account.id), email=account.email, inviter_id=str(inviter.id)
+        )
 
         # Execute invitation retrieval
         result = RegisterService.get_invitation_if_token_valid(
@@ -3373,11 +3268,14 @@ class TestRegisterService:
             "account_id": str(account.id),
             "email": account.email,
             "workspace_id": invalid_tenant_id,
+            "role": "normal",
+            "inviter_id": str(account.id),
         }
         token_key = RegisterService._get_invitation_token_key(token)
-        import json
+        current_key = RegisterService._get_current_invitation_key(invalid_tenant_id, str(account.id))
 
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
+        redis_client.setex(current_key, 24 * 60 * 60, token)
 
         # Execute invitation retrieval
         result = RegisterService.get_invitation_if_token_valid(
@@ -3391,7 +3289,7 @@ class TestRegisterService:
         assert result is None
 
         # Clean up
-        redis_client.delete(token_key)
+        redis_client.delete(token_key, current_key)
 
     def test_get_invitation_if_token_valid_account_mismatch(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -3427,9 +3325,13 @@ class TestRegisterService:
             "account_id": "different-account-id",  # Different from actual account ID
             "email": account.email,
             "workspace_id": tenant.id,
+            "role": "normal",
+            "inviter_id": str(account.id),
         }
         token_key = RegisterService._get_invitation_token_key(token)
+        current_key = RegisterService._get_current_invitation_key(tenant.id, "different-account-id")
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
+        redis_client.setex(current_key, 24 * 60 * 60, token)
 
         # Execute invitation retrieval
         result = RegisterService.get_invitation_if_token_valid(
@@ -3443,7 +3345,7 @@ class TestRegisterService:
         assert result is None
 
         # Clean up
-        redis_client.delete(token_key)
+        redis_client.delete(token_key, current_key)
 
     def test_get_invitation_if_token_valid_tenant_not_normal(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -3484,11 +3386,14 @@ class TestRegisterService:
             "account_id": str(account.id),
             "email": account.email,
             "workspace_id": tenant.id,
+            "role": "normal",
+            "inviter_id": str(account.id),
         }
         token_key = RegisterService._get_invitation_token_key(token)
-        import json
+        current_key = RegisterService._get_current_invitation_key(tenant.id, str(account.id))
 
         redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
+        redis_client.setex(current_key, 24 * 60 * 60, token)
 
         # Execute invitation retrieval
         result = RegisterService.get_invitation_if_token_valid(
@@ -3502,89 +3407,56 @@ class TestRegisterService:
         assert result is None
 
         # Clean up
-        redis_client.delete(token_key)
+        redis_client.delete(token_key, current_key)
 
-    def test_get_invitation_by_token_with_workspace_and_email(
+    def test_get_invitation_by_token_rejects_superseded_token(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
-        """
-        Test getting invitation by token with workspace ID and email.
-        """
+        """Only the newest invitation for a workspace/account pair is valid."""
         fake = Faker()
-        token = fake.uuid4()
-        workspace_id = fake.uuid4()
-        email = fake.email()
-
-        # Create the cache key as the service does
-        from hashlib import sha256
-
-        from extensions.ext_redis import redis_client
-
-        email_hash = sha256(email.encode()).hexdigest()
-        cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
-
-        # Store account ID in Redis
-        account_id = fake.uuid4()
-        redis_client.setex(cache_key, 24 * 60 * 60, account_id)
-
-        # Execute invitation retrieval
-        result = RegisterService.get_invitation_by_token(
-            token=token,
-            workspace_id=workspace_id,
-            email=email,
+        password = generate_valid_password(fake)
+        tenant = TenantService.create_tenant(name=fake.company(), session=db_session_with_containers)
+        inviter = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=password,
+            session=db_session_with_containers,
+        )
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=password,
+            session=db_session_with_containers,
+        )
+        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
+        workspace_id = str(tenant.id)
+        account_id = str(account.id)
+        inviter_id = str(inviter.id)
+        old_token = RegisterService.generate_invite_token(
+            tenant_id=workspace_id,
+            account_id=account_id,
+            email=account.email,
+            inviter_id=inviter_id,
+        )
+        current_token = RegisterService.generate_invite_token(
+            tenant_id=workspace_id,
+            account_id=account_id,
+            email=account.email,
+            inviter_id=inviter_id,
         )
 
-        # Verify result contains expected data
-        assert result is not None
-        assert result["account_id"] == account_id
-        assert result["email"] == email
-        assert result["workspace_id"] == workspace_id
-
-        # Clean up
-        redis_client.delete(cache_key)
-
-    def test_get_invitation_by_token_without_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test getting invitation by token without workspace ID and email.
-        """
-        fake = Faker()
-        token = fake.uuid4()
-        invitation_data = {
-            "account_id": fake.uuid4(),
-            "email": fake.email(),
-            "workspace_id": fake.uuid4(),
+        assert RegisterService.get_invitation_by_token(old_token) is None
+        result = RegisterService.get_invitation_by_token(current_token)
+        assert result == {
+            "account_id": account_id,
+            "email": account.email,
+            "workspace_id": workspace_id,
+            "role": "normal",
+            "inviter_id": inviter_id,
         }
 
-        # Store invitation data in Redis using standard token key
-        from extensions.ext_redis import redis_client
-
-        token_key = RegisterService._get_invitation_token_key(token)
-        import json
-
-        redis_client.setex(token_key, 24 * 60 * 60, json.dumps(invitation_data))
-
-        # Execute invitation retrieval
-        result = RegisterService.get_invitation_by_token(token=token)
-
-        # Verify result contains expected data
-        assert result is not None
-        assert result["account_id"] == invitation_data["account_id"]
-        assert result["email"] == invitation_data["email"]
-        assert result["workspace_id"] == invitation_data["workspace_id"]
-
-        # Clean up
-        redis_client.delete(token_key)
-
-    def test_get_invitation_token_key(self, db_session_with_containers: Session, mock_external_service_dependencies):
-        """
-        Test getting invitation token key.
-        """
-        fake = Faker()
-        token = fake.uuid4()
-        # Execute token key generation
-        token_key = RegisterService._get_invitation_token_key(token)
-
-        # Verify token key format
-        assert token_key == f"member_invite:token:{token}"
+        RegisterService.revoke_token(old_token)
+        RegisterService.revoke_token(current_token)
+        RegisterService.invalidate_member_invitation(workspace_id, account_id)

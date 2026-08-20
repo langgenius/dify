@@ -17,7 +17,7 @@ export const zStepByStepTourStateResponse = z.object({
 /**
  * StepByStepTourStatePatchPayload
  */
-export const zStepByStepTourStatePatchPayload = z.object({
+export const zStepByStepTourStatePatchPayload = z.strictObject({
   action: z.enum([
     'complete_task',
     'disable_current_workspace',

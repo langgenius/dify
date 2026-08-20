@@ -517,9 +517,6 @@ class TestDatasetInitApi:
             patch(
                 "controllers.console.datasets.datasets_document.enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist"
             ) as replace_whitelist,
-            patch(
-                "controllers.console.datasets.datasets_document.initialize_created_app_rbac_access_task"
-            ) as initialize_rbac_task,
         ):
             response = method(api, session, tenant_id, user)
         assert response["dataset"]["id"] == "ds-1"
@@ -534,7 +531,6 @@ class TestDatasetInitApi:
             created_dataset.id,
             ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
         )
-        initialize_rbac_task.delay.assert_called_once_with(tenant_id, user.id, dataset_id=created_dataset.id)
 
 
 class TestDocumentResource:

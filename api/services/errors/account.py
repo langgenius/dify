@@ -49,6 +49,10 @@ class SeatsLimitExceededError(BaseServiceError):
     pass
 
 
+class WorkspaceMembersLimitExceededError(BaseServiceError):
+    pass
+
+
 class InvalidActionError(BaseServiceError):
     pass
 

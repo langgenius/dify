@@ -170,8 +170,8 @@ function renderLoggedIn(
     if (ws !== undefined) w.write(`  Workspace: ${ws.name}\n`)
     return
   }
-  if (s.subject_email !== undefined && s.subject_email !== '') {
-    if (s.subject_issuer !== undefined && s.subject_issuer !== '')
+  if (s.subject_email) {
+    if (s.subject_issuer)
       w.write(
         `${cs.successIcon()} Logged in to ${display} as ${cs.bold(s.subject_email)} (external SSO, issuer: ${s.subject_issuer})\n`,
       )
@@ -184,10 +184,8 @@ function renderLoggedIn(
   w.write(`${cs.successIcon()} Logged in to ${display}\n`)
 }
 
-function findDefaultWorkspace(
-  s: PollSuccess,
-): { id: string; name: string; role: string } | undefined {
-  if (s.default_workspace_id === undefined || s.default_workspace_id === '') return undefined
+function findDefaultWorkspace(s: PollSuccess) {
+  if (!s.default_workspace_id) return undefined
   return s.workspaces?.find((w) => w.id === s.default_workspace_id)
 }
 
@@ -210,11 +208,7 @@ function contextFromSuccess(s: PollSuccess): AccountContext {
       : { id: '', email: '', name: '' },
     token_id: s.token_id,
   }
-  if (
-    s.subject_email !== undefined &&
-    s.subject_email !== '' &&
-    (!s.account || s.account.id === '')
-  ) {
+  if (s.subject_email && (!s.account || s.account.id === '')) {
     ctx.external_subject = { email: s.subject_email, issuer: s.subject_issuer ?? '' }
   }
   const def = findDefaultWorkspace(s)

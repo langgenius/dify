@@ -508,14 +508,11 @@ describe('InviteModal', () => {
     expect(input).toHaveValue('one@example.com,two@example.com')
   })
 
-  it.each([
-    ['limit_exceeded', /members\.inviteLimitExceeded/i, 'emails', 'textbox'],
-    ['invalid_role', /members\.invalidRole/i, 'role', 'combobox'],
-  ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
+  it('maps an invalid role response to the role field', async () => {
     const user = userEvent.setup()
     inviteMember.mockRejectedValue({
       code: 'BAD_REQUEST',
-      data: { body: { code, message: 'Backend message' } },
+      data: { body: { code: 'invalid_role', message: 'Backend message' } },
     })
     renderModal()
 
@@ -523,13 +520,9 @@ describe('InviteModal', () => {
     await selectAdminRole(user)
     await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
 
-    expect(await screen.findByText(message)).toBeInTheDocument()
-    expect(document.querySelector(`[name="${fieldName}"]`)).toHaveAttribute('aria-invalid', 'true')
-    expect(
-      screen.getByRole(role, {
-        name: fieldName === 'emails' ? /members\.emailRecipients/i : /members\.role/i,
-      }),
-    ).toHaveFocus()
+    expect(await screen.findByText(/members\.invalidRole/i)).toBeInTheDocument()
+    expect(document.querySelector('[name="role"]')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('combobox', { name: /members\.role/i })).toHaveFocus()
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 
@@ -554,83 +547,6 @@ describe('InviteModal', () => {
     await user.click(screen.getByRole('option', { name: /Editor/i }))
 
     expect(screen.queryByText(/members\.invalidRole/i)).not.toBeInTheDocument()
-  })
-
-  it('should clear an email server error when the user edits and successfully retries', async () => {
-    const user = userEvent.setup()
-    inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
-      .mockResolvedValueOnce({
-        result: 'success',
-        invitation_results: [],
-        tenant_id: 'tenant-id',
-      } satisfies MemberInviteResponse)
-    renderModal()
-
-    await addRecipients(user, 'first@example.com, second@example.com')
-    await selectAdminRole(user)
-    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
-
-    expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
-
-    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/i })
-    await user.type(input, 'third@example.com')
-    expect(screen.queryByText(/members\.inviteLimitExceeded/i)).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
-
-    await waitFor(() => {
-      expect(inviteMember).toHaveBeenCalledTimes(2)
-      expect(inviteMember.mock.calls[1]?.[0]).toEqual({
-        body: {
-          emails: ['first@example.com', 'second@example.com', 'third@example.com'],
-          role: 'admin',
-          language: 'en-US',
-        },
-      })
-    })
-  })
-
-  it('should clear an email server error when a recipient is removed before retrying', async () => {
-    const user = userEvent.setup()
-    inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
-      .mockResolvedValueOnce({
-        result: 'success',
-        invitation_results: [],
-        tenant_id: 'tenant-id',
-      } satisfies MemberInviteResponse)
-    renderModal()
-
-    await addRecipients(user, 'first@example.com, second@example.com')
-    await selectAdminRole(user)
-    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
-
-    expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', { name: /operation\.remove.*second@example\.com/i }),
-    )
-    expect(screen.queryByText(/members\.inviteLimitExceeded/i)).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /members\.sendInvite/i }))
-
-    await waitFor(() => {
-      expect(inviteMember).toHaveBeenCalledTimes(2)
-      expect(inviteMember.mock.calls[1]?.[0]).toEqual({
-        body: {
-          emails: ['first@example.com'],
-          role: 'admin',
-          language: 'en-US',
-        },
-      })
-    })
   })
 
   it('keeps unknown request failures as a persistent form error', async () => {

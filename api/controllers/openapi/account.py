@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
+from typing import cast
 
 from flask_restx import Resource
 from sqlalchemy.orm import Session
@@ -17,9 +19,11 @@ from controllers.openapi._models import (
     SessionListResponse,
     SessionRow,
     WorkspacePayload,
+    WorkspaceRoleResponse,
 )
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from libs.oauth_bearer import (
     Scope,
@@ -30,32 +34,32 @@ from libs.rate_limit import (
     LIMIT_ME_PER_ACCOUNT,
     enforce,
 )
-from services.account_service import AccountService, TenantService
+from models import Account
 from services.oauth_device_flow import (
     list_active_sessions,
     revoke_oauth_token,
     token_belongs_to_subject,
 )
+from services.workspace_query_service import WorkspaceWithRoles
 
 
 @openapi_ns.route("/account")
 class AccountApi(Resource):
     @auth_router.guard(scope=Scope.FULL, allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}))
     @returns(200, AccountResponse, description="Account info")
-    @with_session(write=False)
-    def get(self, session: Session, *, auth_data: AuthData):
+    def get(self, *, auth_data: AuthData):
         enforce(LIMIT_ME_PER_ACCOUNT, key=f"account:{auth_data.account_id}")
 
-        account_id_str = str(auth_data.account_id) if auth_data.account_id else None
-        account = AccountService.get_account_by_id(account_id_str, session=session) if account_id_str else None
-        memberships = TenantService.get_account_memberships(account_id_str, session=session) if account_id_str else []
-        default_ws_id = _pick_default_workspace(memberships)
+        assert auth_data.account_id is not None
+        account = cast(Account, auth_data.caller)
+        workspaces = application_services().workspace_queries.list_for_account_with_roles(str(auth_data.account_id))
+        default_ws_id = _pick_default_workspace(workspaces)
 
         return AccountResponse(
             subject_type="account",
-            subject_email=account.email if account else None,
-            account=_account_payload(account) if account else None,
-            workspaces=[_workspace_payload(m) for m in memberships],
+            subject_email=account.email,
+            account=_account_payload(account),
+            workspaces=[_workspace_payload(workspace) for workspace in workspaces],
             default_workspace_id=default_ws_id,
         )
 
@@ -137,18 +141,18 @@ def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def _pick_default_workspace(memberships) -> str | None:
-    if not memberships:
+def _pick_default_workspace(workspaces: Sequence[WorkspaceWithRoles]) -> str | None:
+    if not workspaces:
         return None
-    for join, tenant in memberships:
-        if getattr(join, "current", False):
-            return str(tenant.id)
-    return str(memberships[0][1].id)
+    return next((workspace.id for workspace in workspaces if workspace.current), workspaces[0].id)
 
 
-def _workspace_payload(row) -> WorkspacePayload:
-    join, tenant = row
-    return WorkspacePayload(id=str(tenant.id), name=tenant.name, role=getattr(join, "role", ""))
+def _workspace_payload(workspace: WorkspaceWithRoles) -> WorkspacePayload:
+    return WorkspacePayload(
+        id=workspace.id,
+        name=workspace.name or "",
+        roles=[WorkspaceRoleResponse(id=role.id, name=role.name) for role in workspace.roles],
+    )
 
 
 def _account_payload(account) -> AccountPayload:

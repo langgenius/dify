@@ -117,8 +117,8 @@ def validate_app_token[**P, R](
             tenant = db.session.get(Tenant, app_model.tenant_id)
             if tenant is None:
                 raise ValueError("Tenant does not exist.")
-            if tenant.status == TenantStatus.ARCHIVE:
-                raise Forbidden("The workspace's status is archived.")
+            if tenant.status != TenantStatus.NORMAL:
+                raise Forbidden("The workspace is unavailable.")
 
             kwargs["app_model"] = app_model
 

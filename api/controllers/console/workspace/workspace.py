@@ -274,7 +274,7 @@ class CurrentWorkspaceSummaryApi(Resource):
         tenant = current_user.current_tenant
         if not tenant:
             raise ValueError("No current tenant")
-        if tenant.status == TenantStatus.ARCHIVE:
+        if tenant.status != TenantStatus.NORMAL:
             raise CurrentWorkspaceArchivedError()
 
         return (

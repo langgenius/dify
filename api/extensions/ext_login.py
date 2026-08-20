@@ -21,7 +21,7 @@ from libs.token import (
     extract_webapp_passport,
     is_admin_api_key_request,
 )
-from models import Account, Tenant, TenantAccountJoin
+from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
@@ -77,6 +77,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
             tenant_account_join = session.execute(
                 select(Tenant, TenantAccountJoin).where(
                     Tenant.id == workspace_id,
+                    Tenant.status == TenantStatus.NORMAL,
                     TenantAccountJoin.tenant_id == Tenant.id,
                     TenantAccountJoin.role == "owner",
                 )

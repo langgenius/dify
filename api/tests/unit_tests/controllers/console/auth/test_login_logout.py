@@ -10,6 +10,7 @@ This module tests the core authentication endpoints including:
 
 import base64
 import logging
+from contextlib import nullcontext
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -92,7 +93,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.AccountService.login")
@@ -136,14 +137,19 @@ class TestLoginApi:
 
         # Assert
         mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", None, session=ANY)
-        mock_login.assert_called_once()
+        mock_login.assert_called_once_with(
+            account=mock_account,
+            session=ANY,
+            ip_address=ANY,
+            activate_pending=True,
+        )
         mock_reset_rate_limit.assert_called_once_with("test@example.com")
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.AccountService.login")
@@ -171,32 +177,95 @@ class TestLoginApi:
         """
         # Arrange
         mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
+        invitation_data = {
+            "account_id": "test-account-id",
+            "email": "test@example.com",
+            "workspace_id": "workspace-id",
+            "role": "normal",
+            "inviter_id": "inviter-id",
+        }
+        mock_get_invitation.return_value = {"data": invitation_data}
         mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = []
         mock_login.return_value = mock_token_pair
 
         # Act
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={
-                "email": "test@example.com",
-                "password": encode_password("ValidPass123!"),
-                "invite_token": "valid_token",
-            },
+        with (
+            patch(
+                "controllers.console.auth.login.RegisterService.current_invitation",
+                return_value=nullcontext(True),
+            ) as current_invitation,
+            app.test_request_context(
+                "/login",
+                method="POST",
+                json={
+                    "email": "Test@Example.com",
+                    "password": encode_password("ValidPass123!"),
+                    "invite_token": "valid_token",
+                },
+            ),
         ):
-            login_api = LoginApi()
-            response = login_api.post()
+            response = LoginApi().post()
 
         # Assert
+        mock_get_invitation.assert_called_once_with(None, "test@example.com", "valid_token", session=ANY)
+        current_invitation.assert_called_once_with("valid_token", invitation_data)
         mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", "valid_token", session=ANY)
+        mock_login.assert_called_once_with(
+            account=mock_account,
+            session=ANY,
+            ip_address=ANY,
+            activate_pending=False,
+        )
         assert response.json["result"] == "success"
+
+    @patch("controllers.console.wraps.db", new=MagicMock())
+    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    @patch(
+        "controllers.console.auth.login.AccountService.is_login_error_rate_limit",
+        new=MagicMock(return_value=False),
+    )
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    def test_superseded_invitation_cannot_set_initial_password(
+        self,
+        mock_authenticate: MagicMock,
+        mock_get_invitation: MagicMock,
+        app: Flask,
+    ) -> None:
+        invitation_data = {
+            "account_id": "test-account-id",
+            "email": "test@example.com",
+            "workspace_id": "workspace-id",
+            "role": "normal",
+            "inviter_id": "inviter-id",
+        }
+        mock_get_invitation.return_value = {"data": invitation_data}
+
+        with (
+            patch(
+                "controllers.console.auth.login.RegisterService.current_invitation",
+                return_value=nullcontext(False),
+            ),
+            app.test_request_context(
+                "/login",
+                method="POST",
+                json={
+                    "email": "test@example.com",
+                    "password": encode_password("ValidPass123!"),
+                    "invite_token": "superseded-token",
+                },
+            ),
+            pytest.raises(AuthenticationFailedError),
+        ):
+            LoginApi().post()
+
+        mock_authenticate.assert_not_called()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     def test_login_fails_when_rate_limited(
         self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
     ):
@@ -260,7 +329,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     def test_login_fails_with_invalid_credentials(
@@ -307,7 +376,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     def test_login_fails_for_banned_account(
         self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog
@@ -344,7 +413,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.FeatureService.get_license")
@@ -378,17 +447,23 @@ class TestLoginApi:
         mock_get_license.return_value.workspaces.is_available.return_value = False
 
         # Act & Assert
-        with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("ValidPass123!")}
+        with (
+            patch("controllers.console.auth.login.AccountService.login") as login,
+            app.test_request_context(
+                "/login",
+                method="POST",
+                json={"email": "test@example.com", "password": encode_password("ValidPass123!")},
+            ),
         ):
-            login_api = LoginApi()
             with pytest.raises(WorkspacesLimitExceeded):
-                login_api.post()
+                LoginApi().post()
+
+        login.assert_not_called()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
         """
         Test login failure when invitation email doesn't match login email.
@@ -399,26 +474,38 @@ class TestLoginApi:
         """
         # Arrange
         mock_is_rate_limit.return_value = False
-        mock_get_invitation.return_value = {"data": {"email": "invited@example.com"}}
+        invitation_data = {
+            "account_id": "test-account-id",
+            "email": "invited@example.com",
+            "workspace_id": "workspace-id",
+            "role": "normal",
+            "inviter_id": "inviter-id",
+        }
+        mock_get_invitation.return_value = {"data": invitation_data}
 
         # Act & Assert
-        with app.test_request_context(
-            "/login",
-            method="POST",
-            json={
-                "email": "different@example.com",
-                "password": encode_password("ValidPass123!"),
-                "invite_token": "token",
-            },
+        with (
+            patch(
+                "controllers.console.auth.login.RegisterService.current_invitation",
+                return_value=nullcontext(True),
+            ),
+            app.test_request_context(
+                "/login",
+                method="POST",
+                json={
+                    "email": "different@example.com",
+                    "password": encode_password("ValidPass123!"),
+                    "invite_token": "token",
+                },
+            ),
+            pytest.raises(InvalidEmailError),
         ):
-            login_api = LoginApi()
-            with pytest.raises(InvalidEmailError):
-                login_api.post()
+            LoginApi().post()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
@@ -490,6 +577,71 @@ class TestLoginApi:
         assert len(warn_records) == 1
         assert warn_records[0].args[0] == "user@example.com"
         assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
+
+    @patch("controllers.console.wraps.db", new=MagicMock())
+    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    def test_email_code_invitation_login_keeps_zero_tenant_account_pending(
+        self,
+        app: Flask,
+        mock_account: MagicMock,
+        mock_token_pair: MagicMock,
+    ) -> None:
+        invitation_data = {
+            "account_id": mock_account.id,
+            "email": mock_account.email,
+            "workspace_id": "workspace-id",
+            "role": "normal",
+            "inviter_id": "inviter-id",
+        }
+        with (
+            patch(
+                "controllers.console.auth.login.AccountService.verify_email_code_login_challenge",
+                return_value=EmailCodeLoginChallengeResult(status=EmailCodeLoginChallengeStatus.VERIFIED),
+            ),
+            patch(
+                "controllers.console.auth.login.RegisterService.get_invitation_if_token_valid",
+                return_value={"account": mock_account, "data": invitation_data, "tenant": MagicMock()},
+            ) as get_invitation,
+            patch(
+                "controllers.console.auth.login.RegisterService.current_invitation",
+                return_value=nullcontext(True),
+            ) as current_invitation,
+            patch("controllers.console.auth.login._get_account_with_case_fallback", return_value=mock_account),
+            patch("controllers.console.auth.login.TenantService.get_join_tenants", return_value=[]),
+            patch(
+                "controllers.console.auth.login.TenantService.create_owner_tenant_if_not_exist"
+            ) as create_owner_tenant,
+            patch("controllers.console.auth.login.FeatureService.get_license") as get_license,
+            patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed") as creation_allowed,
+            patch("controllers.console.auth.login.AccountService.create_account_and_tenant") as create_account,
+            patch("controllers.console.auth.login.AccountService.login", return_value=mock_token_pair) as login,
+            patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit"),
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={
+                    "email": mock_account.email,
+                    "code": encode_code("123456"),
+                    "token": TEST_TOKEN,
+                    "invite_token": "invite-token",
+                },
+            ),
+        ):
+            response = EmailCodeLoginApi().post()
+
+        assert response.json["result"] == "success"
+        get_invitation.assert_called_once_with(None, mock_account.email, "invite-token", session=ANY)
+        current_invitation.assert_called_once_with("invite-token", invitation_data)
+        create_owner_tenant.assert_not_called()
+        get_license.assert_not_called()
+        creation_allowed.assert_not_called()
+        create_account.assert_not_called()
+        login.assert_called_once_with(
+            mock_account,
+            session=ANY,
+            ip_address=ANY,
+            activate_pending=False,
+        )
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.db")

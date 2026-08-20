@@ -19,7 +19,7 @@ function buildRegistry(
   const reg = Registry.empty('file')
   reg.upsert(host, email, {
     account: { id: 'acct-1', email, name: 'Test Tester' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+    workspace: { id: 'ws-1', name: 'Default', roles: [{ id: 'owner', name: 'Owner' }] },
     token_id: tokenId,
   })
   reg.setHost(host)

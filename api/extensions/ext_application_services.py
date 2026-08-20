@@ -25,11 +25,13 @@ from repositories.workspace_member_query_repository import WorkspaceMemberQueryR
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
-    BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
     RegisterServiceInvitationTokenStore,
+    assign_legacy_invitation_membership,
+    assign_rbac_invitation_membership,
 )
 from services.account_activation_service import AccountActivationService
+from services.account_service import RegisterService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -100,6 +102,7 @@ def build_application_services(
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
+    workspace_member_roles = DeploymentWorkspaceMemberRoleResolver()
     return ApplicationServices(
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
@@ -108,8 +111,8 @@ def build_application_services(
             eligibility=BillingAccountActivationEligibility(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
             ),
-            membership_cache=BillingWorkspaceMembershipCache(
-                enabled=deployment_edition == DeploymentEdition.CLOUD,
+            membership_assigner=(
+                assign_rbac_invitation_membership if dify_config.RBAC_ENABLED else assign_legacy_invitation_membership
             ),
         ),
         app_definitions=AppDefinitionQueryService(
@@ -155,12 +158,14 @@ def build_application_services(
                 client=database_client,
             ),
             plans=DeploymentWorkspacePlanGateway(),
+            roles=workspace_member_roles,
         ),
         workspace_member_queries=WorkspaceMemberQueryService(
             members=WorkspaceMemberQueryRepository(
                 session_factory=database_client,
             ),
-            roles=DeploymentWorkspaceMemberRoleResolver(),
+            invitations=RegisterService,
+            roles=workspace_member_roles,
         ),
     )
 

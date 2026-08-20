@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Davet gönderildi, Dify'ye giriş yaparak takım verilerinize erişebilirler.",
   "members.invite": "Ekle",
   "members.inviteFailed": "Davetler gönderilemedi. Tekrar deneyin.",
-  "members.inviteLimitExceeded": "Tüm alıcılar için yeterli koltuk yok.",
   "members.inviteTeamMember": "Takım Üyesi Ekle",
   "members.inviteTeamMemberTip": "Giriş yaptıktan sonra takım verilerinize doğrudan erişebilirler.",
   "members.invitedAsRole": "{{role}} olarak davet edildi",

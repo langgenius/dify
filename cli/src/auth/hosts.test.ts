@@ -22,7 +22,7 @@ describe('RegistrySchema', () => {
           accounts: {
             'bob@corp.com': {
               account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
-              workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
+              workspace: { id: 'ws-1', name: 'Space', roles: [{ id: 'owner', name: 'Owner' }] },
               token_id: 'tok_1',
             },
           },
@@ -54,7 +54,7 @@ describe('RegistrySchema', () => {
   it('strips a stale available_workspaces field from legacy contexts', () => {
     const raw = {
       account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
-      workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
+      workspace: { id: 'ws-1', name: 'Space', roles: [{ id: 'owner', name: 'Owner' }] },
       available_workspaces: [
         { id: 'ws-1', name: 'Space', role: 'owner' },
         { id: '00000000-0000-0000-0000-000000000002', name: 'Other', role: 'normal' },

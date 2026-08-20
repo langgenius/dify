@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Zaproszenie zostało wysłane, a oni mogą zalogować się do Dify, aby uzyskać dostęp do danych Twojego zespołu.",
   "members.invite": "Dodaj",
   "members.inviteFailed": "Nie udało się wysłać zaproszeń. Spróbuj ponownie.",
-  "members.inviteLimitExceeded": "Brak wystarczającej liczby miejsc dla wszystkich odbiorców.",
   "members.inviteTeamMember": "Dodaj członka zespołu",
   "members.inviteTeamMemberTip": "Mogą uzyskać bezpośredni dostęp do danych Twojego zespołu po zalogowaniu.",
   "members.invitedAsRole": "Zaproszony jako {{role}}",

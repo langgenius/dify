@@ -837,7 +837,7 @@ class TrialSitApi(Resource):
 
         tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
         assert tenant
-        if tenant.status == TenantStatus.ARCHIVE:
+        if tenant.status != TenantStatus.NORMAL:
             raise Forbidden()
 
         return SiteResponse.model_validate(site).model_dump(mode="json")

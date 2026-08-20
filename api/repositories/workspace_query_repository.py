@@ -22,6 +22,8 @@ class WorkspaceQueryRepository(WorkspaceQuery):
                 Tenant.status,
                 Tenant.created_at,
                 TenantAccountJoin.last_opened_at,
+                TenantAccountJoin.role,
+                TenantAccountJoin.current,
             )
             .join(TenantAccountJoin, TenantAccountJoin.tenant_id == Tenant.id)
             .where(
@@ -40,6 +42,8 @@ class WorkspaceQueryRepository(WorkspaceQuery):
                     status=status.value,
                     created_at=created_at,
                     last_opened_at=last_opened_at,
+                    legacy_role=legacy_role.value,
+                    current=current,
                 )
-                for workspace_id, name, status, created_at, last_opened_at in rows
+                for workspace_id, name, status, created_at, last_opened_at, legacy_role, current in rows
             )

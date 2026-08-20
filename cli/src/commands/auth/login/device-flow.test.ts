@@ -14,8 +14,10 @@ import {
 
 const successPayload: PollSuccess = {
   token: 'dfoa_xyz',
+  expires_at: '2026-08-19T00:00:00Z',
+  subject_type: 'account',
   account: { id: 'a', email: 'e', name: 'n' },
-  workspaces: [{ id: 'w', name: 'W', role: 'owner' }],
+  workspaces: [{ id: 'w', name: 'W', roles: [{ id: 'owner', name: 'Owner' }] }],
   default_workspace_id: 'w',
   token_id: 't',
 }
@@ -147,6 +149,8 @@ describe('awaitAuthorization', () => {
   it('preserves dfoe_ token kind through state machine', async () => {
     const externalSuccess: PollSuccess = {
       token: 'dfoe_xxx',
+      expires_at: '2026-08-19T00:00:00Z',
+      token_id: 't',
       subject_type: 'external_sso',
       subject_email: 'sso@x.com',
       subject_issuer: 'https://issuer',

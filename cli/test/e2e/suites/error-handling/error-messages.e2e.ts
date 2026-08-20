@@ -41,7 +41,7 @@ import {
   assertNoAnsi,
   assertNonZeroExit,
 } from '../../helpers/assert.js'
-import { run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
+import { injectSsoAuth, run, withAuthFixture, withTempConfig } from '../../helpers/cli.js'
 import { optionalIt } from '../../helpers/skip.js'
 import { resolveEnv } from '../../setup/env.js'
 
@@ -85,20 +85,9 @@ describe('E2E / error message standards (spec 5.3)', () => {
   itWithSso('[P0] dfoe_ SSO token is denied account-only management commands', async () => {
     // A dfoe_ SSO token is rejected with a non-zero exit when it targets an
     // account-only management command (`export studio-app`).
-    const { mkdir } = await import('node:fs/promises')
     const ssoTmp = await withTempConfig()
     try {
-      await mkdir(ssoTmp.configDir, { recursive: true })
-      const hostsYml = `${[
-        `current_host: ${E.host}`,
-        `token_storage: file`,
-        `tokens:`,
-        `  bearer: ${E.ssoToken}`,
-        `external_subject:`,
-        `  email: sso@example.com`,
-        `  issuer: https://issuer.example.com`,
-      ].join('\n')}\n`
-      await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
+      await injectSsoAuth(ssoTmp.configDir, { host: E.host, bearer: E.ssoToken })
       const result = await run(['export', 'studio-app', E.chatAppId], {
         configDir: ssoTmp.configDir,
       })
