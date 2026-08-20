@@ -1,8 +1,10 @@
 from types import SimpleNamespace
 from unittest import mock
+from uuid import uuid4
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from core.logging.context import clear_request_context, get_identity_context
@@ -52,14 +54,37 @@ def test_validate_jwt_token_does_not_set_identity_when_authentication_fails() ->
     assert get_identity_context() == ("", "", "")
 
 
-def test_decode_jwt_token_uses_shared_session_factory() -> None:
+def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -> None:
     from controllers.web import wraps
+    from models.enums import EndUserType
+    from models.model import AppMode, CustomizeTokenStrategy, Site
 
-    app_model = SimpleNamespace(enable_site=True)
-    site = SimpleNamespace()
-    end_user = SimpleNamespace(session_id="session-id")
-    session = mock.MagicMock()
-    session.scalar.side_effect = [app_model, site, end_user]
+    tenant_id = str(uuid4())
+    app_model = App(
+        tenant_id=tenant_id,
+        mode=AppMode.CHAT.value,
+        name="test-app",
+        enable_site=True,
+        enable_api=True,
+    )
+    sqlite_session.add(app_model)
+    sqlite_session.commit()
+
+    site = Site(
+        app_id=app_model.id,
+        title="test-site",
+        default_language="en-US",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        code="app-code",
+    )
+    end_user = EndUser(
+        tenant_id=tenant_id,
+        app_id=app_model.id,
+        type=EndUserType.BROWSER,
+        session_id="session-id",
+    )
+    sqlite_session.add_all((site, end_user))
+    sqlite_session.commit()
 
     with (
         mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
@@ -69,16 +94,12 @@ def test_decode_jwt_token_uses_shared_session_factory() -> None:
             "FeatureService",
             get_system_features=mock.Mock(return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
         ),
-        mock.patch.object(wraps.session_factory, "create_session") as mock_create_session,
     ):
         mock_passport_service.return_value.verify.return_value = {
             "app_code": "app-code",
-            "app_id": "app-id",
-            "end_user_id": "end-user-id",
+            "app_id": app_model.id,
+            "end_user_id": end_user.id,
         }
-        mock_create_session.return_value.__enter__.return_value = session
 
         with Flask(__name__).test_request_context("/", headers={"X-App-Code": "app-code"}):
             assert wraps.decode_jwt_token() == (app_model, end_user)
-
-    mock_create_session.assert_called_once_with()
