@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from flask import Flask
 
 from controllers.console.auth.email_register import (
@@ -11,8 +12,15 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
+from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from enums import DeploymentEdition
 from services.entities.feature_entities import SystemFeatureModel
+from services.errors.account import (
+    AccountRegisterError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
 
 class TestEmailRegisterSendEmailApi:
@@ -57,6 +65,49 @@ class TestEmailRegisterSendEmailApi:
         mock_send_mail.assert_called_once_with(email="invitee@example.com", account=mock_account, language="en-US")
         mock_extract_ip.assert_called_once()
         mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")
+
+    @pytest.mark.parametrize(
+        ("freeze_type", "expected_error"),
+        [
+            ("freeze", AccountInFreezeError),
+            ("email_domain_suspended", EmailDomainSuspendedError),
+        ],
+    )
+    @patch("controllers.console.auth.email_register.BillingService.get_email_freeze_type")
+    @patch("controllers.console.auth.email_register.AccountService.is_email_send_ip_limit", return_value=False)
+    @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
+    def test_send_email_rejects_frozen_email(
+        self,
+        mock_extract_ip,
+        mock_is_email_send_ip_limit,
+        mock_get_freeze_type,
+        app: Flask,
+        freeze_type,
+        expected_error,
+    ):
+        mock_get_freeze_type.return_value = freeze_type
+        feature_flags = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
+
+        with (
+            patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+        ):
+            with app.test_request_context(
+                "/email-register/send-email",
+                method="POST",
+                json={"email": "Invitee@Example.com"},
+            ):
+                with pytest.raises(expected_error):
+                    EmailRegisterSendEmailApi().post()
+
+        mock_get_freeze_type.assert_called_once_with("invitee@example.com")
+        mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")
+        mock_extract_ip.assert_called_once()
 
 
 class TestEmailRegisterCheckApi:
@@ -107,6 +158,28 @@ class TestEmailRegisterCheckApi:
 
 
 class TestEmailRegisterResetApi:
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.auth.email_register.AccountService.create_account_and_tenant")
+    def test_create_new_account_translates_freeze_errors(
+        self,
+        mock_create_account,
+        service_error,
+        expected_error,
+    ):
+        mock_create_account.side_effect = service_error
+
+        with pytest.raises(expected_error):
+            EmailRegisterResetApi()._create_new_account(
+                email="user@example.com",
+                password="ValidPass123!",
+            )
+
     @patch("controllers.console.auth.email_register.AccountService.reset_login_error_rate_limit")
     @patch("controllers.console.auth.email_register.AccountService.login")
     @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")

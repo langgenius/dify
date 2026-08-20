@@ -22,7 +22,7 @@ from controllers.console.auth.error import (
     EmailPasswordLoginLimitError,
     InvalidEmailError,
 )
-from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi
+from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutApi, ResetPasswordSendEmailApi
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
@@ -33,7 +33,15 @@ from controllers.console.error import (
 from enums import DeploymentEdition
 from services.email_code_login_challenge import EmailCodeLoginChallengeResult, EmailCodeLoginChallengeStatus
 from services.entities.auth_entities import LoginFailureReason
-from services.errors.account import AccountLoginError, AccountPasswordError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountLoginError,
+    AccountPasswordError,
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 
@@ -271,6 +279,102 @@ class TestLoginApi:
         ):
             with pytest.raises(EmailDomainSuspendedError):
                 LoginApi().post()
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    def test_email_code_login_translates_freeze_errors(
+        self,
+        mock_verify_challenge,
+        mock_get_account,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
+        mock_get_account.side_effect = service_error
+
+        with app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        ):
+            with pytest.raises(expected_error):
+                EmailCodeLoginApi().post()
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.db")
+    @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    def test_email_code_login_translates_account_creation_freeze_errors(
+        self,
+        mock_get_account,
+        mock_verify_challenge,
+        mock_create_account,
+        mock_login_db,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
+        mock_get_account.return_value = None
+        mock_create_account.side_effect = service_error
+
+        with app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+        ):
+            with pytest.raises(expected_error):
+                EmailCodeLoginApi().post()
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+            (AccountRegisterError("frozen"), AccountInFreezeError),
+        ],
+    )
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login._get_account_with_case_fallback")
+    def test_reset_password_translates_freeze_errors(
+        self,
+        mock_get_account,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
+        mock_get_account.side_effect = service_error
+
+        with app.test_request_context(
+            "/reset-password",
+            method="POST",
+            json={"email": "User@Example.com"},
+        ):
+            with pytest.raises(expected_error):
+                ResetPasswordSendEmailApi().post()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)

@@ -29,6 +29,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     NoPermissionError,
 )
 
@@ -311,6 +312,50 @@ class TestAccountService:
                     interface_language="en-US",
                     session=unbound_session,
                 )
+
+    def test_create_account_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = (
+            "email_domain_suspended"
+        )
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.create_account(
+                    email="user@suspended.example",
+                    name="Test User",
+                    interface_language="en-US",
+                    session=unbound_session,
+                )
+
+    def test_get_user_through_email_rejects_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = (
+            "email_domain_suspended"
+        )
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
+
+    def test_get_account_freeze_type_is_enabled_only_for_cloud(
+        self, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+            assert AccountService.get_account_freeze_type("frozen@example.com") is None
+
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
+            "frozen@example.com"
+        )
 
     def test_create_account_without_password(
         self,

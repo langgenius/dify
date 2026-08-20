@@ -49,6 +49,17 @@ def test_billing_eligibility_skips_gateway_when_disabled() -> None:
     get_freeze_type.assert_not_called()
 
 
+def test_billing_eligibility_returns_freeze_type_when_enabled() -> None:
+    with patch(
+        "services.account_activation_adapters.BillingService.get_email_freeze_type",
+        return_value="email_domain_suspended",
+    ) as get_freeze_type:
+        result = BillingAccountActivationEligibility(enabled=True).get_freeze_type("invitee@example.com")
+
+    assert result == "email_domain_suspended"
+    get_freeze_type.assert_called_once_with("invitee@example.com")
+
+
 def test_membership_cache_skips_gateway_when_disabled() -> None:
     with patch("services.account_activation_adapters.BillingService.clean_billing_info_cache") as invalidate:
         BillingWorkspaceMembershipCache(enabled=False).invalidate("workspace-1")
