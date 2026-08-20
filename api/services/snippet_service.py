@@ -39,12 +39,15 @@ from models.workflow import (
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.workflow_service import WorkflowInUseError
 from services.tag_service import TagService
 from services.workflow_node_execution_trace_service import (
     WorkflowNodeExecutionTrace,
     assemble_workflow_node_execution_traces,
 )
+from services.workflow_ref_service import WorkflowRefService
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
+from services.workflow_service import WorkflowService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -841,6 +844,31 @@ class SnippetService:
         workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
         session.add(workflow)
         return workflow
+
+    def delete_workflow(
+        self,
+        *,
+        session: Session,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+    ) -> bool:
+        """
+        Delete a published snippet workflow version that is not currently active.
+
+        :param session: Database session
+        :param snippet: CustomizedSnippet instance
+        :param workflow_id: Workflow ID to delete
+        :return: True if deleted successfully
+        :raises WorkflowInUseError: If the workflow is currently in use by the snippet
+        :raises DraftWorkflowDeletionError: If the workflow is a draft version
+        :raises ValueError: If the workflow is not found
+        """
+        if snippet.workflow_id == workflow_id:
+            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by snippet '{snippet.id}'")
+
+        workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_snippet_workflow_ref(snippet, workflow_id)
+        return workflow_service.delete_workflow(session=session, workflow_ref=workflow_ref)
 
     # --- Default Block Configs ---
 

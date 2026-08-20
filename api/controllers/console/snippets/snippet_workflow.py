@@ -60,6 +60,7 @@ from models.snippet import CustomizedSnippet
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_generate_service import SnippetGenerateService
 from services.snippet_service import SnippetService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
@@ -479,6 +480,43 @@ class SnippetWorkflowByIdApi(Resource):
         response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
+
+    @console_ns.doc("delete_snippet_workflow_by_id")
+    @console_ns.doc(description="Delete a published snippet workflow version")
+    @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})
+    @console_ns.response(204, "Workflow deleted successfully")
+    @console_ns.response(400, "Cannot delete workflow in use or draft workflow")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_snippet
+    @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
+    def delete(
+        self,
+        snippet: CustomizedSnippet,
+        workflow_id: str,
+    ):
+        """Delete a published snippet workflow version that is not currently active."""
+        snippet_service = _snippet_service()
+        with _snippet_session_maker().begin() as session:
+            try:
+                snippet_service.delete_workflow(
+                    session=session,
+                    snippet=snippet,
+                    workflow_id=workflow_id,
+                )
+            except WorkflowInUseError as e:
+                raise BadRequest(str(e)) from e
+            except DraftWorkflowDeletionError as e:
+                raise BadRequest(str(e)) from e
+            except ValueError as e:
+                raise NotFound(str(e)) from e
+
+        return None, 204
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
