@@ -324,7 +324,7 @@ def _generate_account(
                 if freeze_type:
                     if freeze_type == "email_domain_suspended":
                         raise EmailDomainSuspendedRegistrationError()
-                    raise AccountRegisterError(description=AccountInFreezeError.description)
+                    raise AccountRegisterError(description=AccountInFreezeError.description or "")
             raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         interface_language = _preferred_interface_language(language)
