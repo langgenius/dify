@@ -1,5 +1,6 @@
 import sys
 import types
+from collections.abc import Callable, Iterator
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -16,7 +17,7 @@ DATASET_ID = "dataset-1"
 TENANT_ID = "tenant-1"
 
 
-def _dataset(**setting_overrides) -> Dataset:
+def _dataset(**setting_overrides: bool | int | float) -> Dataset:
     setting = {"enabled": True, "max_depth": 2, "hop_decay": 0.5, "max_seed_entities": 8}
     setting.update(setting_overrides)
     return Dataset(
@@ -51,13 +52,13 @@ def _segment(session: Session, index_node_id: str, document_id: str, content: st
 
 
 @pytest.fixture
-def session(sqlite_session_factory: sessionmaker[Session]):
+def session(sqlite_session_factory: sessionmaker[Session]) -> Iterator[Session]:
     with sqlite_session_factory() as session:
         yield session
 
 
 @pytest.fixture
-def seed_keywords(monkeypatch: pytest.MonkeyPatch):
+def seed_keywords(monkeypatch: pytest.MonkeyPatch) -> Callable[[list[str]], None]:
     """Pin query tokenization so tests exercise traversal, not the tokenizer."""
 
     def _install(keywords: list[str]) -> None:
@@ -119,27 +120,27 @@ def stub_tokenizer(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.usefixtures("stub_tokenizer")
 class TestExtractQueryKeywords:
-    def test_keywords_are_casefolded_for_entity_lookup(self):
+    def test_keywords_are_casefolded_for_entity_lookup(self) -> None:
         # Entity names are stored casefolded, so probes must be too.
         keywords = extract_query_keywords("Who leads ACME Corporation?")
 
         assert "acme" in keywords
         assert "corporation" in keywords
 
-    def test_punctuation_is_stripped_from_tokens(self):
+    def test_punctuation_is_stripped_from_tokens(self) -> None:
         assert extract_query_keywords('"Acme."') == ["acme"]
 
-    def test_single_character_tokens_are_dropped(self):
+    def test_single_character_tokens_are_dropped(self) -> None:
         # One-character fragments match nearly every entity name.
         assert extract_query_keywords("a b acme") == ["acme"]
 
-    def test_duplicate_tokens_are_deduplicated(self):
+    def test_duplicate_tokens_are_deduplicated(self) -> None:
         assert extract_query_keywords("Acme acme ACME") == ["acme"]
 
-    def test_empty_query_yields_no_keywords(self):
+    def test_empty_query_yields_no_keywords(self) -> None:
         assert extract_query_keywords("") == []
 
-    def test_tokenizer_failure_falls_back_to_whitespace_split(self, monkeypatch: pytest.MonkeyPatch):
+    def test_tokenizer_failure_falls_back_to_whitespace_split(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # A broken tokenizer must degrade to a usable probe, not kill retrieval.
         broken = types.ModuleType("jieba")
         broken.__path__ = []  # type: ignore[attr-defined]
@@ -151,7 +152,9 @@ class TestExtractQueryKeywords:
 
 
 class TestRetrieve:
-    def test_reaches_a_distant_chunk_the_query_never_mentions(self, session: Session, seed_keywords):
+    def test_reaches_a_distant_chunk_the_query_never_mentions(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -163,7 +166,9 @@ class TestRetrieve:
         # the two-hop walk connects it.
         assert node_ids == {"node-1", "node-2", "node-3"}
 
-    def test_closer_facts_outrank_distant_ones(self, session: Session, seed_keywords):
+    def test_closer_facts_outrank_distant_ones(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -174,7 +179,7 @@ class TestRetrieve:
         scores = [document.metadata["score"] for document in documents]
         assert scores[0] > scores[1] > scores[2]
 
-    def test_depth_limit_stops_the_walk(self, session: Session, seed_keywords):
+    def test_depth_limit_stops_the_walk(self, session: Session, seed_keywords: Callable[[list[str]], None]) -> None:
         dataset = _dataset(max_depth=1)
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -185,7 +190,9 @@ class TestRetrieve:
         # and the chunk beyond it stay out of range.
         assert {document.metadata["doc_id"] for document in documents} == {"node-1", "node-2"}
 
-    def test_results_carry_citation_metadata(self, session: Session, seed_keywords):
+    def test_results_carry_citation_metadata(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -199,7 +206,9 @@ class TestRetrieve:
         assert metadata["doc_id"] == "node-1"
         assert documents[0].page_content == "Acme acquired Globex."
 
-    def test_results_explain_the_path_walked(self, session: Session, seed_keywords):
+    def test_results_explain_the_path_walked(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -214,7 +223,7 @@ class TestRetrieve:
         assert path["relations"] == ["Acme -[acquired]-> Globex", "Globex -[owns]-> Initech"]
         assert path["entities"] == ["Acme", "Globex", "Initech"]
 
-    def test_top_k_is_respected(self, session: Session, seed_keywords):
+    def test_top_k_is_respected(self, session: Session, seed_keywords: Callable[[list[str]], None]) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -223,7 +232,9 @@ class TestRetrieve:
 
         assert len(documents) == 1
 
-    def test_disabled_segments_are_never_returned(self, session: Session, seed_keywords):
+    def test_disabled_segments_are_never_returned(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         segment = session.query(DocumentSegment).filter_by(index_node_id="node-2").one()
@@ -237,7 +248,7 @@ class TestRetrieve:
         # rest of the walk is unaffected.
         assert {document.metadata["doc_id"] for document in documents} == {"node-1", "node-3"}
 
-    def test_document_ids_filter_is_applied(self, session: Session, seed_keywords):
+    def test_document_ids_filter_is_applied(self, session: Session, seed_keywords: Callable[[list[str]], None]) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -248,7 +259,9 @@ class TestRetrieve:
 
         assert {document.metadata["doc_id"] for document in documents} == {"node-2"}
 
-    def test_scores_are_normalized_to_at_most_one(self, session: Session, seed_keywords):
+    def test_scores_are_normalized_to_at_most_one(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
@@ -257,32 +270,38 @@ class TestRetrieve:
 
         assert all(0 < document.metadata["score"] <= 1.0 for document in documents)
 
-    def test_returns_nothing_when_no_entity_matches(self, session: Session, seed_keywords):
+    def test_returns_nothing_when_no_entity_matches(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
         seed_keywords(["nonexistent"])
 
         assert GraphRetrieval.retrieve(dataset, "Unrelated question?", top_k=10, session=session) == []
 
-    def test_returns_nothing_when_the_graph_is_disabled(self, session: Session, seed_keywords):
+    def test_returns_nothing_when_the_graph_is_disabled(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset(enabled=False)
         _build_chain_graph(session, dataset)
         seed_keywords(["acme"])
 
         assert GraphRetrieval.retrieve(dataset, "What does Acme own?", top_k=10, session=session) == []
 
-    def test_returns_nothing_for_a_blank_query(self, session: Session):
+    def test_returns_nothing_for_a_blank_query(self, session: Session) -> None:
         dataset = _dataset()
         _build_chain_graph(session, dataset)
 
         assert GraphRetrieval.retrieve(dataset, "   ", top_k=10, session=session) == []
 
-    def test_dataset_without_graph_setting_is_skipped(self, session: Session):
+    def test_dataset_without_graph_setting_is_skipped(self, session: Session) -> None:
         dataset = Dataset(id=DATASET_ID, tenant_id=TENANT_ID, name="kb", created_by="user-1")
 
         assert GraphRetrieval.retrieve(dataset, "What does Acme own?", top_k=10, session=session) == []
 
-    def test_walk_terminates_on_a_cyclic_graph(self, session: Session, seed_keywords):
+    def test_walk_terminates_on_a_cyclic_graph(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         # A cycle must not loop forever or double-count a chunk.
         dataset = _dataset(max_depth=4)
         store = PostgresGraphStore(dataset)
@@ -309,7 +328,9 @@ class TestRetrieve:
 
         assert [document.metadata["doc_id"] for document in documents] == ["node-1"]
 
-    def test_chunk_supporting_more_matched_facts_ranks_higher(self, session: Session, seed_keywords):
+    def test_chunk_supporting_more_matched_facts_ranks_higher(
+        self, session: Session, seed_keywords: Callable[[list[str]], None]
+    ) -> None:
         dataset = _dataset(max_depth=1)
         store = PostgresGraphStore(dataset)
         store.add_chunk_graphs(

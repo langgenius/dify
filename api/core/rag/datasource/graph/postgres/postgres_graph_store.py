@@ -201,7 +201,7 @@ class PostgresGraphStore(BaseGraphStore):
                 entity_id = entity_ids.get(entity.name)
                 if not entity_id:
                     continue
-                key = (chunk_graph.index_node_id, entity_id, None)
+                key: tuple[str, str | None, str | None] = (chunk_graph.index_node_id, entity_id, None)
                 if key in seen:
                     continue
                 seen.add(key)

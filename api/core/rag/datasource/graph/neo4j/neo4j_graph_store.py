@@ -44,7 +44,7 @@ def _get_driver() -> Any:
         if _driver is not None:
             return _driver
         try:
-            from neo4j import GraphDatabase
+            from neo4j import GraphDatabase  # type: ignore[import-not-found]  # pyrefly: ignore[missing-import]
         except ImportError as e:
             raise ImportError(
                 "The neo4j driver is required when GRAPH_STORE=neo4j. Install it with `uv sync --group graph-neo4j`."

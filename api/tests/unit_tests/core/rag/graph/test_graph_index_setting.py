@@ -9,7 +9,7 @@ class TestGraphIndexSettingNullTolerance:
     ``null`` the same as a missing key for every field that has a default.
     """
 
-    def test_explicit_null_falls_back_to_default_entity_types(self):
+    def test_explicit_null_falls_back_to_default_entity_types(self) -> None:
         setting = GraphIndexSetting.model_validate(
             {
                 "enabled": True,
@@ -23,19 +23,19 @@ class TestGraphIndexSettingNullTolerance:
         assert setting.entity_types == list(DEFAULT_ENTITY_TYPES)
         assert setting.max_depth == 2
 
-    def test_missing_keys_still_default_normally(self):
+    def test_missing_keys_still_default_normally(self) -> None:
         setting = GraphIndexSetting.model_validate({"enabled": True})
 
         assert setting.enabled is True
         assert setting.max_depth == 2
         assert setting.entity_types == list(DEFAULT_ENTITY_TYPES)
 
-    def test_explicit_value_is_preserved_over_default(self):
+    def test_explicit_value_is_preserved_over_default(self) -> None:
         setting = GraphIndexSetting.model_validate({"enabled": True, "max_depth": 4})
 
         assert setting.max_depth == 4
 
-    def test_all_numeric_and_list_fields_tolerate_null(self):
+    def test_all_numeric_and_list_fields_tolerate_null(self) -> None:
         setting = GraphIndexSetting.model_validate(
             {
                 "enabled": True,
