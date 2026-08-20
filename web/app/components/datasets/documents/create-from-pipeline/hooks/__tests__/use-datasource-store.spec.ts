@@ -4,7 +4,7 @@ import type { CrawlResultItem, CustomFile as File, FileItem } from '@/models/dat
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CrawlStep } from '@/models/datasets'
 import { createDataSourceStore } from '../../data-source/store'
 import { DataSourceContext } from '../../data-source/store/provider'

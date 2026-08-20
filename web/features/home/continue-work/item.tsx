@@ -123,19 +123,17 @@ export function ContinueWorkItem({ app }: ContinueWorkItemProps) {
   }
 
   return (
-    <Link
-      href={href}
-      prefetch={isPrefetchEnabled ? null : false}
-      onMouseEnter={() => setIsPrefetchEnabled(true)}
-      onFocus={() => setIsPrefetchEnabled(true)}
-      aria-labelledby={`${appNameId} ${appModeId}`}
-      aria-describedby={appMetadataId}
-      className={cn(
-        cardClassName,
-        'touch-manipulation outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-      )}
-    >
+    <div className={cardClassName}>
+      <Link
+        href={href}
+        prefetch={isPrefetchEnabled ? null : false}
+        onMouseEnter={() => setIsPrefetchEnabled(true)}
+        onFocus={() => setIsPrefetchEnabled(true)}
+        aria-labelledby={`${appNameId} ${appModeId}`}
+        aria-describedby={appMetadataId}
+        className="absolute inset-0 z-10 touch-manipulation rounded-xl outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+      />
       {cardContent}
-    </Link>
+    </div>
   )
 }

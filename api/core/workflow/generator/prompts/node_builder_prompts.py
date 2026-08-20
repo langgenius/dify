@@ -127,11 +127,11 @@ def format_start_inputs_section(start_inputs: list[dict[str, Any]]) -> str:
 
 
 def format_tool_catalogue_section(catalogue_text: str) -> str:
-    """Render exact tool identifiers for a tool-node builder only."""
+    """Render the legacy full catalogue when no structured selection exists."""
     if not catalogue_text.strip():
         return ""
     return (
-        "# Available tools (use these exact provider/tool identifiers — "
+        "# Available installed tools (use these exact provider/tool identifiers — "
         "set provider_id and provider_name to the provider portion and "
         "tool_name to the tool portion)\n\n"
         f"{catalogue_text}\n\n"

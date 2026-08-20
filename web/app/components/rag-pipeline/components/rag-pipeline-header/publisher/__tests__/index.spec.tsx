@@ -1,13 +1,16 @@
 import type { IconInfo } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
-import { seedSystemFeatures } from '@/test/console/query-data'
-import { render } from '@/test/console/render'
+import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
+import { render as renderWithoutPricing } from '@/test/console/render'
 import Publisher from '../index'
 import { Popup } from '../popup'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/features/system-features/state', async () => {
   const { atom } = await import('jotai')
@@ -37,18 +40,12 @@ const triggerHotkey = (hotkey: string) => {
   })
 }
 
-const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'test-dataset-id' }),
-  useRouter: () => ({ push: mockPush }),
 }))
 
 vi.mock('@/next/link', () => ({
-  default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
+  default: ({ children, ...props }: React.ComponentProps<'a'>) => <a {...props}>{children}</a>,
 }))
 
 const mockHandleSyncWorkflowDraft = vi.fn()
@@ -125,27 +122,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-const mockSetShowPricingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContextSelector: <T,>(
-    selector: (state: { setShowPricingModal: typeof mockSetShowPricingModal }) => T,
-  ): T => selector({ setShowPricingModal: mockSetShowPricingModal }),
-}))
-
-const mockIsAllowPublishAsCustomKnowledgePipelineTemplate = vi.fn(() => true)
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAllowPublishAsCustomKnowledgePipelineTemplate:
-      mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
-  }),
-  useProviderContextSelector: <T,>(
-    selector: (s: { isAllowPublishAsCustomKnowledgePipelineTemplate: boolean }) => T,
-  ): T =>
-    selector({
-      isAllowPublishAsCustomKnowledgePipelineTemplate:
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate(),
-    }),
-}))
+let publishEnabled = true
 
 const toastMocks = vi.hoisted(() => ({
   call: vi.fn(),
@@ -252,6 +229,7 @@ const createQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
+        staleTime: Infinity,
       },
     },
   })
@@ -260,7 +238,13 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
   const queryClient = createQueryClient()
   seedAccountProfileQuery(queryClient, { id: 'user-1' })
   seedSystemFeatures(queryClient, { deployment_edition: 'CLOUD' })
+  seedFeatures(queryClient, { knowledge_pipeline: { publish_enabled: publishEnabled } })
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+}
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
 }
 
 describe('publisher', () => {
@@ -271,7 +255,7 @@ describe('publisher', () => {
     mockPublishedAt.mockReturnValue(null)
     mockDraftUpdatedAt.mockReturnValue(1700000000)
     mockPipelineId.mockReturnValue('test-pipeline-id')
-    mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+    publishEnabled = true
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockDatasetPermissionKeys = ['dataset.acl.use']
     mockDatasetMaintainer = undefined
@@ -366,7 +350,7 @@ describe('publisher', () => {
 
       it('should close the outer popover before opening publish-as follow-up flow', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -380,7 +364,9 @@ describe('publisher', () => {
         await waitFor(() => {
           expect(screen.queryByText('pipeline.common.publishAs')).not.toBeInTheDocument()
         })
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
     })
   })
@@ -433,20 +419,9 @@ describe('publisher', () => {
         expect(addDocumentsButton).toBeDisabled()
       })
 
-      it('should enable action buttons when published', () => {
-        mockPublishedAt.mockReturnValue(1700000000)
-
-        renderWithQueryClient(<Popup />)
-
-        const addDocumentsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
-        expect(addDocumentsButton).not.toBeDisabled()
-      })
-
       it('should show premium badge when publish as template is not allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
 
         renderWithQueryClient(<Popup />)
 
@@ -455,7 +430,7 @@ describe('publisher', () => {
 
       it('should not show premium badge when publish as template is allowed', () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
 
         renderWithQueryClient(<Popup />)
 
@@ -506,23 +481,18 @@ describe('publisher', () => {
     })
 
     describe('User Interactions', () => {
-      it('should navigate to add documents when go to add documents is clicked', async () => {
+      it('should link to add documents when the pipeline is published', () => {
         mockPublishedAt.mockReturnValue(1700000000)
         renderWithQueryClient(<Popup />)
 
-        const addDocumentsButton = screen
-          .getAllByRole('button')
-          .find((btn) => btn.textContent?.includes('pipeline.common.goToAddDocuments'))
-        fireEvent.click(addDocumentsButton!)
-
-        expect(mockPush).toHaveBeenCalledWith(
-          '/datasets/test-dataset-id/documents/create-from-pipeline',
-        )
+        expect(
+          screen.getByRole('link', { name: 'pipeline.common.goToAddDocuments' }),
+        ).toHaveAttribute('href', '/datasets/test-dataset-id/documents/create-from-pipeline')
       })
 
       it('should show pricing modal when publish as template is clicked without permission', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         renderWithQueryClient(<Popup />)
 
         const publishAsButton = screen
@@ -530,12 +500,14 @@ describe('publisher', () => {
           .find((btn) => btn.textContent?.includes('pipeline.common.publishAs'))
         fireEvent.click(publishAsButton!)
 
-        expect(mockSetShowPricingModal).toHaveBeenCalled()
+        await waitFor(() =>
+          expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+        )
       })
 
       it('should show publish as knowledge pipeline modal when permitted', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -552,7 +524,7 @@ describe('publisher', () => {
 
       it('should close publish as knowledge pipeline modal when cancel is clicked', async () => {
         mockPublishedAt.mockReturnValue(1700000000)
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         renderWithQueryClient(<Publisher />)
 
         fireEvent.click(screen.getByText('workflow.common.publish'))
@@ -873,7 +845,7 @@ describe('publisher', () => {
 
     describe('Prop Variations', () => {
       it('should display correct width when permission is allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(true)
+        publishEnabled = true
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
@@ -881,7 +853,7 @@ describe('publisher', () => {
       })
 
       it('should display correct width when permission is not allowed', () => {
-        mockIsAllowPublishAsCustomKnowledgePipelineTemplate.mockReturnValue(false)
+        publishEnabled = false
         const { container } = renderWithQueryClient(<Popup />)
 
         const popupDiv = container.firstChild as HTMLElement
@@ -913,9 +885,12 @@ describe('publisher', () => {
 
         renderWithQueryClient(<Popup />)
 
-        const apiLink = screen.getByRole('link')
+        const apiLink = screen.getByRole('link', {
+          name: 'workflow.common.accessAPIReference',
+        })
         expect(apiLink).toHaveAttribute('href', 'https://api.dify.ai/v1/datasets/test-dataset-id')
         expect(apiLink).toHaveAttribute('target', '_blank')
+        expect(apiLink).toHaveAttribute('rel', 'noopener noreferrer')
       })
     })
 

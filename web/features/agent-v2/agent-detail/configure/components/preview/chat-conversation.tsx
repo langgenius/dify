@@ -22,7 +22,7 @@ import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/cha
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import dynamic from '@/next/dynamic'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 
 const Chat = dynamic(() => import('@/app/components/base/chat/chat'), { ssr: false })
@@ -191,7 +191,7 @@ export function AgentPreviewChatConversation({
           handleSend,
           callbacks: {
             onGetConversationMessages: async (conversationId) => {
-              return queryClient.fetchQuery({
+              return queryClient.query({
                 ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
                   input: {
                     params: {
@@ -212,22 +212,27 @@ export function AgentPreviewChatConversation({
 
               const errorCode = typeof event.code === 'string' ? event.code : undefined
               if (errorCode === 'agent_run_limit_exceeded') {
-                toast.error(
-                  t(($) => $['agentDetail.configure.preview.errors.agentRunLimitExceeded']),
-                  {
-                    description: (
-                      <a
-                        href={docLink('/use-dify/build/new-agent/build#publish')}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-text-accent hover:underline"
-                      >
-                        {t(($) => $['agentDetail.configure.rightPanel.learnMore'])}
-                      </a>
-                    ),
-                    timeout: 0,
-                  },
-                )
+                // The backend currently uses the same code for time and request-count limits.
+                // Pydantic AI's request-count error includes its `request_limit` field name.
+                const errorMessage = event.message.includes('request_limit')
+                  ? t(
+                      ($) =>
+                        $['agentDetail.configure.preview.errors.agentModelRequestLimitExceeded'],
+                    )
+                  : t(($) => $['agentDetail.configure.preview.errors.agentRunLimitExceeded'])
+                toast.error(errorMessage, {
+                  description: (
+                    <a
+                      href={docLink('/use-dify/build/new-agent/build#publish')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-text-accent hover:underline"
+                    >
+                      {t(($) => $['agentDetail.configure.rightPanel.learnMore'])}
+                    </a>
+                  ),
+                  timeout: 0,
+                })
               }
 
               return {

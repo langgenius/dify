@@ -1,6 +1,13 @@
-import type * as React from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '..'
+import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardPopup,
+  PreviewCardPortal,
+  PreviewCardPositioner,
+  PreviewCardTrigger,
+} from '..'
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -11,65 +18,51 @@ describe('PreviewCardContent', () => {
       const screen = await renderWithSafeViewport(
         <PreviewCard open>
           <PreviewCardTrigger href="#default-preview">Open</PreviewCardTrigger>
-          <PreviewCardContent
-            positionerProps={{ id: 'default-positioner' }}
-            popupProps={{ id: 'default-popup' }}
-          >
-            <span>Default content</span>
-          </PreviewCardContent>
+          <PreviewCardContent>Default content</PreviewCardContent>
         </PreviewCard>,
       )
 
-      await expect.element(screen.getByText('Default content')).toBeInTheDocument()
-      expect(document.getElementById('default-positioner')).toHaveAttribute('data-side', 'bottom')
-      expect(document.getElementById('default-positioner')).toHaveAttribute('data-align', 'center')
-      expect(document.getElementById('default-popup')).toHaveTextContent('Default content')
+      await expect
+        .element(screen.getByText('Default content'))
+        .toHaveAttribute('data-side', 'bottom')
+      await expect
+        .element(screen.getByText('Default content'))
+        .toHaveAttribute('data-align', 'center')
     })
 
     it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {
       const screen = await renderWithSafeViewport(
         <PreviewCard open>
           <PreviewCardTrigger href="#custom-preview">Open</PreviewCardTrigger>
-          <PreviewCardContent
-            placement="top-end"
-            sideOffset={14}
-            alignOffset={6}
-            positionerProps={{ id: 'custom-positioner' }}
-            popupProps={{ id: 'custom-popup' }}
-          >
-            <span>Custom placement content</span>
+          <PreviewCardContent placement="top-end" sideOffset={14} alignOffset={6}>
+            Custom placement content
           </PreviewCardContent>
         </PreviewCard>,
       )
 
-      await expect.element(screen.getByText('Custom placement content')).toBeInTheDocument()
-      expect(document.getElementById('custom-positioner')).toHaveAttribute('data-side', 'top')
-      expect(document.getElementById('custom-positioner')).toHaveAttribute('data-align', 'end')
-      expect(document.getElementById('custom-popup')).toHaveTextContent('Custom placement content')
+      await expect
+        .element(screen.getByText('Custom placement content'))
+        .toHaveAttribute('data-side', 'top')
+      await expect
+        .element(screen.getByText('Custom placement content'))
+        .toHaveAttribute('data-align', 'end')
     })
   })
 
-  describe('Passthrough props', () => {
-    it('should forward positionerProps and popupProps when passthrough props are provided', async () => {
-      const screen = await render(
+  describe('Surface', () => {
+    it('should provide the default preview card surface', async () => {
+      const screen = await renderWithSafeViewport(
         <PreviewCard open>
-          <PreviewCardTrigger href="#passthrough-preview">Open</PreviewCardTrigger>
-          <PreviewCardContent
-            positionerProps={{
-              id: 'preview-positioner-id',
-            }}
-            popupProps={{
-              id: 'preview-popup-id',
-            }}
-          >
-            <span>Preview body</span>
-          </PreviewCardContent>
+          <PreviewCardTrigger href="#default-surface">Open</PreviewCardTrigger>
+          <PreviewCardContent>Default surface</PreviewCardContent>
         </PreviewCard>,
       )
 
-      await expect.element(screen.getByText('Preview body')).toBeInTheDocument()
-      expect(document.getElementById('preview-positioner-id')).toBeInTheDocument()
-      expect(document.getElementById('preview-popup-id')).toBeInTheDocument()
+      const popupStyle = getComputedStyle(screen.getByText('Default surface').element())
+      expect(popupStyle.borderTopWidth).not.toBe('0px')
+      expect(popupStyle.borderTopLeftRadius).not.toBe('0px')
+      expect(popupStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+      expect(popupStyle.boxShadow).not.toBe('none')
     })
   })
 
@@ -88,5 +81,32 @@ describe('PreviewCardContent', () => {
         .element(screen.getByRole('link', { name: 'Preview destination' }))
         .toHaveAttribute('href', '/preview-destination')
     })
+  })
+})
+
+describe('PreviewCard anatomy', () => {
+  it('should compose an unstyled popup with explicit positioning', async () => {
+    const screen = await renderWithSafeViewport(
+      <PreviewCard open>
+        <PreviewCardTrigger href="#anatomy-preview">Open</PreviewCardTrigger>
+        <PreviewCardPortal>
+          <PreviewCardPositioner placement="top-end" data-testid="preview-positioner">
+            <PreviewCardPopup>Anatomy surface</PreviewCardPopup>
+          </PreviewCardPositioner>
+        </PreviewCardPortal>
+      </PreviewCard>,
+    )
+
+    await expect
+      .element(screen.getByTestId('preview-positioner'))
+      .toHaveAttribute('data-side', 'top')
+    await expect
+      .element(screen.getByTestId('preview-positioner'))
+      .toHaveAttribute('data-align', 'end')
+    const popupStyle = getComputedStyle(screen.getByText('Anatomy surface').element())
+    expect(popupStyle.borderTopWidth).toBe('0px')
+    expect(popupStyle.borderTopLeftRadius).toBe('0px')
+    expect(popupStyle.backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(popupStyle.boxShadow).toBe('none')
   })
 })

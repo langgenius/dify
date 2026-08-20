@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import EnvNav from '../index'
 

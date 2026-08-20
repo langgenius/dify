@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from datetime import datetime
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -10,16 +10,53 @@ from flask import Flask
 
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
-from models.enums import CreatorUserRole
-from models.model import AppMode
+from graphon.enums import WorkflowExecutionStatus
+from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
+from models.model import App, AppMode, EndUser
+from models.workflow import WorkflowRun, WorkflowType
 
 
-def _workflow_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="workflow")
+def _workflow_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
+
+
+def _workflow_run(
+    *,
+    app_id: str = "app-1",
+    created_by_role: CreatorUserRole = CreatorUserRole.END_USER,
+    created_by: str = "eu-1",
+    finished_at: datetime | None = None,
+) -> WorkflowRun:
+    return WorkflowRun(
+        id="run-1",
+        tenant_id="tenant-1",
+        app_id=app_id,
+        workflow_id="workflow-1",
+        type=WorkflowType.WORKFLOW,
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        version="1",
+        graph='{"nodes": [], "edges": []}',
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED if finished_at else WorkflowExecutionStatus.RUNNING,
+        outputs="{}",
+        error=None,
+        elapsed_time=0,
+        total_tokens=0,
+        total_steps=0,
+        created_by_role=created_by_role,
+        created_by=created_by,
+        created_at=datetime(2024, 1, 1),
+        finished_at=finished_at,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -42,13 +79,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_app(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="other-app",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="eu-1",
-            finished_at=None,
-        )
+        run = _workflow_run(app_id="other-app")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -63,13 +94,7 @@ class TestWorkflowEventsApi:
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask
     ) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.ACCOUNT,
-            created_by="eu-1",
-            finished_at=None,
-        )
+        run = _workflow_run(created_by_role=CreatorUserRole.ACCOUNT)
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -82,13 +107,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_end_user(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="other-user",
-            finished_at=None,
-        )
+        run = _workflow_run(created_by="other-user")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -103,16 +122,8 @@ class TestWorkflowEventsApi:
     def test_finished_run_returns_sse_response(
         self, mock_db: MagicMock, mock_factory: MagicMock, mock_converter: MagicMock, app: Flask
     ) -> None:
-        from datetime import datetime
-
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="eu-1",
-            finished_at=datetime(2024, 1, 1),
-        )
+        run = _workflow_run(finished_at=datetime(2024, 1, 1))
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -133,13 +144,7 @@ class TestWorkflowEventsApi:
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         mock_db.engine = "engine"
-        run = SimpleNamespace(
-            id="run-1",
-            app_id="app-1",
-            created_by_role=CreatorUserRole.END_USER,
-            created_by="eu-1",
-            finished_at=None,
-        )
+        run = _workflow_run()
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo

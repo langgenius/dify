@@ -1,12 +1,20 @@
-import type { ReactNode } from 'react'
-import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
+import type { ReactElement, ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { baseProviderContextValue } from '@/context/provider-context'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { consoleQuery } from '@/service/console'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery as renderWithoutPricing,
+} from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
+
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+let copyrightEnabled = true
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey, withSelectorKeyProps } = await import('@/test/i18n-mock')
@@ -57,40 +65,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
-const mockSetShowPricingModal = vi.fn()
-const mockUseProviderContext = vi.fn<() => ProviderContextState>()
-
-const buildModalContext = (): ModalContextState => ({
-  hasBlockingModalOpen: false,
-  setShowModerationSettingModal: vi.fn(),
-  setShowExternalDataToolModal: vi.fn(),
-  setShowPricingModal: mockSetShowPricingModal,
-  setShowAnnotationFullModal: vi.fn(),
-  setShowModelModal: vi.fn(),
-  setShowExternalKnowledgeAPIModal: vi.fn(),
-  setShowOpeningModal: vi.fn(),
-  setShowUpdatePluginModal: vi.fn(),
-})
-
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => buildModalContext(),
-}))
 
 vi.mock('@/context/i18n', async () => {
   const actual = await vi.importActual<typeof import('@/context/i18n')>('@/context/i18n')
   return {
     ...actual,
     useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
-  }
-})
-
-vi.mock('@/context/provider-context', async () => {
-  const actual = await vi.importActual<typeof import('@/context/provider-context')>(
-    '@/context/provider-context',
-  )
-  return {
-    ...actual,
-    useProviderContext: () => mockUseProviderContext(),
   }
 })
 
@@ -130,21 +110,23 @@ const renderSettingsModal = (appInfo = mockAppInfo, canDeploy = false) =>
 
 const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
 
+function render(...args: Parameters<typeof renderWithData>) {
+  const wrap = (ui: ReactElement) => (
+    <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{ui}</NuqsTestingAdapter>
+  )
+  args[0] = wrap(args[0])
+  const result = renderWithData(...args)
+  return { ...result, rerender: (ui: ReactElement) => result.rerender(wrap(ui)) }
+}
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     toastMocks.call.mockClear()
     mockOnClose.mockClear()
     mockOnSave.mockClear()
-    mockSetShowPricingModal.mockClear()
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: 'professional',
-      },
-      webappCopyrightEnabled: true,
-    })
+    onPricingUrlUpdate.mockClear()
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = true
   })
 
   afterEach(() => {
@@ -358,36 +340,29 @@ describe('SettingsModal', () => {
     )
   })
 
-  it('should display paid webapp settings as defaults for Cloud sandbox plans', async () => {
+  it('should preserve restricted settings when saving other Cloud settings', async () => {
     mockOnSave.mockResolvedValueOnce(undefined)
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: 'sandbox',
-      },
-      webappCopyrightEnabled: true,
-    })
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = false
 
     renderSettingsModal()
 
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
     expect(inputPlaceholder).toBeDisabled()
-    expect(inputPlaceholder).toHaveValue('')
+    expect(inputPlaceholder).toHaveValue(mockAppInfo.site.input_placeholder)
     expect(
       screen.queryByPlaceholderText(
         'appOverview.overview.appInfo.settings.more.copyRightPlaceholder',
       ),
-    ).not.toBeInTheDocument()
+    ).toBeDisabled()
 
     fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          copyright: '',
-          input_placeholder: '',
+          copyright: undefined,
+          input_placeholder: undefined,
         }),
       )
     })
@@ -395,15 +370,8 @@ describe('SettingsModal', () => {
 
   it('should keep the input placeholder editable when billing is disabled', async () => {
     mockOnSave.mockResolvedValueOnce(undefined)
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: false,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: 'sandbox',
-      },
-      webappCopyrightEnabled: false,
-    })
+    deploymentEdition = 'COMMUNITY'
+    copyrightEnabled = false
 
     renderSettingsModal()
     const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
@@ -415,7 +383,7 @@ describe('SettingsModal', () => {
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          copyright: '',
+          copyright: undefined,
           input_placeholder: 'Self-hosted prompt',
         }),
       )
@@ -423,32 +391,20 @@ describe('SettingsModal', () => {
   })
 
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: 'sandbox',
-      },
-      webappCopyrightEnabled: false,
-    })
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = false
 
     renderSettingsModal()
     fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
-    expect(mockSetShowPricingModal).toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onPricingUrlUpdate.mock.lastCall?.[0].searchParams.get('pricing')).toBe('open'),
+    )
   })
 
   it('should hide the upgrade badge for non-sandbox plans', async () => {
-    mockUseProviderContext.mockReturnValue({
-      ...baseProviderContextValue,
-      enableBilling: true,
-      plan: {
-        ...baseProviderContextValue.plan,
-        type: 'professional',
-      },
-      webappCopyrightEnabled: true,
-    })
+    deploymentEdition = 'CLOUD'
+    copyrightEnabled = true
 
     renderSettingsModal()
     await waitFor(() => {
@@ -501,4 +457,41 @@ describe('SettingsModal', () => {
       )
     })
   })
+})
+
+function renderWithData(
+  ui: ReactElement,
+  options: Parameters<typeof renderWithoutPricing>[1] = {},
+) {
+  return renderWithoutPricing(ui, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { webapp_copyright_enabled: copyrightEnabled },
+    ...options,
+  })
+}
+
+it('saves unrelated settings while entitlements are pending without clearing protected fields', async () => {
+  const queryClient = createConsoleQueryClient()
+  void queryClient.query({
+    ...consoleQuery.features.get.queryOptions(),
+    queryFn: () => new Promise(() => {}),
+  })
+  const onSave = vi.fn().mockResolvedValue(undefined)
+  render(<SettingsModal isChat isShow appInfo={mockAppInfo} onClose={vi.fn()} onSave={onSave} />, {
+    queryClient,
+    features: undefined,
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
+  expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        copyright: undefined,
+        input_placeholder: undefined,
+        title: mockAppInfo.site.title,
+      }),
+    ),
+  )
 })

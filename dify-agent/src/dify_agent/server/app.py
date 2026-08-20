@@ -16,9 +16,10 @@ environment configuration provides a token.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing_extensions import cast
 
 import httpx
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
@@ -60,7 +61,6 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_token_factory = issue_agent_stub_token
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
-    agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
     runtime_backend_profile = resolved_settings.build_runtime_backend_profile()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
@@ -77,6 +77,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             execution_bindings=runtime_backend_profile.execution_bindings,
             agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
+            download_command_timeout_seconds=resolved_settings.binding_file_download_command_timeout_seconds,
         )
         if runtime_backend_profile is not None
         else None
@@ -105,12 +106,17 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             redis,
             prefix=resolved_settings.redis_prefix,
             run_retention_seconds=resolved_settings.run_retention_seconds,
+            run_event_stream_max_length=resolved_settings.run_event_stream_max_length,
         )
         scheduler = RunScheduler(
             store=store,
             plugin_daemon_http_client=plugin_daemon_http_client,
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
+            run_timeout_seconds=resolved_settings.run_timeout_seconds,
+            stream_text_delta_coalescing_enabled=resolved_settings.stream_text_delta_coalescing_enabled,
+            stream_text_delta_flush_interval_seconds=(resolved_settings.stream_text_delta_flush_interval_ms / 1000),
+            stream_text_delta_max_chars=resolved_settings.stream_text_delta_max_chars,
             layer_providers=layer_providers,
         )
         state["store"] = store
@@ -127,27 +133,24 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     configure_server_observability(app)
 
     def get_store() -> RedisRunStore:
-        return state["store"]  # pyright: ignore[reportReturnType]
+        return cast(RedisRunStore, state["store"])
 
     def get_scheduler() -> RunScheduler:
-        return state["scheduler"]  # pyright: ignore[reportReturnType]
+        return cast(RunScheduler, state["scheduler"])
 
-    app.include_router(
-        create_runs_router(
-            get_store,
-            get_scheduler,
-            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
-        )
+    control_plane_router = APIRouter(
+        dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
-    app.include_router(create_execution_bindings_router(lambda: execution_binding_service))
-    app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
-    app.include_router(create_binding_files_router(lambda: binding_file_service))
+    control_plane_router.include_router(create_runs_router(get_store, get_scheduler))
+    control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
+    control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
+    control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))
+    app.include_router(control_plane_router)
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,
             file_request_handler=agent_stub_file_request_handler,
             config_request_handler=agent_stub_config_request_handler,
-            drive_request_handler=agent_stub_drive_request_handler,
         )
     )
     return app

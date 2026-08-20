@@ -1,5 +1,5 @@
 import { zSupportedAppType } from '@dify/contracts/api/openapi/zod.gen'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 // The `get app --mode` whitelist is derived from this generated enum (see index.ts).
 // These pins guard the original bug: the CLI must not advertise modes the backend

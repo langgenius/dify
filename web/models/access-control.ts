@@ -120,11 +120,7 @@ export type CopyWorkspaceRoleRequest = {
   copy_member: boolean
 }
 
-export type WorkspaceAccessRulesRequest = {
-  language?: AccessControlTemplateLanguage
-} & PaginationParameters
-
-export type AccessPolicyResourceType = 'app' | 'dataset'
+export type AccessPolicyResourceType = 'app' | 'dataset' | 'agent'
 
 type AccessPolicyCategory = 'global_system_default' | 'global_custom'
 
@@ -140,19 +136,6 @@ export type AccessPolicy = {
   category: AccessPolicyCategory
   created_at: string
   updated_at: string
-}
-
-export type CreateAccessPolicyRequest = {
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
-}
-
-export type UpdateAccessPolicyRequest = {
-  id: string
-  name: string
-  description?: string
-  permission_keys?: PermissionKey[]
 }
 
 type Bindings = {
@@ -186,16 +169,6 @@ export type GetDatasetAccessPolicyByDatasetIdResponse = {
   items: AccessPolicyWithBindings[]
 }
 
-export type GetAppAccessPoliciesResponse = {
-  items: AccessPolicyWithBindings[]
-  pagination: Pagination
-}
-
-export type GetDatasetAccessPoliciesResponse = {
-  items: AccessPolicyWithBindings[]
-  pagination: Pagination
-}
-
 export type RolesOfMemberResponse = {
   account_id: string
   roles: Role[]
@@ -219,13 +192,13 @@ type Account = {
 
 export type ResourceUserAccessSetting = {
   account: Account
-  roles: Omit<Role, 'tenant_id' | 'description' | 'role_tag'>[]
+  roles: Omit<Role, 'tenant_id' | 'description'>[]
   access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
 }
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
-  scope: ResourceOpenScope
+  pagination: Pagination
 }
 
 export type GetMembersOfRoleResponse = {
@@ -256,5 +229,3 @@ export type RemoveAppAccessPolicyMemberBindingsRequest =
 
 export type RemoveDatasetAccessPolicyMemberBindingsRequest =
   RemoveResourceAccessPolicyMemberBindingsRequest
-
-export type ResourceOpenScope = 'all' | 'only_me' | 'specific'

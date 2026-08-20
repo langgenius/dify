@@ -88,7 +88,7 @@ const HeaderModals: FC<HeaderModalsProps> = ({
             <AlertDialogCancelButton disabled={deleting}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton loading={deleting} disabled={deleting} onClick={onDelete}>
+            <AlertDialogConfirmButton loading={deleting} onClick={onDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogActions>

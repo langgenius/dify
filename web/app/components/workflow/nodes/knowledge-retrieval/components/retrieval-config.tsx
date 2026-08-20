@@ -139,7 +139,7 @@ const RetrievalConfig: FC<Props> = ({
         placement="bottom-end"
         sideOffset={0}
         alignOffset={-2}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-101 rounded-2xl border border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-4 shadow-xl">
           <ConfigRetrievalContent

@@ -1,10 +1,9 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  useInvalidateDefaultModel,
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useProviderContext } from '@/context/provider-context'
+import { useInvalidateDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { consoleQuery } from '@/service/console'
+import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import {
@@ -35,13 +34,33 @@ const SYSTEM_MODEL_TYPES = [
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
-  const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
-  const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
-  const { mutate: refetchSpeech2textModelList } = useModelList(ModelTypeEnum.speech2text)
-  const { mutate: refetchTTSModelList } = useModelList(ModelTypeEnum.tts)
+  const { refetch: refetchLLMModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textGeneration } },
+    }),
+  )
+  const { refetch: refetchEmbeddingModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.textEmbedding } },
+    }),
+  )
+  const { refetch: refetchRerankModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.rerank } },
+    }),
+  )
+  const { refetch: refetchSpeech2textModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.speech2text } },
+    }),
+  )
+  const { refetch: refetchTTSModelList } = useQuery(
+    consoleQuery.workspaces.current.models.modelTypes.byModelType.get.queryOptions({
+      input: { params: { model_type: ModelTypeEnum.tts } },
+    }),
+  )
   const invalidateDefaultModel = useInvalidateDefaultModel()
-  const { refreshModelProviders } = useProviderContext()
+  const queryClient = useQueryClient()
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
@@ -85,7 +104,10 @@ const useRefreshPluginList = () => {
 
       // model select
       if ((manifest && PluginCategoryEnum.model.includes(manifest.category)) || refreshAllType) {
-        refreshModelProviders()
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.current.modelProviders.summary.get.key(),
+        })
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviderDetails })
         refetchLLMModelList()
         refetchEmbeddingModelList()
         refetchRerankModelList()

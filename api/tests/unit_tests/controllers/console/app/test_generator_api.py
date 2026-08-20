@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +20,7 @@ from controllers.console.app.generator import (
 )
 from core.errors.error import ProviderTokenNotInitError
 from models.model import App, AppMode
+from models.workflow import Workflow, WorkflowType
 
 
 def _persist_app(session: Session, *, tenant_id: str = "t1") -> App:
@@ -41,6 +41,17 @@ def _persist_app(session: Session, *, tenant_id: str = "t1") -> App:
 
 def _model_config_payload():
     return {"provider": "openai", "name": "gpt-4o", "mode": "chat", "completion_params": {}}
+
+
+def _workflow(graph_dict: dict[str, object]) -> Workflow:
+    return Workflow(
+        id="workflow-1",
+        tenant_id="t1",
+        app_id="app-1",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(graph_dict),
+    )
 
 
 def _install_workflow_service(monkeypatch: pytest.MonkeyPatch, workflow):
@@ -154,7 +165,7 @@ def test_instruction_generate_node_missing(
 
     app_model = _persist_app(sqlite_session)
 
-    workflow = SimpleNamespace(graph_dict={"nodes": []})
+    workflow = _workflow({"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)
 
     with app.test_request_context(
@@ -182,8 +193,8 @@ def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPa
 
     app_model = _persist_app(sqlite_session)
 
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _workflow(
+        {
             "nodes": [
                 {"id": "node-1", "data": {"type": "code"}},
             ]

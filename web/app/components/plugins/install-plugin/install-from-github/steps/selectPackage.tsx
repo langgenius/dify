@@ -110,7 +110,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               )}
             </div>
           </SelectTrigger>
-          <SelectContent popupClassName="w-[512px]">
+          <SelectContent className="w-lg">
             {versions.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -128,7 +128,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       <Field name="package" className="gap-4 self-stretch">
         <Select
           value={selectedPackageOption?.value ?? null}
-          readOnly={!selectedVersion}
+          disabled={!selectedVersion}
           onValueChange={(value) => {
             if (value == null) return
             const selectedItem = packages.find((item) => item.value === value)
@@ -145,7 +145,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               t(($) => $[`${i18nPrefix}.selectPackagePlaceholder`], { ns: 'plugin' }) ??
               ''}
           </SelectTrigger>
-          <SelectContent popupClassName="w-[512px]">
+          <SelectContent className="w-lg">
             {packages.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>

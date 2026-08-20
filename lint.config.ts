@@ -22,7 +22,23 @@ const tailwindCanonicalClassesOverride = {
   },
 } satisfies NonNullable<OxlintConfig['overrides']>[number]
 
-export const webJsxA11yRules = {
+// Oxlint's default handler lists omit pointer and touch activation.
+const jsxInteractionHandlers = [
+  'onClick',
+  'onDoubleClick',
+  'onContextMenu',
+  'onMouseDown',
+  'onMouseUp',
+  'onPointerDown',
+  'onPointerUp',
+  'onTouchStart',
+  'onTouchEnd',
+  'onKeyPress',
+  'onKeyDown',
+  'onKeyUp',
+]
+
+export const jsxA11yRules = {
   'jsx-a11y/alt-text': 'error',
   'jsx-a11y/anchor-ambiguous-text': 'off',
   'jsx-a11y/anchor-has-content': 'error',
@@ -34,6 +50,8 @@ export const webJsxA11yRules = {
   'jsx-a11y/aria-unsupported-elements': 'error',
   'jsx-a11y/autocomplete-valid': 'error',
   'jsx-a11y/click-events-have-key-events': 'error',
+  // The native rule cannot resolve names supplied by Base UI render composition.
+  'jsx-a11y/control-has-associated-label': 'off',
   'jsx-a11y/heading-has-content': 'error',
   'jsx-a11y/html-has-lang': 'error',
   'jsx-a11y/iframe-has-title': 'error',
@@ -44,10 +62,15 @@ export const webJsxA11yRules = {
       tabbable: ['button', 'checkbox', 'link', 'searchbox', 'spinbutton', 'switch', 'textbox'],
     },
   ],
-  'jsx-a11y/label-has-associated-control': 'error',
+  'jsx-a11y/label-has-associated-control': [
+    'error',
+    { controlComponents: ['Checkbox', 'Textarea'] },
+  ],
+  'jsx-a11y/lang': 'error',
   'jsx-a11y/media-has-caption': 'error',
   'jsx-a11y/mouse-events-have-key-events': 'error',
   'jsx-a11y/no-access-key': 'error',
+  'jsx-a11y/no-aria-hidden-on-focusable': 'error',
   'jsx-a11y/no-autofocus': 'error',
   'jsx-a11y/no-distracting-elements': 'error',
   'jsx-a11y/no-interactive-element-to-noninteractive-role': [
@@ -60,16 +83,7 @@ export const webJsxA11yRules = {
   'jsx-a11y/no-noninteractive-element-interactions': [
     'error',
     {
-      handlers: [
-        'onClick',
-        'onError',
-        'onLoad',
-        'onMouseDown',
-        'onMouseUp',
-        'onKeyPress',
-        'onKeyDown',
-        'onKeyUp',
-      ],
+      handlers: [...jsxInteractionHandlers, 'onError', 'onLoad'],
       alert: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
       body: ['onError', 'onLoad'],
       dialog: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
@@ -80,8 +94,9 @@ export const webJsxA11yRules = {
   'jsx-a11y/no-noninteractive-element-to-interactive-role': [
     'error',
     {
-      ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-      ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
+      // ARIA in HTML allows list widgets here, but not treegrid.
+      ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree'],
+      ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree'],
       li: ['menuitem', 'menuitemradio', 'menuitemcheckbox', 'option', 'row', 'tab', 'treeitem'],
       table: ['grid'],
       td: ['gridcell'],
@@ -91,7 +106,6 @@ export const webJsxA11yRules = {
   'jsx-a11y/no-noninteractive-tabindex': [
     'error',
     {
-      tags: [],
       roles: ['tabpanel'],
       allowExpressionValues: true,
     },
@@ -101,7 +115,7 @@ export const webJsxA11yRules = {
     'error',
     {
       allowExpressionValues: true,
-      handlers: ['onClick', 'onMouseDown', 'onMouseUp', 'onKeyPress', 'onKeyDown', 'onKeyUp'],
+      handlers: jsxInteractionHandlers,
     },
   ],
   'jsx-a11y/role-has-required-aria-props': 'error',
@@ -138,7 +152,8 @@ export const lintConfig = {
     'dify-agent/**',
     'docker/**',
     'docs/**',
-    'scripts/**',
+    'scripts/**/*',
+    '!scripts/check-web-production-unused-after-knip-fix.mjs',
     'sdks/php-client/**',
     'sdks/python-client/**',
     '**/.next/**',
@@ -163,6 +178,10 @@ export const lintConfig = {
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     'eslint-plugin-command',
+    {
+      name: 'dify',
+      specifier: './web/plugins/eslint/index.js',
+    },
     'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
@@ -172,7 +191,6 @@ export const lintConfig = {
       name: 'eslint-react',
       specifier: '@eslint-react/eslint-plugin',
     },
-    'eslint-plugin-hyoban',
     {
       name: 'jsdoc-js',
       specifier: 'eslint-plugin-jsdoc',
@@ -187,7 +205,7 @@ export const lintConfig = {
     'eslint-plugin-storybook',
   ],
   options: {
-    reportUnusedDisableDirectives: 'warn',
+    reportUnusedDisableDirectives: 'error',
     respectEslintDisableDirectives: false,
     typeAware: true,
     typeCheck: true,
@@ -440,6 +458,9 @@ export const lintConfig = {
     ],
     'vars-on-top': 'error',
     yoda: ['error', 'never'],
+    'unicorn/no-abusive-eslint-disable': 'error',
+    'dify/no-file-wide-disable': 'error',
+    'dify/require-disable-directive-description': 'error',
     'eslint-comments/no-aggregating-enable': 'error',
     'eslint-comments/no-duplicate-disable': 'error',
     'eslint-comments/no-unlimited-disable': 'error',
@@ -767,6 +788,7 @@ export const lintConfig = {
         '@tanstack/query/infinite-query-property-order': 'error',
         '@tanstack/query/no-void-query-fn': 'error',
         '@tanstack/query/mutation-property-order': 'error',
+        '@tanstack/query/prefer-query-options': 'error',
         'react/exhaustive-deps': 'warn',
         'react/no-array-index-key': 'warn',
         'react/no-clone-element': 'warn',
@@ -777,14 +799,14 @@ export const lintConfig = {
           'error',
           {
             allowConstantExport: true,
-            allowExportNames: ['viewport'],
+            allowExportNames: ['generateMetadata', 'viewport'],
           },
         ],
       },
     },
     {
-      files: ['web/**/*.tsx'],
-      rules: webJsxA11yRules,
+      files: ['web/**/*.{jsx,tsx}', 'packages/dify-ui/**/*.{jsx,tsx}'],
+      rules: jsxA11yRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
@@ -812,7 +834,7 @@ export const lintConfig = {
     {
       files: ['web/**/*.tsx'],
       rules: {
-        'hyoban/prefer-tailwind-icons': [
+        'dify/prefer-tailwind-icons': [
           'warn',
           {
             prefix: 'i-',
@@ -1114,6 +1136,19 @@ export const lintConfig = {
       },
     },
     {
+      files: ['web/**/*.{jsx,tsx}'],
+      excludeFiles: [
+        'web/**/__tests__/**',
+        'web/**/*.spec.{jsx,tsx}',
+        'web/**/*.test.{jsx,tsx}',
+        'web/**/*.stories.{jsx,tsx}',
+        'web/**/*.story.{jsx,tsx}',
+      ],
+      rules: {
+        'dify/require-title-for-truncated-text': 'warn',
+      },
+    },
+    {
       files: [
         'web/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
         'web/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
@@ -1145,113 +1180,6 @@ export const lintConfig = {
       },
     },
     {
-      files: ['packages/dify-ui/**/*.tsx'],
-      rules: {
-        'jsx-a11y/alt-text': 'error',
-        'jsx-a11y/anchor-ambiguous-text': 'off',
-        'jsx-a11y/anchor-has-content': 'off',
-        'jsx-a11y/anchor-is-valid': 'error',
-        'jsx-a11y/aria-activedescendant-has-tabindex': 'error',
-        'jsx-a11y/aria-props': 'error',
-        'jsx-a11y/aria-proptypes': 'error',
-        'jsx-a11y/aria-role': 'error',
-        'jsx-a11y/aria-unsupported-elements': 'error',
-        'jsx-a11y/autocomplete-valid': 'error',
-        'jsx-a11y/click-events-have-key-events': 'error',
-        'jsx-a11y/control-has-associated-label': 'off',
-        'jsx-a11y/heading-has-content': 'error',
-        'jsx-a11y/html-has-lang': 'error',
-        'jsx-a11y/iframe-has-title': 'error',
-        'jsx-a11y/img-redundant-alt': 'error',
-        'jsx-a11y/interactive-supports-focus': [
-          'error',
-          {
-            tabbable: [
-              'button',
-              'checkbox',
-              'link',
-              'searchbox',
-              'spinbutton',
-              'switch',
-              'textbox',
-            ],
-          },
-        ],
-        'jsx-a11y/label-has-associated-control': 'off',
-        'jsx-a11y/media-has-caption': 'error',
-        'jsx-a11y/mouse-events-have-key-events': 'error',
-        'jsx-a11y/no-access-key': 'error',
-        'jsx-a11y/no-autofocus': 'error',
-        'jsx-a11y/no-distracting-elements': 'error',
-        'jsx-a11y/no-interactive-element-to-noninteractive-role': [
-          'error',
-          {
-            tr: ['none', 'presentation'],
-            canvas: ['img'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-element-interactions': [
-          'error',
-          {
-            handlers: [
-              'onClick',
-              'onError',
-              'onLoad',
-              'onMouseDown',
-              'onMouseUp',
-              'onKeyPress',
-              'onKeyDown',
-              'onKeyUp',
-            ],
-            alert: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
-            body: ['onError', 'onLoad'],
-            dialog: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
-            iframe: ['onError', 'onLoad'],
-            img: ['onError', 'onLoad'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-element-to-interactive-role': [
-          'error',
-          {
-            ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-            ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-            li: [
-              'menuitem',
-              'menuitemradio',
-              'menuitemcheckbox',
-              'option',
-              'row',
-              'tab',
-              'treeitem',
-            ],
-            table: ['grid'],
-            td: ['gridcell'],
-            fieldset: ['radiogroup', 'presentation'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-tabindex': [
-          'error',
-          {
-            tags: [],
-            roles: ['tabpanel'],
-            allowExpressionValues: true,
-          },
-        ],
-        'jsx-a11y/no-redundant-roles': 'error',
-        'jsx-a11y/no-static-element-interactions': [
-          'error',
-          {
-            allowExpressionValues: true,
-            handlers: ['onClick', 'onMouseDown', 'onMouseUp', 'onKeyPress', 'onKeyDown', 'onKeyUp'],
-          },
-        ],
-        'jsx-a11y/role-has-required-aria-props': 'error',
-        'jsx-a11y/role-supports-aria-props': 'error',
-        'jsx-a11y/scope': 'error',
-        'jsx-a11y/tabindex-no-positive': 'error',
-      },
-    },
-    {
       files: [
         'packages/dify-ui/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}',
         'packages/dify-ui/**/*.story.{js,cjs,mjs,jsx,ts,tsx}',
@@ -1280,15 +1208,6 @@ export const lintConfig = {
             packageJsonLocation: difyUiPackageJson,
           },
         ],
-      },
-    },
-    {
-      files: [
-        'packages/dify-ui/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-        'packages/dify-ui/**/*.spec.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
-      ],
-      rules: {
-        'eslint-react/purity': 'off',
       },
     },
     {

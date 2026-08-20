@@ -139,6 +139,7 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                       <>
                         <ModelParameterModal
                           isAdvancedMode={isAdvancedMode}
+                          modelSelectorPopupClassName="w-108"
                           provider={modelConfig.provider}
                           completionParams={contextValue.completionParams}
                           modelId={modelConfig.model_id}
@@ -176,7 +177,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                 >
                   <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                     <Debug
-                      isAPIKeySet={contextValue.isAPIKeySet}
                       onSetting={onOpenAccountSettings}
                       inputs={contextValue.inputs}
                       modelParameterParams={{
@@ -259,7 +259,6 @@ const ConfigurationView: FC<ConfigurationViewModel> = ({
                         />
                       </div>
                       <Debug
-                        isAPIKeySet={contextValue.isAPIKeySet}
                         onSetting={onOpenAccountSettings}
                         inputs={contextValue.inputs}
                         modelParameterParams={{

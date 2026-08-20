@@ -1,7 +1,7 @@
 import type { StubServer } from '@test/fixtures/stub-server'
 import { testHttpClient } from '@test/fixtures/http-client'
 import { jsonResponder, startStubServer } from '@test/fixtures/stub-server'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { isHttpClientError } from '@/errors/base'
 import { WorkspacesClient } from './workspaces.js'
 

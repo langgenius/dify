@@ -6,6 +6,11 @@ from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
+from models import Dataset
+
+
+def _dataset() -> Dataset:
+    return Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="account-1")
 
 
 class _KeywordThatRaises(BaseKeyword):
@@ -65,7 +70,7 @@ class _KeywordForHelpers(BaseKeyword):
 
 
 def test_abstract_methods_raise_not_implemented(unbound_session: Session):
-    keyword = _KeywordThatRaises(SimpleNamespace(id="dataset-1"))
+    keyword = _KeywordThatRaises(_dataset())
     session = unbound_session
 
     with pytest.raises(NotImplementedError):
@@ -88,7 +93,7 @@ def test_abstract_methods_raise_not_implemented(unbound_session: Session):
 
 
 def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Session):
-    keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"), existing_ids={"duplicate"})
+    keyword = _KeywordForHelpers(_dataset(), existing_ids={"duplicate"})
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
         Document(page_content="duplicate", metadata={"doc_id": "duplicate"}),
@@ -102,7 +107,7 @@ def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Sessio
 
 
 def test_get_uuids_returns_only_docs_with_metadata():
-    keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"))
+    keyword = _KeywordForHelpers(_dataset())
     texts = [
         Document(page_content="doc-1", metadata={"doc_id": "doc-1"}),
         Document(page_content="doc-2", metadata={"doc_id": "doc-2"}),

@@ -1,7 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import usePreviewState from '../use-preview-state'
 
 describe('usePreviewState', () => {

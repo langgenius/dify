@@ -67,7 +67,7 @@ const ConditionOperator = ({
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+        className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <DropdownMenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
           {options.map((option) => (

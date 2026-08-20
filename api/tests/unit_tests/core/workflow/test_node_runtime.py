@@ -53,6 +53,7 @@ from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
 from models.model import StorageType, UploadFile
+from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -276,7 +277,7 @@ def test_dify_prepared_llm_requires_model_schema() -> None:
 
 def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytest.MonkeyPatch) -> None:
     model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
-    prepared = DifyPreparedLLM(model_instance)
+    prepared = DifyPreparedLLM(model_instance, request_metadata={"created_by": "workflow"})
     invoke_structured = MagicMock(return_value=sentinel.structured)
     monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", invoke_structured)
 
@@ -298,6 +299,7 @@ def test_dify_prepared_llm_delegates_structured_output_helper(monkeypatch: pytes
         model_parameters={"temperature": 0.2},
         stop=["done"],
         stream=True,
+        request_metadata={"created_by": "workflow"},
     )
 
 
@@ -715,7 +717,17 @@ def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
 
 
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    create_file_by_raw = MagicMock(return_value=SimpleNamespace(id="tool-file-id"))
+    tool_file = ToolFile(
+        user_id="user-id",
+        tenant_id="tenant-id",
+        conversation_id="conversation-id",
+        file_key="tools/tenant-id/tool-file-id.png",
+        mimetype="image/png",
+        name="diagram.png",
+        size=len(b"file-bytes"),
+    )
+    tool_file.id = "tool-file-id"
+    create_file_by_raw = MagicMock(return_value=tool_file)
     manager_instance = SimpleNamespace(create_file_by_raw=create_file_by_raw)
     monkeypatch.setattr(node_runtime, "ToolFileManager", MagicMock(return_value=manager_instance))
     conversation_id_getter = MagicMock(return_value="conversation-id")

@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Operations from '../operations'
 
@@ -177,6 +177,31 @@ describe('Operations', () => {
   })
 
   describe('switch toggle', () => {
+    it.each([
+      { enabled: true, archived: false, embeddingAvailable: true, canEdit: true },
+      { enabled: false, archived: false, embeddingAvailable: true, canEdit: true },
+      { enabled: false, archived: true, embeddingAvailable: true, canEdit: true },
+      { enabled: false, archived: false, embeddingAvailable: false, canEdit: true },
+      { enabled: true, archived: false, embeddingAvailable: true, canEdit: false },
+    ])(
+      'names the document enable switch across supported states: %j',
+      ({ enabled, archived, embeddingAvailable, canEdit }) => {
+        render(
+          <Operations
+            {...defaultProps}
+            detail={{ ...defaultDetail, enabled, archived }}
+            embeddingAvailable={embeddingAvailable}
+            canEdit={canEdit}
+          />,
+        )
+        expect(
+          screen.getByRole('switch', {
+            name: 'datasetDocuments.list.status.enabled: Test Document',
+          }),
+        ).toBeInTheDocument()
+      },
+    )
+
     it('should render switch in list scene', () => {
       render(<Operations {...defaultProps} scene="list" />)
       const switches = document.querySelectorAll('[role="switch"], [class*="switch"]')

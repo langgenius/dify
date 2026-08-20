@@ -27,7 +27,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
 
-### [POST] /account/avatar
+### ~~[POST] /account/avatar~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -141,9 +146,9 @@ Get account avatar url
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -187,7 +192,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountIntegrateListResponse](#accountintegratelistresponse)<br> |
 
-### [POST] /account/interface-language
+### ~~[POST] /account/interface-language~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -200,7 +210,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/interface-theme
+### ~~[POST] /account/interface-theme~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -213,7 +228,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/name
+### ~~[POST] /account/name~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -246,7 +266,25 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/timezone
+### [PATCH] /account/profile
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountProfilePatchPayload](#accountprofilepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+
+### ~~[POST] /account/timezone~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -308,6 +346,7 @@ Check if activation token is valid
 | mode | query | App mode filter | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | Filter by app name | No | string |
 | page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
+| publication_status | query | Filter by published or draft Agent configuration status | No | string, <br>**Available values:** "drafts", "published" |
 | sort_by | query | Sort apps by last modified, recently created, or earliest created | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified |
 | tag_ids | query | Filter by tag IDs | No | [ string ] |
 
@@ -331,6 +370,7 @@ Check if activation token is valid
 | 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
+| 409 | Agent name already exists |  |
 
 ### [GET] /agent/invite-options
 #### Parameters
@@ -971,85 +1011,6 @@ Stop a running Agent App chat message generation
 | 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
 | 403 | Insufficient permissions |  |
 
-### [GET] /agent/{agent_id}/drive/files
-List agent drive entries for an Agent App
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/files/download
-Time-limited external signed URL for one Agent App drive value
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/files/preview
-Truncated text preview of one Agent App drive value
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/skills
-List drive-backed skills for an Agent App
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/skills/{skill_path}/inspect
-Inspect one drive-backed skill for slash-menu hover/detail UI
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
-
 ### [POST] /agent/{agent_id}/features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
@@ -1094,43 +1055,6 @@ Create or update Agent App message feedback
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | Agent or message not found |  |
-
-### [DELETE] /agent/{agent_id}/files
-Delete one Agent App drive file by key
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. files/sample.pdf | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | File removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /agent/{agent_id}/files
-Commit an uploaded file into the Agent App drive under files/<name>
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
 #### Parameters
@@ -1320,60 +1244,6 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-
-### [POST] /agent/{agent_id}/skills/upload
-Upload + standardize a Skill into an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
-### [DELETE] /agent/{agent_id}/skills/{slug}
-Delete a standardized skill from an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Skill removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /agent/{agent_id}/skills/{slug}/infer-tools
-Infer CLI tool + ENV suggestions from a standardized Agent App skill
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
 #### Parameters
@@ -2191,132 +2061,6 @@ Run draft workflow for advanced chat application
 | ---- | ----------- | ------ |
 | 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
 
-### [GET] /apps/{app_id}/agent/drive/files
-List agent drive entries (read-only inspector; one endpoint for both tabs)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/files/download
-Time-limited external signed URL for one drive value (no streaming proxy)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/files/preview
-Truncated text preview of one drive value (binary-safe; SKILL.md is the main case)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/skills
-List drive-backed skills for the bound agent
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/skills/{skill_path}/inspect
-Inspect one drive-backed skill for slash-menu hover/detail UI
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
-
-### [DELETE] /apps/{app_id}/agent/files
-Delete one drive file by key via drive commit-null semantics
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. files/sample.pdf | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | File removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /apps/{app_id}/agent/files
-**ADD FILE: commit one uploaded file into the bound agent's drive**
-
-Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
-
 ### [GET] /apps/{app_id}/agent/logs
 **Get agent logs**
 
@@ -2336,68 +2080,6 @@ Get agent execution logs for an application
 | ---- | ----------- | ------ |
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
-
-### [POST] /apps/{app_id}/agent/skills/upload
-**Upload a Skill, validate it, and commit drive-backed skill files**
-
-Upload + standardize a Skill into the agent drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
-### [DELETE] /apps/{app_id}/agent/skills/{slug}
-Delete a standardized skill by removing its known drive keys via commit-null
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Skill removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /apps/{app_id}/agent/skills/{slug}/infer-tools
-**Suggest CLI tools/env for a skill**
-
-Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)
-Saving still goes through composer validation.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}
 Enable or disable annotation reply for an app
@@ -2490,7 +2172,7 @@ Update annotation settings for an app
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Annotations deleted successfully |
+| 200 | Success |
 
 ### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
@@ -2612,7 +2294,7 @@ Export all annotations for an app with CSV injection protection
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Annotation deleted successfully |
+| 200 | Success |
 
 ### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
@@ -3546,8 +3228,10 @@ Delete an existing tracing configuration for an application
 | Code | Description |
 | ---- | ----------- |
 | 204 | Tracing configuration deleted successfully |
-| 400 | Invalid request parameters or configuration not found |
+| 400 | Invalid request parameters or unsupported tracing provider |
 | 403 | Insufficient permissions |
+| 404 | Application or tracing configuration not found |
+| 500 | Tracing configuration processing failed |
 
 ### [GET] /apps/{app_id}/trace-config
 Get tracing configuration for an application
@@ -3564,7 +3248,9 @@ Get tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration retrieved successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters |  |
+| 400 | Invalid request parameters or unsupported tracing provider |  |
+| 404 | Application not found |  |
+| 500 | Tracing configuration processing failed |  |
 
 ### [PATCH] /apps/{app_id}/trace-config
 **Update an existing trace app configuration**
@@ -3588,8 +3274,10 @@ Update an existing tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration updated successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or configuration not found |  |
+| 400 | Invalid request parameters or tracing configuration |  |
 | 403 | Insufficient permissions |  |
+| 404 | Application or tracing configuration not found |  |
+| 500 | Tracing configuration processing failed |  |
 
 ### [POST] /apps/{app_id}/trace-config
 **Create a new trace app configuration**
@@ -3613,8 +3301,11 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or configuration already exists |  |
+| 400 | Invalid request parameters or tracing configuration |  |
 | 403 | Insufficient permissions |  |
+| 404 | Application not found |  |
+| 409 | Tracing configuration already exists |  |
+| 500 | Tracing configuration processing failed |  |
 
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
@@ -3633,9 +3324,9 @@ Create a new tracing configuration for an application
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /apps/{app_id}/triggers
 **Get app triggers list**
@@ -3677,32 +3368,6 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
-
-### [GET] /apps/{app_id}/workflow-archived-logs
-**Get workflow archived logs**
-
-Get workflow archived execution logs
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| created_at__after | query | Filter logs created after this timestamp | No | dateTime |
-| created_at__before | query | Filter logs created before this timestamp | No | dateTime |
-| created_by_account | query | Filter by account | No | string |
-| created_by_end_user_session_id | query | Filter by end user session ID | No | string |
-| detail | query | Whether to return detailed logs | No | boolean |
-| keyword | query | Search keyword for filtering logs | No | string |
-| limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
-| page | query | Page number (1-99999) | No | integer, <br>**Default:** 1 |
-| status | query | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No | string, <br>**Available values:** "failed", "partial-succeeded", "paused", "running", "scheduled", "stopped", "succeeded" |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Workflow archived logs retrieved successfully | **application/json**: [WorkflowArchivedLogPaginationResponse](#workflowarchivedlogpaginationresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs
 **Get workflow run list**
@@ -3777,22 +3442,6 @@ Stop running workflow task
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found |  |
-
-### [GET] /apps/{app_id}/workflow-runs/{run_id}/export
-Generate a download URL for an archived workflow run.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| run_id | path | Workflow run ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Export URL generated | **application/json**: [WorkflowRunExportResponse](#workflowrunexportresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
@@ -4237,7 +3886,7 @@ Get conversation variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 | 404 | Draft workflow not found |  |
 
 ### [POST] /apps/{app_id}/workflows/draft/conversation-variables
@@ -4660,7 +4309,7 @@ Get variables for a specific node
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/run
 **Run draft workflow**
@@ -4768,7 +4417,7 @@ Get system variables for workflow
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
 **Poll for trigger events and execute full workflow when event arrives**
@@ -4783,7 +4432,7 @@ Get system variables for workflow
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [DraftWorkflowTriggerRunRequest](#draftworkflowtriggerrunrequest)<br> |
+|  Yes | **application/json**: [DraftWorkflowTriggerRunPayload](#draftworkflowtriggerrunpayload)<br> |
 
 #### Responses
 
@@ -4848,7 +4497,7 @@ Get draft workflow variables
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Delete a workflow variable
@@ -4881,7 +4530,7 @@ Get a specific workflow variable
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found |  |
 
 ### [PATCH] /apps/{app_id}/workflows/draft/variables/{variable_id}
@@ -4904,7 +4553,7 @@ Update a workflow variable
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found |  |
 
 ### [PUT] /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
@@ -4921,7 +4570,7 @@ Reset a workflow variable to its default value
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
@@ -5064,7 +4713,7 @@ Full value for one declared output of a published run.
 
 | Code | Description |
 | ---- | ----------- |
-| 204 | Workflow deleted successfully |
+| 200 | Success |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
 **Update workflow attributes**
@@ -5212,9 +4861,9 @@ Restore a published workflow version into the draft workflow
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -5317,6 +4966,9 @@ Restore a published workflow version into the draft workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
+| 403 | Forbidden |  |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [PUT] /billing/partners/{partner_key}/tenants
 Sync partner tenants bindings
@@ -5353,6 +5005,10 @@ Sync partner tenants bindings
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
+| 403 | Forbidden |  |
+| 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -5383,20 +5039,24 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ComplianceDownloadResponse](#compliancedownloadresponse)<br> |
+| 422 | Invalid compliance download query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
+| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br> |
+| 502 | Compliance download failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [GET] /data-source/integrates
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PATCH] /data-source/integrates
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5408,9 +5068,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PATCH] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5422,9 +5082,9 @@ Get compliance document download link
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /datasets
 Get list of datasets
@@ -5481,6 +5141,12 @@ Get dataset API keys
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
 
 ### [POST] /datasets/api-keys
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DatasetApiKeyCreatePayload](#datasetapikeycreatepayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -6850,7 +6516,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Language code for recommended app localization | No | string |
+| language | query | Language code for recommended app localization | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -6863,7 +6529,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| language | query | Language code for recommended app localization | No | string |
+| language | query | Language code for recommended app localization | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -6882,10 +6548,13 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RecommendedAppDetailNullableResponse](#recommendedappdetailnullableresponse)<br> |
+| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
+| 404 | Recommended app not found |  |
 
 ### [GET] /features
-**Get feature configuration for current tenant**
+**Get current workspace features**
+
+Get feature availability and limits for the current workspace
 
 #### Responses
 
@@ -7538,7 +7207,13 @@ Get instruction generation template
 | 302 | Redirect to OAuth callback page |
 
 ### [GET] /notification
-Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+Return the active in-product notification for the current user in the requested language (defaults to English when omitted). Unavailable translations fall back to English, then the first available content. The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Notification language | No | string, <br>**Default:** en-US |
 
 #### Responses
 
@@ -7608,7 +7283,7 @@ Handle OAuth callback and complete login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | OAuth process failed |  |
+| 400 | OAuth process failed | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br> |
 
 ### [GET] /oauth/data-source/binding/{provider}
 Bind OAuth data source with authorization code
@@ -7697,7 +7372,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth authorization URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | Invalid provider |  |
+| 400 | Invalid provider | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/callback
 #### Parameters
@@ -7722,6 +7397,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_id | query | Credential ID to reauthorize | No | string |
+| visibility | query | Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set). | No | string |
 | provider_id | path |  | Yes | string |
 
 #### Responses
@@ -7735,6 +7411,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| visibility | query | Visibility for the OAuth credential. Defaults to 'only_me'. | No | string, <br>**Available values:** "all_team_members", "only_me" |
 | provider | path |  | Yes | string |
 
 #### Responses
@@ -8194,17 +7871,11 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [DraftWorkflowSyncPayload](#draftworkflowsyncpayload)<br> |
-
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -8370,7 +8041,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -8436,7 +8107,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 #### Parameters
@@ -8466,7 +8137,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8494,7 +8165,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8504,17 +8175,11 @@ Update account-level Step-by-step Tour state
 | pipeline_id | path |  | Yes | string (uuid) |
 | variable_id | path |  | Yes | string (uuid) |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 
 ### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
 #### Parameters
@@ -8528,7 +8193,7 @@ Update account-level Step-by-step Tour state
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
@@ -8684,12 +8349,6 @@ Update account-level Step-by-step Tour state
 | pipeline_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
 
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [WorkflowUpdatePayload](#workflowupdatepayload)<br> |
-
 #### Responses
 
 | Code | Description | Schema |
@@ -8733,6 +8392,13 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
+| 413 | File too large |  |
+| 415 | Unsupported file type |  |
+| 422 | Request payload validation failed |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [GET] /remote-files/{url}
 #### Parameters
@@ -8746,6 +8412,10 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL |  |
+| 404 | Remote file not found |  |
+| 500 | Internal server error |  |
+| 502 | Remote file unavailable or returned an invalid response |  |
 
 ### [POST] /reset-password
 #### Request Body
@@ -8981,7 +8651,7 @@ Conversation variables are not used in snippet workflows; returns an empty list 
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/environment-variables
 Get environment variables from snippet draft workflow graph
@@ -9260,7 +8930,7 @@ Get variables for a specific node (snippet draft workflow)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/run
 **Run draft workflow for snippet**
@@ -9300,7 +8970,7 @@ System variables are not used in snippet workflows; returns an empty list for AP
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableList](#workflowdraftvariablelist)<br> |
+| 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables
 Delete all draft workflow variables for the current user (snippet scope)
@@ -9332,7 +9002,7 @@ List draft workflow variables without values (paginated, snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValue](#workflowdraftvariablelistwithoutvalue)<br> |
+| 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Delete a draft workflow variable (snippet scope)
@@ -9365,7 +9035,7 @@ Get a specific draft workflow variable (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found |  |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
@@ -9388,7 +9058,7 @@ Update a draft workflow variable (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found |  |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
@@ -9405,7 +9075,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariable](#workflowdraftvariable)<br> |
+| 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found |  |
 
@@ -9446,6 +9116,24 @@ Reset a draft workflow variable to its default value (snippet scope)
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 | 400 | No draft workflow found |  |
+
+### [DELETE] /snippets/{snippet_id}/workflows/{workflow_id}
+**Delete a published snippet workflow version**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
+| workflow_id | path | Workflow ID | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Workflow deleted successfully |
+| 400 | Workflow is in use |
+| 404 | Workflow not found |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/{workflow_id}
 **Update a published snippet workflow version's display metadata**
@@ -9562,7 +9250,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | No | string, <br>**Available values:** "", "app", "knowledge", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" |
 
 #### Responses
 
@@ -9614,21 +9302,6 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
-
-### [POST] /test/retrieval
-Bedrock retrieval test (internal use only)
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [BedrockRetrievalPayload](#bedrockretrievalpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Bedrock retrieval test completed | **application/json**: [BedrockRetrievalResponse](#bedrockretrievalresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
 **Get app detail**
@@ -9872,9 +9545,9 @@ Returns the site configuration for the application including theme, icons, and t
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /trial-models
-**Get hosted trial model provider configuration for model-provider pages**
+**Get hosted credit provider configuration for the current workspace**
 
-Get hosted trial model provider configuration
+Get hosted credit model provider configuration for the current workspace
 
 #### Responses
 
@@ -10091,6 +9764,38 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AgentProviderListResponse](#agentproviderlistresponse)<br> |
 
+### [GET] /workspaces/current/agents/{agent_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Skill bindings | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
+
+### [PUT] /workspaces/current/agents/{agent_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentSkillBindingsPayload](#agentskillbindingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Skill bindings replaced | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
+
 ### [GET] /workspaces/current/customized-snippets
 **List customized snippets with pagination and search**
 
@@ -10242,6 +9947,7 @@ Export snippet configuration as DSL
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID to export | Yes | string (uuid) |
 | include_secret | query | Whether to include secret variables | No | string, <br>**Default:** false |
+| workflow_id | query | Specific published workflow version to export | No | string |
 
 #### Responses
 
@@ -10602,7 +10308,10 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
 
-### [GET] /workspaces/current/model-providers/{provider}/checkout-url
+### ~~[GET] /workspaces/current/model-providers/{provider}/checkout-url~~
+
+***DEPRECATED***
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -11434,11 +11143,17 @@ Returns permission flags that control workspace features like member invitations
 ### [GET] /workspaces/current/rbac/access-policies
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [_AccessPolicyList](#_accesspolicylist)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/access-policies
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_AccessPolicyCreateRequest](#_accesspolicycreaterequest)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -11454,9 +11169,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11467,9 +11182,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11477,6 +11192,12 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | policy_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_AccessPolicyUpdateRequest](#_accesspolicyupdaterequest)<br> |
 
 #### Responses
 
@@ -11493,9 +11214,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Policy copied | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
 #### Parameters
@@ -11506,9 +11227,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
 #### Parameters
@@ -11519,9 +11240,153 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+
+### [DELETE] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_DeleteMemberBindingsRequest](#_deletememberbindingsrequest)<br> |
+
+#### Responses
+
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AgentAccessMatrix](#agentaccessmatrix)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/user-access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/agents/{agent_id}/users/{target_account_id}/access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [PUT] /workspaces/current/rbac/agents/{agent_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ResourceAccessScopeRequest](#_resourceaccessscoperequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/agents/{agent_id}/whitelist_config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
 
 ### [DELETE] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11591,6 +11456,9 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | app_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -11650,6 +11518,19 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/whitelist_config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
 
 ### [DELETE] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11719,6 +11600,9 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -11779,6 +11663,19 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
 
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/whitelist_config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
+
 ### [GET] /workspaces/current/rbac/members/{member_id}/rbac-roles
 #### Parameters
 
@@ -11825,6 +11722,13 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
 
+### [GET] /workspaces/current/rbac/role-permissions/catalog/agent
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
 ### [GET] /workspaces/current/rbac/role-permissions/catalog/app
 #### Responses
 
@@ -11842,16 +11746,16 @@ Returns permission flags that control workspace features like member invitations
 ### [GET] /workspaces/current/rbac/roles
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [_RBACRoleList](#_rbacrolelist)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/roles
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Role created | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [DELETE] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11862,9 +11766,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11875,9 +11779,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [PUT] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11888,9 +11792,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [POST] /workspaces/current/rbac/roles/{role_id}/copy
 #### Parameters
@@ -11901,9 +11805,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Role copied | **application/json**: [RBACRole](#rbacrole)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}/members
 #### Parameters
@@ -11917,6 +11821,58 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [_MembersInRoleList](#_membersinrolelist)<br> |
+
+### [PUT] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ReplaceBindingsRequest](#_replacebindingsrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/agents/access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 
 ### [PUT] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings
 #### Parameters
@@ -12021,6 +11977,360 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
+### [GET] /workspaces/current/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Search keyword matching skill name or description. | No | string |
+| limit | query | Number of items per page. | No | integer, <br>**Default:** 20 |
+| page | query | Page number. | No | integer, <br>**Default:** 1 |
+| tag | query | Skill tag filters. Repeat the parameter for multiple tags. | No | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace skills | **application/json**: [SkillListResponse](#skilllistresponse)<br> |
+
+### [POST] /workspaces/current/skills
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillCreatePayload](#skillcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill created | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [POST] /workspaces/current/skills/files/upload
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill draft file uploaded | **application/json**: [SkillFileUploadResponse](#skillfileuploadresponse)<br> |
+
+### [POST] /workspaces/current/skills/import
+Import a Skill zip package from multipart form field `file`.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill imported | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [GET] /workspaces/current/skills/tags
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace Skill tags | **application/json**: [SkillTagListResponse](#skilltaglistresponse)<br> |
+
+### [DELETE] /workspaces/current/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDeletePayload](#skilldeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill deleted | **application/json**: [SkillDeleteResponse](#skilldeleteresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill detail | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [PATCH] /workspaces/current/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillMetadataPayload](#skillmetadatapayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill updated | **application/json**: [SkillResponse](#skillresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/assist/messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillAssistMessagePayload](#skillassistmessagepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Skill Authoring assistant event stream |
+
+### [POST] /workspaces/current/skills/{skill_id}/duplicate
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill duplicated | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/export
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Published Skill zip archive |
+
+### [PATCH] /workspaces/current/skills/{skill_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftFileOperationPayload](#skilldraftfileoperationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft file operation applied | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [PUT] /workspaces/current/skills/{skill_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftTreePayload](#skilldrafttreepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft files replaced | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/files/check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftFileCheckPayload](#skilldraftfilecheckpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft files checked | **application/json**: [SkillFileCheckResponse](#skillfilecheckresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| download | query | Return as an attachment when 1. | No | string |
+| path | query | Skill file path relative to the Skill root. | Yes | string |
+| version_id | query | Optional published version ID. Omit for current draft. | No | string |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill file content | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Skill file path relative to the Skill root. | Yes | string |
+| version_id | query | Optional published version ID. Omit for current draft. | No | string |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill file text preview | **application/json**: [SkillFilePreviewResponse](#skillfilepreviewresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillPublishPayload](#skillpublishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill published | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/references
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill references | **application/json**: [SkillReferenceListResponse](#skillreferencelistresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillRestorePayload](#skillrestorepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version restored to draft | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill versions | **application/json**: [SkillVersionListResponse](#skillversionlistresponse)<br> |
+
+### [DELETE] /workspaces/current/skills/{skill_id}/versions/{version_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version deleted | **application/json**: [SkillVersionDeleteResponse](#skillversiondeleteresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/versions/{version_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version detail | **application/json**: [SkillVersionDetailResponse](#skillversiondetailresponse)<br> |
+
+### [PATCH] /workspaces/current/skills/{skill_id}/versions/{version_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillVersionUpdatePayload](#skillversionupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version updated | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
 
 ### [GET] /workspaces/current/summary
 #### Responses
@@ -12784,7 +13094,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [TriggerSubscriptionBuilderVerifyPayload](#triggersubscriptionbuilderverifypayload)<br> |
+|  Yes | **application/json**: [TriggerSubscriptionVerifyPayload](#triggersubscriptionverifypayload)<br> |
 
 #### Responses
 
@@ -13141,6 +13451,16 @@ Model class for AI model.
 | password | string |  | No |
 | repeat_new_password | string |  | Yes |
 
+#### AccountProfilePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| interface_language | string |  | No |
+| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | No |
+| name | string |  | No |
+| timezone | string |  | No |
+
 #### AccountResponse
 
 | Name | Type | Description | Required |
@@ -13280,6 +13600,13 @@ Model class for AI model.
 | chat_prompt_config | object |  | No |
 | completion_prompt_config | object |  | No |
 
+#### AgentAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | No |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+
 #### AgentApiAccessResponse
 
 | Name | Type | Description | Required |
@@ -13375,7 +13702,7 @@ Model class for AI model.
 | mode | string |  | Yes |
 | model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
+| permission_keys | [ string ] |  | Yes |
 | role | string |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -13402,6 +13729,20 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
 
+#### AgentAppListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| creator_ids | [ string ] | Filter by creator account IDs | No |
+| is_created_by_me | boolean | Filter by creator | No |
+| limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
+| name | string | Filter by app name | No |
+| page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
+| publication_status | string, <br>**Available values:** "drafts", "published" | Filter by published or draft Agent configuration status | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created", <br>**Default:** last_modified | Sort apps by last modified, recently created, or earliest created<br>*Enum:* `"earliest_created"`, `"last_modified"`, `"recently_created"` | No |
+| tag_ids | [ string ] | Filter by tag IDs | No |
+
 #### AgentAppPagination
 
 | Name | Type | Description | Required |
@@ -13410,6 +13751,7 @@ default (the config form sends the full desired feature state on save).
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
+| publication_counts | [AgentPublicationCountsResponse](#agentpublicationcountsresponse) |  | Yes |
 | total | integer |  | Yes |
 
 #### AgentAppPartial
@@ -13440,7 +13782,7 @@ default (the config form sends the full desired feature state on save).
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
-| permission_keys | [ string ] |  | No |
+| permission_keys | [ string ] |  | Yes |
 | published_reference_count | integer |  | No |
 | published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
 | reference_count | integer |  | No |
@@ -14002,135 +14344,6 @@ Stable Agent Soul reference to one normalized skill archive.
 | debug_conversation_id | string |  | Yes |
 | debug_conversation_message_count | integer |  | No |
 
-#### AgentDriveDeleteFileByAgentQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| key | string | Drive key, e.g. files/sample.pdf | Yes |
-
-#### AgentDriveDeleteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| removed_keys | [ string ] |  | No |
-| result | string |  | Yes |
-
-#### AgentDriveDownloadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| url | string |  | Yes |
-
-#### AgentDriveFileCommitResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| file | [AgentDriveFileResponse](#agentdrivefileresponse) |  | Yes |
-
-#### AgentDriveFilePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| upload_file_id | string | UploadFile UUID from POST /console/api/files/upload | Yes |
-
-#### AgentDriveFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| drive_key | string |  | Yes |
-| file_id | string |  | Yes |
-| mime_type | string |  | No |
-| name | string |  | Yes |
-| size | integer |  | No |
-
-#### AgentDriveItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| file_kind | string |  | Yes |
-| hash | string |  | No |
-| is_skill | boolean |  | No |
-| key | string |  | Yes |
-| mime_type | string |  | No |
-| size | integer |  | No |
-| skill_metadata | string |  | No |
-
-#### AgentDriveListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [AgentDriveItemResponse](#agentdriveitemresponse) ] |  | No |
-
-#### AgentDrivePreviewResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| binary | boolean |  | Yes |
-| key | string |  | Yes |
-| size | integer |  | No |
-| text | string |  | No |
-| truncated | boolean |  | Yes |
-
-#### AgentDriveSkillFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| available_in_drive | boolean |  | Yes |
-| drive_key | string |  | No |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| type | string |  | Yes |
-
-#### AgentDriveSkillInspectResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| archive_key | string |  | No |
-| created_at | integer |  | No |
-| description | string |  | Yes |
-| file_tree | [ object ] |  | No |
-| files | [ [AgentDriveSkillFileResponse](#agentdriveskillfileresponse) ] |  | No |
-| hash | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| size | integer |  | No |
-| skill_md | [AgentDriveSkillMarkdownResponse](#agentdriveskillmarkdownresponse) |  | Yes |
-| skill_md_key | string |  | Yes |
-| source | string |  | Yes |
-| warnings | [ string ] |  | No |
-
-#### AgentDriveSkillItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| archive_key | string |  | No |
-| created_at | integer |  | No |
-| description | string |  | Yes |
-| hash | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| size | integer |  | No |
-| skill_md_key | string |  | Yes |
-
-#### AgentDriveSkillListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [AgentDriveSkillItemResponse](#agentdriveskillitemresponse) ] |  | No |
-
-#### AgentDriveSkillMarkdownResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| binary | boolean |  | Yes |
-| key | string |  | Yes |
-| size | integer |  | No |
-| text | string |  | No |
-| truncated | boolean |  | Yes |
-
 #### AgentEnvVariableConfig
 
 | Name | Type | Description | Required |
@@ -14154,7 +14367,6 @@ Stable Agent Soul reference to one normalized skill archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| drive_key | string |  | No |
 | file_id | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
@@ -14511,13 +14723,6 @@ section may be empty, which is how callers express "no knowledge layer".
 | status | string |  | Yes |
 | total_tokens | integer |  | Yes |
 
-#### AgentLogQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| message_id | string | Message UUID | Yes |
-
 #### AgentLogResponse
 
 | Name | Type | Description | Required |
@@ -14622,6 +14827,13 @@ section may be empty, which is how callers express "no knowledge layer".
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentProviderResponse | object |  |  |
+
+#### AgentPublicationCountsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| drafts | integer | Draft Agent Apps in the current list scope, excluding the publication status filter | Yes |
+| published | integer | Published Agent Apps in the current list scope, excluding the publication status filter | Yes |
 
 #### AgentPublishPayload
 
@@ -14775,27 +14987,36 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
-#### AgentSkillRefConfig
+#### AgentSkillBindingItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| file_count | integer |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_at | integer |  | No |
+| latest_published_version_id | string |  | No |
+| name | string |  | Yes |
+| priority | integer |  | Yes |
+| status | string |  | Yes |
+| tags | [ string ] |  | No |
+| updated_at | integer |  | Yes |
 
-#### AgentSkillUploadResponse
+#### AgentSkillBindingsPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentUploadedSkillResponse](#agentuploadedskillresponse) |  | Yes |
+| skill_ids | [ string ] | Ordered Skill IDs bound to the Agent. | No |
+
+#### AgentSkillBindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| data | [ [AgentSkillBindingItemResponse](#agentskillbindingitemresponse) ] |  | No |
+| skill_ids | [ string ] |  | No |
 
 #### AgentSoulAppFeaturesConfig
 
@@ -14820,7 +15041,6 @@ Visibility and lifecycle scope of an Agent record.
 | config_note | string |  | No |
 | config_skills | [ [AgentConfigSkillRefConfig](#agentconfigskillrefconfig) ] |  | No |
 | env | [AgentSoulEnvConfig](#agentsoulenvconfig) |  | No |
-| files | [AgentSoulFilesConfig](#agentsoulfilesconfig) |  | No |
 | human | [AgentSoulHumanConfig](#agentsoulhumanconfig) |  | No |
 | knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
 | memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
@@ -14877,13 +15097,6 @@ old Agent tool payloads can be read while new payloads stay explicit.
 | ---- | ---- | ----------- | -------- |
 | secret_refs | [ [AgentSecretRefConfig](#agentsecretrefconfig) ] |  | No |
 | variables | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
-
-#### AgentSoulFilesConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
 
 #### AgentSoulHumanConfig
 
@@ -15099,7 +15312,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | thought | string |  | No |
 | tool | string |  | No |
 | tool_input | string |  | No |
-| tool_labels | [JSONValue](#jsonvalue) |  | Yes |
+| tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
 
 #### AgentTokenUsageStatisticResponse
 
@@ -15131,16 +15344,6 @@ Legacy Chat App model config used only for follow-up question generation.
 | tool_output | object |  | Yes |
 | tool_parameters | object |  | Yes |
 
-#### AgentUploadedSkillResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| archive_key | string |  | No |
-| description | string |  | Yes |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| skill_md_key | string |  | Yes |
-
 #### AgentUserSatisfactionRateStatisticResponse
 
 | Name | Type | Description | Required |
@@ -15161,7 +15364,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | answer | string |  | No |
 | created_at | integer |  | No |
 | hit_count | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | question | string |  | No |
 
 #### AnnotationBatchImportResponse
@@ -15225,15 +15428,15 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | error_msg | string |  | No |
-| job_id | string |  | Yes |
-| job_status | string<br>string |  | Yes |
+| job_id | string (uuid) |  | Yes |
+| job_status | string |  | Yes |
 
 #### AnnotationJobStatusResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| job_id | string |  | Yes |
-| job_status | string<br>string |  | Yes |
+| job_id | string (uuid) |  | Yes |
+| job_status | string |  | Yes |
 
 #### AnnotationList
 
@@ -15300,8 +15503,21 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | category | string |  | Yes |
-| credentials | object |  | Yes |
+| credentials | [ApiKeyAuthCredentialsPayload](#apikeyauthcredentialspayload) |  | Yes |
 | provider | string |  | Yes |
+
+#### ApiKeyAuthConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | string |  | Yes |
+
+#### ApiKeyAuthCredentialsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_type | string |  | Yes |
+| config | [ApiKeyAuthConfigPayload](#apikeyauthconfigpayload) |  | Yes |
 
 #### ApiKeyAuthDataSourceItem
 
@@ -15325,6 +15541,7 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
+| dataset_ids | [ string ], <br>**Default:**  |  | No |
 | id | string |  | Yes |
 | last_used_at | integer |  | No |
 | token | string |  | Yes |
@@ -15766,7 +15983,7 @@ AppMCPServer Status Enum
 | copyright | string |  | No |
 | custom_disclaimer | string |  | No |
 | customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
+| customize_token_strategy | string, <br>**Available values:** "allow", "must", "not_allow" |  | No |
 | default_language | string |  | No |
 | description | string |  | No |
 | icon | string |  | No |
@@ -15905,38 +16122,6 @@ ExporleBanner status
 | ---- | ---- | ----------- | -------- |
 | upload_file_id | string |  | Yes |
 
-#### BedrockRetrievalPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| knowledge_id | string |  | Yes |
-| query | string |  | Yes |
-| retrieval_setting | [BedrockRetrievalSetting](#bedrockretrievalsetting) |  | Yes |
-
-#### BedrockRetrievalRecordResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| metadata | object |  | No |
-| score | number |  | Yes |
-| title | string |  | No |
-
-#### BedrockRetrievalResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| records | [ [BedrockRetrievalRecordResponse](#bedrockretrievalrecordresponse) ] |  | Yes |
-
-#### BedrockRetrievalSetting
-
-Retrieval settings for Amazon Bedrock knowledge base queries.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number | Minimum relevance score threshold | No |
-| top_k | integer | Maximum number of results to retrieve | No |
-
 #### BillingInvoiceResponse
 
 | Name | Type | Description | Required |
@@ -15947,8 +16132,15 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean | Deprecated. Use system features deployment_edition to determine the product edition. | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
+
+#### BillingOperationFailedErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
 
 #### BillingResponse
 
@@ -15961,6 +16153,22 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string |  | Yes |
+
+#### BillingUnavailableErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### BillingUnprocessableEntityErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
 
 #### BinaryFileResponse
 
@@ -16189,17 +16397,6 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | content | string | Child chunk text content. | Yes |
 
-#### CliToolSuggestion
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| command | string |  | No |
-| description | string |  | No |
-| env_suggestions | [ [EnvSuggestion](#envsuggestion) ] |  | No |
-| inferred_from | string |  | No |
-| install_commands | [ string ] |  | No |
-| name | string |  | Yes |
-
 #### CloudPlan
 
 Enum representing user plan types in the cloud platform.
@@ -16243,7 +16440,7 @@ TEAM: Team collaboration paid plan
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode | string |  | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" |  | No |
 | retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### CompletionMessagePayload
@@ -16264,7 +16461,7 @@ TEAM: Team collaboration paid plan
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
 | query | string |  | No |
-| response_mode | string |  | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" |  | No |
 | retriever_from | string, <br>**Default:** explore_app |  | No |
 
 #### ComplianceDownloadQuery
@@ -16277,7 +16474,15 @@ TEAM: Team collaboration paid plan
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ComplianceDownloadResponse | object |  |  |
+| url | string |  | Yes |
+
+#### ComplianceRateLimitErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
 
 #### ComposerBindingPayload
 
@@ -16834,6 +17039,12 @@ Model class for provider custom model configuration.
 | dataset | [DatasetResponse](#datasetresponse) |  | Yes |
 | documents | [ [DocumentResponse](#documentresponse) ] |  | Yes |
 
+#### DatasetApiKeyCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_ids | [ string ] |  | No |
+
 #### DatasetCreatePayload
 
 | Name | Type | Description | Required |
@@ -16865,9 +17076,9 @@ Model class for provider custom model configuration.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -16878,9 +17089,9 @@ Model class for provider custom model configuration.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -16907,9 +17118,9 @@ Model class for provider custom model configuration.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -16921,9 +17132,9 @@ Model class for provider custom model configuration.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -16990,9 +17201,9 @@ Model class for provider custom model configuration.
 | embedding_model | string |  | Yes |
 | embedding_model_provider | string |  | Yes |
 | enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
+| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) | Connection details for external knowledge bases. Populated when `provider` is `external`; otherwise its properties are `null`. | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
+| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) | Icon display configuration for the knowledge base. | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
@@ -17004,9 +17215,9 @@ Model class for provider custom model configuration.
 | permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
+| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) | Retrieval configuration for the knowledge base. | Yes |
 | runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
+| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) | Summary index configuration. | No |
 | tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
 | total_available_documents | integer |  | Yes |
 | total_documents | integer |  | Yes |
@@ -17128,7 +17339,7 @@ Model class for provider custom model configuration.
 | ---- | ---- | ----------- | -------- |
 | reranking_enable | boolean |  | Yes |
 | reranking_mode | string |  | No |
-| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) |  | No |
+| reranking_model | [DatasetRerankingModelResponse](#datasetrerankingmodelresponse) | Reranking model configuration. | No |
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | Yes |
 | search_method | string |  | Yes |
@@ -17183,8 +17394,8 @@ Model class for provider custom model configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) |  | No |
-| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) |  | No |
+| keyword_setting | [DatasetKeywordSettingResponse](#datasetkeywordsettingresponse) | Keyword search weight settings. | No |
+| vector_setting | [DatasetVectorSettingResponse](#datasetvectorsettingresponse) | Semantic search weight settings. | No |
 | weight_type | string |  | No |
 
 #### DatasourceCredentialDeletePayload
@@ -17251,6 +17462,7 @@ Model class for provider custom model configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_id | string | Credential ID to reauthorize | No |
+| visibility | string | Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set). | No |
 
 #### DatasourceOAuthCallbackQuery
 
@@ -17573,8 +17785,8 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict |  |  | No |
-| data_source_info |  |  | No |
+| data_source_detail_dict | object |  | Yes |
+| data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
@@ -17650,8 +17862,8 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict |  |  | No |
-| data_source_info |  |  | No |
+| data_source_detail_dict | object |  | Yes |
+| data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
@@ -17713,12 +17925,6 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | node_id | string |  | Yes |
 
-#### DraftWorkflowTriggerRunRequest
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| node_id | string | Node ID | Yes |
-
 #### DslImportWarning
 
 Portable DSL reference that could not be restored in the target workspace.
@@ -17737,6 +17943,12 @@ Portable DSL reference that could not be restored in the target workspace.
 | institution | string |  | Yes |
 | role | string |  | Yes |
 | token | string |  | Yes |
+
+#### EducationActivateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | Yes |
 
 #### EducationAutocompleteQuery
 
@@ -17784,7 +17996,8 @@ Portable DSL reference that could not be restored in the target workspace.
 | email | string |  | Yes |
 | language | string |  | No |
 | timezone | string |  | No |
-| token | string |  | Yes |
+| token | string (uuid) |  | Yes |
+| turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
 
 #### EmailCodeSendPayload
 
@@ -17991,14 +18204,6 @@ declaration of an endpoint group
 | name | string |  | Yes |
 | settings | object |  | Yes |
 
-#### EnvSuggestion
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| key | string |  | Yes |
-| reason | string |  | No |
-| secret_likely | boolean |  | No |
-
 #### EnvironmentVariableItemPayload
 
 | Name | Type | Description | Required |
@@ -18143,19 +18348,19 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
-| conversation_id | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
+| provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
@@ -18256,6 +18461,8 @@ Flask blueprint initialization.
 
 #### FeatureModel
 
+Effective feature availability and limits for the current workspace.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
@@ -18263,19 +18470,15 @@ Flask blueprint initialization.
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
 | billing | [BillingModel](#billingmodel) |  | Yes |
 | can_replace_logo | boolean |  | Yes |
-| dataset_operator_enabled | boolean |  | Yes |
-| docs_processing | string, <br>**Default:** standard |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
-| knowledge_rate_limit | integer, <br>**Default:** 10 |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
-| next_credit_reset_date | integer |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
-| vector_space | [LimitationModel](#limitationmodel) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
 | workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
@@ -18295,9 +18498,9 @@ Flask blueprint initialization.
 | ---- | ---- | ----------- | -------- |
 | end_date | string | End date (YYYY-MM-DD) | No |
 | format | string, <br>**Available values:** "csv", "json", <br>**Default:** csv | Export format<br>*Enum:* `"csv"`, `"json"` | No |
-| from_source | string | Filter by feedback source | No |
+| from_source | string, <br>**Available values:** "admin", "user" | Filter by feedback source | No |
 | has_comment | boolean | Only include feedback with comments | No |
-| rating | string | Filter by rating | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Filter by rating | No |
 | start_date | string | Start date (YYYY-MM-DD) | No |
 
 #### FeedbackStat
@@ -18358,7 +18561,7 @@ Enum class for fetch from.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -18414,7 +18617,6 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string | Error code if account not found | No |
 | data | string | Reset token | No |
 | result | string | Operation result | Yes |
 
@@ -18536,7 +18738,7 @@ Enum class for form type.
 | attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
 
 #### HitTestingQuery
 
@@ -18551,7 +18753,7 @@ Enum class for form type.
 | child_chunks | [ [HitTestingChildChunk](#hittestingchildchunk) ] |  | Yes |
 | files | [ [HitTestingFile](#hittestingfile) ] |  | Yes |
 | score | number |  | Yes |
-| segment | [HitTestingSegment](#hittestingsegment) |  | Yes |
+| segment | [HitTestingSegment](#hittestingsegment) | Matched chunk from the knowledge base. | Yes |
 | summary | string |  | Yes |
 | tsne_position |  |  | Yes |
 
@@ -18559,7 +18761,7 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| query | [HitTestingQuery](#hittestingquery) |  | Yes |
+| query | [HitTestingQuery](#hittestingquery) | The original query object. | Yes |
 | records | [ [HitTestingRecord](#hittestingrecord) ] |  | Yes |
 
 #### HitTestingSegment
@@ -18573,7 +18775,7 @@ Enum class for form type.
 | created_by | string |  | Yes |
 | disabled_at | integer |  | Yes |
 | disabled_by | string |  | Yes |
-| document | [HitTestingDocument](#hittestingdocument) |  | Yes |
+| document | [HitTestingDocument](#hittestingdocument) | Parent document information for the matched chunk. | Yes |
 | document_id | string |  | Yes |
 | enabled | boolean |  | Yes |
 | error | string |  | Yes |
@@ -18695,7 +18897,7 @@ Icon information model.
 | ---- | ---- | ----------- | -------- |
 | icon | string |  | No |
 | icon_background | string |  | No |
-| icon_type | string |  | No |
+| icon_type | string, <br>**Available values:** "emoji", "image" |  | No |
 | icon_url | string |  | No |
 
 #### IconType
@@ -18734,11 +18936,9 @@ How Dify forwards the end-user's identity to an MCP server.
 
 #### IncludeSecretQuery
 
-Query parameter for including secret variables in export.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
+| include_secret | string, <br>**Default:** false | Whether to include secret values in the exported DSL | No |
 
 #### IndexingEstimate
 
@@ -18880,12 +19080,6 @@ Input field definition for snippet parameters.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
-
-#### JSONObject
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| JSONObject | object |  |  |
 
 #### JSONValue
 
@@ -19285,7 +19479,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
 | message_id | string | Message ID | Yes |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -19293,7 +19487,7 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | belongs_to | string |  | No |
 | filename | string |  | Yes |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
 | transfer_method | string |  | Yes |
@@ -19346,7 +19540,7 @@ Metadata Filtering Condition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
-| logical_operator | string | How to combine multiple conditions. | No |
+| logical_operator | string, <br>**Available values:** "and", "or" | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -19479,7 +19673,7 @@ Enum class for model property key.
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
 | next_credit_reset_date | integer |  | Yes |
-| pool_type | string |  | Yes |
+| pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
@@ -19580,15 +19774,15 @@ Model with provider entity.
 | ---- | ---- | ----------- | -------- |
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
-| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
-| model_type | [ModelType](#modeltype) |  | Yes |
+| model_type | [ModelType](#modeltype) | Type of the model, matching the `model_type` path parameter. | Yes |
 | provider | [SimpleProviderEntityResponse](#simpleproviderentityresponse) |  | Yes |
-| status | [ModelStatus](#modelstatus) |  | Yes |
+| status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
 
 #### MoreLikeThisQuery
 
@@ -19600,6 +19794,7 @@ Model with provider entity.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | app | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
@@ -19686,6 +19881,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | subtitle | string |  | Yes |
 | title | string |  | Yes |
 | title_pic_url | string |  | Yes |
+
+#### NotificationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string, <br>**Default:** en-US | Notification language | No |
 
 #### NotificationResponse
 
@@ -19798,6 +19999,12 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result | Yes |
 
+#### OAuthErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string | OAuth error message | Yes |
+
 #### OAuthLoginQuery
 
 | Name | Type | Description | Required |
@@ -19824,6 +20031,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | app_icon | string |  | Yes |
 | app_label | object |  | Yes |
+| auto_authorize | boolean |  | Yes |
 | scope | string |  | Yes |
 
 #### OAuthProviderAuthorizeResponse
@@ -19955,7 +20163,7 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | [StringSource](#stringsource) |  | No |
+| default | [StringSource](#stringsource) | Raw default-value configuration for the paragraph input. Runtime-resolved values are exposed in the surrounding `resolved_default_values` mapping. | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -19989,18 +20197,18 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
-| file_upload | [JSONObject](#jsonobject) |  | Yes |
-| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement |  |  | No |
-| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
-| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
-| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
-| system_parameters | [SystemParameters](#systemparameters) |  | Yes |
-| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
-| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object ] |  | Yes |
 
 #### Parser
 
@@ -20912,7 +21120,7 @@ Serialized pricing info with codegen-safe decimal string patterns.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| mode | [ProcessRuleMode](#processrulemode) | `automatic` uses built-in rules, `custom` allows manual configuration, `hierarchical` enables parent-child chunk structure (use with `doc_form: hierarchical_model`). | Yes |
 | rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
@@ -21044,14 +21252,14 @@ Model class for model response.
 | ---- | ---- | ----------- | -------- |
 | deprecated | boolean |  | No |
 | features | [ [ModelFeature](#modelfeature) ] |  | No |
-| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| fetch_from | [FetchFrom](#fetchfrom) | Where the model definition comes from. `predefined-model` for built-in models, `customizable-model` for user-configured models. | Yes |
 | has_invalid_load_balancing_configs | boolean |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the model. | Yes |
 | load_balancing_enabled | boolean |  | No |
 | model | string |  | Yes |
 | model_properties | object |  | Yes |
-| model_type | [ModelType](#modeltype) |  | Yes |
-| status | [ModelStatus](#modelstatus) |  | Yes |
+| model_type | [ModelType](#modeltype) | Type of the model, matching the `model_type` path parameter. | Yes |
+| status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
 
 #### ProviderQuery
 
@@ -21101,10 +21309,10 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | icon_small | [I18nObject](#i18nobject) |  | No |
 | icon_small_dark | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) | Localized display name of the provider. | Yes |
 | models | [ [ProviderModelWithStatusEntity](#providermodelwithstatusentity) ] |  | Yes |
 | provider | string |  | Yes |
-| status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
+| status | [CustomConfigurationStatus](#customconfigurationstatus) | Provider status. `active` when credentials are configured and valid. | Yes |
 | tenant_id | string |  | Yes |
 
 #### PublishWorkflowPayload
@@ -21140,8 +21348,8 @@ Payload for publishing snippet workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer |  | Yes |
-| reset_date | integer, <br>**Default:** -1 |  | Yes |
+| limit | integer | Quota limit; -1 means unlimited and 0 means no quota | Yes |
+| reset_date | integer, <br>**Default:** -1 | Next quota reset as a Unix timestamp in seconds; -1 means no reset | Yes |
 | usage | integer |  | Yes |
 
 #### QuotaConfiguration
@@ -21163,13 +21371,13 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | QuotaUnit | string |  |  |
 
-#### RBACResourceWhitelistScope
+#### RBACResourceType
 
-Whitelist scopes accepted by RBAC app and dataset access config APIs.
+Resource types understood by access policies.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| RBACResourceWhitelistScope | string | Whitelist scopes accepted by RBAC app and dataset access config APIs. |  |
+| RBACResourceType | string | Resource types understood by access policies. |  |
 
 #### RBACRole
 
@@ -21287,12 +21495,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
-#### RecommendedAppDetailNullableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| RecommendedAppDetailNullableResponse | [RecommendedAppDetailResponse](#recommendedappdetailresponse) |  |  |
-
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -21343,7 +21545,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Language code for recommended app localization | No |
+| language | string, <br>**Default:** en-US | Language code for recommended app localization | No |
 
 #### RedirectResponse
 
@@ -21388,7 +21590,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| url | string | URL to fetch | Yes |
+| url | string (uri) | URL to fetch | Yes |
 
 #### ReplaceUserAccessPolicies
 
@@ -21447,13 +21649,19 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
-| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
+| pagination | [Pagination](#pagination) |  | No |
 
 #### ResourceWhitelist
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_ids | [ string ] |  | No |
+
+#### ResourceWhitelistConfig
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| automatic_include_workspace_members | boolean |  | Yes |
 
 #### RestrictModel
 
@@ -21481,7 +21689,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | ---- | ---- | ----------- | -------- |
 | metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
 | reranking_enable | boolean | Whether reranking is enabled. | Yes |
-| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_mode | string, <br>**Available values:** "reranking_model", "weighted_score" | Reranking mode. Required when `reranking_enable` is `true`. | No |
 | reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
 | score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
 | score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
@@ -21507,9 +21715,9 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | document_id | string |  | No |
 | document_name | string |  | No |
 | hit_count | integer |  | No |
-| id | string |  | No |
+| id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
-| message_id | string |  | No |
+| message_id | string (uuid) |  | No |
 | position | integer |  | Yes |
 | score | number |  | No |
 | segment_id | string |  | No |
@@ -21535,7 +21743,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string | Parent-child segmentation mode. | No |
+| parent_mode | string, <br>**Available values:** "full-doc", "paragraph" | Parent-child segmentation mode. | No |
 | pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
 | segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
 | subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
@@ -21763,7 +21971,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| option_source | [StringListSource](#stringlistsource) |  | Yes |
+| option_source | [StringListSource](#stringlistsource) | Source of options for `select` inputs. Present only when `type` is `select`. | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -21788,7 +21996,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | introduction | string |  | No |
 | name | string |  | Yes |
@@ -21878,7 +22086,7 @@ Simple provider entity response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
+| result | string | Operation result. | Yes |
 
 #### Site
 
@@ -21900,26 +22108,378 @@ Simple provider entity response.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
-#### SkillManifest
-
-Validated metadata extracted from a Skill package.
+#### SkillAssistAttachmentPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+| tool_file_id | string |  | Yes |
+
+#### SkillAssistHistoryMessagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| role | string, <br>**Available values:** "assistant", "user" | *Enum:* `"assistant"`, `"user"` | Yes |
+| suggested_display_name | string |  | No |
+| suggested_name | string |  | No |
+
+#### SkillAssistMessagePayload
+
+One user message and optional uploaded context for the Skill Authoring assistant.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ [SkillAssistAttachmentPayload](#skillassistattachmentpayload) ] |  | No |
+| history | [ [SkillAssistHistoryMessagePayload](#skillassisthistorymessagepayload) ] |  | No |
+| message | string |  | Yes |
+| model | [SkillAssistModelPayload](#skillassistmodelpayload) |  | No |
+| target_path | string |  | No |
+
+#### SkillAssistModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| model_settings | object |  | No |
+| plugin_id | string |  | No |
+| provider | string |  | Yes |
+
+#### SkillCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| display_name | string |  | No |
+| icon | string, <br>**Default:** 📄 |  | No |
+| name | string |  | No |
+| tags | [ string ] |  | No |
+
+#### SkillDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| confirmation_name | string | Required when deleting a referenced Skill. Must match the Skill display name. | No |
+
+#### SkillDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+| id | string |  | Yes |
+
+#### SkillDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string |  | No |
+| created_by_name | string |  | No |
 | description | string |  | Yes |
-| entry_path | string |  | Yes |
-| files | [ string ] |  | Yes |
+| display_name | string |  | Yes |
+| files | [ [SkillFileResponse](#skillfileresponse) ] |  | No |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_at | integer |  | No |
+| latest_published_version_id | string |  | No |
+| latest_published_version_number | integer |  | No |
+| name | string |  | Yes |
+| name_manually_edited | boolean |  | No |
+| reference_count | integer |  | No |
+| tags | [ string ] |  | No |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | No |
+| updated_by_name | string |  | No |
+| visibility | string |  | Yes |
+
+#### SkillDraftFileCheckItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| filename | string |  | Yes |
+| mime_type | string |  | No |
+| path | string | Target draft path. Defaults to filename. | No |
+| size | integer |  | Yes |
+
+#### SkillDraftFileCheckPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ [SkillDraftFileCheckItemPayload](#skilldraftfilecheckitempayload) ] |  | No |
+
+#### SkillDraftFileOperation
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SkillDraftFileOperation | string |  |  |
+
+#### SkillDraftFileOperationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| expected_updated_at | integer |  | No |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| operation | [SkillDraftFileOperation](#skilldraftfileoperation) |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| target_path | string |  | No |
+| tool_file_id | string |  | No |
+
+#### SkillDraftTreeItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| hash | string |  | No |
+| kind | [SkillFileKind](#skillfilekind) |  | No |
+| mime_type | string |  | No |
+| path | string |  | Yes |
+| size | integer |  | No |
+| storage | [SkillFileStorage](#skillfilestorage) |  | No |
+| tool_file_id | string |  | No |
+
+#### SkillDraftTreePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_updated_at | integer |  | No |
+| files | [ [SkillDraftTreeItemPayload](#skilldrafttreeitempayload) ] |  | No |
+
+#### SkillFileCheckErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+
+#### SkillFileCheckItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| errors | [ [SkillFileCheckErrorResponse](#skillfilecheckerrorresponse) ] |  | No |
+| extension | string |  | Yes |
+| filename | string |  | Yes |
+| mime_type | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | Yes |
+
+#### SkillFileCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | object |  | No |
+
+#### SkillFileKind
+
+Draft file entry kind.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SkillFileKind | string | Draft file entry kind. |  |
+
+#### SkillFilePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
 | hash | string |  | Yes |
+| mime_type | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | Yes |
+
+#### SkillFileQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| path | string | Skill file path relative to the Skill root. | Yes |
+| version_id | string | Optional published version ID. Omit for current draft. | No |
+
+#### SkillFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| hash | string |  | No |
+| id | string |  | No |
+| kind | string |  | Yes |
+| mime_type | string |  | No |
+| path | string |  | Yes |
+| size | integer |  | No |
+| storage | string |  | No |
+| tool_file_id | string |  | No |
+
+#### SkillFileStorage
+
+How a draft file's content is stored.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SkillFileStorage | string | How a draft file's content is stored. |  |
+
+#### SkillFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
 | name | string |  | Yes |
 | size | integer |  | Yes |
 
-#### SkillToolInferenceResult
+#### SkillListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| cli_tools | [ [CliToolSuggestion](#clitoolsuggestion) ] |  | No |
-| inferable | boolean |  | Yes |
-| reason | string |  | No |
+| data | [ [SkillResponse](#skillresponse) ] |  | No |
+| has_more | boolean |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| total | integer |  | No |
+
+#### SkillMetadataPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_name | string |  | No |
+| expected_updated_at | integer |  | No |
+| icon | string |  | No |
+| tags | [ string ] |  | No |
+
+#### SkillPublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string |  | No |
+| version_name | string |  | No |
+
+#### SkillReferenceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillReferenceResponse](#skillreferenceresponse) ] |  | No |
+
+#### SkillReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_icon | string |  | No |
+| agent_icon_background | string |  | No |
+| agent_icon_type | string |  | No |
+| agent_id | string |  | Yes |
+| app_id | string |  | No |
+| display_name | string |  | Yes |
+| name | string |  | Yes |
+| node_id | string |  | No |
+| node_name | string |  | No |
+| type | string |  | Yes |
+| workflow_icon | string |  | No |
+| workflow_icon_background | string |  | No |
+| workflow_icon_type | string |  | No |
+| workflow_id | string |  | No |
+| workflow_name | string |  | No |
+| workflow_version | string |  | No |
+
+#### SkillResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string |  | No |
+| created_by_name | string |  | No |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_at | integer |  | No |
+| latest_published_version_id | string |  | No |
+| latest_published_version_number | integer |  | No |
+| name | string |  | Yes |
+| name_manually_edited | boolean |  | No |
+| reference_count | integer |  | No |
+| tags | [ string ] |  | No |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | No |
+| updated_by_name | string |  | No |
+| visibility | string |  | Yes |
+
+#### SkillRestorePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string |  | No |
+| version_id | string |  | Yes |
+| version_name | string |  | No |
+
+#### SkillTagListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillTagResponse](#skilltagresponse) ] |  | No |
+
+#### SkillTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| tag | string |  | Yes |
+
+#### SkillVersionDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string |  | No |
+
+#### SkillVersionDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_size | integer |  | Yes |
+| created_at | integer |  | Yes |
+| files | [ [SkillFileResponse](#skillfileresponse) ] |  | No |
+| hash_code | string |  | Yes |
+| id | string |  | Yes |
+| is_latest | boolean |  | No |
+| publish_note | string |  | Yes |
+| published_by | string |  | No |
+| published_by_name | string |  | No |
+| skill_id | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillVersionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillVersionResponse](#skillversionresponse) ] |  | No |
+
+#### SkillVersionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_size | integer |  | Yes |
+| created_at | integer |  | Yes |
+| hash_code | string |  | Yes |
+| id | string |  | Yes |
+| is_latest | boolean |  | No |
+| publish_note | string |  | Yes |
+| published_by | string |  | No |
+| published_by_name | string |  | No |
+| skill_id | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillVersionUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string |  | No |
+| version_name | string |  | No |
 
 #### SnippetDependencyCheckResponse
 
@@ -21962,6 +22522,15 @@ Payload for syncing snippet draft workflow.
 | graph | object |  | Yes |
 | hash | string |  | No |
 | input_fields | [ object ] |  | No |
+
+#### SnippetExportQuery
+
+Query parameters for exporting a snippet workflow as DSL.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
+| workflow_id | string | Specific published workflow version to export | No |
 
 #### SnippetImportPayload
 
@@ -22163,7 +22732,7 @@ Query parameters for listing snippet published workflows.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "complete_task", "disable_current_workspace", "enable_current_workspace", "skip", "uncomplete_task" | State update action<br>*Enum:* `"complete_task"`, `"disable_current_workspace"`, `"enable_current_workspace"`, `"skip"`, `"uncomplete_task"` | Yes |
-| task_id | string | Task ID for task actions | No |
+| task_id | string, <br>**Available values:** "home", "integration", "knowledge", "studio" | Task ID for task actions | No |
 
 #### StepByStepTourStateResponse
 
@@ -22187,9 +22756,9 @@ Query parameters for listing snippet published workflows.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| selector | [ string ] |  | No |
-| type | [ValueSourceType](#valuesourcetype) |  | Yes |
-| value | [ string ] |  | No |
+| selector | [ string ] | Variable reference path when `type` is `variable`. | No |
+| type | [ValueSourceType](#valuesourcetype) | Origin of the options. `constant` means `value` lists the options literally; `variable` means `selector` points to an `array[string]` workflow variable that provides them. | Yes |
+| value | [ string ] | Literal option list when `type` is `constant`. | No |
 
 #### StringSource
 
@@ -22396,7 +22965,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "", "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
+| type | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"skill"`, `"snippet"` | Yes |
 
 #### TagListResponse
 
@@ -22625,6 +23194,12 @@ Tool label
 | ---- | ---- | ----------- | -------- |
 | ToolLabelListResponse | array |  |  |
 
+#### ToolOAuthAuthorizationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| visibility | string, <br>**Available values:** "all_team_members", "only_me" | Visibility for the OAuth credential. Defaults to 'only_me'. | No |
+
 #### ToolOAuthCustomClientPayload
 
 | Name | Type | Description | Required |
@@ -22755,7 +23330,7 @@ removes TOOLS_SELECTOR from PluginParameterType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| type | string |  | No |
+| type | string, <br>**Available values:** "api", "builtin", "mcp", "model", "workflow" |  | No |
 
 #### ToolProviderListResponse
 
@@ -23153,6 +23728,12 @@ The identity of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| credentials | object |  | No |
+
+#### TriggerSubscriptionVerifyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 
 #### TriggerVerificationResponse
@@ -23367,7 +23948,7 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
 | vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
-| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
@@ -23459,27 +24040,6 @@ How a workflow node is bound to an Agent.
 | limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number (1-99999) | No |
 | status | [WorkflowExecutionStatus](#workflowexecutionstatus) | Execution status filter (succeeded, failed, stopped, partial-succeeded) | No |
-
-#### WorkflowArchivedLogPaginationResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [WorkflowArchivedLogPartialResponse](#workflowarchivedlogpartialresponse) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-| page | integer |  | Yes |
-| total | integer |  | Yes |
-
-#### WorkflowArchivedLogPartialResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
-| created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
-| id | string |  | Yes |
-| trigger_metadata |  |  | No |
-| workflow_run | [WorkflowRunForArchivedLogResponse](#workflowrunforarchivedlogresponse) |  | No |
 
 #### WorkflowAverageAppInteractionStatisticItem
 
@@ -23691,46 +24251,14 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | data | [ [WorkflowDailyTokenCostStatisticItem](#workflowdailytokencoststatisticitem) ] |  | Yes |
 
-#### WorkflowDraftEnvVariable
+#### WorkflowDraftVariableFullContentResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### WorkflowDraftEnvVariableList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftEnvVariable](#workflowdraftenvvariable) ] |  | No |
-
-#### WorkflowDraftVariable
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| full_content | object |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
-
-#### WorkflowDraftVariableList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftVariable](#workflowdraftvariable) ] |  | No |
+| download_url | string |  | Yes |
+| length | integer |  | Yes |
+| size_bytes | integer |  | Yes |
+| value_type | string |  | Yes |
 
 #### WorkflowDraftVariableListQuery
 
@@ -23739,12 +24267,18 @@ How a workflow node is bound to an Agent.
 | limit | integer, <br>**Default:** 20 | Items per page | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
-#### WorkflowDraftVariableListWithoutValue
+#### WorkflowDraftVariableListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| items | [ [WorkflowDraftVariableWithoutValue](#workflowdraftvariablewithoutvalue) ] |  | No |
-| total | integer |  | No |
+| items | [ [WorkflowDraftVariableResponse](#workflowdraftvariableresponse) ] |  | Yes |
+
+#### WorkflowDraftVariableListWithoutValueResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [WorkflowDraftVariableWithoutValueResponse](#workflowdraftvariablewithoutvalueresponse) ] |  | Yes |
+| total | integer |  | Yes |
 
 #### WorkflowDraftVariablePatchPayload
 
@@ -23753,6 +24287,22 @@ How a workflow node is bound to an Agent.
 | name | string |  | No |
 | value |  |  | No |
 
+#### WorkflowDraftVariableResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| edited | boolean |  | Yes |
+| full_content | [WorkflowDraftVariableFullContentResponse](#workflowdraftvariablefullcontentresponse) |  | Yes |
+| id | string |  | Yes |
+| is_truncated | boolean |  | Yes |
+| name | string |  | Yes |
+| selector | [ string ] |  | Yes |
+| type | string |  | Yes |
+| value | [JSONValue](#jsonvalue) |  | Yes |
+| value_type | string |  | Yes |
+| visible | boolean |  | Yes |
+
 #### WorkflowDraftVariableUpdatePayload
 
 | Name | Type | Description | Required |
@@ -23760,19 +24310,19 @@ How a workflow node is bound to an Agent.
 | name | string | Variable name | No |
 | value |  | Variable value | No |
 
-#### WorkflowDraftVariableWithoutValue
+#### WorkflowDraftVariableWithoutValueResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| edited | boolean |  | No |
-| id | string |  | No |
-| is_truncated | boolean |  | No |
-| name | string |  | No |
-| selector | [ string ] |  | No |
-| type | string |  | No |
-| value_type | string |  | No |
-| visible | boolean |  | No |
+| description | string |  | Yes |
+| edited | boolean |  | Yes |
+| id | string |  | Yes |
+| is_truncated | boolean |  | Yes |
+| name | string |  | Yes |
+| selector | [ string ] |  | Yes |
+| type | string |  | Yes |
+| value_type | string |  | Yes |
+| visible | boolean |  | Yes |
 
 #### WorkflowEnvironmentVariableResponse
 
@@ -23894,7 +24444,7 @@ can reuse its existing handler.
 | description | string |  | No |
 | event | string |  | No |
 | icon | string |  | No |
-| mode | string | *Enum:* `"advanced-chat"`, `"workflow"` | Yes |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" | *Enum:* `"advanced-chat"`, `"workflow"` | Yes |
 | nodes | [ [WorkflowPlanNodeResponse](#workflowplannoderesponse) ] |  | Yes |
 | start_inputs | [ [WorkflowPlanStartInputResponse](#workflowplanstartinputresponse) ] |  | No |
 | title | string |  | No |
@@ -23909,7 +24459,7 @@ can reuse its existing handler.
 | graph | [WorkflowGraph](#workflowgraph) |  | Yes |
 | icon | string |  | No |
 | message | string |  | No |
-| mode | string |  | No |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" |  | No |
 
 #### WorkflowGenerateResultEventResponse
 
@@ -23922,7 +24472,7 @@ can reuse its existing handler.
 | graph | [WorkflowGraph](#workflowgraph) |  | Yes |
 | icon | string |  | No |
 | message | string |  | No |
-| mode | string |  | No |
+| mode | string, <br>**Available values:** "advanced-chat", "workflow" |  | No |
 
 #### WorkflowGenerateStreamEventResponse
 
@@ -24222,9 +24772,9 @@ Lifecycle state for an asynchronous archive download request.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| status | string | Workflow run status filter | No |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" | Workflow run status filter | No |
 | time_range | string | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No |
-| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging" | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
 #### WorkflowRunCountResponse
 
@@ -24257,24 +24807,6 @@ Lifecycle state for an asynchronous archive download request.
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
 | version | string |  | No |
-
-#### WorkflowRunExportResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| presigned_url | string | Pre-signed URL for download | No |
-| presigned_url_expires_at | string | Pre-signed URL expiration time | No |
-| status | string | Export status: success/failed | Yes |
-
-#### WorkflowRunForArchivedLogResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| elapsed_time | number |  | No |
-| id | string |  | Yes |
-| status | string |  | No |
-| total_tokens | integer |  | No |
-| triggered_from | string |  | No |
 
 #### WorkflowRunForListResponse
 
@@ -24314,8 +24846,8 @@ Lifecycle state for an asynchronous archive download request.
 | ---- | ---- | ----------- | -------- |
 | last_id | string | Last run ID for pagination | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page (1-100) | No |
-| status | string | Workflow run status filter | No |
-| triggered_from | string | Filter by trigger source: debugging or app-run. Default: debugging | No |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" | Workflow run status filter | No |
+| triggered_from | string, <br>**Available values:** "app-run", "debugging" | Filter by trigger source: debugging or app-run. Default: debugging | No |
 
 #### WorkflowRunNodeExecutionListResponse
 
@@ -24363,7 +24895,7 @@ Lifecycle state for an asynchronous archive download request.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 
 #### WorkflowRunQuery
@@ -24593,6 +25125,15 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
 
+#### WorkspaceSkillsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Search keyword matching skill name or description. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. | No |
+| page | integer, <br>**Default:** 1 | Page number. | No |
+| tag | [ string ] | Skill tag filters. Repeat the parameter for multiple tags. | No |
+
 #### WorkspaceTenantResultResponse
 
 | Name | Type | Description | Required |
@@ -24604,7 +25145,16 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| language | string | Localized policy label language | No |
+| language | string, <br>**Available values:** "en", "ja", "zh" | Localized policy label language | No |
+
+#### _AccessPolicyCreateRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ], <br>**Default:**  |  | No |
+| resource_type | [RBACResourceType](#rbacresourcetype) |  | Yes |
 
 #### _AccessPolicyList
 
@@ -24612,6 +25162,14 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### _AccessPolicyUpdateRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ], <br>**Default:**  |  | No |
 
 #### _DeleteMemberBindingsRequest
 
@@ -24657,7 +25215,16 @@ Workflow tool configuration
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
+| automatic_include_workspace_members | boolean |  | Yes |
+
+#### _ResourceUserAccessPoliciesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string, <br>**Available values:** "en", "ja", "zh" | Localized policy label language | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+| reverse | boolean |  | No |
 
 #### core__tools__entities__common_entities__I18nObject
 

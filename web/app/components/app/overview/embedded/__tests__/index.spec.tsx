@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { act } from 'react'
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Embedded from '../index'
@@ -118,15 +118,14 @@ describe('Embedded', () => {
   })
 
   it('calls onClose when the close button is clicked', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
 
     await act(async () => {
       render(<Embedded {...baseProps} onClose={onClose} />)
     })
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Close' }))
-    })
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
   })

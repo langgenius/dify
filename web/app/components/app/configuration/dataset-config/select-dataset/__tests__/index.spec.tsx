@@ -1,8 +1,7 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { DataSet } from '@/models/datasets'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { DatasetPermission } from '@/models/datasets'
 import { render } from '@/test/console/render'

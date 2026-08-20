@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
+import { getRedirection } from '@/utils/app-redirection'
 import { useAppInfoActions } from '../use-app-info-actions'
 
 const toastMocks = vi.hoisted(() => {
@@ -16,7 +17,6 @@ const toastMocks = vi.hoisted(() => {
   }
 })
 const mockReplace = vi.fn()
-const mockOnPlanInfoChanged = vi.fn()
 const mockInvalidateQueries = vi.fn()
 const mockSetAppDetail = vi.fn()
 const mockUpdateAppInfo = vi.fn()
@@ -27,6 +27,9 @@ const mockExportWorkflowAppDsl = vi.fn()
 const mockWorkflowExportState = { isExporting: false }
 const mockDeleteApp = vi.fn()
 const mockFetchAppDetail = vi.fn()
+const mockMarkAppDeletionStarted = vi.fn()
+const mockMarkAppDeletionSucceeded = vi.fn()
+const mockMarkAppDeletionFailed = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
 const mockSetQueryData = vi.fn()
@@ -42,10 +45,6 @@ let mockAppDetail: Record<string, unknown> | undefined = {
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ onPlanInfoChanged: mockOnPlanInfoChanged }),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
@@ -84,6 +83,13 @@ vi.mock('@tanstack/react-query', () => ({
   useSuspenseQuery: () => ({
     data: { rbac_enabled: true },
   }),
+  useMutation: ({ mutationKey }: { mutationKey: unknown }) => ({
+    mutateAsync:
+      JSON.stringify(mutationKey) ===
+      JSON.stringify(consoleQuery.apps.byAppId.copy.post.mutationOptions().mutationKey)
+        ? mockCopyApp
+        : mockDeleteApp,
+  }),
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
     setQueryData: mockSetQueryData,
@@ -92,9 +98,13 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('@/service/apps', () => ({
   updateAppInfo: (...args: unknown[]) => mockUpdateAppInfo(...args),
-  copyApp: (...args: unknown[]) => mockCopyApp(...args),
-  deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
+}))
+
+vi.mock('@/service/app-deletion', () => ({
+  markAppDeletionStarted: (...args: unknown[]) => mockMarkAppDeletionStarted(...args),
+  markAppDeletionSucceeded: (...args: unknown[]) => mockMarkAppDeletionSucceeded(...args),
+  markAppDeletionFailed: (...args: unknown[]) => mockMarkAppDeletionFailed(...args),
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
@@ -297,29 +307,50 @@ describe('useAppInfoActions', () => {
   })
 
   describe('onCopy', () => {
-    it('should copy app and redirect on success', async () => {
-      const newApp = { id: 'app-2', name: 'Copy', mode: 'chat' }
-      mockCopyApp.mockResolvedValue(newApp)
+    it.each(['completed', 'pending'] as const)(
+      'should redirect only when the copy is completed (%s)',
+      async (status) => {
+        const newApp = { id: 'app-2', name: 'Copy', mode: 'chat' }
+        mockCopyApp.mockResolvedValue(
+          status === 'completed'
+            ? newApp
+            : {
+                id: 'import-1',
+                status: 'pending',
+                current_dsl_version: '1.0.0',
+              },
+        )
 
-      const { result } = renderHook(() => useAppInfoActions({}))
+        const { result } = renderHook(() => useAppInfoActions({}))
 
-      await act(async () => {
-        await result.current.onCopy({
-          name: 'Copy',
-          icon_type: 'emoji',
-          icon: '🤖',
-          icon_background: '#fff',
+        await act(async () => {
+          await result.current.onCopy({
+            name: 'Copy',
+            icon_type: 'emoji',
+            icon: '🤖',
+            icon_background: '#fff',
+          })
         })
-      })
 
-      expect(mockCopyApp).toHaveBeenCalled()
-      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
-      expect(toastMocks.call).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'app.newApp.appCreated',
-      })
-      expect(mockOnPlanInfoChanged).toHaveBeenCalled()
-    })
+        expect(mockCopyApp).toHaveBeenCalledWith({
+          params: { app_id: 'app-1' },
+          body: { name: 'Copy', icon_type: 'emoji', icon: '🤖', icon_background: '#fff' },
+        })
+        if (status === 'completed') {
+          expect(toastMocks.call).toHaveBeenCalledWith({
+            type: 'success',
+            message: 'app.newApp.appCreated',
+          })
+          expect(getRedirection).toHaveBeenCalledWith(newApp, mockReplace, { isRbacEnabled: true })
+        } else {
+          expect(toastMocks.call).toHaveBeenCalledWith({
+            type: 'error',
+            message: 'app.newApp.appCreateFailed',
+          })
+          expect(getRedirection).not.toHaveBeenCalled()
+        }
+      },
+    )
 
     it('should notify error on copy failure', async () => {
       mockCopyApp.mockRejectedValue(new Error('fail'))
@@ -498,9 +529,11 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
-      expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
+      expect(mockDeleteApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
+      expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionSucceeded).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionFailed).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
-      expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(mockReplace).toHaveBeenCalledWith('/apps')
       expect(mockSetAppDetail).toHaveBeenCalledWith()
     })
@@ -526,6 +559,9 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
+      expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionFailed).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionSucceeded).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),

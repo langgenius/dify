@@ -1,26 +1,37 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactElement } from 'react'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { segmentImportStatus } from '@/types/dataset'
 import { SegmentAdd } from '../index'
 
 // Mock provider context
 let mockPlan: { type: CloudPlan } = { type: 'professional' }
-let mockEnableBilling = true
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    plan: mockPlan,
-    enableBilling: mockEnableBilling,
-  }),
-}))
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
+
+function render(ui: ReactElement) {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: deploymentEdition },
+    features: { billing: { subscription: { plan: mockPlan.type } } },
+  })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }) => (
+      <NuqsTestingAdapter>
+        <QueryWrapper>{children}</QueryWrapper>
+      </NuqsTestingAdapter>
+    ),
+  })
+}
 
 describe('SegmentAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPlan = { type: 'professional' }
-    mockEnableBilling = true
+    deploymentEdition = 'CLOUD'
   })
 
   const defaultProps = {
@@ -192,7 +203,7 @@ describe('SegmentAdd', () => {
 
     it('should allow add when billing is disabled regardless of plan', () => {
       mockPlan = { type: 'sandbox' }
-      mockEnableBilling = false
+      deploymentEdition = 'COMMUNITY'
       const mockShowNewSegmentModal = vi.fn()
       render(<SegmentAdd {...defaultProps} showNewSegmentModal={mockShowNewSegmentModal} />)
 

@@ -18,7 +18,7 @@ import {
 } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { KnowledgeViewSwitcher } from '@/features/new-rag/components/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import ServiceApi from '../extra-info/service-api'
+import { ServiceApi } from '../extra-info/service-api'
 
 type Props = {
   apiBaseUrl: string
@@ -152,7 +152,7 @@ const DatasetListHeader = ({
                     ? stepByStepTourCreateMenuHighlightPart
                     : undefined,
                   interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
-                  popupClassName: 'w-80',
+                  className: 'w-80',
                 })}
               >
                 {canCreateDataset && (

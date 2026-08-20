@@ -2,6 +2,7 @@
 import type { FC, ReactNode } from 'react'
 import type { inputType } from '@/hooks/use-metadata'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import {
   Select,
   SelectContent,
@@ -12,7 +13,6 @@ import {
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
-import Input from '@/app/components/base/input'
 import { getTextWidthWithCanvas } from '@/utils'
 import s from '../style.module.css'
 
@@ -57,7 +57,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
             onUpdate?.(nextValue)
           }}
         >
-          <SelectTrigger className={cn(s.select, s.selectWrapper)}>
+          <SelectTrigger aria-label={label} className={cn(s.select, s.selectWrapper)}>
             {selectedOption?.name ??
               `${t(($) => $['metadata.placeholder.select'], { ns: 'datasetDocuments' })}${label}`}
           </SelectTrigger>
@@ -76,6 +76,7 @@ const FieldInfo: FC<FieldInfoProps> = ({
     if (inputType === 'textarea') {
       return (
         <AutoHeightTextarea
+          aria-label={label}
           onChange={(e) => onUpdate?.(e.target.value)}
           value={value}
           className={s.textArea}
@@ -86,7 +87,8 @@ const FieldInfo: FC<FieldInfoProps> = ({
 
     return (
       <Input
-        onChange={(e) => onUpdate?.(e.target.value)}
+        aria-label={label}
+        onValueChange={(nextValue) => onUpdate?.(nextValue)}
         value={value}
         defaultValue={defaultValue}
         placeholder={`${t(($) => $['metadata.placeholder.add'], { ns: 'datasetDocuments' })}${label}`}

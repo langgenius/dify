@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 from inspect import unwrap
 from typing import Never
 from unittest.mock import MagicMock
@@ -24,8 +25,9 @@ def _poison_implicit_app_config_properties(monkeypatch: pytest.MonkeyPatch) -> N
     def fail(_app: App) -> Never:
         raise AssertionError("implicit App model-config property was accessed")
 
+    # `App.is_agent` used to be poisoned here too. It no longer exists as an
+    # implicit property, so its absence enforces the same thing outright.
     monkeypatch.setattr(App, "app_model_config", property(fail))
-    monkeypatch.setattr(App, "is_agent", property(fail))
 
 
 @pytest.mark.parametrize("app_mode", [AppMode.CHAT, AppMode.COMPLETION])
@@ -139,9 +141,13 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", fail_signal)
 
     method = model_config_module.ModelConfigResource.post
-    while not method.__code__.co_filename.endswith("controllers/common/session.py"):
+    while not os.path.normpath(method.__code__.co_filename).endswith(
+        os.path.join("controllers", "common", "session.py")
+    ):
         method = method.__wrapped__
-    assert method.__wrapped__.__code__.co_filename.endswith("controllers/console/app/wraps.py")
+    assert os.path.normpath(method.__wrapped__.__code__.co_filename).endswith(
+        os.path.join("controllers", "console", "app", "wraps.py")
+    )
 
     api = model_config_module.ModelConfigResource()
     with (

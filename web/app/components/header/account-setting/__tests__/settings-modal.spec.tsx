@@ -80,7 +80,7 @@ const renderSettingsModal = (searchParams = '', children?: React.ReactNode) => {
 }
 
 describe('SettingsModal', () => {
-  it('opens account settings with push and closes them with replace', async () => {
+  it('opens and closes account settings with shallow replace updates', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderSettingsModal('', <PreferencesOpener />)
 
@@ -91,8 +91,8 @@ describe('SettingsModal', () => {
     ).toHaveTextContent(ACCOUNT_SETTING_TAB.PREFERENCES)
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('settings')).toBe('preferences')
     expect(onUrlUpdate.mock.calls.at(-1)?.[0].options).toMatchObject({
-      history: 'push',
-      shallow: false,
+      history: 'replace',
+      shallow: true,
     })
 
     await user.click(screen.getByRole('button', { name: 'cancel account setting' }))

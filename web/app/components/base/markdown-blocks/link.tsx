@@ -26,13 +26,14 @@ const Link = ({ node, children, ...props }: any) => {
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
     return (
-      <abbr
-        className={commonClassName}
+      <button
+        type="button"
+        className={`${commonClassName} font-inherit inline appearance-none border-0 bg-transparent p-0 text-inherit`}
         onClick={() => onSend?.(hidden_text)}
         title={node.children[0]?.value || ''}
       >
         {node.children[0]?.value || ''}
-      </abbr>
+      </button>
     )
   } else {
     const rawHref = props.href || node.properties?.href

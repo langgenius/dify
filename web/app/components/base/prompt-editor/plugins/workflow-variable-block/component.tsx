@@ -3,7 +3,9 @@ import type { WorkflowNodesMap } from './node'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import {
   PreviewCard,
-  PreviewCardContent,
+  PreviewCardPopup,
+  PreviewCardPortal,
+  PreviewCardPositioner,
   PreviewCardTrigger,
 } from '@langgenius/dify-ui/preview-card'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
@@ -139,21 +141,25 @@ const WorkflowVariableBlockComponent = ({
   return (
     <PreviewCard>
       <PreviewCardTrigger delay={300} closeDelay={200} render={<div>{Item}</div>} />
-      <PreviewCardContent popupClassName="border-0 bg-transparent p-0 shadow-none">
-        <VarFullPathPanel
-          nodeName={node.title}
-          path={variables.slice(1)}
-          varType={
-            getVarType
-              ? getVarType({
-                  nodeId: variables[0]!,
-                  valueSelector: variables,
-                })
-              : Type.string
-          }
-          nodeType={node?.type}
-        />
-      </PreviewCardContent>
+      <PreviewCardPortal>
+        <PreviewCardPositioner>
+          <PreviewCardPopup>
+            <VarFullPathPanel
+              nodeName={node.title}
+              path={variables.slice(1)}
+              varType={
+                getVarType
+                  ? getVarType({
+                      nodeId: variables[0]!,
+                      valueSelector: variables,
+                    })
+                  : Type.string
+              }
+              nodeType={node?.type}
+            />
+          </PreviewCardPopup>
+        </PreviewCardPositioner>
+      </PreviewCardPortal>
     </PreviewCard>
   )
 }

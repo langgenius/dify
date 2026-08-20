@@ -69,7 +69,7 @@ def test_export_template_command_prints_scripted_json_template():
     }
 
 
-def test_export_template_command_writes_output_file(tmp_path):
+def test_export_template_command_writes_output_file(tmp_path: Path):
     output_file = tmp_path / "export-template.json"
 
     result = CliRunner().invoke(export_migration_data_template, ["--output", str(output_file)])
@@ -79,7 +79,7 @@ def test_export_template_command_writes_output_file(tmp_path):
     assert json.loads(output_file.read_text())["apps"]["all"] is True
 
 
-def test_export_template_command_requires_overwrite_for_existing_output(tmp_path):
+def test_export_template_command_requires_overwrite_for_existing_output(tmp_path: Path):
     output_file = tmp_path / "export-template.json"
     output_file.write_text("{}")
 

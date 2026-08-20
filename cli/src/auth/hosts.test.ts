@@ -1,7 +1,7 @@
 import type { AccountContext } from './hosts'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { MemStore } from '@test/fixtures/mem-store'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {

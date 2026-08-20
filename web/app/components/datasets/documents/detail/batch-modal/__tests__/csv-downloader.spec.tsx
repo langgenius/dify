@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { ChunkingMode } from '@/models/datasets'
 import CSVDownload from '../csv-downloader'

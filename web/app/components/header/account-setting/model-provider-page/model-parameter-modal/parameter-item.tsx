@@ -3,7 +3,7 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -14,9 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -48,6 +55,7 @@ function ParameterItem({
 }: ParameterItemProps) {
   const { t } = useTranslation()
   const language = useLanguage()
+  const labelId = useId()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
 
@@ -203,8 +211,15 @@ function ParameterItem({
             max={parameterRule.max}
             step={step}
             onValueChange={handleSlideChange}
-            aria-label={sliderLabel}
-          />
+          >
+            <SliderLabel className="sr-only">{sliderLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
@@ -247,8 +262,15 @@ function ParameterItem({
             max={parameterRule.max}
             step={0.1}
             onValueChange={handleSlideChange}
-            aria-label={sliderLabel}
-          />
+          >
+            <SliderLabel className="sr-only">{sliderLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
@@ -408,6 +430,7 @@ function ParameterItem({
           {!parameterRule.required && parameterRule.name !== 'stop' && (
             <div className="mr-2 w-7">
               <Switch
+                aria-labelledby={labelId}
                 checked={!isNullOrUndefined(value)}
                 onCheckedChange={handleSwitch}
                 size="md"
@@ -415,6 +438,7 @@ function ParameterItem({
             </div>
           )}
           <div
+            id={labelId}
             className="mr-0.5 truncate system-xs-regular text-text-secondary"
             title={sliderLabel}
           >

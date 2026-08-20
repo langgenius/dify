@@ -7,7 +7,13 @@ const DEVICE_TTL_MS = 15 * 60 * 1000
 
 const ALLOWED: Record<string, ReadonlySet<string>> = {
   '/device': new Set(['user_code', 'sso_verified']),
-  '/account/oauth/authorize': new Set(['client_id', 'scope', 'state', 'redirect_uri']),
+  '/account/oauth/authorize': new Set([
+    'client_id',
+    'redirect_uri',
+    'response_type',
+    'scope',
+    'state',
+  ]),
 }
 
 function validateDeviceRedirect(target: string): string | null {

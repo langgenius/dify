@@ -28,7 +28,7 @@ def test_api_key_only_injects_bearer_header(mock_metric_exporter: MagicMock, moc
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-secret-key",
@@ -51,7 +51,7 @@ def test_empty_api_key_no_auth_header(mock_metric_exporter: MagicMock, mock_span
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="",
@@ -75,7 +75,7 @@ def test_api_key_and_custom_headers_merge(mock_metric_exporter: MagicMock, mock_
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="x-custom=foo",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
@@ -101,7 +101,7 @@ def test_api_key_overrides_conflicting_header(
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="authorization=Basic+old",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
@@ -131,7 +131,7 @@ def test_https_endpoint_uses_secure_grpc(mock_metric_exporter: MagicMock, mock_s
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
@@ -155,7 +155,7 @@ def test_http_endpoint_uses_insecure_grpc(mock_metric_exporter: MagicMock, mock_
         ENTERPRISE_OTLP_ENDPOINT="http://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="",
@@ -179,7 +179,7 @@ def test_insecure_not_passed_to_http_exporters(mock_metric_exporter: MagicMock, 
         ENTERPRISE_OTLP_ENDPOINT="http://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="http",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="test-key",
@@ -204,7 +204,7 @@ def test_api_key_with_special_chars_preserved(mock_metric_exporter: MagicMock, m
         ENTERPRISE_OTLP_ENDPOINT="https://collector.example.com",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY=special_key,
@@ -227,7 +227,7 @@ def test_no_scheme_localhost_uses_insecure(mock_metric_exporter: MagicMock, mock
         ENTERPRISE_OTLP_ENDPOINT="localhost:4317",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="",
@@ -251,7 +251,7 @@ def test_no_scheme_production_uses_insecure(mock_metric_exporter: MagicMock, moc
         ENTERPRISE_OTLP_ENDPOINT="collector.example.com:4317",
         ENTERPRISE_OTLP_HEADERS="",
         ENTERPRISE_OTLP_PROTOCOL="grpc",
-        ENTERPRISE_SERVICE_NAME="dify",
+        APPLICATION_NAME="dify",
         ENTERPRISE_OTEL_SAMPLING_RATE=1.0,
         ENTERPRISE_INCLUDE_CONTENT=True,
         ENTERPRISE_OTLP_API_KEY="",
@@ -328,7 +328,7 @@ def _make_grpc_config(**overrides) -> SimpleNamespace:
         "ENTERPRISE_OTLP_ENDPOINT": "https://collector.example.com",
         "ENTERPRISE_OTLP_HEADERS": "",
         "ENTERPRISE_OTLP_PROTOCOL": "grpc",
-        "ENTERPRISE_SERVICE_NAME": "dify",
+        "APPLICATION_NAME": "dify",
         "ENTERPRISE_OTEL_SAMPLING_RATE": 1.0,
         "ENTERPRISE_INCLUDE_CONTENT": True,
         "ENTERPRISE_OTLP_API_KEY": "",
@@ -484,7 +484,13 @@ def test_export_span_with_start_time_passed_to_start_as_current_span() -> None:
 
 
 def test_export_span_root_span_no_parent_context() -> None:
-    """When span_id_source == correlation_id the span is root — no parent context."""
+    """When span_id_source == correlation_id the span is root.
+
+    An explicit empty ``Context`` is passed (not ``None``) so the root span never
+    implicitly inherits an ambient active span from the surrounding context.
+    """
+    from opentelemetry.context import Context
+
     exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
     uid = "123e4567-e89b-12d3-a456-426614174000"
@@ -496,7 +502,9 @@ def test_export_span_root_span_no_parent_context() -> None:
     )
 
     _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert kwargs["context"] is None
+    assert isinstance(kwargs["context"], Context)
+    # An empty context carries no active span, guaranteeing a deterministic root trace_id.
+    assert len(kwargs["context"]) == 0
 
 
 def test_export_span_child_span_has_parent_context() -> None:

@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PluginAuthInDataSourceNode from '../plugin-auth-in-datasource-node'
 
 describe('PluginAuthInDataSourceNode', () => {

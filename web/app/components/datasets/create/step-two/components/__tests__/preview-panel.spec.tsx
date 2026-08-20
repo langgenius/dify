@@ -1,7 +1,7 @@
 import type { ParentChildConfig } from '../../hooks'
 import type { FileIndexingEstimateResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import { PreviewPanel } from '../preview-panel'
 

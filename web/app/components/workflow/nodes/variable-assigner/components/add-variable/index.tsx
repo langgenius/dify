@@ -62,7 +62,7 @@ const AddVariable = ({
         <PopoverContent
           placement="right"
           sideOffset={4}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <AddVariablePopup onSelect={handleSelectVariable} availableVars={availableVars} />
         </PopoverContent>

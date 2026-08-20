@@ -1,11 +1,9 @@
 import type { FileEntity } from '../types'
-import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ProgressCircle } from '@langgenius/dify-ui/progress'
-import { RiCloseLine } from '@remixicon/react'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import { fileIsUploaded } from '../utils'
 
 type ImageItemProps = {
@@ -49,12 +47,18 @@ const ImageItem = ({ file, showDeleteAction, onRemove, onReUpload, onPreview }: 
   return (
     <div className="group/file-image relative cursor-pointer" onClick={handlePreview}>
       {showDeleteAction && (
-        <Button
-          className="absolute -top-1.5 -right-1.5 z-11 hidden size-5 rounded-full p-0 group-hover/file-image:flex"
+        <IconButton
+          aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+          variant="secondary"
+          size="sm"
+          className="absolute -top-1.5 -right-1.5 z-11 hidden rounded-full group-hover/file-image:flex"
           onClick={handleRemove}
         >
-          <RiCloseLine className="size-4 text-components-button-secondary-text" />
-        </Button>
+          <span
+            aria-hidden
+            className="i-ri-close-line size-4 text-components-button-secondary-text"
+          />
+        </IconButton>
       )}
       <FileImageRender className="h-17 w-17 shadow-md" imageUrl={base64Url || sourceUrl || ''} />
       {progress >= 0 && !fileIsUploaded(file) && (
@@ -71,7 +75,10 @@ const ImageItem = ({ file, showDeleteAction, onRemove, onReUpload, onPreview }: 
           className="absolute inset-0 z-10 flex items-center justify-center border-2 border-state-destructive-border bg-background-overlay-destructive"
           onClick={handleReUpload}
         >
-          <ReplayLine className="size-5 text-text-primary-on-surface" />
+          <span
+            aria-hidden
+            className="i-custom-vender-other-replay-line size-5 text-text-primary-on-surface"
+          />
         </div>
       )}
     </div>

@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { RosterToolbar } from '../roster-toolbar'
 
+const permissions = vi.hoisted(() => ({ canCreate: true, canImport: true }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanCreateAgents: () => permissions.canCreate,
+  useCanImportAgents: () => permissions.canImport,
+}))
+
 vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   default: ({ show, onSuccess }: { show: boolean; onSuccess?: () => void }) =>
     show ? (
@@ -20,15 +27,17 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const renderToolbar = ({
+  publicationCounts = { drafts: 2, published: 1 },
   searchParams = '',
 }: {
+  publicationCounts?: { drafts: number; published: number }
   searchParams?: string
 } = {}) => {
   const queryClient = new QueryClient()
 
   const result = renderWithNuqs(
     <QueryClientProvider client={queryClient}>
-      <RosterToolbar draftAgents={2} publishedAgents={1} />
+      <RosterToolbar publicationCounts={publicationCounts} />
     </QueryClientProvider>,
     { searchParams },
   )
@@ -37,6 +46,38 @@ const renderToolbar = ({
 }
 
 describe('RosterToolbar', () => {
+  beforeEach(() => {
+    permissions.canCreate = true
+    permissions.canImport = true
+  })
+
+  it.each([
+    { canCreate: true, canImport: false },
+    { canCreate: false, canImport: true },
+  ])('separates create and import permissions: %o', async (grants) => {
+    Object.assign(permissions, grants)
+    renderToolbar()
+
+    await userEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+
+    expect(Boolean(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }))).toBe(
+      grants.canCreate,
+    )
+    expect(Boolean(screen.queryByRole('menuitem', { name: /app\.importDSL/ }))).toBe(
+      grants.canImport,
+    )
+  })
+
+  it('hides the create menu when neither action is permitted', () => {
+    permissions.canCreate = false
+    permissions.canImport = false
+    renderToolbar()
+
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.create' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the shared create menu for blank Agent creation and DSL import', async () => {
     const user = userEvent.setup()
     const { queryClient } = renderToolbar()
@@ -62,10 +103,10 @@ describe('RosterToolbar', () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()
 
-    const publishedFilter = screen.getByRole('button', {
+    const publishedFilter = screen.getByRole('radio', {
       name: /agentV2\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
 
     expect(publishedFilter).toBeEnabled()
     expect(draftsFilter).toBeEnabled()
@@ -82,15 +123,33 @@ describe('RosterToolbar', () => {
   it('renders stable filter count badges and omits the all count', () => {
     renderToolbar()
 
-    const allFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.all/ })
-    const publishedFilter = screen.getByRole('button', {
+    const allFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.all/ })
+    const publishedFilter = screen.getByRole('radio', {
       name: /agentV2\.roster\.filters\.published/,
     })
-    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
+    const draftsFilter = screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })
 
     expect(allFilter).not.toHaveTextContent('3')
     expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
     expect(within(draftsFilter).getByText('2')).toBeInTheDocument()
+  })
+
+  it('renders zero counts before server data is available', () => {
+    renderToolbar({ publicationCounts: { drafts: 0, published: 0 } })
+
+    expect(
+      screen.getByRole('radio', { name: /agentV2\.roster\.filters\.published/ }),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('radio', { name: /agentV2\.roster\.filters\.published/ })).getByText(
+        '0',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('radio', { name: /agentV2\.roster\.filters\.drafts/ })).getByText(
+        '0',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('renders created-by-me filtering and emits checked state', async () => {

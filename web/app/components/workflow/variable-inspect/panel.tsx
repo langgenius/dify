@@ -179,7 +179,7 @@ const Panel: FC = () => {
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => setShowVariableInspectPanel(false)}
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine aria-hidden className="size-4" />
           </IconButton>
         </div>
         <div className="grow p-2">
@@ -200,7 +200,7 @@ const Panel: FC = () => {
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             onClick={() => setShowVariableInspectPanel(false)}
           >
-            <RiCloseLine className="size-4" />
+            <RiCloseLine aria-hidden className="size-4" />
           </IconButton>
         </div>
         <div className="grow p-2">

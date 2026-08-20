@@ -1,7 +1,7 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import AppInfo from '../index'
 
 const mockUseGetRequirements = vi.fn()

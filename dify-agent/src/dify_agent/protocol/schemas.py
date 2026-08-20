@@ -21,9 +21,10 @@ by ``DIFY_AGENT_MODEL_LAYER_ID``, the optional history layer named by
 ``DIFY_AGENT_HISTORY_LAYER_ID``, and the optional structured output layer named
 by ``DIFY_AGENT_OUTPUT_LAYER_ID``. Request-level ``on_exit`` signals decide
 whether each active layer is suspended or deleted when the run exits, with
-suspend as the default so successful terminal events can include resumable
-snapshots. Successful runs always publish the resumable Agenton session snapshot
-on the terminal ``run_succeeded`` event together with either the final JSON-safe
+suspend as the default so terminal events can include resumable snapshots.
+Successful runs always publish the resumable Agenton session snapshot on the
+terminal ``run_succeeded`` event; failed and cancelled runs publish it when the
+compositor context was entered and exited. Success includes either the final JSON-safe
 ``output`` or a deferred external ``deferred_tool_call`` payload. Session
 snapshots carry only layer lifecycle/runtime state in
 compositor order; they do not persist output-layer config. Resumed
@@ -329,6 +330,8 @@ class RunFailedEventData(BaseModel):
     error: str
     error_type: RunFailureType | None = None
     reason: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -338,6 +341,8 @@ class RunCancelledEventData(BaseModel):
 
     reason: str | None = None
     message: str | None = None
+    session_snapshot: CompositorSessionSnapshot | None = None
+    usage: AgentRunUsage | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 

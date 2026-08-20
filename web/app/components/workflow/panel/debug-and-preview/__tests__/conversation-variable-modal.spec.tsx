@@ -119,8 +119,10 @@ describe('ConversationVariableModal', () => {
     })
 
     expect(screen.getAllByText('session_state')).toHaveLength(2)
-    expect(screen.getByText((content) => content.includes('formatted-100'))).toBeInTheDocument()
-    expect(screen.getByTestId('conversation-code-editor')).toHaveTextContent('{"latest":1}')
+    expect(
+      await screen.findByText((content) => content.includes('formatted-100')),
+    ).toBeInTheDocument()
+    expect(await screen.findByTestId('conversation-code-editor')).toHaveTextContent('{"latest":1}')
 
     await user.click(screen.getByText('summary'))
     expect(screen.getByText('latest text')).toBeInTheDocument()

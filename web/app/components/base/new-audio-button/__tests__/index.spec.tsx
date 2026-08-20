@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useParams, usePathname } from '@/next/navigation'
 import AudioBtn from '../index'
 
@@ -98,7 +98,7 @@ describe('AudioBtn', () => {
       render(<AudioBtn value="test" />)
 
       await hoverAndCheckTooltip('play')
-      expect(getButton())!.toHaveClass('action-btn')
+      expect(getButton()).toHaveAccessibleName('play')
       expect(getButton()).not.toBeDisabled()
     })
 
@@ -111,7 +111,7 @@ describe('AudioBtn', () => {
       })
 
       await hoverAndCheckTooltip('playing')
-      expect(getButton())!.toHaveClass('action-btn-active')
+      expect(getButton()).toHaveAccessibleName('playing')
     })
 
     it('should transition to ended state', async () => {
@@ -126,7 +126,7 @@ describe('AudioBtn', () => {
       })
 
       await hoverAndCheckTooltip('play')
-      expect(getButton()).not.toHaveClass('action-btn-active')
+      expect(getButton()).toHaveAccessibleName('play')
     })
 
     it('should handle paused event', async () => {

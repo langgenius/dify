@@ -1,11 +1,19 @@
 import type { ModalContextState } from '@/context/modal-context'
-import type { ProviderContextState } from '@/context/provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  act,
+  fireEvent,
+  render as renderWithoutPricing,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import { parseParamsSchema } from '@/service/tools'
 import EditCustomCollectionModal from '../index'
+
+const onPricingUrlUpdate = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', async () => {
   const actual = await vi.importActual<typeof import('ahooks')>('ahooks')
@@ -20,24 +28,17 @@ vi.mock('@/service/tools', () => ({
 }))
 const parseParamsSchemaMock = vi.mocked(parseParamsSchema)
 
-const mockSetShowPricingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: (): ModalContextState => ({
     hasBlockingModalOpen: false,
     setShowModerationSettingModal: vi.fn(),
     setShowExternalDataToolModal: vi.fn(),
-    setShowPricingModal: mockSetShowPricingModal,
     setShowAnnotationFullModal: vi.fn(),
     setShowModelModal: vi.fn(),
     setShowExternalKnowledgeAPIModal: vi.fn(),
     setShowOpeningModal: vi.fn(),
     setShowUpdatePluginModal: vi.fn(),
   }),
-}))
-
-const mockUseProviderContext = vi.fn()
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
 }))
 
 vi.mock('@/context/i18n', async () => {
@@ -47,6 +48,11 @@ vi.mock('@/context/i18n', async () => {
     useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
   }
 })
+
+function render(...args: Parameters<typeof renderWithoutPricing>) {
+  args[0] = <NuqsTestingAdapter onUrlUpdate={onPricingUrlUpdate}>{args[0]}</NuqsTestingAdapter>
+  return renderWithoutPricing(...args)
+}
 
 describe('EditCustomCollectionModal', () => {
   const mockOnHide = vi.fn()
@@ -62,13 +68,6 @@ describe('EditCustomCollectionModal', () => {
       parameters_schema: [],
       schema_type: 'openapi',
     })
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: 'sandbox',
-      },
-      enableBilling: false,
-      webappCopyrightEnabled: true,
-    } as ProviderContextState)
   })
 
   const renderModal = (props?: {

@@ -138,6 +138,7 @@ def test_event_adapter_maps_run_failed_to_failed_result():
                 error="boom",
                 error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
                 reason="runtime",
+                usage=AgentRunUsage(prompt_tokens=13, completion_tokens=8),
             ),
         )
     )
@@ -149,6 +150,22 @@ def test_event_adapter_maps_run_failed_to_failed_result():
             error="boom",
             error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
             reason="runtime",
+            usage={
+                "prompt_tokens": 13,
+                "completion_tokens": 8,
+                "total_tokens": 21,
+                "prompt_unit_price": "0",
+                "prompt_price_unit": "0",
+                "prompt_price": "0",
+                "completion_unit_price": "0",
+                "completion_price_unit": "0",
+                "completion_price": "0",
+                "total_price": "0",
+                "currency": "USD",
+                "latency": 0.0,
+                "time_to_first_token": None,
+                "time_to_generate": None,
+            },
         )
     ]
 
@@ -254,7 +271,11 @@ def test_event_adapter_maps_run_cancelled_to_terminal_cancelled():
         RunCancelledEvent(
             id="6-0",
             run_id="run-1",
-            data=RunCancelledEventData(reason="user_cancelled", message="Stopped by user"),
+            data=RunCancelledEventData(
+                reason="user_cancelled",
+                message="Stopped by user",
+                usage=AgentRunUsage(prompt_tokens=5, completion_tokens=3),
+            ),
         )
     )
 
@@ -264,5 +285,21 @@ def test_event_adapter_maps_run_cancelled_to_terminal_cancelled():
             source_event_id="6-0",
             reason="user_cancelled",
             message="Stopped by user",
+            usage={
+                "prompt_tokens": 5,
+                "completion_tokens": 3,
+                "total_tokens": 8,
+                "prompt_unit_price": "0",
+                "prompt_price_unit": "0",
+                "prompt_price": "0",
+                "completion_unit_price": "0",
+                "completion_price_unit": "0",
+                "completion_price": "0",
+                "total_price": "0",
+                "currency": "USD",
+                "latency": 0.0,
+                "time_to_first_token": None,
+                "time_to_generate": None,
+            },
         )
     ]
