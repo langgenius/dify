@@ -5194,11 +5194,6 @@
       "count": 1
     }
   },
-  "web/app/signup/set-password/page.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/context/hooks/use-trigger-events-limit-modal.ts": {
     "eslint-react/set-state-in-effect": {
       "count": 3
