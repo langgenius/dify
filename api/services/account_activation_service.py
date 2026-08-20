@@ -41,7 +41,7 @@ class WorkspaceInvitePolicy(Protocol):
 
 
 class AccountActivationEligibility(Protocol):
-    def is_frozen(self, email: str) -> bool: ...
+    def get_freeze_type(self, email: str) -> str | None: ...
 
 
 class WorkspaceMembershipCache(Protocol):
@@ -58,6 +58,10 @@ class InvitationAccountMismatchError(Exception):
 
 class FrozenAccountError(Exception):
     """The invited account is temporarily ineligible for activation."""
+
+
+class EmailDomainSuspendedError(Exception):
+    """The invited account uses a suspended email domain."""
 
 
 class AccountActivationService:
@@ -101,7 +105,10 @@ class AccountActivationService:
         if authenticated_account_id is not None and authenticated_account_id != invitation.account_id:
             raise InvitationAccountMismatchError
 
-        if self._eligibility.is_frozen(invitation.account_email):
+        freeze_type = self._eligibility.get_freeze_type(invitation.account_email)
+        if freeze_type == "email_domain_suspended":
+            raise EmailDomainSuspendedError
+        if freeze_type:
             raise FrozenAccountError
 
         setup = self._resolve_setup(invitation, command)

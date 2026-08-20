@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Робочий процес",
   "plansCommon.talkToSales": "Поговоріть зі службою продажів",
   "plansCommon.taxTip": "Всі ціни на підписку (щомісячна/щорічна) не включають відповідні податки (наприклад, ПДВ, податок з продажу).",
-  "plansCommon.taxTipSecond": "Якщо для вашого регіону немає відповідних податкових вимог, податок не відображатиметься на вашому чек-ауті, і з вас не стягуватимуть додаткові збори протягом усього терміну підписки.",
   "plansCommon.teamMember_one": "{{count,number}} член команди",
   "plansCommon.teamMember_other": "{{count,number}} членів команди",
   "plansCommon.teamWorkspace": "{{count,number}} Командний Простір",

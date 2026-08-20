@@ -6,6 +6,7 @@ from services.account_activation_service import (
     AccountActivationEligibility,
     AccountActivationRepository,
     AccountActivationService,
+    EmailDomainSuspendedError,
     FrozenAccountError,
     InvalidInvitationError,
     InvitationAccountMismatchError,
@@ -60,7 +61,7 @@ def _service() -> tuple[AccountActivationService, Mock, Mock, Mock, Mock, Mock]:
     policy = Mock(spec=WorkspaceInvitePolicy)
     eligibility = Mock(spec=AccountActivationEligibility)
     membership_cache = Mock(spec=WorkspaceMembershipCache)
-    eligibility.is_frozen.return_value = False
+    eligibility.get_freeze_type.return_value = None
     service = AccountActivationService(
         tokens=tokens,
         accounts=accounts,
@@ -133,7 +134,7 @@ class TestActivateInvitation:
                 authenticated_account_id="different-account",
             )
 
-        eligibility.is_frozen.assert_not_called()
+        eligibility.get_freeze_type.assert_not_called()
         tokens.revoke.assert_not_called()
         accounts.activate.assert_not_called()
 
@@ -141,12 +142,12 @@ class TestActivateInvitation:
         service, tokens, accounts, _, eligibility, _ = _service()
         tokens.find.return_value = _token()
         accounts.resolve.return_value = _invitation()
-        eligibility.is_frozen.return_value = True
+        eligibility.get_freeze_type.return_value = "freeze"
 
         with pytest.raises(FrozenAccountError):
             service.activate(ActivationCommand(invitation=_lookup()), authenticated_account_id=None)
 
-        eligibility.is_frozen.assert_called_once_with("invitee@example.com")
+        eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_not_called()
         accounts.activate.assert_not_called()
 
@@ -161,6 +162,19 @@ class TestActivateInvitation:
                 authenticated_account_id=None,
             )
 
+        tokens.revoke.assert_not_called()
+        accounts.activate.assert_not_called()
+
+    def test_rejects_suspended_email_domain_without_consuming_token(self) -> None:
+        service, tokens, accounts, _, eligibility, _ = _service()
+        tokens.find.return_value = _token()
+        accounts.resolve.return_value = _invitation()
+        eligibility.get_freeze_type.return_value = "email_domain_suspended"
+
+        with pytest.raises(EmailDomainSuspendedError):
+            service.activate(ActivationCommand(invitation=_lookup()), authenticated_account_id=None)
+
+        eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_not_called()
         accounts.activate.assert_not_called()
 
@@ -179,7 +193,7 @@ class TestActivateInvitation:
 
         service.activate(command, authenticated_account_id=None)
 
-        eligibility.is_frozen.assert_called_once_with("invitee@example.com")
+        eligibility.get_freeze_type.assert_called_once_with("invitee@example.com")
         tokens.revoke.assert_called_once_with(_lookup("invitee@example.com"))
         accounts.activate.assert_called_once_with(
             invitation,

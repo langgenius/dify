@@ -31,6 +31,12 @@ class AppAccessDeniedError(BaseHTTPException):
     code = 403
 
 
+class RecommendedAppNotFoundError(BaseHTTPException):
+    error_code = "recommended_app_not_found"
+    description = "Recommended app not found."
+    code = 404
+
+
 class TrialAppNotAllowed(BaseHTTPException):
     """*403* `Trial App Not Allowed`
 
