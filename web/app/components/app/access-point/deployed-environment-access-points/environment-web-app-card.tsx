@@ -18,14 +18,18 @@ import { useTranslation } from 'react-i18next'
 import CustomizeModal from '@/app/components/app/overview/customize'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
-import { AccessPointCard } from '../shared/access-point-card'
-import { AccessPointUrl } from '../shared/access-point-url'
 import { useAccessPointActions } from '../shared/use-access-point-actions'
-import { WebAppAccessControlEntry } from '../shared/web-app-access-control'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
+import {
+  WebAppAccessControlEntry,
+  WebAppAccessControlEntrySkeleton,
+} from '../shared/web-app-access-control'
 import { EnvironmentAccessControl } from './environment-access-control'
 import { getEnvironmentWebAppUrl } from './environment-web-app-utils'
 
@@ -126,6 +130,7 @@ export function EnvironmentWebAppCard({
       : running
         ? 'inService'
         : 'disabled'
+  const statusLabel = useAccessPointStatusLabel(status)
   const accessLabel =
     accessMode === AccessMode.ORGANIZATION
       ? t(($) => $['accessControlDialog.accessItems.organization'], { ns: 'app' })
@@ -170,6 +175,7 @@ export function EnvironmentWebAppCard({
           )
         }
         status={status}
+        statusLabel={statusLabel}
         highlighted={highlighted}
         switchDisabled={!canManage}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
@@ -221,16 +227,18 @@ export function EnvironmentWebAppCard({
           regenerating={resetAccessTokenMutation.isPending}
           onRegenerate={() => setShowRegenerate(true)}
         />
-        {systemFeatures.webapp_auth.enabled && (
-          <WebAppAccessControlEntry
-            accessConfigured={accessConfigured}
-            accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
-            accessLabel={accessLabel}
-            available={siteQuery.isSuccess}
-            disabled={!canManage}
-            onClick={() => setShowAccess(true)}
-          />
-        )}
+        {systemFeatures.webapp_auth.enabled &&
+          (siteQuery.isSuccess ? (
+            <WebAppAccessControlEntry
+              accessConfigured={accessConfigured}
+              accessIcon={ACCESS_MODE_ICON_MAP[accessMode]}
+              accessLabel={accessLabel}
+              disabled={!canManage}
+              onClick={() => setShowAccess(true)}
+            />
+          ) : (
+            <WebAppAccessControlEntrySkeleton loading={siteQuery.isPending} />
+          ))}
       </AccessPointCard>
 
       {appInfo && (

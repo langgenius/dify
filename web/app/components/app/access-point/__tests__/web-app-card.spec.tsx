@@ -1,6 +1,6 @@
 import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import type { InputVar, Node } from '@/app/components/workflow/types'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
@@ -196,5 +196,12 @@ describe('WebAppAccessPointCard', () => {
     expect(
       screen.queryByText('deployments.health.ENVIRONMENT_STATUS_FAILED'),
     ).not.toBeInTheDocument()
+  })
+
+  it('does not announce an unavailable access control entry as loading', () => {
+    renderCard(AppModeEnum.WORKFLOW, 'unavailable')
+
+    const card = screen.getByRole('region', { name: /webApp\.title/ })
+    expect(within(card).queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
   })
 })

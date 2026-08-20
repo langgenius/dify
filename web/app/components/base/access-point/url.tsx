@@ -5,35 +5,47 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import ShareQRCode from '@/app/components/base/qrcode'
-import { AccessPointEndpoint } from './access-point-card'
+import { AccessPointEndpoint } from './card'
 
 type AccessPointUrlProps = {
   enabled: boolean
   label: string
   unavailableLabel: string
   value: string
+  copiedLabel?: string
   copyDisabled?: boolean
+  copyLabel?: string
   loading?: boolean
   unavailable?: boolean
   showOpen?: boolean
   showQrCode?: boolean
   showRegenerate?: boolean
   openUrl?: string
+  onCopyError?: () => void
   onRegenerate?: () => void
   openLabel?: string
+  qrCodeDownloadLabel?: string
+  qrCodeLabel?: string
+  qrCodeScanLabel?: string
   regenerateLabel?: string
   regenerateDisabled?: boolean
   regenerating?: boolean
 }
 
 export function AccessPointUrl({
+  copiedLabel,
+  copyDisabled = false,
+  copyLabel,
   enabled,
   label,
   loading = false,
-  copyDisabled = false,
+  onCopyError,
   onRegenerate,
   openLabel,
   openUrl,
+  qrCodeDownloadLabel,
+  qrCodeLabel,
+  qrCodeScanLabel,
   regenerateDisabled = false,
   regenerateLabel,
   regenerating = false,
@@ -81,7 +93,13 @@ export function AccessPointUrl({
           <span aria-hidden className="i-ri-file-copy-line size-4 text-text-disabled" />
         </div>
       ) : (
-        <CopyFeedback content={value} className="size-6" />
+        <CopyFeedback
+          content={value}
+          className="size-6"
+          copyLabel={copyLabel}
+          copiedLabel={copiedLabel}
+          onCopyError={onCopyError}
+        />
       )}
       {showQrCode &&
         (copyDisabled ? (
@@ -89,7 +107,12 @@ export function AccessPointUrl({
             <span aria-hidden className="i-ri-qr-code-line size-4 text-text-disabled" />
           </div>
         ) : (
-          <ShareQRCode content={value} />
+          <ShareQRCode
+            content={value}
+            triggerLabel={qrCodeLabel}
+            scanLabel={qrCodeScanLabel}
+            downloadLabel={qrCodeDownloadLabel}
+          />
         ))}
       {showRegenerate && (
         <IconButton

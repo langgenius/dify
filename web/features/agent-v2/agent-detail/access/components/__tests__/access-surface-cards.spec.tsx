@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
   accessControlRender: vi.fn(),
+  accessSubjectsQueryFn: vi.fn(),
 }))
 
 vi.mock('@/app/components/app/app-access-control', () => ({
@@ -91,6 +92,16 @@ vi.mock('@/service/client', () => ({
           queryKey: ['system-features'],
           ...options,
         }),
+      },
+    },
+    enterprise: {
+      webAppAuth: {
+        getWebAppWhitelistSubjects: {
+          queryOptions: ({ input }: { input: { query: { appId?: string } } }) => ({
+            queryKey: ['web-app-whitelist-subjects', input.query.appId],
+            queryFn: () => mocks.accessSubjectsQueryFn(input),
+          }),
+        },
       },
     },
     apps: {
@@ -240,6 +251,7 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
 describe('Agent access surface cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.accessSubjectsQueryFn.mockResolvedValue({ groups: [], members: [] })
   })
 
   describe('Web app access', () => {
@@ -253,9 +265,27 @@ describe('Agent access surface cards', () => {
 
       expect(screen.getByText('https://chat.example.test/agent/site-token')).toBeInTheDocument()
       expect(
-        screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+        screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.open' }),
       ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
-      expect(screen.getByText('agentV2.agentDetail.access.webApp.ssoEnabled')).toBeInTheDocument()
+      expect(screen.getByText('agentV2.agentDetail.access.webApp.description')).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyAccessUrl' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.showQrCode' }),
+      ).toBeInTheDocument()
+      const webAppCard = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.access.webApp.title',
+      })
+      expect(
+        within(webAppCard).getByRole('heading', {
+          name: 'agentV2.agentDetail.access.webApp.title',
+          level: 3,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        within(within(webAppCard).getByRole('contentinfo')).getAllByRole('button'),
+      ).toHaveLength(3)
 
       await user.click(
         screen.getByRole('switch', {
@@ -283,7 +313,9 @@ describe('Agent access surface cards', () => {
       )
 
       await user.click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+        }),
       )
 
       const dialog = await screen.findByRole('dialog', {
@@ -306,7 +338,9 @@ describe('Agent access surface cards', () => {
       )
 
       await user.click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.embedIntoSite',
+        }),
       )
 
       const dialog = await screen.findByRole('dialog', {
@@ -335,7 +369,9 @@ describe('Agent access surface cards', () => {
       )
 
       await user.click(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.embedIntoSite',
+        }),
       )
       const dialog = await screen.findByRole('dialog', {
         name: 'appOverview.overview.appInfo.embedded.title',
@@ -529,7 +565,9 @@ describe('Agent access surface cards', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.embedIntoSite',
+        }),
       ).toBeDisabled()
     })
 
@@ -572,7 +610,9 @@ describe('Agent access surface cards', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.customFrontend',
+        }),
       ).toBeDisabled()
     })
 
@@ -612,6 +652,23 @@ describe('Agent access surface cards', () => {
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
       expect(await screen.findByText('https://api.example.test/v1')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', {
+          name: 'agentV2.agentDetail.access.serviceApi.title',
+          level: 3,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.access.serviceApi.description'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.copyServiceEndpoint' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('link', {
+          name: 'agentV2.agentDetail.access.serviceApi.actions.apiReference',
+        }),
+      ).toHaveAttribute('href', 'https://docs.example.test/api-reference/guides/agent')
       expect(screen.getByText('2')).toBeInTheDocument()
 
       await user.click(
@@ -664,7 +721,7 @@ describe('Agent access surface cards', () => {
 
       await user.click(
         await screen.findByRole('button', {
-          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiSecretKey/,
         }),
       )
 
@@ -716,86 +773,126 @@ describe('Agent access surface cards', () => {
       ).toHaveAttribute('aria-disabled', 'true')
       expect(
         screen.getByRole('button', {
-          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiSecretKey/,
         }),
       ).toBeDisabled()
     })
+
+    it('should show the unavailable status when the Service API query fails', async () => {
+      mocks.apiAccessQueryFn.mockRejectedValueOnce(new Error('Service API unavailable'))
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      expect(
+        await screen.findByText('agentV2.agentDetail.access.status.unavailable'),
+      ).toBeInTheDocument()
+      expect(screen.queryByText('common.loading')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeEnabled()
+    })
   })
 
-  describe('Web app access control', () => {
+  describe('App-style Web app access control', () => {
     const accessControlAgent = () =>
       createAgent({
-        access_mode: 'private',
-        maintainer: 'user-1',
+        access_mode: 'private_all',
+        maintainer: 'user-2',
         permission_keys: ['app.acl.release_and_version'],
       })
 
-    const accessControlButtonName = 'agentV2.agentDetail.access.webApp.actions.accessControl'
+    const organizationAccessLabel = 'app.accessControlDialog.accessItems.organization'
 
-    it('should render the access control button when webapp auth is enabled and user can manage', () => {
+    it('should render the access mode entry in the card content', () => {
       renderWithQueryClient(
         <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      expect(screen.getByRole('button', { name: accessControlButtonName })).toBeInTheDocument()
+      const entry = screen.getByRole('button', { name: organizationAccessLabel })
+      const card = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.access.webApp.title',
+      })
+      expect(entry).toBeInTheDocument()
+      expect(within(card).getByRole('contentinfo')).not.toContainElement(entry)
     })
 
-    it('should hide the access control button when webapp auth is disabled', () => {
+    it('should render the access control skeleton while the card is loading', () => {
+      renderWithQueryClient(<WebAppAccessCard agent={undefined} agentId="agent-1" isLoading />)
+
+      const card = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.access.webApp.title',
+      })
+      expect(within(card).getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    })
+
+    it('should keep access control interactive before the Agent is published', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            ...accessControlAgent(),
+            access_ready: false,
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: organizationAccessLabel })).toBeEnabled()
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
+    })
+
+    it('should hide the access mode entry when Web app auth is disabled', () => {
       renderWithQueryClient(
         <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
         { webAppAuthEnabled: false },
       )
 
       expect(
-        screen.queryByRole('button', { name: accessControlButtonName }),
+        screen.queryByRole('button', { name: organizationAccessLabel }),
       ).not.toBeInTheDocument()
     })
 
-    it('should hide the access control button when the user cannot manage access control', () => {
+    it('should disable the access mode entry when the user cannot manage access control', () => {
       renderWithQueryClient(
         <WebAppAccessCard
-          agent={createAgent({ access_mode: 'private', permission_keys: [] })}
+          agent={createAgent({
+            access_mode: 'private_all',
+            maintainer: 'user-2',
+            permission_keys: [],
+          })}
           agentId="agent-1"
           isLoading={false}
         />,
       )
 
-      expect(
-        screen.queryByRole('button', { name: accessControlButtonName }),
-      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: organizationAccessLabel })).toBeDisabled()
     })
 
     it.each([null, 'future-access-mode'])(
-      'should hide the access control button when the access mode is %s',
+      'should hide the access mode entry when the access mode is %s',
       (accessMode) => {
         renderWithQueryClient(
           <WebAppAccessCard
-            agent={createAgent({
-              access_mode: accessMode,
-              maintainer: 'user-1',
-              permission_keys: ['app.acl.release_and_version'],
-            })}
+            agent={createAgent({ access_mode: accessMode })}
             agentId="agent-1"
             isLoading={false}
           />,
         )
 
         expect(
-          screen.queryByRole('button', { name: accessControlButtonName }),
+          screen.queryByRole('button', { name: organizationAccessLabel }),
         ).not.toBeInTheDocument()
       },
     )
 
-    it('should open the access control dialog wired with the backing app id', async () => {
+    it('should open the shared App access control dialog for the backing app', async () => {
       const user = userEvent.setup()
 
       renderWithQueryClient(
         <WebAppAccessCard
           agent={createAgent({
-            access_mode: 'private',
+            access_mode: 'private_all',
             app_id: 'source-app-1',
             backing_app_id: 'backing-app-1',
-            maintainer: 'user-1',
+            maintainer: 'user-2',
             permission_keys: ['app.acl.release_and_version'],
           })}
           agentId="agent-1"
@@ -803,12 +900,12 @@ describe('Agent access surface cards', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: accessControlButtonName }))
+      await user.click(screen.getByRole('button', { name: organizationAccessLabel }))
 
-      expect(screen.getByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
+      expect(await screen.findByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
       expect(mocks.accessControlRender).toHaveBeenCalledWith({
         id: 'backing-app-1',
-        access_mode: 'private',
+        access_mode: 'private_all',
       })
     })
   })

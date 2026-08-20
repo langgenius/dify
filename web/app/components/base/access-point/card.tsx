@@ -1,12 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { AccessPointStatus } from './access-point-status'
+import type { AccessPointStatus } from './status'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot, StatusDotSkeleton } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
-import { useTranslation } from 'react-i18next'
 
 type AccessPointCardProps = {
   actions?: ReactNode
@@ -14,9 +13,11 @@ type AccessPointCardProps = {
   description: string
   icon: ReactNode | string
   status: AccessPointStatus
+  statusLabel: string
   title: string
   busy?: boolean
   className?: string
+  headingLevel?: 2 | 3
   highlighted?: boolean
   onEnabledChange?: (enabled: boolean) => void
   showStatus?: boolean
@@ -30,27 +31,22 @@ export function AccessPointCard({
   children,
   className,
   description,
+  headingLevel = 2,
   highlighted = false,
   icon,
   onEnabledChange,
   showStatus = true,
   status,
+  statusLabel,
   switchDisabled = false,
   switchLabel,
   title,
 }: AccessPointCardProps) {
-  const { t } = useTranslation()
   const titleId = useId()
   const isEnabled = status === 'inService'
   const isLoading = status === 'loading'
   const showSwitch = (status === 'disabled' || status === 'inService') && Boolean(onEnabledChange)
-  const statusLabel: Record<AccessPointStatus, string> = {
-    disabled: t(($) => $['overview.status.disable'], { ns: 'appOverview' }),
-    inService: t(($) => $['agentDetail.access.status.inService'], { ns: 'agentV2' }),
-    loading: t(($) => $.loading, { ns: 'common' }),
-    unavailable: t(($) => $['health.ENVIRONMENT_STATUS_FAILED'], { ns: 'deployments' }),
-    unsupported: t(($) => $['studio.accessPoint.notSupported'], { ns: 'deployments' }),
-  }
+  const Heading = headingLevel === 3 ? 'h3' : 'h2'
 
   return (
     <section
@@ -72,9 +68,9 @@ export function AccessPointCard({
           icon
         )}
         <span className="min-w-0 flex-1">
-          <h2 id={titleId} className="truncate system-md-semibold text-text-primary">
+          <Heading id={titleId} className="truncate system-md-semibold text-text-primary">
             {title}
-          </h2>
+          </Heading>
           <span className="block truncate system-xs-regular text-text-tertiary">{description}</span>
         </span>
         {showStatus && (
@@ -91,7 +87,7 @@ export function AccessPointCard({
               ) : (
                 <StatusDot status={status === 'inService' ? 'success' : 'disabled'} />
               )}
-              {statusLabel[status]}
+              {statusLabel}
             </span>
             {showSwitch && (
               <Switch

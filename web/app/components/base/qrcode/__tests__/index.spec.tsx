@@ -14,6 +14,23 @@ describe('ShareQRCode', () => {
     vi.clearAllMocks()
   })
 
+  it('uses caller-provided labels instead of App-specific defaults', async () => {
+    const user = userEvent.setup()
+    render(
+      <ShareQRCode
+        content={content}
+        triggerLabel="Show QR code"
+        scanLabel="Scan to share"
+        downloadLabel="Download QR code"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Show QR code' }))
+
+    expect(screen.getByText('Scan to share')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download QR code' })).toBeInTheDocument()
+  })
+
   describe('Rendering', () => {
     it('renders correctly', () => {
       render(<ShareQRCode content={content} />)
