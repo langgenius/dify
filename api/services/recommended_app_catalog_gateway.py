@@ -72,10 +72,7 @@ class BuiltinRecommendedAppCatalogGateway(RecommendedAppCatalogQuery):
 
     @override
     def list_learn_dify(self, language: str) -> RecommendedAppCatalogPage:
-        page = self._raw_learn_dify_page(language)
-        if not page:
-            return RecommendedAppCatalogPage(recommended_apps=(), categories=())
-        return _map_learn_dify_page(page)
+        return _map_learn_dify_page(self._raw_learn_dify_page(language))
 
     @override
     def get_detail(self, app_id: str) -> RecommendedAppDetailRecord | None:
@@ -93,8 +90,18 @@ class BuiltinRecommendedAppCatalogGateway(RecommendedAppCatalogQuery):
         return _as_mapping(pages.get(language, {}), field="recommended app page")
 
     def _raw_learn_dify_page(self, language: str) -> Mapping[str, object]:
-        pages = _as_mapping(self._get_data().get("learn_dify_apps", {}), field="learn_dify_apps")
-        return _as_mapping(pages.get(language, {}), field="Learn Dify app page")
+        apps = self._raw_learn_dify_apps(language)
+        if not apps and language != _BUILTIN_FALLBACK_LANGUAGE:
+            apps = self._raw_learn_dify_apps(_BUILTIN_FALLBACK_LANGUAGE)
+        return {"recommended_apps": apps}
+
+    def _raw_learn_dify_apps(self, language: str) -> tuple[object, ...]:
+        page = self._raw_page(language)
+        return tuple(
+            app
+            for app in _as_sequence(page.get("recommended_apps", ()), field="apps")
+            if _as_mapping(app, field="recommended app").get("is_learn_dify") is True
+        )
 
     def _raw_detail(self, app_id: str) -> object | None:
         details = _as_mapping(self._get_data().get("app_details", {}), field="app_details")

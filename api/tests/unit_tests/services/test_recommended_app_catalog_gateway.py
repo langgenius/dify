@@ -20,7 +20,7 @@ from services.recommended_app_query_service import (
 )
 
 
-def _page_payload(*app_ids: str) -> dict[str, object]:
+def _page_payload(*app_ids: str, learn_dify_ids: frozenset[str] = frozenset()) -> dict[str, object]:
     app_ids = app_ids or ("app-1",)
     return {
         "recommended_apps": [
@@ -40,6 +40,7 @@ def _page_payload(*app_ids: str) -> dict[str, object]:
                 "categories": ["Workflow"],
                 "position": 1,
                 "is_listed": True,
+                **({"is_learn_dify": True} if app_id in learn_dify_ids else {}),
             }
             for app_id in app_ids
         ],
@@ -88,11 +89,16 @@ class TestBuiltinRecommendedAppCatalogGateway:
     def test_maps_bundled_catalog(self) -> None:
         gateway = BuiltinRecommendedAppCatalogGateway()
         page = gateway.list_recommended("en-US")
-        learn_dify = gateway.list_learn_dify("en-US")
+        learn_dify = gateway.list_learn_dify("ja-JP")
         detail = gateway.get_detail(page.recommended_apps[0].app_id)
 
         assert page.recommended_apps
-        assert learn_dify.recommended_apps == ()
+        assert [app.app_id for app in learn_dify.recommended_apps] == [
+            "f00c4531-6551-45ee-808f-1d7903099515",
+            "d9f6b733-e35d-4a40-9f38-ca7bbfa009f7",
+            "e9870913-dd01-4710-9f06-15d4180ca1ce",
+        ]
+        assert all(gateway.get_detail(app.app_id) is not None for app in learn_dify.recommended_apps)
         assert detail is not None
 
     def test_bundled_workflow_templates_have_unique_end_output_variables(self) -> None:
@@ -121,12 +127,11 @@ class TestBuiltinRecommendedAppCatalogGateway:
     def test_maps_builtin_payload(self) -> None:
         gateway = BuiltinRecommendedAppCatalogGateway()
         gateway._data = {
-            "recommended_apps": {"en-US": _page_payload()},
-            "learn_dify_apps": {"en-US": _page_payload()},
+            "recommended_apps": {"en-US": _page_payload("app-1", "app-2", learn_dify_ids=frozenset({"app-1"}))},
             "app_details": {"app-1": _detail_payload()},
         }
 
-        assert gateway.list_recommended("en-US") == _expected_page()
+        assert [app.app_id for app in gateway.list_recommended("en-US").recommended_apps] == ["app-1", "app-2"]
         assert gateway.list_learn_dify("en-US") == RecommendedAppCatalogPage(
             recommended_apps=_expected_page().recommended_apps,
             categories=(),
