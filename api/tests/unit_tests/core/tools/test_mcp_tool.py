@@ -22,6 +22,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.mcp_tool.tool import MCPTool
+from enums import DeploymentEdition
 
 
 def _build_mcp_tool(*, with_output_schema: bool = True) -> MCPTool:
@@ -256,41 +257,39 @@ def test_inject_forwarded_identity_sends_account_type_for_debugger():
     assert issue.call_args.kwargs["user_type"] == "account"
 
 
-def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing():
+def test_invoke_remote_mcp_tool_fails_closed_when_user_id_missing(config_overrides):
     """When forwarding is enabled AND the deployment is enterprise, missing
     user_id must raise — never silently invoke as the static identity."""
     tool = _build_forwarding_tool()
 
-    with patch("core.tools.mcp_tool.tool.dify_config") as cfg:
-        cfg.ENTERPRISE_ENABLED = True
-        with pytest.raises(ToolInvokeError, match="no end-user context"):
-            tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    with pytest.raises(ToolInvokeError, match="no end-user context"):
+        tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
 
 
-def test_invoke_skips_forwarding_when_enterprise_disabled():
+def test_invoke_skips_forwarding_outside_enterprise_edition(config_overrides):
     """Non-enterprise deployments treat the DB selector as a no-op: a stale
     `identity_mode="idp_token"` row must NOT raise (fail-closed) AND must
     NOT call the enterprise inner API. The runtime falls through to the
     legacy provider-identity path."""
     tool = _build_forwarding_tool()
 
-    with patch("core.tools.mcp_tool.tool.dify_config") as cfg:
-        cfg.ENTERPRISE_ENABLED = False
-        # The fail-closed branch must NOT fire (no enterprise → no forwarding).
-        # The function will still try the legacy DB-load path; we patch that
-        # to keep the test unit-scoped.
-        with patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls:
-            client_cls.return_value.__enter__.return_value.invoke_tool.return_value = CallToolResult(
-                content=[],
-                _meta=None,
-            )
-            with patch.object(tool, "_inject_forwarded_identity") as inject:
-                with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
-                    with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
-                        with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
-                            # Should not raise; should not call enterprise.
-                            try:
-                                tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
-                            except Exception:
-                                pass
-            inject.assert_not_called()
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    # The fail-closed branch must NOT fire (no enterprise → no forwarding).
+    # The function will still try the legacy DB-load path; we patch that
+    # to keep the test unit-scoped.
+    with patch("core.tools.mcp_tool.tool.MCPClientWithAuthRetry") as client_cls:
+        client_cls.return_value.__enter__.return_value.invoke_tool.return_value = CallToolResult(
+            content=[],
+            _meta=None,
+        )
+        with patch.object(tool, "_inject_forwarded_identity") as inject:
+            with patch("services.tools.mcp_tools_manage_service.MCPToolManageService"):
+                with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_server_url", return_value="u"):
+                    with patch("core.entities.mcp_provider.MCPProviderEntity.decrypt_headers", return_value={}):
+                        # Should not raise; should not call enterprise.
+                        try:
+                            tool.invoke_remote_mcp_tool({}, user_id=None, app_id=None)
+                        except Exception:
+                            pass
+        inject.assert_not_called()

@@ -7,6 +7,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { validPassword } from '@/config'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
@@ -24,6 +25,16 @@ const ChangePasswordForm = () => {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
+  const isVerifyingToken = !isTokenMissing && !verifyTokenRes
+  const isTokenInvalid = isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)
+  const documentTitle = isVerifyingToken
+    ? t(($) => $.loading, { ns: 'common' })
+    : isTokenInvalid
+      ? t(($) => $.invalid, { ns: 'login' })
+      : showSuccess
+        ? t(($) => $.passwordChangedTip, { ns: 'login' })
+        : t(($) => $.changePassword, { ns: 'login' })
+  useDocumentTitle(documentTitle)
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)
@@ -68,16 +79,16 @@ const ChangePasswordForm = () => {
     <div
       className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
-      {!isTokenMissing && !verifyTokenRes && <Loading />}
-      {(isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)) && (
+      {isVerifyingToken && <Loading />}
+      {isTokenInvalid && (
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
               🤷‍♂️
             </div>
-            <h2 className="text-[32px] font-bold text-text-primary">
+            <h1 className="text-[32px] font-bold text-text-primary">
               {t(($) => $.invalid, { ns: 'login' })}
-            </h2>
+            </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant="primary" className="w-full text-sm!">
@@ -89,9 +100,9 @@ const ChangePasswordForm = () => {
       {verifyTokenRes && verifyTokenRes.is_valid && !showSuccess && (
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
-            <h2 className="text-[32px] font-bold text-text-primary">
+            <h1 className="text-[32px] font-bold text-text-primary">
               {t(($) => $.changePassword, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-1 text-sm text-text-secondary">
               {t(($) => $.changePasswordTip, { ns: 'login' })}
             </p>
@@ -155,9 +166,9 @@ const ChangePasswordForm = () => {
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
               <CheckCircleIcon className="h-10 w-10 text-[#039855]" />
             </div>
-            <h2 className="text-[32px] font-bold text-text-primary">
+            <h1 className="text-[32px] font-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}
-            </h2>
+            </h1>
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant="primary" className="w-full">

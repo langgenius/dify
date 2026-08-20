@@ -13,6 +13,8 @@
   "embedding.segmentLength": "最大分段长度",
   "embedding.segments": "段落",
   "embedding.textCleaning": "文本预处理规则",
+  "embedding.vectorSpaceEstimateExceeded.description": "文档已接收，但预计向量存储占用为 {{estimated}} MB，超过套餐上限 {{limit}} MB，因此未写入向量。如果有其他文档正在处理或刚处理失败，请稍后重试；否则，请减小文件大小或减少分段数。",
+  "embedding.vectorSpaceEstimateExceeded.title": "上传后预计向量占用超出套餐容量",
   "embedding.waiting": "嵌入等待中...",
   "list.action.addButton": "添加分段",
   "list.action.archive": "归档",

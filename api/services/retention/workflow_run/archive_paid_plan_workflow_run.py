@@ -46,7 +46,7 @@ from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
 from graphon.enums import WorkflowType
 from libs.archive_storage import (
@@ -535,8 +535,8 @@ class WorkflowRunArchiver:
         if self.paid_tenant_ids is not None:
             return tenant_ids & self.paid_tenant_ids
 
-        if not dify_config.BILLING_ENABLED:
-            # If billing is not enabled, treat all tenants as paid
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            # Self-hosted editions have no Cloud billing plans, so treat all tenants as paid.
             return tenant_ids
 
         if not tenant_ids:

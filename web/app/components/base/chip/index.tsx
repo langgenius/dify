@@ -50,7 +50,7 @@ function Chip<T extends ItemValue>({
     : t(($) => $['operation.clear'], { ns: 'common' })
 
   return (
-    <Select
+    <Select<T>
       value={selectedItem?.value ?? null}
       itemToStringLabel={(itemValue: T) =>
         items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
@@ -127,7 +127,7 @@ function Chip<T extends ItemValue>({
           listClassName="max-h-72 p-1"
         >
           {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
+            <SelectItem<T> key={item.value} value={item.value}>
               <SelectItemText title={item.name}>{item.name}</SelectItemText>
               {showItemIndicator && <SelectItemIndicator />}
             </SelectItem>

@@ -1,8 +1,14 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
-import type { ComboboxContentProps, ComboboxProps } from '@langgenius/dify-ui/combobox'
+import type { ComboboxProps, ComboboxTriggerProps } from '@langgenius/dify-ui/combobox'
 import type { TagComboboxItem } from './tag-combobox-item'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import {
+  Combobox,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -15,7 +21,7 @@ import { useApplyTagBindingsMutation } from '../hooks/use-tag-mutations'
 import { getTagManagePermissionKey } from '../utils'
 import { isCreateTagOption } from './tag-combobox-item'
 import { TagSearchContent } from './tag-search-content'
-import { TagTrigger } from './tag-trigger'
+import { TagTriggerContent } from './tag-trigger-content'
 
 const TAG_COMBOBOX_FILTER: NonNullable<ComboboxProps<TagComboboxItem, true>['filter']> = (
   tag,
@@ -43,19 +49,8 @@ type TagSelectorRootProps = Omit<
   | 'onOpenChangeComplete'
   | 'children'
 >
-type TagSelectorContentProps = Pick<
-  ComboboxContentProps,
-  | 'placement'
-  | 'sideOffset'
-  | 'alignOffset'
-  | 'portalProps'
-  | 'positionerProps'
-  | 'popupProps'
-  | 'popupClassName'
->
-
-type TagSelectorProps = TagSelectorRootProps &
-  TagSelectorContentProps & {
+export type TagSelectorProps = TagSelectorRootProps &
+  Pick<ComboboxTriggerProps, 'className' | 'onClick'> & {
     targetId: string
     type: TagType
     value: Tag[]
@@ -69,15 +64,10 @@ export const TagSelector = ({
   type,
   value,
   canBindOrUnbindTags,
+  className,
+  onClick,
   onOpenTagManagement = () => {},
   onTagsChange,
-  placement = 'bottom-start',
-  sideOffset = 4,
-  alignOffset = 0,
-  portalProps,
-  positionerProps,
-  popupProps,
-  popupClassName,
   ...rootProps
 }: TagSelectorProps) => {
   const { t } = useTranslation()
@@ -256,33 +246,35 @@ export const TagSelector = ({
         disabled={!canManageTags && !canBindOrUnbindTags}
         aria-label={triggerLabel}
         className={cn(
-          'block h-auto w-full rounded-lg border-0 bg-transparent p-0 text-left hover:bg-transparent focus:outline-hidden focus-visible:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          'group/tag-area relative h-auto w-full cursor-pointer rounded-lg border-0 bg-transparent p-1 hover:bg-state-base-hover focus-visible:bg-transparent data-disabled:bg-transparent data-disabled:opacity-50 data-disabled:hover:bg-transparent data-popup-open:bg-state-base-hover data-popup-open:hover:bg-state-base-hover',
+          className,
         )}
         icon={false}
+        onClick={onClick}
       >
-        <TagTrigger tags={tagNames} canBindOrUnbindTags={canBindOrUnbindTags} />
-      </ComboboxTrigger>
-      <ComboboxContent
-        placement={placement}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        portalProps={portalProps}
-        positionerProps={positionerProps}
-        popupProps={popupProps}
-        popupClassName={cn(
-          'w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]',
-          popupClassName,
-        )}
-      >
-        <TagSearchContent
-          type={type}
-          inputValue={inputValue}
-          onInputValueChange={setInputValue}
-          canBindOrUnbindTags={canBindOrUnbindTags}
-          onOpenTagManagement={onOpenTagManagement}
-          onClose={() => handleOpenChange(false)}
+        <TagTriggerContent tags={tagNames} emptyLabel={emptyTriggerLabel} />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 right-0 h-full w-20 bg-tag-selector-mask-bg group-hover/tag-area:hidden group-focus-visible/tag-area:hidden group-data-popup-open/tag-area:hidden"
         />
-      </ComboboxContent>
+      </ComboboxTrigger>
+      <ComboboxPortal>
+        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+          <ComboboxPopup
+            aria-label={triggerLabel}
+            className="w-(--anchor-width) min-w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+          >
+            <TagSearchContent
+              type={type}
+              inputValue={inputValue}
+              onInputValueChange={setInputValue}
+              canBindOrUnbindTags={canBindOrUnbindTags}
+              onOpenTagManagement={onOpenTagManagement}
+              onClose={() => handleOpenChange(false)}
+            />
+          </ComboboxPopup>
+        </ComboboxPositioner>
+      </ComboboxPortal>
     </Combobox>
   )
 }

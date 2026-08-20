@@ -12,9 +12,10 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
-from services.app_dsl_service import AppDslService
+from services.app_dsl_service import AppDslService, PendingData
 from services.entities.dsl_entities import ImportStatus
 from services.errors.account import NoPermissionError
+from services.errors.app import WorkflowNotFoundError
 
 
 def test_extract_workflow_dependencies_uses_llm_environment_variable_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -144,6 +145,78 @@ def test_import_app_returns_decode_error_for_invalid_yaml_url_bytes(
     assert not unbound_session.in_transaction()
 
 
+def test_pending_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch, unbound_session: Session) -> None:
+    pending_imports: dict[str, str] = {}
+    monkeypatch.setattr(
+        "services.app_dsl_service.redis_client.setex",
+        lambda key, _expiry, value: pending_imports.__setitem__(key, value),
+    )
+    service = AppDslService(session=unbound_session)
+    creator = Mock(id="account-1", current_tenant_id="tenant-1")
+
+    pending = service.import_app(
+        account=creator,
+        import_mode="yaml-content",
+        yaml_content="version: 99.0.0\nkind: app\napp: {name: Test, mode: workflow}\n",
+    )
+
+    redis_key = f"app_import_info:{pending.id}"
+    assert pending.status == ImportStatus.PENDING
+    assert redis_key in pending_imports
+    pending_data = PendingData.model_validate_json(pending_imports[redis_key])
+    assert pending_data.tenant_id == "tenant-1"
+    assert pending_data.account_id == "account-1"
+
+    monkeypatch.setattr("services.app_dsl_service.redis_client.get", pending_imports.get)
+    monkeypatch.setattr("services.app_dsl_service.redis_client.delete", pending_imports.pop)
+    monkeypatch.setattr(
+        service,
+        "_create_or_update_app",
+        Mock(return_value=Mock(id="app-1", mode=AppMode.WORKFLOW)),
+    )
+
+    for other_account in (
+        Mock(id="account-1", current_tenant_id="tenant-2"),
+        Mock(id="account-2", current_tenant_id="tenant-1"),
+    ):
+        assert service.confirm_import(import_id=pending.id, account=other_account).status == ImportStatus.FAILED
+
+    assert service.confirm_import(import_id=pending.id, account=creator).status == ImportStatus.COMPLETED
+    assert redis_key not in pending_imports
+
+
+@pytest.mark.parametrize(
+    ("tenant_id", "account_id", "expected"),
+    [
+        ("tenant-1", "account-1", True),
+        (None, "account-1", False),
+        ("tenant-1", None, False),
+        ("tenant-2", "account-1", False),
+        ("tenant-1", "account-2", False),
+    ],
+)
+def test_pending_import_owner_access(
+    tenant_id: str | None,
+    account_id: str | None,
+    expected: bool,
+) -> None:
+    pending = PendingData(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        import_mode="yaml-content",
+        yaml_content="",
+    )
+
+    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1") is expected
+
+
+def test_pending_import_owner_access_accepts_legacy_json() -> None:
+    pending = PendingData.model_validate_json('{"import_mode":"yaml-content","yaml_content":""}')
+
+    assert pending.is_accessible_by(tenant_id="tenant-1", account_id="account-1")
+    assert not pending.is_accessible_by(tenant_id=None, account_id="account-1")
+
+
 def test_create_or_update_app_loads_existing_model_config_with_service_session(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -226,6 +299,59 @@ def test_create_or_update_app_flushes_new_model_config_before_signal(
     assert app.app_model_config_id is not None
     assert sqlite_session.get(AppModelConfig, app.app_model_config_id) is not None
     assert sqlite_session.in_transaction()
+
+
+def test_create_or_update_app_forwards_imported_agent_purge_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = cast(Session, SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get=Mock()))
+    service = AppDslService(session=session)
+    app = SimpleNamespace(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Workflow",
+        description="",
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+    )
+    workflow = SimpleNamespace(id="workflow-1")
+    workflow_service = SimpleNamespace(
+        get_draft_workflow=Mock(return_value=None),
+        sync_draft_workflow=Mock(return_value=workflow),
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.graph_without_package_bindings",
+        Mock(return_value={"nodes": [], "edges": []}),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.AgentDslService.import_workflow_packages",
+        Mock(return_value=(workflow, [], {"retired-agent"})),
+    )
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
+    retire_unowned = Mock()
+    monkeypatch.setattr(
+        "services.app_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        retire_unowned,
+    )
+
+    service._create_or_update_app(
+        app=cast(App, app),
+        data={
+            "app": {"mode": AppMode.WORKFLOW.value},
+            "workflow": {"graph": {"nodes": [], "edges": []}},
+            "agent_packages": {"package-1": {}},
+        },
+        account=Mock(id="account-1"),
+    )
+
+    retire_unowned.assert_called_once_with(
+        tenant_id="tenant-1",
+        agent_ids={"retired-agent"},
+        account_id="account-1",
+    )
 
 
 def test_export_dsl_loads_model_config_and_annotation_reply_with_request_session(
@@ -335,3 +461,20 @@ def test_import_app_reraises_permission_denial_instead_of_failed_result(
         )
 
     assert not unbound_session.in_transaction()
+
+
+def test_append_workflow_export_data_reports_missing_selected_workflow(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_id = "11111111-1111-4111-8111-111111111111"
+    workflow_service = Mock()
+    workflow_service.get_draft_workflow.return_value = None
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock(return_value=workflow_service))
+    app = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1"))
+
+    with pytest.raises(WorkflowNotFoundError, match=f"Workflow version not found. Workflow ID: {workflow_id}"):
+        AppDslService._append_workflow_export_data(
+            export_data={},
+            app_model=app,
+            include_secret=False,
+            session=Mock(),
+            workflow_id=workflow_id,
+        )

@@ -1,4 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -56,6 +57,13 @@ vi.mock('@/service/client', () => ({
     systemFeatures: vi.fn(),
   },
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
     tags: {
       list: {
         queryOptions: (options: unknown) => options,
@@ -73,15 +81,6 @@ const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 const mockWorkspacePermissionKeys = vi.fn(() => ['snippets.create_and_modify'])
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'creator-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    isLoadingCurrentWorkspace: false,
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => ({
@@ -242,6 +241,7 @@ const renderList = ({
   brandingEnabled?: boolean
 } = {}) => {
   const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+    accountProfile: { id: 'creator-1' },
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 
@@ -370,19 +370,22 @@ describe('SnippetList', () => {
   it('updates the search query state from the search input', () => {
     renderList()
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'summary' } })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } })
 
     expect(mockSetKeywords).toHaveBeenCalledWith('summary')
   })
 
-  it('clears the search query state', () => {
+  it('clears the search query state and returns focus to the search input', async () => {
+    const user = userEvent.setup()
     mockQueryState.keywords = 'summary'
 
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(mockSetKeywords).toHaveBeenCalledWith('')
+    expect(searchInput).toHaveFocus()
   })
 
   it('updates the creator query state as a multi creator filter', () => {

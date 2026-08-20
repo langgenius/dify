@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 /**
  * Test suite for useFormatTimeFromNow hook
  *

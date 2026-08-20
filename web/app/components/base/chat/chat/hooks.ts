@@ -1,6 +1,6 @@
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
@@ -68,6 +68,7 @@ type SendCallback = {
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
+  onNotifyError?: IOtherOptions['onNotifyError']
   isPublicAPI?: boolean
 }
 
@@ -461,7 +462,9 @@ export const useChat = (
     },
     [bindWorkflowEventsReadyWaiters, markWorkflowEventsPending, resolveWorkflowEventsReadyWaiters],
   )
-  startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  useEffect(() => {
+    startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  }, [startWorkflowEventsSubscription])
 
   const ensureWorkflowEventsSubscription = useCallback(
     (workflowRunId: string, options: IOtherOptions) => {
@@ -578,7 +581,13 @@ export const useChat = (
     async (
       messageId: string,
       workflowRunId: string,
-      { onGetSuggestedQuestions, onConversationComplete, onSendSettled, isPublicAPI }: SendCallback,
+      {
+        onGetSuggestedQuestions,
+        onConversationComplete,
+        onSendSettled,
+        onNotifyError,
+        isPublicAPI,
+      }: SendCallback,
     ) => {
       const hasActiveSubscription =
         workflowEventsSubscriptionActiveRef.current &&
@@ -600,6 +609,7 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
+        onNotifyError,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -1085,6 +1095,7 @@ export const useChat = (
         onConversationComplete,
         onUnhandledEvent,
         onSendSettled,
+        onNotifyError,
         isPublicAPI,
       }: SendCallback,
     ) => {
@@ -1186,6 +1197,7 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
+        onNotifyError,
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController

@@ -18,15 +18,26 @@ from core.plugin.entities.plugin_daemon import (
     PluginModelProviderEntity,
 )
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from models.provider import Provider, ProviderCredential, ProviderType, TenantPreferredModelProvider
-from services.feature_service import PluginInstallationPermissionModel, PluginInstallationScope
+from services.entities.feature_entities import PluginInstallationPermissionModel, PluginInstallationScope
 
 MODULE = "core.plugin.plugin_service"
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 USER_ID = "33333333-3333-3333-3333-333333333333"
+
+
+@pytest.fixture(autouse=True)
+def _plugin_config(config_overrides) -> None:
+    config_overrides(
+        MARKETPLACE_ENABLED=True,
+        PLUGIN_MODEL_PROVIDERS_CACHE_TTL=86400,
+        PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=True,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+    )
 
 
 def _build_provider_entity(
@@ -102,14 +113,13 @@ def _provider_generation_key(tenant_id: str) -> str:
 
 
 class TestFetchLatestPluginVersion:
-    def test_skips_marketplace_fetch_when_disabled(self) -> None:
+    def test_skips_marketplace_fetch_when_disabled(self, config_overrides) -> None:
         """Cache misses stay None; marketplace is never called when disabled."""
+        config_overrides(MARKETPLACE_ENABLED=False)
         with (
-            patch(f"{MODULE}.dify_config") as mock_cfg,
             patch(f"{MODULE}.redis_client") as mock_redis,
             patch(f"{MODULE}.marketplace") as mock_marketplace,
         ):
-            mock_cfg.MARKETPLACE_ENABLED = False
             mock_redis.get.return_value = None  # all cache misses
 
             from core.plugin.plugin_service import PluginService
@@ -130,11 +140,9 @@ class TestFetchLatestPluginVersion:
         manifest.alternative_plugin_id = ""
 
         with (
-            patch(f"{MODULE}.dify_config") as mock_cfg,
             patch(f"{MODULE}.redis_client") as mock_redis,
             patch(f"{MODULE}.marketplace") as mock_marketplace,
         ):
-            mock_cfg.MARKETPLACE_ENABLED = True
             mock_redis.get.return_value = None
             mock_marketplace.batch_fetch_plugin_manifests.return_value = [manifest]
 
@@ -156,12 +164,7 @@ class TestPluginModelProviderCache:
         raw_payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json([large_provider])
         cache_key = _provider_cache_key("tenant-1", 0)
 
-        with (
-            patch(f"{MODULE}.redis_client") as redis_client,
-            patch(f"{MODULE}.dify_config") as mock_config,
-        ):
-            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
-
+        with patch(f"{MODULE}.redis_client") as redis_client:
             from core.plugin.plugin_service import PluginService
 
             PluginService._store_cached_plugin_model_providers("tenant-1", 0, [large_provider])
@@ -253,11 +256,9 @@ class TestPluginModelProviderCache:
         cache_key = _provider_cache_key("tenant-1", 0)
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
-            patch(f"{MODULE}.dify_config") as mock_config,
         ):
             redis_client.get.side_effect = [None, None, None]
             redis_client.mget.side_effect = [[legacy_payload], [None]]
-            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
 
@@ -276,10 +277,10 @@ class TestPluginModelProviderCache:
             call([cache_key]),
         ]
 
-    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self) -> None:
+    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self, config_overrides) -> None:
         """With the cache disabled the daemon is the only source, and Redis is never touched."""
-        with patch(f"{MODULE}.redis_client") as redis_client, patch(f"{MODULE}.dify_config") as config:
-            config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED = False
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+        with patch(f"{MODULE}.redis_client") as redis_client:
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
 
@@ -297,7 +298,8 @@ class TestPluginModelProviderCache:
         redis_client.setex.assert_not_called()
         redis_client.lock.assert_not_called()
 
-    def test_fetch_plugin_model_providers_resolves_missing_installation_source(self) -> None:
+    def test_fetch_plugin_model_providers_resolves_missing_installation_source(self, config_overrides) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
         provider = _build_plugin_model_provider(installation_source=None)
         installation = SimpleNamespace(
             plugin_unique_identifier=provider.plugin_unique_identifier,
@@ -307,12 +309,10 @@ class TestPluginModelProviderCache:
         from core.plugin.plugin_service import PluginService
 
         with (
-            patch(f"{MODULE}.dify_config") as config,
             patch.object(
                 PluginService, "list_installations_from_ids", return_value=[installation]
             ) as list_installations,
         ):
-            config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED = False
             client = Mock()
             client.fetch_model_providers.return_value = [provider]
 
@@ -881,7 +881,105 @@ class TestPluginListEndpointCounts:
         assert tool_plugin.endpoints_active == 0
 
 
+class TestPluginCategoryList:
+    def test_list_by_category_forwards_search_and_tag_filters(self) -> None:
+        plugins = SimpleNamespace(list=[], has_more=False)
+
+        with patch(f"{MODULE}.PluginInstaller") as installer_cls:
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category(
+                "tenant-1",
+                PluginCategory.Tool,
+                2,
+                25,
+                query="weather",
+                tags=["search", "rag"],
+                language="zh_Hans",
+            )
+
+        assert result is plugins
+        installer_cls.return_value.list_plugins_by_category.assert_called_once_with(
+            "tenant-1",
+            PluginCategory.Tool,
+            2,
+            25,
+            query="weather",
+            tags=["search", "rag"],
+            language="zh_Hans",
+        )
+
+    def test_filtered_model_category_does_not_reconcile_from_a_partial_result(self) -> None:
+        plugins = SimpleNamespace(list=[], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category(
+                "tenant-1",
+                PluginCategory.Model,
+                1,
+                100,
+                query="openai",
+                tags=[],
+                language="en_US",
+            )
+
+        assert result is plugins
+        invalidate_cache.assert_not_called()
+        store_marker.assert_not_called()
+
+
+class TestInstalledPluginIds:
+    def test_list_installed_plugin_ids_uses_lightweight_daemon_endpoint(self) -> None:
+        with patch(f"{MODULE}.PluginInstaller") as installer_cls:
+            installer_cls.return_value.list_installed_plugin_ids.return_value = [
+                "langgenius/openai",
+                "langgenius/anthropic",
+            ]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_installed_plugin_ids("tenant-1", PluginCategory.Tool)
+
+        assert result == ["langgenius/openai", "langgenius/anthropic"]
+        installer_cls.return_value.list_installed_plugin_ids.assert_called_once_with("tenant-1", PluginCategory.Tool)
+
+
 class TestPluginModelProviderCacheInvalidation:
+    def test_list_model_provider_bindings_reconciles_remote_provider_cache(self) -> None:
+        """The summary binding read owns the remote marker once the full category list leaves the first-load path."""
+        remote_binding = _build_remote_model_plugin()
+        client = MagicMock()
+        client.fetch_model_provider_bindings.return_value = [remote_binding]
+        remote_plugin_marker = "langgenius/debug-model:langgenius/debug-model:1.0.0"
+
+        with (
+            patch(
+                f"{MODULE}.PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins",
+                return_value=True,
+            ) as should_invalidate,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_model_provider_bindings("tenant-1", client=client)
+
+        assert result == [remote_binding]
+        client.fetch_model_provider_bindings.assert_called_once_with("tenant-1")
+        should_invalidate.assert_called_once_with("tenant-1", [remote_binding])
+        invalidate_cache.assert_called_once_with("tenant-1")
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
     def test_get_debugging_key_does_not_invalidate_model_provider_cache(self) -> None:
         """Reading a debug key does not mean a debug runtime has registered a model provider."""
         with (
@@ -925,7 +1023,13 @@ class TestPluginModelProviderCacheInvalidation:
 
         assert result is plugins
         installer_cls.return_value.list_plugins_by_category.assert_called_once_with(
-            "tenant-1", PluginCategory.Model, 1, 100
+            "tenant-1",
+            PluginCategory.Model,
+            1,
+            100,
+            query="",
+            tags=(),
+            language="en_US",
         )
         invalidate_cache.assert_called_once_with("tenant-1")
         store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
@@ -992,14 +1096,42 @@ class TestPluginModelProviderCacheInvalidation:
         invalidate_cache.assert_not_called()
         store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
 
-    def test_list_model_category_invalidates_when_remote_model_plugin_disconnects(self) -> None:
-        """The current model category result clears provider cache when the previous debug model disappears."""
+    @pytest.mark.parametrize(("page", "has_more"), [(1, True), (2, False)])
+    def test_list_model_category_does_not_reconcile_partial_page(self, page: int, has_more: bool) -> None:
+        """Only an unfiltered, complete first page may write the remote model marker."""
         installed_plugin = SimpleNamespace(
             plugin_id="langgenius/openai",
             plugin_unique_identifier="langgenius/openai:1.0.0",
             source=PluginInstallationSource.Marketplace,
         )
-        plugins = SimpleNamespace(list=[installed_plugin], has_more=True)
+        plugins = SimpleNamespace(list=[installed_plugin], has_more=has_more)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value="langgenius/debug-model:langgenius/debug-model:1.0.0",
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, page, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_not_called()
+        store_marker.assert_not_called()
+
+    def test_list_model_category_complete_first_page_reconciles_remote_plugin_disconnect(self) -> None:
+        installed_plugin = SimpleNamespace(
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0",
+            source=PluginInstallationSource.Marketplace,
+        )
+        plugins = SimpleNamespace(list=[installed_plugin], has_more=False)
 
         with (
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
@@ -1074,13 +1206,11 @@ class TestPluginModelProviderCacheInvalidation:
     def test_upgrade_plugin_with_marketplace_invalidates_model_provider_cache_for_tenant(self) -> None:
         """Marketplace upgrades invalidate only the mutated tenant provider cache."""
         with (
-            patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.FeatureService") as feature_service,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.marketplace") as marketplace,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
-            mock_config.MARKETPLACE_ENABLED = True
             feature_service.get_plugin_installation_permission.return_value = PluginInstallationPermissionModel(
                 restrict_to_marketplace_only=False,
                 plugin_installation_scope=PluginInstallationScope.ALL,
@@ -1184,13 +1314,11 @@ class TestPluginModelProviderCacheInvalidation:
     def test_install_from_marketplace_pkg_invalidates_model_provider_cache_for_tenant(self) -> None:
         """Marketplace package installs invalidate only the mutated tenant provider cache."""
         with (
-            patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.FeatureService") as feature_service,
             patch(f"{MODULE}.PluginService._check_plugin_installation_scope"),
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
-            mock_config.MARKETPLACE_ENABLED = True
             feature_service.get_system_features.return_value = SimpleNamespace(
                 plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
             )
@@ -1288,13 +1416,11 @@ class TestPluginModelProviderCacheInvalidation:
 
         with (
             patch(f"{MODULE}.db", SimpleNamespace(engine=sqlite_session.get_bind())),
-            patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.ProviderCredentialsCache") as credentials_cache,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
             patch("core.provider_manager.ProviderManager.invalidate_configurations_cache") as invalidate_configurations,
         ):
-            mock_config.ENTERPRISE_ENABLED = False
             installer = installer_cls.return_value
             installer.list_plugins.return_value = [plugin]
             installer.uninstall.return_value = True

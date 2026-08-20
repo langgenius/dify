@@ -274,7 +274,6 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.session_factory.create_session", return_value=resolver_context)
         mocker.patch(f"{MODULE}.db.session.close")
         mocker.patch(f"{MODULE}.DifyRunContext", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.build_dify_model_access", return_value=(mocker.MagicMock(), None))
         mocker.patch(f"{MODULE}.AgentAppRuntimeRequestBuilder", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.create_agent_backend_run_client", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentBackendRunEventAdapter", return_value=mocker.MagicMock())
@@ -512,7 +511,7 @@ class TestResumeAfterFormSubmission:
         conversation = mocker.MagicMock(id="conv", invoke_from=InvokeFrom.DEBUGGER)
         mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=conversation)
         generator._resolve_resume_draft.return_value = ("debug_build", "draft-build-1")
-        account_user = mocker.MagicMock(spec=Account)
+        account_user = Account(name="Test Account", email="test@example.com")
         account_user.id = "user"
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         app_model.app_model_config_id = "config-1"

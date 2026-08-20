@@ -27,6 +27,7 @@ from clients.agent_backend import AgentBackendRunEventAdapter
 from clients.agent_backend.factory import create_agent_backend_run_client
 from configs import dify_config
 from constants import UUID_NIL
+from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
@@ -44,7 +45,6 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     UserFrom,
 )
-from core.app.llm.model_access import build_dify_model_access
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
@@ -58,7 +58,6 @@ from models.agent import (
     AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentScope,
-    AgentSource,
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
@@ -219,6 +218,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
             agent_session_scope_config_version_id=session_scope_config_version_id,
+            agent_llm_gateway_enabled=True,
         )
 
         conversation, message = self._init_generate_records(
@@ -349,6 +349,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
+            agent_llm_gateway_enabled=True,
         )
 
         conversation, message = self._init_generate_records(
@@ -506,7 +507,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         session=session,
                     )
 
-                runner = self._build_runner(dify_context)
+                runner = self._build_runner()
                 runner.run(
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
@@ -542,10 +543,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return query.replace("\x00", "")
 
     @staticmethod
-    def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:
-        credentials_provider, _ = build_dify_model_access(dify_context)
+    def _build_runner() -> AgentAppRunner:
         return AgentAppRunner(
-            request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
+            request_builder=AgentAppRuntimeRequestBuilder(),
             agent_backend_client=create_agent_backend_run_client(
                 base_url=dify_config.AGENT_BACKEND_BASE_URL,
                 api_token=dify_config.AGENT_BACKEND_API_TOKEN,
@@ -553,7 +553,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
                 stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
                 stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
-                stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
             ),
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppWorkspaceStore(),
@@ -644,12 +643,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")
-        if (
-            agent.source == AgentSource.IMPORTED
-            and not agent.active_config_is_published
-            and invoke_from != InvokeFrom.DEBUGGER
-        ):
-            raise AgentAppNotPublishedError("Agent has not been published")
         if invoke_from == InvokeFrom.DEBUGGER:
             draft = self._resolve_debug_draft(
                 tenant_id=app_model.tenant_id,
@@ -664,9 +657,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 "build_draft" if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft"
             )
             return agent, draft.id, config_version_kind, agent_soul
-        # active_config_is_published tracks whether the editable draft matches the active snapshot.
-        # Public runtime must keep serving the active snapshot even when unpublished draft edits exist.
-        if not agent.active_config_snapshot_id:
+        # Dirty drafts do not revoke a published snapshot, while the seeded
+        # create/import snapshot must never become public runtime configuration.
+        if not agent_has_workflow_callable_active_snapshot(session=session, agent=agent):
             raise AgentAppNotPublishedError("Agent has not been published")
         conversation_binding = self._resolve_conversation_binding(
             session=session,

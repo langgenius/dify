@@ -1,5 +1,6 @@
 import type { Shape } from '../../store/workflow'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { FlowType } from '@/types/common'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { WorkflowVersion } from '../../types'
@@ -25,18 +26,6 @@ const mockViewHistory = vi.fn()
 
 let mockNodesReadOnly = false
 let mockTheme: 'light' | 'dark' = 'light'
-const mockConsoleState = vi.hoisted(() => ({
-  userProfile: {
-    id: '',
-    name: '',
-  },
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
-
 vi.mock('reactflow', () => ({
   useNodes: () => mockUseNodes(),
 }))
@@ -196,6 +185,7 @@ const createCurrentVersion = (): NonNullable<Shape['currentVersion']> => ({
   tool_published: false,
   environment_variables: [],
   version: WorkflowVersion.Latest,
+  version_number: 5,
   marked_name: '',
   marked_comment: '',
 })
@@ -298,6 +288,7 @@ describe('Header layout components', () => {
       const onRestoreSettled = vi.fn()
       const deleteAllInspectVars = vi.fn()
       const currentVersion = createCurrentVersion()
+      const currentUser = { id: 'user-1', name: 'Alice' }
 
       const { store } = renderWorkflowComponent(
         <HeaderInRestoring onRestoreSettled={onRestoreSettled} />,
@@ -316,6 +307,7 @@ describe('Header layout components', () => {
               fileSettings: {},
             },
           },
+          queryClient: createAccountProfileQueryClient(currentUser),
         },
       )
 
@@ -336,9 +328,9 @@ describe('Header layout components', () => {
       })
       expect(mockEmitRestoreIntent).toHaveBeenCalledWith({
         versionId: currentVersion.id,
-        versionName: currentVersion.marked_name,
-        initiatorUserId: '',
-        initiatorName: '',
+        versionName: '# 5',
+        initiatorUserId: currentUser.id,
+        initiatorName: currentUser.name,
       })
       expect(mockEmitRestoreComplete).toHaveBeenCalledWith({
         versionId: currentVersion.id,

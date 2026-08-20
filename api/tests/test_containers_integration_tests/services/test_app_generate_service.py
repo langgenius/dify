@@ -8,6 +8,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from enums import DeploymentEdition
 from models import App
 from models.enums import EndUserType
 from models.model import EndUser
@@ -106,14 +107,14 @@ class TestAppGenerateService:
             mock_account_feature_service.get_system_features.return_value.is_allow_register = True
 
             # Setup dify_config mock returns
-            mock_dify_config.BILLING_ENABLED = False
+            mock_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DEFAULT_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DAILY_RATE_LIMIT = 1000
 
-            mock_quota_dify_config.BILLING_ENABLED = False
+            mock_quota_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
 
-            mock_global_dify_config.BILLING_ENABLED = False
+            mock_global_dify_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_global_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
             mock_global_dify_config.APP_DAILY_RATE_LIMIT = 1000
             mock_global_dify_config.HOSTED_POOL_CREDITS = 1000
@@ -514,21 +515,21 @@ class TestAppGenerateService:
         # Verify the result
         assert result == ["test_response"]
 
-    def test_generate_with_billing_enabled_sandbox_plan(
+    def test_generate_in_cloud_sandbox_plan(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):
         """
-        Test generation with billing enabled and sandbox plan.
+        Test generation in the Cloud edition with a sandbox plan.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
             db_session_with_containers, mock_external_service_dependencies, mode="completion"
         )
 
-        # Set BILLING_ENABLED to True for this test
-        mock_external_service_dependencies["dify_config"].BILLING_ENABLED = True
-        mock_external_service_dependencies["quota_dify_config"].BILLING_ENABLED = True
-        mock_external_service_dependencies["global_dify_config"].BILLING_ENABLED = True
+        # Billing services are available in the Cloud deployment edition.
+        mock_external_service_dependencies["dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
+        mock_external_service_dependencies["quota_dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
+        mock_external_service_dependencies["global_dify_config"].DEPLOYMENT_EDITION = DeploymentEdition.CLOUD
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}

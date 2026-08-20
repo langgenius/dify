@@ -1,9 +1,19 @@
+import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [{ provider: 'model-collection-id' }],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
@@ -571,7 +581,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(mockSetShowModelModal).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
     })
   })
 
@@ -769,6 +781,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
       const call = mockSetShowModelModal.mock.calls[0]![0]
       act(() => {
         call.onSaveCallback()

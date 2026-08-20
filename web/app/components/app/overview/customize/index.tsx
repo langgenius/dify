@@ -10,7 +10,6 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tag from '@/app/components/base/tag'
 import { useDocLink } from '@/context/i18n'
 import { AppModeEnum } from '@/types/app'
 
@@ -77,13 +76,9 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <DialogCloseButton />
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
-            <Tag
-              bordered={true}
-              hideBg={true}
-              className="border-text-accent-secondary text-text-accent-secondary uppercase"
-            >
+            <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 1
-            </Tag>
+            </span>
             <p className="my-2 system-sm-medium text-text-secondary">
               {t(($) => $[`${prefixCustomize}.way1.name`], { ns: 'appOverview' })}
             </p>
@@ -164,13 +159,9 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             </div>
           </div>
           <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
-            <Tag
-              bordered={true}
-              hideBg={true}
-              className="border-text-accent-secondary text-text-accent-secondary uppercase"
-            >
+            <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 2
-            </Tag>
+            </span>
             <p className="my-2 system-sm-medium text-text-secondary">
               {t(($) => $[`${prefixCustomize}.way2.name`], { ns: 'appOverview' })}
             </p>

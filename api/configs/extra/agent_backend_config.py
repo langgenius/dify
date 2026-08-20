@@ -13,7 +13,7 @@ class AgentBackendConfig(BaseSettings):
     )
 
     AGENT_BACKEND_API_TOKEN: str | None = Field(
-        description="Bearer token for authenticating with the Agent backend /runs API.",
+        description="Bearer token for authenticating with the Agent backend control-plane API.",
         default=None,
     )
 
@@ -35,11 +35,6 @@ class AgentBackendConfig(BaseSettings):
     AGENT_BACKEND_STREAM_MAX_RECONNECTS: NonNegativeInt = Field(
         description="Maximum Agent backend SSE reconnects before failing the run.",
         default=3,
-    )
-
-    AGENT_BACKEND_RUN_TIMEOUT_SECONDS: PositiveFloat = Field(
-        description="Total deadline for one Agent backend run event stream.",
-        default=1200,
     )
 
     AGENT_SHELL_ENABLED: bool = Field(

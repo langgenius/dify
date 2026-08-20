@@ -4,7 +4,7 @@ import type { DocPathWithoutLang, DocsProduct } from '@/types/doc-paths'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
-import { deploymentEditionAtom } from '@/context/system-features-state'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 import { docPathProductAvailability } from '@/types/doc-paths'
 

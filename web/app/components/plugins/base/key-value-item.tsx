@@ -1,11 +1,10 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
 type Props = Readonly<{
   label: string
@@ -24,6 +23,7 @@ function KeyValueItem({
 }: Props) {
   const { t } = useTranslation()
   const [isCopied, setIsCopied] = useState(false)
+  const labelId = useId()
   const handleCopy = useCallback(() => {
     copy(value)
     setIsCopied(true)
@@ -40,11 +40,16 @@ function KeyValueItem({
     }
   }, [isCopied])
 
-  const copyLabel = t(($) => $[`operation.${isCopied ? 'copied' : 'copy'}`], { ns: 'common' })
+  const copiedLabel = t(($) => $['operation.copied'], { ns: 'common' })
+  const copyLabel = t(($) => $['operation.copy'], { ns: 'common' })
+  const copyButtonLabel = `${copyLabel}: ${label}`
+  const copyStatus = `${copiedLabel}: ${label}`
+  const tooltipLabel = isCopied ? copiedLabel : copyLabel
 
   return (
-    <div className="flex items-center gap-1">
+    <div role="group" aria-labelledby={labelId} className="flex items-center gap-1">
       <span
+        id={labelId}
         className={cn(
           'flex flex-col items-start justify-center system-xs-medium text-text-tertiary',
           labelWidthClassName,
@@ -61,26 +66,27 @@ function KeyValueItem({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
-                variant="ghost"
-                aria-label={copyLabel}
-                className="size-6 p-0"
-                onClick={handleCopy}
-              >
+              <IconButton aria-label={copyButtonLabel} onClick={handleCopy}>
                 {isCopied ? (
-                  <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-files-copy-check size-3.5 shrink-0 text-text-tertiary"
+                  />
                 ) : (
                   <span
                     aria-hidden
                     className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary"
                   />
                 )}
-              </Button>
+              </IconButton>
             }
           />
-          <TooltipContent placement="top">{copyLabel}</TooltipContent>
+          <TooltipContent placement="top">{tooltipLabel}</TooltipContent>
         </Tooltip>
       </div>
+      <span role="status" aria-atomic="true" className="sr-only">
+        {isCopied ? copyStatus : ''}
+      </span>
     </div>
   )
 }

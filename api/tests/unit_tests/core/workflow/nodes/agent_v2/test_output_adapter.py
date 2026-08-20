@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import RunFailureType
 
 from clients.agent_backend import (
     AgentBackendRunCancelledInternalEvent,
@@ -151,6 +152,14 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
             source_event_id="2-0",
             error="bad request",
             reason="validation",
+            session_snapshot=CompositorSessionSnapshot(layers=[]),
+            usage={
+                "prompt_tokens": 13,
+                "completion_tokens": 8,
+                "total_tokens": 21,
+                "total_price": "0.000210",
+                "currency": "USD",
+            },
         ),
         inputs={},
         process_data={},
@@ -160,6 +169,44 @@ def test_failure_output_adapter_preserves_backend_failed_reason():
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "bad request"
     assert result.error_type == "validation"
+    assert result.llm_usage.total_tokens == 21
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 21
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] == Decimal("0.000210")
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]["session_snapshot"] == {
+        "layer_count": 0
+    }
+
+
+def test_failure_output_adapter_prefers_run_failure_type_over_reason():
+    result = WorkflowAgentOutputAdapter().build_failure_result(
+        event=AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="run limit reached",
+            error_type=RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
+            reason="runtime",
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+    )
+
+    assert result.error_type == "agent_run_limit_exceeded"
+
+
+def test_failure_output_adapter_uses_default_error_type_without_backend_classification():
+    result = WorkflowAgentOutputAdapter().build_failure_result(
+        event=AgentBackendRunFailedInternalEvent(
+            run_id="run-1",
+            error="backend failed",
+            error_type=None,
+            reason=None,
+        ),
+        inputs={},
+        process_data={},
+        metadata={},
+    )
+
+    assert result.error_type == "agent_backend_run_failed"
 
 
 def test_success_output_adapter_normalizes_string_and_scalar_outputs():
@@ -563,6 +610,7 @@ def test_failure_output_adapter_maps_cancelled_to_failure_code():
             source_event_id="2-0",
             reason="user_cancelled",
             message=None,
+            usage={"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
         ),
         inputs={},
         process_data={},
@@ -571,6 +619,8 @@ def test_failure_output_adapter_maps_cancelled_to_failure_code():
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error_type == "agent_backend_run_cancelled"
+    assert result.llm_usage.total_tokens == 8
+    assert result.metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] == 8
 
 
 def test_stream_exhausted_result_is_failed_with_stream_error():

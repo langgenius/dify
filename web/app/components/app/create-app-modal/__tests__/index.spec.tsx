@@ -1,10 +1,8 @@
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
-import { createApp } from '@/service/apps'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -14,12 +12,12 @@ import CreateAppModal from '../index'
 const ahooksMocks = vi.hoisted(() => ({
   keyPressHandlers: [] as Array<() => void>,
 }))
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+const mockCreateApp = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -43,12 +41,32 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: vi.fn(),
 }))
-vi.mock('@/service/apps', () => ({
-  createApp: vi.fn(),
-}))
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      apps: {
+        ...actual.consoleQuery.apps,
+        post: {
+          mutationOptions: () => ({
+            mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
+          }),
+        },
+      },
+    },
+  }
+})
 const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
@@ -75,10 +93,7 @@ vi.mock('@/utils/app-redirection', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
+
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -93,7 +108,6 @@ vi.mock('@/hooks/use-theme', () => ({
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
-const mockCreateApp = vi.mocked(createApp)
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
 const mockUseProviderContext = vi.mocked(useProviderContext)
@@ -126,8 +140,6 @@ const renderModal = () => {
 }
 
 describe('CreateAppModal', () => {
-  const mockSetItem = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
     ahooksMocks.keyPressHandlers.length = 0
@@ -147,18 +159,6 @@ describe('CreateAppModal', () => {
     })
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
-    mockSetItem.mockClear()
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        setItem: mockSetItem,
-        getItem: vi.fn(),
-        removeItem: vi.fn(),
-        clear: vi.fn(),
-        key: vi.fn(),
-        length: 0,
-      },
-      writable: true,
-    })
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
@@ -192,8 +192,6 @@ describe('CreateAppModal', () => {
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
-    await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
@@ -230,6 +228,11 @@ describe('CreateAppModal', () => {
         appMode: AppModeEnum.ADVANCED_CHAT,
       })
     })
+    const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(createButton)
+
+    expect(mockCreateApp).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).not.toHaveBeenCalled()
 
     resolveTracking?.()
@@ -392,6 +395,11 @@ describe('CreateAppModal', () => {
 
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
     fireEvent.click(createButton)
+    await waitFor(() => {
+      expect(mockCreateApp).toHaveBeenCalledTimes(1)
+    })
+
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)

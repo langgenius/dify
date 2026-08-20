@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from http import HTTPStatus
-from typing import Literal
+from typing import Annotated, Literal
 
 import pytz
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -28,7 +29,13 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AccountNotFound,
+    EmailDomainSuspendedError,
+    EmailSendIpLimitError,
+)
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
@@ -38,15 +45,15 @@ from controllers.console.workspace.error import (
 )
 from controllers.console.wraps import (
     account_initialization_required,
-    cloud_edition_billing_enabled,
     enable_change_email,
     enterprise_license_required,
+    model_validate,
     only_edition_cloud,
     setup_required,
-    with_current_tenant_id,
     with_current_user,
 )
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
@@ -54,12 +61,15 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from libs.login import login_required
+from machinery.context import RequestContext
 from models import Account, AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services import account_errors
 from services.account_service import AccountService
 from services.billing_service import BillingService
+from services.entities.account_entities import AccountProfileChanges
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
     ChangeEmailNewEmailVerifiedToken,
@@ -117,6 +127,42 @@ class AccountTimezonePayload(BaseModel):
     @classmethod
     def validate_timezone(cls, value: str) -> str:
         return timezone(value)
+
+
+class AccountProfilePatchPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: Annotated[str, Field(min_length=3, max_length=30)] | SkipJsonSchema[None] = None
+    avatar: str | SkipJsonSchema[None] = None
+    interface_language: str | SkipJsonSchema[None] = None
+    interface_theme: Literal["light", "dark"] | SkipJsonSchema[None] = None
+    timezone: str | SkipJsonSchema[None] = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("Account profile fields cannot be null")
+        return value
+
+    @field_validator("interface_language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        return supported_language(value)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        return timezone(value)
+
+    def to_changes(self) -> AccountProfileChanges:
+        return AccountProfileChanges(
+            name=self.name,
+            avatar=self.avatar,
+            interface_language=self.interface_language,
+            interface_theme=self.interface_theme,
+            timezone=self.timezone,
+        )
 
 
 class AccountPasswordPayload(BaseModel):
@@ -184,6 +230,7 @@ register_schema_models(
     AccountInterfaceLanguagePayload,
     AccountInterfaceThemePayload,
     AccountTimezonePayload,
+    AccountProfilePatchPayload,
     AccountPasswordPayload,
     AccountDeletePayload,
     AccountDeletionFeedbackPayload,
@@ -249,6 +296,14 @@ register_response_schema_models(
 )
 
 
+def _update_account_profile(request_context: RequestContext, changes: AccountProfileChanges) -> dict[str, object]:
+    try:
+        account = application_services().accounts.profile.update(request_context, changes)
+    except account_errors.AccountNotFoundError as error:
+        raise AccountNotFound() from error
+    return dump_response(AccountResponse, account)
+
+
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
@@ -306,21 +361,28 @@ class AccountProfileApi(Resource):
     def get(self, current_user: Account):
         return dump_response(AccountResponse, current_user)
 
+    @console_ns.expect(console_ns.models[AccountProfilePatchPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
+    @console_account_admission()
+    @model_validate(AccountProfilePatchPayload)
+    def patch(self, args: AccountProfilePatchPayload, request_context: RequestContext):
+        return _update_account_profile(request_context, args.to_changes())
+
 
 @console_ns.route("/account/name")
 class AccountNameApi(Resource):
+    """Deprecated compatibility route; use PATCH /account/profile."""
+
+    @console_ns.doc("update_account_name_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.expect(console_ns.models[AccountNamePayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
-        updated_account = AccountService.update_account(current_user, session=db.session(), name=args.name)
-
-        return dump_response(AccountResponse, updated_account)
+        return _update_account_profile(request_context, AccountProfileChanges(name=args.name))
 
 
 @console_ns.route("/account/avatar")
@@ -333,19 +395,15 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account):
-        args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
-        avatar = args.avatar
+    @model_validate(AccountAvatarQuery)
+    def get(self, req_data: AccountAvatarQuery, current_user: Account):
+        avatar = req_data.avatar
 
         if avatar.startswith(("http://", "https://")):
             return AvatarUrlResponse(avatar_url=avatar).model_dump(mode="json")
 
         upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
         if upload_file is None:
-            raise NotFound("Avatar file not found")
-
-        if upload_file.tenant_id != current_tenant_id:
             raise NotFound("Avatar file not found")
 
         if upload_file.created_by_role != CreatorUserRole.ACCOUNT or upload_file.created_by != current_user.id:
@@ -355,73 +413,69 @@ class AccountAvatarApi(Resource):
         return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
+    @console_ns.doc("update_account_avatar_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountAvatarPayload.model_validate(payload)
-
-        updated_account = AccountService.update_account(current_user, session=db.session(), avatar=args.avatar)
-
-        return dump_response(AccountResponse, updated_account)
+        return _update_account_profile(request_context, AccountProfileChanges(avatar=args.avatar))
 
 
 @console_ns.route("/account/interface-language")
 class AccountInterfaceLanguageApi(Resource):
+    """Deprecated compatibility route; use PATCH /account/profile."""
+
+    @console_ns.doc("update_account_interface_language_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.expect(console_ns.models[AccountInterfaceLanguagePayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountInterfaceLanguagePayload.model_validate(payload)
-
-        updated_account = AccountService.update_account(
-            current_user, session=db.session(), interface_language=args.interface_language
+        return _update_account_profile(
+            request_context,
+            AccountProfileChanges(interface_language=args.interface_language),
         )
-
-        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/interface-theme")
 class AccountInterfaceThemeApi(Resource):
+    """Deprecated compatibility route; use PATCH /account/profile."""
+
+    @console_ns.doc("update_account_interface_theme_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.expect(console_ns.models[AccountInterfaceThemePayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountInterfaceThemePayload.model_validate(payload)
-
-        updated_account = AccountService.update_account(
-            current_user, session=db.session(), interface_theme=args.interface_theme
+        return _update_account_profile(
+            request_context,
+            AccountProfileChanges(interface_theme=args.interface_theme),
         )
-
-        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/timezone")
 class AccountTimezoneApi(Resource):
+    """Deprecated compatibility route; use PATCH /account/profile."""
+
+    @console_ns.doc("update_account_timezone_deprecated")
+    @console_ns.doc(deprecated=True)
+    @console_ns.doc(description="Deprecated. Use PATCH /account/profile instead.")
     @console_ns.expect(console_ns.models[AccountTimezonePayload.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @with_current_user
-    def post(self, current_user: Account):
+    @console_account_admission()
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = AccountTimezonePayload.model_validate(payload)
-
-        updated_account = AccountService.update_account(current_user, session=db.session(), timezone=args.timezone)
-
-        return dump_response(AccountResponse, updated_account)
+        return _update_account_profile(request_context, AccountProfileChanges(timezone=args.timezone))
 
 
 @console_ns.route("/account/password")
@@ -540,7 +594,6 @@ class EducationVerifyApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
     @with_current_user
     def get(self, account: Account):
@@ -558,7 +611,6 @@ class EducationApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @with_current_user
     def post(self, account: Account):
         payload = console_ns.payload or {}
@@ -571,7 +623,6 @@ class EducationApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
     @with_current_user
     def get(self, account: Account):
@@ -589,7 +640,6 @@ class EducationAutoCompleteApi(Resource):
     @login_required
     @account_initialization_required
     @only_edition_cloud
-    @cloud_edition_billing_enabled
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     def get(self):
         payload = request.args.to_dict(flat=True)
@@ -724,7 +774,10 @@ class ChangeEmailResetApi(Resource):
         args = ChangeEmailResetPayload.model_validate(payload)
         normalized_new_email = args.new_email.lower()
 
-        if AccountService.is_account_in_freeze(normalized_new_email):
+        freeze_type = AccountService.get_account_freeze_type(normalized_new_email)
+        if freeze_type:
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountInFreezeError()
 
         if not AccountService.check_email_unique(normalized_new_email, session=db.session()):
@@ -771,7 +824,10 @@ class CheckEmailUnique(Resource):
         payload = console_ns.payload or {}
         args = CheckEmailUniquePayload.model_validate(payload)
         normalized_email = args.email.lower()
-        if AccountService.is_account_in_freeze(normalized_email):
+        freeze_type = AccountService.get_account_freeze_type(normalized_email)
+        if freeze_type:
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountInFreezeError()
         if not AccountService.check_email_unique(normalized_email, session=db.session()):
             raise EmailAlreadyInUseError()

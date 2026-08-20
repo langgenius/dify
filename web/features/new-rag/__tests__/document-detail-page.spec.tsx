@@ -31,6 +31,14 @@ const documentQuery = vi.hoisted(() => ({
   refetch: vi.fn(),
 }))
 
+const knowledgeSpaceQuery = vi.hoisted(() => ({
+  data: { id: 'space-1', name: 'Support knowledge' } as { id: string; name: string } | undefined,
+  error: null as unknown,
+  isPending: false,
+}))
+
+const useDocumentTitleMock = vi.hoisted(() => vi.fn())
+
 const taskSnapshotQuery = vi.hoisted(() => ({
   data: undefined as DocumentProcessingTask | undefined,
   error: null as unknown,
@@ -102,6 +110,9 @@ const documentOptions = vi.hoisted(() =>
     queryKey: ['knowledge-fs', 'document', 'space-1', 'document-1'],
     queryKind: 'document',
   })),
+)
+const knowledgeSpaceOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({ ...options, queryKind: 'knowledge-space' })),
 )
 const taskSnapshotOptions = vi.hoisted(() =>
   vi.fn((options: object) => ({ ...options, queryKind: 'task-snapshot' })),
@@ -209,6 +220,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     },
     useMutation: () => reindexMutation,
     useQuery: (options: { queryKind?: string }) => {
+      if (options.queryKind === 'knowledge-space') return knowledgeSpaceQuery
       if (options.queryKind === 'task-snapshot') return taskSnapshotQuery
       if (options.queryKind === 'submission-tasks') return submissionTasksQuery
       return documentQuery
@@ -220,6 +232,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
+      getKnowledgeSpacesById: {
+        queryOptions: knowledgeSpaceOptions,
+      },
       getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions: {
         infiniteOptions: revisionsOptions,
         key: () => ['knowledge-fs', 'revisions'],
@@ -250,6 +265,10 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: useDocumentTitleMock,
 }))
 
 const activeRevision = (overrides: Partial<Exclude<LogicalDocumentRevision, null>> = {}) => ({
@@ -345,6 +364,9 @@ describe('DocumentDetailPage', () => {
     documentQuery.data = logicalDocument()
     documentQuery.error = null
     documentQuery.isPending = false
+    knowledgeSpaceQuery.data = { id: 'space-1', name: 'Support knowledge' }
+    knowledgeSpaceQuery.error = null
+    knowledgeSpaceQuery.isPending = false
     revisionsQuery.data = { pages: [{ items: [activeRevision()] }] }
     revisionsQuery.error = null
     revisionsQuery.hasNextPage = false
@@ -373,6 +395,12 @@ describe('DocumentDetailPage', () => {
     })
     reindexMutation.mutateAsync.mockResolvedValue(queuedReindexResult())
     queryClient.invalidateQueries.mockResolvedValue(undefined)
+  })
+
+  it('uses the document and knowledge names in the document title', () => {
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(useDocumentTitleMock).toHaveBeenLastCalledWith('sso-enterprise.pdf · Support knowledge')
   })
 
   it('loads the document, revisions, chunks, and task status through generated contracts', () => {

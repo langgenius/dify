@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Maximum Chunk Length",
   "embedding.segments": "Paragraphs",
   "embedding.textCleaning": "Text Preprocessing Rules",
+  "embedding.vectorSpaceEstimateExceeded.description": "Document received, but estimated vector storage is {{estimated}} MB, above your plan limit of {{limit}} MB, so no vectors were written. If another document is processing or just failed, try again later; otherwise, reduce the file size or number of chunks.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Estimated vector storage after upload exceeds your plan capacity",
   "embedding.waiting": "Embedding waiting...",
   "list.action.addButton": "Add chunk",
   "list.action.archive": "Archive",

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import app_task_command_channel_key
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
@@ -153,7 +154,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
-        channel_key = f"workflow:{task_id}:commands"
+        channel_key = app_task_command_channel_key(task_id)
         celery_signal_channel = CelerySignalCommandChannel(
             shutdown_state_getter=celery_warm_shutdown_started,
             abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,

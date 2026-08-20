@@ -23,7 +23,6 @@ import { features } from './features/orpc.gen'
 import { files } from './files/orpc.gen'
 import { forgotPassword } from './forgot-password/orpc.gen'
 import { form } from './form/orpc.gen'
-import { info } from './info/orpc.gen'
 import { init } from './init/orpc.gen'
 import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
@@ -47,7 +46,6 @@ import { spec } from './spec/orpc.gen'
 import { systemFeatures } from './system-features/orpc.gen'
 import { tagBindings } from './tag-bindings/orpc.gen'
 import { tags } from './tags/orpc.gen'
-import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
 import { trialModels } from './trial-models/orpc.gen'
 import { version } from './version/orpc.gen'
@@ -80,7 +78,6 @@ const communityContract = {
   files,
   forgotPassword,
   form,
-  info,
   init,
   installedApps,
   instructionGenerate,
@@ -104,7 +101,6 @@ const communityContract = {
   systemFeatures,
   tagBindings,
   tags,
-  test,
   trialApps,
   trialModels,
   version,

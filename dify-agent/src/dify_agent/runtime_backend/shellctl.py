@@ -11,10 +11,9 @@ from dify_agent.adapters.shell.shellctl import (
     ShellctlClientFactory,
     ShellctlClientProtocol,
     ShellctlCommands,
-    ShellctlFileTransfer,
     create_default_shellctl_client_factory,
 )
-from dify_agent.runtime_backend.protocols import FileSystem, RuntimeLayout
+from dify_agent.runtime_backend.protocols import RuntimeLayout
 
 _CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
 logger = logging.getLogger(__name__)
@@ -32,7 +31,6 @@ class ShellctlRuntimeLease:
     layout: RuntimeLayout
     client: ShellctlClientProtocol
     commands: ShellCommandProtocol
-    files: FileSystem
     owned_transport: AsyncCloseable | None = None
     _closed: bool = field(default=False, init=False)
 
@@ -76,11 +74,6 @@ def create_shellctl_lease(
             client=client,
             home_dir=layout.home_dir,
             workspace_dir=layout.workspace_dir,
-        ),
-        files=ShellctlFileTransfer(
-            client=client,
-            cwd=layout.workspace_dir,
-            home_dir=layout.home_dir,
         ),
         owned_transport=owned_transport,
     )

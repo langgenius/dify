@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import { RiDeleteBinLine } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
-import ActionButton from '@/app/components/base/action-button'
+import { useTranslation } from 'react-i18next'
 
 type Props = Readonly<{
   className?: string
@@ -10,14 +10,17 @@ type Props = Readonly<{
 }>
 
 const Remove: FC<Props> = ({ onClick }) => {
+  const { t } = useTranslation()
   return (
-    <ActionButton
-      size="l"
-      className="group shrink-0 hover:bg-state-destructive-hover!"
+    <IconButton
+      aria-label={t(($) => $['operation.remove'], { ns: 'common' })}
+      size="lg"
+      tone="destructive"
+      className="shrink-0"
       onClick={onClick}
     >
-      <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
-    </ActionButton>
+      <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+    </IconButton>
   )
 }
 export default React.memo(Remove)
