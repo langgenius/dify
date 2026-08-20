@@ -72,10 +72,6 @@ const replacePathPrefix = (path: string, sourcePrefix: string, targetPrefix: str
   return `${targetPrefix}${path.slice(sourcePrefix.length)}`
 }
 
-const getEnterpriseDocLanguage = (docLanguage: DocLanguage): 'en' | 'zh' | 'ja' => {
-  return docLanguage
-}
-
 const getEnterpriseDocPath = (path: string): string => {
   const { pathname, hash } = splitPathHash(path)
   let targetPath = pathname.replace(/^\/(?:cloud|self-host)(?=\/)/, '')
@@ -92,10 +88,9 @@ const getEnterpriseDocPath = (path: string): string => {
 }
 
 export const getEnterpriseDocUrl = (path: string, docLanguage: DocLanguage): string => {
-  const language = getEnterpriseDocLanguage(docLanguage)
   const targetPath = path ? getEnterpriseDocPath(path) : '/'
 
-  return `${enterpriseDocBaseUrl}/${language}${targetPath}`
+  return `${enterpriseDocBaseUrl}/${docLanguage}${targetPath}`
 }
 
 export const useDocLink = (
