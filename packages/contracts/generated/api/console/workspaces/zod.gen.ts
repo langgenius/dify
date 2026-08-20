@@ -248,6 +248,16 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
+ * NetworkAccessPolicyPayload
+ */
+export const zNetworkAccessPolicyPayload = z.object({
+  allowed_cidrs: z.array(z.string()).max(100),
+  expected_version: z.int().gte(0),
+  mode: z.enum(['disabled', 'enforce', 'shadow']),
+  scope: z.enum(['mcp', 'plugin_trigger', 'service_api', 'workflow_webhook']),
+})
+
+/**
  * WorkspacePermissionResponse
  */
 export const zWorkspacePermissionResponse = z.object({
@@ -983,6 +993,35 @@ export const zParserPostModels = z.object({
 export const zCredentialConfiguration = z.object({
   credential_id: z.string(),
   credential_name: z.string(),
+})
+
+/**
+ * NetworkAccessPolicyResponse
+ */
+export const zNetworkAccessPolicyResponse = z.object({
+  allowed_cidrs: z.array(z.string()),
+  created_at: z.iso.datetime().nullish(),
+  mode: z.enum(['disabled', 'enforce', 'shadow']),
+  scope: z.enum(['mcp', 'plugin_trigger', 'service_api', 'workflow_webhook']),
+  updated_at: z.iso.datetime().nullish(),
+  updated_by_account_id: z.string().nullish(),
+  version: z.int().gte(0),
+})
+
+/**
+ * NetworkAccessPolicyListResponse
+ */
+export const zNetworkAccessPolicyListResponse = z.object({
+  entitled: z.boolean(),
+  policies: z.array(zNetworkAccessPolicyResponse),
+  tenant_id: z.string(),
+})
+
+/**
+ * NetworkAccessPolicyUpdateResponse
+ */
+export const zNetworkAccessPolicyUpdateResponse = z.object({
+  policy: zNetworkAccessPolicyResponse,
 })
 
 /**
@@ -4100,6 +4139,18 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
  * Available models retrieved successfully
  */
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse = zAvailableModelListResponse
+
+/**
+ * Workspace network access policies retrieved successfully
+ */
+export const zGetWorkspacesCurrentNetworkAccessPolicyResponse = zNetworkAccessPolicyListResponse
+
+export const zPutWorkspacesCurrentNetworkAccessPolicyBody = zNetworkAccessPolicyPayload
+
+/**
+ * Workspace network access policy updated successfully
+ */
+export const zPutWorkspacesCurrentNetworkAccessPolicyResponse = zNetworkAccessPolicyUpdateResponse
 
 /**
  * Success

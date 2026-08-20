@@ -10698,6 +10698,26 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
 
+### [GET] /workspaces/current/network-access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access policies retrieved successfully | **application/json**: [NetworkAccessPolicyListResponse](#networkaccesspolicylistresponse)<br> |
+
+### [PUT] /workspaces/current/network-access-policy
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NetworkAccessPolicyPayload](#networkaccesspolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access policy updated successfully | **application/json**: [NetworkAccessPolicyUpdateResponse](#networkaccesspolicyupdateresponse)<br> |
+
 ### [GET] /workspaces/current/permission
 **Get workspace permission settings**
 
@@ -19086,6 +19106,41 @@ Model with provider entity.
 | app | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
+
+#### NetworkAccessPolicyListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entitled | boolean |  | Yes |
+| policies | [ [NetworkAccessPolicyResponse](#networkaccesspolicyresponse) ] |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### NetworkAccessPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| expected_version | integer |  | Yes |
+| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
+| scope | string, <br>**Available values:** "mcp", "plugin_trigger", "service_api", "workflow_webhook" | *Enum:* `"mcp"`, `"plugin_trigger"`, `"service_api"`, `"workflow_webhook"` | Yes |
+
+#### NetworkAccessPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| created_at | string |  | No |
+| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
+| scope | string, <br>**Available values:** "mcp", "plugin_trigger", "service_api", "workflow_webhook" | *Enum:* `"mcp"`, `"plugin_trigger"`, `"service_api"`, `"workflow_webhook"` | Yes |
+| updated_at | string |  | No |
+| updated_by_account_id | string |  | No |
+| version | integer |  | Yes |
+
+#### NetworkAccessPolicyUpdateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| policy | [NetworkAccessPolicyResponse](#networkaccesspolicyresponse) |  | Yes |
 
 #### NewAppResponse
 

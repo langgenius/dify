@@ -364,6 +364,23 @@ export type AvailableModelListResponse = {
   data: Array<ProviderWithModelsResponse>
 }
 
+export type NetworkAccessPolicyListResponse = {
+  entitled: boolean
+  policies: Array<NetworkAccessPolicyResponse>
+  tenant_id: string
+}
+
+export type NetworkAccessPolicyPayload = {
+  allowed_cidrs: Array<string>
+  expected_version: number
+  mode: 'disabled' | 'enforce' | 'shadow'
+  scope: 'mcp' | 'plugin_trigger' | 'service_api' | 'workflow_webhook'
+}
+
+export type NetworkAccessPolicyUpdateResponse = {
+  policy: NetworkAccessPolicyResponse
+}
+
 export type WorkspacePermissionResponse = {
   allow_member_invite: boolean
   allow_owner_transfer: boolean
@@ -1287,6 +1304,16 @@ export type ProviderWithModelsResponse = {
   provider: string
   status: CustomConfigurationStatus
   tenant_id: string
+}
+
+export type NetworkAccessPolicyResponse = {
+  allowed_cidrs: Array<string>
+  created_at?: string | null
+  mode: 'disabled' | 'enforce' | 'shadow'
+  scope: 'mcp' | 'plugin_trigger' | 'service_api' | 'workflow_webhook'
+  updated_at?: string | null
+  updated_by_account_id?: string | null
+  version: number
 }
 
 export type PluginAutoUpgradeSettingsPayload = {
@@ -3498,6 +3525,34 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse =
   GetWorkspacesCurrentModelsModelTypesByModelTypeResponses[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeResponses]
+
+export type GetWorkspacesCurrentNetworkAccessPolicyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-policy'
+}
+
+export type GetWorkspacesCurrentNetworkAccessPolicyResponses = {
+  200: NetworkAccessPolicyListResponse
+}
+
+export type GetWorkspacesCurrentNetworkAccessPolicyResponse =
+  GetWorkspacesCurrentNetworkAccessPolicyResponses[keyof GetWorkspacesCurrentNetworkAccessPolicyResponses]
+
+export type PutWorkspacesCurrentNetworkAccessPolicyData = {
+  body: NetworkAccessPolicyPayload
+  path?: never
+  query?: never
+  url: '/workspaces/current/network-access-policy'
+}
+
+export type PutWorkspacesCurrentNetworkAccessPolicyResponses = {
+  200: NetworkAccessPolicyUpdateResponse
+}
+
+export type PutWorkspacesCurrentNetworkAccessPolicyResponse =
+  PutWorkspacesCurrentNetworkAccessPolicyResponses[keyof PutWorkspacesCurrentNetworkAccessPolicyResponses]
 
 export type GetWorkspacesCurrentPermissionData = {
   body?: never
