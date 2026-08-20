@@ -3,17 +3,19 @@
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import httpx
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
-from models.model import DifySetup
+from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from services.account_activation_adapters import (
@@ -223,6 +225,31 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_wires_trial_app_usage(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id = str(uuid4())
+    account_id = str(uuid4())
+
+    services.trial_app_usage.record(app_id=app_id, account_id=account_id)
+
+    with sqlite_session_factory() as session:
+        record = session.scalar(
+            select(AccountTrialAppRecord).where(
+                AccountTrialAppRecord.app_id == app_id,
+                AccountTrialAppRecord.account_id == account_id,
+            )
+        )
+    assert record is not None
+    assert record.count == 1
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(
