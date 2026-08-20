@@ -2,34 +2,40 @@ import logging
 from datetime import datetime
 
 import click
+from celery import shared_task
 from kombu.utils.url import parse_url  # type: ignore
 from redis import Redis
 
-import app
 from configs import dify_config
 from libs.email_i18n import EmailType, get_email_i18n_service
-
-redis_config = parse_url(dify_config.CELERY_BROKER_URL)
-celery_redis = Redis(
-    host=str(redis_config.get("hostname") or "localhost"),
-    port=int(redis_config.get("port") or 6379),
-    password=str(pwd) if (pwd := redis_config.get("password")) is not None else None,
-    db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
-    ssl=dify_config.BROKER_USE_SSL,
-    ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS if dify_config.BROKER_USE_SSL else None,
-    ssl_cert_reqs=getattr(dify_config, "REDIS_SSL_CERT_REQS", None) if dify_config.BROKER_USE_SSL else None,
-    ssl_certfile=getattr(dify_config, "REDIS_SSL_CERTFILE", None) if dify_config.BROKER_USE_SSL else None,
-    ssl_keyfile=getattr(dify_config, "REDIS_SSL_KEYFILE", None) if dify_config.BROKER_USE_SSL else None,
-    # Add conservative socket timeouts and health checks to avoid long-lived half-open sockets
-    socket_timeout=5,
-    socket_connect_timeout=5,
-    health_check_interval=30,
-)
 
 logger = logging.getLogger(__name__)
 
 
-@app.celery.task(queue="monitor")
+def _create_celery_redis() -> Redis:
+    broker_url = dify_config.CELERY_BROKER_URL
+    if not broker_url:
+        raise ValueError("CELERY_BROKER_URL is required for queue monitoring")
+
+    redis_config = parse_url(broker_url)
+    return Redis(
+        host=str(redis_config.get("hostname") or "localhost"),
+        port=int(redis_config.get("port") or 6379),
+        password=str(pwd) if (pwd := redis_config.get("password")) is not None else None,
+        db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
+        ssl=dify_config.BROKER_USE_SSL,
+        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS if dify_config.BROKER_USE_SSL else None,
+        ssl_cert_reqs=getattr(dify_config, "REDIS_SSL_CERT_REQS", None) if dify_config.BROKER_USE_SSL else None,
+        ssl_certfile=getattr(dify_config, "REDIS_SSL_CERTFILE", None) if dify_config.BROKER_USE_SSL else None,
+        ssl_keyfile=getattr(dify_config, "REDIS_SSL_KEYFILE", None) if dify_config.BROKER_USE_SSL else None,
+        # Add conservative socket timeouts and health checks to avoid long-lived half-open sockets
+        socket_timeout=5,
+        socket_connect_timeout=5,
+        health_check_interval=30,
+    )
+
+
+@shared_task(queue="monitor")
 def queue_monitor_task():
     queue_name = "dataset"
     threshold = dify_config.QUEUE_MONITOR_THRESHOLD
@@ -39,6 +45,7 @@ def queue_monitor_task():
         return
 
     try:
+        celery_redis = _create_celery_redis()
         queue_length = celery_redis.llen(f"{queue_name}")
         logger.info(click.style(f"Start monitor {queue_name}", fg="green"))
 

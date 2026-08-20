@@ -1,18 +1,18 @@
 import time
 
 import click
+from celery import shared_task
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-import app
 from configs import dify_config
 from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
 
-@app.celery.task(queue="dataset")
+@shared_task(queue="dataset")
 def create_tidb_serverless_task():
     click.echo(click.style("Start create tidb serverless task.", fg="green"))
     if not dify_config.CREATE_TIDB_SERVICE_JOB_ENABLED:

@@ -2,16 +2,16 @@ import datetime
 import time
 
 import click
+from celery import shared_task
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
-import app
 from configs import dify_config
 from core.db.session_factory import session_factory
 from models.dataset import Embedding
 
 
-@app.celery.task(queue="dataset")
+@shared_task(queue="dataset")
 def clean_embedding_cache_task():
     click.echo(click.style("Start clean embedding cache.", fg="green"))
     clean_days = int(dify_config.PLAN_SANDBOX_CLEAN_DAY_SETTING)

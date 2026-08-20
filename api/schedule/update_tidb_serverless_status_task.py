@@ -2,17 +2,17 @@ import time
 from collections.abc import Sequence
 
 import click
+from celery import shared_task
 from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import select
 
-import app
 from configs import dify_config
 from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
 
-@app.celery.task(queue="dataset")
+@shared_task(queue="dataset")
 def update_tidb_serverless_status_task():
     click.echo(click.style("Update tidb serverless status task.", fg="green"))
     start_at = time.perf_counter()

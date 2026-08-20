@@ -3,9 +3,9 @@ import math
 import time
 
 import click
+from celery import shared_task
 from sqlalchemy import select
 
-import app
 from core.db.session_factory import session_factory
 from core.helper.marketplace import fetch_global_plugin_manifest
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginAutoUpgradeStrategySetting
@@ -21,7 +21,7 @@ CACHE_REDIS_KEY_PREFIX = check_task.CACHE_REDIS_KEY_PREFIX
 CACHE_REDIS_TTL = check_task.CACHE_REDIS_TTL
 
 
-@app.celery.task(queue="plugin")
+@shared_task(queue="plugin")
 def check_upgradable_plugin_task():
     click.echo(click.style("Start check upgradable plugin.", fg="green"))
     start_at = time.perf_counter()
