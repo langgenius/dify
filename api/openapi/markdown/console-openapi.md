@@ -13029,17 +13029,17 @@ Model class for AI model.
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
 | access_ready | boolean |  | No |
-| api_base_url | string |  | No |
+| api_base_url | string |  | Yes |
 | app_id | string |  | No |
 | backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
-| created_at | integer |  | No |
+| created_at | integer |  | Yes |
 | created_by | string |  | No |
 | debug_conversation_has_messages | boolean |  | No |
 | debug_conversation_id | string |  | No |
 | debug_conversation_message_count | integer |  | No |
 | deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
-| description | string |  | No |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
 | hidden_app_backed | boolean |  | No |
@@ -13050,7 +13050,7 @@ Model class for AI model.
 | id | string |  | Yes |
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
@@ -13058,9 +13058,9 @@ Model class for AI model.
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing |  |  | No |
-| updated_at | integer |  | No |
+| updated_at | integer |  | Yes |
 | updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
 #### AgentAppFeaturesPayload
@@ -14985,24 +14985,24 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| created_at | integer |  | No |
+| created_at | integer |  | Yes |
 | created_by | string |  | No |
-| description | string |  | No |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | id | string |  | Yes |
 | maintainer | string |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing |  |  | No |
-| updated_at | integer |  | No |
+| updated_at | integer |  | Yes |
 | updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
 #### AppDetailSiteResponse
@@ -15040,13 +15040,13 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| api_base_url | string |  | No |
+| api_base_url | string |  | Yes |
 | app_id | string |  | No |
 | bound_agent_id | string |  | No |
-| created_at | integer |  | No |
+| created_at | integer |  | Yes |
 | created_by | string |  | No |
 | deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
-| description | string |  | No |
+| description | string |  | Yes |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
 | icon | string |  | No |
@@ -15056,16 +15056,16 @@ This class is used to store the schema information of an api based tool.
 | id | string |  | Yes |
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode | string |  | Yes |
+| mode | [AppMode](#appmode) |  | Yes |
 | model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing |  |  | No |
-| updated_at | integer |  | No |
+| updated_at | integer |  | Yes |
 | updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
+| use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
 #### AppDslVersionResponse
