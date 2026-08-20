@@ -44,6 +44,11 @@ class FakeTopic:
         self._queue: queue.Queue[bytes] = queue.Queue()
         self._state = {"subscribed": False}
         self.subscribe_calls = 0
+        self.subscriber_view_calls = 0
+
+    def as_subscriber(self):
+        self.subscriber_view_calls += 1
+        return self
 
     def subscribe(self) -> FakeSubscription:
         self.subscribe_calls += 1
@@ -57,19 +62,43 @@ class FakeTopic:
         return self._state["subscribed"]
 
 
-class FakePreparedTopic(FakeTopic, SupportsPreparedSubscription):
-    def __init__(self) -> None:
-        super().__init__()
+class FakePreparedSubscriber(SupportsPreparedSubscription):
+    def __init__(self, message_queue: queue.Queue[bytes], state: dict[str, bool]) -> None:
+        self._queue = message_queue
+        self._state = state
         self.prepare_calls = 0
 
     def prepare_subscription(self) -> FakeSubscription:
         self.prepare_calls += 1
         return FakeSubscription(self._queue, self._state)
 
+    def subscribe(self) -> FakeSubscription:
+        return FakeSubscription(self._queue, self._state)
 
-class FailingPreparedTopic(FakeTopic, SupportsPreparedSubscription):
+
+class FailingPreparedSubscriber(FakePreparedSubscriber):
     def prepare_subscription(self) -> FakeSubscription:
         raise RuntimeError("prepare failed")
+
+
+class FakePreparedTopic(FakeTopic):
+    def __init__(self) -> None:
+        super().__init__()
+        self.subscriber = FakePreparedSubscriber(self._queue, self._state)
+
+    def as_subscriber(self) -> FakePreparedSubscriber:
+        self.subscriber_view_calls += 1
+        return self.subscriber
+
+
+class FailingPreparedTopic(FakeTopic):
+    def __init__(self) -> None:
+        super().__init__()
+        self.subscriber = FailingPreparedSubscriber(self._queue, self._state)
+
+    def as_subscriber(self) -> FailingPreparedSubscriber:
+        self.subscriber_view_calls += 1
+        return self.subscriber
 
 
 def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(monkeypatch: pytest.MonkeyPatch):
@@ -92,6 +121,7 @@ def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(mo
         on_subscribe=on_subscribe,
     )
 
+    assert topic.subscriber_view_calls == 1
     assert topic.subscribe_calls == 1
     assert topic.subscribed is False
     assert next(generator) == StreamEvent.PING.value
@@ -115,7 +145,8 @@ def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monke
         idle_timeout=0.5,
     )
 
-    assert topic.prepare_calls == 1
+    assert topic.subscriber_view_calls == 1
+    assert topic.subscriber.prepare_calls == 1
     assert topic.subscribe_calls == 0
     assert topic.subscribed is False
 

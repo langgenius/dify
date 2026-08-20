@@ -323,8 +323,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         on_subscribe: Callable[[], None] | None = None,
     ) -> Generator[Mapping | str, None, None]:
         topic = cls.get_response_topic(app_mode, workflow_run_id)
+        subscriber = topic.as_subscriber()
         subscription = (
-            topic.prepare_subscription() if isinstance(topic, SupportsPreparedSubscription) else topic.subscribe()
+            subscriber.prepare_subscription()
+            if isinstance(subscriber, SupportsPreparedSubscription)
+            else subscriber.subscribe()
         )
         return stream_topic_events(
             subscription=subscription,

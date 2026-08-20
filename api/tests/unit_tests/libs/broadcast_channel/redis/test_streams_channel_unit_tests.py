@@ -174,7 +174,8 @@ def test_prepared_subscription_capability_is_an_abstract_base_class():
     capability = broadcast_channel.SupportsPreparedSubscription
 
     assert issubclass(capability, abc.ABC)
-    assert capability.__abstractmethods__ == {"prepare_subscription"}
+    assert broadcast_channel.Subscriber in capability.__mro__
+    assert capability.__abstractmethods__ == {"prepare_subscription", "subscribe"}
 
 
 class TestStreamsBroadcastChannel:
@@ -213,16 +214,19 @@ class TestStreamsBroadcastChannel:
         assert fake_redis._store["enterprise-a:stream:beta"][0][1] == {b"data": b"hello"}
         assert fake_redis._expire_calls.get("enterprise-a:stream:beta", 0) >= 1
 
-    def test_topic_exposes_self_as_producer_and_subscriber(self, streams_channel: StreamsBroadcastChannel):
+    def test_topic_exposes_producer_and_subscriber_views(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("producer-subscriber")
+        subscriber = topic.as_subscriber()
 
         assert topic.as_producer() is topic
-        assert topic.as_subscriber() is topic
+        assert subscriber is not topic
+        assert not isinstance(topic, broadcast_channel.SupportsPreparedSubscription)
+        assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
 
     def test_topic_explicitly_supports_prepared_subscriptions(self, streams_channel: StreamsBroadcastChannel):
         topic = streams_channel.topic("prepared-capability")
 
-        assert isinstance(topic, broadcast_channel.SupportsPreparedSubscription)
+        assert isinstance(topic.as_subscriber(), broadcast_channel.SupportsPreparedSubscription)
 
     def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
@@ -265,8 +269,10 @@ class TestStreamsSubscription:
     ):
         topic = streams_channel.topic("prepared-boundary")
         topic.publish(b"before-prepare")
+        subscriber = topic.as_subscriber()
+        assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
 
-        sub = topic.prepare_subscription()
+        sub = subscriber.prepare_subscription()
 
         assert isinstance(sub, _StreamsSubscription)
         assert sub._start_id == "1-0"
@@ -281,7 +287,9 @@ class TestStreamsSubscription:
     ):
         topic = streams_channel.topic("prepared-ordering")
         topic.publish(b"before-prepare")
-        sub = topic.prepare_subscription()
+        subscriber = topic.as_subscriber()
+        assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
+        sub = subscriber.prepare_subscription()
 
         topic.publish(b"after-prepare-1")
         topic.publish(b"after-prepare-2")
@@ -302,8 +310,10 @@ class TestStreamsSubscription:
         fake_redis: FakeStreamsRedis,
     ):
         topic = streams_channel.topic("prepared-empty")
+        subscriber = topic.as_subscriber()
+        assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
 
-        sub = topic.prepare_subscription()
+        sub = subscriber.prepare_subscription()
         assert isinstance(sub, _StreamsSubscription)
         assert sub._start_id == "0-0"
 
@@ -316,9 +326,11 @@ class TestStreamsSubscription:
     def test_prepare_subscription_propagates_boundary_resolution_error(self):
         channel = StreamsBroadcastChannel(FailXrevrangeRedis(), retention_seconds=60)
         topic = channel.topic("broken-checkpoint")
+        subscriber = topic.as_subscriber()
+        assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
 
         with pytest.raises(RuntimeError, match="xrevrange failed"):
-            topic.prepare_subscription()
+            subscriber.prepare_subscription()
 
     def test_subscribe_receives_messages_published_right_after_entering(
         self,

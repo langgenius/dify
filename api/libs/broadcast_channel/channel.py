@@ -99,7 +99,7 @@ class Subscriber(Protocol):
         pass
 
 
-class SupportsPreparedSubscription(abc.ABC):
+class SupportsPreparedSubscription(Subscriber, abc.ABC):
     """Optional capability for fixing a subscription's delivery boundary before activation."""
 
     @abstractmethod

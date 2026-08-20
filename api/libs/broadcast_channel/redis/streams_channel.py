@@ -42,7 +42,7 @@ class StreamsBroadcastChannel:
         )
 
 
-class StreamsTopic(SupportsPreparedSubscription):
+class StreamsTopic:
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
@@ -68,8 +68,18 @@ class StreamsTopic(SupportsPreparedSubscription):
                 logger.warning("Failed to set expire for stream key %s: %s", self._key, e, exc_info=True)
 
     def as_subscriber(self) -> Subscriber:
-        return self
+        return _StreamsSubscriber(self._client, self._key)
 
+    def subscribe(self) -> Subscription:
+        return self.as_subscriber().subscribe()
+
+
+class _StreamsSubscriber(SupportsPreparedSubscription):
+    def __init__(self, client: Redis | RedisCluster, key: str):
+        self._client = client
+        self._key = key
+
+    @override
     def subscribe(self) -> Subscription:
         return _StreamsSubscription(self._client, self._key)
 
@@ -173,7 +183,7 @@ class _StreamsSubscription(Subscription):
 
         if self._start_id is None:
             # Ordinary subscriptions fix their boundary on activation. Prepared
-            # subscriptions already carry the boundary selected by the topic.
+            # subscriptions already carry the boundary selected by the subscriber.
             self._start_id = self._resolve_start_id()
 
         self._listener = threading.Thread(
