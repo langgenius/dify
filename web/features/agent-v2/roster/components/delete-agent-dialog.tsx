@@ -59,7 +59,7 @@ export function DeleteAgentDialog({
           {t(($) => $['roster.deleteDialog.title'], { name: agentName })}
         </AlertDialogTitle>
         <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {t(($) => $['roster.deleteDialog.description'])}
+          {t(($) => $['roster.deleteDialog.description'], { name: agentName })}
         </AlertDialogDescription>
         <AlertDialogActions className="p-0 pt-6">
           <AlertDialogCancelButton disabled={deleteAgentMutation.isPending}>
