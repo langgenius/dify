@@ -142,16 +142,6 @@ class AudioApi(Resource):
 
 register_schema_model(service_api_ns, TextToAudioPayload)
 
-TTS_RESPONSE_MEDIA_TYPES = [
-    "audio/aac",
-    "audio/flac",
-    "audio/mp4",
-    "audio/mpeg",
-    "audio/ogg",
-    "audio/wav",
-    "audio/webm",
-]
-
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
@@ -162,7 +152,8 @@ class TextApi(Resource):
         responses={
             200: (
                 "Returns the generated audio. The `Content-Type` header reflects the provider audio container, "
-                "verified from the response bytes when recognizable."
+                "verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, "
+                "MP3, Ogg, WAV, or WebM."
             ),
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
@@ -175,7 +166,9 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    @binary_response(service_api_ns, TTS_RESPONSE_MEDIA_TYPES)
+    # The provider chooses the actual audio MIME type at runtime. Document a generic binary body so that generated
+    # SDKs can represent it without treating every error response as audio; the description above lists the types.
+    @binary_response(service_api_ns, "application/octet-stream")
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(
