@@ -1,4 +1,11 @@
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -28,8 +35,17 @@ const OnMinuteSelector = ({ value = 0, onChange }: OnMinuteSelectorProps) => {
             max={59}
             step={1}
             onValueChange={onChange}
-            aria-label={t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflow' })}
-          />
+          >
+            <SliderLabel className="sr-only">
+              {t(($) => $['nodes.triggerSchedule.onMinute'], { ns: 'workflow' })}
+            </SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
         </div>
       </div>
     </div>
