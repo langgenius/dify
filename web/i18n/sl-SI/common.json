@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Povabilo poslano, in po prijavi v Dify bodo imeli dostop do vaših podatkov ekipe.",
   "members.invite": "Dodaj",
   "members.inviteFailed": "Povabil ni bilo mogoče poslati. Poskusite znova.",
-  "members.inviteLimitExceeded": "Za vse prejemnike ni na voljo dovolj mest.",
   "members.inviteTeamMember": "Dodaj člana ekipe",
   "members.inviteTeamMemberTip": "Do vaših podatkov bo lahko dostopal takoj po prijavi.",
   "members.invitedAsRole": "Povabljen kot {{role}}",

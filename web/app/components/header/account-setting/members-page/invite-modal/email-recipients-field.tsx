@@ -14,7 +14,6 @@ type EmailRecipientsFieldProps = {
   draft: string
   onRecipientsChange: (recipients: EmailRecipient[]) => void
   onDraftChange: (draft: string) => void
-  onChange?: () => void
   disabled?: boolean
 }
 
@@ -27,7 +26,6 @@ export function EmailRecipientsField({
   draft,
   onRecipientsChange,
   onDraftChange,
-  onChange,
   disabled = false,
 }: EmailRecipientsFieldProps) {
   const { t } = useTranslation()
@@ -57,16 +55,6 @@ export function EmailRecipientsField({
     return null
   }
 
-  const updateRecipients = (nextRecipients: EmailRecipient[]) => {
-    onRecipientsChange(nextRecipients)
-    onChange?.()
-  }
-
-  const updateDraft = (nextDraft: string) => {
-    onDraftChange(nextDraft)
-    onChange?.()
-  }
-
   const focusInput = (select = false) => {
     internalInputRef.current?.focus()
     if (select) {
@@ -88,7 +76,7 @@ export function EmailRecipientsField({
     const neighborIndex = index < recipients.length - 1 ? index + 1 : index - 1
     const neighbor = neighborIndex >= 0 ? chipButtonRef.current[neighborIndex] : null
 
-    updateRecipients(nextRecipients)
+    onRecipientsChange(nextRecipients)
 
     if (focus === 'neighbor' && nextFocusIndex >= 0) {
       neighbor?.focus()
@@ -102,8 +90,8 @@ export function EmailRecipientsField({
     const recipient = recipients[index]
     if (!recipient) return
 
-    updateRecipients(recipients.filter((_, recipientIndex) => recipientIndex !== index))
-    updateDraft(recipient.value)
+    onRecipientsChange(recipients.filter((_, recipientIndex) => recipientIndex !== index))
+    onDraftChange(recipient.value)
     setDraftTouched(false)
     focusInput(true)
   }
@@ -116,8 +104,8 @@ export function EmailRecipientsField({
       return
     }
 
-    updateRecipients(mergeEmailRecipients(recipients, draft))
-    updateDraft('')
+    onRecipientsChange(mergeEmailRecipients(recipients, draft))
+    onDraftChange('')
     setDraftTouched(false)
   }
 
@@ -262,7 +250,7 @@ export function EmailRecipientsField({
             recipients.length > 0 ? 'min-w-12' : 'min-w-40',
           )}
           onChange={(event) => {
-            updateDraft(event.target.value)
+            onDraftChange(event.target.value)
             setDraftTouched(false)
           }}
           onBlur={() => setDraftTouched(true)}
@@ -280,7 +268,7 @@ export function EmailRecipientsField({
 
             if (event.key === 'Backspace' && !draft && recipients.length > 0) {
               event.preventDefault()
-              updateRecipients(recipients.slice(0, -1))
+              onRecipientsChange(recipients.slice(0, -1))
               return
             }
 
@@ -300,8 +288,8 @@ export function EmailRecipientsField({
             const selectionStart = input.selectionStart ?? input.value.length
             const selectionEnd = input.selectionEnd ?? selectionStart
             const nextValue = `${input.value.slice(0, selectionStart)}${pastedText}${input.value.slice(selectionEnd)}`
-            updateRecipients(mergeEmailRecipients(recipients, nextValue))
-            updateDraft('')
+            onRecipientsChange(mergeEmailRecipients(recipients, nextValue))
+            onDraftChange('')
             setDraftTouched(false)
           }}
         />

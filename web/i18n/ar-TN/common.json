@@ -242,7 +242,6 @@
   "members.invitationSentTip": "تم إرسال الدعوة، ويمكنهم تسجيل الدخول إلى Dify للوصول إلى بيانات فريقك.",
   "members.invite": "إضافة",
   "members.inviteFailed": "تعذر إرسال الدعوات. يُرجى المحاولة مرة أخرى.",
-  "members.inviteLimitExceeded": "لا تتوفر مقاعد كافية لجميع المستلمين.",
   "members.inviteTeamMember": "إضافة عضو فريق",
   "members.inviteTeamMemberTip": "يمكنهم الوصول إلى بيانات فريقك مباشرة بعد تسجيل الدخول.",
   "members.invitedAsRole": "تمت الدعوة كـ {{role}}",

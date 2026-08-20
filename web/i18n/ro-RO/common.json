@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Invitația a fost trimisă și pot să se autentifice în Dify pentru a accesa datele echipei dvs.",
   "members.invite": "Adaugă",
   "members.inviteFailed": "Invitațiile nu au putut fi trimise. Încercați din nou.",
-  "members.inviteLimitExceeded": "Nu sunt suficiente locuri disponibile pentru toți destinatarii.",
   "members.inviteTeamMember": "Adaugă membru în echipă",
   "members.inviteTeamMemberTip": "Pot accesa direct datele echipei dvs. după autentificare.",
   "members.invitedAsRole": "Invitat ca {{role}}",

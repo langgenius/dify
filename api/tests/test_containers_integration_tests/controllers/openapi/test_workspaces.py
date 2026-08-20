@@ -31,9 +31,7 @@ class TestWorkspacesList:
             (TenantAccountRole.OWNER.value, TenantAccountRole.OWNER.value)
         ]
         assert only.status == "normal"
-        # Newly-created owner membership is not yet "current"; switching flips it
-        # (see TestWorkspaceSwitch).
-        assert only.current is False
+        assert only.current is True
 
     def test_lists_all_joined_workspaces(
         self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
@@ -64,7 +62,7 @@ class TestWorkspaceDetail:
         assert [(role.id, role.name) for role in detail.roles] == [
             (TenantAccountRole.OWNER.value, TenantAccountRole.OWNER.value)
         ]
-        assert detail.current is False
+        assert detail.current is True
         assert detail.created_at is not None
 
     def test_non_member_detail_is_404_not_403(self, app: Flask, make_account: Callable[..., Account]) -> None:

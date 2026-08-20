@@ -242,7 +242,6 @@
   "members.invitationSentTip": "邀请已发送，对方登录 Dify 后即可访问你的团队数据。",
   "members.invite": "添加",
   "members.inviteFailed": "邀请发送失败，请重试。",
-  "members.inviteLimitExceeded": "成员名额不足，无法发送这些邀请。",
   "members.inviteTeamMember": "添加团队成员",
   "members.inviteTeamMemberTip": "对方在登录后可以访问你的团队数据。",
   "members.invitedAsRole": "邀请为{{role}}",

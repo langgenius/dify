@@ -242,7 +242,6 @@
   "members.invitationSentTip": "Einladung gesendet, und sie können sich bei Dify anmelden, um auf Ihre Teamdaten zuzugreifen.",
   "members.invite": "Hinzufügen",
   "members.inviteFailed": "Die Einladungen konnten nicht gesendet werden. Versuchen Sie es erneut.",
-  "members.inviteLimitExceeded": "Es sind nicht genügend Plätze für alle Empfänger verfügbar.",
   "members.inviteTeamMember": "Teammitglied hinzufügen",
   "members.inviteTeamMemberTip": "Sie können direkt nach der Anmeldung auf Ihre Teamdaten zugreifen.",
   "members.invitedAsRole": "Eingeladen als {{role}}",

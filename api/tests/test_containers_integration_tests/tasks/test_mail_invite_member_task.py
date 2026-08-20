@@ -129,33 +129,21 @@ class TestMailInviteMemberTask:
 
         return account, tenant
 
-    def _create_invitation_token(self, tenant, account):
-        """
-        Helper method to create a valid invitation token in Redis.
-
-        Args:
-            tenant: Tenant instance
-            account: Account instance
-
-        Returns:
-            str: Generated invitation token
-        """
+    def _create_invitation_token(self, tenant, account, inviter):
         return RegisterService.generate_invite_token(
             tenant_id=str(tenant.id),
             account_id=str(account.id),
             email=account.email,
-            inviter_id=str(account.id),
+            inviter_id=str(inviter.id),
         )
 
-    def _create_pending_account_for_invitation(self, db_session_with_containers: Session, email, tenant):
+    def _create_pending_account_for_invitation(self, db_session_with_containers: Session, email):
         """
         Helper method to create a pending account for invitation testing.
 
         Args:
             db_session_with_containers: Database session
             email: Email address for the account
-            tenant: Tenant instance
-
         Returns:
             Account: Created pending account
         """
@@ -172,16 +160,6 @@ class TestMailInviteMemberTask:
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
         db_session_with_containers.refresh(account)
-
-        # Create tenant member relationship
-        tenant_join = TenantAccountJoin(
-            tenant_id=tenant.id,
-            account_id=account.id,
-            role=TenantAccountRole.NORMAL,
-        )
-        tenant_join.created_at = datetime.now(UTC)
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
 
         return account
 
@@ -202,7 +180,8 @@ class TestMailInviteMemberTask:
         inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         invitee_email = "test@example.com"
         language = "en-US"
-        token = self._create_invitation_token(tenant, inviter)
+        invitee = self._create_pending_account_for_invitation(db_session_with_containers, invitee_email)
+        token = self._create_invitation_token(tenant, invitee, inviter)
         inviter_name = inviter.name
         workspace_name = tenant.name
 
@@ -245,7 +224,8 @@ class TestMailInviteMemberTask:
         """
         # Arrange: Create test data
         inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        token = self._create_invitation_token(tenant, inviter)
+        invitee = self._create_pending_account_for_invitation(db_session_with_containers, "test@example.com")
+        token = self._create_invitation_token(tenant, invitee, inviter)
 
         test_languages = ["en-US", "zh-CN", "ja-JP", "fr-FR", "de-DE", "es-ES"]
 
@@ -383,7 +363,8 @@ class TestMailInviteMemberTask:
         """
         # Arrange: Create test data and store token in Redis
         inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        token = self._create_invitation_token(tenant, inviter)
+        invitee = self._create_pending_account_for_invitation(db_session_with_containers, "invitee@example.com")
+        token = self._create_invitation_token(tenant, invitee, inviter)
 
         # Verify token exists in Redis before sending email
         cache_key = RegisterService._get_invitation_token_key(token)
@@ -392,7 +373,7 @@ class TestMailInviteMemberTask:
         # Act: Execute the task
         send_invite_member_mail_task(
             language="en-US",
-            to=inviter.email,
+            to=invitee.email,
             token=token,
             inviter_name=inviter.name,
             workspace_name=tenant.name,
@@ -405,8 +386,8 @@ class TestMailInviteMemberTask:
         token_data = redis_client.get(cache_key)
         assert token_data is not None
         invitation_data = json.loads(token_data)
-        assert invitation_data["account_id"] == inviter.id
-        assert invitation_data["email"] == inviter.email
+        assert invitation_data["account_id"] == invitee.id
+        assert invitation_data["email"] == invitee.email
         assert invitation_data["workspace_id"] == tenant.id
 
     def test_send_invite_member_mail_with_special_characters(
@@ -422,7 +403,8 @@ class TestMailInviteMemberTask:
         """
         # Arrange: Create test data with special characters
         inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        token = self._create_invitation_token(tenant, inviter)
+        invitee = self._create_pending_account_for_invitation(db_session_with_containers, "test@example.com")
+        token = self._create_invitation_token(tenant, invitee, inviter)
 
         special_cases = [
             ("John O'Connor", "Acme & Co."),
@@ -467,11 +449,8 @@ class TestMailInviteMemberTask:
         inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
         invitee_email = "newmember@example.com"
 
-        # Create a pending account for invitation (simulating real invitation flow)
-        pending_account = self._create_pending_account_for_invitation(db_session_with_containers, invitee_email, tenant)
-
-        # Create invitation token with real account data
-        token = self._create_invitation_token(tenant, pending_account)
+        pending_account = self._create_pending_account_for_invitation(db_session_with_containers, invitee_email)
+        token = self._create_invitation_token(tenant, pending_account, inviter)
 
         # Act: Execute the task with real data
         send_invite_member_mail_task(
@@ -494,14 +473,13 @@ class TestMailInviteMemberTask:
         assert pending_account.email == invitee_email
         assert tenant.name is not None
 
-        # Verify tenant relationship exists
+        # Membership is created only after the invitation is accepted.
         tenant_join = db_session_with_containers.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == pending_account.id)
             .limit(1)
         )
-        assert tenant_join is not None
-        assert tenant_join.role == TenantAccountRole.NORMAL
+        assert tenant_join is None
 
     def test_send_invite_member_mail_token_lifecycle_management(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -517,12 +495,13 @@ class TestMailInviteMemberTask:
         """
         # Arrange: Create test data
         inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        token = self._create_invitation_token(tenant, inviter)
+        invitee = self._create_pending_account_for_invitation(db_session_with_containers, "invitee@example.com")
+        token = self._create_invitation_token(tenant, invitee, inviter)
 
         # Act: Execute the task
         send_invite_member_mail_task(
             language="en-US",
-            to=inviter.email,
+            to=invitee.email,
             token=token,
             inviter_name=inviter.name,
             workspace_name=tenant.name,
@@ -544,6 +523,6 @@ class TestMailInviteMemberTask:
         assert token_data is not None
 
         invitation_data = json.loads(token_data)
-        assert invitation_data["account_id"] == inviter.id
-        assert invitation_data["email"] == inviter.email
+        assert invitation_data["account_id"] == invitee.id
+        assert invitation_data["email"] == invitee.email
         assert invitation_data["workspace_id"] == tenant.id

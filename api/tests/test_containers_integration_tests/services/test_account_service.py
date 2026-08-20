@@ -2853,14 +2853,20 @@ class TestRegisterService:
         assert new_account.name == new_member_email.split("@")[0]  # Default name from email
         assert new_account.status == "pending"
 
-        # Verify tenant member was created
+        # Invitations do not create workspace membership before acceptance.
         tenant_join = (
             db_session_with_containers.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=new_account.id)
             .first()
         )
-        assert tenant_join is not None
-        assert tenant_join.role == "normal"
+        assert tenant_join is None
+
+        invitation = RegisterService.get_invitation_if_token_valid(
+            None, None, token, session=db_session_with_containers
+        )
+        assert invitation is not None
+        assert invitation["account"].id == new_account.id
+        assert invitation["data"]["role"] == "normal"
 
     def test_invite_new_member_existing_account(
         self, db_session_with_containers: Session, mock_external_service_dependencies

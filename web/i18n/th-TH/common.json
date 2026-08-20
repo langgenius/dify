@@ -242,7 +242,6 @@
   "members.invitationSentTip": "ส่งคําเชิญแล้ว และพวกเขาสามารถลงชื่อเข้าใช้ Dify เพื่อเข้าถึงข้อมูลทีมของคุณได้",
   "members.invite": "เพิ่ม",
   "members.inviteFailed": "ไม่สามารถส่งคำเชิญได้ โปรดลองอีกครั้ง",
-  "members.inviteLimitExceeded": "มีที่นั่งไม่เพียงพอสำหรับผู้รับทั้งหมด",
   "members.inviteTeamMember": "เพิ่มสมาชิกในทีม",
   "members.inviteTeamMemberTip": "พวกเขาสามารถเข้าถึงข้อมูลทีมของคุณได้โดยตรงหลังจากลงชื่อเข้าใช้",
   "members.invitedAsRole": "ได้รับเชิญให้เป็น {{role}}",
