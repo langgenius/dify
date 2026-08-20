@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -7,7 +8,7 @@ from services.billing_service import BillingService, NetworkAccessPolicyUpstream
 
 
 @pytest.fixture
-def billing_config():
+def billing_config() -> Iterator[None]:
     with (
         patch.object(BillingService, "base_url", "https://billing.internal/v1"),
         patch.object(BillingService, "secret_key", "test-secret"),
@@ -16,14 +17,15 @@ def billing_config():
 
 
 @pytest.mark.usefixtures("billing_config")
-def test_get_network_access_policies_uses_authenticated_saas_endpoint():
+def test_get_network_access_policies_uses_authenticated_saas_endpoint() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
-    response.json.return_value = {"tenant_id": "tenant-1", "entitled": True, "policies": []}
+    policies: list[dict[str, object]] = []
+    response.json.return_value = {"tenant_id": "tenant-1", "entitled": True, "policies": policies}
 
     with patch("services.billing_service._http_client.request", return_value=response) as request:
         result = BillingService.get_network_access_policies("tenant-1", "account-1")
 
-    assert result == {"tenant_id": "tenant-1", "entitled": True, "policies": []}
+    assert result == {"tenant_id": "tenant-1", "entitled": True, "policies": policies}
     request.assert_called_once_with(
         "GET",
         "https://billing.internal/v1/tenants/tenant-1/network-access-policies",
@@ -35,7 +37,7 @@ def test_get_network_access_policies_uses_authenticated_saas_endpoint():
 
 
 @pytest.mark.usefixtures("billing_config")
-def test_update_network_access_policy_injects_actor_and_scope():
+def test_update_network_access_policy_injects_actor_and_scope() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
     response.json.return_value = {
         "policy": {
@@ -73,7 +75,7 @@ def test_update_network_access_policy_injects_actor_and_scope():
 
 
 @pytest.mark.parametrize("status_code", [400, 403, 404, 409, 500])
-def test_network_access_policy_request_preserves_upstream_status(status_code):
+def test_network_access_policy_request_preserves_upstream_status(status_code: int) -> None:
     response = MagicMock(status_code=status_code)
     with (
         patch.object(BillingService, "_send_network_access_policy_http_request", return_value=response),
@@ -84,7 +86,7 @@ def test_network_access_policy_request_preserves_upstream_status(status_code):
     assert exc_info.value.status_code == status_code
 
 
-def test_network_access_policy_request_maps_transport_failure_to_service_unavailable():
+def test_network_access_policy_request_maps_transport_failure_to_service_unavailable() -> None:
     request = httpx.Request("GET", "https://billing.internal/v1/policies")
     with (
         patch.object(
@@ -99,9 +101,9 @@ def test_network_access_policy_request_maps_transport_failure_to_service_unavail
     assert exc_info.value.status_code == httpx.codes.SERVICE_UNAVAILABLE
 
 
-def test_network_access_policy_request_rejects_non_object_response():
+def test_network_access_policy_request_rejects_non_object_response() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
-    response.json.return_value = []
+    response.json.return_value = list[object]()
     with (
         patch.object(BillingService, "_send_network_access_policy_http_request", return_value=response),
         pytest.raises(NetworkAccessPolicyUpstreamError) as exc_info,

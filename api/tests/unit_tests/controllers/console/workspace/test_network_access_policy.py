@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
-from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
+from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
 
 from controllers.console.workspace.network_access_policy import (
     CurrentWorkspaceNetworkAccessPolicyApi,
@@ -15,7 +15,7 @@ from controllers.console.workspace.network_access_policy import (
 from services.billing_service import BillingService, NetworkAccessPolicyUpstreamError
 
 
-def _policy_payload() -> dict:
+def _policy_payload() -> dict[str, object]:
     return {
         "scope": "service_api",
         "mode": "enforce",
@@ -27,7 +27,7 @@ def _policy_payload() -> dict:
     }
 
 
-def test_get_authorizes_and_forwards_tenant_and_actor():
+def test_get_authorizes_and_forwards_tenant_and_actor() -> None:
     api = CurrentWorkspaceNetworkAccessPolicyApi()
     method = unwrap(api.get)
     current_user = SimpleNamespace(id="account-1")
@@ -47,7 +47,7 @@ def test_get_authorizes_and_forwards_tenant_and_actor():
     assert result["policies"][0]["updated_at"] == "2026-08-20T00:00:00Z"
 
 
-def test_put_injects_actor_and_does_not_accept_it_from_payload():
+def test_put_injects_actor_and_does_not_accept_it_from_payload() -> None:
     api = CurrentWorkspaceNetworkAccessPolicyApi()
     method = unwrap(api.put)
     current_user = SimpleNamespace(id="account-1")
@@ -85,7 +85,7 @@ def test_put_injects_actor_and_does_not_accept_it_from_payload():
     assert result["policy"]["version"] == 2
 
 
-def test_get_rejects_non_privileged_workspace_member_before_upstream_call():
+def test_get_rejects_non_privileged_workspace_member_before_upstream_call() -> None:
     api = CurrentWorkspaceNetworkAccessPolicyApi()
     method = unwrap(api.get)
     current_user = SimpleNamespace(id="account-1")
@@ -112,11 +112,11 @@ def test_get_rejects_non_privileged_workspace_member_before_upstream_call():
         (418, BadGateway),
     ],
 )
-def test_upstream_error_mapping(status_code, expected_exception):
+def test_upstream_error_mapping(status_code: int, expected_exception: type[HTTPException]) -> None:
     assert isinstance(_translate_upstream_error(NetworkAccessPolicyUpstreamError(status_code)), expected_exception)
 
 
-def test_get_maps_invalid_upstream_contract_to_bad_gateway():
+def test_get_maps_invalid_upstream_contract_to_bad_gateway() -> None:
     api = CurrentWorkspaceNetworkAccessPolicyApi()
     method = unwrap(api.get)
     current_user = SimpleNamespace(id="account-1")
@@ -143,6 +143,6 @@ def test_get_maps_invalid_upstream_contract_to_bad_gateway():
         {"scope": "mcp", "mode": "disabled", "allowed_cidrs": ["127.0.0.1"] * 101, "expected_version": 0},
     ],
 )
-def test_payload_contract_rejects_invalid_shapes(payload):
+def test_payload_contract_rejects_invalid_shapes(payload: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         NetworkAccessPolicyPayload.model_validate(payload)
