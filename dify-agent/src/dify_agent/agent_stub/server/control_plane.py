@@ -1,6 +1,6 @@
 """Shared Agent Stub HTTP control-plane service.
 
-This layer owns authenticated delegation for file, config, and drive operations.
+This layer owns authenticated delegation for file and config operations.
 The HTTP adapter validates transport DTOs before calling into this service.
 """
 
@@ -15,16 +15,12 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigManifestResponse,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
-    AgentStubDriveCommitRequest,
-    AgentStubDriveCommitResponse,
-    AgentStubDriveManifestResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestError, AgentStubConfigRequestHandler
-from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import (
     AgentStubPrincipal,
@@ -71,7 +67,6 @@ class AgentStubControlPlaneService:
     token_codec: AgentStubTokenCodec | None
     file_request_handler: AgentStubFileRequestHandler | None = None
     config_request_handler: AgentStubConfigRequestHandler | None = None
-    drive_request_handler: AgentStubDriveRequestHandler | None = None
     connection_id_factory: Callable[[], str] = field(default=lambda: str(uuid4()))
 
     async def connect(self, *, authorization: str | None) -> AgentStubConnectResponse:
@@ -113,25 +108,6 @@ class AgentStubControlPlaneService:
         try:
             return await handler.create_download_request(principal=principal, request=request)
         except AgentStubFileRequestError as exc:
-            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
-
-    async def get_drive_manifest(
-        self,
-        *,
-        prefix: str,
-        include_download_url: bool,
-        authorization: str | None,
-    ) -> AgentStubDriveManifestResponse:
-        """Authenticate and delegate one drive manifest request."""
-        principal = self._authenticate(authorization)
-        handler = self._require_drive_request_handler()
-        try:
-            return await handler.get_manifest(
-                principal=principal,
-                prefix=prefix,
-                include_download_url=include_download_url,
-            )
-        except AgentStubDriveRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
     async def get_config_manifest(
@@ -198,20 +174,6 @@ class AgentStubControlPlaneService:
         except AgentStubConfigRequestError as exc:
             raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
 
-    async def commit_drive(
-        self,
-        *,
-        request: AgentStubDriveCommitRequest,
-        authorization: str | None,
-    ) -> AgentStubDriveCommitResponse:
-        """Authenticate and delegate one drive commit request."""
-        principal = self._authenticate(authorization)
-        handler = self._require_drive_request_handler()
-        try:
-            return await handler.commit(principal=principal, request=request)
-        except AgentStubDriveRequestError as exc:
-            raise AgentStubControlPlaneError(exc.status_code, exc.detail) from exc
-
     def _authenticate(self, authorization: str | None, *, expose_expiration: bool = False) -> AgentStubPrincipal:
         token_codec = self.token_codec
         if token_codec is None:
@@ -237,11 +199,6 @@ class AgentStubControlPlaneService:
         if self.config_request_handler is None:
             raise AgentStubConfigurationError(503, "Agent Stub config API is not configured")
         return self.config_request_handler
-
-    def _require_drive_request_handler(self) -> AgentStubDriveRequestHandler:
-        if self.drive_request_handler is None:
-            raise AgentStubConfigurationError(503, "Agent Stub drive API is not configured")
-        return self.drive_request_handler
 
 
 __all__ = [

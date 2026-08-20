@@ -5,7 +5,7 @@ import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -411,7 +411,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       <FieldLabel>
                         {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
                       </FieldLabel>
-                      <FieldControl
+                      <Input
                         value={inputInfo.title}
                         onValueChange={(value) =>
                           setInputInfo((item) => ({ ...item, title: value }))
@@ -510,7 +510,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         </div>
                       </div>
                       <Field name="chat_color_theme" className="w-50 shrink-0">
-                        <FieldControl
+                        <Input
+                          aria-label={t(($) => $[`${prefixSettings}.chatColorTheme`], {
+                            ns: 'appOverview',
+                          })}
                           className="mb-1"
                           value={inputInfo.chatColorTheme ?? ''}
                           onValueChange={(value) =>

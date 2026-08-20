@@ -1,5 +1,6 @@
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferenceVars from '../var-reference-vars'
 
@@ -37,16 +38,24 @@ describe('VarReferenceVars', () => {
     },
   ])
 
-  it('should filter vars through the search box and call onClose on escape', () => {
+  it('should filter, clear without leaving the search group, and close on escape', async () => {
+    const user = userEvent.setup()
     const onClose = vi.fn()
-    render(<VarReferenceVars vars={baseVars} onChange={vi.fn()} onClose={onClose} />)
+    const onBlur = vi.fn()
+    render(
+      <VarReferenceVars vars={baseVars} onChange={vi.fn()} onClose={onClose} onBlur={onBlur} />,
+    )
 
-    fireEvent.change(screen.getByPlaceholderText('workflow.common.searchVar'), {
-      target: { value: 'valid' },
-    })
+    const searchBox = screen.getByRole('searchbox', { name: 'workflow.common.searchVar' })
+    await user.type(searchBox, 'valid')
     expect(screen.getByText('valid_name')).toBeInTheDocument()
 
-    fireEvent.keyDown(screen.getByPlaceholderText('workflow.common.searchVar'), { key: 'Escape' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(searchBox).toHaveValue('')
+    expect(searchBox).toHaveFocus()
+    expect(onBlur).not.toHaveBeenCalled()
+
+    await user.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 

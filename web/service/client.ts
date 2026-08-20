@@ -1062,6 +1062,15 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.byAgentId.key({
+                    input: {
+                      params: {
+                        agent_id: variables.params.agent_id,
+                      },
+                    },
+                  }),
+                })
                 context.client.setQueriesData(
                   {
                     queryKey: consoleQuery.agent.get.key({ type: 'query' }),

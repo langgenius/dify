@@ -420,7 +420,6 @@ async def test_download_shell_quotes_resolved_path_and_returns_only_reference_in
         "HOME": "/home/agent",
         "DIFY_AGENT_STUB_API_BASE_URL": "http://stub/agent-stub",
         "DIFY_AGENT_STUB_AUTH_JWE": "secret-jwe",
-        "DIFY_AGENT_STUB_DRIVE_BASE": "/mnt/drive",
     }
     assert timeout == pytest.approx(60.0, rel=0, abs=0.01)
     assert issued_tokens == [(context, None)]

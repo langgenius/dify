@@ -61,6 +61,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const strictZodSchemaNames = new Set(['AccountProfilePatchPayload'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
@@ -492,6 +493,22 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     {
       name: 'zod',
       '~resolvers': {
+        object: (ctx) => {
+          const objectSchema = ctx.nodes.base(ctx)
+          const additionalProperties = ctx.schema.additionalProperties
+          // openapi-ts normalizes `additionalProperties: false` to `never`, but
+          // does not make shaped Zod objects strict.
+          const isStrictSchema = ctx.path['~ref'].some(
+            (segment) => typeof segment === 'string' && strictZodSchemaNames.has(segment),
+          )
+          if (
+            isStrictSchema &&
+            (additionalProperties === false || additionalProperties?.type === 'never')
+          )
+            return objectSchema.attr('strict').call()
+
+          return objectSchema
+        },
         string: (ctx) => {
           if (ctx.schema.format === 'binary')
             return $(ctx.symbols.z)
