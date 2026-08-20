@@ -6,11 +6,14 @@ from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from extensions.ext_application_services import application_services
 from libs.helper import EmailStr, dump_response, timezone
 from libs.login import current_account_with_tenant
 from libs.token import extract_access_token
+from services.account_activation_service import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.account_activation_service import (
     FrozenAccountError,
     InvalidInvitationError,
@@ -141,6 +144,8 @@ class ActivateApi(Resource):
             raise AlreadyActivateError() from None
         except InvitationAccountMismatchError:
             raise InvitationAccountMismatchHTTPError() from None
+        except EmailDomainSuspendedRegistrationError:
+            raise EmailDomainSuspendedError() from None
         except FrozenAccountError:
             raise AccountInFreezeError() from None
 
