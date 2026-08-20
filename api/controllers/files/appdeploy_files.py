@@ -204,7 +204,7 @@ class ProducedFileApi(Resource):
                 tenant_id=grant.tenant_id,
                 end_user_id=grant.sub,
                 filename=upload.filename,
-                content=upload.stream.read(),
+                stream=upload.stream,
                 mimetype=upload.mimetype,
             )
         except services.errors.file.FileTooLargeError as exc:

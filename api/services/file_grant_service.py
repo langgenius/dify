@@ -17,6 +17,7 @@ import hashlib
 import os
 from collections.abc import Generator, Sequence
 from dataclasses import dataclass
+from typing import IO
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -165,14 +166,24 @@ class FileGrantService:
         tenant_id: str,
         end_user_id: str,
         filename: str | None,
-        content: bytes,
+        stream: IO[bytes],
         mimetype: str,
     ) -> ToolFile:
         """Store bytes a workflow node produced as a ``tool_files`` row.
 
-        ``create_file_by_raw`` enforces no size limit of its own, so the shared
-        per-extension limit has to be applied here instead of by ``FileService``.
+        Takes the body as a stream rather than bytes because the caller is a
+        worker running third-party plugin code that reaches this process
+        directly, with no proxy body limit in front of it. Buffering the body in
+        order to measure it would be the denial of service, so the read stops one
+        byte past the largest size any extension could be allowed, and the exact
+        per-extension limit is applied after, once the extension is known.
+        ``create_file_by_raw`` enforces no size limit of its own.
         """
+
+        cap = FileService.largest_file_size_limit()
+        content = stream.read(cap + 1)
+        if len(content) > cap:
+            raise FileTooLargeError(f"File size exceeded. The limit is {cap} bytes.")
 
         extension = resolve_extension(filename=filename, mimetype=mimetype).lstrip(".").lower()
         if not FileService.is_file_size_within_limit(extension=extension, file_size=len(content)):

@@ -36,6 +36,8 @@ from libs.file_grant import FILE_CONTENT_AUDIENCE, FileGrantScope, FileKind, iss
 from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser, UploadFile
 from models.tools import ToolFile
+from services.errors.file import FileTooLargeError as FileTooLargeServiceError
+from services.file_grant_service import FileGrantService
 
 CONTROLLER_MODULE = "controllers.files.appdeploy_files"
 SERVICE_MODULE = "services.file_grant_service"
@@ -488,6 +490,94 @@ def test_produced_applies_the_shared_per_extension_size_limit(
             with pytest.raises(FileTooLargeError):
                 ProducedFileApi().post()
 
+    tool_file_manager.return_value.create_file_by_raw.assert_not_called()
+
+
+@pytest.fixture
+def one_megabyte_ceiling(config_overrides: Callable[..., None]) -> int:
+    """Flatten every per-extension limit so the stream ceiling is one mebibyte."""
+
+    config_overrides(
+        UPLOAD_FILE_SIZE_LIMIT=1,
+        UPLOAD_IMAGE_FILE_SIZE_LIMIT=1,
+        UPLOAD_VIDEO_FILE_SIZE_LIMIT=1,
+        UPLOAD_AUDIO_FILE_SIZE_LIMIT=1,
+    )
+    return 1024 * 1024
+
+
+@pytest.mark.usefixtures("one_megabyte_ceiling")
+def test_produced_accepts_a_file_of_exactly_the_largest_allowed_size(app: Flask, one_megabyte_ceiling: int) -> None:
+    with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
+        tool_file_manager.return_value.create_file_by_raw.return_value = SimpleNamespace(
+            id="88888888-8888-4888-8888-888888888888",
+            name="chart.png",
+            size=one_megabyte_ceiling,
+            mimetype="image/png",
+        )
+        with app.test_request_context(
+            "/files/appdeploy/produced",
+            method="POST",
+            headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
+            data={"file": (BytesIO(b"0" * one_megabyte_ceiling), "chart.png")},
+            content_type="multipart/form-data",
+        ):
+            _, status = ProducedFileApi().post()
+
+    assert status == 201
+    assert len(tool_file_manager.return_value.create_file_by_raw.call_args.kwargs["file_binary"]) == (
+        one_megabyte_ceiling
+    )
+
+
+@pytest.mark.usefixtures("one_megabyte_ceiling")
+def test_produced_rejects_a_file_one_byte_over_the_largest_allowed_size(app: Flask, one_megabyte_ceiling: int) -> None:
+    with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
+        with app.test_request_context(
+            "/files/appdeploy/produced",
+            method="POST",
+            headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
+            data={"file": (BytesIO(b"0" * (one_megabyte_ceiling + 1)), "chart.png")},
+            content_type="multipart/form-data",
+        ):
+            with pytest.raises(FileTooLargeError) as raised:
+                ProducedFileApi().post()
+
+    assert raised.value.code == 413
+    tool_file_manager.return_value.create_file_by_raw.assert_not_called()
+
+
+class _CountingStream:
+    """A body that reports how much of itself a reader actually pulled."""
+
+    def __init__(self, size: int) -> None:
+        self._remaining = size
+        self.bytes_read = 0
+
+    def read(self, size: int = -1) -> bytes:
+        served = self._remaining if size < 0 else min(size, self._remaining)
+        self._remaining -= served
+        self.bytes_read += served
+        return b"0" * served
+
+
+@pytest.mark.usefixtures("one_megabyte_ceiling")
+def test_produced_stops_reading_an_oversized_body_at_the_ceiling(one_megabyte_ceiling: int) -> None:
+    """The caller is a worker running plugin code with no proxy body limit in front of it."""
+
+    stream = _CountingStream(one_megabyte_ceiling * 64)
+
+    with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
+        with pytest.raises(FileTooLargeServiceError):
+            FileGrantService.store_produced(
+                tenant_id=TENANT_ID,
+                end_user_id="99999999-9999-4999-8999-999999999999",
+                filename="chart.png",
+                stream=stream,
+                mimetype="image/png",
+            )
+
+    assert stream.bytes_read == one_megabyte_ceiling + 1
     tool_file_manager.return_value.create_file_by_raw.assert_not_called()
 
 
