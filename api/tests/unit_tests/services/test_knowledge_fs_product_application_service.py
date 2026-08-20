@@ -275,6 +275,7 @@ def test_product_application_create_schedules_selected_website_import() -> None:
             "selection": [
                 {
                     "source_url": "https://docs.dify.ai/getting-started",
+                    "canonical_url": "https://docs.dify.ai/getting-started",
                     "title": "Getting started",
                 }
             ],
