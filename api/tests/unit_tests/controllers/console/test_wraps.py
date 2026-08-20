@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
+from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -38,9 +39,10 @@ from controllers.console.wraps import (
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError, AdmissionConfigurationError
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
-from models.dataset import RateLimitLog
+from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
 
 
@@ -191,6 +193,91 @@ class TestCurrentContextInjection:
 
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
+
+    def test_console_account_admission_enforces_legacy_workspace_roles(self):
+        current_user = make_account()
+        current_user.role = TenantAccountRole.NORMAL
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", False),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(
+                    allowed_roles=frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER})
+                )
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context(), pytest.raises(HTTPException) as exc_info:
+                Handler().get()
+
+        assert exc_info.value.code == 403
+
+    def test_console_account_admission_enforces_declared_rbac_requirement(self):
+        current_user = make_account()
+
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", True),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+            patch("controllers.console.flask_admission.get_request_id", return_value="request-1"),
+            patch("controllers.console.flask_admission.get_trace_id", return_value=None),
+            patch("controllers.console.flask_admission.enforce_rbac_access") as enforce_rbac_access,
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(
+                    allowed_roles=frozenset({TenantAccountRole.ADMIN, TenantAccountRole.OWNER}),
+                    rbac_resource_scope=RBACResourceScope.WORKSPACE,
+                    rbac_permission=RBACPermission.CREDENTIAL_CREATE,
+                    rbac_resource_required=False,
+                )
+                def post(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context(headers={"X-Trace-Id": "trace-1"}):
+                result = Handler().post()
+
+        assert result.active_workspace_id == "tenant-123"
+        assert result.trace_id == "trace-1"
+        enforce_rbac_access.assert_called_once_with(
+            tenant_id="tenant-123",
+            account_id=current_user.id,
+            resource_type=RBACResourceScope.WORKSPACE,
+            scene=RBACPermission.CREDENTIAL_CREATE,
+            resource_required=False,
+            path_args={},
+        )
+
+    def test_console_account_admission_rejects_incomplete_rbac_requirement(self):
+        with pytest.raises(AdmissionConfigurationError, match="configured together"):
+            flask_admission.console_account_admission(rbac_resource_scope=RBACResourceScope.WORKSPACE)
+
+    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
+        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+
+        with Flask(__name__).app_context():
+            body, status = handler(ActiveWorkspaceRequiredError())
+
+        assert status == 500
+        assert body == {
+            "code": "active_workspace_required",
+            "message": "Internal Server Error",
+            "status": 500,
+        }
 
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:
@@ -395,6 +482,36 @@ class TestRbacPermissionRequired:
         with app.test_request_context("/datasets/dataset-1/api-keys"):
             request.view_args = {"resource_id": "dataset-1"}
             assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
+
+    def test_extract_resource_id_scopes_pipeline_resolution_to_the_calling_tenant(self, sqlite_session: Session):
+        app = Flask(__name__)
+        pipeline_id = "00000000-0000-0000-0000-000000000001"
+        current_tenant_id = "00000000-0000-0000-0000-000000000002"
+        foreign_dataset = Dataset(
+            id="00000000-0000-0000-0000-000000000003",
+            tenant_id="00000000-0000-0000-0000-000000000004",
+            name="Foreign decoy",
+            created_by="00000000-0000-0000-0000-000000000005",
+            pipeline_id=pipeline_id,
+        )
+        current_dataset = Dataset(
+            id="00000000-0000-0000-0000-000000000006",
+            tenant_id=current_tenant_id,
+            name="Current tenant dataset",
+            created_by="00000000-0000-0000-0000-000000000007",
+            pipeline_id=pipeline_id,
+        )
+        sqlite_session.add_all([foreign_dataset, current_dataset])
+
+        unscoped_dataset = sqlite_session.scalar(select(Dataset).where(Dataset.pipeline_id == pipeline_id))
+        assert unscoped_dataset is foreign_dataset
+
+        with (
+            app.test_request_context("/rag/pipelines/pipeline-1"),
+            patch("controllers.common.wraps.db", SimpleNamespace(session=sqlite_session)),
+        ):
+            request.view_args = {"pipeline_id": pipeline_id}
+            assert _extract_resource_id(RBACResourceScope.DATASET, current_tenant_id) == current_dataset.id
 
     def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
         app = Flask(__name__)
@@ -895,17 +1012,18 @@ class TestSystemSetup:
         assert mock_db.session.scalar.call_count == 1
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_not_cache_missing_setup(self, mock_environ_get, mock_db):
+    def test_should_not_cache_missing_setup(self, mock_db):
         """Test that first-time bootstrap completion can be observed later in the same process"""
         mock_db.session.scalar.side_effect = [None, MagicMock()]
-        mock_environ_get.return_value = None
 
         @setup_required
         def admin_view():
             return "admin_success"
 
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+        ):
             with pytest.raises(NotSetupError):
                 admin_view()
             assert admin_view() == "admin_success"
@@ -913,36 +1031,38 @@ class TestSystemSetup:
         assert mock_db.session.scalar.call_count == 2
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_init_validate_error_with_init_password(self, mock_environ_get, mock_db: MagicMock):
+    def test_should_raise_not_init_validate_error_with_init_password(self, mock_db: MagicMock):
         """Test NotInitValidateError when INIT_PASSWORD is set but setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
-        mock_environ_get.return_value = "some_password"
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", "some_password"),
+        ):
             with pytest.raises(NotInitValidateError):
                 admin_view()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.wraps.os.environ.get")
-    def test_should_raise_not_setup_error_without_init_password(self, mock_environ_get, mock_db: MagicMock):
+    def test_should_raise_not_setup_error_without_init_password(self, mock_db: MagicMock):
         """Test NotSetupError when no INIT_PASSWORD and setup not complete"""
         # Arrange
         mock_db.session.scalar.return_value = None  # No setup
-        mock_environ_get.return_value = None  # No INIT_PASSWORD
 
         @setup_required
         def admin_view():
             return "admin_success"
 
         # Act & Assert
-        with patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+        with (
+            patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
+            patch("controllers.console.wraps.dify_config.INIT_PASSWORD", ""),
+        ):
             with pytest.raises(NotSetupError):
                 admin_view()
 

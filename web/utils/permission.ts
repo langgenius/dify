@@ -155,11 +155,7 @@ export const getAppACLCapabilities = (
       AppACLPermission.ReleaseAndVersion,
       hasMaintainerPermissions,
     ),
-    canDeploy: hasResourcePermission(
-      permissionKeys,
-      AppACLPermission.Deploy,
-      hasMaintainerPermissions,
-    ),
+    canDeploy: hasPermission(permissionKeys, AppACLPermission.Deploy),
     canMonitor: hasResourcePermission(
       permissionKeys,
       AppACLPermission.Monitor,

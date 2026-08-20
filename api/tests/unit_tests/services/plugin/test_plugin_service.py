@@ -30,6 +30,16 @@ OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 USER_ID = "33333333-3333-3333-3333-333333333333"
 
 
+@pytest.fixture(autouse=True)
+def _plugin_config(config_overrides) -> None:
+    config_overrides(
+        MARKETPLACE_ENABLED=True,
+        PLUGIN_MODEL_PROVIDERS_CACHE_TTL=86400,
+        PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=True,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+    )
+
+
 def _build_provider_entity(
     provider: str = "openai",
     installation_source: PluginInstallationSource | None = PluginInstallationSource.Marketplace,
@@ -103,14 +113,13 @@ def _provider_generation_key(tenant_id: str) -> str:
 
 
 class TestFetchLatestPluginVersion:
-    def test_skips_marketplace_fetch_when_disabled(self) -> None:
+    def test_skips_marketplace_fetch_when_disabled(self, config_overrides) -> None:
         """Cache misses stay None; marketplace is never called when disabled."""
+        config_overrides(MARKETPLACE_ENABLED=False)
         with (
-            patch(f"{MODULE}.dify_config") as mock_cfg,
             patch(f"{MODULE}.redis_client") as mock_redis,
             patch(f"{MODULE}.marketplace") as mock_marketplace,
         ):
-            mock_cfg.MARKETPLACE_ENABLED = False
             mock_redis.get.return_value = None  # all cache misses
 
             from core.plugin.plugin_service import PluginService
@@ -131,11 +140,9 @@ class TestFetchLatestPluginVersion:
         manifest.alternative_plugin_id = ""
 
         with (
-            patch(f"{MODULE}.dify_config") as mock_cfg,
             patch(f"{MODULE}.redis_client") as mock_redis,
             patch(f"{MODULE}.marketplace") as mock_marketplace,
         ):
-            mock_cfg.MARKETPLACE_ENABLED = True
             mock_redis.get.return_value = None
             mock_marketplace.batch_fetch_plugin_manifests.return_value = [manifest]
 
@@ -157,12 +164,7 @@ class TestPluginModelProviderCache:
         raw_payload = TypeAdapter(list[PluginModelProviderDeclaration]).dump_json([large_provider])
         cache_key = _provider_cache_key("tenant-1", 0)
 
-        with (
-            patch(f"{MODULE}.redis_client") as redis_client,
-            patch(f"{MODULE}.dify_config") as mock_config,
-        ):
-            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
-
+        with patch(f"{MODULE}.redis_client") as redis_client:
             from core.plugin.plugin_service import PluginService
 
             PluginService._store_cached_plugin_model_providers("tenant-1", 0, [large_provider])
@@ -254,11 +256,9 @@ class TestPluginModelProviderCache:
         cache_key = _provider_cache_key("tenant-1", 0)
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
-            patch(f"{MODULE}.dify_config") as mock_config,
         ):
             redis_client.get.side_effect = [None, None, None]
             redis_client.mget.side_effect = [[legacy_payload], [None]]
-            mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
 
@@ -277,10 +277,10 @@ class TestPluginModelProviderCache:
             call([cache_key]),
         ]
 
-    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self) -> None:
+    def test_fetch_plugin_model_providers_bypasses_redis_when_cache_disabled(self, config_overrides) -> None:
         """With the cache disabled the daemon is the only source, and Redis is never touched."""
-        with patch(f"{MODULE}.redis_client") as redis_client, patch(f"{MODULE}.dify_config") as config:
-            config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED = False
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
+        with patch(f"{MODULE}.redis_client") as redis_client:
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
 
@@ -298,7 +298,8 @@ class TestPluginModelProviderCache:
         redis_client.setex.assert_not_called()
         redis_client.lock.assert_not_called()
 
-    def test_fetch_plugin_model_providers_resolves_missing_installation_source(self) -> None:
+    def test_fetch_plugin_model_providers_resolves_missing_installation_source(self, config_overrides) -> None:
+        config_overrides(PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED=False)
         provider = _build_plugin_model_provider(installation_source=None)
         installation = SimpleNamespace(
             plugin_unique_identifier=provider.plugin_unique_identifier,
@@ -308,12 +309,10 @@ class TestPluginModelProviderCache:
         from core.plugin.plugin_service import PluginService
 
         with (
-            patch(f"{MODULE}.dify_config") as config,
             patch.object(
                 PluginService, "list_installations_from_ids", return_value=[installation]
             ) as list_installations,
         ):
-            config.PLUGIN_MODEL_PROVIDERS_CACHE_ENABLED = False
             client = Mock()
             client.fetch_model_providers.return_value = [provider]
 
@@ -1207,13 +1206,11 @@ class TestPluginModelProviderCacheInvalidation:
     def test_upgrade_plugin_with_marketplace_invalidates_model_provider_cache_for_tenant(self) -> None:
         """Marketplace upgrades invalidate only the mutated tenant provider cache."""
         with (
-            patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.FeatureService") as feature_service,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.marketplace") as marketplace,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
-            mock_config.MARKETPLACE_ENABLED = True
             feature_service.get_plugin_installation_permission.return_value = PluginInstallationPermissionModel(
                 restrict_to_marketplace_only=False,
                 plugin_installation_scope=PluginInstallationScope.ALL,
@@ -1317,13 +1314,11 @@ class TestPluginModelProviderCacheInvalidation:
     def test_install_from_marketplace_pkg_invalidates_model_provider_cache_for_tenant(self) -> None:
         """Marketplace package installs invalidate only the mutated tenant provider cache."""
         with (
-            patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.FeatureService") as feature_service,
             patch(f"{MODULE}.PluginService._check_plugin_installation_scope"),
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
-            mock_config.MARKETPLACE_ENABLED = True
             feature_service.get_system_features.return_value = SimpleNamespace(
                 plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
             )
@@ -1421,13 +1416,11 @@ class TestPluginModelProviderCacheInvalidation:
 
         with (
             patch(f"{MODULE}.db", SimpleNamespace(engine=sqlite_session.get_bind())),
-            patch(f"{MODULE}.dify_config") as mock_config,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.ProviderCredentialsCache") as credentials_cache,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
             patch("core.provider_manager.ProviderManager.invalidate_configurations_cache") as invalidate_configurations,
         ):
-            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             installer = installer_cls.return_value
             installer.list_plugins.return_value = [plugin]
             installer.uninstall.return_value = True

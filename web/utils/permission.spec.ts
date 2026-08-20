@@ -114,7 +114,7 @@ describe('permission', () => {
       expect(capabilities.canImportExportDSL).toBe(true)
       expect(capabilities.canDelete).toBe(true)
       expect(capabilities.canReleaseAndVersion).toBe(true)
-      expect(capabilities.canDeploy).toBe(true)
+      expect(capabilities.canDeploy).toBe(false)
       expect(capabilities.canMonitor).toBe(true)
       expect(capabilities.canConfigureTracing).toBe(true)
       expect(capabilities.canAccessLogAndAnnotation).toBe(true)

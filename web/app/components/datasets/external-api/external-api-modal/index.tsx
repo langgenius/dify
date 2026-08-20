@@ -11,12 +11,12 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
 
@@ -184,13 +184,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               </div>
             )}
           </div>
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
             className="absolute top-5 right-5"
             onClick={onCancel}
           >
             <RiCloseLine aria-hidden className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
-          </ActionButton>
+          </IconButton>
           <Form
             value={formData}
             onChange={handleDataChange}

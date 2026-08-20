@@ -37,14 +37,14 @@ const ModelIcon: FC<ModelIconProps> = ({
     modelName?.startsWith('o')
   )
     return (
-      <div className="flex items-center justify-center">
+      <span className="flex items-center justify-center">
         <OpenaiYellow className={cn('size-5', className)} />
-      </div>
+      </span>
     )
 
   if (iconUrl) {
     return (
-      <div
+      <span
         className={cn(
           'flex size-5 items-center justify-center',
           isDeprecated && 'opacity-50',
@@ -60,21 +60,21 @@ const ModelIcon: FC<ModelIconProps> = ({
           src={iconUrl}
           width={20}
         />
-      </div>
+      </span>
     )
   }
 
   return (
-    <div
+    <span
       className={cn(
         'flex h-5 w-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
         className,
       )}
     >
-      <div className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
+      <span className={cn('flex size-5 items-center justify-center opacity-35', iconClassName)}>
         <span aria-hidden className="i-custom-vender-other-group size-3 text-text-tertiary" />
-      </div>
-    </div>
+      </span>
+    </span>
   )
 }
 

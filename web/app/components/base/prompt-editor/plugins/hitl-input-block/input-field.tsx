@@ -48,6 +48,7 @@ const InputField: React.FC<InputFieldProps> = ({
   onChange,
   onCancel,
 }) => {
+  const outputVariableNameInputId = React.useId()
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<FormInputItem>(
     () => payload || createDefaultParagraphFormInput(),
@@ -235,17 +236,22 @@ const InputField: React.FC<InputFieldProps> = ({
           </div>
         </div>
         <div className="mt-3">
-          <div className="system-xs-medium text-text-secondary">
+          <label
+            htmlFor={outputVariableNameInputId}
+            className="block system-xs-medium text-text-secondary"
+          >
             {t(($) => $[`${i18nPrefix}.saveResponseAs`], { ns: 'workflow' })}
             <span className="relative system-xs-regular text-text-destructive-secondary">*</span>
-          </div>
+          </label>
           <Input
+            id={outputVariableNameInputId}
             className="mt-1.5"
             placeholder={t(($) => $[`${i18nPrefix}.saveResponseAsPlaceholder`], { ns: 'workflow' })}
             value={tempPayload.output_variable_name}
             onChange={(e) => {
               setTempPayload((prev) => ({ ...prev, output_variable_name: e.target.value }))
             }}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- The field appears in a dialog opened by an explicit edit action and is the primary editing target.
             autoFocus
           />
           {tempPayload.output_variable_name && variableNameError && (

@@ -4,7 +4,6 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
@@ -142,7 +141,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.professional,
+        type: 'professional',
       },
       webappCopyrightEnabled: true,
     })
@@ -366,7 +365,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       webappCopyrightEnabled: true,
     })
@@ -401,7 +400,7 @@ describe('SettingsModal', () => {
       enableBilling: false,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       webappCopyrightEnabled: false,
     })
@@ -429,7 +428,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       webappCopyrightEnabled: false,
     })
@@ -446,7 +445,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.professional,
+        type: 'professional',
       },
       webappCopyrightEnabled: true,
     })

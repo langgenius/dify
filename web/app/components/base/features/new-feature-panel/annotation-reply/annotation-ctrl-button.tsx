@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiEditLine, RiFileEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { addAnnotation } from '@/service/annotation'
@@ -52,12 +52,12 @@ const AnnotationCtrlButton: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton
+              <IconButton
                 aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}
                 onClick={onEdit}
               >
                 <RiEditLine aria-hidden className="size-4" />
-              </ActionButton>
+              </IconButton>
             }
           />
           <TooltipContent>
@@ -69,12 +69,12 @@ const AnnotationCtrlButton: FC<Props> = ({
         <Tooltip>
           <TooltipTrigger
             render={
-              <ActionButton
+              <IconButton
                 aria-label={t(($) => $['feature.annotation.add'], { ns: 'appDebug' })}
                 onClick={handleAdd}
               >
                 <RiFileEditLine aria-hidden className="size-4" />
-              </ActionButton>
+              </IconButton>
             }
           />
           <TooltipContent>

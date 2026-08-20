@@ -8,6 +8,7 @@ from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
+from models.account import Account
 
 
 def _build_converter():
@@ -28,7 +29,8 @@ def _build_converter():
         workflow_execution_id="run-1",
         call_depth=0,
     )
-    account = SimpleNamespace(id="acc-1", name="tester", email="tester@example.com")
+    account = Account(name="tester", email="tester@example.com")
+    account.id = "acc-1"
     return WorkflowResponseConverter(
         application_generate_entity=app_entity,
         user=account,

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
 vi.mock('@/app/components/workflow/store', () => ({

@@ -4,19 +4,19 @@ import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
   ComboboxStatus,
   ComboboxTrigger,
   ComboboxValue,
 } from '@langgenius/dify-ui/combobox'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounce } from 'ahooks'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Loading from '@/app/components/base/loading'
 import { ChunkingMode } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
@@ -65,8 +65,6 @@ function DocumentPickerTriggerValue({
   const isGeneralMode = document?.doc_form === ChunkingMode.text
   const isParentChild = document?.doc_form === ChunkingMode.parentChild
   const isQAMode = document?.doc_form === ChunkingMode.qa
-  const TypeIcon = isParentChild ? ParentChildChunk : GeneralChunk
-  const ArrowIcon = RiArrowDownSLine
   const parentModeLabel = (() => {
     if (!parentMode) return '--'
     return parentMode === 'paragraph'
@@ -82,10 +80,21 @@ function DocumentPickerTriggerValue({
           <span className="max-w-70 min-w-0 truncate system-md-semibold text-text-primary">
             {document?.name || '--'}
           </span>
-          <ArrowIcon className="size-4 shrink-0 text-text-primary" aria-hidden="true" />
+          <span
+            className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-primary"
+            aria-hidden="true"
+          />
         </span>
         <span className="flex h-3 max-w-75 items-center gap-0.5 text-text-tertiary">
-          <TypeIcon className="size-3 shrink-0" />
+          <span
+            className={cn(
+              'size-3 shrink-0',
+              isParentChild
+                ? 'i-custom-vender-knowledge-parent-child-chunk'
+                : 'i-custom-vender-knowledge-general-chunk',
+            )}
+            aria-hidden="true"
+          />
           <span className={cn('truncate system-2xs-medium-uppercase', isParentChild && 'mt-0.5')}>
             {isGeneralMode && t(($) => $['chunkingMode.general'], { ns: 'dataset' })}
             {isQAMode && t(($) => $['chunkingMode.qa'], { ns: 'dataset' })}
@@ -152,35 +161,46 @@ export function DocumentPicker({ datasetId, value, parentMode, onChange }: Props
           {(document) => <DocumentPickerTriggerValue document={document} parentMode={parentMode} />}
         </ComboboxValue>
       </ComboboxTrigger>
-      <ComboboxContent
-        placement="bottom-start"
-        sideOffset={0}
-        popupClassName="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-[5px]"
-      >
-        <ComboboxInputGroup className="h-8 min-h-8 px-2">
-          <span
-            className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-            aria-hidden="true"
-          />
-          <ComboboxInput
+      <ComboboxPortal>
+        <ComboboxPositioner placement="bottom-start" sideOffset={0}>
+          <ComboboxPopup
             aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-            placeholder={t(($) => $['operation.search'], { ns: 'common' })}
-            className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-          />
-        </ComboboxInputGroup>
-        <DocumentList className="mt-2 data-empty:mt-0" />
-        {data ? (
-          <ComboboxEmpty className="p-0">
-            <div className="mt-2 flex h-25 w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
-              {t(($) => $.noData, { ns: 'common' })}
-            </div>
-          </ComboboxEmpty>
-        ) : (
-          <ComboboxStatus className="mt-2 flex h-25 w-full items-center justify-center">
-            <Loading />
-          </ComboboxStatus>
-        )}
-      </ComboboxContent>
+            className="w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg backdrop-blur-[5px]"
+          >
+            <ComboboxInputGroup className="h-8 min-h-8 px-2">
+              <span
+                className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                aria-hidden="true"
+              />
+              <ComboboxInput
+                aria-label={t(($) => $['operation.search'], { ns: 'common' })}
+                placeholder={t(($) => $['operation.search'], { ns: 'common' })}
+                className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
+              />
+            </ComboboxInputGroup>
+            <DocumentList className="mt-2 data-empty:mt-0" />
+            <ComboboxEmpty className="p-0">
+              {data && (
+                <div className="mt-2 flex h-25 w-full items-center justify-center px-3 py-2 system-sm-regular text-text-tertiary">
+                  {t(($) => $.noData, { ns: 'common' })}
+                </div>
+              )}
+            </ComboboxEmpty>
+            <ComboboxStatus
+              className={cn(!data ? 'mt-2 flex h-25 w-full items-center justify-center' : 'h-0')}
+            >
+              {!data && (
+                <>
+                  <span className="sr-only">{t(($) => $.loading, { ns: 'common' })}</span>
+                  <div className="w-full" aria-hidden="true">
+                    <Loading />
+                  </div>
+                </>
+              )}
+            </ComboboxStatus>
+          </ComboboxPopup>
+        </ComboboxPositioner>
+      </ComboboxPortal>
     </Combobox>
   )
 }

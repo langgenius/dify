@@ -9,6 +9,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '../context-menu'
+import { IconButton } from '../icon-button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../tooltip'
 
 const meta = {
@@ -169,13 +170,9 @@ export const InTooltip: Story = {
     <Tooltip open>
       <TooltipTrigger
         render={
-          <button
-            type="button"
-            aria-label="Collapse sidebar"
-            className="inline-flex size-8 items-center justify-center rounded-lg border border-divider-subtle bg-components-button-secondary-bg text-text-secondary shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
+          <IconButton aria-label="Collapse sidebar" size="lg" variant="secondary">
             <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
-          </button>
+          </IconButton>
         }
       />
       <TooltipContent className="flex items-center gap-1">

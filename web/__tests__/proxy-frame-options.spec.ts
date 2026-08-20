@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { canEmbedPath, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({

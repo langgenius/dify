@@ -5,7 +5,7 @@ import type { AppIconType, Language, SiteConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import {
@@ -34,7 +34,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -205,7 +204,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const isCloudSandboxPlan = enableBilling && plan.type === Plan.sandbox
+  const isCloudSandboxPlan = enableBilling && plan.type === 'sandbox'
   const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
@@ -412,7 +411,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       <FieldLabel>
                         {t(($) => $[`${prefixSettings}.webName`], { ns: 'appOverview' })}
                       </FieldLabel>
-                      <FieldControl
+                      <Input
                         value={inputInfo.title}
                         onValueChange={(value) =>
                           setInputInfo((item) => ({ ...item, title: value }))
@@ -511,7 +510,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         </div>
                       </div>
                       <Field name="chat_color_theme" className="w-50 shrink-0">
-                        <FieldControl
+                        <Input
+                          aria-label={t(($) => $[`${prefixSettings}.chatColorTheme`], {
+                            ns: 'appOverview',
+                          })}
                           className="mb-1"
                           value={inputInfo.chatColorTheme ?? ''}
                           onValueChange={(value) =>

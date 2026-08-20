@@ -1,12 +1,12 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ChangeEvent } from 'react'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { defaultPlan } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import useWebAppBrand from '../use-web-app-brand'
@@ -136,10 +136,10 @@ const testUserProfile = {
 
 const createProviderContext = ({
   enableBilling = false,
-  planType = Plan.professional,
+  planType = 'professional',
 }: {
   enableBilling?: boolean
-  planType?: Plan
+  planType?: CloudPlan
 } = {}) => {
   return createMockProviderContextValue({
     enableBilling,
@@ -231,7 +231,7 @@ describe('useWebAppBrand', () => {
       mockUseProviderContext.mockReturnValue(
         createProviderContext({
           enableBilling: true,
-          planType: Plan.sandbox,
+          planType: 'sandbox',
         }),
       )
       customConfig = { ...customConfig, remove_webapp_brand: true }

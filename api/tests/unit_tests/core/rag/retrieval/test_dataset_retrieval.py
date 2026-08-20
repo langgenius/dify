@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, current_app
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -4961,6 +4962,7 @@ class TestSingleAndMultipleRetrieveCoverage:
 
         assert len(result) == 1
         assert result[0].provider == "external"
+        session.scalar.assert_called_once()
         mock_end.assert_called_once()
         assert retrieval.llm_usage.total_tokens == 2
 
@@ -5036,6 +5038,95 @@ class TestSingleAndMultipleRetrieveCoverage:
                 planning_strategy=PlanningStrategy.REACT_ROUTER,
             )
         assert results == []
+
+    def test_single_retrieve_rejects_dataset_outside_available_datasets(self, retrieval: DatasetRetrieval) -> None:
+        available_dataset = _dataset(id="ds-1", name="Available DS", description=None)
+        session = MagicMock()
+        session.scalar.return_value = _dataset(
+            id="ds-2",
+            name="Foreign DS",
+            provider="external",
+            tenant_id="tenant-2",
+            retrieval_model={},
+        )
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+                return_value=[],
+            ) as mock_external_retrieve,
+            patch.object(retrieval, "_on_query") as mock_on_query,
+        ):
+            mock_router_cls.return_value.invoke.return_value = ("ds-2", LLMUsage.empty_usage())
+            results = retrieval.single_retrieve(
+                session,
+                app_id="app-1",
+                tenant_id="tenant-1",
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[available_dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.REACT_ROUTER,
+            )
+
+        assert results == []
+        session.scalar.assert_not_called()
+        mock_external_retrieve.assert_not_called()
+        mock_on_query.assert_not_called()
+
+    def test_single_retrieve_rejects_allowlisted_dataset_owned_by_another_tenant(
+        self, retrieval: DatasetRetrieval, sqlite_session: Session
+    ) -> None:
+        dataset_id = str(uuid4())
+        caller_tenant_id = str(uuid4())
+        foreign_dataset = Dataset(
+            id=dataset_id,
+            tenant_id=str(uuid4()),
+            name="Foreign DS",
+            provider="external",
+            indexing_technique="high_quality",
+            retrieval_model={},
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add(foreign_dataset)
+        available_dataset = _dataset(
+            id=dataset_id,
+            tenant_id=caller_tenant_id,
+            name="Available DS",
+            description=None,
+        )
+
+        with (
+            patch("core.rag.retrieval.dataset_retrieval.ReactMultiDatasetRouter") as mock_router_cls,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.ExternalDatasetService.fetch_external_knowledge_retrieval",
+            ) as mock_external_retrieve,
+            patch(
+                "core.rag.retrieval.dataset_retrieval.RetrievalService.retrieve",
+            ) as mock_internal_retrieve,
+            patch.object(retrieval, "_on_query") as mock_on_query,
+        ):
+            mock_router_cls.return_value.invoke.return_value = (dataset_id, LLMUsage.empty_usage())
+            results = retrieval.single_retrieve(
+                sqlite_session,
+                app_id="app-1",
+                tenant_id=caller_tenant_id,
+                user_id="user-1",
+                user_from="workflow",
+                query="python",
+                available_datasets=[available_dataset],
+                model_instance=Mock(),
+                model_config=Mock(),
+                planning_strategy=PlanningStrategy.REACT_ROUTER,
+            )
+
+        assert results == []
+        mock_internal_retrieve.assert_not_called()
+        mock_external_retrieve.assert_not_called()
+        mock_on_query.assert_not_called()
 
     def test_single_retrieve_respects_metadata_filter_shortcuts(self, retrieval: DatasetRetrieval) -> None:
         dataset = _dataset(

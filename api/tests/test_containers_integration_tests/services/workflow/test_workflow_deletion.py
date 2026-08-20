@@ -116,7 +116,7 @@ class TestWorkflowDeletion:
             workflow_ref=WorkflowRef(tenant_id=tenant.id, owner_id=app.id, workflow_id=workflow_id),
         )
 
-        assert result is True
+        assert result == []
         db_session_with_containers.expire_all()
         assert db_session_with_containers.get(Workflow, workflow_id) is None
 

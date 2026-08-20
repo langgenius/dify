@@ -10,25 +10,18 @@ type ConfigState = {
   webPrefix: string | undefined
 }
 
-const { configState, getSystemFeatures, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(
-  () => ({
-    configState: {
-      cookieYesSiteKey: 'site-key',
-      isProd: true,
-      webPrefix: 'https://cloud.dify.ai',
-    } as ConfigState,
-    getSystemFeatures: vi.fn(),
-    mockHeadersGet: vi.fn(),
-    systemFeaturesQueryKey: ['console', 'system-features'] as const,
-  }),
-)
+const { configState, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(() => ({
+  configState: {
+    cookieYesSiteKey: 'site-key',
+    isProd: true,
+    webPrefix: 'https://cloud.dify.ai',
+  } as ConfigState,
+  mockHeadersGet: vi.fn(),
+  systemFeaturesQueryKey: ['console', 'system-features'] as const,
+}))
 
 vi.mock('@/features/system-features/server', () => ({
-  getSystemFeaturesQueryClient: () => queryClient,
-  systemFeaturesServerQueryOptions: () => ({
-    queryFn: getSystemFeatures,
-    queryKey: systemFeaturesQueryKey,
-  }),
+  getCachedSystemFeatures: () => queryClient.getQueryData(systemFeaturesQueryKey),
 }))
 
 vi.mock('@/config', () => ({
@@ -176,6 +169,5 @@ describe('CloudAnalytics', () => {
 
     expect(container.querySelector('script')).toBeNull()
     expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
-    expect(getSystemFeatures).not.toHaveBeenCalled()
   })
 })

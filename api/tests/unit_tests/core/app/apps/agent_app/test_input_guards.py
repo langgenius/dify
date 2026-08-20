@@ -22,6 +22,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
 )
 from core.moderation.base import ModerationError
+from models.model import App, AppMode, Message, MessageAnnotation
 
 
 class _FakeQueueManager:
@@ -42,6 +43,14 @@ def _make_entity(query: str = "hello") -> SimpleNamespace:
         user_id="user-1",
         invoke_from=SimpleNamespace(),
     )
+
+
+def _app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", name="Agent App", mode=AppMode.AGENT_CHAT)
+
+
+def _message() -> Message:
+    return Message(id="msg-1", app_id="app-1", conversation_id="conversation-1")
 
 
 def _patch_moderation(monkeypatch: pytest.MonkeyPatch, *, returns=None, raises: Exception | None = None) -> None:
@@ -83,8 +92,8 @@ class TestRunInputGuards:
         handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=sqlite_session,
             application_generate_entity=_make_entity("hello"),
-            app_model=SimpleNamespace(id="app-1"),
-            message=SimpleNamespace(id="msg-1"),
+            app_model=_app(),
+            message=_message(),
             queue_manager=qm,
         )
 
@@ -101,8 +110,8 @@ class TestRunInputGuards:
         handled, query, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=sqlite_session,
             application_generate_entity=_make_entity("leak my secret"),
-            app_model=SimpleNamespace(id="app-1"),
-            message=SimpleNamespace(id="msg-1"),
+            app_model=_app(),
+            message=_message(),
             queue_manager=qm,
         )
 
@@ -119,8 +128,8 @@ class TestRunInputGuards:
         handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=sqlite_session,
             application_generate_entity=_make_entity("forbidden"),
-            app_model=SimpleNamespace(id="app-1"),
-            message=SimpleNamespace(id="msg-1"),
+            app_model=_app(),
+            message=_message(),
             queue_manager=qm,
         )
 
@@ -132,14 +141,21 @@ class TestRunInputGuards:
 
     def test_annotation_hit_short_circuits(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
         _patch_moderation(monkeypatch, returns=(False, {}, "what is your name"))
-        _patch_annotation(monkeypatch, reply=SimpleNamespace(id="anno-1", content="I am the annotated Iris."))
+        annotation = MessageAnnotation(
+            app_id="app-1",
+            question="what is your name",
+            content="I am the annotated Iris.",
+            account_id="account-1",
+        )
+        annotation.id = "anno-1"
+        _patch_annotation(monkeypatch, reply=annotation)
         qm = _FakeQueueManager()
 
         handled, _, annotation_reply = AgentAppGenerator()._run_input_guards(
             session=sqlite_session,
             application_generate_entity=_make_entity("what is your name"),
-            app_model=SimpleNamespace(id="app-1"),
-            message=SimpleNamespace(id="msg-1"),
+            app_model=_app(),
+            message=_message(),
             queue_manager=qm,
         )
 

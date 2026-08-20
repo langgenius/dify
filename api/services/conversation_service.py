@@ -228,7 +228,7 @@ class ConversationService:
                 )
                 if retired_binding_id is None:
                     raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
-            session.delete(conversation)
+            conversation.is_deleted = True
             session.commit()
         except Exception:
             session.rollback()
@@ -238,7 +238,12 @@ class ConversationService:
                 tenant_id=app_model.tenant_id,
                 binding_ids=(retired_binding_id,),
             )
-        delete_conversation_related_data.delay(conversation.id)
+        try:
+            delete_conversation_related_data.delay(conversation.id)
+        except Exception:
+            # The soft-deleted row is a durable cleanup marker picked up by the
+            # periodic sweeper, so a broker outage must not resurrect or expose it.
+            logger.exception("Failed to enqueue cleanup for conversation %s", conversation.id)
 
     @classmethod
     def get_conversational_variable(
