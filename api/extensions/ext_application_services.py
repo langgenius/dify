@@ -16,11 +16,13 @@ from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_query_repository import AccountQueryRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.step_by_step_tour_repository import SQLAlchemyStepByStepTourStateRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
@@ -46,9 +48,12 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.notification_gateway import BillingNotificationGateway
+from services.notification_service import NotificationService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.step_by_step_tour_service import StepByStepTourService
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.webapp_access_query_service import (
     WebAppAccessQueryService,
@@ -98,6 +103,8 @@ class ApplicationServices:
     setup: SetupService
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
+    notifications: NotificationService
+    step_by_step_tour: StepByStepTourService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
 
@@ -110,6 +117,7 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
+    account_queries = AccountQueryRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
@@ -171,6 +179,16 @@ def build_application_services(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
+        ),
+        notifications=NotificationService(
+            accounts=account_queries,
+            notifications=BillingNotificationGateway(),
+        ),
+        step_by_step_tour=StepByStepTourService(
+            accounts=account_queries,
+            states=SQLAlchemyStepByStepTourStateRepository(session_factory=database_client),
+            enabled=dify_config.ENABLE_STEP_BY_STEP_TOUR,
+            rollout_started_at=dify_config.STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT,
         ),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(

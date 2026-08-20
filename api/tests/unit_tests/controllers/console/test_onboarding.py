@@ -2,47 +2,44 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from inspect import unwrap
-from unittest.mock import Mock
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 
 import pytest
-from flask import Flask
 from pydantic import ValidationError
 
-from controllers.console.onboarding import (
-    StepByStepTourStateApi,
-    StepByStepTourStatePatchPayload,
-)
-from extensions.ext_database import db
-from models.account import Account, AccountStatus
-from services.step_by_step_tour_service import StepByStepTourService
+from controllers.console.onboarding import StepByStepTourStateApi, StepByStepTourStatePatchPayload
+from machinery.context import RequestContext
+from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult
 
 
-def _account() -> Account:
-    account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
-    account.id = "account-1"
-    return account
+def _request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
 
 
-def _state_response() -> dict[str, object]:
-    return {
-        "first_workspace_id": "workspace-1",
-        "skipped": False,
-        "completed_task_ids": ["home"],
-        "manually_enabled_workspace_ids": [],
-        "manually_disabled_workspace_ids": [],
-        "updated_at": datetime(2026, 6, 28, tzinfo=UTC),
-    }
+def _state_result() -> StepByStepTourResult:
+    return StepByStepTourResult(
+        first_workspace_id="workspace-1",
+        completed_task_ids=("home",),
+        updated_at=datetime(2026, 6, 28, tzinfo=UTC),
+    )
 
 
-def test_get_step_by_step_tour_state(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    get_state = Mock(return_value=_state_response())
-    monkeypatch.setattr(StepByStepTourService, "get_state", get_state)
-
+def test_get_step_by_step_tour_state_delegates_with_request_context() -> None:
+    service = Mock()
+    service.get_state.return_value = _state_result()
+    services = SimpleNamespace(step_by_step_tour=service)
     api = StepByStepTourStateApi()
     method = unwrap(api.get)
+    context = _request_context()
 
-    with app.test_request_context("/console/api/onboarding/step-by-step-tour/state", method="GET"):
-        result = method(api, "workspace-1", _account())
+    with patch("controllers.console.onboarding.application_services", return_value=services):
+        result = method(api, context)
 
     assert result == {
         "first_workspace_id": "workspace-1",
@@ -52,35 +49,26 @@ def test_get_step_by_step_tour_state(app: Flask, monkeypatch: pytest.MonkeyPatch
         "manually_disabled_workspace_ids": [],
         "updated_at": "2026-06-28T00:00:00Z",
     }
-    get_state.assert_called_once()
-    assert get_state.call_args.kwargs["current_tenant_id"] == "workspace-1"
-    assert get_state.call_args.kwargs["session"] is db.session
+    service.get_state.assert_called_once_with(context)
 
 
-def test_patch_step_by_step_tour_state_passes_action_payload(
-    app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    patch_state = Mock(return_value=_state_response())
-    monkeypatch.setattr(StepByStepTourService, "patch_state", patch_state)
-
+def test_patch_step_by_step_tour_state_maps_transport_payload_to_command() -> None:
+    service = Mock()
+    service.patch_state.return_value = _state_result()
+    services = SimpleNamespace(step_by_step_tour=service)
     api = StepByStepTourStateApi()
     method = unwrap(api.patch)
-    payload = {"action": "complete_task", "task_id": "studio"}
+    context = _request_context()
+    payload = StepByStepTourStatePatchPayload.model_validate({"action": "complete_task", "task_id": "studio"})
 
-    req_data = StepByStepTourStatePatchPayload.model_validate(payload)
-    with app.test_request_context(
-        "/console/api/onboarding/step-by-step-tour/state",
-        method="PATCH",
-        json=payload,
-    ):
-        result = method(api, req_data, "workspace-1", _account())
+    with patch("controllers.console.onboarding.application_services", return_value=services):
+        result = method(api, payload, context)
 
     assert result["completed_task_ids"] == ["home"]
-    patch_state.assert_called_once()
-    assert patch_state.call_args.kwargs["current_tenant_id"] == "workspace-1"
-    assert patch_state.call_args.kwargs["patch"] == payload
-    assert patch_state.call_args.kwargs["session"] is db.session
+    service.patch_state.assert_called_once_with(
+        context,
+        StepByStepTourPatch(action="complete_task", task_id="studio"),
+    )
 
 
 def test_patch_payload_rejects_non_action_fields() -> None:
