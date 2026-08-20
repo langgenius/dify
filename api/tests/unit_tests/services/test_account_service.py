@@ -27,6 +27,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     NoPermissionError,
 )
 
@@ -350,6 +351,50 @@ class TestAccountService:
 
         persisted_account = sqlite_session.scalar(select(Account).where(Account.email == "test@example.com"))
         assert persisted_account is result
+
+    def test_create_account_suspended_email_domain(
+        self, sqlite_session: Session, mock_external_service_dependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.BILLING_ENABLED", True):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.create_account(
+                    email="user@suspended.example",
+                    name="Test User",
+                    interface_language="en-US",
+                    session=sqlite_session,
+                )
+
+    def test_get_user_through_email_rejects_suspended_email_domain(
+        self, sqlite_session: Session, mock_external_service_dependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.BILLING_ENABLED", True):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.get_user_through_email("user@suspended.example", session=sqlite_session)
+
+    def test_get_account_freeze_type_is_enabled_only_when_billing_is_enabled(
+        self, mock_external_service_dependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
+
+        with patch("services.account_service.dify_config.BILLING_ENABLED", True):
+            assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
+        with patch("services.account_service.dify_config.BILLING_ENABLED", False):
+            assert AccountService.get_account_freeze_type("frozen@example.com") is None
+
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
+            "frozen@example.com"
+        )
 
     def test_update_login_info_overwrites_initial_registration_ip(
         self, sqlite_session: Session, mock_external_service_dependencies

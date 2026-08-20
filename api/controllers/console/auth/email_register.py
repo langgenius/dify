@@ -23,9 +23,15 @@ from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
-from services.errors.account import AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
-from ..error import AccountInFreezeError, EmailSendIpLimitError, SeatsLimitExceeded
+from ..error import AccountInFreezeError, EmailDomainSuspendedError, EmailSendIpLimitError, SeatsLimitExceeded
 from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
 
 
@@ -98,8 +104,12 @@ class EmailRegisterSendEmailApi(Resource):
         if args.language is not None and args.language in languages:
             language = args.language
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
-            raise AccountInFreezeError()
+        if dify_config.BILLING_ENABLED:
+            freeze_type = BillingService.get_email_freeze_type(normalized_email)
+            if freeze_type:
+                if freeze_type == "email_domain_suspended":
+                    raise EmailDomainSuspendedError()
+                raise AccountInFreezeError()
 
         account = AccountService.get_account_by_email_with_case_fallback(args.email, session=db.session())
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
@@ -214,5 +224,7 @@ class EmailRegisterResetApi(Resource):
             )
         except SeatsLimitExceededError:
             raise SeatsLimitExceeded()
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc

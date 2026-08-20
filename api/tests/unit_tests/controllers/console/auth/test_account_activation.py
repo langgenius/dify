@@ -15,7 +15,7 @@ from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from models.account import AccountStatus, TenantAccountRole
 
 
@@ -359,7 +359,7 @@ class TestActivateApi:
                 api.post()
 
     @patch("controllers.console.auth.activate.dify_config.BILLING_ENABLED", True)
-    @patch("controllers.console.auth.activate.BillingService.is_email_in_freeze")
+    @patch("controllers.console.auth.activate.BillingService.get_email_freeze_type")
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
@@ -368,7 +368,7 @@ class TestActivateApi:
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
-        mock_is_email_in_freeze,
+        mock_get_freeze_type,
         app: Flask,
         mock_invitation,
         mock_account,
@@ -376,7 +376,7 @@ class TestActivateApi:
         """Frozen deleted-account emails cannot be reactivated through invitation links."""
         mock_account.email = "Invitee@Example.com"
         mock_get_invitation.return_value = mock_invitation
-        mock_is_email_in_freeze.return_value = True
+        mock_get_freeze_type.return_value = "freeze"
 
         with app.test_request_context(
             "/activate",
@@ -394,7 +394,45 @@ class TestActivateApi:
             with pytest.raises(AccountInFreezeError):
                 api.post()
 
-        mock_is_email_in_freeze.assert_called_once_with("Invitee@Example.com")
+        mock_get_freeze_type.assert_called_once_with("Invitee@Example.com")
+        mock_revoke_token.assert_not_called()
+        mock_db.session.commit.assert_not_called()
+        assert mock_account.status == AccountStatus.PENDING
+
+    @patch("controllers.console.auth.activate.dify_config.BILLING_ENABLED", True)
+    @patch("controllers.console.auth.activate.BillingService.get_email_freeze_type")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
+    @patch("controllers.console.auth.activate.db")
+    def test_activation_rejects_suspended_email_domain(
+        self,
+        mock_db,
+        mock_revoke_token,
+        mock_get_invitation,
+        mock_get_freeze_type,
+        app: Flask,
+        mock_invitation,
+        mock_account,
+    ):
+        mock_get_invitation.return_value = mock_invitation
+        mock_get_freeze_type.return_value = "email_domain_suspended"
+
+        with app.test_request_context(
+            "/activate",
+            method="POST",
+            json={
+                "workspace_id": "workspace-123",
+                "email": "invitee@example.com",
+                "token": "valid_token",
+                "name": "John Doe",
+                "interface_language": "en-US",
+                "timezone": "UTC",
+            },
+        ):
+            with pytest.raises(EmailDomainSuspendedError):
+                ActivateApi().post()
+
+        mock_get_freeze_type.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_not_called()
         mock_db.session.commit.assert_not_called()
         assert mock_account.status == AccountStatus.PENDING

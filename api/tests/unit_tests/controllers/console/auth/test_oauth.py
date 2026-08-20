@@ -7,6 +7,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from flask import Flask
 
+from configs import dify_config
 from controllers.console.auth.oauth import (
     OAuthCallback,
     OAuthLogin,
@@ -16,7 +17,12 @@ from controllers.console.auth.oauth import (
 )
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
-from services.errors.account import AccountRegisterError
+from services.errors.account import (
+    AccountRegisterError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 
 
 class TestGetOAuthProviders:
@@ -227,6 +233,38 @@ class TestOAuthCallback:
             ip_address="203.0.113.10",
         )
         mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_message"),
+        [
+            (
+                EmailDomainSuspendedRegistrationError(),
+                "This email domain has been suspended.",
+            ),
+            (AccountRegisterError("This email account is frozen."), "This email account is frozen."),
+        ],
+    )
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth._generate_account")
+    @patch("controllers.console.auth.oauth.redirect")
+    def test_should_translate_registration_freeze_errors(
+        self,
+        mock_redirect,
+        mock_generate_account,
+        mock_get_providers,
+        resource: OAuthCallback,
+        app: Flask,
+        oauth_setup,
+        service_error,
+        expected_message,
+    ):
+        mock_get_providers.return_value = {"github": oauth_setup["provider"]}
+        mock_generate_account.side_effect = service_error
+
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+            resource.get("github")
+
+        mock_redirect.assert_called_once_with(f"{dify_config.CONSOLE_WEB_URL}/signin?message={expected_message}")
 
     @pytest.mark.parametrize(
         ("exception", "expected_error"),
@@ -544,6 +582,36 @@ class TestAccountGeneration:
                     )
                 else:
                     mock_register_service.register.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("freeze_type", "expected_error"),
+        [
+            ("email_domain_suspended", EmailDomainSuspendedRegistrationError),
+            ("freeze", AccountRegisterError),
+        ],
+    )
+    @patch("controllers.console.auth.oauth.dify_config.BILLING_ENABLED", True)
+    @patch("controllers.console.auth.oauth.BillingService.get_email_freeze_type")
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
+    @patch("controllers.console.auth.oauth.FeatureService")
+    def test_should_reject_registration_for_frozen_email(
+        self,
+        mock_feature_service,
+        mock_get_account,
+        mock_get_freeze_type,
+        freeze_type,
+        expected_error,
+        app: Flask,
+        user_info: OAuthUserInfo,
+    ):
+        mock_feature_service.get_system_features.return_value.is_allow_register = False
+        mock_get_freeze_type.return_value = freeze_type
+
+        with app.test_request_context("/"):
+            with pytest.raises(expected_error):
+                _generate_account("github", user_info)
+
+        mock_get_freeze_type.assert_called_once_with("test@example.com")
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
     @patch("controllers.console.auth.oauth.FeatureService")

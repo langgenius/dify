@@ -13,7 +13,7 @@ from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailCodeError,
 )
-from controllers.console.error import AccountInFreezeError
+from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountAvatarApi,
     AccountDeleteApi,
@@ -478,7 +478,7 @@ class TestChangeEmailApis:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=False),
+            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
             patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=False),
         ):
             with pytest.raises(EmailAlreadyInUseError):
@@ -500,7 +500,7 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=False),
+            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
             patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=True),
         ):
             result = method(api)
@@ -521,7 +521,32 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=True),
+            patch(
+                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+                return_value="freeze",
+            ),
         ):
             with pytest.raises(AccountInFreezeError):
+                method(api)
+
+    def test_email_domain_is_suspended(self, app: Flask):
+        api = CheckEmailUnique()
+        method = inspect.unwrap(api.post)
+
+        payload = {"email": "user@suspended.example"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(
+                type(console_ns),
+                "payload",
+                new_callable=PropertyMock,
+                return_value=payload,
+            ),
+            patch(
+                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+                return_value="email_domain_suspended",
+            ),
+        ):
+            with pytest.raises(EmailDomainSuspendedError):
                 method(api)

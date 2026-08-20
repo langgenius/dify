@@ -25,6 +25,9 @@ _http_client: httpx.Client = get_pooled_http_client(
 )
 
 
+EmailFreezeType = Literal["freeze", "email_domain_suspended"]
+
+
 class SubscriptionPlan(TypedDict):
     """Tenant subscriptionplan information."""
 
@@ -472,13 +475,26 @@ class BillingService:
         return cls._send_request("DELETE", "/account", params=params)
 
     @classmethod
-    def is_email_in_freeze(cls, email: str) -> bool:
+    def get_email_freeze_type(cls, email: str) -> EmailFreezeType | None:
         params = {"email": email}
         try:
             response = cls._send_request("GET", "/account/in-freeze", params=params)
-            return bool(response.get("data", False))
+            if not response.get("data", False):
+                return None
+
+            freeze_type = response.get("freeze_type") or response.get("freezeType")
+            if freeze_type in ("freeze", "email_domain_suspended"):
+                return freeze_type
+
+            # Keep compatibility with older billing services that only return
+            # the boolean `data` field.
+            return "freeze"
         except Exception:
-            return False
+            return None
+
+    @classmethod
+    def is_email_in_freeze(cls, email: str) -> bool:
+        return cls.get_email_freeze_type(email) is not None
 
     @classmethod
     def update_account_deletion_feedback(cls, email: str, feedback: str):
