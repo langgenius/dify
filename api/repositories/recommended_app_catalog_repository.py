@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.languages import languages
-from extensions.ext_redis import redis_client
+from extensions.ext_redis import RedisClientWrapper
 from models.model import App, RecommendedApp
 from services.app_dsl_service import AppDslService
 from services.recommended_app_query_service import (
@@ -26,34 +26,10 @@ logger = logging.getLogger(__name__)
 _CATEGORY_ORDER_KEY_PREFIX = "explore:apps:category_order"
 
 
-def _order_categories(categories: set[str], language: str) -> list[str]:
-    try:
-        raw_categories = redis_client.get(f"{_CATEGORY_ORDER_KEY_PREFIX}:{language}")
-    except Exception:
-        logger.exception("Failed to read recommended app category order from Redis.")
-        return sorted(categories)
-
-    if not raw_categories:
-        return sorted(categories)
-    if isinstance(raw_categories, bytes):
-        raw_categories = raw_categories.decode("utf-8")
-
-    try:
-        configured_order = json.loads(raw_categories)
-    except (TypeError, json.JSONDecodeError):
-        logger.warning("Invalid recommended app category order payload for language %s.", language)
-        return sorted(categories)
-
-    if not isinstance(configured_order, list):
-        return sorted(categories)
-
-    string_order = [category for category in configured_order if isinstance(category, str)]
-    return string_order or sorted(categories)
-
-
 class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
-    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+    def __init__(self, session_factory: sessionmaker[Session], *, redis: RedisClientWrapper) -> None:
         self._session_factory = session_factory
+        self._redis = redis
 
     @override
     def list_recommended(self, language: str) -> RecommendedAppCatalogPage:
@@ -64,7 +40,7 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
             records, categories = self._map_rows(recommended_apps, session=session)
         return RecommendedAppCatalogPage(
             recommended_apps=records,
-            categories=tuple(_order_categories(categories, language)),
+            categories=tuple(self._order_categories(categories, language)),
         )
 
     @override
@@ -97,6 +73,30 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
                 )
                 is not None
             )
+
+    def _order_categories(self, categories: set[str], language: str) -> list[str]:
+        try:
+            raw_categories = self._redis.get(f"{_CATEGORY_ORDER_KEY_PREFIX}:{language}")
+        except Exception:
+            logger.exception("Failed to read recommended app category order from Redis.")
+            return sorted(categories)
+
+        if not raw_categories:
+            return sorted(categories)
+        if isinstance(raw_categories, bytes):
+            raw_categories = raw_categories.decode("utf-8")
+
+        try:
+            configured_order = json.loads(raw_categories)
+        except (TypeError, json.JSONDecodeError):
+            logger.warning("Invalid recommended app category order payload for language %s.", language)
+            return sorted(categories)
+
+        if not isinstance(configured_order, list):
+            return sorted(categories)
+
+        string_order = [category for category in configured_order if isinstance(category, str)]
+        return string_order or sorted(categories)
 
     @staticmethod
     def _list_rows(

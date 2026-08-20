@@ -129,7 +129,7 @@ def build_application_services(
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
     trial_app_enabled = FeatureService.is_trial_app_enabled()
-    database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client)
+    database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
     builtin_catalog = BuiltinRecommendedAppCatalogGateway()
     remote_catalog = RemoteRecommendedAppCatalogGateway()
     recommended_app_catalog = RecommendedAppCatalogRouter(

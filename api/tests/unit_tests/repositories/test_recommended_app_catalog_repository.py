@@ -6,6 +6,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_redis import RedisClientWrapper
 from models.model import App, AppMode, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.recommended_app_query_service import RecommendedAppDetailRecord
@@ -64,13 +65,30 @@ def _add_catalog_app(
     return app
 
 
+def _redis() -> MagicMock:
+    redis = MagicMock(spec=RedisClientWrapper)
+    redis.get.return_value = None
+    return redis
+
+
+def _repository(
+    session_factory: sessionmaker[Session],
+    *,
+    redis: RedisClientWrapper | None = None,
+) -> DatabaseRecommendedAppCatalogRepository:
+    return DatabaseRecommendedAppCatalogRepository(
+        session_factory,
+        redis=redis if redis is not None else _redis(),
+    )
+
+
 def test_list_recommended_returns_typed_records_and_falls_back_language(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory() as session:
         app = _add_catalog_app(session)
 
-    repository = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory)
     page = repository.list_recommended("fr-FR")
 
     assert page.categories == ("Workflow",)
@@ -92,7 +110,7 @@ def test_list_recommended_skips_private_apps_and_apps_without_sites(
         _add_catalog_app(session, is_public=False)
         _add_catalog_app(session, with_site=False)
 
-    repository = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory)
 
     assert repository.list_recommended("en-US").recommended_apps == ()
 
@@ -103,16 +121,14 @@ def test_list_recommended_does_not_restore_legacy_category_when_categories_are_e
     with sqlite_session_factory() as session:
         app = _add_catalog_app(session, categories=[])
 
-    page = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory).list_recommended("en-US")
+    page = _repository(sqlite_session_factory).list_recommended("en-US")
 
     record = next(item for item in page.recommended_apps if item.app_id == app.id)
     assert record.categories == ()
     assert "Workflow" not in page.categories
 
 
-@patch("repositories.recommended_app_catalog_repository.redis_client.get")
 def test_list_recommended_uses_redis_category_order(
-    redis_get: MagicMock,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -133,49 +149,47 @@ def test_list_recommended_uses_redis_category_order(
         assert checked_out_connections == 0
         return json.dumps(["C", "A", "B"]).encode()
 
-    redis_get.side_effect = get_category_order
+    redis = _redis()
+    redis.get.side_effect = get_category_order
     event.listen(sqlite_engine, "checkout", record_checkout)
     event.listen(sqlite_engine, "checkin", record_checkin)
     try:
-        page = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory).list_recommended("en-US")
+        page = _repository(sqlite_session_factory, redis=redis).list_recommended("en-US")
     finally:
         event.remove(sqlite_engine, "checkout", record_checkout)
         event.remove(sqlite_engine, "checkin", record_checkin)
 
     assert page.categories == ("C", "A", "B")
-    redis_get.assert_called_once_with("explore:apps:category_order:en-US")
+    redis.get.assert_called_once_with("explore:apps:category_order:en-US")
 
 
-@patch("repositories.recommended_app_catalog_repository.redis_client.get")
 def test_list_recommended_sorts_categories_without_redis_order(
-    redis_get: MagicMock,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    redis_get.return_value = None
+    redis = _redis()
     with sqlite_session_factory() as session:
         _add_catalog_app(session, categories=["B", "A", "C"])
 
-    page = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory).list_recommended("en-US")
+    page = _repository(sqlite_session_factory, redis=redis).list_recommended("en-US")
 
     assert page.categories == ("A", "B", "C")
 
 
-@patch("repositories.recommended_app_catalog_repository.redis_client.get")
 def test_list_learn_dify_filters_flag_and_hides_page_categories(
-    redis_get: MagicMock,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     with sqlite_session_factory() as session:
         learn_app = _add_catalog_app(session, is_learn_dify=True)
         _add_catalog_app(session, is_learn_dify=False)
 
-    repository = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory)
+    redis = _redis()
+    repository = _repository(sqlite_session_factory, redis=redis)
     page = repository.list_learn_dify("fr-FR")
 
     assert [app.app_id for app in page.recommended_apps] == [learn_app.id]
     assert page.recommended_apps[0].categories == ("Workflow",)
     assert page.categories == ()
-    redis_get.assert_not_called()
+    redis.get.assert_not_called()
 
 
 def test_membership_does_not_export_dsl(
@@ -184,7 +198,7 @@ def test_membership_does_not_export_dsl(
     with sqlite_session_factory() as session:
         app = _add_catalog_app(session)
 
-    repository = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory)
     with patch(
         "repositories.recommended_app_catalog_repository.AppDslService.export_dsl",
         return_value="exported yaml",
@@ -210,7 +224,7 @@ def test_detail_rejects_unlisted_or_private_apps(sqlite_session_factory: session
         unlisted_app = _add_catalog_app(session, is_listed=False)
         missing_app_id = str(uuid4())
 
-    repository = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory)
 
     assert repository.get_detail(private_app.id) is None
     assert repository.get_detail(unlisted_app.id) is None
@@ -224,7 +238,7 @@ def test_detail_does_not_require_site(sqlite_session_factory: sessionmaker[Sessi
     with sqlite_session_factory() as session:
         app = _add_catalog_app(session, with_site=False)
 
-    repository = DatabaseRecommendedAppCatalogRepository(sqlite_session_factory)
+    repository = _repository(sqlite_session_factory)
     with patch(
         "repositories.recommended_app_catalog_repository.AppDslService.export_dsl",
         return_value="exported yaml",

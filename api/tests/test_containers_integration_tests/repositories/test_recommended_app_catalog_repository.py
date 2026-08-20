@@ -1,8 +1,9 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
+from extensions.ext_redis import RedisClientWrapper
 from models.model import App, RecommendedApp, Site
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.recommended_app_query_service import RecommendedAppDetailRecord
@@ -57,7 +58,12 @@ def _add_catalog_app(
 
 
 def _repository(session: Session) -> DatabaseRecommendedAppCatalogRepository:
-    return DatabaseRecommendedAppCatalogRepository(sessionmaker(bind=session.get_bind(), expire_on_commit=False))
+    redis = MagicMock(spec=RedisClientWrapper)
+    redis.get.return_value = None
+    return DatabaseRecommendedAppCatalogRepository(
+        sessionmaker(bind=session.get_bind(), expire_on_commit=False),
+        redis=redis,
+    )
 
 
 def test_list_maps_postgres_models_with_owned_session(
