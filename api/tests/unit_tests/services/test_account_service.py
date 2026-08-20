@@ -1777,10 +1777,17 @@ class TestTenantService:
         assert membership.current is True
         caller_session.close()
 
-    @pytest.mark.parametrize("method_name", ["create_owner_tenant", "create_owner_tenant_if_not_exist"])
+    @pytest.mark.parametrize(
+        ("method_name", "create"),
+        [
+            ("create_owner_tenant", TenantService.create_owner_tenant),
+            ("create_owner_tenant_if_not_exist", TenantService.create_owner_tenant_if_not_exist),
+        ],
+    )
     def test_owner_tenant_creation_resumes_provisioning_after_rbac_failure(
         self,
         method_name: str,
+        create: Callable[..., Tenant],
         sqlite_session_factory: sessionmaker[Session],
         mock_rsa_dependencies: MagicMock,
         mock_external_service_dependencies: _MockDependencies,
@@ -1816,7 +1823,6 @@ class TestTenantService:
                 ),
                 patch("services.account_service.tenant_was_created.send") as tenant_created,
             ):
-                create = getattr(TenantService, method_name)
                 with pytest.raises(EnterpriseAPIError, match="unavailable"):
                     create(account, is_setup=True, session=service_session)
 
