@@ -15,6 +15,8 @@ from benchmarks.capacity_protocol import (
 )
 from benchmarks.scenario import load_scenario_manifest
 from benchmarks.schemas import RunSample
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.shell import DifyShellLayerConfig
 
 
 _CANONICAL_FILE_REFERENCE = "dify-file-ref:eyJyZWNvcmRfaWQiOiJyZWNvcmQifQ=="
@@ -270,6 +272,26 @@ def test_config_request_keeps_three_skills_and_ten_files() -> None:
     assert len(files) == 10
     assert skills[0]["name"] == "skill-0-run"
     assert files[0]["name"] == "file-0-run.bin"
+
+
+def test_runtime_request_uses_current_layer_config_contracts() -> None:
+    request = build_capacity_run_request(
+        scenario=load_scenario_manifest().get("shell"),
+        benchmark_run_id="run",
+        binding_ref="binding",
+        session_snapshot=None,
+        suspend=False,
+    )
+
+    composition = cast(dict[str, object], request["composition"])
+    layers = cast(list[dict[str, object]], composition["layers"])
+    shell_layer = next(layer for layer in layers if layer["name"] == "shell")
+    config = cast(dict[str, object], shell_layer["config"])
+    execution_context_layer = next(layer for layer in layers if layer["name"] == "execution_context")
+    execution_context = cast(dict[str, object], execution_context_layer["config"])
+
+    assert DifyShellLayerConfig.model_validate(config) == DifyShellLayerConfig()
+    assert DifyExecutionContextLayerConfig.model_validate(execution_context).app_id == "benchmark-app"
 
 
 def test_file_run_exports_binding_payload_through_current_file_contract() -> None:

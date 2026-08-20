@@ -486,7 +486,7 @@ def build_capacity_run_request(
                 "name": "shell",
                 "type": "dify.shell",
                 "deps": shell_dependencies,
-                "config": {"agent_stub_drive_ref": f"agent-{benchmark_run_id}"},
+                "config": {},
             }
         )
     if scenario.workload == "config":
@@ -554,6 +554,7 @@ def _execution_context(benchmark_run_id: str) -> dict[str, object]:
         "tenant_id": "benchmark-tenant",
         "user_id": benchmark_run_id,
         "user_from": "account",
+        "app_id": "benchmark-app",
         "agent_id": benchmark_run_id,
         "agent_config_version_id": "benchmark-config",
         "agent_config_version_kind": "snapshot",

@@ -59,6 +59,15 @@ class PluginInvokeRequest(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
 
+class AgentLLMInvokeRequest(BaseModel):
+    """Subset of the API-owned Agent LLM gateway request required by the fake."""
+
+    caller: dict[str, JsonValue]
+    target: dict[str, JsonValue]
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 class PrepareLedgerRequest(BaseModel):
     """Register capability identity before layer initialization calls the Stub."""
 
@@ -290,6 +299,36 @@ async def invoke_llm(tenant_id: str, request: PluginInvokeRequest) -> StreamingR
     """Emit deterministic Graphon LLM chunks using the production daemon envelope."""
     del tenant_id
     scenario, benchmark_run_id = await _resolve_benchmark_identity(request)
+    return await _invoke_benchmark_llm(
+        request=request,
+        scenario=scenario,
+        benchmark_run_id=benchmark_run_id,
+    )
+
+
+@app.post("/inner/api/agent/llm/invoke")
+async def invoke_agent_llm(request: AgentLLMInvokeRequest) -> StreamingResponse:
+    """Emit deterministic chunks through the current API-owned Agent LLM gateway."""
+    benchmark_run_id = request.caller.get("user_id")
+    if not isinstance(benchmark_run_id, str) or not benchmark_run_id:
+        raise HTTPException(status_code=422, detail="caller.user_id is required")
+    try:
+        scenario = await ledger_store.read_scenario(benchmark_run_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return await _invoke_benchmark_llm(
+        request=PluginInvokeRequest(data=request.target, user_id=benchmark_run_id),
+        scenario=scenario,
+        benchmark_run_id=benchmark_run_id,
+    )
+
+
+async def _invoke_benchmark_llm(
+    *,
+    request: PluginInvokeRequest,
+    scenario: CapacityScenario,
+    benchmark_run_id: str,
+) -> StreamingResponse:
     round_number = await ledger_store.begin_model_call(
         benchmark_run_id=benchmark_run_id,
         scenario=scenario,

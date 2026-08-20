@@ -31,6 +31,31 @@ def test_ledger_store_keeps_concurrent_runs_isolated() -> None:
     assert asyncio.run(exercise()) == ("one", "two")
 
 
+def test_agent_llm_gateway_uses_prepared_run_identity() -> None:
+    with TestClient(app) as client:
+        assert client.post("/__bench/reset").is_success
+        prepared = client.post(
+            "/__bench/prepare",
+            json={
+                "benchmark_run_id": "run",
+                "scenario_id": "basic",
+                "scenario_version": load_scenario_manifest().get("basic").version,
+            },
+        )
+        response = client.post(
+            "/inner/api/agent/llm/invoke",
+            json={
+                "caller": {"user_id": "run"},
+                "target": {"prompt_messages": []},
+            },
+        )
+
+    assert prepared.is_success
+    assert response.is_success
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert '"code": 0' in response.text
+
+
 def test_file_script_only_materializes_the_fixed_workspace_payload() -> None:
     script = _capability_script(load_scenario_manifest().get("file"))
 
