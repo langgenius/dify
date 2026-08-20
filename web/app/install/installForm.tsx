@@ -1,5 +1,6 @@
 'use client'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import { zPostSetupBody } from '@dify/contracts/api/console/setup/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
@@ -21,10 +22,10 @@ import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/servi
 import { encryptPassword as encodePassword } from '@/utils/encryption'
 import Loading from '../components/base/loading'
 
-const accountFormSchema = z.object({
-  email: z.email(),
-  name: z.string().min(1),
-  password: z.string().min(8).regex(validPassword),
+const accountFormSchema = zPostSetupBody.pick({ email: true, name: true, password: true }).extend({
+  email: zPostSetupBody.shape.email.pipe(z.email()),
+  name: zPostSetupBody.shape.name.min(1),
+  password: zPostSetupBody.shape.password.min(8).regex(validPassword),
 })
 
 type AccountFormValues = z.infer<typeof accountFormSchema>
@@ -133,6 +134,7 @@ const InstallForm = () => {
               <Input
                 autoComplete="name"
                 required
+                maxLength={30}
                 placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
               />
               <FieldError match>{t(($) => $['error.nameEmpty'], { ns: 'login' })}</FieldError>

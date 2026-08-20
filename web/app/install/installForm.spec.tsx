@@ -52,6 +52,7 @@ describe('InstallForm', () => {
     expect(emailInput).toHaveAttribute('type', 'email')
     expect(emailInput).toHaveAttribute('autocomplete', 'email')
     expect(nameInput).toHaveAttribute('autocomplete', 'name')
+    expect(nameInput).toHaveAttribute('maxlength', '30')
     expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.setAdminAccount')
     expect(screen.getByRole('button', { name: /login\.installBtn/ })).toBeInTheDocument()
