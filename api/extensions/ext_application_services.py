@@ -69,6 +69,13 @@ def _get_enterprise_webapp_access_mode(app_id: str) -> WebAppAccessMode:
         raise WebAppAccessUnavailableError from e
 
 
+def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
+    try:
+        return EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id)
+    except (EnterpriseServiceError, httpx.RequestError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise WebAppAccessUnavailableError from e
+
+
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
     account_activation: AccountActivationService
@@ -120,6 +127,7 @@ def build_application_services(
             access=WebAppAccessQueryRepository(session_factory=database_client),
             webapp_auth_enabled=FeatureService.is_webapp_auth_enabled(),
             access_mode_for_app=_get_enterprise_webapp_access_mode,
+            is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
         ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
