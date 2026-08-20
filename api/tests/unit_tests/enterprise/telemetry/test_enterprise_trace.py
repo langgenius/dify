@@ -609,6 +609,32 @@ class TestWorkflowTrace:
         assert attrs["dify.parent.workflow.run_id"] == "outer-run-001"
         assert attrs["dify.parent.app.id"] == "outer-app-001"
 
+    def test_node_executions_read_through_repository(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
+        """Node executions must be read through the repository factory so the active storage backend
+        (e.g. LogStore/Aliyun SLS) is honoured, not via a direct DB query that only sees the RDBMS."""
+        mock_repo = MagicMock()
+        mock_repo.get_executions_by_workflow_run.return_value = []
+        with (
+            patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"),
+            # db.engine requires a Flask app context that unit tests don't set up; patch the db
+            # object so the repository factory is reachable (the mocked repo never opens a session).
+            patch("extensions.ext_database.db", MagicMock()),
+            patch(
+                "repositories.factory.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
+                return_value=mock_repo,
+            ) as mock_create,
+        ):
+            trace_handler._workflow_trace(make_workflow_info())
+
+        mock_create.assert_called_once()
+        mock_repo.get_executions_by_workflow_run.assert_called_once_with(
+            tenant_id="tenant-abc",
+            app_id="app-001",
+            workflow_run_id="run-001",
+        )
+
 
 # ---------------------------------------------------------------------------
 # _node_execution_trace / _emit_node_execution_trace
