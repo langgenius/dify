@@ -9,7 +9,6 @@ from typing import cast, override
 
 import httpx
 from cachetools import TTLCache
-from flask import current_app, has_request_context, request
 
 from configs import dify_config
 from services.recommended_app_query_service import (
@@ -23,6 +22,7 @@ from services.recommended_app_query_service import (
 logger = logging.getLogger(__name__)
 
 _BUILTIN_FALLBACK_LANGUAGE = "en-US"
+_BUILTIN_CATALOG_PATH = Path(__file__).resolve().parents[1] / "constants" / "recommended_apps.json"
 _REMOTE_FETCH_CACHE_MAXSIZE = 64
 _remote_fetch_cache: TTLCache[tuple[str, str], object] | None = None
 _remote_fetch_cache_ttl: int | None = None
@@ -102,9 +102,7 @@ class BuiltinRecommendedAppCatalogGateway(RecommendedAppCatalogQuery):
 
     def _get_data(self) -> Mapping[str, object]:
         if self._data is None:
-            loaded = json.loads(
-                Path(current_app.root_path, "constants", "recommended_apps.json").read_text(encoding="utf-8")
-            )
+            loaded = json.loads(_BUILTIN_CATALOG_PATH.read_text(encoding="utf-8"))
             self._data = _as_mapping(loaded, field="built-in recommended app catalog")
         return self._data
 
@@ -154,9 +152,7 @@ class RemoteRecommendedAppCatalogGateway(RecommendedAppCatalogQuery):
 
     @staticmethod
     def _get_payload(path: str) -> tuple[int, object]:
-        origin = request.headers.get("Origin") if has_request_context() else None
-        if not origin:
-            origin = dify_config.CONSOLE_WEB_URL
+        origin = dify_config.CONSOLE_WEB_URL
 
         url = f"{dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN}{path}"
         headers = {"Origin": origin} if origin else {}

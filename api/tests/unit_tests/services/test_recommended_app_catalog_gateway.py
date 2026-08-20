@@ -1,12 +1,10 @@
 import json
 from collections.abc import Iterator
-from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 import yaml
-from flask import Flask
 
 from services import recommended_app_catalog_gateway as gateway_module
 from services.recommended_app_catalog_gateway import (
@@ -87,14 +85,11 @@ def _expected_page(*, categories: tuple[str, ...] = ("Workflow",)) -> Recommende
 
 
 class TestBuiltinRecommendedAppCatalogGateway:
-    def test_maps_bundled_catalog(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_maps_bundled_catalog(self) -> None:
         gateway = BuiltinRecommendedAppCatalogGateway()
-        monkeypatch.setattr(app, "root_path", str(Path(gateway_module.__file__).resolve().parents[1]))
-
-        with app.app_context():
-            page = gateway.list_recommended("en-US")
-            learn_dify = gateway.list_learn_dify("en-US")
-            detail = gateway.get_detail(page.recommended_apps[0].app_id)
+        page = gateway.list_recommended("en-US")
+        learn_dify = gateway.list_learn_dify("en-US")
+        detail = gateway.get_detail(page.recommended_apps[0].app_id)
 
         assert page.recommended_apps
         assert learn_dify.recommended_apps == ()
@@ -209,11 +204,11 @@ class TestBuiltinRecommendedAppCatalogGateway:
         with pytest.raises(TypeError, match="mode must be a string"):
             gateway.get_detail("app-1")
 
-    def test_reads_builtin_file_once_per_gateway(self, app: Flask) -> None:
+    def test_reads_builtin_file_once_per_gateway(self) -> None:
         gateway = BuiltinRecommendedAppCatalogGateway()
         payload = json.dumps({"recommended_apps": {"en-US": _page_payload()}})
 
-        with app.app_context(), patch.object(gateway_module.Path, "read_text", return_value=payload) as read_text:
+        with patch.object(gateway_module.Path, "read_text", return_value=payload) as read_text:
             gateway.list_recommended("en-US")
             gateway.list_recommended("en-US")
 
@@ -437,9 +432,8 @@ class TestRemoteRecommendedAppCatalogGateway:
         assert router.contains("app-1") is True
         fallback.contains.assert_called_once_with("app-1")
 
-    def test_remote_request_preserves_origin_and_timeouts(
+    def test_remote_request_uses_configured_origin_and_timeouts(
         self,
-        app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         response = MagicMock(status_code=200)
@@ -451,10 +445,9 @@ class TestRemoteRecommendedAppCatalogGateway:
             "HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN",
             "https://catalog.example.com",
         )
+        monkeypatch.setattr(gateway_module.dify_config, "CONSOLE_WEB_URL", "https://console.example.com")
         gateway = RemoteRecommendedAppCatalogGateway()
-
-        with app.test_request_context(headers={"Origin": "https://console.example.com"}):
-            gateway.get_detail("app-1")
+        gateway.get_detail("app-1")
 
         http_get.assert_called_once()
         call = http_get.call_args
@@ -510,9 +503,8 @@ class TestRemoteRecommendedAppCatalogGateway:
         gateway.list_recommended("en-US")
         assert http_get.call_count == 2
 
-    def test_remote_request_cache_isolated_by_origin(
+    def test_remote_request_cache_isolated_by_configured_origin(
         self,
-        app: Flask,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         response = MagicMock(status_code=200)
@@ -521,28 +513,25 @@ class TestRemoteRecommendedAppCatalogGateway:
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         monkeypatch.setattr(gateway_module.dify_config, "HOSTED_FETCH_APP_TEMPLATES_CACHE_TTL", 600)
         gateway = RemoteRecommendedAppCatalogGateway()
-
-        with app.test_request_context(headers={"Origin": "https://cloud-a.example.com"}):
-            gateway.list_recommended("en-US")
-        with app.test_request_context(headers={"Origin": "https://cloud-b.example.com"}):
-            gateway.list_recommended("en-US")
+        monkeypatch.setattr(gateway_module.dify_config, "CONSOLE_WEB_URL", "https://cloud-a.example.com")
+        gateway.list_recommended("en-US")
+        monkeypatch.setattr(gateway_module.dify_config, "CONSOLE_WEB_URL", "https://cloud-b.example.com")
+        gateway.list_recommended("en-US")
 
         assert http_get.call_count == 2
 
     @pytest.mark.parametrize(
-        ("console_web_url", "with_request_context", "expected_headers"),
+        ("console_web_url", "expected_headers"),
         [
-            ("saas.dify.dev", True, {"Origin": "saas.dify.dev"}),
-            ("http://localhost:3000/console", False, {"Origin": "http://localhost:3000/console"}),
-            ("", False, {}),
+            ("saas.dify.dev", {"Origin": "saas.dify.dev"}),
+            ("http://localhost:3000/console", {"Origin": "http://localhost:3000/console"}),
+            ("", {}),
         ],
     )
-    def test_remote_request_falls_back_to_console_web_url(
+    def test_remote_request_uses_console_web_url(
         self,
-        app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         console_web_url: str,
-        with_request_context: bool,
         expected_headers: dict[str, str],
     ) -> None:
         response = MagicMock(status_code=200)
@@ -551,10 +540,7 @@ class TestRemoteRecommendedAppCatalogGateway:
         monkeypatch.setattr(gateway_module.httpx, "get", http_get)
         monkeypatch.setattr(gateway_module.dify_config, "CONSOLE_WEB_URL", console_web_url)
         gateway = RemoteRecommendedAppCatalogGateway()
-        context = app.test_request_context() if with_request_context else nullcontext()
-
-        with context:
-            gateway.get_detail("app-1")
+        gateway.get_detail("app-1")
 
         assert http_get.call_args.kwargs["headers"] == expected_headers
 
