@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "कार्यप्रवाह",
   "plansCommon.talkToSales": "बिक्री से बात करें",
   "plansCommon.taxTip": "सभी सदस्यता मूल्य (मासिक/वार्षिक) लागू करों (जैसे, VAT, बिक्री कर) को शामिल नहीं करते हैं।",
-  "plansCommon.taxTipSecond": "यदि आपके क्षेत्र में कोई लागू कर आवश्यकताएँ नहीं हैं, तो आपकी चेकआउट में कोई कर नहीं दिखाई देगा, और पूरे सदस्यता अवधि के लिए आपसे कोई अतिरिक्त शुल्क नहीं लिया जाएगा।",
   "plansCommon.teamMember_one": "{{count,number}} टीम सदस्य",
   "plansCommon.teamMember_other": "{{count,number}} टीम सदस्य",
   "plansCommon.teamWorkspace": "{{count,number}} टीम कार्यक्षेत्र",
