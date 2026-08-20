@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Документы",
   "datasetMenus.emptyTip": "Знания не были связаны, пожалуйста, перейдите в приложение или плагин, чтобы завершить связывание.",
   "datasetMenus.hitTesting": "Тестирование поиска",
+  "datasetMenus.knowledgeGraph": "Граф знаний",
   "datasetMenus.pipeline": "Трубопровод",
   "datasetMenus.relatedApp": "связанные приложения",
   "datasetMenus.settings": "Настройки",

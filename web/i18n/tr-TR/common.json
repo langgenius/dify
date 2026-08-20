@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Belgeler",
   "datasetMenus.emptyTip": "Bilgi ilişkilendirilmemiş, ilişkilendirme işlemini tamamlamak için uygulama veya eklentiye gidin.",
   "datasetMenus.hitTesting": "Geri Alım Testi",
+  "datasetMenus.knowledgeGraph": "Bilgi grafiği",
   "datasetMenus.pipeline": "Ardışık düzen",
   "datasetMenus.relatedApp": "bağlantılı uygulamalar",
   "datasetMenus.settings": "Ayarlar",

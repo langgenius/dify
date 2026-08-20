@@ -2,7 +2,7 @@ import type {
   DefaultModel,
   Model,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting } from '@/models/datasets'
+import type { DataSet, GraphIndexSetting, SummaryIndexSetting } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen } from '@testing-library/react'
 import {
@@ -100,6 +100,25 @@ vi.mock('@/app/components/datasets/settings/summary-index-setting', () => ({
     >
       <button type="button" onClick={() => onSummaryIndexSettingChange?.({ enable: true })}>
         summary-enable
+      </button>
+    </div>
+  ),
+}))
+
+vi.mock('@/app/components/datasets/settings/graph-index-setting', () => ({
+  default: ({
+    graphIndexSetting,
+    onGraphIndexSettingChange,
+  }: {
+    graphIndexSetting?: GraphIndexSetting
+    onGraphIndexSettingChange?: (payload: GraphIndexSetting) => void
+  }) => (
+    <div
+      data-testid="graph-index-setting"
+      data-enabled={graphIndexSetting?.enabled ? 'true' : 'false'}
+    >
+      <button type="button" onClick={() => onGraphIndexSettingChange?.({ enabled: true })}>
+        graph-enable
       </button>
     </div>
   ),
@@ -248,6 +267,10 @@ describe('IndexingSection', () => {
     enable: false,
   }
 
+  const mockGraphIndexSetting: GraphIndexSetting = {
+    enabled: false,
+  }
+
   const defaultProps = {
     currentDataset: mockDataset,
     indexMethod: IndexingType.QUALIFIED,
@@ -261,6 +284,8 @@ describe('IndexingSection', () => {
     setRetrievalConfig: vi.fn(),
     summaryIndexSetting: mockSummaryIndexSetting,
     handleSummaryIndexSettingChange: vi.fn(),
+    graphIndexSetting: mockGraphIndexSetting,
+    handleGraphIndexSettingChange: vi.fn(),
     showMultiModalTip: false,
   }
 

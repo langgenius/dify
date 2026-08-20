@@ -142,6 +142,7 @@
   "datasetMenus.documents": "ເອກະສານ",
   "datasetMenus.emptyTip": "ຄວາມຮູ້ນີ້ຍັງບໍ່ໄດ້ຖືກລວມເຂົ້າໃນແອັບພລິເຄຊັນໃດໆ. ກະລຸນາເບິ່ງເອກະສານເພື່ອຂໍ້ແນະນຳ.",
   "datasetMenus.hitTesting": "ການທົດສອບການດຶງຂໍ້ມູນ",
+  "datasetMenus.knowledgeGraph": "ກຣາຟຄວາມຮູ້",
   "datasetMenus.pipeline": "ສາຍງານການປະມວນຜົນ",
   "datasetMenus.relatedApp": "ແອັບທີ່ເຊື່ອມໂຍງ",
   "datasetMenus.settings": "ການຕັ້ງຄ່າ",

@@ -812,6 +812,9 @@ class DatasetService:
         # update summary index setting
         if data.get("summary_index_setting"):
             filtered_data["summary_index_setting"] = data.get("summary_index_setting")
+        # update knowledge graph index setting
+        if data.get("graph_index_setting"):
+            filtered_data["graph_index_setting"] = data.get("graph_index_setting")
         # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")

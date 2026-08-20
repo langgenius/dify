@@ -142,6 +142,7 @@
   "datasetMenus.documents": "اسناد",
   "datasetMenus.emptyTip": "دانش مرتبط نشده است، لطفاً به برنامه یا افزونه بروید تا ارتباط را کامل کنید.",
   "datasetMenus.hitTesting": "آزمایش بازیابی",
+  "datasetMenus.knowledgeGraph": "گراف دانش",
   "datasetMenus.pipeline": "خط لوله",
   "datasetMenus.relatedApp": "برنامه‌های مرتبط",
   "datasetMenus.settings": "تنظیمات",
