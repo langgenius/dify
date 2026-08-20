@@ -14,7 +14,13 @@ from flask import Flask
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from controllers.common.errors import FileTooLargeError
+from controllers.common.errors import (
+    BlockedFileExtensionError,
+    FilenameNotExistsError,
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
 from controllers.files.appdeploy_files import (
     GrantedFileContentApi,
     GrantedFileResolveApi,
@@ -52,10 +58,7 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
 
 @pytest.fixture
 def sqlite_db(sqlite_engine: Engine):
-    with (
-        patch(f"{SERVICE_MODULE}.db", MagicMock(engine=sqlite_engine)),
-        patch(f"{CONTROLLER_MODULE}.db", MagicMock(engine=sqlite_engine)),
-    ):
+    with patch(f"{SERVICE_MODULE}.db", MagicMock(engine=sqlite_engine)):
         yield
 
 
@@ -146,7 +149,7 @@ def _persist_tool_file(session: Session, *, owner_id: str, mimetype: str = "imag
 
 @pytest.mark.usefixtures("sqlite_db")
 def test_upload_stores_the_file_for_the_grant_end_user(app: Flask, end_user: EndUser) -> None:
-    with patch(f"{CONTROLLER_MODULE}.FileService") as file_service:
+    with patch(f"{SERVICE_MODULE}.FileService") as file_service:
         file_service.return_value.upload_file.return_value = _stub_upload_file()
         with app.test_request_context(
             "/files/appdeploy/upload",
@@ -180,15 +183,10 @@ def test_upload_rejects_a_grant_from_another_tenant(app: Flask, end_user: EndUse
 
 
 @pytest.mark.usefixtures("sqlite_db")
-def test_upload_rejects_a_body_over_the_largest_limit(
+def test_upload_applies_the_shared_per_extension_size_limit(
     app: Flask, end_user: EndUser, config_overrides: Callable[..., None]
 ) -> None:
-    config_overrides(
-        UPLOAD_FILE_SIZE_LIMIT=1,
-        UPLOAD_IMAGE_FILE_SIZE_LIMIT=1,
-        UPLOAD_AUDIO_FILE_SIZE_LIMIT=1,
-        UPLOAD_VIDEO_FILE_SIZE_LIMIT=1,
-    )
+    config_overrides(UPLOAD_FILE_SIZE_LIMIT=1)
 
     with app.test_request_context(
         "/files/appdeploy/upload",
@@ -202,16 +200,74 @@ def test_upload_rejects_a_body_over_the_largest_limit(
 
 
 @pytest.mark.usefixtures("sqlite_db")
+def test_upload_rejects_a_blacklisted_extension(
+    app: Flask, end_user: EndUser, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
+
+    with app.test_request_context(
+        "/files/appdeploy/upload",
+        method="POST",
+        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+        data={"file": (BytesIO(b"MZ"), "payload.exe")},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(BlockedFileExtensionError):
+            GrantedFileUploadApi().post()
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_upload_rejects_a_request_carrying_no_file(app: Flask, end_user: EndUser) -> None:
+    with app.test_request_context(
+        "/files/appdeploy/upload",
+        method="POST",
+        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+        data={"note": "no file here"},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(NoFileUploadedError):
+            GrantedFileUploadApi().post()
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_upload_rejects_a_batch_of_files(app: Flask, end_user: EndUser) -> None:
+    with app.test_request_context(
+        "/files/appdeploy/upload",
+        method="POST",
+        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+        data={
+            "file": (BytesIO(b"first"), "first.pdf"),
+            "second": (BytesIO(b"second"), "second.pdf"),
+        },
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(TooManyFilesError):
+            GrantedFileUploadApi().post()
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_upload_rejects_a_file_without_a_name(app: Flask, end_user: EndUser) -> None:
+    with app.test_request_context(
+        "/files/appdeploy/upload",
+        method="POST",
+        headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+        data={"file": (BytesIO(b"nameless"), "")},
+        content_type="multipart/form-data",
+    ):
+        with pytest.raises(FilenameNotExistsError):
+            GrantedFileUploadApi().post()
+
+
+@pytest.mark.usefixtures("sqlite_db")
 def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(app: Flask, end_user: EndUser) -> None:
     url = "https://example.com/docs/report.pdf"
     response = httpx.Response(200, content=b"pdf-bytes", request=httpx.Request("GET", url))
 
     with (
         patch(f"{CONTROLLER_MODULE}.remote_fetcher") as fetcher,
-        patch(f"{CONTROLLER_MODULE}.FileService") as file_service,
+        patch(f"{SERVICE_MODULE}.FileService") as file_service,
     ):
         fetcher.make_request.return_value = response
-        file_service.is_file_size_within_limit.return_value = True
         file_service.return_value.upload_file.return_value = _stub_upload_file()
 
         with app.test_request_context(
@@ -264,7 +320,7 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(app: Flask) -> None:
         mimetype="image/png",
     )
 
-    with patch(f"{CONTROLLER_MODULE}.ToolFileManager") as tool_file_manager:
+    with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
         tool_file_manager.return_value.create_file_by_raw.return_value = tool_file
         with app.test_request_context(
             "/files/appdeploy/produced",
@@ -281,7 +337,30 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(app: Flask) -> None:
     assert kwargs["tenant_id"] == TENANT_ID
     assert kwargs["conversation_id"] is None
     assert body["url"].startswith(f"https://files.example.com/files/appdeploy/{tool_file.id}/content?token=")
-    assert body["internal_url"].startswith(f"http://dify-api.dify.svc:5001/files/appdeploy/{tool_file.id}/content?token=")
+    assert body["internal_url"].startswith(
+        f"http://dify-api.dify.svc:5001/files/appdeploy/{tool_file.id}/content?token="
+    )
+
+
+def test_produced_applies_the_shared_per_extension_size_limit(
+    app: Flask, config_overrides: Callable[..., None]
+) -> None:
+    """``create_file_by_raw`` has no limit of its own, so nothing else would stop this."""
+
+    config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=1)
+
+    with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
+        with app.test_request_context(
+            "/files/appdeploy/produced",
+            method="POST",
+            headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
+            data={"file": (BytesIO(b"0" * (1024 * 1024 + 1)), "chart.png")},
+            content_type="multipart/form-data",
+        ):
+            with pytest.raises(FileTooLargeError):
+                ProducedFileApi().post()
+
+    tool_file_manager.return_value.create_file_by_raw.assert_not_called()
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -312,7 +391,9 @@ def test_resolve_signs_urls_per_item_and_hides_foreign_files(
     assert resolved["kind"] == "upload"
     assert resolved["extension"] == "pdf"
     assert resolved["url"].startswith(f"https://files.example.com/files/appdeploy/{owned.id}/content?token=")
-    assert resolved["internal_url"].startswith(f"http://dify-api.dify.svc:5001/files/appdeploy/{owned.id}/content?token=")
+    assert resolved["internal_url"].startswith(
+        f"http://dify-api.dify.svc:5001/files/appdeploy/{owned.id}/content?token="
+    )
     assert hidden == {
         "id": foreign.id,
         "ok": False,
@@ -327,6 +408,54 @@ def test_resolve_signs_urls_per_item_and_hides_foreign_files(
     }
 
 
+@pytest.mark.usefixtures("sqlite_db")
+def test_resolve_answers_a_mixed_batch_item_by_item(app: Flask, end_user: EndUser, sqlite_session: Session) -> None:
+    owned_upload = _persist_upload_file(sqlite_session, owner_id=end_user.id)
+    owned_tool = _persist_tool_file(sqlite_session, owner_id=end_user.id)
+    missing_id = "44444444-4444-4444-8444-444444444444"
+    payload = {
+        "files": [
+            {"id": owned_upload.id, "kind": "upload"},
+            {"id": missing_id, "kind": "upload"},
+            # A real file, but looked up in the wrong table.
+            {"id": owned_upload.id, "kind": "tool"},
+            {"id": owned_tool.id, "kind": "tool"},
+        ]
+    }
+
+    with app.test_request_context(
+        "/files/appdeploy/resolve",
+        method="POST",
+        headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
+        json=payload,
+    ):
+        with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
+            files_ns.payload = payload
+            body = GrantedFileResolveApi().post()
+
+    assert [(file["id"], file["ok"], file["kind"], file["error"]) for file in body["files"]] == [
+        (owned_upload.id, True, "upload", None),
+        (missing_id, False, None, "not_found"),
+        (owned_upload.id, False, None, "not_found"),
+        (owned_tool.id, True, "tool", None),
+    ]
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_resolve_returns_an_empty_batch_unchanged(app: Flask, end_user: EndUser) -> None:
+    payload: dict[str, object] = {"files": []}
+
+    with app.test_request_context(
+        "/files/appdeploy/resolve",
+        method="POST",
+        headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
+        json=payload,
+    ):
+        with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
+            files_ns.payload = payload
+            assert GrantedFileResolveApi().post() == {"files": []}
+
+
 @pytest.fixture
 def stored_bytes():
     with patch(f"{SERVICE_MODULE}.storage") as storage:
@@ -336,14 +465,21 @@ def stored_bytes():
 
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")
 @pytest.mark.parametrize(
-    ("mime_type", "expected_content_type", "expects_attachment", "expects_ranges"),
+    ("mime_type", "expected_content_type", "expects_attachment"),
     [
-        ("image/png", "image/png", False, False),
-        ("image/webp", "image/webp", False, False),
-        ("application/pdf", "application/octet-stream", True, False),
-        ("image/svg+xml", "application/octet-stream", True, False),
-        ("text/html", "application/octet-stream", True, False),
-        ("audio/mpeg", "application/octet-stream", True, True),
+        ("image/png", "image/png", False),
+        ("image/jpeg", "image/jpeg", False),
+        ("image/gif", "image/gif", False),
+        ("image/webp", "image/webp", False),
+        # Case and parameters are normalized before the whitelist is consulted.
+        ("IMAGE/PNG; charset=binary", "image/png", False),
+        ("application/pdf", "application/octet-stream", True),
+        ("image/svg+xml", "application/octet-stream", True),
+        ("text/html", "application/octet-stream", True),
+        ("application/xhtml+xml", "application/octet-stream", True),
+        ("text/javascript", "application/octet-stream", True),
+        ("audio/mpeg", "application/octet-stream", True),
+        ("video/mp4", "application/octet-stream", True),
     ],
 )
 def test_content_disposition_follows_the_inline_whitelist(
@@ -352,7 +488,6 @@ def test_content_disposition_follows_the_inline_whitelist(
     mime_type: str,
     expected_content_type: str,
     expects_attachment: bool,
-    expects_ranges: bool,
 ) -> None:
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone", mimetype=mime_type)
     token = _content_token(file_id=tool_file.id, kind=FileKind.TOOL)
@@ -365,8 +500,24 @@ def test_content_disposition_follows_the_inline_whitelist(
     assert ("Content-Disposition" in response.headers) is expects_attachment
     if expects_attachment:
         assert response.headers["Content-Disposition"] == "attachment; filename*=UTF-8''chart.png"
-    assert (response.headers.get("Accept-Ranges") == "bytes") is expects_ranges
+    # Range is never honoured here, so the hint must not be advertised either.
+    assert "Accept-Ranges" not in response.headers
     assert response.headers["Content-Length"] == "64"
+
+
+@pytest.mark.usefixtures("sqlite_db", "stored_bytes")
+def test_content_downloads_a_file_with_no_recorded_mime_type(app: Flask, sqlite_session: Session) -> None:
+    upload_file = _persist_upload_file(sqlite_session, owner_id="anyone")
+    upload_file.mime_type = None
+    sqlite_session.commit()
+    token = _content_token(file_id=upload_file.id, kind=FileKind.UPLOAD)
+
+    with app.test_request_context(f"/files/appdeploy/{upload_file.id}/content", query_string={"token": token}):
+        response = GrantedFileContentApi().get(UUID(upload_file.id))
+
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["Content-Type"].startswith("application/octet-stream")
+    assert response.headers["Content-Disposition"] == "attachment; filename*=UTF-8''report.pdf"
 
 
 @pytest.mark.usefixtures("sqlite_db", "stored_bytes")

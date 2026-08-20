@@ -2,6 +2,7 @@
 
 import inspect
 import os
+import time
 from collections.abc import Callable
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -15,9 +16,11 @@ from sqlalchemy.orm import Session
 
 from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api.app.file_grants import (
+    MAX_GRANT_TTL_SECONDS,
     EnterpriseFileGrantApi,
     GrantAppNotFoundError,
     GrantTtlTooLongError,
+    InvalidGrantRequestError,
     InvalidSubjectError,
 )
 from extensions.storage.storage_type import StorageType
@@ -68,6 +71,12 @@ def _mint(app: Flask, payload: dict[str, object]) -> dict[str, object]:
         with patch(f"{CONTROLLER_MODULE}.inner_api_ns") as mock_ns:
             mock_ns.payload = payload
             return inspect.unwrap(handler.post)(handler)
+
+
+def _subject_of(response: dict[str, object]) -> str:
+    grant = response["grant"]
+    assert isinstance(grant, str)
+    return str(jwt.decode(grant, SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE)["sub"])
 
 
 def _payload(**overrides: object) -> dict[str, object]:
@@ -167,15 +176,53 @@ def test_mint_returns_dify_upload_limits(app: Flask, config_overrides: Callable[
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
 def test_mint_rejects_ttl_over_the_cap_before_touching_identity(app: Flask, sqlite_session: Session) -> None:
     with pytest.raises(GrantTtlTooLongError):
-        _mint(app, _payload(ttl_seconds=7201))
+        _mint(app, _payload(ttl_seconds=MAX_GRANT_TTL_SECONDS + 1))
 
     assert sqlite_session.scalars(select(EndUser)).all() == []
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
-def test_mint_rejects_blank_subject(app: Flask) -> None:
+def test_mint_accepts_a_ttl_exactly_at_the_cap(app: Flask) -> None:
+    before = int(time.time())
+
+    response = _mint(app, _payload(ttl_seconds=MAX_GRANT_TTL_SECONDS))
+
+    assert MAX_GRANT_TTL_SECONDS <= response["expires_at"] - before <= MAX_GRANT_TTL_SECONDS + 5
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+@pytest.mark.parametrize("ttl_seconds", [0, -1])
+def test_mint_rejects_a_non_positive_ttl(app: Flask, ttl_seconds: int) -> None:
+    with pytest.raises(InvalidGrantRequestError):
+        _mint(app, _payload(ttl_seconds=ttl_seconds))
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+@pytest.mark.parametrize("subject", ["", "   ", "\t\n", "adp1.with\x00nul", "\x00"])
+def test_mint_rejects_an_unusable_subject(app: Flask, subject: str, sqlite_session: Session) -> None:
+    """A NUL would reach ``external_user_id`` verbatim and blow up on PostgreSQL."""
+
     with pytest.raises(InvalidSubjectError):
-        _mint(app, _payload(subject="   "))
+        _mint(app, _payload(subject=subject))
+
+    assert sqlite_session.scalars(select(EndUser)).all() == []
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_folds_an_oversized_subject_into_one_identity(app: Flask, sqlite_session: Session) -> None:
+    """``external_user_id`` truncates at 255, so ``session_id`` is what keeps them apart."""
+
+    long_subject = "adp1." + "s" * 4000
+    sibling = long_subject[:-1] + "t"
+
+    first = _mint(app, _payload(subject=long_subject))
+    again = _mint(app, _payload(subject=long_subject))
+    other = _mint(app, _payload(subject=sibling))
+
+    end_users = sqlite_session.scalars(select(EndUser).order_by(EndUser.created_at)).all()
+    assert len(end_users) == 2
+    assert all(len(end_user.external_user_id) == 255 for end_user in end_users)
+    assert _subject_of(first) == _subject_of(again) != _subject_of(other)
 
 
 @pytest.mark.usefixtures("granted_config", "sqlite_db")
@@ -186,8 +233,7 @@ def test_mint_rejects_unknown_app(app: Flask) -> None:
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
 def test_mint_returns_strict_metadata_without_urls(app: Flask, sqlite_session: Session) -> None:
-    owner_id = _mint(app, _payload())["grant"]
-    owner_id = jwt.decode(owner_id, SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE)["sub"]
+    owner_id = _subject_of(_mint(app, _payload()))
     upload_file = _persist_upload_file(sqlite_session, owner_id=owner_id)
     tool_file = _persist_tool_file(sqlite_session, owner_id=owner_id)
 
@@ -218,9 +264,7 @@ def test_mint_returns_strict_metadata_without_urls(app: Flask, sqlite_session: S
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
 def test_mint_fails_the_whole_strict_batch_on_one_miss(app: Flask, sqlite_session: Session) -> None:
-    owner_id = jwt.decode(
-        _mint(app, _payload())["grant"], SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE
-    )["sub"]
+    owner_id = _subject_of(_mint(app, _payload()))
     upload_file = _persist_upload_file(sqlite_session, owner_id=owner_id)
 
     with pytest.raises(GrantedFileNotFoundError):
@@ -237,12 +281,7 @@ def test_mint_fails_the_whole_strict_batch_on_one_miss(app: Flask, sqlite_sessio
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
 def test_mint_hides_files_owned_by_another_subject(app: Flask, sqlite_session: Session) -> None:
-    other_owner = jwt.decode(
-        _mint(app, _payload(subject="adp1.other"))["grant"],
-        SECRET_KEY,
-        algorithms=["HS256"],
-        audience=FILE_GRANT_AUDIENCE,
-    )["sub"]
+    other_owner = _subject_of(_mint(app, _payload(subject="adp1.other")))
     foreign_file = _persist_upload_file(sqlite_session, owner_id=other_owner)
 
     with pytest.raises(GrantedFileNotFoundError):
@@ -251,9 +290,7 @@ def test_mint_hides_files_owned_by_another_subject(app: Flask, sqlite_session: S
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
 def test_mint_reports_optional_files_item_by_item(app: Flask, sqlite_session: Session) -> None:
-    owner_id = jwt.decode(
-        _mint(app, _payload())["grant"], SECRET_KEY, algorithms=["HS256"], audience=FILE_GRANT_AUDIENCE
-    )["sub"]
+    owner_id = _subject_of(_mint(app, _payload()))
     upload_file = _persist_upload_file(sqlite_session, owner_id=owner_id)
     missing_id = "44444444-4444-4444-8444-444444444444"
 

@@ -24,9 +24,9 @@ from pydantic import BaseModel, Field, HttpUrl, ValidationError
 from werkzeug.datastructures import FileStorage
 
 import services
-from configs import dify_config
 from controllers.common import helpers
 from controllers.common.errors import (
+    BlockedFileExtensionError,
     FilenameNotExistsError,
     FileTooLargeError,
     NoFileUploadedError,
@@ -38,9 +38,8 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.files import files_ns
 from controllers.files.wraps import FileGrantInvalidError, GrantedFileNotFoundError, file_grant_required
 from core.file import remote_fetcher
-from core.tools.tool_file_manager import ToolFileManager
-from extensions.ext_database import db
 from fields.base import ResponseModel
+from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
 from libs.file_grant import (
     FileGrantClaims,
@@ -50,29 +49,14 @@ from libs.file_grant import (
     build_content_url,
     decode_file_content_token,
 )
-from models.model import EndUser, UploadFile
-from services.file_grant_service import FileContent, FileGrantService, FileRef, ResolvedFile
+from models.model import UploadFile
+from services.file_grant_service import EndUserNotFoundError, FileContent, FileGrantService, FileRef
 from services.file_service import FileService
 
 # Everything outside this whitelist is served as an attachment. Produced files
 # carry a plugin-declared MIME type, so SVG and the rest of the XML family must
 # never render in the viewer's origin.
 INLINE_MIME_TYPES = frozenset({"image/png", "image/jpeg", "image/gif", "image/webp"})
-
-RANGE_MIME_TYPES = frozenset(
-    {
-        "audio/mpeg",
-        "audio/wav",
-        "audio/mp4",
-        "audio/ogg",
-        "audio/flac",
-        "audio/aac",
-        "video/mp4",
-        "video/webm",
-        "video/quicktime",
-        "audio/x-m4a",
-    }
-)
 
 
 class InvalidFileRequestError(BaseHTTPException):
@@ -116,19 +100,6 @@ class ProducedFileResponse(ResponseModel):
     internal_url: str
 
 
-class ResolvedFileResponse(ResponseModel):
-    id: str
-    ok: bool
-    kind: FileKind | None = None
-    name: str | None = None
-    size: int | None = None
-    extension: str | None = None
-    mime_type: str | None = None
-    url: str | None = None
-    internal_url: str | None = None
-    error: str | None = None
-
-
 class FileResolveResponse(ResponseModel):
     files: list[ResolvedFileResponse]
 
@@ -146,7 +117,7 @@ class GrantedFileUploadApi(Resource):
     @files_ns.doc(
         responses={
             201: "File uploaded",
-            400: "No file uploaded, or the file has no name",
+            400: "No file uploaded, the file has no name, or its extension is blocked",
             401: "Invalid grant",
             403: "Grant lacks the upload scope",
             413: "File too large",
@@ -159,7 +130,7 @@ class GrantedFileUploadApi(Resource):
         upload_file = _store_upload(
             grant,
             filename=upload.filename or "",
-            content=_read_capped(upload),
+            content=upload.stream.read(),
             mimetype=upload.mimetype,
         )
         return _granted_file_response(upload_file), 201
@@ -175,7 +146,7 @@ class GrantedRemoteFileUploadApi(Resource):
     @files_ns.doc(
         responses={
             201: "Remote file uploaded",
-            400: "Invalid URL, or the remote file could not be fetched",
+            400: "Invalid URL, unfetchable remote file, or a blocked extension",
             401: "Invalid grant",
             403: "Grant lacks the upload scope",
             413: "File too large",
@@ -206,8 +177,6 @@ class GrantedRemoteFileUploadApi(Resource):
         content = (
             response.content if response.request.method == "GET" else remote_fetcher.make_request("GET", url).content
         )
-        if len(content) > _upload_size_cap():
-            raise FileTooLargeError()
 
         upload_file = _store_upload(
             grant,
@@ -237,18 +206,16 @@ class ProducedFileApi(Resource):
     @files_ns.response(201, "Produced file stored", files_ns.models[ProducedFileResponse.__name__])
     def post(self, grant: FileGrantClaims):
         upload = _single_upload()
-        # `create_file_by_raw` enforces no size limit of its own, so the cap has
-        # to be applied here, before the bytes are buffered.
-        content = _read_capped(upload)
-
-        tool_file = ToolFileManager().create_file_by_raw(
-            user_id=grant.sub,
-            tenant_id=grant.tenant_id,
-            conversation_id=None,
-            file_binary=content,
-            mimetype=upload.mimetype,
-            filename=upload.filename,
-        )
+        try:
+            tool_file = FileGrantService.store_produced(
+                tenant_id=grant.tenant_id,
+                end_user_id=grant.sub,
+                filename=upload.filename,
+                content=upload.stream.read(),
+                mimetype=upload.mimetype,
+            )
+        except services.errors.file.FileTooLargeError as exc:
+            raise FileTooLargeError(exc.description)
 
         return ProducedFileResponse(
             id=tool_file.id,
@@ -290,7 +257,7 @@ class GrantedFileResolveApi(Resource):
         )
 
         return FileResolveResponse(
-            files=[_resolved_file_response(ref.id, file) for ref, file in zip(refs, resolved, strict=True)]
+            files=[ResolvedFileResponse.from_resolved(ref.id, file) for ref, file in zip(refs, resolved, strict=True)]
         ).model_dump(mode="json")
 
 
@@ -343,8 +310,9 @@ def _content_response(content: FileContent) -> Response:
         encoded_filename = quote(content.name or "")
         response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
         response.headers["Content-Type"] = "application/octet-stream"
-    if mime_type in RANGE_MIME_TYPES:
-        response.headers["Accept-Ranges"] = "bytes"
+    # The sibling preview endpoints advertise `Accept-Ranges` for audio and video.
+    # Every such type downloads here, so the hint could only ever ride on a
+    # response no player will seek.
     if content.size > 0:
         response.headers["Content-Length"] = str(content.size)
     return response
@@ -366,36 +334,6 @@ def _single_upload() -> FileStorage:
     return upload
 
 
-def _upload_size_cap() -> int:
-    """The largest size any per-extension limit could allow, in bytes."""
-
-    return (
-        max(
-            dify_config.UPLOAD_FILE_SIZE_LIMIT,
-            dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
-            dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
-            dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
-        )
-        * 1024
-        * 1024
-    )
-
-
-def _read_capped(upload: FileStorage) -> bytes:
-    cap = _upload_size_cap()
-    content = upload.stream.read(cap + 1)
-    if len(content) > cap:
-        raise FileTooLargeError()
-    return content
-
-
-def _load_end_user(grant: FileGrantClaims) -> EndUser:
-    end_user = FileGrantService.load_end_user(end_user_id=grant.sub, tenant_id=grant.tenant_id)
-    if end_user is None:
-        raise GrantedFileNotFoundError()
-    return end_user
-
-
 def _store_upload(
     grant: FileGrantClaims,
     *,
@@ -404,17 +342,21 @@ def _store_upload(
     mimetype: str,
     source_url: str = "",
 ) -> UploadFile:
-    end_user = _load_end_user(grant)
     try:
-        return FileService(db.engine).upload_file(
+        return FileGrantService.store_upload(
+            tenant_id=grant.tenant_id,
+            end_user_id=grant.sub,
             filename=filename,
             content=content,
             mimetype=mimetype,
-            user=end_user,
             source_url=source_url,
         )
+    except EndUserNotFoundError as exc:
+        raise GrantedFileNotFoundError() from exc
     except services.errors.file.FileTooLargeError as exc:
         raise FileTooLargeError(exc.description)
+    except services.errors.file.BlockedFileExtensionError as exc:
+        raise BlockedFileExtensionError(exc.description) from exc
     except services.errors.file.UnsupportedFileTypeError:
         raise UnsupportedFileTypeError()
 
@@ -428,23 +370,6 @@ def _granted_file_response(upload_file: UploadFile) -> dict[str, object]:
         mime_type=upload_file.mime_type,
         url=build_content_url(file_id=upload_file.id, kind=FileKind.UPLOAD, external=True),
     ).model_dump(mode="json")
-
-
-def _resolved_file_response(file_id: str, file: ResolvedFile | None) -> ResolvedFileResponse:
-    if file is None:
-        return ResolvedFileResponse(id=file_id, ok=False, error="not_found")
-
-    return ResolvedFileResponse(
-        id=file.id,
-        ok=True,
-        kind=file.kind,
-        name=file.name,
-        size=file.size,
-        extension=file.extension,
-        mime_type=file.mime_type,
-        url=build_content_url(file_id=file.id, kind=file.kind, external=True),
-        internal_url=build_content_url(file_id=file.id, kind=file.kind, external=False),
-    )
 
 
 __all__ = [

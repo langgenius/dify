@@ -1,4 +1,4 @@
-"""Identity and file-ownership resolution behind the AppDeploy file grant.
+"""Identity, storage, and file-ownership behind the AppDeploy file grant.
 
 An AppDeploy subject is asserted exactly once, when the enterprise control
 plane mints a grant. Everything downstream verifies the grant's signature and
@@ -21,18 +21,25 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.tools.tool_file_manager import ToolFileManager, resolve_extension
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from libs.file_grant import FileKind
 from models.enums import CreatorUserRole, EndUserType
 from models.model import App, EndUser, UploadFile
 from models.tools import ToolFile
+from services.errors.file import FileTooLargeError
+from services.file_service import FileService
 
 SESSION_ID_PREFIX = "adp2:"
 
 
 class AppNotFoundError(Exception):
     """The app named by a mint request does not exist in the given tenant."""
+
+
+class EndUserNotFoundError(Exception):
+    """The grant points at an AppDeploy end user that no longer exists."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +120,7 @@ class FileGrantService:
         return end_user
 
     @classmethod
-    def load_end_user(cls, *, end_user_id: str, tenant_id: str) -> EndUser | None:
+    def _load_end_user(cls, *, end_user_id: str, tenant_id: str) -> EndUser | None:
         """Load the end user a grant points at, refusing a tenant mismatch."""
 
         with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
@@ -126,6 +133,59 @@ class FileGrantService:
                 )
                 .limit(1)
             )
+
+    @classmethod
+    def store_upload(
+        cls,
+        *,
+        tenant_id: str,
+        end_user_id: str,
+        filename: str,
+        content: bytes,
+        mimetype: str,
+        source_url: str = "",
+    ) -> UploadFile:
+        """Store bytes as an ``upload_files`` row owned by the grant's end user."""
+
+        end_user = cls._load_end_user(end_user_id=end_user_id, tenant_id=tenant_id)
+        if end_user is None:
+            raise EndUserNotFoundError(end_user_id)
+
+        return FileService(db.engine).upload_file(
+            filename=filename,
+            content=content,
+            mimetype=mimetype,
+            user=end_user,
+            source_url=source_url,
+        )
+
+    @staticmethod
+    def store_produced(
+        *,
+        tenant_id: str,
+        end_user_id: str,
+        filename: str | None,
+        content: bytes,
+        mimetype: str,
+    ) -> ToolFile:
+        """Store bytes a workflow node produced as a ``tool_files`` row.
+
+        ``create_file_by_raw`` enforces no size limit of its own, so the shared
+        per-extension limit has to be applied here instead of by ``FileService``.
+        """
+
+        extension = resolve_extension(filename=filename, mimetype=mimetype).lstrip(".").lower()
+        if not FileService.is_file_size_within_limit(extension=extension, file_size=len(content)):
+            raise FileTooLargeError(f"File size exceeded. {len(content)} bytes is too large.")
+
+        return ToolFileManager().create_file_by_raw(
+            user_id=end_user_id,
+            tenant_id=tenant_id,
+            conversation_id=None,
+            file_binary=content,
+            mimetype=mimetype,
+            filename=filename,
+        )
 
     @classmethod
     def resolve_files(
@@ -248,6 +308,7 @@ def _extension_of(filename: str | None) -> str:
 
 __all__ = [
     "AppNotFoundError",
+    "EndUserNotFoundError",
     "FileContent",
     "FileGrantService",
     "FileRef",

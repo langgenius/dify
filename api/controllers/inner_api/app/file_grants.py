@@ -18,9 +18,10 @@ from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from fields.base import ResponseModel
+from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
-from libs.file_grant import FileGrantScope, FileKind, build_content_url, issue_file_grant
-from services.file_grant_service import AppNotFoundError, FileGrantService, FileRef, ResolvedFile
+from libs.file_grant import FileGrantScope, FileKind, issue_file_grant
+from services.file_grant_service import AppNotFoundError, FileGrantService, FileRef
 
 MAX_GRANT_TTL_SECONDS = 7200
 
@@ -39,7 +40,7 @@ class GrantTtlTooLongError(BaseHTTPException):
 
 class InvalidSubjectError(BaseHTTPException):
     error_code = "invalid_subject"
-    description = "The subject is empty."
+    description = "The subject is empty or contains a NUL byte."
     code = 400
 
 
@@ -87,25 +88,12 @@ class FileGrantFileMetadata(ResponseModel):
     mime_type: str | None = None
 
 
-class FileGrantOptionalFile(ResponseModel):
-    id: str
-    ok: bool
-    kind: FileKind | None = None
-    name: str | None = None
-    size: int | None = None
-    extension: str | None = None
-    mime_type: str | None = None
-    url: str | None = None
-    internal_url: str | None = None
-    error: str | None = None
-
-
 class FileGrantMintResponse(ResponseModel):
     grant: str
     expires_at: int
     limits: FileGrantLimits
     files: list[FileGrantFileMetadata]
-    optional_files: list[FileGrantOptionalFile]
+    optional_files: list[ResolvedFileResponse]
 
 
 register_schema_models(inner_api_ns, FileGrantMintPayload)
@@ -139,7 +127,9 @@ class EnterpriseFileGrantApi(Resource):
 
         if payload.ttl_seconds > MAX_GRANT_TTL_SECONDS:
             raise GrantTtlTooLongError()
-        if not payload.subject.strip():
+        # A NUL reaches `external_user_id` verbatim, and PostgreSQL rejects it at
+        # the driver, which would surface a malformed subject as a 500.
+        if not payload.subject.strip() or "\x00" in payload.subject:
             raise InvalidSubjectError()
 
         try:
@@ -208,7 +198,7 @@ def _resolve_strict(payload: FileGrantMintPayload, *, end_user_id: str) -> list[
     ]
 
 
-def _resolve_lenient(payload: FileGrantMintPayload, *, end_user_id: str) -> list[FileGrantOptionalFile]:
+def _resolve_lenient(payload: FileGrantMintPayload, *, end_user_id: str) -> list[ResolvedFileResponse]:
     """Resolve history files item by item so one miss cannot block a run."""
 
     refs = [FileRef(id=ref.id, kind=ref.kind) for ref in payload.optional_file_ids]
@@ -217,24 +207,7 @@ def _resolve_lenient(payload: FileGrantMintPayload, *, end_user_id: str) -> list
         end_user_id=end_user_id,
         refs=refs,
     )
-    return [_optional_file(ref.id, file) for ref, file in zip(refs, resolved, strict=True)]
-
-
-def _optional_file(file_id: str, file: ResolvedFile | None) -> FileGrantOptionalFile:
-    if file is None:
-        return FileGrantOptionalFile(id=file_id, ok=False, error="not_found")
-
-    return FileGrantOptionalFile(
-        id=file.id,
-        ok=True,
-        kind=file.kind,
-        name=file.name,
-        size=file.size,
-        extension=file.extension,
-        mime_type=file.mime_type,
-        url=build_content_url(file_id=file.id, kind=file.kind, external=True),
-        internal_url=build_content_url(file_id=file.id, kind=file.kind, external=False),
-    )
+    return [ResolvedFileResponse.from_resolved(ref.id, file) for ref, file in zip(refs, resolved, strict=True)]
 
 
 __all__ = [
