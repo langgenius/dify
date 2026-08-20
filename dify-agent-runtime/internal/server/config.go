@@ -1,9 +1,11 @@
 package server
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -27,6 +29,9 @@ const (
 	DefaultSQLiteBusyTimeoutMs           = 5000
 	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
 	HealthStatus                         = "ok"
+	DefaultSnapshotTimeoutSeconds        = 45.0
+	HomeSnapshotExcludesEnv              = "SHELLCTL_HOME_SNAPSHOT_EXCLUDES"
+	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
 )
 
 // Config holds runtime configuration for the shellctl server.
@@ -54,13 +59,25 @@ type Config struct {
 	SQLiteBusyTimeoutMs          int
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
+	SnapshotTimeout              time.Duration
+	HomeSnapshotExcludes         []string
 }
 
 // DefaultConfig returns a Config with sensible defaults.
-func DefaultConfig() *Config {
+func DefaultConfig() (*Config, error) {
 	homeDir, _ := os.UserHomeDir()
 	stateDir := defaultStateDir()
 	runtimeDir := filepath.Join(stateDir, "runtime")
+
+	snapshotTimeout, err := parseSnapshotTimeout(os.Getenv(SnapshotTimeoutEnv))
+	if err != nil {
+		return nil, err
+	}
+
+	homeSnapshotExcludes, err := parseHomeSnapshotExcludes(os.Getenv(HomeSnapshotExcludesEnv))
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{
 		Listen:                       DefaultListen,
@@ -85,6 +102,8 @@ func DefaultConfig() *Config {
 		SQLiteBusyTimeoutMs:          DefaultSQLiteBusyTimeoutMs,
 		SanitizePtyCommand:           []string{"shellctl-sanitize-pty"},
 		RunnerExitCommand:            []string{"shellctl-runner-exit"},
+		SnapshotTimeout:              snapshotTimeout,
+		HomeSnapshotExcludes:         homeSnapshotExcludes,
 	}
 
 	// Auth token from environment if not set explicitly
@@ -92,7 +111,7 @@ func DefaultConfig() *Config {
 		cfg.AuthToken = os.Getenv(DefaultAuthTokenEnv)
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 // JobsDir returns the path to the jobs artifact directory.
@@ -125,4 +144,34 @@ func defaultStateDir() string {
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".local", "share", "shellctl")
+}
+
+func parseHomeSnapshotExcludes(raw string) ([]string, error) {
+	var excludes []string
+	for _, part := range strings.Split(raw, ",") {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		if trimmed == "." || trimmed == ".." || strings.ContainsAny(trimmed, `/\`) {
+			return nil, fmt.Errorf("%s: invalid exclude %q: must be a single path segment", HomeSnapshotExcludesEnv, trimmed)
+		}
+		excludes = append(excludes, trimmed)
+	}
+	return excludes, nil
+}
+
+func parseSnapshotTimeout(raw string) (time.Duration, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return time.Duration(DefaultSnapshotTimeoutSeconds * float64(time.Second)), nil
+	}
+	timeout, err := time.ParseDuration(trimmed)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", SnapshotTimeoutEnv, err)
+	}
+	if timeout <= 0 {
+		return 0, fmt.Errorf("%s: must be positive, got %q", SnapshotTimeoutEnv, trimmed)
+	}
+	return timeout, nil
 }
