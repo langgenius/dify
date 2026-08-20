@@ -699,11 +699,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/chat/chat-with-history/sidebar/rename-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
