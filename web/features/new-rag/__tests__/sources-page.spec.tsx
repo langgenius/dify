@@ -828,9 +828,17 @@ describe('SourcesPage', () => {
         {
           items: [
             source({
+              metadata: {
+                lastImport: {
+                  kind: 'online-document-import',
+                  state: 'failed',
+                  syncPolicy: { enabled: true, mode: 'provider' },
+                  workflowId: 'import-workflow',
+                },
+                preview: false,
+              },
               name: 'Failed connected source',
               status: 'error',
-              syncWorkflow: sourceWorkflow('failed'),
             }),
           ],
         },
@@ -856,12 +864,47 @@ describe('SourcesPage', () => {
 
     await waitFor(() => expect(clientMock.retrySourceWorkflow).toHaveBeenCalledOnce())
     expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
-      params: { control_space_id: 'space-1', run_id: 'workflow-1' },
+      params: { control_space_id: 'space-1', run_id: 'import-workflow' },
     })
     expect(clientMock.syncSource).not.toHaveBeenCalled()
     expect(within(sourceRow).getByRole('status')).toHaveTextContent(
       'dataset.newKnowledge.sourceStatus.syncing',
     )
+  })
+
+  it('shows and polls an accepted async import even when the source status is briefly disabled', () => {
+    const pendingSource = source({
+      metadata: {
+        pendingImport: {
+          kind: 'online-document-import',
+          syncPolicy: { enabled: true, mode: 'provider' },
+          workflowId: 'import-workflow',
+        },
+        preview: false,
+      },
+      name: 'Importing connected source',
+      status: 'disabled',
+    })
+    sourcesQuery.data = { pages: [{ items: [pendingSource] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const sourceRow = screen.getByRole('row', { name: /Importing connected source/ })
+    expect(within(sourceRow).getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.sourceStatus.syncing',
+    )
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: {
+          data: {
+            pages: [{ data: [sourceApiResponse(pendingSource)] }],
+          },
+        },
+      }),
+    ).toBe(3000)
   })
 
   it('keeps polling when the source list briefly returns the stale failed retry snapshot', async () => {

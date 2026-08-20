@@ -151,7 +151,8 @@ def resume_committed_source_import(
         "syncPolicy": last_import.get("syncPolicy"),
     }
     metadata = dict(source.metadata)
-    metadata.pop("lastImport", None)
+    # updateSource merges metadata; null explicitly supersedes the terminal marker while retrying.
+    metadata["lastImport"] = None
     facade.update_source(
         tenant_id=tenant_id,
         account_id=account_id,

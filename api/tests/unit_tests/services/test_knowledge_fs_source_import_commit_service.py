@@ -157,6 +157,6 @@ def test_resume_committed_source_import_restores_pending_marker() -> None:
 
     update = facade.update_source.call_args.kwargs["payload"]
     assert update.status == "syncing"
-    assert "lastImport" not in update.metadata
+    assert update.metadata["lastImport"] is None
     assert update.metadata["pendingImport"]["workflowId"] == "import-1"
     delay.assert_called_once()

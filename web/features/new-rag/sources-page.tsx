@@ -56,6 +56,7 @@ import {
   initialSourceWorkflowId,
   isInitialSourceForOperation,
   shouldHidePreviewSource,
+  sourceAsyncImportWorkflowId,
   sourceDisplayStatus,
   sourceFromApi,
   sourceNeedsPolling,
@@ -709,7 +710,8 @@ function SourceRow({
     )
 
   const retrySource = () => {
-    const retryWorkflowId = initialWorkflowId ?? syncWorkflow?.id
+    const retryWorkflowId =
+      initialWorkflowId ?? sourceAsyncImportWorkflowId(source) ?? syncWorkflow?.id
     if (!retryWorkflowId) return syncSource()
 
     return runAction(

@@ -135,6 +135,23 @@ const SOURCE_WORKFLOW_FAILURE_STATES = new Set([
   'timed_out',
   'timeout',
 ])
+const ASYNC_SOURCE_IMPORT_KINDS = new Set([
+  'crawl-preview-selection',
+  'online-document-import',
+  'online-drive-import',
+])
+
+function sourceImportMetadata(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+  const metadata = value as Record<string, unknown>
+  if (
+    typeof metadata.kind !== 'string' ||
+    !ASYNC_SOURCE_IMPORT_KINDS.has(metadata.kind) ||
+    typeof metadata.workflowId !== 'string'
+  )
+    return undefined
+  return metadata
+}
 
 export function sourceWorkflowStatus(state: string): Source['status'] {
   const normalized = state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
@@ -179,6 +196,15 @@ export function initialSourceWorkflowId(source: Source) {
   return initialImport.workflowId
 }
 
+export function sourceAsyncImportWorkflowId(source: Source) {
+  return (sourceImportMetadata(source.metadata.pendingImport)?.workflowId ??
+    sourceImportMetadata(source.metadata.lastImport)?.workflowId) as string | undefined
+}
+
+export function sourceHasPendingAsyncImport(source: Source) {
+  return sourceImportMetadata(source.metadata.pendingImport) !== undefined
+}
+
 export function sourceDisplayStatus(source: Source): SourceDisplayStatus {
   if (isInitialSource(source) && source.status === 'disabled' && source.metadata.preview === true)
     return 'initializing'
@@ -192,6 +218,8 @@ export function sourceDisplayStatus(source: Source): SourceDisplayStatus {
     return 'error'
   }
 
+  if (sourceHasPendingAsyncImport(source) && source.status === 'disabled') return 'syncing'
+
   return source.status
 }
 
@@ -204,6 +232,7 @@ export function shouldHidePreviewSource(source: Source) {
 export function sourceNeedsPolling(source: Source) {
   return (
     sourceDisplayStatus(source) === 'initializing' ||
+    sourceHasPendingAsyncImport(source) ||
     source.status === 'syncing' ||
     sourceWorkflowIsActive(source.syncWorkflow)
   )

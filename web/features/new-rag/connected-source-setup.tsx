@@ -42,7 +42,9 @@ import {
   sourceConnectionFromApi,
   sourceConnectionListFromApi,
   sourceFromApi,
+  sourceHasPendingAsyncImport,
   sourceProviderListFromApi,
+  sourceWorkflowFromApi,
 } from './source-models'
 import {
   discoverSourceProviderOptions,
@@ -1309,44 +1311,62 @@ function ResourceConfiguration({
           requestId: createRequestId(),
         }
       }
-      await (!driveTransport
-        ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
-            body: {
-              items: selectedPages.map((resource) => ({
-                lastEditedTime: resource.page.last_edited_time ?? undefined,
-                name: resource.page.page_name,
-                pageId: resource.page.page_id,
-                providerItemId: JSON.stringify([resource.groupId, resource.page.page_id]),
-                type: resource.page.type,
-                workspaceId: resource.groupId,
-              })),
-              kind: 'online-document-import',
-              syncPolicy: policy,
-            },
-            headers: { 'Idempotency-Key': importRequestRef.current.requestId },
-            params: {
-              control_space_id: knowledgeSpaceId,
-              source_id: finalSource.id,
-            },
-          })
-        : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
-            body: {
-              items: selectedFiles.map((resource) => ({
-                bucket: resource.bucket,
-                id: resource.file.id,
-                mimeType: resource.file.type.includes('/') ? resource.file.type : undefined,
-                name: resource.file.name,
-                providerItemId: JSON.stringify([resource.bucket ?? '', resource.file.id]),
-              })),
-              kind: 'online-drive-import',
-              syncPolicy: policy,
-            },
-            headers: { 'Idempotency-Key': importRequestRef.current.requestId },
-            params: {
-              control_space_id: knowledgeSpaceId,
-              source_id: finalSource.id,
-            },
-          }))
+      const importWorkflow = sourceWorkflowFromApi(
+        await (!driveTransport
+          ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+              body: {
+                items: selectedPages.map((resource) => ({
+                  lastEditedTime: resource.page.last_edited_time ?? undefined,
+                  name: resource.page.page_name,
+                  pageId: resource.page.page_id,
+                  providerItemId: JSON.stringify([resource.groupId, resource.page.page_id]),
+                  type: resource.page.type,
+                  workspaceId: resource.groupId,
+                })),
+                kind: 'online-document-import',
+                syncPolicy: policy,
+              },
+              headers: { 'Idempotency-Key': importRequestRef.current.requestId },
+              params: {
+                control_space_id: knowledgeSpaceId,
+                source_id: finalSource.id,
+              },
+            })
+          : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+              body: {
+                items: selectedFiles.map((resource) => ({
+                  bucket: resource.bucket,
+                  id: resource.file.id,
+                  mimeType: resource.file.type.includes('/') ? resource.file.type : undefined,
+                  name: resource.file.name,
+                  providerItemId: JSON.stringify([resource.bucket ?? '', resource.file.id]),
+                })),
+                kind: 'online-drive-import',
+                syncPolicy: policy,
+              },
+              headers: { 'Idempotency-Key': importRequestRef.current.requestId },
+              params: {
+                control_space_id: knowledgeSpaceId,
+                source_id: finalSource.id,
+              },
+            })),
+      )
+      const importKind = driveTransport ? 'online-drive-import' : 'online-document-import'
+      const committedSource: Source = {
+        ...finalSource,
+        metadata: {
+          ...finalSource.metadata,
+          pendingImport: {
+            kind: importKind,
+            syncPolicy: policy,
+            workflowId: importWorkflow.id,
+          },
+          preview: false,
+        },
+        status: 'syncing',
+      }
+      previewSourceRef.current = committedSource
+      setPreviewSource(committedSource)
       await completeSubmission()
     } catch {
       try {
@@ -1363,7 +1383,8 @@ function ResourceConfiguration({
           setPreviewSource(reconciledSource)
           if (
             reconciledSource.metadata.preview === false &&
-            reconciledSource.status !== 'disabled'
+            (reconciledSource.status !== 'disabled' ||
+              sourceHasPendingAsyncImport(reconciledSource))
           ) {
             await completeSubmission()
             return

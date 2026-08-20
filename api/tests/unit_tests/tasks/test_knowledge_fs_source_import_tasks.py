@@ -49,10 +49,25 @@ def test_finalize_source_import_waits_for_terminal_workflow() -> None:
     facade.get_source.assert_not_called()
 
 
-def test_finalize_source_import_applies_policy_then_activates_source() -> None:
+def test_finalize_source_import_activates_source_then_applies_policy_for_new_version() -> None:
     facade = MagicMock()
-    facade.get_source_workflow.return_value = SimpleNamespace(state="completed")
+    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
     facade.get_source.return_value = _source()
+    facade.update_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "previewWorkflowId": "preview-1",
+                "state": "completed",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+            "preview": False,
+        },
+        status="active",
+        version=5,
+    )
     facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
 
     assert _run(facade) == "import-1"
@@ -61,10 +76,38 @@ def test_finalize_source_import_applies_policy_then_activates_source() -> None:
     assert policy.enabled is False
     assert policy.mode == "manual"
     assert policy.expected_revision == 0
-    assert policy.expected_source_version == 4
+    assert policy.expected_source_version == 5
     update = facade.update_source.call_args.kwargs["payload"]
     assert update.status == "active"
-    assert "pendingImport" not in update.metadata
+    assert update.metadata["pendingImport"] is None
+    assert update.metadata["lastImport"]["state"] == "completed"
+
+
+def test_finalize_source_import_retries_policy_after_source_activation() -> None:
+    facade = MagicMock()
+    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "previewWorkflowId": "preview-1",
+                "state": "completed",
+                "syncPolicy": {"enabled": True, "mode": "interval"},
+                "workflowId": "import-1",
+            },
+            "preview": False,
+        },
+        status="active",
+        version=5,
+    )
+    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
+
+    assert _run(facade) == "import-1"
+
+    facade.update_source.assert_not_called()
+    policy = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert policy.expected_source_version == 5
 
 
 def test_finalize_source_import_persists_failure_on_visible_source() -> None:
@@ -90,4 +133,5 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
         "syncPolicy": {"enabled": False, "mode": "manual"},
         "workflowId": "import-1",
     }
+    assert update.metadata["pendingImport"] is None
     facade.update_source_sync_policy.assert_not_called()

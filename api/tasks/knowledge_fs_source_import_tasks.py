@@ -14,6 +14,11 @@ from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, 
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 _ACTIVE_STATES = {"queued", "running", "crawling", "importing", "syncing"}
+_ASYNC_IMPORT_KINDS = {
+    "crawl-preview-selection",
+    "online-document-import",
+    "online-drive-import",
+}
 _PENDING_IMPORT_KEY = "pendingImport"
 
 
@@ -41,12 +46,25 @@ def finalize_source_import_once(
         source_id=source_id,
     )
     pending = source.metadata.get(_PENDING_IMPORT_KEY)
-    if not isinstance(pending, dict) or pending.get("workflowId") != workflow_id:
+    last_import = source.metadata.get("lastImport")
+    completed_import = (
+        last_import
+        if isinstance(last_import, dict)
+        and last_import.get("kind") in _ASYNC_IMPORT_KINDS
+        and last_import.get("state") == "completed"
+        and last_import.get("workflowId") == workflow_id
+        else None
+    )
+    if (not isinstance(pending, dict) or pending.get("workflowId") != workflow_id) and completed_import is None:
         return workflow_id
 
     metadata = dict(source.metadata)
-    metadata.pop(_PENDING_IMPORT_KEY, None)
     if workflow.state != "completed":
+        if not isinstance(pending, dict):
+            return workflow_id
+        # updateSource applies a metadata merge patch, so omission preserves the old marker.
+        # An explicit null is the tombstone consumed by Dify/UI readers.
+        metadata[_PENDING_IMPORT_KEY] = None
         failure = {
             "errorCode": workflow.last_error_code,
             "errorMessage": workflow.failure.message if workflow.failure is not None else None,
@@ -69,7 +87,36 @@ def finalize_source_import_once(
         )
         return workflow_id
 
-    desired_policy = KnowledgeFSDeferredSyncPolicyPayload.model_validate(pending.get("syncPolicy"))
+    import_metadata = completed_import or pending
+    if not isinstance(import_metadata, dict):
+        return workflow_id
+    if completed_import is None:
+        completion = {
+            "kind": import_metadata.get("kind"),
+            **(
+                {"previewWorkflowId": import_metadata.get("previewWorkflowId")}
+                if import_metadata.get("previewWorkflowId") is not None
+                else {}
+            ),
+            "state": "completed",
+            "syncPolicy": import_metadata.get("syncPolicy"),
+            "workflowId": workflow.id,
+        }
+        metadata[_PENDING_IMPORT_KEY] = None
+        source = facade.update_source(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=KnowledgeFSSourceUpdatePayload(
+                expectedVersion=source.version,
+                metadata={**metadata, "lastImport": completion, "preview": False},
+                status="active",
+            ),
+        )
+        import_metadata = completion
+
+    desired_policy = KnowledgeFSDeferredSyncPolicyPayload.model_validate(import_metadata.get("syncPolicy"))
     try:
         current_policy = facade.get_source_sync_policy(
             tenant_id=tenant_id,
@@ -91,17 +138,6 @@ def finalize_source_import_once(
             customIntervalSeconds=desired_policy.custom_interval_seconds,
             expectedRevision=expected_revision,
             expectedSourceVersion=source.version,
-        ),
-    )
-    facade.update_source(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        source_id=source_id,
-        payload=KnowledgeFSSourceUpdatePayload(
-            expectedVersion=source.version,
-            metadata={**metadata, "preview": False},
-            status="active",
         ),
     )
     return workflow_id

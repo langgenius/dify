@@ -57,6 +57,7 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     assert "tasks.knowledge_fs_initial_source_preview_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_failed_retrieval_tasks" in celery_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" in celery_app.conf["imports"]
+    assert "tasks.knowledge_fs_source_import_tasks" in celery_app.conf["imports"]
     assert "tasks.delete_conversation_task" in celery_app.conf["imports"]
     assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"] == {
         "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
@@ -84,3 +85,4 @@ def test_celery_registers_initial_source_task_when_knowledge_fs_lifecycle_is_rea
     assert "tasks.knowledge_fs_failed_retrieval_tasks" in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_initial_source_tasks" not in preview_only_app.conf["imports"]
     assert "tasks.knowledge_fs_lifecycle_tasks" not in preview_only_app.conf["imports"]
+    assert "tasks.knowledge_fs_source_import_tasks" not in preview_only_app.conf["imports"]

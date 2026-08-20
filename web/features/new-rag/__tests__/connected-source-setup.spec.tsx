@@ -752,6 +752,62 @@ describe('ConnectedSourceSetup', () => {
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
   })
 
+  it('reconciles an accepted import when the response is lost before navigation', async () => {
+    const user = userEvent.setup()
+    clientMock.listDatasourceAuth.mockResolvedValue({
+      result: [notionDatasourceAuth([notionCredential])],
+    })
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+    clientMock.getPages.mockResolvedValue({
+      next_cursor: null,
+      workspaces: [
+        {
+          pages: [
+            {
+              last_edited_time: null,
+              page_id: 'page-1',
+              page_name: 'Product roadmap',
+              parent_id: null,
+              type: 'page',
+            },
+          ],
+          total: 1,
+          workspace_id: 'workspace-1',
+          workspace_name: 'Acme workspace',
+        },
+      ],
+    })
+    clientMock.createWorkflowImport.mockRejectedValue(new TypeError('Failed to fetch'))
+    clientMock.getSource.mockResolvedValue(
+      sourceResponse({
+        metadata: {
+          pendingImport: {
+            kind: 'online-document-import',
+            syncPolicy: { enabled: true, mode: 'provider' },
+            workflowId: 'import-run-1',
+          },
+          preview: false,
+        },
+        name: 'Team wiki',
+        status: 'disabled',
+        version: 5,
+      }),
+    )
+    const view = renderSetup({ ...defaultDraft, sourceName: 'Team wiki' })
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Product roadmap' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(view.onCompleted).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    view.unmount()
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+  })
+
   it('applies datasource parameters once instead of rebuilding the preview on every keypress', async () => {
     const user = userEvent.setup()
     clientMock.listDatasourcePlugins.mockResolvedValue([notionDatasourcePluginWithParameters])
