@@ -361,7 +361,12 @@ async def test_enterprise_default_binding_creates_gateway_sandbox_and_layout(
         return httpx.Response(200, json={"job_id": "job-1"})
 
     clients = _mock_http(monkeypatch, handler)
-    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+    backend = EnterpriseExecutionBindingBackend(
+        gateway_endpoint="http://gateway.example",
+        auth_token="secret",
+        gateway_timeout=30,
+        snapshot_timeout=120,
+    )
 
     allocation = await backend.create_binding(
         ExecutionBindingCreateSpec(
@@ -377,27 +382,17 @@ async def test_enterprise_default_binding_creates_gateway_sandbox_and_layout(
     assert allocation.binding_ref == allocation.workspace_ref == "sandbox-1"
     assert requests[0].headers["X-Inner-Api-Key"] == "secret"
     assert all(client.is_closed for client in clients)
+    assert clients[0].timeout.read == 30
 
 
 @pytest.mark.anyio
-async def test_enterprise_binding_rejects_snapshot_and_shared_workspace_before_gateway_call(
+async def test_enterprise_binding_rejects_shared_workspace_before_gateway_call(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     requests: list[httpx.Request] = []
     _ = _mock_http(monkeypatch, lambda request: requests.append(request) or httpx.Response(500))
     backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
 
-    with pytest.raises(BindingCreateError, match="immutable Home Snapshot"):
-        await backend.create_binding(
-            ExecutionBindingCreateSpec(
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                binding_id="binding-1",
-                workspace_id="workspace-1",
-                existing_workspace_ref=None,
-                home_snapshot_ref="snapshot-1",
-            )
-        )
     with pytest.raises(SharedWorkspaceUnsupportedError):
         await backend.create_binding(
             ExecutionBindingCreateSpec(
@@ -411,6 +406,83 @@ async def test_enterprise_binding_rejects_snapshot_and_shared_workspace_before_g
         )
 
     assert requests == []
+
+
+@pytest.mark.anyio
+async def test_enterprise_binding_sends_the_snapshot_ref_and_still_clears_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scripts: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/sandboxes":
+            assert json.loads(request.content) == {
+                "tenantId": "tenant-1",
+                "homeSnapshotRef": "tenant-1/agent-1/home-2",
+            }
+            return httpx.Response(201, json={"sandboxId": "sandbox-1"})
+        if request.url.path == "/proxy/v1/jobs/run":
+            payload = cast(dict[str, object], json.loads(request.content))
+            script = payload["script"]
+            assert isinstance(script, str)
+            scripts.append(script)
+            return _job_response()
+        return httpx.Response(200, json={"job_id": "job-1"})
+
+    clients = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(
+        gateway_endpoint="http://gateway.example",
+        auth_token="secret",
+        snapshot_timeout=120,
+    )
+
+    allocation = await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref="tenant-1/agent-1/home-2",
+        )
+    )
+
+    assert allocation.binding_ref == "sandbox-1"
+    assert any("rm -rf -- /home/dify/workspace" in script for script in scripts)
+    assert clients[0].timeout.read == 120
+
+
+@pytest.mark.anyio
+async def test_enterprise_binding_deletes_the_sandbox_when_restore_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/v1/sandboxes" and request.method == "POST":
+            return httpx.Response(
+                404,
+                json={"code": 404, "reason": "snapshot_not_found", "message": "home snapshot missing"},
+            )
+        return httpx.Response(204)
+
+    _ = _mock_http(monkeypatch, handler)
+    backend = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(BindingCreateError, match="snapshot_not_found"):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref="tenant-1/agent-1/home-2",
+            )
+        )
+
+    assert not any(request.method == "DELETE" for request in requests)
 
 
 @pytest.mark.anyio

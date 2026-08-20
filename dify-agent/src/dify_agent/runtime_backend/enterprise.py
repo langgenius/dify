@@ -1,10 +1,11 @@
 """Enterprise Gateway adapter for the working-environment protocol.
 
-The existing Gateway can allocate, reconnect to, and delete a sandbox, but it
-does not expose immutable Home Snapshot operations. One physical sandbox owns
-both the materialized Home and Workspace, so their cleanup is coupled. Runtime
-access remains operation-local and is routed through the Gateway's shellctl
-proxy.
+The Gateway owns immutable Home Snapshot capture, restore, and deletion, in
+addition to allocating, reconnecting to, and deleting a sandbox. Restore
+arrives as a `homeSnapshotRef` parameter on sandbox creation rather than its
+own call. One physical sandbox owns both the materialized Home and Workspace,
+so their cleanup is coupled. Runtime access remains operation-local and is
+routed through the Gateway's shellctl proxy.
 """
 
 from __future__ import annotations
@@ -164,19 +165,20 @@ class EnterpriseExecutionBindingBackend:
         """Create a default Gateway sandbox and initialize its canonical layout."""
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
-        if spec.home_snapshot_ref is not None:
-            raise BindingCreateError("current Enterprise backend cannot materialize an immutable Home Snapshot")
 
         sandbox_id: str | None = None
         data_plane: ShellctlRuntimeLease | None = None
         try:
+            create_body: dict[str, object] = {"tenantId": spec.tenant_id}
+            if spec.home_snapshot_ref is not None:
+                create_body["homeSnapshotRef"] = spec.home_snapshot_ref
             payload = await _gateway_request(
                 endpoint=self.gateway_endpoint,
                 auth_token=self.auth_token,
-                timeout=self.gateway_timeout,
+                timeout=self.snapshot_timeout if spec.home_snapshot_ref is not None else self.gateway_timeout,
                 method="POST",
                 path="/v1/sandboxes",
-                json_body={"tenantId": spec.tenant_id},
+                json_body=create_body,
             )
             sandbox_id_value = payload.get("sandboxId") if isinstance(payload, dict) else None
             if not isinstance(sandbox_id_value, str) or not sandbox_id_value:
