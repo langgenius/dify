@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import EventStreamResponse
-from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.human_input import HumanInputFormSubmitPayload, stringify_form_default_values
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -32,6 +32,7 @@ from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
+from libs.helper import to_timestamp
 from libs.login import login_required
 from models import Account, App
 from models.enums import CreatorUserRole
@@ -62,8 +63,14 @@ register_response_schema_models(
 
 
 def _jsonify_form_definition(form: Form) -> Response:
-    payload = form.get_definition().model_dump()
-    payload["expiration_time"] = int(form.expiration_time.timestamp())
+    definition_payload = form.get_definition().model_dump()
+    payload = {
+        "form_content": definition_payload.get("rendered_content") or definition_payload.get("form_content", ""),
+        "inputs": definition_payload.get("inputs", []),
+        "resolved_default_values": stringify_form_default_values(definition_payload.get("default_values", {})),
+        "user_actions": definition_payload.get("user_actions", []),
+        "expiration_time": to_timestamp(form.expiration_time),
+    }
     return Response(json.dumps(payload, ensure_ascii=False), mimetype="application/json")
 
 
