@@ -75,10 +75,18 @@ type SubmitRequestDropdownProps = {
   dividerAfterFirst?: boolean
 }
 
-export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdownProps) {
+type SubmitRequestDropdownMenuProps = SubmitRequestDropdownProps & {
+  docLink: (path: DocPathWithoutLang) => string
+}
+
+// Presentational dropdown. Callers that cannot use useDocLink() — standalone
+// Marketplace SSR — pass a locale-composed docLink instead.
+export function SubmitRequestDropdownMenu({
+  dividerAfterFirst,
+  docLink,
+}: SubmitRequestDropdownMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const docLink = useDocLink()
   const options = getOptions(docLink)
 
   return (
@@ -111,4 +119,9 @@ export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdo
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdownProps) {
+  const docLink = useDocLink()
+  return <SubmitRequestDropdownMenu dividerAfterFirst={dividerAfterFirst} docLink={docLink} />
 }

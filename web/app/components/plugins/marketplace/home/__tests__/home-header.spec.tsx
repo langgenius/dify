@@ -4,7 +4,6 @@ import HomeHeader from '../home-header'
 
 const mocks = vi.hoisted(() => ({
   marketplaceUrlPrefix: 'https://marketplace.dify.ai',
-  useDocLink: vi.fn(() => () => 'https://docs.dify.ai/en/home'),
 }))
 
 vi.mock('#i18n', async () => {
@@ -21,8 +20,6 @@ vi.mock('#i18n', async () => {
 
 vi.mock('@/context/i18n', () => ({
   defaultDocBaseUrl: 'https://docs.dify.ai',
-  getDocHomePath: () => '/home',
-  useDocLink: mocks.useDocLink,
 }))
 
 vi.mock('@/config', () => ({
@@ -41,21 +38,21 @@ describe('HomeHeader', () => {
     mocks.marketplaceUrlPrefix = 'https://marketplace.dify.ai'
   })
 
-  it('shows Creator Center before Guide', () => {
+  it('shows Creator Center before the docs dropdown', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
     const creatorCenterLink = screen.getByRole('link', { name: 'marketplace.home.creatorCenter' })
-    const guideLink = screen.getByRole('link', { name: 'marketplace.home.guide' })
+    const guideButton = screen.getByRole('button', { name: /requestSubmit/ })
 
     expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(creatorCenterLink).toHaveAttribute('target', '_blank')
     expect(creatorCenterLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(creatorCenterLink.compareDocumentPosition(guideLink)).toBe(
+    expect(creatorCenterLink.compareDocumentPosition(guideButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
-    // Each action must be a single interactive element, not a link-wrapped button.
+    // Creator Center must be a single interactive element, not a link-wrapped button.
     expect(creatorCenterLink.querySelector('button')).toBeNull()
-    expect(guideLink.querySelector('button')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'marketplace.home.guide' })).not.toBeInTheDocument()
   })
 
   it('links Creator Center to the staging Creators site in staging', () => {
@@ -91,7 +88,7 @@ describe('HomeHeader', () => {
     )
   })
 
-  it('links the Guide action to Dify documentation', () => {
+  it('renders the Marketplace wordmark without a Marketplace text label', () => {
     render(<HomeHeader isMarketplacePlatform />)
 
     const brandLink = screen.getByRole('link', { name: 'Dify Marketplace' })
@@ -106,22 +103,6 @@ describe('HomeHeader', () => {
     expect(darkLogo).toHaveAttribute('width', '141.761')
     expect(darkLogo).toHaveAttribute('height', '16.386')
     expect(screen.queryByText('mainNav.marketplace')).not.toBeInTheDocument()
-
-    const guideLink = screen.getByRole('link', { name: 'marketplace.home.guide' })
-    expect(guideLink).toHaveAttribute('href', 'https://docs.dify.ai/en/home')
-    expect(guideLink).toHaveAttribute('target', '_blank')
-    expect(guideLink).toHaveAttribute('rel', 'noopener noreferrer')
-    expect(mocks.useDocLink).not.toHaveBeenCalled()
-  })
-
-  it('uses the Dify deployment-aware documentation link inside Dify', () => {
-    render(<HomeHeader isMarketplacePlatform={false} />)
-
-    expect(screen.getByRole('link', { name: 'marketplace.home.guide' })).toHaveAttribute(
-      'href',
-      'https://docs.dify.ai/en/home',
-    )
-    expect(mocks.useDocLink).toHaveBeenCalledOnce()
   })
 
   it('shows Templates with only the active background on the Templates catalog', () => {

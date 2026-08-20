@@ -73,9 +73,3 @@
     padding-left: 16px;
   }
 }
-
-@media (max-width: 767px) {
-  .guide {
-    display: none;
-  }
-}

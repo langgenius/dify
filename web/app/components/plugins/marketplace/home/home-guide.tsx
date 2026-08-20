@@ -1,44 +1,25 @@
 'use client'
 
-import { buttonVariants } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useTranslation } from '#i18n'
-import { defaultDocBaseUrl, getDocHomePath, useDocLink } from '@/context/i18n'
+import {
+  SubmitRequestDropdown,
+  SubmitRequestDropdownMenu,
+} from '@/app/components/plugins/plugin-page/nav-operations'
+import { defaultDocBaseUrl } from '@/context/i18n'
 import { getDocLanguage } from '@/i18n-config/language'
-import Link from '@/next/link'
-import styles from './home-sticky.module.css'
-
-function GuideLink({ href }: { href: string }) {
-  const { t } = useTranslation('plugin')
-
-  return (
-    <Link
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        styles.guide,
-        buttonVariants({ variant: 'ghost', size: 'large' }),
-        'min-w-[94px] gap-0.5 px-3 text-text-primary',
-      )}
-    >
-      <span aria-hidden className="i-ri-map-2-line size-5" />
-      <span className="px-1 system-md-medium">{t(($) => $['marketplace.home.guide'])}</span>
-    </Link>
-  )
-}
 
 function MarketplaceGuide() {
   const { i18n } = useTranslation()
   const docLanguage = getDocLanguage(i18n.language)
-  return <GuideLink href={`${defaultDocBaseUrl}/${docLanguage}${getDocHomePath()}`} />
-}
+  const docLink = (path: DocPathWithoutLang) => `${defaultDocBaseUrl}/${docLanguage}${path}`
 
-function DifyGuide() {
-  const docLink = useDocLink()
-  return <GuideLink href={docLink()} />
+  return <SubmitRequestDropdownMenu dividerAfterFirst docLink={docLink} />
 }
 
 export default function HomeGuide({ isMarketplacePlatform }: { isMarketplacePlatform: boolean }) {
-  return isMarketplacePlatform ? <MarketplaceGuide /> : <DifyGuide />
+  // Standalone Marketplace cannot call useDocLink(): it reads the console-only
+  // systemFeatures suspense query and crashes SSR. The dropdown paths have no
+  // product-specific variants, so composing the URL from the locale matches.
+  return isMarketplacePlatform ? <MarketplaceGuide /> : <SubmitRequestDropdown dividerAfterFirst />
 }
