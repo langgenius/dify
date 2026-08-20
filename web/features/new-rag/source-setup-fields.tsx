@@ -367,6 +367,33 @@ export function SourceConnectionRequiredCard({
   )
 }
 
+export function SourceProviderCredentialRequiredCard({
+  disabled = false,
+  icon,
+  provider,
+  onConnect,
+}: {
+  disabled?: boolean
+  icon: ReactNode
+  provider: string
+  onConnect: () => void
+}) {
+  const { t } = useTranslation('dataset')
+
+  return (
+    <SourceConnectionRequiredCard
+      actionLabel={t(($) => $['newKnowledge.connectProvider'], { provider })}
+      description={t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
+        provider,
+      })}
+      disabled={disabled}
+      icon={icon}
+      title={t(($) => $['newKnowledge.providerNotConfigured'], { provider })}
+      onConnect={onConnect}
+    />
+  )
+}
+
 export function SourceProviderNotInstalledCard({
   icon,
   provider,

@@ -591,11 +591,18 @@ describe('ConnectedSourceSetup', () => {
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
   })
 
-  it('shows the Notion connection card and opens the provider package when no credential exists', async () => {
+  it('shows the shared provider credential card and opens the provider package when no credential exists', async () => {
     const user = userEvent.setup()
     const view = renderSetup()
 
-    expect(await screen.findByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'dataset.newKnowledge.providerCredentialRequiredDescription:{"provider":"Notion"}',
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
     expect(view.container.querySelectorAll('img[src="icon.svg"]')).toHaveLength(2)
@@ -621,7 +628,9 @@ describe('ConnectedSourceSetup', () => {
 
     renderSetup()
 
-    expect(await screen.findByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
+    expect(
+      await screen.findByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
+    ).toBeInTheDocument()
     expect(clientMock.createSource).not.toHaveBeenCalled()
     expect(clientMock.getPages).not.toHaveBeenCalled()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
@@ -635,7 +644,9 @@ describe('ConnectedSourceSetup', () => {
     })
 
     expect(await screen.findByText('workflow.nodes.common.pluginNotInstalled')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.notionNotConnected')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Notion"}'),
+    ).not.toBeInTheDocument()
     expect(clientMock.createConnection).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'plugin.installPlugin' }))

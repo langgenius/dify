@@ -33,8 +33,8 @@ import {
   sourceProviderOptionForDraft,
 } from './source-provider-options'
 import {
-  SourceConnectionRequiredCard,
   SourceNameField,
+  SourceProviderCredentialRequiredCard,
   SourceProviderIcon,
   SourceProviderNotInstalledCard,
   SourceProviderRadioGroup,
@@ -478,18 +478,10 @@ export function CreateSourceSetup({
           }
         />
       ) : installedProviderOption && !credential ? (
-        <SourceConnectionRequiredCard
-          actionLabel={t(($) => $['newKnowledge.connectProvider'], {
-            provider: installedProviderOption.label,
-          })}
-          description={t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
-            provider: installedProviderOption.label,
-          })}
+        <SourceProviderCredentialRequiredCard
           disabled={disabled}
           icon={<SourceProviderIcon fallbackIcon={installedProviderOption.fallbackIcon} />}
-          title={t(($) => $['newKnowledge.providerNotConfigured'], {
-            provider: installedProviderOption.label,
-          })}
+          provider={installedProviderOption.label}
           onConnect={() =>
             globalThis.open(
               providerIntegrationPath(installedProviderOption.packageId),

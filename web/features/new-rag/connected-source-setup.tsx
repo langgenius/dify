@@ -11,7 +11,7 @@ import type {
   NewKnowledgeSourceDraft,
 } from './routes'
 import type { Source, SourceConnection, SourceProvider } from './source-models'
-import type { InstalledSourceProviderOption, SourceProviderOption } from './source-provider-options'
+import type { SourceProviderOption } from './source-provider-options'
 import type {
   DataSourceAuth,
   DataSourceCredential,
@@ -52,8 +52,8 @@ import {
   sourceProviderOptionForDraft,
 } from './source-provider-options'
 import {
-  SourceConnectionRequiredCard,
   SourceNameField,
+  SourceProviderCredentialRequiredCard,
   SourceProviderIcon,
   SourceProviderNotInstalledCard,
   SourceProviderSelector,
@@ -295,41 +295,6 @@ async function deleteSourceBestEffort(knowledgeSpaceId: string, source?: Source)
   } catch {
     // Cleanup is best effort; a failed cleanup remains visible and recoverable in Sources.
   }
-}
-
-function OAuthConnectionCard({
-  draft,
-  icon,
-  providerOption,
-  onConnect,
-}: {
-  draft: ConnectedSourceDraft
-  icon?: ReturnType<typeof datasourceProviderIcon>
-  providerOption: InstalledSourceProviderOption
-  onConnect: () => void
-}) {
-  const { t } = useTranslation('dataset')
-  return (
-    <SourceConnectionRequiredCard
-      actionLabel={t(($) => $['newKnowledge.connectProvider'], { provider: draft.provider })}
-      description={
-        draft.provider === 'Notion'
-          ? t(($) => $['newKnowledge.notionNotConnectedDescription'])
-          : t(($) => $['newKnowledge.providerCredentialRequiredDescription'], {
-              provider: draft.provider,
-            })
-      }
-      icon={<SourceProviderIcon fallbackIcon={providerOption.fallbackIcon} icon={icon} />}
-      title={
-        draft.provider === 'Notion'
-          ? t(($) => $['newKnowledge.notionNotConnected'])
-          : t(($) => $['newKnowledge.providerNotConfigured'], {
-              provider: draft.provider,
-            })
-      }
-      onConnect={onConnect}
-    />
-  )
 }
 
 function connectionLabel(
@@ -1986,10 +1951,14 @@ export function ConnectedSourceSetup({
           </Button>
         </div>
       ) : (
-        <OAuthConnectionCard
-          draft={draft}
-          icon={datasourceProviderIcon(datasourceProvider)}
-          providerOption={installedProviderOption}
+        <SourceProviderCredentialRequiredCard
+          icon={
+            <SourceProviderIcon
+              fallbackIcon={installedProviderOption.fallbackIcon}
+              icon={datasourceProviderIcon(datasourceProvider)}
+            />
+          }
+          provider={installedProviderOption.label}
           onConnect={() =>
             globalThis.open(
               providerIntegrationPath(installedProviderOption),
