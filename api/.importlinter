@@ -107,6 +107,23 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:webapp-access-query-service-boundary]
+name = Web app access query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.webapp_access_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.enterprise
+    services.feature_service
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:feature-query-service-boundary]
 name = Feature query application service is framework and persistence neutral
 type = forbidden

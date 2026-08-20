@@ -16,7 +16,6 @@ project-excludes = [
   "controllers/console/test_apikey.py",
   "controllers/console/workspace/test_workspace_wraps.py",
   "controllers/service_api/dataset/test_dataset.py",
-  "controllers/service_api/test_site.py",
   "controllers/web/test_conversation.py",
   "controllers/web/test_site.py",
   "controllers/web/test_wraps.py",
