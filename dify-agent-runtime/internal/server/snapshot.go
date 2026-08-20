@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"hash"
 	"io"
@@ -22,7 +23,30 @@ const (
 	TrailerSnapshotSha256 = "X-Snapshot-Sha256"
 	TrailerSnapshotBytes  = "X-Snapshot-Bytes"
 	SnapshotStatusOK      = "ok"
+
+	maxSaveRequestBytes = 64 << 10
 )
+
+// SaveRequest is the optional body of POST /v1/snapshot/save. The caller owns
+// the configurable excludes; the runtime's own defaults are not negotiable and
+// are applied on top of whatever arrives here.
+type SaveRequest struct {
+	Excludes []string `json:"excludes"`
+}
+
+// decodeSaveExcludes reads the caller's excludes. An absent or empty body means
+// no caller excludes, which is distinct from a malformed one. Values are taken
+// as given: an entry that names no top-level Home entry simply never matches.
+func decodeSaveExcludes(body io.Reader) ([]string, error) {
+	var req SaveRequest
+	if err := json.NewDecoder(io.LimitReader(body, maxSaveRequestBytes)).Decode(&req); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return req.Excludes, nil
+}
 
 // snapshotHandlers serves the native Home snapshot endpoints.
 //
@@ -56,6 +80,12 @@ func (h *snapshotHandlers) resolveHome() (string, error) {
 
 func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		excludes, err := decodeSaveExcludes(r.Body)
+		if err != nil {
+			writeError(w, 400, "invalid_request", err.Error())
+			return
+		}
+
 		if !h.gate.TryLock() {
 			writeError(w, 409, "snapshot_busy", "another snapshot operation is in progress")
 			return
@@ -79,7 +109,7 @@ func (h *snapshotHandlers) handleSnapshotSave() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/octet-stream")
 
 		hcw := &hashCountWriter{w: w, h: sha256.New()}
-		if err := snapshot.SaveHome(ctx, hcw, home, h.config.HomeSnapshotExcludes); err != nil {
+		if err := snapshot.SaveHome(ctx, hcw, home, excludes); err != nil {
 			log.Printf("ERROR snapshot save: %v", err)
 			if hcw.n == 0 {
 				w.Header().Del("Trailer")

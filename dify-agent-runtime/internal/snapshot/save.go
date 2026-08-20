@@ -13,12 +13,17 @@ import (
 )
 
 // SaveHome streams homeDir to dst as tar+zstd in a single pass with no
-// intermediate spooling. defaultExcludes and the top-level excludes are
-// skipped.
+// intermediate spooling. The runtime's own defaults and the caller's
+// gitignore-syntax excludes are skipped; see Excluder.
+//
+// An excluded directory is not descended into, so — as in git — a pattern
+// cannot re-include anything beneath a directory that is already excluded.
+//
 // Symlinks are archived as symlinks; irregular files (sockets, fifos,
 // devices) are skipped as runtime artifacts; ownership is not recorded.
 // Callers wrap dst to hash or count the compressed bytes.
 func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []string) error {
+	excluder := NewExcluder(excludes)
 	zw, err := zstd.NewWriter(dst,
 		zstd.WithEncoderLevel(zstd.SpeedDefault),
 		zstd.WithEncoderConcurrency(1),
@@ -42,7 +47,8 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		if rel == "." {
 			return nil
 		}
-		if excluded(rel, excludes) {
+		relSlash := filepath.ToSlash(rel)
+		if excluder.Excluded(relSlash, d.IsDir()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
@@ -65,7 +71,7 @@ func SaveHome(ctx context.Context, dst io.Writer, homeDir string, excludes []str
 		if err != nil {
 			return err
 		}
-		hdr.Name = filepath.ToSlash(rel)
+		hdr.Name = relSlash
 		if info.IsDir() {
 			hdr.Name += "/"
 		}

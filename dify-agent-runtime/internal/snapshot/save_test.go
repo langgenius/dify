@@ -155,6 +155,10 @@ func TestSaveHomeAlwaysSkipsDefaultExcludes(t *testing.T) {
 		"nil excludes":       nil,
 		"empty excludes":     {},
 		"unrelated excludes": {".cache"},
+		// A caller must not be able to negotiate a default back in, whether
+		// by re-including it outright or by anchoring the attempt.
+		"re-inclusion":          {"!" + WorkspaceDir, "!" + RuntimeDataDir},
+		"anchored re-inclusion": {"!/" + WorkspaceDir, "!/" + RuntimeDataDir + "/**"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			home := buildFixtureHome(t)

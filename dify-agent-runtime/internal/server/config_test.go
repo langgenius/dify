@@ -68,50 +68,9 @@ func TestConfigNoAuthToken(t *testing.T) {
 }
 
 func TestDefaultConfigSnapshotFields(t *testing.T) {
-	t.Setenv(HomeSnapshotExcludesEnv, "")
 	cfg := mustDefaultConfig(t)
 	if cfg.SnapshotTimeout != 45*time.Second {
 		t.Errorf("SnapshotTimeout = %v, want 45s", cfg.SnapshotTimeout)
-	}
-	if len(cfg.HomeSnapshotExcludes) != 0 {
-		t.Errorf("HomeSnapshotExcludes = %v, want none: workspace is skipped by SaveHome, not by config", cfg.HomeSnapshotExcludes)
-	}
-}
-
-func TestHomeSnapshotExcludesFromEnv(t *testing.T) {
-	t.Setenv(HomeSnapshotExcludesEnv, "workspace, .cache ,")
-	cfg := mustDefaultConfig(t)
-	want := []string{"workspace", ".cache"}
-	if len(cfg.HomeSnapshotExcludes) != len(want) {
-		t.Fatalf("excludes = %v, want %v", cfg.HomeSnapshotExcludes, want)
-	}
-	for i := range want {
-		if cfg.HomeSnapshotExcludes[i] != want[i] {
-			t.Fatalf("excludes = %v, want %v", cfg.HomeSnapshotExcludes, want)
-		}
-	}
-}
-
-func TestRejectsBadExcludes(t *testing.T) {
-	for _, bad := range []string{".", "..", "a/b", `a\b`, "workspace,a/b"} {
-		t.Run(bad, func(t *testing.T) {
-			t.Setenv(HomeSnapshotExcludesEnv, bad)
-			cfg, err := DefaultConfig()
-			if err == nil {
-				t.Fatalf("exclude %q must fail startup", bad)
-			}
-			if cfg != nil {
-				t.Errorf("exclude %q yielded a usable config", bad)
-			}
-		})
-	}
-}
-
-func TestEmptyExcludeSegmentsAreSkipped(t *testing.T) {
-	t.Setenv(HomeSnapshotExcludesEnv, ",workspace,,")
-	cfg := mustDefaultConfig(t)
-	if len(cfg.HomeSnapshotExcludes) != 1 || cfg.HomeSnapshotExcludes[0] != "workspace" {
-		t.Errorf("excludes = %v, want [workspace]", cfg.HomeSnapshotExcludes)
 	}
 }
 

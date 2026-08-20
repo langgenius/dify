@@ -30,7 +30,6 @@ const (
 	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
 	HealthStatus                         = "ok"
 	DefaultSnapshotTimeoutSeconds        = 45.0
-	HomeSnapshotExcludesEnv              = "SHELLCTL_HOME_SNAPSHOT_EXCLUDES"
 	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
 )
 
@@ -60,7 +59,6 @@ type Config struct {
 	SanitizePtyCommand           []string
 	RunnerExitCommand            []string
 	SnapshotTimeout              time.Duration
-	HomeSnapshotExcludes         []string
 }
 
 // DefaultConfig returns a Config with sensible defaults.
@@ -70,11 +68,6 @@ func DefaultConfig() (*Config, error) {
 	runtimeDir := filepath.Join(stateDir, "runtime")
 
 	snapshotTimeout, err := parseSnapshotTimeout(os.Getenv(SnapshotTimeoutEnv))
-	if err != nil {
-		return nil, err
-	}
-
-	homeSnapshotExcludes, err := parseHomeSnapshotExcludes(os.Getenv(HomeSnapshotExcludesEnv))
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +96,6 @@ func DefaultConfig() (*Config, error) {
 		SanitizePtyCommand:           []string{"shellctl-sanitize-pty"},
 		RunnerExitCommand:            []string{"shellctl-runner-exit"},
 		SnapshotTimeout:              snapshotTimeout,
-		HomeSnapshotExcludes:         homeSnapshotExcludes,
 	}
 
 	// Auth token from environment if not set explicitly
@@ -144,21 +136,6 @@ func defaultStateDir() string {
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".local", "share", "shellctl")
-}
-
-func parseHomeSnapshotExcludes(raw string) ([]string, error) {
-	var excludes []string
-	for _, part := range strings.Split(raw, ",") {
-		trimmed := strings.TrimSpace(part)
-		if trimmed == "" {
-			continue
-		}
-		if trimmed == "." || trimmed == ".." || strings.ContainsAny(trimmed, `/\`) {
-			return nil, fmt.Errorf("%s: invalid exclude %q: must be a single path segment", HomeSnapshotExcludesEnv, trimmed)
-		}
-		excludes = append(excludes, trimmed)
-	}
-	return excludes, nil
 }
 
 func parseSnapshotTimeout(raw string) (time.Duration, error) {
