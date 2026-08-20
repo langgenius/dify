@@ -228,15 +228,19 @@ describe('useDocLink', () => {
       )
     })
 
-    it('should route the shared documentation entry to the enterprise workflow guide', () => {
+    it.each([
+      ['/use-dify/getting-started/introduction', '/use/build/workflow-chatflow'],
+      ['/cli/overview', '/develop/cli/introduction'],
+      ['/cli/authenticate', '/develop/cli/account-users/authenticate'],
+      ['/cli/common-tasks', '/develop/cli/account-users/common-tasks'],
+      ['/cli/quick-start', '/develop/cli/account-users/quick-start'],
+    ] as const)('should map the renamed %s page to %s', (communityPath, enterprisePath) => {
       const { result } = renderHook(() => useDocLink())
 
-      expect(result.current('/use-dify/getting-started/introduction')).toBe(
-        `${enterpriseDocBaseUrl}/en/use/build/workflow-chatflow`,
-      )
+      expect(result.current(communityPath)).toBe(`${enterpriseDocBaseUrl}/en${enterprisePath}`)
     })
 
-    it('should convert API and plugin documentation paths', () => {
+    it('should convert API, plugin, and CLI documentation prefixes', () => {
       const { result } = renderHook(() => useDocLink())
 
       expect(result.current('/api-reference/guides/knowledge')).toBe(
@@ -245,6 +249,7 @@ describe('useDocLink', () => {
       expect(result.current('/develop-plugin/getting-started/getting-started-dify-plugin')).toBe(
         `${enterpriseDocBaseUrl}/en/develop/plugins/getting-started/getting-started-dify-plugin`,
       )
+      expect(result.current('/cli/install')).toBe(`${enterpriseDocBaseUrl}/en/develop/cli/install`)
     })
 
     it('should remove public product prefixes and preserve anchors', () => {
@@ -252,6 +257,32 @@ describe('useDocLink', () => {
 
       expect(result.current('/self-host/use-dify/workspace/tools#mcp' as DocPathWithoutLang)).toBe(
         `${enterpriseDocBaseUrl}/en/use/workspace/tools#mcp`,
+      )
+      expect(result.current('/cloud/use-dify/nodes/start' as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/use/nodes/start`,
+      )
+    })
+
+    it.each(['/cloud', '/self-host'] as const)(
+      'should map the bare %s product prefix to the enterprise documentation home',
+      (productPrefix) => {
+        const { result } = renderHook(() => useDocLink())
+
+        expect(result.current(productPrefix as DocPathWithoutLang)).toBe(
+          `${enterpriseDocBaseUrl}/en/`,
+        )
+      },
+    )
+
+    it.each([
+      '/use-dify/knowledge/knowledge-request-rate-limit',
+      '/cloud/use-dify/knowledge/knowledge-storage-limit',
+      '/cloud/use-dify/workspace/subscription-management#dify-for-education',
+    ] as const)('should fall back to the enterprise documentation home for %s', (communityPath) => {
+      const { result } = renderHook(() => useDocLink())
+
+      expect(result.current(communityPath as DocPathWithoutLang)).toBe(
+        `${enterpriseDocBaseUrl}/en/`,
       )
     })
 
