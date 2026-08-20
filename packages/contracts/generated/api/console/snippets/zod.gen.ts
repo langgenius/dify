@@ -2014,6 +2014,16 @@ export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
  */
 export const zPostSnippetsBySnippetIdWorkflowsPublishResponse = zWorkflowPublishResponse
 
+export const zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath = z.object({
+  snippet_id: z.uuid(),
+  workflow_id: z.string(),
+})
+
+/**
+ * Workflow deleted successfully
+ */
+export const zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse = z.void()
+
 export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 
 export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdPath = z.object({

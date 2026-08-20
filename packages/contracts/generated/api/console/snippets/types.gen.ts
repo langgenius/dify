@@ -1779,6 +1779,28 @@ export type PostSnippetsBySnippetIdWorkflowsPublishResponses = {
 export type PostSnippetsBySnippetIdWorkflowsPublishResponse =
   PostSnippetsBySnippetIdWorkflowsPublishResponses[keyof PostSnippetsBySnippetIdWorkflowsPublishResponses]
 
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
+  body?: never
+  path: {
+    snippet_id: string
+    workflow_id: string
+  }
+  query?: never
+  url: '/snippets/{snippet_id}/workflows/{workflow_id}'
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses = {
+  204: void
+}
+
+export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse =
+  DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses[keyof DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponses]
+
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
   body: WorkflowUpdatePayload
   path: {
