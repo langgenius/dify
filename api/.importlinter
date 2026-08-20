@@ -265,7 +265,14 @@ forbidden_modules =
     models
     repositories
     services.feature_service
-    services.recommend_app
-    services.recommended_app_query_compat
+    services.recommended_app_catalog_gateway
     sqlalchemy
     werkzeug
+
+[importlinter:contract:recommended-app-catalog-gateway-boundary]
+name = Recommended app catalog gateway does not depend on Flask
+type = forbidden
+source_modules =
+    services.recommended_app_catalog_gateway
+forbidden_modules =
+    flask

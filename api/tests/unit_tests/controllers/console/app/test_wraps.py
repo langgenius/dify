@@ -58,7 +58,7 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlit
         handler(app_id=app_model.id)
 
 
-def test_load_app_model_with_trial_rejects_app_outside_preview_admission(
+def test_load_previewable_app_model_rejects_app_outside_preview_admission(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     session = MagicMock(spec=Session)
@@ -72,12 +72,12 @@ def test_load_app_model_with_trial_rejects_app_outside_preview_admission(
     )
     monkeypatch.setattr(wraps_module.AppService, "get_normal_app_by_id", app_loader)
 
-    assert wraps_module._load_app_model_with_trial(session, "app-1") is None
+    assert wraps_module._load_previewable_app_model(session, "app-1") is None
     recommended_app_queries.is_previewable.assert_called_once_with("app-1")
     app_loader.assert_not_called()
 
 
-def test_load_app_model_with_trial_rejects_non_normal_app(
+def test_load_previewable_app_model_rejects_non_normal_app(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     app_model = _persist_app(sqlite_session)
@@ -92,17 +92,17 @@ def test_load_app_model_with_trial_rejects_non_normal_app(
         lambda: SimpleNamespace(recommended_app_queries=recommended_app_queries),
     )
 
-    assert wraps_module._load_app_model_with_trial(sqlite_session, app_id) is None
+    assert wraps_module._load_previewable_app_model(sqlite_session, app_id) is None
 
 
-def test_get_app_model_with_trial_rejects_app_outside_preview_admission(
+def test_get_previewable_app_model_rejects_app_outside_preview_admission(
     monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     app_loader = MagicMock(return_value=None)
-    monkeypatch.setattr(wraps_module, "_load_app_model_with_trial", app_loader)
+    monkeypatch.setattr(wraps_module, "_load_previewable_app_model", app_loader)
 
     class Handler:
-        @wraps_module.get_app_model_with_trial
+        @wraps_module.get_previewable_app_model
         def get(self, _injected_session, app_model):
             return app_model.id
 
@@ -179,7 +179,7 @@ def test_preview_admission_precedes_request_session_transaction(
 
     class Handler:
         @with_session(write=False)
-        @wraps_module.get_app_model_with_trial(None)
+        @wraps_module.get_previewable_app_model(None)
         def get(self, injected_session, app_model):
             assert injected_session is sqlite_session
             return app_model.id
@@ -189,8 +189,8 @@ def test_preview_admission_precedes_request_session_transaction(
     assert request_transaction_begins == 1
 
 
-def test_get_app_model_with_trial_requires_injected_session() -> None:
-    @wraps_module.get_app_model_with_trial(None)
+def test_get_previewable_app_model_requires_injected_session() -> None:
+    @wraps_module.get_previewable_app_model(None)
     def handler(app_model):
         return app_model.id
 

@@ -198,10 +198,10 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask, unbound_se
     "api_type",
     [module.TrialSitApi, module.TrialAppParameterApi, module.AppApi, module.AppWorkflowApi, module.DatasetListApi],
 )
-def test_trial_app_handlers_use_explicit_read_session(api_type: type) -> None:
+def test_preview_handlers_use_explicit_read_session(api_type: type) -> None:
     source = getsource(api_type.get)
 
-    assert "@with_session(write=False)\n    @get_app_model_with_trial(None)" in source
+    assert "@with_session(write=False)\n    @get_previewable_app_model(None)" in source
     assert tuple(signature(api_type.get).parameters)[:3] == ("self", "session", "app_model")
 
 

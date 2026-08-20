@@ -18,6 +18,7 @@ from extensions.ext_redis import RedisClientWrapper
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -403,3 +404,40 @@ def test_webapp_permission_adapter_maps_connection_failure() -> None:
         ext_application_services._is_user_allowed_to_access_webapp("user-1", "app-1")
 
     assert raised.value.__cause__ is failure
+
+
+def test_build_application_services_wires_dynamic_recommended_catalog(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "builtin")
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    builtin_payload = json.dumps(
+        {
+            "recommended_apps": {
+                "en-US": {
+                    "recommended_apps": [{"app": None, "app_id": "app-1", "categories": []}],
+                    "categories": [],
+                }
+            }
+        }
+    )
+    with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=builtin_payload):
+        result = services.recommended_app_queries.list_recommended(
+            requested_language="en-US",
+            interface_language=None,
+        )
+    assert result.recommended_apps
+
+    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "invalid")
+    with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
+        services.recommended_app_queries.list_recommended(
+            requested_language="en-US",
+            interface_language=None,
+        )
