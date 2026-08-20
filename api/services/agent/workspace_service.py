@@ -16,7 +16,7 @@ from dify_agent.protocol import CreateExecutionBindingRequest, DestroyExecutionB
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clients.agent_backend.factory import HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS, create_agent_backend_client
+from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
@@ -430,7 +430,7 @@ class AgentWorkspaceService:
         return create_agent_backend_client(
             base_url=base_url,
             api_token=dify_config.AGENT_BACKEND_API_TOKEN,
-            timeout=HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS,
+            timeout=dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS,
         )
 
 
