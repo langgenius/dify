@@ -29,7 +29,7 @@ def _build_fake_pymilvus_modules():
                 return_value={"fields": [{"name": "id"}, {"name": "content"}, {"name": "metadata"}]}
             )
             self.get_server_version = MagicMock(return_value="2.5.0")
-            self.insert = MagicMock(return_value=[1])
+            self.insert = MagicMock(return_value={"insert_count": 1, "ids": [1], "cost": 0})
             self.query = MagicMock(return_value=[])
             self.delete = MagicMock()
             self.drop_collection = MagicMock()
@@ -261,7 +261,10 @@ def test_add_texts_batches_and_raises_milvus_exception(milvus_module):
     vector = milvus_module.MilvusVector.__new__(milvus_module.MilvusVector)
     vector._collection_name = "collection_1"
     vector._client = MagicMock()
-    vector._client.insert.side_effect = [["id-1"], ["id-2"]]
+    vector._client.insert.side_effect = [
+        {"insert_count": 1000, "ids": ["id-1"], "cost": 0},
+        {"insert_count": 1, "ids": ["id-2"], "cost": 0},
+    ]
     docs = [Document(page_content=f"text-{i}", metadata={"doc_id": f"d-{i}"}) for i in range(1001)]
     embeddings = [[0.1, 0.2] for _ in range(1001)]
 
