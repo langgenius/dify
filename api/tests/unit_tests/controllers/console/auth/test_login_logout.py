@@ -26,6 +26,7 @@ from controllers.console.auth.login import EmailCodeLoginApi, LoginApi, LogoutAp
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
+    EmailDomainSuspendedError,
     SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
@@ -225,7 +226,7 @@ class TestLoginApi:
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
+    @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
     def test_login_fails_when_account_frozen(
         self, mock_is_frozen, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
     ):
@@ -237,7 +238,7 @@ class TestLoginApi:
         - AccountInFreezeError is raised for frozen accounts
         """
         # Arrange
-        mock_is_frozen.return_value = True
+        mock_is_frozen.return_value = "freeze"
 
         # Act & Assert
         with app.test_request_context(
@@ -253,6 +254,20 @@ class TestLoginApi:
         assert len(warn_records) == 1
         assert warn_records[0].args[0] == "frozen@example.com"
         assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_IN_FREEZE
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    @patch("controllers.console.auth.login.BillingService.get_email_freeze_type")
+    def test_login_fails_when_email_domain_is_suspended(self, mock_get_freeze_type, mock_db, app: Flask):
+        mock_get_freeze_type.return_value = "email_domain_suspended"
+
+        with app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "user@suspended.example", "password": encode_password("password")},
+        ):
+            with pytest.raises(EmailDomainSuspendedError):
+                LoginApi().post()
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, scoped_session
 from controllers.console.auth import activate as activate_module
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from enums import DeploymentEdition
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 
@@ -295,7 +295,11 @@ class TestActivateApi:
                 return_value=invitation,
             ),
             patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
-            patch.object(activate_module.BillingService, "is_email_in_freeze", return_value=True) as is_frozen,
+            patch.object(
+                activate_module.BillingService,
+                "get_email_freeze_type",
+                return_value="freeze",
+            ) as get_freeze_type,
             pytest.raises(AccountInFreezeError),
         ):
             _post(app, _setup_payload())
@@ -303,7 +307,42 @@ class TestActivateApi:
         sqlite_session.refresh(account)
         assert account.status == AccountStatus.PENDING
         assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
-        is_frozen.assert_called_once_with("Invitee@Example.com")
+        get_freeze_type.assert_called_once_with("Invitee@Example.com")
+        revoke_token.assert_not_called()
+        switch_tenant.assert_not_called()
+
+    def test_suspended_email_domain_leaves_persisted_account_pending(
+        self,
+        sqlite_session: Session,
+        app: Flask,
+        invitation: dict[str, object],
+        switch_tenant: Mock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        account = invitation["account"]
+        assert isinstance(account, Account)
+        monkeypatch.setattr(activate_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+
+        with (
+            patch.object(
+                activate_module.RegisterService,
+                "get_invitation_with_case_fallback",
+                return_value=invitation,
+            ),
+            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
+            patch.object(
+                activate_module.BillingService,
+                "get_email_freeze_type",
+                return_value="email_domain_suspended",
+            ) as get_freeze_type,
+            pytest.raises(EmailDomainSuspendedError),
+        ):
+            _post(app, _setup_payload())
+
+        sqlite_session.refresh(account)
+        assert account.status == AccountStatus.PENDING
+        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
+        get_freeze_type.assert_called_once_with("invitee@example.com")
         revoke_token.assert_not_called()
         switch_tenant.assert_not_called()
 

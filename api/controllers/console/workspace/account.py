@@ -32,6 +32,7 @@ from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
     EducationDiscountTemporarilyPausedError,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
 )
 from controllers.console.workspace.error import (
@@ -716,7 +717,10 @@ class ChangeEmailResetApi(Resource):
         args = ChangeEmailResetPayload.model_validate(payload)
         normalized_new_email = args.new_email.lower()
 
-        if AccountService.is_account_in_freeze(normalized_new_email):
+        freeze_type = AccountService.get_account_freeze_type(normalized_new_email)
+        if freeze_type:
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountInFreezeError()
 
         if not AccountService.check_email_unique(normalized_new_email, session=db.session()):
@@ -763,7 +767,10 @@ class CheckEmailUnique(Resource):
         payload = console_ns.payload or {}
         args = CheckEmailUniquePayload.model_validate(payload)
         normalized_email = args.email.lower()
-        if AccountService.is_account_in_freeze(normalized_email):
+        freeze_type = AccountService.get_account_freeze_type(normalized_email)
+        if freeze_type:
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountInFreezeError()
         if not AccountService.check_email_unique(normalized_email, session=db.session()):
             raise EmailAlreadyInUseError()

@@ -92,9 +92,15 @@ class AccountInFreezeError(BaseHTTPException):
     error_code = "account_in_freeze"
     code = 400
     description = (
-        "This email account has been deleted within the past 30 days"
+        "This email account has been deleted within the past 30 days "
         "and is temporarily unavailable for new account registration."
     )
+
+
+class EmailDomainSuspendedError(BaseHTTPException):
+    error_code = "email_domain_suspended"
+    code = 400
+    description = "This email domain has been suspended."
 
 
 class EducationVerifyLimitError(BaseHTTPException):

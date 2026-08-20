@@ -8,7 +8,7 @@ from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, EmailDomainSuspendedError
 from controllers.console.wraps import model_validate
 from enums import DeploymentEdition
 from extensions.ext_database import db
@@ -162,10 +162,12 @@ class ActivateApi(Resource):
             if current_account.id != account.id:
                 raise InvitationAccountMismatchError()
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-            account.email
-        ):
-            raise AccountInFreezeError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            freeze_type = BillingService.get_email_freeze_type(account.email)
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
+            if freeze_type:
+                raise AccountInFreezeError()
 
         tenant = invitation["tenant"]
         raw_role = invitation["data"].get("role")

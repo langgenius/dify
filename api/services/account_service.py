@@ -63,6 +63,7 @@ from services.errors.account import (
     AccountRegisterError,
     CannotOperateSelfError,
     CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     InvalidActionError,
     LinkAccountIntegrateError,
     MemberNotInTenantError,
@@ -465,6 +466,9 @@ class AccountService:
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
+            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1055,6 +1059,9 @@ class AccountService:
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
+            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1073,9 +1080,13 @@ class AccountService:
 
     @classmethod
     def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
-            return True
-        return False
+        return cls.get_account_freeze_type(email) is not None
+
+    @classmethod
+    def get_account_freeze_type(cls, email: str):
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+        return BillingService.get_email_freeze_type(email)
 
     @staticmethod
     @redis_fallback(default_return=None)
