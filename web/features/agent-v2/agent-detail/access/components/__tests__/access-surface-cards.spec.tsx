@@ -721,7 +721,7 @@ describe('Agent access surface cards', () => {
 
       await user.click(
         await screen.findByRole('button', {
-          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiSecretKey/,
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
         }),
       )
 
@@ -773,7 +773,7 @@ describe('Agent access surface cards', () => {
       ).toHaveAttribute('aria-disabled', 'true')
       expect(
         screen.getByRole('button', {
-          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiSecretKey/,
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
         }),
       ).toBeDisabled()
     })

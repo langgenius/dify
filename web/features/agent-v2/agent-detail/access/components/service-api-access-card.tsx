@@ -111,7 +111,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
               className="flex items-center gap-1 px-3"
             >
               <span aria-hidden className="i-ri-key-2-line size-4" />
-              {t(($) => $['agentDetail.access.serviceApi.actions.apiSecretKey'])}
+              {t(($) => $['agentDetail.access.serviceApi.actions.apiKey'])}
               <span
                 className={cn(
                   'flex min-w-4 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase tabular-nums',
