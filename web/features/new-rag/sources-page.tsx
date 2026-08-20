@@ -326,6 +326,7 @@ function SourceActions({
   onToggle,
   pendingAction,
   source,
+  syncAction,
 }: {
   canEdit: boolean
   canRemove: boolean
@@ -337,6 +338,7 @@ function SourceActions({
   onToggle: () => Promise<boolean>
   pendingAction?: SourceAction
   source: Source
+  syncAction: 'retry' | 'sync'
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
@@ -408,7 +410,9 @@ function SourceActions({
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
             >
               <span aria-hidden className="i-ri-refresh-line size-4" />
-              {t(($) => $['newKnowledge.syncNow'])}
+              {syncAction === 'retry'
+                ? tCommon(($) => $['operation.retry'])
+                : t(($) => $['newKnowledge.syncNow'])}
             </DropdownMenuItem>
           )}
           {sourceUri && (
@@ -705,13 +709,14 @@ function SourceRow({
     )
 
   const retrySource = () => {
-    if (!initialWorkflowId) return syncSource()
+    const retryWorkflowId = initialWorkflowId ?? syncWorkflow?.id
+    if (!retryWorkflowId) return syncSource()
 
     return runAction(
       'sync',
       () =>
         consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post({
-          params: { control_space_id: knowledgeSpaceId, run_id: initialWorkflowId },
+          params: { control_space_id: knowledgeSpaceId, run_id: retryWorkflowId },
         }),
       applyAcceptedWorkflow,
       ensureModelSetupReady,
@@ -925,19 +930,15 @@ function SourceRow({
           <SourceActions
             canEdit={canEdit && !initializing && !initialWorkflowId}
             canRemove={canEdit && !initializing && !initialImportRetrying}
-            canSync={
-              canSync &&
-              !initializing &&
-              displayStatus !== 'syncing' &&
-              !(displayStatus === 'error' && initialWorkflowId)
-            }
+            canSync={canSync && !initializing && displayStatus !== 'syncing'}
             canToggle={canEdit && !initializing && !initialWorkflowId}
             source={source}
             pendingAction={pendingAction}
             onEdit={editSource}
-            onSync={syncSource}
+            onSync={displayStatus === 'error' ? retrySource : syncSource}
             onToggle={toggleSource}
             onRemove={removeSource}
+            syncAction={displayStatus === 'error' ? 'retry' : 'sync'}
           />
         </div>
       </td>

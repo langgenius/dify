@@ -753,6 +753,7 @@ export const zKnowledgeFsInitialSourcePreviewPageResponse = z.object({
  * KnowledgeFSInitialSourcePreviewResponse
  */
 export const zKnowledgeFsInitialSourcePreviewResponse = z.object({
+  configuration_fingerprint: z.string().nullish(),
   documents: z.array(zKnowledgeFsInitialSourcePreviewDocumentResponse).optional(),
   files: z.array(zKnowledgeFsInitialSourcePreviewFileResponse).optional(),
   kind: z.enum(['online_document', 'online_drive', 'website_crawl']),
@@ -2191,6 +2192,7 @@ export const zKnowledgeFsInitialWebsiteCrawlOptionsPayload = z.object({
  * KnowledgeFSInitialWebsiteSelectionPayload
  */
 export const zKnowledgeFsInitialWebsiteSelectionPayload = z.object({
+  canonical_url: z.string().min(1).max(4096).nullish(),
   source_url: z.string().min(1).max(4096),
   title: z.string().max(500).nullish(),
 })
@@ -2207,6 +2209,7 @@ export const zKnowledgeFsInitialWebsiteSourcePayload = z.object({
   name: z.string().min(1).max(200),
   parameters: z.record(z.string(), zJsonValue).optional(),
   pluginId: z.string().min(1).max(255).nullish(),
+  previewConfigurationFingerprint: z.string().length(64).nullish(),
   provider: z.string().min(1).max(255),
   providerDisplayName: z.string().min(1).max(255).nullish(),
   root_url: z.string().min(1).max(4096),
@@ -2757,6 +2760,54 @@ export const zKnowledgeFsSourceProviderResponse = z.object({
 export const zKnowledgeFsSourceProviderListResponse = z.object({
   data: z.array(zKnowledgeFsSourceProviderResponse),
 })
+
+/**
+ * KnowledgeFSDeferredSyncPolicyPayload
+ */
+export const zKnowledgeFsDeferredSyncPolicyPayload = z.object({
+  customIntervalSeconds: z.int().gte(3600).lte(2592000).nullish(),
+  enabled: z.boolean(),
+  mode: z.enum(['custom', 'interval', 'manual', 'provider']),
+})
+
+/**
+ * KnowledgeFSAsyncCrawlPreviewImportPayload
+ */
+export const zKnowledgeFsAsyncCrawlPreviewImportPayload = z.object({
+  kind: z.literal('crawl-preview-selection'),
+  pageIds: z.array(z.string()).min(1).max(200),
+  previewWorkflowId: z.string().min(1).max(255),
+  syncPolicy: zKnowledgeFsDeferredSyncPolicyPayload,
+})
+
+/**
+ * KnowledgeFSAsyncOnlineDocumentImportPayload
+ */
+export const zKnowledgeFsAsyncOnlineDocumentImportPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDocumentWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-document-import'),
+  syncPolicy: zKnowledgeFsDeferredSyncPolicyPayload,
+})
+
+/**
+ * KnowledgeFSAsyncOnlineDriveImportPayload
+ */
+export const zKnowledgeFsAsyncOnlineDriveImportPayload = z.object({
+  items: z.array(zKnowledgeFsOnlineDriveWorkflowImportItemPayload).min(1).max(200),
+  kind: z.literal('online-drive-import'),
+  syncPolicy: zKnowledgeFsDeferredSyncPolicyPayload,
+})
+
+/**
+ * KnowledgeFSAsyncSourceImportPayload
+ */
+export const zKnowledgeFsAsyncSourceImportPayload = z.discriminatedUnion('kind', [
+  zKnowledgeFsAsyncCrawlPreviewImportPayload.extend({ kind: z.literal('crawl-preview-selection') }),
+  zKnowledgeFsAsyncOnlineDocumentImportPayload.extend({
+    kind: z.literal('online-document-import'),
+  }),
+  zKnowledgeFsAsyncOnlineDriveImportPayload.extend({ kind: z.literal('online-drive-import') }),
+])
 
 /**
  * KnowledgeFSSourceFileResponse
@@ -4275,6 +4326,24 @@ export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPath = z.ob
  */
 export const zPatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   zKnowledgeFsSourceResponse
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportBody =
+  zKnowledgeFsAsyncSourceImportPayload
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportPath = z.object({
+  control_space_id: z.string(),
+  source_id: z.string(),
+})
+
+/**
+ * KnowledgeFS Source import accepted for asynchronous reconciliation
+ */
+export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponse =
+  zKnowledgeFsSourceWorkflowResponse
 
 export const zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportBody =
   zKnowledgeFsCrawlImportPayload

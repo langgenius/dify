@@ -31,6 +31,7 @@ export type KnowledgeFsInitialSourcePreviewPayload = {
 }
 
 export type KnowledgeFsInitialSourcePreviewResponse = {
+  configuration_fingerprint?: string | null
   documents?: Array<KnowledgeFsInitialSourcePreviewDocumentResponse>
   files?: Array<KnowledgeFsInitialSourcePreviewFileResponse>
   kind: 'online_document' | 'online_drive' | 'website_crawl'
@@ -983,6 +984,17 @@ export type KnowledgeFsSourceUpdatePayload = {
   status?: 'active' | 'disabled' | 'error' | 'syncing' | null
 }
 
+export type KnowledgeFsAsyncSourceImportPayload =
+  | ({
+      kind: 'crawl-preview-selection'
+    } & KnowledgeFsAsyncCrawlPreviewImportPayload)
+  | ({
+      kind: 'online-document-import'
+    } & KnowledgeFsAsyncOnlineDocumentImportPayload)
+  | ({
+      kind: 'online-drive-import'
+    } & KnowledgeFsAsyncOnlineDriveImportPayload)
+
 export type KnowledgeFsCrawlImportPayload = {
   sourceUrls: Array<string>
 }
@@ -1282,6 +1294,7 @@ export type KnowledgeFsInitialWebsiteSourcePayload = {
     [key: string]: JsonValue
   }
   pluginId?: string | null
+  previewConfigurationFingerprint?: string | null
   provider: string
   providerDisplayName?: string | null
   root_url: string
@@ -1867,6 +1880,25 @@ export type KnowledgeFsCrawlPreviewPageResponse = {
   title?: string | null
 }
 
+export type KnowledgeFsAsyncCrawlPreviewImportPayload = {
+  kind: 'crawl-preview-selection'
+  pageIds: Array<string>
+  previewWorkflowId: string
+  syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
+}
+
+export type KnowledgeFsAsyncOnlineDocumentImportPayload = {
+  items: Array<KnowledgeFsOnlineDocumentWorkflowImportItemPayload>
+  kind: 'online-document-import'
+  syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
+}
+
+export type KnowledgeFsAsyncOnlineDriveImportPayload = {
+  items: Array<KnowledgeFsOnlineDriveWorkflowImportItemPayload>
+  kind: 'online-drive-import'
+  syncPolicy: KnowledgeFsDeferredSyncPolicyPayload
+}
+
 export type KnowledgeFsSourceFileBucketResponse = {
   bucket?: string | null
   continuation_token?: string | null
@@ -2061,6 +2093,7 @@ export type KnowledgeFsInitialWebsiteCrawlOptionsPayload = {
 }
 
 export type KnowledgeFsInitialWebsiteSelectionPayload = {
+  canonical_url?: string | null
   source_url: string
   title?: string | null
 }
@@ -2189,6 +2222,12 @@ export type KnowledgeFsSourceProviderFieldResponse = {
   required: boolean
   secret: boolean
   type: 'boolean' | 'integer' | 'string'
+}
+
+export type KnowledgeFsDeferredSyncPolicyPayload = {
+  customIntervalSeconds?: number | null
+  enabled: boolean
+  mode: 'custom' | 'interval' | 'manual' | 'provider'
 }
 
 export type KnowledgeFsSourceFileResponse = {
@@ -4021,6 +4060,26 @@ export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses = {
 
 export type PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponse =
   PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses[keyof PatchKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdResponses]
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportData = {
+  body: KnowledgeFsAsyncSourceImportPayload
+  headers: {
+    'Idempotency-Key': string
+  }
+  path: {
+    control_space_id: string
+    source_id: string
+  }
+  query?: never
+  url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/async-import'
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponses = {
+  202: KnowledgeFsSourceWorkflowResponse
+}
+
+export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponse =
+  PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponses[keyof PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponses]
 
 export type PostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportData = {
   body: KnowledgeFsCrawlImportPayload

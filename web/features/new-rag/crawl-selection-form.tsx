@@ -1,17 +1,11 @@
 'use client'
 
-import type {
-  CrawlPreviewPage as PreviewPage,
-  Source,
-  SourceWorkflowRun,
-  SourceSyncPolicy as SyncPolicy,
-  SourceSyncPolicyBody as SyncPolicyBody,
-} from './source-models'
+import type { CrawlPreviewPage as PreviewPage, Source, SourceWorkflowRun } from './source-models'
 import type { SyncPolicyValue } from './sync-policy-field'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Form } from '@langgenius/dify-ui/form'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -19,28 +13,13 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
-import { sourceSyncPolicyFromApi, sourceWorkflowFromApi } from './source-models'
+import { sourceWorkflowFromApi } from './source-models'
 import { DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS, SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
-type SyncMode = SyncPolicy['mode']
+type SyncMode = 'provider' | 'manual' | 'interval' | 'custom'
 
 export const MAX_SELECTED_PAGES = 200
-const IMPORT_POLL_INTERVAL_MS = 1_000
-const IMPORT_POLL_ATTEMPTS = 120
-const SUCCESSFUL_IMPORT_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
-const TERMINAL_IMPORT_STATES = new Set([
-  ...SUCCESSFUL_IMPORT_STATES,
-  'canceled',
-  'cancelled',
-  'error',
-  'exhausted',
-  'failed',
-  'superseded',
-  'timed_out',
-  'timeout',
-  'zero_results',
-])
 
 type PageSkipReason = 'failed' | 'off-domain'
 
@@ -55,39 +34,6 @@ function requestStatus(error: unknown) {
 function isDefinitiveRequestFailure(error: unknown) {
   const status = requestStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
-}
-
-function normalizedWorkflowState(run: SourceWorkflowRun) {
-  return run.state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
-}
-
-function isSuccessfulImport(run: SourceWorkflowRun) {
-  return SUCCESSFUL_IMPORT_STATES.has(normalizedWorkflowState(run))
-}
-
-function isTerminalImport(run: SourceWorkflowRun) {
-  return TERMINAL_IMPORT_STATES.has(normalizedWorkflowState(run))
-}
-
-async function waitForImportTerminal(
-  knowledgeSpaceId: string,
-  initialRun: SourceWorkflowRun,
-  onWorkflowRun: (run: SourceWorkflowRun) => void,
-  discardRequested: () => boolean,
-) {
-  let current = initialRun
-  for (let attempt = 0; attempt < IMPORT_POLL_ATTEMPTS; attempt += 1) {
-    if (discardRequested() || isTerminalImport(current)) return current
-    current = sourceWorkflowFromApi(
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.get({
-        params: { control_space_id: knowledgeSpaceId, run_id: current.id },
-      }),
-    )
-    onWorkflowRun(current)
-    if (discardRequested() || isTerminalImport(current)) return current
-    await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
-  }
-  throw new Error('Source import did not reach a terminal state')
 }
 
 function pageSkipReason(page: PreviewPage, rootUrl?: string): PageSkipReason | undefined {
@@ -119,45 +65,6 @@ function policyConfiguration(value: SyncPolicyValue) {
     } as const
   }
   return { enabled: true, mode: value.mode } as const
-}
-
-function policyMatches(policy: SyncPolicy, desired: ReturnType<typeof policyConfiguration>) {
-  return (
-    policy.revision > 0 &&
-    policy.enabled === desired.enabled &&
-    policy.mode === desired.mode &&
-    (desired.mode !== 'custom' || policy.customIntervalSeconds === desired.customIntervalSeconds)
-  )
-}
-
-function initialSyncPolicy(source: Source): SyncPolicy | undefined {
-  if (!source.version) return undefined
-  return {
-    createdAt: source.createdAt,
-    enabled: true,
-    expectedSourceVersion: source.version,
-    id: source.id,
-    knowledgeSpaceId: source.knowledgeSpaceId,
-    mode: 'provider',
-    revision: 0,
-    sourceId: source.id,
-    updatedAt: source.updatedAt,
-  }
-}
-
-function PolicyLoading() {
-  const { t } = useTranslation('dataset')
-  return (
-    <div
-      role="status"
-      aria-label={t(($) => $['newKnowledge.loadingSyncPolicy'])}
-      className="space-y-3"
-    >
-      <div className="h-6 w-28 animate-pulse rounded bg-background-section" />
-      <div className="h-9 w-full animate-pulse rounded-lg bg-background-section" />
-      <div className="h-8 w-full animate-pulse rounded-lg bg-background-section" />
-    </div>
-  )
 }
 
 export function CrawlPreviewPageSelection({
@@ -337,7 +244,6 @@ function ReadyCrawlSelectionForm({
   onWorkflowPending,
   onWorkflowRun,
   pages,
-  policy,
   rootUrl,
   run,
   showSyncPolicyField,
@@ -358,7 +264,6 @@ function ReadyCrawlSelectionForm({
   onWorkflowPending: (request: Promise<SourceWorkflowRun | undefined>) => void
   onWorkflowRun: (run: SourceWorkflowRun) => void
   pages: PreviewPage[]
-  policy: SyncPolicy
   rootUrl?: string
   run: SourceWorkflowRun
   showSyncPolicyField: boolean
@@ -398,12 +303,11 @@ function ReadyCrawlSelectionForm({
   )
   const [localSyncPolicy, setLocalSyncPolicy] = useState<SyncPolicyValue>(() => {
     if (syncPolicyValue) return syncPolicyValue
-    const mode = initialSyncMode ?? (policy.enabled ? policy.mode : 'manual')
+    const mode = initialSyncMode ?? 'manual'
     return {
       ...(mode === 'custom'
         ? {
-            customIntervalSeconds:
-              policy.customIntervalSeconds ?? DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS,
+            customIntervalSeconds: DEFAULT_CUSTOM_SYNC_INTERVAL_SECONDS,
           }
         : {}),
       mode,
@@ -412,45 +316,41 @@ function ReadyCrawlSelectionForm({
   const syncPolicy = showSyncPolicyField ? localSyncPolicy : (syncPolicyValue ?? localSyncPolicy)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(false)
-  const [policyUncertain, setPolicyUncertain] = useState(false)
   const [selectionUncertain, setSelectionUncertain] = useState(false)
-  const policySnapshotRef = useRef(policy)
   const submissionPendingRef = useRef(false)
   const selectionRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(
     undefined,
   )
-  const updatePolicy = useMutation({
-    mutationFn: async ({ body, sourceId }: { body: SyncPolicyBody; sourceId: string }) =>
-      sourceSyncPolicyFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put({
-          body,
-          params: { control_space_id: knowledgeSpaceId, source_id: sourceId },
-        }),
-      ),
-  })
-  const selectPages = useMutation({
+  const importPages = useMutation({
     mutationFn: async ({
       idempotencyKey,
       pageIds,
-      runId,
+      previewWorkflowId,
+      syncPolicy,
     }: {
       idempotencyKey: string
       pageIds: string[]
-      runId: string
+      previewWorkflowId: string
+      syncPolicy: ReturnType<typeof policyConfiguration>
     }) =>
       sourceWorkflowFromApi(
-        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.selection.post(
+        await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post(
           {
-            body: { pageIds },
+            body: {
+              kind: 'crawl-preview-selection',
+              pageIds,
+              previewWorkflowId,
+              syncPolicy,
+            },
             headers: { 'Idempotency-Key': idempotencyKey },
-            params: { control_space_id: knowledgeSpaceId, run_id: runId },
+            params: { control_space_id: knowledgeSpaceId, source_id: source.id },
           },
         ),
       ),
   })
   const canSubmit = selectedPageIds.size > 0
   const formBusy = busy || submitting
-  const submissionLocked = formBusy || policyUncertain || selectionUncertain
+  const submissionLocked = formBusy || selectionUncertain
   const selectionLocked = submissionLocked || workflowUncertain
 
   useEffect(() => {
@@ -470,7 +370,7 @@ function ReadyCrawlSelectionForm({
   }
 
   const updateSelectedPageIds = (pageIds: Set<string>) => {
-    if (submissionPendingRef.current || policyUncertain || selectionUncertain) return
+    if (submissionPendingRef.current || selectionUncertain) return
     setSelectedPageIds(pageIds)
     setSubmitError(false)
   }
@@ -490,10 +390,7 @@ function ReadyCrawlSelectionForm({
     const desiredPolicy = policyConfiguration(syncPolicy)
     const sortedPageIds = [...selectedPageIds].sort()
     const fingerprint = JSON.stringify({ pageIds: sortedPageIds, policy: desiredPolicy })
-    if (
-      (policyUncertain || selectionUncertain) &&
-      selectionRequestRef.current?.fingerprint !== fingerprint
-    ) {
+    if (selectionUncertain && selectionRequestRef.current?.fingerprint !== fingerprint) {
       submissionPendingRef.current = false
       setSubmitting(false)
       setSubmitError(true)
@@ -514,53 +411,14 @@ function ReadyCrawlSelectionForm({
     onWorkflowPending(transaction)
 
     try {
-      let currentPolicy = policySnapshotRef.current
-      if (!policyMatches(currentPolicy, desiredPolicy)) {
-        const body: SyncPolicyBody = {
-          ...desiredPolicy,
-          expectedRevision: currentPolicy.revision,
-          expectedSourceVersion: currentPolicy.expectedSourceVersion,
-        }
-        try {
-          currentPolicy = await updatePolicy.mutateAsync({
-            body,
-            sourceId: source.id,
-          })
-        } catch (error) {
-          let reconciled: SyncPolicy
-          try {
-            reconciled = sourceSyncPolicyFromApi(
-              await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.get(
-                {
-                  params: {
-                    control_space_id: knowledgeSpaceId,
-                    source_id: source.id,
-                  },
-                },
-              ),
-            )
-          } catch (reconciliationError) {
-            setPolicyUncertain(!isDefinitiveRequestFailure(error))
-            throw reconciliationError
-          }
-          policySnapshotRef.current = reconciled
-          if (!policyMatches(reconciled, desiredPolicy)) {
-            setPolicyUncertain(!isDefinitiveRequestFailure(error))
-            throw error
-          }
-          currentPolicy = reconciled
-        }
-        policySnapshotRef.current = currentPolicy
-      }
-      setPolicyUncertain(false)
-
       if (discardRequested()) return
 
       try {
-        const selectionRequest = selectPages.mutateAsync({
+        const selectionRequest = importPages.mutateAsync({
           idempotencyKey: selectionRequestRef.current.requestId,
           pageIds: sortedPageIds,
-          runId: run.id,
+          previewWorkflowId: run.id,
+          syncPolicy: desiredPolicy,
         })
         const selectionRun = await selectionRequest
         transactionRun = selectionRun
@@ -569,24 +427,11 @@ function ReadyCrawlSelectionForm({
         updateSelectionUncertain(!isDefinitiveRequestFailure(error))
         throw error
       }
-      updateSelectionUncertain(true)
-      if (discardRequested()) return
-      const terminalRun = await waitForImportTerminal(
-        knowledgeSpaceId,
-        transactionRun,
-        onWorkflowRun,
-        discardRequested,
-      )
-      transactionRun = terminalRun
-      if (discardRequested()) return
-      if (!isSuccessfulImport(terminalRun)) {
-        selectionRequestRef.current = undefined
-        updateSelectionUncertain(false)
-        throw new Error('Source import failed')
-      }
       updateSelectionUncertain(false)
+      if (discardRequested()) return
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+        refetchType: 'none',
       })
       if (discardRequested()) return
       await onSubmitted()
@@ -701,67 +546,9 @@ export function CrawlSelectionForm({
   syncPolicyValue?: SyncPolicyValue
   workflowUncertain?: boolean
 }) {
-  const { t } = useTranslation('dataset')
-  const policyQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.get.queryOptions(
-      {
-        context: { silent: true },
-        input: {
-          params: {
-            control_space_id: knowledgeSpaceId,
-            source_id: source.id,
-          },
-        },
-        retry: false,
-        select: sourceSyncPolicyFromApi,
-      },
-    ),
-  )
-  const policy =
-    policyQuery.data ??
-    (requestStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
-
-  if (policyQuery.isPending) {
-    return (
-      <div className="space-y-4">
-        <PolicyLoading />
-        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-          <Button type="button" onClick={onCancel}>
-            {t(($) => $['newKnowledge.cancelAddSource'])}
-          </Button>
-          <Button type="button" variant="primary" disabled>
-            {t(($) => $['newKnowledge.addSource'])}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-  if (!policy) {
-    return (
-      <div className="space-y-4">
-        <div role="alert" className="rounded-xl border border-divider-regular p-4">
-          <p className="system-xs-regular text-text-destructive">
-            {t(($) => $['newKnowledge.syncPolicyLoadFailed'])}
-          </p>
-          <Button className="mt-3" onClick={() => void policyQuery.refetch()}>
-            {t(($) => $['newKnowledge.retrySyncPolicy'])}
-          </Button>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-          <Button type="button" onClick={onCancel}>
-            {t(($) => $['newKnowledge.cancelAddSource'])}
-          </Button>
-          <Button type="button" variant="primary" disabled>
-            {t(($) => $['newKnowledge.addSource'])}
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <ReadyCrawlSelectionForm
-      key={`${run.id}:${policy.revision}`}
+      key={run.id}
       busy={busy}
       discardRequested={discardRequested}
       initialSelectedPageIds={initialSelectedPageIds}
@@ -775,7 +562,6 @@ export function CrawlSelectionForm({
       onWorkflowPending={onWorkflowPending}
       onWorkflowRun={onWorkflowRun}
       pages={pages}
-      policy={policy}
       rootUrl={rootUrl}
       run={run}
       showSyncPolicyField={showSyncPolicyField}

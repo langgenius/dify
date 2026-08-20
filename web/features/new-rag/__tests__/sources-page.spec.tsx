@@ -821,6 +821,49 @@ describe('SourcesPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('retries a failed async import workflow instead of starting a generic sync', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              name: 'Failed connected source',
+              status: 'error',
+              syncWorkflow: sourceWorkflow('failed'),
+            }),
+          ],
+        },
+      ],
+    }
+    clientMock.retrySourceWorkflow.mockResolvedValue({
+      ...workflow(),
+      execution_attempts: 2,
+      updated_at: '2026-07-20T10:01:00Z',
+    })
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const sourceRow = screen.getByRole('row', { name: /Failed connected source/ })
+    await user.click(
+      within(sourceRow).getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Failed connected source"}',
+      }),
+    )
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(clientMock.retrySourceWorkflow).toHaveBeenCalledOnce())
+    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', run_id: 'workflow-1' },
+    })
+    expect(clientMock.syncSource).not.toHaveBeenCalled()
+    expect(within(sourceRow).getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.sourceStatus.syncing',
+    )
+  })
+
   it('keeps polling when the source list briefly returns the stale failed retry snapshot', async () => {
     const user = userEvent.setup()
     const staleFailedWorkflow: SourceWorkflowRun = {

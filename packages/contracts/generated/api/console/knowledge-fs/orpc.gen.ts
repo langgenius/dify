@@ -273,6 +273,10 @@ import {
   zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsPath,
   zPostKnowledgeFsSpacesByControlSpaceIdSourceConnectionsResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdSourcesBody,
+  zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportBody,
+  zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportHeaders,
+  zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportPath,
+  zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponse,
   zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportBody,
   zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportHeaders,
   zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportPath,
@@ -2086,6 +2090,28 @@ export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
+    operationId: 'postKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImport',
+    path: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/async-import',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportBody,
+      headers: zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportHeaders,
+      params: zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportPath,
+    }),
+  )
+  .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdAsyncImportResponse)
+
+export const asyncImport = {
+  post: post27,
+}
+
+export const post28 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
     operationId: 'postKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImport',
     path: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/crawl-import',
     successStatus: 202,
@@ -2101,10 +2127,10 @@ export const post27 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlImportResponse)
 
 export const crawlImport = {
-  post: post27,
+  post: post28,
 }
 
-export const post28 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2122,7 +2148,7 @@ export const post28 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdCrawlPreviewResponse)
 
 export const crawlPreview = {
-  post: post28,
+  post: post29,
 }
 
 export const get44 = oc
@@ -2145,7 +2171,7 @@ export const files = {
   get: get44,
 }
 
-export const post29 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2162,10 +2188,10 @@ export const post29 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportResponse)
 
 export const import_ = {
-  post: post29,
+  post: post30,
 }
 
-export const post30 = oc
+export const post31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2182,7 +2208,7 @@ export const post30 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdImportFilesResponse)
 
 export const importFiles = {
-  post: post30,
+  post: post31,
 }
 
 export const get45 = oc
@@ -2205,7 +2231,7 @@ export const pages2 = {
   get: get45,
 }
 
-export const post31 = oc
+export const post32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2223,7 +2249,7 @@ export const post31 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdSyncResponse)
 
 export const sync = {
-  post: post31,
+  post: post32,
 }
 
 export const get46 = oc
@@ -2258,7 +2284,7 @@ export const syncPolicy = {
   put: put4,
 }
 
-export const post32 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2270,10 +2296,10 @@ export const post32 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdTestResponse)
 
 export const test = {
-  post: post32,
+  post: post33,
 }
 
-export const post33 = oc
+export const post34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2292,7 +2318,7 @@ export const post33 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdWorkflowImportsResponse)
 
 export const workflowImports = {
-  post: post33,
+  post: post34,
 }
 
 export const delete12 = oc
@@ -2345,6 +2371,7 @@ export const bySourceId = {
   delete: delete12,
   get: get47,
   patch: patch8,
+  asyncImport,
   crawlImport,
   crawlPreview,
   files,
@@ -2373,7 +2400,7 @@ export const get48 = oc
   )
   .output(zGetKnowledgeFsSpacesByControlSpaceIdSourcesResponse)
 
-export const post34 = oc
+export const post35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2392,7 +2419,7 @@ export const post34 = oc
 
 export const sources = {
   get: get48,
-  post: post34,
+  post: post35,
   bySourceId,
 }
 
@@ -2527,7 +2554,7 @@ export const traces = {
   byTraceId,
 }
 
-export const post35 = oc
+export const post36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2544,10 +2571,10 @@ export const post35 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdAbortResponse)
 
 export const abort = {
-  post: post35,
+  post: post36,
 }
 
-export const post36 = oc
+export const post37 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2564,10 +2591,10 @@ export const post36 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdCompleteResponse)
 
 export const complete = {
-  post: post36,
+  post: post37,
 }
 
-export const post37 = oc
+export const post38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2588,7 +2615,7 @@ export const post37 = oc
   )
 
 export const presign = {
-  post: post37,
+  post: post38,
 }
 
 export const byPartNumber = {
@@ -2599,7 +2626,7 @@ export const parts = {
   byPartNumber,
 }
 
-export const post38 = oc
+export const post39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2616,7 +2643,7 @@ export const post38 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsByUploadSessionIdSmallFileResponse)
 
 export const smallFile = {
-  post: post38,
+  post: post39,
 }
 
 export const byUploadSessionId = {
@@ -2626,7 +2653,7 @@ export const byUploadSessionId = {
   smallFile,
 }
 
-export const post39 = oc
+export const post40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2645,7 +2672,7 @@ export const post39 = oc
   .output(zPostKnowledgeFsSpacesByControlSpaceIdUploadSessionsResponse)
 
 export const uploadSessions = {
-  post: post39,
+  post: post40,
   byUploadSessionId,
 }
 
@@ -2730,7 +2757,7 @@ export const get56 = oc
   .input(z.object({ query: zGetKnowledgeFsSpacesQuery.optional() }))
   .output(zGetKnowledgeFsSpacesResponse)
 
-export const post40 = oc
+export const post41 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2744,11 +2771,11 @@ export const post40 = oc
 
 export const spaces = {
   get: get56,
-  post: post40,
+  post: post41,
   byControlSpaceId,
 }
 
-export const post41 = oc
+export const post42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2765,7 +2792,7 @@ export const post41 = oc
   .output(zPostKnowledgeFsTasksByTaskIdStreamCapabilityResponse)
 
 export const streamCapability = {
-  post: post41,
+  post: post42,
 }
 
 export const byTaskId4 = {
@@ -2792,7 +2819,7 @@ export const byUploadId = {
   delete: delete14,
 }
 
-export const post42 = oc
+export const post43 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2805,7 +2832,7 @@ export const post42 = oc
   .output(zPostKnowledgeFsUploadsResponse)
 
 export const uploads = {
-  post: post42,
+  post: post43,
   byUploadId,
 }
 

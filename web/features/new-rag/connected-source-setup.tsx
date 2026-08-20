@@ -43,7 +43,6 @@ import {
   sourceConnectionListFromApi,
   sourceFromApi,
   sourceProviderListFromApi,
-  sourceSyncPolicyFromApi,
 } from './source-models'
 import {
   discoverSourceProviderOptions,
@@ -259,25 +258,6 @@ function sourceType() {
   return 'connector' as const
 }
 
-function sourceMetadata(
-  draft: ConnectedSourceDraft,
-  parameters: DatasourceParameters,
-  provider: SourceProvider,
-  clientRequestId: string,
-  preview: boolean,
-) {
-  return {
-    clientRequestId,
-    datasourceParameterMode: 'exact',
-    preview,
-    parameters,
-    providerId: provider.id,
-    providerKind: usesDriveTransport(draft) ? 'online-drive' : 'online-document',
-    providerName: draft.provider,
-    sourceType: draft.sourceType,
-  }
-}
-
 async function findSourceByClientRequestId(knowledgeSpaceId: string, clientRequestId: string) {
   const seenCursors = new Set<string>()
   let cursor: string | undefined
@@ -313,15 +293,6 @@ async function deleteSourceBestEffort(knowledgeSpaceId: string, source?: Source)
   } catch {
     // Cleanup is best effort; a failed cleanup remains visible and recoverable in Sources.
   }
-}
-
-function requestStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
-    return typeof error.data.status === 'number' ? error.data.status : undefined
-  return undefined
 }
 
 function OAuthConnectionCard({
@@ -646,6 +617,7 @@ function ResourceConfiguration({
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
   const previewRequestIdRef = useRef(createRequestId())
+  const importRequestRef = useRef<{ fingerprint: string; requestId: string } | undefined>(undefined)
   const previewSourceRef = useRef<Source | undefined>(undefined)
   const committedRef = useRef(false)
   const [previewSource, setPreviewSource] = useState<Source>()
@@ -1275,6 +1247,21 @@ function ResourceConfiguration({
       return
     setSubmitting(true)
     setSubmitError(false)
+    const completeSubmission = async () => {
+      committedRef.current = true
+      onDirtyChange(false)
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
+          refetchType: 'none',
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
+          refetchType: 'none',
+        }),
+      ])
+      onCompleted()
+    }
     try {
       const selectedResources = [...selected.values()]
       const selectedPages = selectedResources.filter(
@@ -1288,15 +1275,7 @@ function ResourceConfiguration({
         await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch({
           body: {
             expectedVersion: previewSource.version,
-            metadata: sourceMetadata(
-              draft,
-              parameters,
-              provider,
-              previewRequestIdRef.current,
-              false,
-            ),
             name: draft.sourceName.trim(),
-            status: 'active',
           },
           params: {
             control_space_id: knowledgeSpaceId,
@@ -1319,86 +1298,56 @@ function ResourceConfiguration({
                   mode: 'custom',
                 } as const)
               : ({ enabled: true, mode: 'provider' } as const)
-      let expectedRevision = 0
-      try {
-        expectedRevision = sourceSyncPolicyFromApi(
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.get(
-            {
-              params: {
-                control_space_id: knowledgeSpaceId,
-                source_id: finalSource.id,
-              },
-            },
-            { context: { silent: true } },
-          ),
-        ).revision
-      } catch (error) {
-        if (requestStatus(error) !== 404) throw error
-      }
-      await consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.syncPolicy.put({
-        body: {
-          ...policy,
-          expectedRevision,
-          expectedSourceVersion: finalSource.version,
-        },
-        params: {
-          control_space_id: knowledgeSpaceId,
-          source_id: finalSource.id,
-        },
+      const requestFingerprint = JSON.stringify({
+        policy,
+        selected: [...selected.keys()].sort(),
+        sourceId: finalSource.id,
       })
+      if (importRequestRef.current?.fingerprint !== requestFingerprint) {
+        importRequestRef.current = {
+          fingerprint: requestFingerprint,
+          requestId: createRequestId(),
+        }
+      }
       await (!driveTransport
-        ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.workflowImports.post(
-            {
-              body: {
-                items: selectedPages.map((resource) => ({
-                  lastEditedTime: resource.page.last_edited_time ?? undefined,
-                  name: resource.page.page_name,
-                  pageId: resource.page.page_id,
-                  providerItemId: JSON.stringify([resource.groupId, resource.page.page_id]),
-                  type: resource.page.type,
-                  workspaceId: resource.groupId,
-                })),
-                kind: 'online-document-import',
-              },
-              headers: { 'Idempotency-Key': createRequestId() },
-              params: {
-                control_space_id: knowledgeSpaceId,
-                source_id: finalSource.id,
-              },
+        ? consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+            body: {
+              items: selectedPages.map((resource) => ({
+                lastEditedTime: resource.page.last_edited_time ?? undefined,
+                name: resource.page.page_name,
+                pageId: resource.page.page_id,
+                providerItemId: JSON.stringify([resource.groupId, resource.page.page_id]),
+                type: resource.page.type,
+                workspaceId: resource.groupId,
+              })),
+              kind: 'online-document-import',
+              syncPolicy: policy,
             },
-          )
-        : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.workflowImports.post(
-            {
-              body: {
-                items: selectedFiles.map((resource) => ({
-                  bucket: resource.bucket,
-                  id: resource.file.id,
-                  mimeType: resource.file.type.includes('/') ? resource.file.type : undefined,
-                  name: resource.file.name,
-                  providerItemId: JSON.stringify([resource.bucket ?? '', resource.file.id]),
-                })),
-                kind: 'online-drive-import',
-              },
-              headers: { 'Idempotency-Key': createRequestId() },
-              params: {
-                control_space_id: knowledgeSpaceId,
-                source_id: finalSource.id,
-              },
+            headers: { 'Idempotency-Key': importRequestRef.current.requestId },
+            params: {
+              control_space_id: knowledgeSpaceId,
+              source_id: finalSource.id,
             },
-          ))
-      committedRef.current = true
-      onDirtyChange(false)
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.sources.get.key(),
-          refetchType: 'none',
-        }),
-        queryClient.invalidateQueries({
-          queryKey: consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.get.key(),
-          refetchType: 'none',
-        }),
-      ])
-      onCompleted()
+          })
+        : consoleClient.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post({
+            body: {
+              items: selectedFiles.map((resource) => ({
+                bucket: resource.bucket,
+                id: resource.file.id,
+                mimeType: resource.file.type.includes('/') ? resource.file.type : undefined,
+                name: resource.file.name,
+                providerItemId: JSON.stringify([resource.bucket ?? '', resource.file.id]),
+              })),
+              kind: 'online-drive-import',
+              syncPolicy: policy,
+            },
+            headers: { 'Idempotency-Key': importRequestRef.current.requestId },
+            params: {
+              control_space_id: knowledgeSpaceId,
+              source_id: finalSource.id,
+            },
+          }))
+      await completeSubmission()
     } catch {
       try {
         if (previewSourceRef.current) {
@@ -1412,6 +1361,13 @@ function ResourceConfiguration({
           )
           previewSourceRef.current = reconciledSource
           setPreviewSource(reconciledSource)
+          if (
+            reconciledSource.metadata.preview === false &&
+            reconciledSource.status !== 'disabled'
+          ) {
+            await completeSubmission()
+            return
+          }
         }
       } catch {
         // Keep the last known source so the visible retry path remains available.

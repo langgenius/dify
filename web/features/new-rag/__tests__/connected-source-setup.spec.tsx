@@ -107,6 +107,9 @@ vi.mock('@/service/client', () => ({
           },
           sources: {
             bySourceId: {
+              asyncImport: {
+                post: clientMock.createWorkflowImport,
+              },
               delete: clientMock.deleteSource,
               files: {
                 get: clientMock.getFiles,
@@ -715,18 +718,7 @@ describe('ConnectedSourceSetup', () => {
     expect(clientMock.patchSource).toHaveBeenCalledWith({
       body: {
         expectedVersion: 3,
-        metadata: {
-          clientRequestId: expect.any(String),
-          datasourceParameterMode: 'exact',
-          parameters: {},
-          preview: false,
-          providerId: 'notion-provider',
-          providerKind: 'online-document',
-          providerName: 'Notion',
-          sourceType: 'onlineDocuments',
-        },
         name: 'Team wiki',
-        status: 'active',
       },
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
     })
@@ -743,30 +735,15 @@ describe('ConnectedSourceSetup', () => {
           },
         ],
         kind: 'online-document-import',
+        syncPolicy: { enabled: true, mode: 'provider' },
       },
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', source_id: 'preview-source' },
     })
     expect(clientMock.getWorkflow).not.toHaveBeenCalled()
     expect(clientMock.getSource).not.toHaveBeenCalled()
-    expect(clientMock.getSyncPolicy).toHaveBeenCalledWith(
-      {
-        params: { control_space_id: 'space-1', source_id: 'preview-source' },
-      },
-      { context: { silent: true } },
-    )
-    expect(clientMock.updateSyncPolicy).toHaveBeenCalledWith({
-      body: {
-        enabled: true,
-        expectedRevision: 0,
-        expectedSourceVersion: 4,
-        mode: 'provider',
-      },
-      params: { control_space_id: 'space-1', source_id: 'preview-source' },
-    })
-    expect(clientMock.updateSyncPolicy.mock.invocationCallOrder[0]).toBeLessThan(
-      clientMock.createWorkflowImport.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
-    )
+    expect(clientMock.getSyncPolicy).not.toHaveBeenCalled()
+    expect(clientMock.updateSyncPolicy).not.toHaveBeenCalled()
     expect(clientMock.createWorkflowImport.mock.invocationCallOrder[0]).toBeLessThan(
       view.onCompleted.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
     )
@@ -1102,19 +1079,12 @@ describe('ConnectedSourceSetup', () => {
           },
         ],
         kind: 'online-drive-import',
+        syncPolicy: { enabled: true, mode: 'provider' },
       },
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', source_id: googlePreviewSource.id },
     })
-    expect(clientMock.updateSyncPolicy).toHaveBeenCalledWith({
-      body: {
-        enabled: true,
-        expectedRevision: 0,
-        expectedSourceVersion: 4,
-        mode: 'provider',
-      },
-      params: { control_space_id: 'space-1', source_id: googlePreviewSource.id },
-    })
+    expect(clientMock.updateSyncPolicy).not.toHaveBeenCalled()
 
     view.unmount()
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
@@ -1407,6 +1377,7 @@ describe('ConnectedSourceSetup', () => {
           },
         ],
         kind: 'online-drive-import',
+        syncPolicy: { enabled: true, mode: 'interval' },
       },
       headers: { 'Idempotency-Key': expect.any(String) },
       params: { control_space_id: 'space-1', source_id: 's3-preview' },
@@ -1433,16 +1404,9 @@ describe('ConnectedSourceSetup', () => {
         },
       ],
       kind: 'online-drive-import',
+      syncPolicy: { enabled: true, mode: 'interval' },
     })
-    expect(clientMock.updateSyncPolicy).toHaveBeenCalledWith({
-      body: {
-        enabled: true,
-        expectedRevision: 0,
-        expectedSourceVersion: 4,
-        mode: 'interval',
-      },
-      params: { control_space_id: 'space-1', source_id: 's3-preview' },
-    })
+    expect(clientMock.updateSyncPolicy).not.toHaveBeenCalled()
 
     view.unmount()
     expect(clientMock.deleteSource).not.toHaveBeenCalled()
