@@ -265,7 +265,7 @@ export const zDatasetMetadataResponse = z.object({
  * MetadataUpdatePayload
  */
 export const zMetadataUpdatePayload = z.object({
-  name: z.string(),
+  name: z.string().max(200),
 })
 
 /**

@@ -322,7 +322,7 @@ export const zConversationRenamePayload = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish(),
+      name: z.string().max(200).nullish(),
     }),
     z.object({
       auto_generate: z.literal(false).optional().default(false),
@@ -331,7 +331,7 @@ export const zConversationRenamePayload = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish(),
+    name: z.string().max(200).nullish(),
   }),
 )
 
@@ -339,7 +339,7 @@ export const zConversationRenamePayloadWithUser = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish(),
+      name: z.string().max(200).nullish(),
       user: z.string().optional(),
     }),
     z.object({
@@ -350,7 +350,7 @@ export const zConversationRenamePayloadWithUser = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish(),
+    name: z.string().max(200).nullish(),
     user: z.string().optional(),
   }),
 )
@@ -1217,7 +1217,7 @@ export const zKnowledgeTagListResponse = z.array(zKnowledgeTagResponse)
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish(),
+  content: z.string().max(2000).nullish(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
 
@@ -1225,7 +1225,7 @@ export const zMessageFeedbackPayload = z.object({
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayloadWithUser = z.object({
-  content: z.string().nullish(),
+  content: z.string().max(2000).nullish(),
   rating: z.enum(['dislike', 'like']).nullish(),
   user: z.string(),
 })
@@ -1303,7 +1303,7 @@ export const zMetadataOperationData = z.object({
  * MetadataUpdatePayload
  */
 export const zMetadataUpdatePayload = z.object({
-  name: z.string(),
+  name: z.string().max(200),
 })
 
 /**
