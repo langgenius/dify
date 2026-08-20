@@ -46,14 +46,6 @@ jobs:
         working-directory: ./e2e
         run: vp run test:unit
 
-      - name: Use Ubuntu archive for core E2E dependencies
-        if: ${{ !inputs.run-external-runtime }}
-        run: |
-          sudo sed -i \
-            's|us-east-1\.ec2\.archive\.ubuntu\.com|archive.ubuntu.com|g' \
-            /etc/apt/apt-mirrors.txt \
-            /etc/apt/sources.list.d/ubuntu.sources
-
       - name: Install Playwright browsers for core E2E
         if: ${{ !inputs.run-external-runtime }}
         timeout-minutes: 15
