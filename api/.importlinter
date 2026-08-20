@@ -142,6 +142,24 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:web-app-runtime-query-service-boundary]
+name = Web app runtime query application service does not directly depend on configuration, feature implementation, transport, or ORM modules
+type = forbidden
+source_modules =
+    services.web_app_runtime_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.feature_service
+    services.feature_service_gateway
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
 [importlinter:contract:feature-query-service-boundary]
 name = Feature query application service is framework and persistence neutral
 type = forbidden
