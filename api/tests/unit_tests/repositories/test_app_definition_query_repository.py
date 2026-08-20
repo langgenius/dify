@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.tools.entities.tool_entities import ApiProviderSchemaType
-from models.account import Account
+from models.account import Account, Tenant, TenantStatus
 from models.enums import CustomizeTokenStrategy, TagType
 from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagBinding
 from models.tools import ApiToolProvider
@@ -16,6 +16,7 @@ from services.app_definition_query_service import (
     AppSiteConfiguration,
     AppToolIconSource,
 )
+from services.web_app_runtime_query_service import WebAppRuntimeRecord
 
 _APP_ID = "11111111-1111-1111-1111-111111111111"
 _TENANT_ID = "22222222-2222-2222-2222-222222222222"
@@ -341,9 +342,95 @@ def test_get_site_configuration_maps_site_fields(sqlite_session_factory: session
         input_placeholder="Ask anything",
         custom_disclaimer="Disclaimer",
         default_language="en-US",
+        prompt_public=True,
         show_workflow_steps=False,
         use_icon_as_answer_icon=True,
     )
+
+
+@pytest.mark.parametrize(
+    ("tenant_status", "expected_mode"),
+    [
+        (TenantStatus.NORMAL, AppMode.AGENT_CHAT.value),
+        (TenantStatus.ARCHIVE, AppMode.CHAT.value),
+    ],
+)
+def test_get_runtime_record_maps_app_tenant_site_and_compatible_mode(
+    sqlite_session_factory: sessionmaker[Session],
+    tenant_status: TenantStatus,
+    expected_mode: str,
+) -> None:
+    tenant_custom_config = '{"remove_webapp_brand":true,"replace_webapp_logo":"logo-file"}'
+    with sqlite_session_factory.begin() as session:
+        tenant = Tenant(
+            name="Test Tenant",
+            plan="pro",
+            status=tenant_status,
+            custom_config=tenant_custom_config,
+        )
+        tenant.id = _TENANT_ID
+        session.add(tenant)
+        app = _persist_app(session)
+        app_model_config = AppModelConfig(
+            app_id=app.id,
+            agent_mode=json.dumps({"enabled": True, "strategy": "react"}),
+        )
+        session.add(app_model_config)
+        session.flush()
+        app.app_model_config_id = app_model_config.id
+        session.add(
+            Site(
+                app_id=app.id,
+                title="Test Site",
+                icon_type=IconType.IMAGE,
+                icon="11111111-1111-4111-8111-111111111111",
+                icon_background="#ffffff",
+                default_language="en-US",
+                chat_color_theme="light",
+                chat_color_theme_inverted=False,
+                customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+                prompt_public=True,
+                show_workflow_steps=True,
+                use_icon_as_answer_icon=False,
+            )
+        )
+
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.get_runtime_record(_APP_ID) == WebAppRuntimeRecord(
+        app_id=_APP_ID,
+        tenant_id=_TENANT_ID,
+        mode=expected_mode,
+        enable_site=True,
+        site=AppSiteConfiguration(
+            title="Test Site",
+            chat_color_theme="light",
+            chat_color_theme_inverted=False,
+            icon_type=IconType.IMAGE.value,
+            icon="11111111-1111-4111-8111-111111111111",
+            icon_background="#ffffff",
+            description=None,
+            copyright=None,
+            privacy_policy=None,
+            input_placeholder=None,
+            custom_disclaimer="",
+            default_language="en-US",
+            prompt_public=True,
+            show_workflow_steps=True,
+            use_icon_as_answer_icon=False,
+        ),
+        plan="pro",
+        tenant_status=tenant_status.value,
+        tenant_custom_config_json=tenant_custom_config,
+    )
+
+
+def test_get_runtime_record_returns_none_for_missing_app(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+
+    assert repository.get_runtime_record(_APP_ID) is None
 
 
 def _tool(provider_type: str, provider_id: str, tool_name: str) -> dict[str, object]:

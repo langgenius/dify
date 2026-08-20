@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Flusso di Lavoro",
   "plansCommon.talkToSales": "Parla con le vendite",
   "plansCommon.taxTip": "Tutti i prezzi degli abbonamenti (mensili/annuali) non includono le tasse applicabili (ad esempio, IVA, imposta sulle vendite).",
-  "plansCommon.taxTipSecond": "Se nella tua regione non ci sono requisiti fiscali applicabili, nessuna tassa apparirà al momento del pagamento e non ti verranno addebitate spese aggiuntive per l'intera durata dell'abbonamento.",
   "plansCommon.teamMember_one": "{{count,number}} membro del team",
   "plansCommon.teamMember_other": "{{count,number}} membri del team",
   "plansCommon.teamWorkspace": "{{count,number}} Spazio di lavoro di squadra",

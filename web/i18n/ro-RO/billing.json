@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Flux de lucru",
   "plansCommon.talkToSales": "Vorbiți cu vânzările",
   "plansCommon.taxTip": "Toate prețurile abonamentelor (lunare/anuale) nu includ taxele aplicabile (de exemplu, TVA, taxa pe vânzări).",
-  "plansCommon.taxTipSecond": "Dacă regiunea dumneavoastră nu are cerințe fiscale aplicabile, niciun impozit nu va apărea la finalizarea comenzii și nu vi se vor percepe taxe suplimentare pe întreaga durată a abonamentului.",
   "plansCommon.teamMember_one": "{{count,number}} Membru al echipei",
   "plansCommon.teamMember_other": "{{count,number}} membri ai echipei",
   "plansCommon.teamWorkspace": "{{count,number}} Spațiu de lucru în echipă",

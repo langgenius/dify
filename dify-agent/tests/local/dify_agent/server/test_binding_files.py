@@ -15,7 +15,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellProviderError
+from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellExecutionMode, ShellProviderError
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.protocol import BindingFileDownloadRequest, BindingFileListRequest, BindingFileReadRequest
 from dify_agent.runtime_backend import BindingAcquireError, BindingLostError, RuntimeLayout, RuntimeLease
@@ -38,7 +38,16 @@ class _Commands:
     calls: list[tuple[str, str | None, dict[str, str] | None, float]] = field(default_factory=list)
     deletes: list[str] = field(default_factory=list)
 
-    async def run(self, script: str, *, cwd: str | None = None, env=None, timeout: float) -> ShellCommandResult:
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None = None,
+        env=None,
+        timeout: float,
+        mode: ShellExecutionMode = "pty",
+    ) -> ShellCommandResult:
+        assert mode == "stdio"
         self.calls.append((script, cwd, env, timeout))
         output = self.outputs.pop(0)
         exit_code = self.exit_codes.pop(0) if self.exit_codes else 0
@@ -77,7 +86,16 @@ class _ProviderErrorCommands(_Commands):
     phase: Literal["run", "wait"] = "run"
     error_code: str = "timeout"
 
-    async def run(self, script: str, *, cwd: str | None = None, env=None, timeout: float) -> ShellCommandResult:
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None = None,
+        env=None,
+        timeout: float,
+        mode: ShellExecutionMode = "pty",
+    ) -> ShellCommandResult:
+        assert mode == "stdio"
         self.calls.append((script, cwd, env, timeout))
         if self.phase == "run":
             raise ShellProviderError("shell provider failed", code=self.error_code)
@@ -99,7 +117,16 @@ class _ProviderErrorCommands(_Commands):
 
 @dataclass(slots=True)
 class _LocalCommands(_Commands):
-    async def run(self, script: str, *, cwd: str | None = None, env=None, timeout: float) -> ShellCommandResult:
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None = None,
+        env=None,
+        timeout: float,
+        mode: ShellExecutionMode = "pty",
+    ) -> ShellCommandResult:
+        assert mode == "stdio"
         self.calls.append((script, cwd, env, timeout))
         process = await asyncio.create_subprocess_shell(
             script,

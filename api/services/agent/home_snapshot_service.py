@@ -15,7 +15,6 @@ from libs.uuid_utils import uuidv7
 from models.agent import (
     Agent,
     AgentConfigDraft,
-    AgentConfigSnapshot,
     AgentConfigVersionKind,
     AgentHomeSnapshot,
     AgentStatus,
@@ -108,13 +107,13 @@ class AgentHomeSnapshotService:
             select(AgentHomeSnapshot).where(
                 AgentHomeSnapshot.tenant_id == tenant_id,
                 AgentHomeSnapshot.agent_id == agent_id,
-                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()
         now = naive_utc_now()
         for row in rows:
-            row.status = AgentWorkingResourceStatus.RETIRED
-            row.retired_at = now
+            if row.status == AgentWorkingResourceStatus.ACTIVE:
+                row.status = AgentWorkingResourceStatus.RETIRED
+                row.retired_at = now
         return [row.id for row in rows]
 
     @classmethod
@@ -128,13 +127,6 @@ class AgentHomeSnapshotService:
                 )
             )
             if snapshot is None:
-                return
-            referenced = session.scalar(
-                select(AgentConfigDraft.id).where(AgentConfigDraft.home_snapshot_id == home_snapshot_id).limit(1)
-            ) or session.scalar(
-                select(AgentConfigSnapshot.id).where(AgentConfigSnapshot.home_snapshot_id == home_snapshot_id).limit(1)
-            )
-            if referenced is not None:
                 return
             snapshot_ref = snapshot.snapshot_ref
         cls.delete(snapshot_ref=snapshot_ref)
