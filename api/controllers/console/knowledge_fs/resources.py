@@ -84,6 +84,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingPayload,
     KnowledgeFSAppBindingResponse,
+    KnowledgeFSAsyncSourceImportPayload,
     KnowledgeFSBackgroundTaskListQuery,
     KnowledgeFSBackgroundTaskListResponse,
     KnowledgeFSBackgroundTaskResponse,
@@ -252,6 +253,10 @@ from services.knowledge_fs.product_remote import (
 )
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, validate_query_image_references
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
+from services.knowledge_fs.source_import_commit_service import (
+    commit_source_import,
+    resume_committed_source_import,
+)
 from services.knowledge_fs.space_tag_service import KnowledgeFSSpaceTagValidationError
 from services.knowledge_fs.staged_upload_service import (
     KnowledgeFSStagedUploadConflictError,
@@ -268,6 +273,7 @@ from services.knowledge_fs_capability import (
 register_schema_models(
     console_ns,
     KnowledgeFSAppBindingPayload,
+    KnowledgeFSAsyncSourceImportPayload,
     KnowledgeFSBackgroundTaskListQuery,
     KnowledgeFSBadCaseCreatePayload,
     KnowledgeFSBadCaseUpdatePayload,
@@ -2746,11 +2752,19 @@ class KnowledgeFSSourceWorkflowRetryApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str, run_id: str):
         actor_id, tenant_id = _actor()
-        result = _console_services().facade.retry_source_workflow(
+        facade = _console_services().facade
+        result = facade.retry_source_workflow(
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             run_id=run_id,
+        )
+        resume_committed_source_import(
+            facade=facade,
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            workflow=result,
         )
         return dump_response(KnowledgeFSSourceWorkflowResponse, result)
 
@@ -2802,6 +2816,34 @@ class KnowledgeFSSourceWorkflowSelectionApi(Resource):
             control_space_id=control_space_id,
             run_id=run_id,
             payload=_payload(KnowledgeFSCrawlPreviewSelectionPayload),
+            idempotency_key=_idempotency_key(),
+        )
+        return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/async-import")
+class KnowledgeFSSourceAsyncImportApi(Resource):
+    @console_ns.expect(console_ns.models[KnowledgeFSAsyncSourceImportPayload.__name__])
+    @console_ns.doc(params=_IDEMPOTENCY_HEADER_PARAMS)
+    @console_ns.response(
+        HTTPStatus.ACCEPTED,
+        "KnowledgeFS Source import accepted for asynchronous reconciliation",
+        console_ns.models[KnowledgeFSSourceWorkflowResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, source_id: str):
+        actor_id, tenant_id = _actor()
+        payload = _payload(KnowledgeFSAsyncSourceImportPayload)
+        result = commit_source_import(
+            facade=_console_services().facade,
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            source_id=source_id,
+            payload=payload.root,
             idempotency_key=_idempotency_key(),
         )
         return dump_response(KnowledgeFSSourceWorkflowResponse, result), HTTPStatus.ACCEPTED

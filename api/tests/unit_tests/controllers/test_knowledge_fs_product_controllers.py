@@ -94,6 +94,7 @@ def test_console_and_service_api_routes_are_registered() -> None:
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/retry",
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/pages",
         "/knowledge-fs/spaces/<string:control_space_id>/source-workflows/<string:run_id>/selection",
+        "/knowledge-fs/spaces/<string:control_space_id>/sources/<string:source_id>/async-import",
         "/knowledge-fs/spaces/<string:control_space_id>/source-providers",
         "/knowledge-fs/spaces/<string:control_space_id>/queries",
         "/knowledge-fs/spaces/<string:control_space_id>/research-tasks",

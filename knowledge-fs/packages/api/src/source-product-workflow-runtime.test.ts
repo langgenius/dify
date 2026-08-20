@@ -917,6 +917,36 @@ describe("source-product workflow provider imports", () => {
     });
   });
 
+  it("fails a selected URL crawl import when canonical matching is ambiguous", async () => {
+    const source = sourceRecord("ambiguous-crawl-import", { type: "web" });
+    const fixture = await createFixture({
+      contentStore: {
+        deleteRun: vi.fn(async () => ({ deleted: 0, hasMore: false })),
+        get: vi.fn(async () => null),
+        put: vi.fn(async () => "staged/ambiguous"),
+      },
+      inventory: [],
+      run: providerRun(source.id, "crawl-import", {
+        selectedSourceUrls: ["https://example.test/selected#preview"],
+      }),
+      source,
+      websiteCrawl: {
+        crawl: vi.fn(async () => ({
+          pages: [
+            { content: "one", sourceUrl: "https://example.test/selected", title: "One" },
+            { content: "two", sourceUrl: "https://example.test/selected/", title: "Two" },
+          ],
+        })),
+      },
+    });
+
+    await expect(fixture.runtime.tick()).resolves.toMatchObject({ completed: 0, failed: 1 });
+    await expect(fixture.getRun()).resolves.toMatchObject({
+      lastErrorCode: "SOURCE_CRAWL_PAGE_AMBIGUOUS",
+      state: "failed",
+    });
+  });
+
   it("imports only the selected URLs from the second crawl", async () => {
     const source = sourceRecord("selected-url-crawl-success", {
       metadata: { preview: true },
@@ -953,7 +983,7 @@ describe("source-product workflow provider imports", () => {
         materialize,
       },
       run: providerRun(source.id, "crawl-import", {
-        selectedSourceUrls: ["https://example.test/selected"],
+        selectedSourceUrls: ["HTTPS://EXAMPLE.TEST:443/selected/#preview"],
       }),
       source,
       websiteCrawl: {
@@ -961,7 +991,7 @@ describe("source-product workflow provider imports", () => {
           pages: [
             {
               content: "selected body",
-              sourceUrl: "https://example.test/selected",
+              sourceUrl: "https://example.test/selected/",
               title: "Selected",
             },
             {

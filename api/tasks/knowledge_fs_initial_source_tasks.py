@@ -31,6 +31,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
     KnowledgeFSSourceWorkflowImportPayload,
+    knowledge_fs_initial_preview_configuration_fingerprint,
 )
 from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, KnowledgeFSProductResourceNotFoundError
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
@@ -248,6 +249,11 @@ def _source_payload(
             "includeSubpages": payload.crawl_options.include_subpages,
             "limit": payload.crawl_options.limit,
         }
+        metadata["initialPreview"] = {
+            "configurationFingerprint": knowledge_fs_initial_preview_configuration_fingerprint(payload),
+            "requestedSourceUrls": [selection.source_url for selection in payload.selection],
+            "canonicalSourceUrls": [selection.canonical_url for selection in payload.selection],
+        }
         source_type: Literal["connector", "web"] = "web"
         uri = payload.root_url
     else:
@@ -280,7 +286,7 @@ def _start_workflow(
             control_space_id=control_space_id,
             source_id=source_id,
             payload=KnowledgeFSCrawlImportPayload(
-                sourceUrls=[selection.source_url for selection in payload.selection],
+                sourceUrls=[selection.canonical_url or selection.source_url for selection in payload.selection],
             ),
             idempotency_key=f"{request_id}:crawl-import",
         )
@@ -439,12 +445,20 @@ def start_initial_source_import(
             source_id=source_id,
         )
         error_message = workflow.failure.message if workflow.failure is not None else None
-        initial_import = {
+        initial_import: dict[str, object] = {
             "errorCode": workflow.last_error_code,
             "errorMessage": error_message,
             "state": workflow.state,
             "workflowId": workflow.id,
         }
+        if isinstance(payload, KnowledgeFSInitialWebsiteSourcePayload):
+            initial_import.update(
+                {
+                    "configurationFingerprint": knowledge_fs_initial_preview_configuration_fingerprint(payload),
+                    "requestedSourceUrls": [selection.source_url for selection in payload.selection],
+                    "canonicalSourceUrls": [selection.canonical_url for selection in payload.selection],
+                }
+            )
         if (
             failed_source.metadata.get("preview") is not False
             or failed_source.metadata.get("initialImport") != initial_import

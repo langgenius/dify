@@ -648,12 +648,14 @@ def test_initial_website_source_import_exposes_failed_source_without_activating_
     source_update_payload = facade.update_source.call_args.kwargs["payload"]
     assert source_update_payload.status == "disabled"
     assert source_update_payload.metadata["preview"] is False
-    assert source_update_payload.metadata["initialImport"] == {
-        "errorCode": "SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
-        "errorMessage": "Source document materialization failed",
-        "state": "failed",
-        "workflowId": "workflow-1",
-    }
+    initial_import = source_update_payload.metadata["initialImport"]
+    assert initial_import["errorCode"] == "SOURCE_DOCUMENT_MATERIALIZATION_FAILED"
+    assert initial_import["errorMessage"] == "Source document materialization failed"
+    assert initial_import["state"] == "failed"
+    assert initial_import["workflowId"] == "workflow-1"
+    assert initial_import["requestedSourceUrls"] == ["https://docs.dify.ai/a", "https://docs.dify.ai/b"]
+    assert initial_import["canonicalSourceUrls"] == ["https://docs.dify.ai/a", "https://docs.dify.ai/b"]
+    assert len(initial_import["configurationFingerprint"]) == 64
     facade.update_source_sync_policy.assert_not_called()
 
 

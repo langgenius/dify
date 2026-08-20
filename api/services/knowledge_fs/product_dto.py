@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 from datetime import UTC, datetime
 from typing import Annotated, ClassVar, Literal
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, JsonValue, RootModel, field_validator, model_validator
@@ -109,8 +112,33 @@ class KnowledgeFSInitialWebsiteCrawlOptionsPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def normalize_knowledge_fs_source_url(source_url: str) -> str:
+    """Normalize URL identity without dropping query parameters that may select content."""
+
+    value = source_url.strip()
+    parsed = urlsplit(value)
+    if parsed.scheme.lower() not in {"http", "https"} or parsed.hostname is None:
+        return value
+    host = parsed.hostname.lower()
+    if ":" in host:
+        host = f"[{host}]"
+    try:
+        port = parsed.port
+    except ValueError:
+        return value
+    default_port = (parsed.scheme.lower() == "http" and port == 80) or (
+        parsed.scheme.lower() == "https" and port == 443
+    )
+    netloc = host if port is None or default_port else f"{host}:{port}"
+    path = parsed.path or "/"
+    if path != "/":
+        path = path.rstrip("/")
+    return urlunsplit((parsed.scheme.lower(), netloc, path, parsed.query, ""))
+
+
 class KnowledgeFSInitialWebsiteSelectionPayload(BaseModel):
     source_url: str = Field(min_length=1, max_length=4_096)
+    canonical_url: str | None = Field(default=None, min_length=1, max_length=4_096)
     title: str | None = Field(default=None, max_length=500)
 
     model_config = ConfigDict(extra="forbid")
@@ -119,6 +147,12 @@ class KnowledgeFSInitialWebsiteSelectionPayload(BaseModel):
     @classmethod
     def normalize_source_url(cls, source_url: str) -> str:
         return source_url.strip()
+
+    @model_validator(mode="after")
+    def populate_canonical_url(self) -> KnowledgeFSInitialWebsiteSelectionPayload:
+        canonical_url = normalize_knowledge_fs_source_url(self.canonical_url or self.source_url)
+        object.__setattr__(self, "canonical_url", canonical_url)
+        return self
 
 
 class KnowledgeFSOnlineDocumentWorkflowImportItemPayload(BaseModel):
@@ -185,6 +219,9 @@ class KnowledgeFSInitialWebsiteSourcePayload(KnowledgeFSInitialSyncPolicyPayload
     credential_id: str | None = Field(default=None, min_length=1, max_length=255, alias="credentialId")
     provider_display_name: str | None = Field(default=None, min_length=1, max_length=255, alias="providerDisplayName")
     parameters: dict[str, JsonValue] = Field(default_factory=dict, max_length=50)
+    preview_configuration_fingerprint: str | None = Field(
+        default=None, min_length=64, max_length=64, alias="previewConfigurationFingerprint"
+    )
     root_url: str = Field(min_length=1, max_length=4_096)
     crawl_options: KnowledgeFSInitialWebsiteCrawlOptionsPayload
     selection: list[KnowledgeFSInitialWebsiteSelectionPayload] = Field(min_length=1, max_length=200)
@@ -192,9 +229,16 @@ class KnowledgeFSInitialWebsiteSourcePayload(KnowledgeFSInitialSyncPolicyPayload
 
     @model_validator(mode="after")
     def validate_selection(self) -> KnowledgeFSInitialWebsiteSourcePayload:
-        source_urls = [item.source_url for item in self.selection]
+        source_urls = [item.canonical_url for item in self.selection]
         if len(set(source_urls)) != len(source_urls):
-            raise ValueError("initial website selection URLs must be unique")
+            raise ValueError("initial website selection canonical URLs must be unique")
+        if self.crawl_options.limit < len(self.selection):
+            raise ValueError("initial website crawl limit must cover every selected URL")
+        if (
+            self.preview_configuration_fingerprint is not None
+            and self.preview_configuration_fingerprint != knowledge_fs_initial_preview_configuration_fingerprint(self)
+        ):
+            raise ValueError("initial website preview configuration no longer matches")
         return self
 
 
@@ -216,6 +260,20 @@ class KnowledgeFSInitialSourcePreviewPayload(KnowledgeFSInitialDatasourceBinding
 
 class KnowledgeFSInitialWebsiteSourcePreviewPayload(KnowledgeFSInitialDatasourceBindingPayload):
     kind: Literal["website_crawl"]
+
+
+def knowledge_fs_initial_preview_configuration_fingerprint(
+    payload: KnowledgeFSInitialWebsiteSourcePayload | KnowledgeFSInitialWebsiteSourcePreviewPayload,
+) -> str:
+    configuration = {
+        "credentialId": payload.credential_id,
+        "datasource": payload.datasource,
+        "parameters": payload.parameters,
+        "pluginId": payload.plugin_id,
+        "provider": payload.provider,
+    }
+    encoded = json.dumps(configuration, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 class KnowledgeFSInitialSourcePreviewPageResponse(ResponseModel):
@@ -247,6 +305,10 @@ class KnowledgeFSInitialSourcePreviewFileResponse(ResponseModel):
 
 
 class KnowledgeFSInitialSourcePreviewResponse(ResponseModel):
+    configuration_fingerprint: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("configuration_fingerprint", "configurationFingerprint"),
+    )
     documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = Field(default_factory=list)
     files: list[KnowledgeFSInitialSourcePreviewFileResponse] = Field(default_factory=list)
     kind: Literal["online_document", "online_drive", "website_crawl"]
@@ -2324,6 +2386,59 @@ class KnowledgeFSCrawlPreviewSelectionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
 
 
+class KnowledgeFSDeferredSyncPolicyPayload(BaseModel):
+    custom_interval_seconds: int | None = Field(default=None, ge=3_600, le=2_592_000, alias="customIntervalSeconds")
+    enabled: bool
+    mode: Literal["provider", "manual", "interval", "custom"]
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+    @model_validator(mode="after")
+    def validate_custom_interval(self) -> KnowledgeFSDeferredSyncPolicyPayload:
+        if self.mode == "custom" and self.custom_interval_seconds is None:
+            raise ValueError("customIntervalSeconds is required for a custom sync policy")
+        if self.mode != "custom" and self.custom_interval_seconds is not None:
+            raise ValueError("customIntervalSeconds is only valid for a custom sync policy")
+        return self
+
+
+class KnowledgeFSAsyncCrawlPreviewImportPayload(BaseModel):
+    kind: Literal["crawl-preview-selection"]
+    page_ids: list[str] = Field(min_length=1, max_length=200, alias="pageIds")
+    preview_workflow_id: str = Field(min_length=1, max_length=255, alias="previewWorkflowId")
+    sync_policy: KnowledgeFSDeferredSyncPolicyPayload = Field(alias="syncPolicy")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSAsyncOnlineDocumentImportPayload(BaseModel):
+    items: list[KnowledgeFSOnlineDocumentWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    kind: Literal["online-document-import"]
+    sync_policy: KnowledgeFSDeferredSyncPolicyPayload = Field(alias="syncPolicy")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+class KnowledgeFSAsyncOnlineDriveImportPayload(BaseModel):
+    items: list[KnowledgeFSOnlineDriveWorkflowImportItemPayload] = Field(min_length=1, max_length=200)
+    kind: Literal["online-drive-import"]
+    sync_policy: KnowledgeFSDeferredSyncPolicyPayload = Field(alias="syncPolicy")
+
+    model_config = ConfigDict(extra="forbid", validate_by_alias=True, validate_by_name=True)
+
+
+KnowledgeFSAsyncSourceImport = Annotated[
+    KnowledgeFSAsyncCrawlPreviewImportPayload
+    | KnowledgeFSAsyncOnlineDocumentImportPayload
+    | KnowledgeFSAsyncOnlineDriveImportPayload,
+    Field(discriminator="kind"),
+]
+
+
+class KnowledgeFSAsyncSourceImportPayload(RootModel[KnowledgeFSAsyncSourceImport]):
+    pass
+
+
 class KnowledgeFSCrawlImportPayload(BaseModel):
     source_urls: list[str] = Field(min_length=1, max_length=200, alias="sourceUrls")
 
@@ -3649,6 +3764,11 @@ __all__ = [
     "KnowledgeFSAppBindingListResponse",
     "KnowledgeFSAppBindingPayload",
     "KnowledgeFSAppBindingResponse",
+    "KnowledgeFSAsyncCrawlPreviewImportPayload",
+    "KnowledgeFSAsyncOnlineDocumentImportPayload",
+    "KnowledgeFSAsyncOnlineDriveImportPayload",
+    "KnowledgeFSAsyncSourceImport",
+    "KnowledgeFSAsyncSourceImportPayload",
     "KnowledgeFSBackgroundTaskFailureResponse",
     "KnowledgeFSBackgroundTaskListQuery",
     "KnowledgeFSBackgroundTaskListResponse",
@@ -3670,6 +3790,7 @@ __all__ = [
     "KnowledgeFSCredentialItemResponse",
     "KnowledgeFSCredentialListResponse",
     "KnowledgeFSCursorQuery",
+    "KnowledgeFSDeferredSyncPolicyPayload",
     "KnowledgeFSDocumentAvailabilityPayload",
     "KnowledgeFSDocumentBatchDownloadPayload",
     "KnowledgeFSDocumentChunkListQuery",

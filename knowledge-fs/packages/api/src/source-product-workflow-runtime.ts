@@ -760,7 +760,7 @@ async function processSelectedCrawlImport(
     throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
   }
 
-  const matched = new Map<string, SourceCrawlPreviewPage>();
+  const crawledPages: SourceCrawlPreviewPage[] = [];
   let cursor: string | undefined;
   do {
     const page = await input.repository.listCrawlPages({
@@ -768,22 +768,18 @@ async function processSelectedCrawlImport(
       limit: 200,
       runId: execution.run().id,
     });
-    for (const candidate of page.items) {
-      if (!requestedUrls.has(candidate.sourceUrl)) continue;
-      if (matched.has(candidate.sourceUrl)) {
-        throw runtimeError(
-          "SOURCE_CRAWL_PAGE_AMBIGUOUS",
-          "Selected crawl page matched more than one result",
-        );
-      }
-      matched.set(candidate.sourceUrl, candidate);
-    }
+    crawledPages.push(...page.items);
     cursor = page.nextCursor;
   } while (cursor);
 
-  if (matched.size !== requestedUrls.size) {
-    throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
-  }
+  const selectedPages = [...requestedUrls].map((sourceUrl) =>
+    matchSelectedCrawlPage(sourceUrl, crawledPages),
+  );
+  if (new Set(selectedPages.map((page) => page.pageId)).size !== selectedPages.length)
+    throw runtimeError(
+      "SOURCE_CRAWL_PAGE_AMBIGUOUS",
+      "Selected crawl URLs resolved to the same page",
+    );
   await execution.mutate((current) =>
     input.repository.checkpoint({
       checkpoint: "selection-frozen",
@@ -796,14 +792,45 @@ async function processSelectedCrawlImport(
       state: "importing",
     }),
   );
-  const selectedPages = [...requestedUrls].map((sourceUrl) => {
-    const page = matched.get(sourceUrl);
-    if (!page) {
-      throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
-    }
-    return page;
-  });
   await importCrawlPages(input, execution, source, selectedPages);
+}
+
+function matchSelectedCrawlPage(
+  requestedUrl: string,
+  candidates: readonly SourceCrawlPreviewPage[],
+): SourceCrawlPreviewPage {
+  const exact = candidates.filter((candidate) => candidate.sourceUrl === requestedUrl);
+  if (exact.length > 1)
+    throw runtimeError(
+      "SOURCE_CRAWL_PAGE_AMBIGUOUS",
+      "Selected crawl page matched more than one result",
+    );
+  const [exactMatch] = exact;
+  if (exactMatch) return exactMatch;
+
+  const canonicalRequestedUrl = canonicalCrawlUrl(requestedUrl);
+  const canonical = candidates.filter(
+    (candidate) => canonicalCrawlUrl(candidate.sourceUrl) === canonicalRequestedUrl,
+  );
+  if (canonical.length > 1)
+    throw runtimeError(
+      "SOURCE_CRAWL_PAGE_AMBIGUOUS",
+      "Selected crawl page canonical URL matched more than one result",
+    );
+  const [canonicalMatch] = canonical;
+  if (canonicalMatch) return canonicalMatch;
+  throw runtimeError("SOURCE_CRAWL_PAGE_NOT_FOUND", "Selected crawl page is unavailable");
+}
+
+function canonicalCrawlUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    url.hash = "";
+    if (url.pathname !== "/") url.pathname = url.pathname.replace(/\/+$/, "");
+    return url.toString();
+  } catch {
+    return value.trim();
+  }
 }
 
 async function importCrawlPages(

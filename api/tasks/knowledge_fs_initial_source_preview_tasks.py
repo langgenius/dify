@@ -17,7 +17,10 @@ from services.knowledge_fs.initial_source_preview_job import (
     KnowledgeFSInitialSourcePreviewJobNotFoundError,
     KnowledgeFSInitialSourcePreviewJobService,
 )
-from services.knowledge_fs.product_dto import KnowledgeFSInitialWebsiteSourcePreviewPayload
+from services.knowledge_fs.product_dto import (
+    KnowledgeFSInitialWebsiteSourcePreviewPayload,
+    knowledge_fs_initial_preview_configuration_fingerprint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,10 +59,11 @@ def run_knowledge_fs_initial_source_preview(
             if account.current_tenant_id != tenant_id:
                 raise PermissionError("Datasource preview account is not a tenant member")
             session.expunge(account)
+        preview_payload = KnowledgeFSInitialWebsiteSourcePreviewPayload.model_validate(payload)
         result = KnowledgeFSInitialSourcePreviewService(session_factory.get_session_maker()).preview(
             tenant_id=tenant_id,
             account=account,
-            payload=KnowledgeFSInitialWebsiteSourcePreviewPayload.model_validate(payload),
+            payload=preview_payload,
             is_canceled=lambda: _preview_was_canceled(
                 job_service=job_service,
                 tenant_id=tenant_id,
@@ -67,6 +71,7 @@ def run_knowledge_fs_initial_source_preview(
                 job_id=job_id,
             ),
         )
+        result.configuration_fingerprint = knowledge_fs_initial_preview_configuration_fingerprint(preview_payload)
         job_service.transition_status(
             tenant_id=tenant_id,
             account_id=account_id,
