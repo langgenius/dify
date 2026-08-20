@@ -7,7 +7,8 @@ from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from configs import dify_config
@@ -264,7 +265,7 @@ class TestEnterpriseInnerApiUserAuth:
         # Assert
         assert result == "no_user"
 
-    def test_should_pass_through_when_hmac_signature_invalid(self, app: Flask):
+    def test_should_pass_through_when_hmac_signature_invalid(self, app: Flask, sqlite_engine: Engine):
         """Invalid HMAC auth passes through without opening a database session."""
 
         # Arrange
@@ -272,17 +273,20 @@ class TestEnterpriseInnerApiUserAuth:
         def protected_view(**kwargs):
             return kwargs.get("user", "no_user")
 
-        # Act - use wrong signature
-        with app.test_request_context(
-            headers={"Authorization": "Bearer user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
-        ):
-            with patch.object(dify_config, "INNER_API", True):
-                with patch("controllers.inner_api.wraps.session_factory.create_session") as mock_create_session:
-                    result = protected_view()
+        def fail_on_query(*_args, **_kwargs):
+            pytest.fail("invalid HMAC must not access the database")
 
-        # Assert
+        event.listen(sqlite_engine, "before_cursor_execute", fail_on_query)
+        try:
+            with app.test_request_context(
+                headers={"Authorization": "Bearer user123:wrong_signature", "X-Inner-Api-Key": "valid_key"}
+            ):
+                with patch.object(dify_config, "INNER_API", True):
+                    result = protected_view()
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", fail_on_query)
+
         assert result == "no_user"
-        mock_create_session.assert_not_called()
 
     @pytest.mark.parametrize("sqlite_session", [(EndUser,)], indirect=True)
     def test_should_inject_user_when_hmac_signature_valid(self, app: Flask, sqlite_session: Session):
@@ -312,21 +316,13 @@ class TestEnterpriseInnerApiUserAuth:
         )
         sqlite_session.add(end_user)
         sqlite_session.commit()
-        database_session_factory = sessionmaker(
-            bind=sqlite_session.get_bind(),
-            expire_on_commit=False,
-        )
 
         # Act
         with app.test_request_context(
             headers={"Authorization": f"Bearer {user_id}:{valid_signature}", "X-Inner-Api-Key": inner_api_key}
         ):
             with patch.object(dify_config, "INNER_API", True):
-                with patch(
-                    "controllers.inner_api.wraps.session_factory.create_session",
-                    database_session_factory,
-                ):
-                    result = protected_view()
+                result = protected_view()
 
         # Assert
         assert isinstance(result, EndUser)

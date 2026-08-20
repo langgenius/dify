@@ -206,7 +206,7 @@ describe('PermissionSelector', () => {
     renderSelector({ permission: DatasetPermission.partialMembers })
 
     await user.click(screen.getByRole('button', { name: /Current User/ }))
-    const search = screen.getByRole('textbox', { name: /operation.search/ })
+    const search = screen.getByRole('searchbox', { name: /operation.search/ })
     await user.type(search, 'Jane')
 
     await waitFor(() => {
@@ -226,7 +226,7 @@ describe('PermissionSelector', () => {
     renderSelector({ permission: DatasetPermission.partialMembers })
 
     await user.click(screen.getByRole('button', { name: /Current User/ }))
-    await user.type(screen.getByRole('textbox', { name: /operation.search/ }), 'Nobody')
+    await user.type(screen.getByRole('searchbox', { name: /operation.search/ }), 'Nobody')
 
     expect(await screen.findByText(/form.onSearchResults/)).toBeInTheDocument()
   })

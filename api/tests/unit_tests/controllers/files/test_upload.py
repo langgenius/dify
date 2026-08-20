@@ -2,7 +2,7 @@ import io
 import types
 from contextlib import contextmanager
 from inspect import unwrap
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -206,6 +206,7 @@ class TestPluginUploadFileApi:
             timestamp="123",
             nonce="abc",
             sign="sig",
+            max_size=None,
         )
         tool_file_manager.create_file_by_raw.assert_called_once_with(
             user_id="account-1",
@@ -335,6 +336,65 @@ class TestPluginUploadFileApi:
 
         with pytest.raises(module.FileTooLargeError):
             post_fn(api)
+
+    @patch.object(module, "get_user", return_value=_end_user())
+    @patch.object(module, "verify_plugin_file_signature", return_value=True)
+    @patch.object(module, "ToolFileManager")
+    def test_signed_max_size_bounds_file_read(
+        self,
+        mock_tool_file_manager,
+        mock_verify,
+        mock_get_user,
+    ):
+        dummy_file = DummyFile(content=b"data")
+        dummy_file.stream = MagicMock()
+        dummy_file.stream.read.return_value = b"data"
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "max_size": "4",
+            },
+            file=dummy_file,
+        )
+        mock_tool_file_manager.return_value.create_file_by_raw.return_value = _tool_file()
+        mock_tool_file_manager.sign_file.return_value = "signed-url"
+
+        unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+
+        dummy_file.stream.read.assert_called_once_with(5)
+        assert mock_verify.call_args.kwargs["max_size"] == 4
+        assert mock_tool_file_manager.return_value.create_file_by_raw.call_args.kwargs["file_binary"] == b"data"
+
+    @patch.object(module, "get_user", return_value=_end_user())
+    @patch.object(module, "verify_plugin_file_signature", return_value=True)
+    @patch.object(module, "ToolFileManager")
+    def test_signed_max_size_rejects_oversized_file_before_creation(
+        self,
+        mock_tool_file_manager,
+        mock_verify,
+        mock_get_user,
+    ):
+        dummy_file = DummyFile(content=b"oversized")
+        module.request = fake_request(
+            {
+                "timestamp": "123",
+                "nonce": "abc",
+                "sign": "sig",
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+                "max_size": "4",
+            },
+            file=dummy_file,
+        )
+
+        with pytest.raises(module.FileTooLargeError):
+            unwrap(module.PluginUploadFileApi().post)(module.PluginUploadFileApi())
+
+        mock_tool_file_manager.assert_not_called()
 
     @patch.object(module, "get_user", return_value=_end_user())
     @patch.object(module, "verify_plugin_file_signature", return_value=True)

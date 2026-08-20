@@ -14,7 +14,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const CREATE_SNIPPET_HOTKEY = 'Mod+Enter' satisfies Hotkey
@@ -60,8 +60,11 @@ export function CreateSnippetDialog({
   confirmText,
   initialValue,
 }: CreateSnippetDialogProps) {
+  const nameInputId = useId()
+  const descriptionInputId = useId()
   const { t } = useTranslation()
   const popupRef = useRef<HTMLDivElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
 
@@ -106,6 +109,7 @@ export function CreateSnippetDialog({
           <DialogBackdrop />
           <DialogPopup
             ref={popupRef}
+            initialFocus={nameInputRef}
             className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-120 -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-0"
           >
             <DialogCloseButton />
@@ -118,23 +122,31 @@ export function CreateSnippetDialog({
 
             <div className="space-y-4 px-6 py-2">
               <div>
-                <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+                <label
+                  htmlFor={nameInputId}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
                   {t(($) => $['snippet.nameLabel'], { ns: 'workflow' })}
-                </div>
+                </label>
                 <Input
+                  ref={nameInputRef}
+                  id={nameInputId}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t(($) => $['snippet.namePlaceholder'], { ns: 'workflow' }) || ''}
                   disabled={isSubmitting}
-                  autoFocus
                 />
               </div>
 
               <div>
-                <div className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary">
+                <label
+                  htmlFor={descriptionInputId}
+                  className="mb-1 flex h-6 items-center system-sm-medium text-text-secondary"
+                >
                   {t(($) => $['snippet.descriptionLabel'], { ns: 'workflow' })}
-                </div>
+                </label>
                 <Textarea
+                  id={descriptionInputId}
                   className="resize-none"
                   value={description}
                   onValueChange={(value) => setDescription(value)}

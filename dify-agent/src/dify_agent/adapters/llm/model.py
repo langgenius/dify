@@ -51,11 +51,13 @@ from pydantic_ai.messages import (
     ModelResponseStreamEvent,
     MultiModalContent,
     RetryPromptPart,
+    SpeechPart,
     SystemPromptPart,
     TextContent,
     TextPart,
     ThinkingPart,
     ToolCallPart,
+    ToolAvailabilityDeltaPart,
     ToolReturnPart,
     UploadedFile,
     UserContent,
@@ -333,6 +335,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
                         name=part.tool_name,
                     )
                 )
+        elif isinstance(part, SpeechPart | ToolAvailabilityDeltaPart):
+            raise UnexpectedModelBehavior(f"Unsupported request part for daemon adapter: {type(part).__name__}")
         else:
             assert_never(part)
 

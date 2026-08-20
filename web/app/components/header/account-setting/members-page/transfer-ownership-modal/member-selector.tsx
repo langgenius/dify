@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import { Avatar } from '@langgenius/dify-ui/avatar'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { useMembers } from '@/service/use-common'
 
 type Props = Readonly<{
@@ -18,6 +18,7 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const searchLabel = t(($) => $['operation.search'], { ns: 'common' })
 
   const { data } = useMembers()
 
@@ -80,12 +81,23 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
       >
         <div className="min-w-93 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              aria-label={t(($) => $['operation.search'], { ns: 'common' })}
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-            />
+            <InputGroup>
+              <InputGroupInput
+                type="search"
+                aria-label={searchLabel}
+                autoComplete="off"
+                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+                placeholder={searchLabel}
+                value={searchValue}
+                onValueChange={setSearchValue}
+              />
+              <InputGroupAddon className="ps-2 pe-0.5">
+                <span
+                  aria-hidden="true"
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
+            </InputGroup>
           </div>
           <div className="p-1">
             {filteredList.map((account) => (
