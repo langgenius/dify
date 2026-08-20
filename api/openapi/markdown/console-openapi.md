@@ -17206,6 +17206,7 @@ Portable DSL reference that could not be restored in the target workspace.
 | ---- | ---- | ----------- | -------- |
 | code | string |  | Yes |
 | email | string |  | Yes |
+| invite_token | string | Invitation token | No |
 | language | string |  | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
