@@ -261,7 +261,7 @@ describe('useDocLink', () => {
       expect(result.current()).toBe(`${enterpriseDocBaseUrl}/en/`)
     })
 
-    it('should use Chinese and fall back to English for unsupported documentation languages', () => {
+    it('should use Chinese and Japanese enterprise documentation languages', () => {
       vi.mocked(useTranslation).mockReturnValue({
         i18n: { language: 'zh-Hans' },
       } as ReturnType<typeof useTranslation>)
@@ -279,7 +279,7 @@ describe('useDocLink', () => {
       rerender()
 
       expect(result.current('/use-dify/nodes/start')).toBe(
-        `${enterpriseDocBaseUrl}/en/use/nodes/start`,
+        `${enterpriseDocBaseUrl}/ja/use/nodes/start`,
       )
     })
   })

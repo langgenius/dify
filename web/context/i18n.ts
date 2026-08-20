@@ -72,8 +72,8 @@ const replacePathPrefix = (path: string, sourcePrefix: string, targetPrefix: str
   return `${targetPrefix}${path.slice(sourcePrefix.length)}`
 }
 
-const getEnterpriseDocLanguage = (docLanguage: DocLanguage): 'en' | 'zh' => {
-  return docLanguage === 'zh' ? 'zh' : 'en'
+const getEnterpriseDocLanguage = (docLanguage: DocLanguage): 'en' | 'zh' | 'ja' => {
+  return docLanguage
 }
 
 const getEnterpriseDocPath = (path: string): string => {
