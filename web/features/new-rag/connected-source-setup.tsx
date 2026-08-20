@@ -189,7 +189,7 @@ function preferredCredential(provider?: DataSourceAuth) {
 function connectionMatchesDatasource(
   connection: SourceConnection,
   datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
-  credential: DataSourceCredential | undefined,
+  credential: DataSourceCredential,
 ) {
   if (!datasourceProvider) return false
   const configuration = connection.configuration
@@ -197,7 +197,7 @@ function connectionMatchesDatasource(
     configuration.pluginId === datasourceProvider.plugin.plugin_id &&
     configuration.provider === datasourceProvider.plugin.provider &&
     configuration.datasource === datasourceProvider.datasource.identity.name &&
-    (!credential || configuration.credentialId === credential.id)
+    configuration.credentialId === credential.id
   )
 }
 
@@ -207,7 +207,7 @@ function findProviderConnection(
   datasourceProvider: ReturnType<typeof datasourceProviderForOption>,
   credential: DataSourceCredential | undefined,
 ) {
-  if (!providerId || !datasourceProvider) return undefined
+  if (!providerId || !datasourceProvider || !credential) return undefined
   return connections
     .filter(
       (connection) =>
@@ -1673,6 +1673,7 @@ export function ConnectedSourceSetup({
   const provisioningAttemptsRef = useRef(new Set<string>())
   const connection =
     connectionOverride &&
+    credential &&
     connectionOverride.providerId === provider?.id &&
     connectionMatchesDatasource(connectionOverride, datasourceProvider, credential)
       ? connectionOverride

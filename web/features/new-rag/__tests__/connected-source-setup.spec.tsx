@@ -613,6 +613,20 @@ describe('ConnectedSourceSetup', () => {
     )
   })
 
+  it('does not reuse a stale Notion connection after its credential is removed', async () => {
+    clientMock.listConnections.mockResolvedValue({
+      data: [connectionResponse()],
+      next_cursor: null,
+    } satisfies KnowledgeFsSourceConnectionListResponse)
+
+    renderSetup()
+
+    expect(await screen.findByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
+    expect(clientMock.createSource).not.toHaveBeenCalled()
+    expect(clientMock.getPages).not.toHaveBeenCalled()
+    expect(clientMock.createConnection).not.toHaveBeenCalled()
+  })
+
   it('distinguishes an uninstalled provider from an installed provider without credentials', async () => {
     const user = userEvent.setup()
     renderSetup({
