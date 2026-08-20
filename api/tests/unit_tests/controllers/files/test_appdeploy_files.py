@@ -389,8 +389,8 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(app: Flask, end_use
 
 
 @pytest.mark.usefixtures("sqlite_db")
-def test_remote_upload_answers_in_the_same_shape_as_upload(app: Flask, end_user: EndUser) -> None:
-    """Both ways in produce one ``upload_files`` row, so both answer alike."""
+def test_remote_upload_answers_in_the_upload_shape_plus_dify_s_url_key(app: Flask, end_user: EndUser) -> None:
+    """Dify's own remote upload answers under ``url``, so this one answers under both."""
 
     url = "https://example.com/docs/report.pdf"
     response = httpx.Response(200, content=b"pdf-bytes", request=httpx.Request("GET", url))
@@ -412,10 +412,12 @@ def test_remote_upload_answers_in_the_same_shape_as_upload(app: Flask, end_user:
                 files_ns.payload = {"url": url}
                 body, _ = GrantedRemoteFileUploadApi().post()
 
-    assert set(body) == DIFY_UPLOAD_RESPONSE_KEYS
+    assert set(body) == DIFY_UPLOAD_RESPONSE_KEYS | {"url"}
     # The row records where the bytes came from; the response hands back the
     # signed URL that fetches them, exactly as dify's own remote upload does.
     assert body["source_url"].startswith(f"https://files.example.com/files/appdeploy/{UPLOAD_FILE_ID}/content?token=")
+    # One URL under both names, not two signings of the same file.
+    assert body["url"] == body["source_url"]
 
 
 @pytest.mark.usefixtures("sqlite_db")

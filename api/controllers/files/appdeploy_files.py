@@ -84,6 +84,17 @@ class FileContentQuery(BaseModel):
     token: str = Field(description="Signed content token scoped to this file")
 
 
+class RemoteFileUploadResponse(FileResponse):
+    """Dify's upload shape plus the ``url`` key its remote-upload clients read.
+
+    Dify has no service-api remote upload for this endpoint to stand in for, and
+    the web and console one it does have answers under ``url``. Carrying both
+    names lets a client of either move over untouched; they hold one URL.
+    """
+
+    url: str
+
+
 class ProducedFileResponse(ResponseModel):
     id: str
     name: str
@@ -98,7 +109,9 @@ class FileResolveResponse(ResponseModel):
 
 
 register_schema_models(files_ns, RemoteFileUploadPayload, FileResolvePayload)
-register_response_schema_models(files_ns, FileResponse, ProducedFileResponse, FileResolveResponse)
+register_response_schema_models(
+    files_ns, FileResponse, RemoteFileUploadResponse, ProducedFileResponse, FileResolveResponse
+)
 
 
 @files_ns.route("/appdeploy/upload")
@@ -146,7 +159,7 @@ class GrantedRemoteFileUploadApi(Resource):
             415: "Unsupported file type",
         }
     )
-    @files_ns.response(201, "Remote file uploaded", files_ns.models[FileResponse.__name__])
+    @files_ns.response(201, "Remote file uploaded", files_ns.models[RemoteFileUploadResponse.__name__])
     def post(self, grant: FileGrantClaims):
         try:
             payload = RemoteFileUploadPayload.model_validate(files_ns.payload or {})
@@ -178,7 +191,7 @@ class GrantedRemoteFileUploadApi(Resource):
             mimetype=file_info.mimetype,
             source_url=url,
         )
-        return _granted_file_response(upload_file), 201
+        return _remote_granted_file_response(upload_file), 201
 
 
 @files_ns.route("/appdeploy/produced")
@@ -367,6 +380,18 @@ def _granted_file_response(upload_file: UploadFile) -> dict[str, object]:
 
     signed_url = build_content_url(file_id=upload_file.id, kind=FileKind.UPLOAD, external=True)
     return dump_response(FileResponse, upload_file) | {"source_url": signed_url}
+
+
+def _remote_granted_file_response(upload_file: UploadFile) -> dict[str, object]:
+    """Answer a remote upload with the upload shape plus dify's ``url`` key.
+
+    Reuses the URL already signed for ``source_url`` rather than signing a
+    second one, so the two keys are one value under the two names dify's two
+    kinds of client look for.
+    """
+
+    response = _granted_file_response(upload_file)
+    return response | {"url": response["source_url"]}
 
 
 __all__ = [
