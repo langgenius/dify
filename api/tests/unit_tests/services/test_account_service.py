@@ -318,9 +318,9 @@ class TestAccountService:
     ) -> None:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
-        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = (
-            "email_domain_suspended"
-        )
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
 
         with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
             with pytest.raises(EmailDomainSuspendedError):
@@ -335,9 +335,9 @@ class TestAccountService:
         self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
     ) -> None:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
-        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = (
-            "email_domain_suspended"
-        )
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
 
         with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
             with pytest.raises(EmailDomainSuspendedError):
