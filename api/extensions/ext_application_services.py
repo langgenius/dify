@@ -24,6 +24,10 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.tag_repository import TagRepository
+from repositories.trial_app_query_repository import TrialAppQueryRepository
+from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
@@ -50,10 +54,18 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
+from services.recommended_app_catalog_gateway import (
+    BuiltinRecommendedAppCatalogGateway,
+    RecommendedAppCatalogRouter,
+    RemoteRecommendedAppCatalogGateway,
+)
+from services.recommended_app_query_service import RecommendedAppQueryService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
 from services.system_feature_service import SystemFeatureService
+from services.tag_application_service import TagApplicationService
+from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
@@ -109,10 +121,13 @@ class ApplicationServices:
     setup: SetupService
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
+    recommended_app_queries: RecommendedAppQueryService
+    trial_app_usage: TrialAppUsageRecorder
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
     inner_mail: InnerMailService
     web_passport: WebPassportService
+    tags: TagApplicationService
 
 
 def build_application_services(
@@ -126,6 +141,15 @@ def build_application_services(
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
+    trial_app_enabled = SystemFeatureService.is_trial_app_enabled()
+    database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
+    builtin_catalog = BuiltinRecommendedAppCatalogGateway()
+    remote_catalog = RemoteRecommendedAppCatalogGateway()
+    recommended_app_catalog = RecommendedAppCatalogRouter(
+        remote=remote_catalog,
+        database=database_catalog,
+        builtin=builtin_catalog,
+    )
     return ApplicationServices(
         accounts=AccountServices(
             profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
@@ -185,6 +209,12 @@ def build_application_services(
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
         ),
+        recommended_app_queries=RecommendedAppQueryService(
+            catalog=recommended_app_catalog,
+            trial_apps=TrialAppQueryRepository(session_factory=database_client),
+            trial_enabled=trial_app_enabled,
+        ),
+        trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
                 client=database_client,
@@ -210,6 +240,9 @@ def build_application_services(
             tokens=PassportTokenGateway(passport=PassportService()),
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
+        ),
+        tags=TagApplicationService(
+            tags=TagRepository(session_factory=database_client),
         ),
     )
 

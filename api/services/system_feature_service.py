@@ -137,6 +137,10 @@ class SystemFeatureService:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_EXPLORE_BANNER
 
     @staticmethod
+    def is_trial_app_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
+
+    @staticmethod
     def get_trial_models() -> list[str]:
         """Return hosted trial provider ids without building the public snapshot."""
         provider_enablement = {

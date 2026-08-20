@@ -1,14 +1,15 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, scoped_session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.wraps as wraps_module
 import models.model as model_module
 from controllers.console.explore.error import (
     AppAccessDeniedError,
+    TrialAppFeatureDisabledError,
     TrialAppLimitExceeded,
     TrialAppNotAllowed,
 )
@@ -255,12 +256,17 @@ def test_trial_feature_enable_disabled():
     def view():
         return "ok"
 
-    with patch(
-        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
-        return_value=False,
-    ):
-        with pytest.raises(Forbidden):
+    services = MagicMock()
+    services.recommended_app_queries.is_trial_enabled.return_value = False
+    with patch("controllers.console.explore.wraps.application_services", return_value=services):
+        with pytest.raises(TrialAppFeatureDisabledError) as exc_info:
             view()
+
+    assert exc_info.value.data == {
+        "code": "trial_app_feature_disabled",
+        "message": "Trial app feature is not enabled.",
+        "status": 403,
+    }
 
 
 def test_trial_feature_enable_enabled():
@@ -268,10 +274,9 @@ def test_trial_feature_enable_enabled():
     def view():
         return "ok"
 
-    with patch(
-        "controllers.console.explore.wraps.RecommendedAppService.is_trial_app_enabled",
-        return_value=True,
-    ):
+    services = MagicMock()
+    services.recommended_app_queries.is_trial_enabled.return_value = True
+    with patch("controllers.console.explore.wraps.application_services", return_value=services):
         assert view() == "ok"
 
 

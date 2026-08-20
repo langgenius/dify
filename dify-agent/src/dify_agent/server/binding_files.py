@@ -166,6 +166,7 @@ class BindingFileService:
                     env={"HOME": lease.layout.home_dir},
                     timeout=_BROWSE_TIMEOUT_SECONDS,
                     max_output_bytes=_BROWSE_OUTPUT_MAX_BYTES,
+                    mode="stdio",
                 )
             payload = _require_browse_payload(result, operation="list")
             try:
@@ -193,6 +194,7 @@ class BindingFileService:
                     env={"HOME": lease.layout.home_dir},
                     timeout=_BROWSE_TIMEOUT_SECONDS,
                     max_output_bytes=_BROWSE_OUTPUT_MAX_BYTES,
+                    mode="stdio",
                 )
             payload = _require_browse_payload(result, operation="read")
             try:
@@ -243,6 +245,7 @@ class BindingFileService:
                         env=env,
                         timeout=_DOWNLOAD_TIMEOUT_SECONDS,
                         max_output_bytes=_DOWNLOAD_OUTPUT_MAX_BYTES,
+                        mode="stdio",
                     )
                 except ShellProviderError as exc:
                     if exc.code == "timeout":

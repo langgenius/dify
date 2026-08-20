@@ -6563,7 +6563,8 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RecommendedAppDetailNullableResponse](#recommendedappdetailnullableresponse)<br> |
+| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
+| 404 | Recommended app not found |  |
 
 ### [GET] /features
 **Get feature configuration for current tenant**
@@ -9263,7 +9264,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | No | string, <br>**Available values:** "", "app", "knowledge", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "snippet" |
 
 #### Responses
 
@@ -9928,6 +9929,7 @@ Export snippet configuration as DSL
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID to export | Yes | string (uuid) |
 | include_secret | query | Whether to include secret variables | No | string, <br>**Default:** false |
+| workflow_id | query | Specific published workflow version to export | No | string |
 
 #### Responses
 
@@ -18217,11 +18219,9 @@ How Dify forwards the end-user's identity to an MCP server.
 
 #### IncludeSecretQuery
 
-Query parameter for including secret variables in export.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
+| include_secret | string, <br>**Default:** false | Whether to include secret values in the exported DSL | No |
 
 #### IndexingEstimate
 
@@ -20771,12 +20771,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
-#### RecommendedAppDetailNullableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| RecommendedAppDetailNullableResponse | [RecommendedAppDetailResponse](#recommendedappdetailresponse) |  |  |
-
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -21426,6 +21420,15 @@ Payload for syncing snippet draft workflow.
 | hash | string |  | No |
 | input_fields | [ object ] |  | No |
 
+#### SnippetExportQuery
+
+Query parameters for exporting a snippet workflow as DSL.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
+| workflow_id | string | Specific published workflow version to export | No |
+
 #### SnippetImportPayload
 
 Payload for importing snippet from DSL.
@@ -21859,7 +21862,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "", "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
+| type | string, <br>**Available values:** "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"snippet"` | Yes |
 
 #### TagListResponse
 
