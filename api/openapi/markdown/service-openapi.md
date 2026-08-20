@@ -2642,6 +2642,7 @@ Enum class for custom configuration status.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
@@ -2684,6 +2685,7 @@ Enum class for custom configuration status.
 | enable_api | boolean |  | Yes |
 | external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
 | external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
+| graph_index_setting | [DatasetGraphIndexSettingResponse](#datasetgraphindexsettingresponse) |  | No |
 | icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
@@ -2730,6 +2732,16 @@ Enum class for custom configuration status.
 | score_threshold | number |  | No |
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | Yes |
+
+#### DatasetGraphIndexSettingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| entity_types | [ string ] |  | No |
+| max_depth | integer |  | No |
+| model_name | string |  | No |
+| model_provider_name | string |  | No |
 
 #### DatasetIconInfoResponse
 
