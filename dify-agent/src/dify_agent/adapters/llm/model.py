@@ -550,7 +550,8 @@ def _map_tool_definitions_to_prompt_tools(
     return [
         PromptMessageTool(
             name=tool_definition.name,
-            description=tool_definition.description or "",
+            # Some providers (e.g. Bedrock's Converse API) reject an empty toolSpec description.
+            description=tool_definition.description or tool_definition.name,
             parameters=cast(dict[str, object], tool_definition.parameters_json_schema),
         )
         for tool_definition in tool_definitions

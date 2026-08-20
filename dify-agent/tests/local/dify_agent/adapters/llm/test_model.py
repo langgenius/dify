@@ -12,6 +12,7 @@ from graphon.model_runtime.entities.message_entities import TextPromptMessageCon
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.messages import (
     InstructionPart,
+    ModelMessage,
     ModelRequest,
     ModelResponse,
     RetryPromptPart,
@@ -290,6 +291,42 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(usage.latency, 1.2)
         self.assertEqual(usage.time_to_first_token, 0.2)
         self.assertEqual(usage.time_to_generate, 0.6)
+
+    async def test_request_falls_back_to_tool_name_when_description_is_missing(self) -> None:
+        """Some providers (e.g. Bedrock's Converse API) reject an empty toolSpec description."""
+        messages: list[ModelMessage] = [ModelRequest(parts=[UserPromptPart("hello")])]
+        request_parameters = ModelRequestParameters(
+            function_tools=[
+                ToolDefinition(
+                    name="weather",
+                    description=None,
+                    parameters_json_schema={"type": "object", "properties": {}},
+                )
+            ],
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            tools_by_name = {tool["name"]: tool for tool in payload["target"]["tools"]}
+            self.assertEqual(tools_by_name["weather"]["description"], "weather")
+            return build_stream_response(
+                LLMResultChunk(
+                    model="demo-model",
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(content="ok", tool_calls=[]),
+                        usage=make_usage(prompt_tokens=1, completion_tokens=1),
+                    ),
+                )
+            )
+
+        async with self.mock_gateway_stream(httpx.MockTransport(handler)):
+            adapter = DifyLLMAdapterModel(
+                "demo-model",
+                self.make_provider(),
+                model_provider="openai",
+            )
+            await adapter.request(messages, model_settings=None, model_request_parameters=request_parameters)
 
     async def test_request_maps_tool_call_only_assistant_history_to_empty_string_content(self) -> None:
         messages = [
