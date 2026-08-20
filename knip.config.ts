@@ -15,8 +15,6 @@ const config: KnipConfig = {
         'tsslint.config.ts',
         'dev-proxy.config.ts',
         'plugins/eslint/index.js',
-        'vitest.browser.config.ts',
-        'vitest.browser.setup.ts',
       ],
       project: [
         '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css,mdx}!',
