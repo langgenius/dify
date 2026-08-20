@@ -327,6 +327,7 @@ describe('KnowledgeOverviewPage', () => {
     queryData.attention.data = []
     queryData.activity.data[0]!.action = 'source.synced'
     queryData.activity.data[0]!.actor = { id: 'dify-account:member-1', type: 'member' }
+    queryData.activity.data[0]!.details = { count: 1 }
     queryData.activity.data[0]!.occurred_at = '2026-07-29T08:05:00Z'
     queryData.activity.data[0]!.result = 'success'
     queryData.stats.source_count = 3
@@ -728,6 +729,29 @@ describe('KnowledgeOverviewPage', () => {
     expect(dialog).toHaveTextContent('Credentials expired')
     expect(dialog).toHaveTextContent('dataset.newKnowledge.overview.activityFailed')
     expect(within(dialog).getByText(/2h ago|2 hr\. ago|2 hours ago/)).toBeInTheDocument()
+  })
+
+  it('shows one initiated query activity with its question and retrieval mode', async () => {
+    const user = userEvent.setup()
+    queryData.activity.data[0]!.action = 'query.requested'
+    queryData.activity.data[0]!.details = {
+      mode: 'research',
+      question: 'How do permissions work?',
+    }
+    queryData.activity.data[0]!.result = 'success'
+
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    const label = 'dataset.newKnowledge.qualityPage.question: How do permissions work? — research'
+    expect(within(screen.getByRole('table')).getByText(label)).toBeInTheDocument()
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
+    )
+    expect(within(screen.getByRole('dialog')).getByText(label)).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.overview.activityQueued'),
+    ).not.toBeInTheDocument()
   })
 
   it('refreshes overview snapshots until they catch up with a completed background task', () => {

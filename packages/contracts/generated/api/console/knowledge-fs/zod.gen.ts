@@ -2873,16 +2873,6 @@ export const zKnowledgeFsTraceListResponse = z.object({
 })
 
 /**
- * KnowledgeFSQualityReplayEvidenceDiff
- */
-export const zKnowledgeFsQualityReplayEvidenceDiff = z.object({
-  expected_count: z.int().gte(0),
-  matched_count: z.int().gte(0),
-  missing_count: z.int().gte(0),
-  retrieved_count: z.int().gte(0),
-})
-
-/**
  * KnowledgeFSQualityReplayMetrics
  */
 export const zKnowledgeFsQualityReplayMetrics = z.object({
@@ -2896,6 +2886,30 @@ export const zKnowledgeFsQualityReplayMetrics = z.object({
   score_threshold_filtered_candidates: z.int().gte(0).nullish(),
   summary_candidates: z.int().gte(0).nullish(),
   total_ms: z.number().gte(0).nullish(),
+})
+
+/**
+ * KnowledgeFSQualityReplayEvidenceItem
+ */
+export const zKnowledgeFsQualityReplayEvidenceItem = z.object({
+  available: z.boolean(),
+  document_name: z.string().nullish(),
+  matched: z.boolean(),
+  ordinal: z.int().gte(1),
+  page_number: z.int().gte(1).nullish(),
+  section_path: z.array(z.string()).optional(),
+  text: z.string().nullish(),
+})
+
+/**
+ * KnowledgeFSQualityReplayEvidenceDiff
+ */
+export const zKnowledgeFsQualityReplayEvidenceDiff = z.object({
+  evidence_items: z.array(zKnowledgeFsQualityReplayEvidenceItem).nullish(),
+  expected_count: z.int().gte(0),
+  matched_count: z.int().gte(0),
+  missing_count: z.int().gte(0),
+  retrieved_count: z.int().gte(0),
 })
 
 /**
@@ -3910,6 +3924,10 @@ export const zPostKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsResponse =
 export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdPath = z.object({
   control_space_id: z.string(),
   run_id: z.string(),
+})
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdQuery = z.object({
+  evidence_item_id: z.uuid().optional(),
 })
 
 /**

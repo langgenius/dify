@@ -175,11 +175,7 @@ test("app compose profile uses local middleware and the required Dify dependency
   assert.match(compose, /^ {6}DIFY_INNER_API_KEY: \$\{DIFY_INNER_API_KEY:-\}$/m);
   assert.match(
     compose,
-    /^ {6}KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS: \$\{KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS:-2048\}$/m,
-  );
-  assert.match(
-    compose,
-    /^ {6}KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS: \$\{KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS:-4096\}$/m,
+    /^ {6}KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS: \$\{KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS:-8192\}$/m,
   );
   assert.match(
     compose,
@@ -323,7 +319,6 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
     "KNOWLEDGE_DIRECT_UPLOAD_SMALL_FALLBACK_MAX_BYTES",
     "KNOWLEDGE_DIRECT_STREAM_ENABLED",
     "KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS",
-    "KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS",
     "KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS",
     "KNOWLEDGE_QUERY_IMAGE_RETRIEVAL_ENABLED",
     "KNOWLEDGE_QUERY_IMAGE_EXPANSION_TIMEOUT_MS",
@@ -342,11 +337,7 @@ test("KnowledgeFS deployment env contains only operator-owned runtime inputs", (
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_MAX_ASSETS=500$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_PDF_RASTERIZER_MAX_CONCURRENCY=2$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false$/m);
-  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS=2048$/m);
-  assert.match(
-    difyKnowledgeFsEnv,
-    /^KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS=4096$/m,
-  );
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS=8192$/m);
   assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS=60000$/m);
   assert.doesNotMatch(difyKnowledgeFsEnv, /^MINIO_/m);
 });
@@ -363,11 +354,7 @@ test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", 
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "off"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_STREAM_ENABLED: "off"$/m);
-  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS: "2048"$/m);
-  assert.match(
-    kubernetesBaseline,
-    /^ {2}KNOWLEDGE_RESEARCH_REASONING_RECOVERY_MAX_OUTPUT_TOKENS: "4096"$/m,
-  );
+  assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_MAX_OUTPUT_TOKENS: "8192"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_RESEARCH_REASONING_TIMEOUT_MS: "60000"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER: poppler$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_PDF_RASTERIZER_DPI: "144"$/m);

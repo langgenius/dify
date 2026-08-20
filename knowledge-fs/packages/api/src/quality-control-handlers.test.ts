@@ -26,6 +26,9 @@ const GOLDEN_QUESTION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44";
 const TRACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
 const BAD_CASE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c47";
 const CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c48";
+const MATCHED_EVIDENCE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c50";
+const MISSING_EVIDENCE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c51";
+const DOCUMENT_ASSET_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c52";
 const NOW = "2026-07-14T15:00:00.000Z";
 
 describe("quality-control handlers", () => {
@@ -182,6 +185,212 @@ describe("quality-control handlers", () => {
       ],
       summary: { failed: 0, hitRate: 1, passed: 1 },
     });
+  });
+
+  it("loads permission-safe matched and missing evidence details only when requested", async () => {
+    const base = replayRun();
+    const replayItem = {
+      ...base.items[0],
+      expectedEvidenceIds: [MATCHED_EVIDENCE_ID, MISSING_EVIDENCE_ID],
+      result: {
+        evidenceDiff: {
+          matchPolicy: "all",
+          missingEvidenceIds: [MISSING_EVIDENCE_ID],
+          retrievedEvidenceIds: [MATCHED_EVIDENCE_ID, "retrieved-evidence-secret"],
+        },
+        metrics: { totalMs: 17 },
+      },
+    };
+    const getManyByIdsAcrossGenerations = vi.fn(async () => [
+      {
+        documentAssetId: DOCUMENT_ASSET_ID,
+        id: MATCHED_EVIDENCE_ID,
+        permissionScope: ["subject:editor-1"],
+        sourceLocation: { pageNumber: 2, sectionPath: ["Permissions", "Roles"] },
+        text: "Workspace owners can change member permissions.",
+      },
+      {
+        documentAssetId: DOCUMENT_ASSET_ID,
+        id: MISSING_EVIDENCE_ID,
+        permissionScope: ["subject:editor-1"],
+        sourceLocation: { pageNumber: 3, sectionPath: ["Permissions", "Limitations"] },
+        text: "Editors cannot promote themselves to owner.",
+      },
+    ]);
+    const getAsset = vi.fn(async () => ({
+      filename: "Workspace permissions.pdf",
+      id: DOCUMENT_ASSET_ID,
+      metadata: { permissionScope: ["subject:editor-1"] },
+    }));
+    const app = qualityApp(
+      {
+        getReplay: vi.fn(async () => ({ ...base, items: [replayItem] })),
+      } as unknown as QualityControlRepository,
+      {
+        assets: { get: getAsset } as never,
+        nodes: { getManyByIdsAcrossGenerations } as never,
+      },
+    );
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/quality/replay-runs/${RUN_ID}?evidenceItemId=${replayItem.id}`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getManyByIdsAcrossGenerations).toHaveBeenCalledWith({
+      ids: [MATCHED_EVIDENCE_ID, MISSING_EVIDENCE_ID],
+      knowledgeSpaceId: SPACE_ID,
+    });
+    const body = await response.json();
+    expect(body.items[0].result.evidenceDiff.evidenceItems).toEqual([
+      {
+        available: true,
+        documentName: "Workspace permissions.pdf",
+        matched: true,
+        ordinal: 1,
+        pageNumber: 2,
+        sectionPath: ["Permissions", "Roles"],
+        text: "Workspace owners can change member permissions.",
+      },
+      {
+        available: true,
+        documentName: "Workspace permissions.pdf",
+        matched: false,
+        ordinal: 2,
+        pageNumber: 3,
+        sectionPath: ["Permissions", "Limitations"],
+        text: "Editors cannot promote themselves to owner.",
+      },
+    ]);
+    expect(JSON.stringify(body)).not.toContain("retrieved-evidence-secret");
+  });
+
+  it("redacts replay evidence text that is no longer visible to the current grants", async () => {
+    const base = replayRun();
+    const replayItem = {
+      ...base.items[0],
+      expectedEvidenceIds: [MISSING_EVIDENCE_ID],
+      result: {
+        evidenceDiff: {
+          missingEvidenceIds: [MISSING_EVIDENCE_ID],
+          retrievedEvidenceIds: [],
+        },
+      },
+    };
+    const app = qualityApp(
+      {
+        getReplay: vi.fn(async () => ({ ...base, items: [replayItem] })),
+      } as unknown as QualityControlRepository,
+      {
+        assets: { get: vi.fn() } as never,
+        nodes: {
+          getManyByIdsAcrossGenerations: vi.fn(async () => [
+            {
+              documentAssetId: DOCUMENT_ASSET_ID,
+              id: MISSING_EVIDENCE_ID,
+              permissionScope: ["scope:not-granted"],
+              sourceLocation: { sectionPath: ["Private"] },
+              text: "private-evidence-secret",
+            },
+          ]),
+        } as never,
+      },
+    );
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/quality/replay-runs/${RUN_ID}?evidenceItemId=${replayItem.id}`,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.items[0].result.evidenceDiff.evidenceItems).toEqual([
+      { available: false, matched: false, ordinal: 1, sectionPath: [] },
+    ]);
+    expect(JSON.stringify(body)).not.toContain("private-evidence-secret");
+  });
+
+  it("redacts replay evidence when its document asset is no longer visible", async () => {
+    const base = replayRun();
+    const replayItem = {
+      ...base.items[0],
+      expectedEvidenceIds: [MATCHED_EVIDENCE_ID],
+      result: {
+        evidenceDiff: {
+          missingEvidenceIds: [],
+          retrievedEvidenceIds: [MATCHED_EVIDENCE_ID],
+        },
+      },
+    };
+    const app = qualityApp(
+      {
+        getReplay: vi.fn(async () => ({ ...base, items: [replayItem] })),
+      } as unknown as QualityControlRepository,
+      {
+        assets: {
+          get: vi.fn(async () => ({
+            filename: "private-document.pdf",
+            id: DOCUMENT_ASSET_ID,
+            metadata: { permissionScope: ["scope:not-granted"] },
+          })),
+        } as never,
+        nodes: {
+          getManyByIdsAcrossGenerations: vi.fn(async () => [
+            {
+              documentAssetId: DOCUMENT_ASSET_ID,
+              id: MATCHED_EVIDENCE_ID,
+              permissionScope: ["subject:editor-1"],
+              sourceLocation: { sectionPath: ["Private"] },
+              text: "asset-protected-evidence-secret",
+            },
+          ]),
+        } as never,
+      },
+    );
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/quality/replay-runs/${RUN_ID}?evidenceItemId=${replayItem.id}`,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.items[0].result.evidenceDiff.evidenceItems).toEqual([
+      { available: false, matched: true, ordinal: 1, sectionPath: [] },
+    ]);
+    expect(JSON.stringify(body)).not.toContain("asset-protected-evidence-secret");
+    expect(JSON.stringify(body)).not.toContain("private-document.pdf");
+  });
+
+  it("rejects oversized replay evidence details before loading content", async () => {
+    const base = replayRun();
+    const replayItem = {
+      ...base.items[0],
+      expectedEvidenceIds: Array.from(
+        { length: 51 },
+        (_, index) => `018f0d60-7a49-7cc2-9c1b-${index.toString(16).padStart(12, "0")}`,
+      ),
+    };
+    const getManyByIdsAcrossGenerations = vi.fn();
+    const getAsset = vi.fn();
+    const app = qualityApp(
+      {
+        getReplay: vi.fn(async () => ({ ...base, items: [replayItem] })),
+      } as unknown as QualityControlRepository,
+      {
+        assets: { get: getAsset } as never,
+        nodes: { getManyByIdsAcrossGenerations } as never,
+      },
+    );
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/quality/replay-runs/${RUN_ID}?evidenceItemId=${replayItem.id}`,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Replay evidence detail limit exceeded",
+    });
+    expect(getManyByIdsAcrossGenerations).not.toHaveBeenCalled();
+    expect(getAsset).not.toHaveBeenCalled();
   });
 
   it("serializes optional replay errors, results, embedding, and rerank provenance safely", async () => {

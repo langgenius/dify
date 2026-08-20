@@ -2229,6 +2229,7 @@ export type KnowledgeFsTraceStageResponse = {
 }
 
 export type KnowledgeFsQualityReplayEvidenceDiff = {
+  evidence_items?: Array<KnowledgeFsQualityReplayEvidenceItem> | null
   expected_count: number
   matched_count: number
   missing_count: number
@@ -2246,6 +2247,16 @@ export type KnowledgeFsQualityReplayMetrics = {
   score_threshold_filtered_candidates?: number | null
   summary_candidates?: number | null
   total_ms?: number | null
+}
+
+export type KnowledgeFsQualityReplayEvidenceItem = {
+  available: boolean
+  document_name?: string | null
+  matched: boolean
+  ordinal: number
+  page_number?: number | null
+  section_path?: Array<string>
+  text?: string | null
 }
 
 export type GetKnowledgeFsWellKnownJwksJsonData = {
@@ -3547,7 +3558,9 @@ export type GetKnowledgeFsSpacesByControlSpaceIdQualityReplayRunsByRunIdData = {
     control_space_id: string
     run_id: string
   }
-  query?: never
+  query?: {
+    evidence_item_id?: string
+  }
   url: '/knowledge-fs/spaces/{control_space_id}/quality/replay-runs/{run_id}'
 }
 

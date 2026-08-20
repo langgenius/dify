@@ -109,7 +109,12 @@ describe("Research evidence retrieval V3", () => {
       false,
     ]);
     expect(vectorize).toHaveBeenCalledTimes(2);
-    expect(rerank).toHaveBeenCalledTimes(2);
+    expect(rerank.mock.calls.map(([input]) => input.query)).toEqual([
+      "compare renewal and termination",
+      "renewal terms",
+      "termination terms",
+      "termination notice",
+    ]);
     expect(judge).toHaveBeenCalledOnce();
     expect(result.metrics).toMatchObject({
       researchCandidateLists: 4,
@@ -139,6 +144,116 @@ describe("Research evidence retrieval V3", () => {
       results: [{ chunkCount: 3, question: "compare renewal and termination" }],
       retrievalCount: 3,
     });
+  });
+
+  it("keeps the strongest query-specific rerank score for evidence shared across intents", async () => {
+    const shared = item(
+      "shared-node",
+      "Dify supports self-hosted deployment and model credentials",
+    );
+    const rerank = vi.fn(async (input: Parameters<RerankerProvider["rerank"]>[0]) => ({
+      items: input.documents.map((document, index) => ({
+        document: { ...document, metadata: { ...(document.metadata ?? {}) } },
+        index,
+        score: input.query === "Dify deployment management" ? 0.93 : 0.0005295,
+      })),
+      metadata: { model: input.model, provider: "static" as const },
+      model: input.model,
+    }));
+    const retriever = createResearchEvidenceRetrieval({
+      queryVectorizer: { vectorize: async () => [[0.2, 0.3]] },
+      reasoning: {
+        judge: async () => ({
+          coverage: 1,
+          coveredDimensions: ["deployment"],
+          missingDimensions: [],
+          sufficient: true,
+        }),
+        plan: async () => ({
+          evidenceDimensions: ["models", "deployment"],
+          intent: "multi-hop" as const,
+          modelCalled: true,
+          subqueries: ["Dify deployment management"],
+          useGraph: false,
+        }),
+      },
+      rerankerFactory: () => ({ kind: "static", models: async () => [], rerank }),
+      retriever: { retrieve: async () => ({ items: [shared] }) },
+    });
+
+    const result = await retriever.retrieve({
+      ...researchInput(),
+      query: "How does Dify manage models and deployment?",
+    });
+
+    expect(rerank.mock.calls.map(([input]) => input.query)).toEqual([
+      "How does Dify manage models and deployment?",
+      "Dify deployment management",
+    ]);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toMatchObject({
+      metadata: {
+        rerankScore: 0.93,
+        researchRerank: {
+          query: "Dify deployment management",
+          score: 0.93,
+          version: "query-aware-max-v1",
+        },
+      },
+      nodeId: "shared-node",
+      score: 0.93,
+    });
+  });
+
+  it("bounds total query-specific rerank documents across planned intents", async () => {
+    const rerank = vi.fn(async (input: Parameters<RerankerProvider["rerank"]>[0]) => ({
+      items: input.documents.map((document, index) => ({
+        document: { ...document, metadata: { ...(document.metadata ?? {}) } },
+        index,
+        score: 0.9 - index * 0.01,
+      })),
+      metadata: { model: input.model, provider: "static" as const },
+      model: input.model,
+    }));
+    const retriever = createResearchEvidenceRetrieval({
+      maxRerankCandidates: 6,
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      queryVectorizer: {
+        vectorize: async () => [
+          [0.2, 0.3],
+          [0.4, 0.5],
+        ],
+      },
+      reasoning: {
+        judge: async () => ({
+          coverage: 1,
+          coveredDimensions: ["models", "deployment"],
+          missingDimensions: [],
+          sufficient: true,
+        }),
+        plan: async () => ({
+          evidenceDimensions: ["models", "deployment"],
+          intent: "comparison" as const,
+          modelCalled: true,
+          subqueries: ["model management", "deployment management"],
+          useGraph: false,
+        }),
+      },
+      rerankerFactory: () => ({ kind: "static", models: async () => [], rerank }),
+      retriever: {
+        retrieve: async (input) => ({
+          items: Array.from({ length: 6 }, (_, index) =>
+            item(`${slug(input.query)}-${index}`, `${input.query} evidence ${index}`),
+          ),
+        }),
+      },
+    });
+
+    const result = await retriever.retrieve(researchInput());
+
+    expect(rerank.mock.calls.map(([input]) => input.documents.length)).toEqual([2, 2, 2]);
+    expect(rerank.mock.calls.reduce((total, [input]) => total + input.documents.length, 0)).toBe(6);
+    expect(result.metrics?.rerankCandidates).toBe(6);
   });
 
   it("routes a retained V2 tree checkpoint only to the compatibility retriever", async () => {
@@ -280,9 +395,13 @@ describe("Research evidence retrieval V3", () => {
     expect(vectorize).toHaveBeenCalledOnce();
     expect(judge).not.toHaveBeenCalled();
     expect(result.items.map((evidence) => evidence.nodeId)).toEqual([
-      "node-initial",
       "node-supplemental",
+      "node-initial",
     ]);
+    expect(result.items[0]?.metadata.researchRerank).toMatchObject({
+      query: "termination notice",
+      score: 0.95,
+    });
     expect(onResearchSearchCheckpoint.mock.calls[0]?.[0].checkpoint).toMatchObject({
       phase: "complete",
       version: ResearchEvidenceRetrievalCheckpointVersion,

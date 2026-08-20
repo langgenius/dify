@@ -2198,6 +2198,7 @@ class KnowledgeFSDataFacade:
         account_id: str,
         control_space_id: str,
         run_id: str,
+        evidence_item_id: str | None = None,
     ) -> KnowledgeFSQualityReplayResponse:
         raw = self._interactive_child(
             tenant_id=tenant_id,
@@ -2206,6 +2207,7 @@ class KnowledgeFSDataFacade:
             operation_id="getQualityReplay",
             resource_id=run_id,
             path_parameters=(("runId", run_id),),
+            query=(("evidenceItemId", evidence_item_id),) if evidence_item_id else (),
         )
         return KnowledgeFSQualityReplayResponse.model_validate(raw)
 

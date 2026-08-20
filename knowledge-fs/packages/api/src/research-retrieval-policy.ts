@@ -82,8 +82,9 @@ export const DurableResearchRetrievalPolicy: ResearchRetrievalExecutionPolicy = 
  * Research Evidence V3 policies. The legacy policies above remain frozen because an in-flight V2
  * PageIndex checkpoint may already contain counters that exceed the V3 limits. Fresh requests and
  * V3 checkpoints use these policies instead: at most one planner call, one set-level evidence
- * judge, one bounded structured-output recovery call, and (for durable work only) one
- * deterministic supplemental retrieval round.
+ * judge, and (for durable work only) one deterministic supplemental retrieval round. The third
+ * model-call slot remains only so checkpoints written by the former bounded-recovery contract can
+ * still resume safely after deployment.
  */
 export const InteractiveResearchEvidenceRetrievalPolicy: ResearchRetrievalExecutionPolicy =
   Object.freeze({

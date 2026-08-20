@@ -56,6 +56,7 @@ import { evidenceBundleFromAnswerTrace } from "./query-virtual-entries";
 
 const MAX_QUALITY_REPLAY_QUESTIONS = 1_000;
 const QUALITY_REPLAY_QUESTION_PAGE_SIZE = 100;
+const MAX_QUALITY_REPLAY_EVIDENCE_DETAILS = 50;
 
 class QualityReplaySelectionTooLargeError extends Error {}
 
@@ -512,9 +513,22 @@ export function registerQualityControlHandlers({
       subjectId: scope.subject.subjectId,
       tenantId: scope.subject.tenantId,
     });
-    return run
-      ? context.json(publicReplay(run), 200)
-      : context.json({ error: "Replay run not found" }, 404);
+    if (!run) return context.json({ error: "Replay run not found" }, 404);
+    const evidenceItemId = context.req.valid("query").evidenceItemId;
+    if (!evidenceItemId) return context.json(publicReplay(run), 200);
+    const replayItem = run.items.find((item) => item.id === evidenceItemId);
+    if (!replayItem) return context.json({ error: "Replay item not found" }, 404);
+    if (replayItem.expectedEvidenceIds.length > MAX_QUALITY_REPLAY_EVIDENCE_DETAILS) {
+      return context.json({ error: "Replay evidence detail limit exceeded" }, 400);
+    }
+    const evidenceItems = await publicReplayEvidenceItems({
+      assets,
+      candidateGrants: scope.candidateGrants,
+      item: replayItem,
+      knowledgeSpaceId: scope.knowledgeSpaceId,
+      nodes,
+    });
+    return context.json(publicReplay(run, { evidenceItemId: replayItem.id, evidenceItems }), 200);
   });
 
   app.openapi(listQualityReplaysRoute, async (context) => {
@@ -537,7 +551,7 @@ export function registerQualityControlHandlers({
       });
       return context.json(
         {
-          items: result.items.map(publicReplay),
+          items: result.items.map((item) => publicReplay(item)),
           ...(result.nextCursor ? { nextCursor: encodeQualityCursor(result.nextCursor) } : {}),
         },
         200,
@@ -1004,7 +1018,96 @@ function publicBadCase(value: ProductionBadCase) {
   return { ...safe, tags: [...value.tags] };
 }
 
-function publicReplay(run: QualityReplayRun) {
+interface PublicReplayEvidenceItem {
+  readonly available: boolean;
+  readonly documentName?: string | undefined;
+  readonly matched: boolean;
+  readonly ordinal: number;
+  readonly pageNumber?: number | undefined;
+  readonly sectionPath: readonly string[];
+  readonly text?: string | undefined;
+}
+
+async function publicReplayEvidenceItems(input: {
+  readonly assets: Pick<DocumentAssetRepository, "get">;
+  readonly candidateGrants: readonly string[];
+  readonly item: QualityReplayRun["items"][number];
+  readonly knowledgeSpaceId: string;
+  readonly nodes: Pick<KnowledgeNodeRepository, "getManyByIdsAcrossGenerations">;
+}): Promise<readonly PublicReplayEvidenceItem[]> {
+  const resolvedNodes = await input.nodes.getManyByIdsAcrossGenerations({
+    ids: input.item.expectedEvidenceIds,
+    knowledgeSpaceId: input.knowledgeSpaceId,
+  });
+  const nodesById = new Map(
+    resolvedNodes
+      .filter((node) => candidatePermissionAllowsNode(node, input.candidateGrants))
+      .map((node) => [node.id, node]),
+  );
+  const documentAssetIds = [
+    ...new Set([...nodesById.values()].map((node) => node.documentAssetId)),
+  ];
+  const resolvedAssets = await Promise.all(
+    documentAssetIds.map((id) =>
+      input.assets.get({ id, knowledgeSpaceId: input.knowledgeSpaceId }),
+    ),
+  );
+  const assetsById = new Map(
+    resolvedAssets
+      .filter((asset): asset is NonNullable<typeof asset> =>
+        Boolean(asset && candidatePermissionAllowsAsset(asset, input.candidateGrants)),
+      )
+      .map((asset) => [asset.id, asset]),
+  );
+  const diff =
+    input.item.result && isPlainRecord(input.item.result.evidenceDiff)
+      ? input.item.result.evidenceDiff
+      : {};
+  const missingEvidenceIds = new Set(
+    Array.isArray(diff.missingEvidenceIds)
+      ? diff.missingEvidenceIds.filter((id): id is string => typeof id === "string")
+      : [],
+  );
+  return input.item.expectedEvidenceIds.map((id, index) => {
+    const node = nodesById.get(id);
+    if (!node) {
+      return {
+        available: false,
+        matched: !missingEvidenceIds.has(id),
+        ordinal: index + 1,
+        sectionPath: [],
+      };
+    }
+    const asset = assetsById.get(node.documentAssetId);
+    if (!asset) {
+      return {
+        available: false,
+        matched: !missingEvidenceIds.has(id),
+        ordinal: index + 1,
+        sectionPath: [],
+      };
+    }
+    return {
+      available: true,
+      documentName: asset.filename,
+      matched: !missingEvidenceIds.has(id),
+      ordinal: index + 1,
+      ...(node.sourceLocation.pageNumber === undefined
+        ? {}
+        : { pageNumber: node.sourceLocation.pageNumber }),
+      sectionPath: [...node.sourceLocation.sectionPath],
+      text: node.text,
+    };
+  });
+}
+
+function publicReplay(
+  run: QualityReplayRun,
+  evidence?: {
+    readonly evidenceItemId: string;
+    readonly evidenceItems: readonly PublicReplayEvidenceItem[];
+  },
+) {
   const embedding = run.frozenSnapshot.embeddingProfile;
   const retrieval = run.frozenSnapshot.retrievalProfile;
   const passed = run.items.filter((item) => item.state === "passed").length;
@@ -1027,6 +1130,7 @@ function publicReplay(run: QualityReplayRun) {
               item.result,
               item.expectedEvidenceIds.length,
               item.matchPolicy,
+              evidence?.evidenceItemId === item.id ? evidence.evidenceItems : undefined,
             ),
           }
         : {}),
@@ -1076,6 +1180,7 @@ function publicReplayResult(
   value: Readonly<Record<string, unknown>>,
   expectedCount: number,
   matchPolicy: "all" | "any",
+  evidenceItems?: readonly PublicReplayEvidenceItem[],
 ) {
   const diff = isPlainRecord(value.evidenceDiff) ? value.evidenceDiff : {};
   const metrics = isPlainRecord(value.metrics) ? value.metrics : {};
@@ -1105,6 +1210,7 @@ function publicReplayResult(
   const matchedCount = Math.max(0, expectedCount - missingCount);
   return {
     evidenceDiff: {
+      ...(evidenceItems ? { evidenceItems: evidenceItems.map(publicReplayEvidenceItem) } : {}),
       expectedCount,
       matchedCount,
       missingCount,
@@ -1112,6 +1218,18 @@ function publicReplayResult(
     },
     metrics: safeMetrics,
     passed: matchPolicy === "any" ? matchedCount > 0 : missingCount === 0,
+  };
+}
+
+function publicReplayEvidenceItem(item: PublicReplayEvidenceItem) {
+  return {
+    available: item.available,
+    ...(item.documentName ? { documentName: item.documentName } : {}),
+    matched: item.matched,
+    ordinal: item.ordinal,
+    ...(item.pageNumber === undefined ? {} : { pageNumber: item.pageNumber }),
+    sectionPath: [...item.sectionPath],
+    ...(item.text ? { text: item.text } : {}),
   };
 }
 

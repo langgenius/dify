@@ -147,8 +147,8 @@ function buildRetrievalPlan({
     fusionLimit,
     queryLanguage,
     requestedMode,
-    // Every online mode ends in the same profile-scoped reranker score domain.
-    // Research widens recall first, then reranks the RRF candidate set once.
+    // Every online mode ends in the same profile-scoped reranker score domain. Research divides
+    // this bounded candidate budget across its query intents before merging raw reranker scores.
     rerankCandidateLimit: fusionLimit,
     resolvedMode,
     strategyVersion: resolvedMode === "research" ? "retrieval-planner-v2" : "retrieval-planner-v1",

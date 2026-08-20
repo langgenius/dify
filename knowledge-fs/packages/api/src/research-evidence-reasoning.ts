@@ -64,23 +64,22 @@ export interface ResearchEvidenceReasoningOptions {
   readonly providerFactory: (
     selection: KnowledgeSpaceModelSelection,
   ) => ResearchEvidenceReasoningProvider;
-  /** One larger, in-place retry is allowed only when the provider proves output truncation. */
-  readonly recoveryMaxOutputTokens?: number | undefined;
   readonly timeoutMs: number;
 }
 
 export interface ResearchEvidenceReasoningProvider {
   generate(input: {
-    readonly maxOutputTokens?: number | undefined;
+    readonly maxOutputTokens?: number;
     readonly messages: readonly {
       readonly content: string;
       readonly role: "assistant" | "system" | "user";
     }[];
     readonly model: string;
-    readonly signal?: AbortSignal | undefined;
-    readonly structuredOutputSchema?: Readonly<Record<string, unknown>> | undefined;
-    readonly temperature?: number | undefined;
-    readonly tenantId?: string | undefined;
+    readonly reasoningEffort?: "low";
+    readonly signal?: AbortSignal;
+    readonly structuredOutputSchema?: Readonly<Record<string, unknown>>;
+    readonly temperature?: number;
+    readonly tenantId?: string;
   }): Promise<{
     readonly finishReason?: string | undefined;
     readonly metadata?: unknown;
@@ -137,7 +136,6 @@ export function createResearchEvidenceReasoning({
   maxResponseChars = 16_000,
   modelRequestGate,
   providerFactory,
-  recoveryMaxOutputTokens = maxOutputTokens,
   timeoutMs,
 }: ResearchEvidenceReasoningOptions): ResearchEvidenceReasoning {
   for (const [label, value] of Object.entries({
@@ -145,19 +143,12 @@ export function createResearchEvidenceReasoning({
     maxEvidenceItems,
     maxOutputTokens,
     maxResponseChars,
-    recoveryMaxOutputTokens,
     timeoutMs,
   })) {
     if (!Number.isSafeInteger(value) || value < 1) {
       throw new Error(`Research evidence reasoning ${label} must be at least 1`);
     }
   }
-  if (recoveryMaxOutputTokens < maxOutputTokens) {
-    throw new Error(
-      "Research evidence reasoning recoveryMaxOutputTokens must be at least maxOutputTokens",
-    );
-  }
-
   const generate = async ({
     callId,
     callMaxOutputTokens,
@@ -205,6 +196,7 @@ export function createResearchEvidenceReasoning({
           maxOutputTokens: callMaxOutputTokens,
           messages,
           model: reasoningModel.model,
+          ...(lowReasoningEffortSupported(reasoningModel) ? { reasoningEffort: "low" } : {}),
           signal: controller.signal,
           structuredOutputSchema: schema,
           temperature: 0,
@@ -278,29 +270,7 @@ export function createResearchEvidenceReasoning({
     try {
       return parse(initial.text);
     } catch (error) {
-      if (!responseWasTruncated(initial, maxOutputTokens)) throw error;
-      if (recoveryMaxOutputTokens === maxOutputTokens) {
-        throw truncatedResponseError(step, error);
-      }
-    }
-
-    const recovery = await generate({
-      callId: `${callId}:recovery`,
-      callMaxOutputTokens: recoveryMaxOutputTokens,
-      messages,
-      observer,
-      reasoningModel,
-      reserveModelCall,
-      schema,
-      step,
-      tenantId,
-    });
-    try {
-      return parse(recovery.text);
-    } catch (error) {
-      if (responseWasTruncated(recovery, recoveryMaxOutputTokens)) {
-        throw truncatedResponseError(step, error);
-      }
+      if (responseWasTruncated(initial, maxOutputTokens)) throw truncatedResponseError(step, error);
       throw error;
     }
   };
@@ -362,7 +332,7 @@ export function createResearchEvidenceReasoning({
         messages: [
           {
             content:
-              "Judge whether the evidence set is sufficient to answer the query. Do not score individual passages. The sufficient field must be the JSON boolean true or false, never an explanation or string. A supplemental query must target only missing evidence and must be null when sufficient.",
+              "Judge whether the evidence set is sufficient to answer the query. This is a bounded classification task. Reason briefly. Return only the compact JSON object required by the schema, with no prose. Do not score individual passages. Keep dimension labels concise. The sufficient field must be the JSON boolean true or false, never an explanation or string. A supplemental query must target only missing evidence and must be null when sufficient.",
             role: "system",
           },
           {
@@ -403,10 +373,15 @@ export function localResearchQueryPlan(query: string): {
   const normalized = requiredText(query, "query");
   const complexPattern =
     /(?:比较|对比|区别|分别|关系|影响|演变|综合|全面|为什么.*(?:以及|并且)|compare|versus|relationship|across|overview)/iu;
+  const compoundManagementPattern =
+    /(?:(?:如何|怎么|怎样).*(?:和|与|以及|及)|(?:和|与|以及).*(?:如何|怎么|怎样|管理|配置|部署|运维)|(?:how|manage|configure|deploy).*(?:\band\b|\bor\b)|(?:\band\b|\bor\b).*(?:manage|configure|deploy))/iu;
   const graphPattern = /(?:关系|关联|依赖|影响|属于|连接|relationship|related|depends|impact)/iu;
   const clauseCount = normalized.split(/[，,；;。.!?？]/u).filter((part) => part.trim()).length;
   const requiresModel =
-    complexPattern.test(normalized) || clauseCount > 2 || Array.from(normalized).length > 120;
+    complexPattern.test(normalized) ||
+    compoundManagementPattern.test(normalized) ||
+    clauseCount > 2 ||
+    Array.from(normalized).length > 120;
   return {
     plan: {
       evidenceDimensions: [],
@@ -511,11 +486,22 @@ function responseWasTruncated(
 
 function truncatedResponseError(step: "research.judge" | "research.plan", cause: unknown) {
   return new ResearchEvidenceReasoningContractError(
-    `${step} response remained truncated after bounded recovery`,
+    `${step} response was truncated at the configured output-token bound`,
     {
       cause,
       code: "RESEARCH_EVIDENCE_REASONING_TRUNCATED",
     },
+  );
+}
+
+function lowReasoningEffortSupported(selection: KnowledgeSpaceModelSelection): boolean {
+  const pluginId = selection.pluginId.trim().toLocaleLowerCase();
+  const provider = selection.provider.trim().toLocaleLowerCase();
+  const model = selection.model.trim().toLocaleLowerCase();
+  return (
+    pluginId === "langgenius/openai" &&
+    provider === "openai" &&
+    /^(?:gpt-5(?:[.-]|$)|o(?:1|3|4)(?:[.-]|$))/u.test(model)
   );
 }
 

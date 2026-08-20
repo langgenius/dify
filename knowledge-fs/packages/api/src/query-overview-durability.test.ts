@@ -22,7 +22,7 @@ const SUBJECT = {
 };
 
 describe("query Overview durability", () => {
-  it("persists query.requested before admitting generation and records terminal activity", async () => {
+  it("persists one query activity with its question and resolved mode before generation", async () => {
     const spaces = createInMemoryKnowledgeSpaceRepository({
       generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f9a02",
       maxListLimit: 10,
@@ -118,32 +118,20 @@ describe("query Overview durability", () => {
       limit: 10,
       tenantId: SUBJECT.tenantId,
     });
-    expect(activity.items.map((event) => event.action).sort()).toEqual([
-      "query.completed",
-      "query.requested",
+    expect(activity.items).toEqual([
+      expect.objectContaining({
+        action: "query.requested",
+        details: { mode: "fast", question: "Is the request durable?" },
+        id: deterministicKnowledgeSpaceActivityId(
+          "query.requested",
+          SUBJECT.tenantId,
+          space.id,
+          QUERY_RUN_ID,
+        ),
+        resource: { id: QUERY_RUN_ID, type: "query" },
+        result: "success",
+      }),
     ]);
-    expect(activity.items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: deterministicKnowledgeSpaceActivityId(
-            "query.requested",
-            SUBJECT.tenantId,
-            space.id,
-            QUERY_RUN_ID,
-          ),
-          resource: { id: QUERY_RUN_ID, type: "query" },
-        }),
-        expect.objectContaining({
-          id: deterministicKnowledgeSpaceActivityId(
-            "query.succeeded",
-            SUBJECT.tenantId,
-            space.id,
-            QUERY_RUN_ID,
-          ),
-          resource: { id: QUERY_RUN_ID, type: "query" },
-        }),
-      ]),
-    );
   });
 });
 

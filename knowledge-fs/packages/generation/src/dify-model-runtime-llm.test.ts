@@ -254,6 +254,7 @@ describe("Dify model runtime LLM provider", () => {
       maxOutputTokens: 64,
       messages: [{ content: "hi", role: "user" }],
       model: "gpt-4.1-mini",
+      reasoningEffort: "low",
       temperature: 0.2,
       tenantId: "tenant-1",
     });
@@ -261,6 +262,10 @@ describe("Dify model runtime LLM provider", () => {
     expect(result.text).toBe("Hi");
     expect(result.finishReason).toBe("length");
     expect(result.metadata.usage).toEqual({ totalTokens: 9 });
-    expect(captured?.completionParams).toEqual({ max_tokens: 64, temperature: 0.2 });
+    expect(captured?.completionParams).toEqual({
+      max_tokens: 64,
+      reasoning_effort: "low",
+      temperature: 0.2,
+    });
   });
 });
