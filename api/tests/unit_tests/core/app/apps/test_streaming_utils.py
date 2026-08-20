@@ -8,6 +8,7 @@ import pytest
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.streaming_utils import _normalize_terminal_events, stream_topic_events
 from core.app.entities.task_entities import StreamEvent
+from libs.broadcast_channel.channel import SupportsPreparedSubscription
 from models.model import AppMode
 
 
@@ -42,8 +43,10 @@ class FakeTopic:
     def __init__(self) -> None:
         self._queue: queue.Queue[bytes] = queue.Queue()
         self._state = {"subscribed": False}
+        self.subscribe_calls = 0
 
     def subscribe(self) -> FakeSubscription:
+        self.subscribe_calls += 1
         return FakeSubscription(self._queue, self._state)
 
     def publish(self, payload: bytes) -> None:
@@ -54,7 +57,22 @@ class FakeTopic:
         return self._state["subscribed"]
 
 
-def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch: pytest.MonkeyPatch):
+class FakePreparedTopic(FakeTopic, SupportsPreparedSubscription):
+    def __init__(self) -> None:
+        super().__init__()
+        self.prepare_calls = 0
+
+    def prepare_subscription(self) -> FakeSubscription:
+        self.prepare_calls += 1
+        return FakeSubscription(self._queue, self._state)
+
+
+class FailingPreparedTopic(FakeTopic, SupportsPreparedSubscription):
+    def prepare_subscription(self) -> FakeSubscription:
+        raise RuntimeError("prepare failed")
+
+
+def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(monkeypatch: pytest.MonkeyPatch):
     topic = FakeTopic()
 
     def fake_get_response_topic(cls, app_mode, workflow_run_id):
@@ -74,11 +92,52 @@ def test_retrieve_events_calls_on_subscribe_after_subscription(monkeypatch: pyte
         on_subscribe=on_subscribe,
     )
 
+    assert topic.subscribe_calls == 1
+    assert topic.subscribed is False
     assert next(generator) == StreamEvent.PING.value
     event = next(generator)
     assert event["event"] == StreamEvent.WORKFLOW_FINISHED.value
     with pytest.raises(StopIteration):
         next(generator)
+
+
+def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monkeypatch: pytest.MonkeyPatch):
+    topic = FakePreparedTopic()
+
+    def fake_get_response_topic(cls, app_mode, workflow_run_id):
+        return topic
+
+    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+
+    generator = MessageBasedAppGenerator.retrieve_events(
+        AppMode.WORKFLOW,
+        "workflow-run-id",
+        idle_timeout=0.5,
+    )
+
+    assert topic.prepare_calls == 1
+    assert topic.subscribe_calls == 0
+    assert topic.subscribed is False
+
+    topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
+    assert next(generator) == StreamEvent.PING.value
+    assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
+
+
+def test_retrieve_events_propagates_preparation_error_before_generator_iteration(monkeypatch: pytest.MonkeyPatch):
+    topic = FailingPreparedTopic()
+
+    def fake_get_response_topic(cls, app_mode, workflow_run_id):
+        return topic
+
+    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
+
+    with pytest.raises(RuntimeError, match="prepare failed"):
+        MessageBasedAppGenerator.retrieve_events(
+            AppMode.WORKFLOW,
+            "workflow-run-id",
+            idle_timeout=0.5,
+        )
 
 
 def test_normalize_terminal_events_defaults():
@@ -94,6 +153,7 @@ def test_normalize_terminal_events_empty_values():
 
 def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.MonkeyPatch):
     topic = FakeTopic()
+    subscription = topic.subscribe()
     times = [1000.0, 1000.0, 1001.0, 1001.0, 1002.0]
 
     def fake_time():
@@ -102,7 +162,7 @@ def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.Mon
     monkeypatch.setattr("core.app.apps.streaming_utils.time.time", fake_time)
 
     generator = stream_topic_events(
-        topic=topic,
+        subscription=subscription,
         idle_timeout=10.0,
         ping_interval=1.0,
     )
@@ -116,9 +176,10 @@ def test_stream_topic_events_can_continue_past_pause():
     topic = FakeTopic()
     topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_PAUSED.value}).encode())
     topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
+    subscription = topic.subscribe()
 
     generator = stream_topic_events(
-        topic=topic,
+        subscription=subscription,
         idle_timeout=1.0,
         terminal_events=[StreamEvent.WORKFLOW_FINISHED.value],
     )

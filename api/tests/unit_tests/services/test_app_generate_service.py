@@ -14,8 +14,8 @@ Covers:
 """
 
 import threading
-import time
 import uuid
+from collections.abc import Callable
 from contextlib import contextmanager
 from unittest.mock import MagicMock
 
@@ -95,36 +95,88 @@ def _noop_rate_limit_context(rate_limit, request_id):
 # ---------------------------------------------------------------------------
 # _build_streaming_task_on_subscribe
 # ---------------------------------------------------------------------------
+class _FakeTimer:
+    def __init__(self, interval: float, function: Callable[[], bool]) -> None:
+        self.interval = interval
+        self.function = function
+        self.daemon = False
+        self.started = False
+        self.cancelled = False
+
+    def start(self) -> None:
+        self.started = True
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+
+def _unexpected_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+    raise AssertionError("streams must not create a fallback timer")
+
+
 class TestBuildStreamingTaskOnSubscribe:
-    """Tests for AppGenerateService._build_streaming_task_on_subscribe.
+    def test_streams_starts_only_when_hook_is_invoked_without_creating_timer(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
 
-    The subscription itself is responsible for fixing its own read position before it
-    starts accepting messages (see `_StreamsSubscription._start_if_needed`), so this
-    helper gates dispatch on subscribe the same way for every transport.
-    """
+        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
+        called: list[int] = []
 
-    def test_starts_on_first_subscribe(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)  # large to prevent timer
-        called = []
-        cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
         assert called == []
-        cb()
-        assert called == [1]
-        # second call is idempotent
-        cb()
+        on_subscribe()
+        on_subscribe()
         assert called == [1]
 
-    def test_fallback_timer_fires(self, monkeypatch: pytest.MonkeyPatch):
-        """When nobody subscribes fast enough the fallback timer fires."""
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 50)  # 50 ms
-        called = []
-        _cb = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
-        time.sleep(0.2)  # give the timer time to fire
+    @pytest.mark.parametrize("channel_type", ["pubsub", "sharded"])
+    def test_pubsub_transports_keep_subscribe_hook_and_fallback_timer(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        channel_type: str,
+    ):
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", channel_type)
+        timers: list[_FakeTimer] = []
+
+        def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+            timer = _FakeTimer(interval, function)
+            timers.append(timer)
+            return timer
+
+        monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
+        called: list[int] = []
+
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+        assert called == []
+        assert len(timers) == 1
+        assert timers[0].interval == ags_module.SSE_TASK_START_FALLBACK_MS / 1000.0
+        assert timers[0].started is True
+
+        on_subscribe()
+
+        assert called == [1]
+        assert timers[0].cancelled is True
+
+    def test_pubsub_fallback_starts_task_if_hook_is_never_invoked(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "pubsub")
+        timers: list[_FakeTimer] = []
+
+        def build_timer(interval: float, function: Callable[[], bool]) -> _FakeTimer:
+            timer = _FakeTimer(interval, function)
+            timers.append(timer)
+            return timer
+
+        monkeypatch.setattr(ags_module.threading, "Timer", build_timer)
+        called: list[int] = []
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(lambda: called.append(1))
+
+        assert timers[0].function() is True
+        on_subscribe()
         assert called == [1]
 
-    def test_exception_in_start_task_returns_false(self, monkeypatch: pytest.MonkeyPatch):
-        """When start_task raises, _try_start returns False and next call retries."""
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
+    def test_streams_retries_after_enqueue_failure(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
         call_count = 0
 
         def _bad():
@@ -133,14 +185,15 @@ class TestBuildStreamingTaskOnSubscribe:
             if call_count == 1:
                 raise RuntimeError("boom")
 
-        cb = AppGenerateService._build_streaming_task_on_subscribe(_bad)
-        cb()  # first call raises internally, but is caught
+        on_subscribe = AppGenerateService._build_streaming_task_on_subscribe(_bad)
+        on_subscribe()
         assert call_count == 1
-        cb()  # not marked started, so this retries
+        on_subscribe()
         assert call_count == 2
 
     def test_concurrent_subscribe_only_starts_once(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(ags_module, "SSE_TASK_START_FALLBACK_MS", 60_000)
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+        monkeypatch.setattr(ags_module.threading, "Timer", _unexpected_timer)
         call_count = 0
 
         def _inc():

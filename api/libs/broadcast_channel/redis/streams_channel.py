@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from typing import Self, override
 
 from extensions.redis_names import serialize_redis_name
-from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
+from libs.broadcast_channel.channel import Producer, Subscriber, Subscription, SupportsPreparedSubscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.signals import SIG_CLOSE
 from redis import Redis, RedisCluster
@@ -42,7 +42,7 @@ class StreamsBroadcastChannel:
         )
 
 
-class StreamsTopic:
+class StreamsTopic(SupportsPreparedSubscription):
     def __init__(
         self,
         redis_client: Redis | RedisCluster,
@@ -73,14 +73,26 @@ class StreamsTopic:
     def subscribe(self) -> Subscription:
         return _StreamsSubscription(self._client, self._key)
 
+    @override
+    def prepare_subscription(self) -> Subscription:
+        entries = self._client.xrevrange(self._key, count=1)
+        start_id = entries[0][0] if entries else "0-0"
+        return _StreamsSubscription(self._client, self._key, start_id=start_id)
+
 
 class _StreamsSubscription(Subscription):
     _SENTINEL = object()
 
-    def __init__(self, client: Redis | RedisCluster, key: str):
+    def __init__(
+        self,
+        client: Redis | RedisCluster,
+        key: str,
+        *,
+        start_id: bytes | str | None = None,
+    ):
         self._client = client
         self._key = key
-        self._start_id: bytes | str | None = None
+        self._start_id = start_id
 
         self._queue: queue.Queue[object] = queue.Queue()
 
@@ -159,9 +171,10 @@ class _StreamsSubscription(Subscription):
         if self._listener is not None or self._closed:
             return
 
-        # Fix the logical read boundary synchronously before `__enter__`
-        # returns and before the producer can be started.
-        self._start_id = self._resolve_start_id()
+        if self._start_id is None:
+            # Ordinary subscriptions fix their boundary on activation. Prepared
+            # subscriptions already carry the boundary selected by the topic.
+            self._start_id = self._resolve_start_id()
 
         self._listener = threading.Thread(
             target=self._listen,

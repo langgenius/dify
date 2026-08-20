@@ -1,3 +1,4 @@
+import abc
 import threading
 import time
 from dataclasses import dataclass
@@ -5,6 +6,7 @@ from typing import Any, cast
 
 import pytest
 
+from libs.broadcast_channel import channel as broadcast_channel
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.streams_channel import (
     StreamsBroadcastChannel,
@@ -28,6 +30,8 @@ class FakeStreamsRedis:
         self._next_id: dict[str, int] = {}
         self._expire_calls: dict[str, int] = {}
         self._dollar_snapshots: dict[str, int] = {}
+        self._xread_calls = 0
+        self._xrevrange_calls = 0
 
     # Publisher API
     def xadd(self, key: str, fields: dict[str, Any], *, maxlen: int | None = None) -> str:
@@ -45,6 +49,7 @@ class FakeStreamsRedis:
         self._expire_calls[key] = self._expire_calls.get(key, 0) + 1
 
     def xrevrange(self, key: str, count: int | None = None):
+        self._xrevrange_calls += 1
         entries = list(reversed(self._store.get(key, [])))
         if count is not None:
             entries = entries[:count]
@@ -52,6 +57,7 @@ class FakeStreamsRedis:
 
     # Consumer API
     def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+        self._xread_calls += 1
         # Expect a single key
         assert len(streams) == 1
         key, last_id = next(iter(streams.items()))
@@ -164,6 +170,13 @@ def streams_channel(fake_redis: FakeStreamsRedis) -> StreamsBroadcastChannel:
     return StreamsBroadcastChannel(fake_redis, retention_seconds=60)
 
 
+def test_prepared_subscription_capability_is_an_abstract_base_class():
+    capability = broadcast_channel.SupportsPreparedSubscription
+
+    assert issubclass(capability, abc.ABC)
+    assert capability.__abstractmethods__ == {"prepare_subscription"}
+
+
 class TestStreamsBroadcastChannel:
     def test_topic_creation(self, streams_channel: StreamsBroadcastChannel, fake_redis: FakeStreamsRedis):
         topic = streams_channel.topic("alpha")
@@ -206,6 +219,11 @@ class TestStreamsBroadcastChannel:
         assert topic.as_producer() is topic
         assert topic.as_subscriber() is topic
 
+    def test_topic_explicitly_supports_prepared_subscriptions(self, streams_channel: StreamsBroadcastChannel):
+        topic = streams_channel.topic("prepared-capability")
+
+        assert isinstance(topic, broadcast_channel.SupportsPreparedSubscription)
+
     def test_publish_logs_warning_when_expire_fails(self, caplog: pytest.LogCaptureFixture):
         channel = StreamsBroadcastChannel(FailExpireRedis(), retention_seconds=60)
         topic = channel.topic("expire-warning")
@@ -240,32 +258,67 @@ class TestStreamsSubscription:
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
 
-    def test_resolve_start_id_returns_last_entry_id(self, streams_channel: StreamsBroadcastChannel):
-        topic = streams_channel.topic("checkpoint-topic")
-        topic.publish(b"first")
-        sub = _StreamsSubscription(topic._client, topic._key)
-        assert sub._resolve_start_id() == "1-0"
+    def test_prepare_subscription_fixes_boundary_without_starting_listener(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+        fake_redis: FakeStreamsRedis,
+    ):
+        topic = streams_channel.topic("prepared-boundary")
+        topic.publish(b"before-prepare")
 
-        topic.publish(b"second")
-        assert sub._resolve_start_id() == "2-0"
+        sub = topic.prepare_subscription()
 
-    def test_resolve_start_id_returns_0_0_for_empty_stream(self, streams_channel: StreamsBroadcastChannel):
-        topic = streams_channel.topic("empty-topic")
-        sub = _StreamsSubscription(topic._client, topic._key)
-        assert sub._resolve_start_id() == "0-0"
+        assert isinstance(sub, _StreamsSubscription)
+        assert sub._start_id == "1-0"
+        assert sub._listener is None
+        assert fake_redis._xrevrange_calls == 1
+        assert fake_redis._xread_calls == 0
 
-    def test_subscribe_propagates_start_id_resolution_error(self):
-        """Callers must not swallow a failed start-id resolution and fall back to `$`
-        themselves -- doing so would reintroduce the dify#40948 race, since `$` gets
-        resolved lazily by the listener thread at some later, unpredictable time instead
-        of synchronously before the producer can publish. Letting the error propagate
-        out of `subscribe()`/`__enter__` keeps that decision -- and the resulting request
-        failure -- with the caller."""
+    def test_prepared_subscription_includes_messages_published_before_entry_in_order(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+        fake_redis: FakeStreamsRedis,
+    ):
+        topic = streams_channel.topic("prepared-ordering")
+        topic.publish(b"before-prepare")
+        sub = topic.prepare_subscription()
+
+        topic.publish(b"after-prepare-1")
+        topic.publish(b"after-prepare-2")
+
+        received: list[bytes] = []
+        with sub:
+            for _ in range(2):
+                message = sub.receive(timeout=0.1)
+                assert message is not None
+                received.append(message)
+
+        assert received == [b"after-prepare-1", b"after-prepare-2"]
+        assert fake_redis._xrevrange_calls == 1
+
+    def test_prepare_subscription_uses_beginning_boundary_for_empty_stream(
+        self,
+        streams_channel: StreamsBroadcastChannel,
+        fake_redis: FakeStreamsRedis,
+    ):
+        topic = streams_channel.topic("prepared-empty")
+
+        sub = topic.prepare_subscription()
+        assert isinstance(sub, _StreamsSubscription)
+        assert sub._start_id == "0-0"
+
+        topic.publish(b"first-event")
+        with sub:
+            assert sub.receive(timeout=0.1) == b"first-event"
+
+        assert fake_redis._xrevrange_calls == 1
+
+    def test_prepare_subscription_propagates_boundary_resolution_error(self):
         channel = StreamsBroadcastChannel(FailXrevrangeRedis(), retention_seconds=60)
         topic = channel.topic("broken-checkpoint")
+
         with pytest.raises(RuntimeError, match="xrevrange failed"):
-            with topic.subscribe():
-                pass
+            topic.prepare_subscription()
 
     def test_subscribe_receives_messages_published_right_after_entering(
         self,

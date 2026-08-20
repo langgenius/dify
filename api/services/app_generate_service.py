@@ -45,10 +45,10 @@ class AppGenerateService:
         start_task: Callable[[], None],
     ) -> Callable[[], None]:
         """
-        Build a subscription callback that starts the background task on first subscribe,
-        with a short fallback timer so the task still runs if the client never connects.
+        Build a subscription callback that starts the background task on first subscribe.
 
-        The subscription is established before this callback starts the background task.
+        Pub/Sub transports also use a short fallback timer so the task still runs if the
+        client never connects. Streams rely on their prepared delivery boundary instead.
         """
         started = False
         lock = threading.Lock()
@@ -65,6 +65,13 @@ class AppGenerateService:
                     return False
                 started = True
                 return True
+
+        if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
+
+            def _on_subscribe_streams() -> None:
+                _try_start()
+
+            return _on_subscribe_streams
 
         timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
         timer.daemon = True
