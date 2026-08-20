@@ -29,7 +29,7 @@ const (
 	DefaultSQLiteBusyTimeoutMs           = 5000
 	DefaultAuthTokenEnv                  = "SHELLCTL_AUTH_TOKEN"
 	HealthStatus                         = "ok"
-	DefaultSnapshotTimeoutSeconds        = 600.0
+	DefaultSnapshotTimeoutSeconds        = 45.0
 	HomeSnapshotExcludesEnv              = "SHELLCTL_HOME_SNAPSHOT_EXCLUDES"
 	SnapshotTimeoutEnv                   = "SHELLCTL_SNAPSHOT_TIMEOUT"
 )

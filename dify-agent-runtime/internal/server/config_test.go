@@ -70,8 +70,8 @@ func TestConfigNoAuthToken(t *testing.T) {
 func TestDefaultConfigSnapshotFields(t *testing.T) {
 	t.Setenv(HomeSnapshotExcludesEnv, "")
 	cfg := mustDefaultConfig(t)
-	if cfg.SnapshotTimeout != 600*time.Second {
-		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
+	if cfg.SnapshotTimeout != 45*time.Second {
+		t.Errorf("SnapshotTimeout = %v, want 45s", cfg.SnapshotTimeout)
 	}
 	if len(cfg.HomeSnapshotExcludes) != 0 {
 		t.Errorf("HomeSnapshotExcludes = %v, want none: workspace is skipped by SaveHome, not by config", cfg.HomeSnapshotExcludes)
@@ -119,16 +119,16 @@ func TestSnapshotTimeoutDefaultsWhenEnvUnset(t *testing.T) {
 	t.Setenv(SnapshotTimeoutEnv, "")
 	_ = os.Unsetenv(SnapshotTimeoutEnv)
 	cfg := mustDefaultConfig(t)
-	if cfg.SnapshotTimeout != 600*time.Second {
-		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
+	if cfg.SnapshotTimeout != 45*time.Second {
+		t.Errorf("SnapshotTimeout = %v, want 45s", cfg.SnapshotTimeout)
 	}
 }
 
 func TestSnapshotTimeoutDefaultsWhenEnvEmpty(t *testing.T) {
 	t.Setenv(SnapshotTimeoutEnv, "")
 	cfg := mustDefaultConfig(t)
-	if cfg.SnapshotTimeout != 600*time.Second {
-		t.Errorf("SnapshotTimeout = %v, want 600s", cfg.SnapshotTimeout)
+	if cfg.SnapshotTimeout != 45*time.Second {
+		t.Errorf("SnapshotTimeout = %v, want 45s", cfg.SnapshotTimeout)
 	}
 }
 
