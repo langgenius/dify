@@ -84,20 +84,17 @@ func parentMode() {
 
 	envOverlay := loadEnvJSON(envPath)
 	env = mergeEnv(env, envOverlay)
+	env = mergeEnv(env, map[string]string{
+		"TMPDIR": cwd,
+		"TMP":    cwd,
+		"TEMP":   cwd,
+	})
 
 	// Ensure HOME exists.
 	home := envGet(env, "HOME")
 	if home != "" {
 		cmdutil.HandleError(os.MkdirAll(home, 0755), 125, "mkdir HOME %s", home)
 	}
-
-	// Create a per-workspace temp directory under cwd and inject TMPDIR.
-	// This avoids granting RW access to the shared /tmp.
-	agentTmp := filepath.Join(cwd, ".tmp")
-	cmdutil.HandleError(os.MkdirAll(agentTmp, 0755), 125, "mkdir TMPDIR %s", agentTmp)
-	env = setEnvIfEmpty(env, "TMPDIR", agentTmp)
-	env = setEnvIfEmpty(env, "TMP", agentTmp)
-	env = setEnvIfEmpty(env, "TEMP", agentTmp)
 
 	// Determine if path isolation is enabled.
 	enableIsolation := envvar.PathIsolationEnabled()
@@ -397,14 +394,6 @@ func envGet(env []string, key string) string {
 		}
 	}
 	return ""
-}
-
-// setEnvIfEmpty sets key=value in the env slice only if the key is not already present.
-func setEnvIfEmpty(env []string, key, value string) []string {
-	if envGet(env, key) != "" {
-		return env
-	}
-	return append(env, key+"="+value)
 }
 
 // writeAtomic writes value to dest via a temp file + rename.

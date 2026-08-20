@@ -303,6 +303,15 @@ def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
 
 
+def test_shell_prefix_prompt_describes_workspace_as_temp_space() -> None:
+    prompt = shell_layer_module._SHELL_LAYER_PREFIX_PROMPT
+
+    assert "`cwd`) is the active Workspace and temporary working space" in prompt
+    assert "`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`" in prompt
+    assert "`$HOME` is the system space for reusable tools and state" in prompt
+    assert "<cwd>/.tmp" not in prompt
+
+
 def test_shell_layer_create_bootstraps_inside_sandbox_workspace() -> None:
     expected_home = "/home/agent-1"
     expected_workspace_cwd = "/home/agent-1/workspace/abc12ff"

@@ -190,9 +190,11 @@ Dify API signs a browser URL.
 `RuntimeLayout.home_dir` and `RuntimeLayout.workspace_dir` are canonical paths
 inside the backend execution namespace. They are not host paths, product ids,
 or request configuration. Shell commands start in `workspace_dir`, and `HOME`
-is forced to `home_dir`. On Local, sibling materialized Homes may exist in the
-same shellctl namespace, while path isolation restricts the active lease to its
-own Home plus the shared Workspace.
+is forced to `home_dir`. The standard temp variables `TMPDIR`, `TMP`, and `TEMP`
+also point directly to `workspace_dir`, so the Workspace is both the command
+`cwd` and temp space. On Local, sibling materialized Homes may exist in the same
+shellctl namespace, while path isolation restricts the active lease to its own
+Home plus the shared Workspace.
 
 ## Backend support
 

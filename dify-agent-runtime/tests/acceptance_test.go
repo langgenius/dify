@@ -631,23 +631,73 @@ func TestLandlockCanReadSystemBinaries(t *testing.T) {
 	}
 }
 
-func TestLandlockCanWriteTmpdir(t *testing.T) {
+func TestLandlockUsesWorkspaceAsTempSpace(t *testing.T) {
 	for _, tgt := range targets() {
 		t.Run(tgt.name, func(t *testing.T) {
-			// TMPDIR ($CWD/.tmp) should be writable; /tmp should be denied.
+			// The workspace itself is cwd and temp space; shared /tmp remains denied.
 			result := runJob(t, tgt, map[string]any{
-				"script":  "echo TMPDIR=$TMPDIR && touch $TMPDIR/landlock-tmp-test && echo tmpdir_ok && touch /tmp/landlock-denied 2>&1; echo tmp_exit=$?",
-				"env":     map[string]string{"HOME": "/home/dify"},
+				"script": "test \"$PWD\" = /workspace && test \"$TMPDIR\" = /workspace && test \"$TMP\" = /workspace && test \"$TEMP\" = /workspace && " +
+					"touch \"$TMPDIR/landlock-tmp-test\" && echo workspace_temp_ok; " +
+					"touch /tmp/landlock-denied 2>&1; echo tmp_exit=$?",
+				"cwd": "/workspace",
+				"env": map[string]string{
+					"HOME":   "/home/dify",
+					"TMPDIR": "/tmp",
+					"TMP":    "/tmp",
+					"TEMP":   "/tmp",
+				},
 				"timeout": 10,
 			})
 			assertJobDone(t, result)
 			output := result["output"].(string)
-			if !strings.Contains(output, "tmpdir_ok") {
-				t.Errorf("expected write to $TMPDIR to succeed, got %q", output)
+			if !strings.Contains(output, "workspace_temp_ok") {
+				t.Errorf("expected workspace temp checks to pass, got %q", output)
 			}
 			if !strings.Contains(output, "tmp_exit=1") && !strings.Contains(output, "Permission denied") {
 				t.Errorf("expected write to /tmp to be denied, got %q", output)
 			}
+		})
+	}
+}
+
+func TestRunnerDoesNotCreateCwdTmpDirectory(t *testing.T) {
+	for _, tgt := range targets() {
+		t.Run(tgt.name, func(t *testing.T) {
+			freshCwd := fmt.Sprintf("/workspace/no-auto-tmp-%s-%d", tgt.name, time.Now().UnixNano())
+			setup := runJob(t, tgt, map[string]any{
+				"script": "mkdir -p -- \"$FRESH_CWD\"",
+				"cwd":    "/workspace",
+				"env": map[string]string{
+					"HOME":      "/home/dify",
+					"FRESH_CWD": freshCwd,
+				},
+				"timeout": 10,
+			})
+			assertJobDone(t, setup)
+			assertExitCode(t, setup, 0)
+
+			t.Cleanup(func() {
+				cleanup := runJob(t, tgt, map[string]any{
+					"script": "rm -rf -- \"$FRESH_CWD\"",
+					"cwd":    "/workspace",
+					"env": map[string]string{
+						"HOME":      "/home/dify",
+						"FRESH_CWD": freshCwd,
+					},
+					"timeout": 10,
+				})
+				assertJobDone(t, cleanup)
+				assertExitCode(t, cleanup, 0)
+			})
+
+			result := runJob(t, tgt, map[string]any{
+				"script":  "test ! -e \"$PWD/.tmp\"",
+				"cwd":     freshCwd,
+				"env":     map[string]string{"HOME": "/home/dify"},
+				"timeout": 10,
+			})
+			assertJobDone(t, result)
+			assertExitCode(t, result, 0)
 		})
 	}
 }
