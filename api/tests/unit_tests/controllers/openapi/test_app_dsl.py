@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from sqlalchemy.engine import Engine
 from werkzeug.exceptions import Forbidden
 
@@ -13,11 +14,10 @@ from services.errors.account import NoPermissionError
 
 
 @pytest.mark.parametrize(
-    ("api", "service_method", "kwargs"),
+    ("api", "kwargs"),
     [
         (
             AppDslImportApi(),
-            "import_app",
             {
                 "workspace_id": "workspace-1",
                 "body": AppDslImportPayload(mode="yaml-content", yaml_content="app: {}"),
@@ -25,20 +25,20 @@ from services.errors.account import NoPermissionError
         ),
         (
             AppDslImportConfirmApi(),
-            "confirm_import",
             {"workspace_id": "workspace-1", "import_id": "import-1"},
         ),
     ],
 )
 def test_permission_denial_maps_to_forbidden(
-    app,
+    app: Flask,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
-    api,
-    service_method: str,
+    api: AppDslImportApi | AppDslImportConfirmApi,
     kwargs: dict[str, object],
 ) -> None:
-    service = Mock(**{f"{service_method}.side_effect": NoPermissionError("denied")})
+    service = Mock()
+    service.import_app.side_effect = NoPermissionError("denied")
+    service.confirm_import.side_effect = NoPermissionError("denied")
     monkeypatch.setattr(app_dsl_module, "AppDslService", Mock(return_value=service))
     monkeypatch.setattr(app_dsl_module, "db", SimpleNamespace(engine=sqlite_engine))
 
