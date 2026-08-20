@@ -1273,6 +1273,15 @@ class TestBillingServiceAccountManagement:
         assert result is True
         mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
 
+    def test_get_email_freeze_type_for_suspended_domain(self, mock_send_request):
+        email = "user@suspended.example"
+        mock_send_request.return_value = {"data": True, "freezeType": "email_domain_suspended"}
+
+        result = BillingService.get_email_freeze_type(email)
+
+        assert result == "email_domain_suspended"
+        mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
+
     def test_is_email_in_freeze_false(self, mock_send_request):
         """Test checking if email is frozen (returns False)."""
         # Arrange
