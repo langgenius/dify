@@ -16,6 +16,7 @@ from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -30,6 +31,7 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
+from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -77,7 +79,13 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountServices:
+    profile: AccountProfileService
+
+
+@dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     data_source_api_key_auth: DataSourceApiKeyAuthService
@@ -101,6 +109,9 @@ def build_application_services(
     installation_state = InstallationStateRepository(client=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     return ApplicationServices(
+        accounts=AccountServices(
+            profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
+        ),
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
             accounts=SQLAlchemyAccountActivationRepository(database_client),
