@@ -99,19 +99,21 @@ Then follow the [Lint Documentation] to lint the code.
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
 
-**📖 Frontend Testing Guide**: See [web/docs/test.md] for the canonical testing policy and workflow.
+**📖 Frontend Testing Guide**: See the [Frontend Testing Guide] for the canonical testing policy and workflow.
 
 > [!IMPORTANT]
 > As we are using Vite+, the `vitest` command is not available.
 > Please make sure to run tests with `vp` commands.
-> For example, use `npx vp test` instead of `npx vitest`.
+> For example, use `vp test` instead of `vitest`.
 
 Run test:
 
 ```bash
 cd web
-vp test run
+vp test run --project unit
 ```
+
+The standard unit command runs in `happy-dom`. Browser Mode is reserved for behavior that depends on a real browser; see the [Frontend Testing Guide] for its admission criteria and commands. Always select a project explicitly: bare `vp test` runs every registered project, including Browser Mode.
 
 If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 
@@ -124,6 +126,7 @@ Visit <https://docs.dify.ai> to view the full documentation.
 The Dify community can be found on [Discord community], where you can ask questions, voice ideas, and share your projects.
 
 [Discord community]: https://discord.gg/5AEfbxcd9k
+[Frontend Testing Guide]: ./docs/test.md
 [Lint Documentation]: ./docs/lint.md
 [Next.js]: https://nextjs.org
 [Node.js]: https://nodejs.org
@@ -133,4 +136,3 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Vitest]: https://vitest.dev
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
-[web/docs/test.md]: ./docs/test.md

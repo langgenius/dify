@@ -391,7 +391,7 @@
   "roster.createForm.rolePlaceholder": "例: リサーチアシスタント",
   "roster.createSuccess": "エージェントを作成しました。",
   "roster.dateTimeFormat": "YYYY/MM/DD HH:mm:ss",
-  "roster.deleteDialog.description": "この Agent は Agent リストから削除されます。",
+  "roster.deleteDialog.description": "{{name}} を完全に削除します。その Web アプリと API アクセス、これを使用するワークフローは直ちに動作しなくなります。",
   "roster.deleteDialog.title": "{{name}} を削除しますか？",
   "roster.deleteFailed": "エージェントの削除に失敗しました。",
   "roster.deleteSuccess": "エージェントを削除しました。",
