@@ -14,6 +14,7 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -68,14 +69,18 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async ({ response }) => {
+  return async ({ request, response }) => {
     if (!/^[23]\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
       try {
         const data: unknown = await response.clone().json()
         errorData = data as ResponseError
       } catch {}
-      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
+      const shouldNotifyError =
+        response.status !== 401 &&
+        errorData &&
+        !otherOptions.silent &&
+        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
       const errorMessage = errorData?.message || errorData?.error
       if (shouldNotifyError && errorMessage) toast.error(errorMessage)

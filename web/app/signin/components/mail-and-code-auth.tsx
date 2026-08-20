@@ -94,6 +94,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         {shouldRenderTurnstile && (
           <Turnstile
             key={turnstileGeneration}
+            action="signin_code"
             siteKey={turnstileSiteKey}
             onVerify={setTurnstileToken}
             onInvalidate={() => {

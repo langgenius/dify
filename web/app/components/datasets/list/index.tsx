@@ -3,7 +3,8 @@
 import type { KnowledgeViewSwitcherProps } from '@/features/new-rag/components/knowledge-view-switcher'
 // Libraries
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useBoolean, useDebounceFn } from 'ahooks'
+import { useBoolean } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useEffect, useState } from 'react'
@@ -54,30 +55,12 @@ function LegacyList({
   useDocumentTitle(t(($) => $.knowledge, { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
-  const [tagIDs, setTagIDs] = useState<string[]>([])
   const [creatorIDs, setCreatorIDs] = useQueryState('creator_ids', creatorIdsParser)
-  const { run: handleTagsUpdate } = useDebounceFn(
-    () => {
-      setTagIDs(tagFilterValue)
-    },
-    { wait: 500 },
-  )
-  const handleTagsChange = (value: string[]) => {
-    setTagFilterValue(value)
-    handleTagsUpdate()
-  }
+  const debouncedTagIDs = useDebouncedValue(tagFilterValue, 500)
+  const tagIDs = tagFilterValue.length > 0 ? debouncedTagIDs : []
 
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateDataset = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
@@ -156,9 +139,9 @@ function LegacyList({
         onExternalApiClick={() => setShowExternalApiPanel(true)}
         onCreatorsChange={(value) => void setCreatorIDs(value)}
         onIncludeAllChange={toggleIncludeAll}
-        onKeywordsChange={handleKeywordsChange}
+        onKeywordsChange={setKeywords}
         onOpenTagManagement={() => setShowTagManagementModal(true)}
-        onTagsChange={handleTagsChange}
+        onTagsChange={setTagFilterValue}
         stepByStepTourCreateMenuOpen={
           activeKnowledgeGuide ? shouldOpenStepByStepTourCreateMenu : undefined
         }

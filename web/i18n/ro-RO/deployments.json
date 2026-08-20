@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Mai multe acțiuni",
   "deployTab.redeploy": "Reimplementează",
   "deployTab.undeploy": "Anulează implementarea",
-  "deployTab.undeployConfirmWarning": "După confirmare, acest mediu va intra în starea de anulare a implementării, iar acțiunile vor fi dezactivate temporar.",
   "health.ENVIRONMENT_STATUS_FAILED": "Indisponibil",
   "list.emptyTitle": "Nicio implementare încă",
   "overview.chip.latest": "cea mai recentă",
