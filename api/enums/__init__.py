@@ -23,6 +23,13 @@ class DeploymentEdition(StrEnum):
     CLOUD = "CLOUD"
 
 
+class WebAppAccessMode(StrEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+    PRIVATE_ALL = "private_all"
+    SSO_VERIFIED = "sso_verified"
+
+
 class HostedTrialProvider(StrEnum):
     """Enum representing hosted model provider names for trial access."""
 
