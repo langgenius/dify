@@ -509,7 +509,7 @@ class WorkflowEntry:
 
             # get input value
             input_value = user_inputs.get(node_variable)
-            if not input_value:
+            if input_value is None:
                 input_value = user_inputs.get(node_variable_key)
             if input_value is None:
                 continue
