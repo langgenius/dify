@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "جریان کار",
   "plansCommon.talkToSales": "صحبت با فروش",
   "plansCommon.taxTip": "تمام قیمت‌های اشتراک (ماهانه/سالانه) شامل مالیات‌های مربوطه (مثلاً مالیات بر ارزش افزوده، مالیات فروش) نمی‌شوند.",
-  "plansCommon.taxTipSecond": "اگر منطقه شما هیچ الزامات مالیاتی قابل اجرا نداشته باشد، هیچ مالیاتی در هنگام پرداخت نشان داده نمی‌شود و برای کل مدت اشتراک هیچ هزینه اضافی از شما دریافت نخواهد شد.",
   "plansCommon.teamMember_one": "{{count,number}} عضو تیم",
   "plansCommon.teamMember_other": "{{count,number}} اعضای تیم",
   "plansCommon.teamWorkspace": "{{count,number}} فضاي کار تيمي",

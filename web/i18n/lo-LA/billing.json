@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "Workflow (ຂະບວນການເຮັດວຽກ)",
   "plansCommon.talkToSales": "ລົມກັບຝ່າຍຂາຍ",
   "plansCommon.taxTip": "ລາຄາສະໝັກສະມາຊິກທັງໝົດ (ລາຍເດືອນ/ລາຍປີ) ບໍ່ລວມພາສີ (ເຊັ່ນ: VAT, ພາສີການຂາຍ).",
-  "plansCommon.taxTipSecond": "ຫາກພາກພື້ນຂອງທ່ານບໍ່ມີຂໍ້ກຳນົດກ່ຽວກັບພາສີ, ຈະບໍ່ມີພາສີສະແດງໃນຂັ້ນຕອນການຊຳລະເງິນ.",
   "plansCommon.teamMember_one": "{{count,number}} ສະມາຊິກໃນທິມ",
   "plansCommon.teamMember_other": "{{count,number}} ສະມາຊິກໃນທິມ",
   "plansCommon.teamWorkspace": "{{count,number}} ພື້ນທີ່ເຮັດວຽກຂອງທິມ",

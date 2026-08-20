@@ -341,11 +341,12 @@ whose Agenton layers provide user input. With the MVP provider set, use
 effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
 
-There is no Pydantic AI history layer. To resume Agenton layer state, pass the
-`session_snapshot` from a previous terminal event together with a composition
-that has the same layer names and order. Success always contains a snapshot.
-Failure and cancellation contain one only when compositor entry succeeded and
-layer exit completed; otherwise callers should retain their previous snapshot.
+The optional Pydantic AI history layer uses the reserved name `history` and
+persists captured messages in session snapshots for later resume. Resume from a
+terminal event's `session_snapshot` using the same layer composition, names, and
+order. Success always contains a snapshot. Failure and cancellation contain one
+only when compositor entry succeeded and layer exit completed; otherwise callers
+should retain their previous snapshot.
 
 ## Observing runs
 

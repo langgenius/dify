@@ -349,7 +349,6 @@ export function HomeContent() {
           input: { params: { app_id: appId } },
         }),
       )
-      if (!appDetail) throw new Error('Recommended app not found')
 
       const { export_data, mode } = appDetail
       currentCreateAppModeRef.current = mode
