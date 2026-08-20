@@ -474,6 +474,70 @@ def test_update_published_snippet_workflow_raises_not_found(
     assert snippet.name == "Snippet"
 
 
+def test_delete_published_snippet_workflow_succeeds(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    snippet = _snippet()
+    delete_workflow = Mock(return_value=True)
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "SnippetService",
+        lambda: SimpleNamespace(delete_workflow=delete_workflow),
+    )
+
+    api = snippet_workflow_module.SnippetWorkflowByIdApi()
+    handler = unwrap(api.delete)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="DELETE"):
+        response, status_code = handler(api, snippet, workflow_id="workflow-1")
+
+    assert status_code == 204
+    assert response is None
+    delete_workflow.assert_called_once()
+    delete_call = delete_workflow.call_args.kwargs
+    assert isinstance(delete_call["session"], Session)
+    assert delete_call["snippet"] is snippet
+    assert delete_call["workflow_id"] == "workflow-1"
+
+
+def test_delete_published_snippet_workflow_raises_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def delete_missing_workflow(**_kwargs):
+        raise ValueError("Workflow with ID missing-workflow not found")
+
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "SnippetService",
+        lambda: SimpleNamespace(delete_workflow=Mock(side_effect=delete_missing_workflow)),
+    )
+
+    api = snippet_workflow_module.SnippetWorkflowByIdApi()
+    handler = unwrap(api.delete)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/missing-workflow", method="DELETE"):
+        with pytest.raises(NotFound):
+            handler(api, _snippet(), workflow_id="missing-workflow")
+
+
+def test_delete_published_snippet_workflow_raises_bad_request_when_in_use(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def delete_active_workflow(**_kwargs):
+        raise snippet_workflow_module.WorkflowInUseError("Cannot delete workflow that is currently in use")
+
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "SnippetService",
+        lambda: SimpleNamespace(delete_workflow=Mock(side_effect=delete_active_workflow)),
+    )
+
+    api = snippet_workflow_module.SnippetWorkflowByIdApi()
+    handler = unwrap(api.delete)
+
+    with app.test_request_context("/snippets/snippet-1/workflows/workflow-1", method="DELETE"):
+        with pytest.raises(HTTPException) as exc_info:
+            handler(api, _snippet(), workflow_id="workflow-1")
+
+    assert exc_info.value.code == 400
+
+
 def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = _snippet()
     monkeypatch.setattr(
