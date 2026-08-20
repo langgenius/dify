@@ -13,7 +13,6 @@ import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../../agent-v2/support/agent-builder-resources'
-import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/agent-drive'
 import {
   createAgentSoulConfigWithModel,
   normalAgentPrompt,
@@ -21,6 +20,7 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
+import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/config-assets'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,

@@ -3,9 +3,6 @@ import type {
   AgentConfigFileUploadResponse,
   AgentConfigSkillRefConfig,
   AgentConfigSkillUploadResponse,
-  AgentDriveSkillItemResponse,
-  AgentDriveSkillListResponse,
-  AgentSkillUploadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ConsoleClient } from '../../../support/api/console-client'
 import { Buffer } from 'node:buffer'
@@ -31,46 +28,28 @@ const createSingleFileZip = ({ content, entryName }: { content: Buffer; entryNam
   const localHeader = Buffer.alloc(30)
   localHeader.writeUInt32LE(0x04034b50, 0)
   localHeader.writeUInt16LE(20, 4)
-  localHeader.writeUInt16LE(0, 6)
-  localHeader.writeUInt16LE(0, 8)
-  localHeader.writeUInt16LE(0, 10)
-  localHeader.writeUInt16LE(0, 12)
   localHeader.writeUInt32LE(checksum, 14)
   localHeader.writeUInt32LE(content.length, 18)
   localHeader.writeUInt32LE(content.length, 22)
   localHeader.writeUInt16LE(entryNameBuffer.length, 26)
-  localHeader.writeUInt16LE(0, 28)
 
   const centralDirectoryOffset = localHeader.length + entryNameBuffer.length + content.length
   const centralDirectoryHeader = Buffer.alloc(46)
   centralDirectoryHeader.writeUInt32LE(0x02014b50, 0)
   centralDirectoryHeader.writeUInt16LE(20, 4)
   centralDirectoryHeader.writeUInt16LE(20, 6)
-  centralDirectoryHeader.writeUInt16LE(0, 8)
-  centralDirectoryHeader.writeUInt16LE(0, 10)
-  centralDirectoryHeader.writeUInt16LE(0, 12)
-  centralDirectoryHeader.writeUInt16LE(0, 14)
   centralDirectoryHeader.writeUInt32LE(checksum, 16)
   centralDirectoryHeader.writeUInt32LE(content.length, 20)
   centralDirectoryHeader.writeUInt32LE(content.length, 24)
   centralDirectoryHeader.writeUInt16LE(entryNameBuffer.length, 28)
-  centralDirectoryHeader.writeUInt16LE(0, 30)
-  centralDirectoryHeader.writeUInt16LE(0, 32)
-  centralDirectoryHeader.writeUInt16LE(0, 34)
-  centralDirectoryHeader.writeUInt16LE(0, 36)
-  centralDirectoryHeader.writeUInt32LE(0, 38)
-  centralDirectoryHeader.writeUInt32LE(0, 42)
 
   const centralDirectorySize = centralDirectoryHeader.length + entryNameBuffer.length
   const endOfCentralDirectory = Buffer.alloc(22)
   endOfCentralDirectory.writeUInt32LE(0x06054b50, 0)
-  endOfCentralDirectory.writeUInt16LE(0, 4)
-  endOfCentralDirectory.writeUInt16LE(0, 6)
   endOfCentralDirectory.writeUInt16LE(1, 8)
   endOfCentralDirectory.writeUInt16LE(1, 10)
   endOfCentralDirectory.writeUInt32LE(centralDirectorySize, 12)
   endOfCentralDirectory.writeUInt32LE(centralDirectoryOffset, 16)
-  endOfCentralDirectory.writeUInt16LE(0, 20)
 
   return Buffer.concat([
     localHeader,
@@ -112,25 +91,6 @@ const toSkillArchiveUpload = async ({
 
 const createUploadFile = (content: Buffer, name: string, type: string) =>
   new File([Uint8Array.from(content)], name, { type })
-
-export async function uploadAgentDriveSkill(
-  client: ConsoleClient,
-  {
-    agentId,
-    fileName,
-    filePath,
-  }: {
-    agentId: string
-    fileName: string
-    filePath: string
-  },
-): Promise<AgentSkillUploadResponse> {
-  const upload = await toSkillArchiveUpload({ fileName, filePath })
-  return client.agent.byAgentId.skills.upload.post({
-    body: { file: createUploadFile(upload.buffer, upload.name, 'application/zip') },
-    params: { agent_id: agentId },
-  })
-}
 
 export async function uploadAgentConfigFileToDraft(
   client: ConsoleClient,
@@ -194,14 +154,4 @@ export async function uploadAgentConfigSkillToDraft(
     name: skill.name,
     size: skill.size,
   }
-}
-
-export async function getAgentDriveSkills(
-  client: ConsoleClient,
-  agentId: string,
-): Promise<AgentDriveSkillItemResponse[]> {
-  const body: AgentDriveSkillListResponse = await client.agent.byAgentId.drive.skills.get({
-    params: { agent_id: agentId },
-  })
-  return body.items ?? []
 }

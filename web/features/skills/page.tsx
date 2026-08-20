@@ -639,7 +639,6 @@ function SkillsToolbar({
       <SearchInput
         aria-label={t(($) => $['skillManagement.searchLabel'])}
         className="h-8 w-50 min-w-0 shrink"
-        placeholder={t(($) => $['skillManagement.searchPlaceholder'])}
         value={keyword}
         onValueChange={(value) => {
           void setKeyword(value)

@@ -90,9 +90,9 @@ function BuilderModelSelector({
               : undefined
           }
           models={modelList}
-          className="h-8 w-fit max-w-full bg-transparent p-1 hover:bg-state-base-hover"
           popupClassName="h-[480px]! max-h-[480px]! w-80! max-w-80!"
           showModelMeta={false}
+          className="h-8! w-fit! max-w-full bg-transparent! p-1! hover:bg-state-base-hover! [&>div:first-child]:hidden [&>div:nth-child(2)]:px-0"
           onValueChange={({ model, provider }) => {
             onSelect({
               ...selectedModel,

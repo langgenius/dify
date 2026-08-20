@@ -4,15 +4,13 @@ Server-only Agent Stub and redaction settings are injected by the runtime
 provider factory. The Sandbox dependency supplies the active shellctl data
 plane. Public config carries product-level Agent Soul settings that affect the
 workspace itself: CLI tool bootstrap commands, normal environment variables,
-secret environment variable names, and the Agent Stub drive ref used by
-shell-visible drive commands. Sandbox selection is a deployment concern.
+secret environment variable names. Sandbox selection is a deployment concern.
 """
 
 import re
 from typing import ClassVar, Final
 
-from pydantic import BaseModel, ConfigDict, Field, SerializationInfo, field_validator, model_serializer
-from pydantic.functional_serializers import SerializerFunctionWrapHandler
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from agenton.layers import LayerConfig
 
@@ -74,19 +72,10 @@ class DifyShellLayerConfig(LayerConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    # Optional because shell can be used without a drive layer.
-    agent_stub_drive_ref: str | None = Field(default=None, max_length=1024)
     cli_tools: list[DifyShellCliToolConfig] = Field(default_factory=list)
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
     redact_patterns: list[str] = Field(default_factory=list)
-
-    @model_serializer(mode="wrap")
-    def _serialize_shell_config(self, handler: SerializerFunctionWrapHandler, info: SerializationInfo) -> dict[str, object]:
-        data = handler(self)
-        if info.mode == "json" and self.agent_stub_drive_ref is None:
-            data.pop("agent_stub_drive_ref", None)
-        return data
 
 
 __all__ = [

@@ -2,7 +2,7 @@ import { useAtomValue } from 'jotai'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 
-export const SkillPermission = {
+const SkillPermission = {
   Edit: 'skill.edit',
   Publish: 'skill.publish',
   Delete: 'skill.delete',

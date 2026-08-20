@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Plus d'actions",
   "deployTab.redeploy": "Redéployer",
   "deployTab.undeploy": "Annuler le déploiement",
-  "deployTab.undeployConfirmWarning": "Après confirmation, cet environnement passera à l’état d’annulation du déploiement et les actions seront temporairement désactivées.",
   "health.ENVIRONMENT_STATUS_FAILED": "Indisponible",
   "list.emptyTitle": "Aucun déploiement pour le moment",
   "overview.chip.latest": "dernière",
