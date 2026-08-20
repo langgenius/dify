@@ -80,6 +80,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     onlineUsers,
     cursors,
     isConnected,
+    connectionError,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId || '', reactFlowStore)
   const myUserId = useMemo(
@@ -537,6 +538,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         <WorkflowChildren />
       </WorkflowWithInnerContext>
       {isCollaborationEnabled &&
+        !(connectionError && collaborationManager.canUseLocalDraftFallback()) &&
         (collaborationGraphState.appId !== appId || !collaborationGraphState.isReady) && (
           <div
             data-testid="collaboration-graph-loading"

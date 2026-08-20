@@ -169,4 +169,26 @@ describe('useCollaboration', () => {
     result.current.startCursorTracking({ current: document.createElement('div') })
     expect(mockStartTracking).not.toHaveBeenCalled()
   })
+
+  it('exposes an initial connection error and clears it after reconnecting', async () => {
+    const { result } = renderHookWithConsoleQuery(() => useCollaboration('app-1'), {
+      systemFeatures: { enable_collaboration_mode: true },
+    })
+
+    await waitFor(() => {
+      expect(onStateChangeCallback).not.toBeNull()
+    })
+
+    onStateChangeCallback?.({ isConnected: false, error: 'websocket error' })
+
+    await waitFor(() => {
+      expect(result.current.connectionError).toBe('websocket error')
+    })
+
+    onStateChangeCallback?.({ isConnected: true })
+
+    await waitFor(() => {
+      expect(result.current.connectionError).toBeNull()
+    })
+  })
 })
