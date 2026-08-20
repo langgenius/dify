@@ -1,16 +1,19 @@
 'use client'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useStore } from '@tanstack/react-form'
 import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import { formContext, useAppForm } from '@/app/components/base/form'
+import { formContext as FormContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'
-import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import { LICENSE_LINK } from '@/constants/link'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -40,7 +43,7 @@ const InstallForm = () => {
   const { t, i18n } = useTranslation()
   const pageTitle = t(($) => $.setAdminAccount, { ns: 'login' })
   useDocumentTitle(pageTitle)
-  const router = useRouter()
+  const { push, replace } = useRouter()
   const queryClient = useQueryClient()
   const [showPassword, setShowPassword] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
@@ -75,10 +78,10 @@ const InstallForm = () => {
       // Store tokens and redirect if login successful
       if (loginRes.result === 'success') {
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-        router.replace('/')
+        replace('/')
       } else {
         // Fallback to signin page if auto-login fails
-        router.replace('/signin')
+        replace('/signin')
       }
     },
   })
@@ -91,15 +94,15 @@ const InstallForm = () => {
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
       if (res.step === 'finished') {
-        router.push('/signin')
+        push('/signin')
       } else {
         fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-          if (res.status === 'not_started') router.push('/init')
+          if (res.status === 'not_started') push('/init')
         })
       }
       setLoading(false)
     })
-  }, [])
+  }, [push])
 
   return loading ? (
     <Loading />
@@ -113,8 +116,8 @@ const InstallForm = () => {
       </div>
       <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
         <div className="relative">
-          <formContext.Provider value={form}>
-            <form
+          <FormContext value={form}>
+            <Form
               onSubmit={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -122,100 +125,90 @@ const InstallForm = () => {
                 form.handleSubmit()
               }}
             >
-              <div className="mb-5">
-                <label
-                  htmlFor="email"
-                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                >
-                  {t(($) => $.email, { ns: 'login' })}
-                </label>
-                <div className="mt-1">
-                  <form.AppField name="email">
-                    {(field) => (
-                      <Input
-                        id="email"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        onBlur={field.handleBlur}
-                        placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
-                      />
-                    )}
-                  </form.AppField>
-                  {emailErrors && emailErrors.length > 0 && (
-                    <span className="text-sm text-red-400">
-                      {t(($) => $[`${emailErrors[0]}` as 'error.emailInValid'], { ns: 'login' })}
-                    </span>
+              <Field name="email" invalid={Boolean(emailErrors?.length)} className="mb-5">
+                <FieldLabel>{t(($) => $.email, { ns: 'login' })}</FieldLabel>
+                <form.AppField name="email">
+                  {(field) => (
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      spellCheck={false}
+                      value={field.state.value}
+                      onValueChange={field.handleChange}
+                      onBlur={field.handleBlur}
+                      placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+                    />
                   )}
-                </div>
-              </div>
-
-              <div className="mb-5">
-                <label
-                  htmlFor="name"
-                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                >
-                  {t(($) => $.name, { ns: 'login' })}
-                </label>
-                <div className="relative mt-1">
-                  <form.AppField name="name">
-                    {(field) => (
-                      <Input
-                        id="name"
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        onBlur={field.handleBlur}
-                        placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
-                      />
-                    )}
-                  </form.AppField>
-                </div>
-                {nameErrors && nameErrors.length > 0 && (
-                  <span className="text-sm text-red-400">
-                    {t(($) => $[`${nameErrors[0]}` as 'error.nameEmpty'], { ns: 'login' })}
-                  </span>
+                </form.AppField>
+                {emailErrors && emailErrors.length > 0 && (
+                  <FieldError match>
+                    {t(($) => $[`${emailErrors[0]}` as 'error.emailInValid'], { ns: 'login' })}
+                  </FieldError>
                 )}
-              </div>
+              </Field>
 
-              <div className="mb-5">
-                <label
-                  htmlFor="password"
-                  className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
-                >
-                  {t(($) => $.password, { ns: 'login' })}
-                </label>
-                <div className="relative mt-1">
-                  <form.AppField name="password">
-                    {(field) => (
-                      <Input
-                        id="password"
+              <Field name="name" invalid={Boolean(nameErrors?.length)} className="mb-5">
+                <FieldLabel>{t(($) => $.name, { ns: 'login' })}</FieldLabel>
+                <form.AppField name="name">
+                  {(field) => (
+                    <Input
+                      autoComplete="name"
+                      value={field.state.value}
+                      onValueChange={field.handleChange}
+                      onBlur={field.handleBlur}
+                      placeholder={t(($) => $.namePlaceholder, { ns: 'login' }) || ''}
+                    />
+                  )}
+                </form.AppField>
+                {nameErrors && nameErrors.length > 0 && (
+                  <FieldError match>
+                    {t(($) => $[`${nameErrors[0]}` as 'error.nameEmpty'], { ns: 'login' })}
+                  </FieldError>
+                )}
+              </Field>
+
+              <Field name="password" invalid={Boolean(passwordErrors?.length)} className="mb-5">
+                <FieldLabel>{t(($) => $.password, { ns: 'login' })}</FieldLabel>
+                <form.AppField name="password">
+                  {(field) => (
+                    <InputGroup>
+                      <InputGroupInput
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        spellCheck={false}
                         value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onValueChange={field.handleChange}
                         onBlur={field.handleBlur}
                         placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                       />
-                    )}
-                  </form.AppField>
-
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-text-quaternary hover:text-text-tertiary focus:text-text-tertiary focus:outline-hidden"
-                    >
-                      {showPassword ? '👀' : '😝'}
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  className={cn('mt-1 text-xs text-text-secondary', {
-                    'text-sm! text-red-400': passwordErrors && passwordErrors.length > 0,
-                  })}
-                >
-                  {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-                </div>
-              </div>
+                      <InputGroupAddon align="inline-end">
+                        <IconButton
+                          aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                            ns: 'login',
+                          })}
+                          onClick={() => setShowPassword((visible) => !visible)}
+                        >
+                          <span
+                            aria-hidden="true"
+                            className={
+                              showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                            }
+                          />
+                        </IconButton>
+                      </InputGroupAddon>
+                    </InputGroup>
+                  )}
+                </form.AppField>
+                {passwordErrors && passwordErrors.length > 0 ? (
+                  <FieldError match>
+                    {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                  </FieldError>
+                ) : (
+                  <FieldDescription className="text-text-secondary">
+                    {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
+                  </FieldDescription>
+                )}
+              </Field>
 
               <div>
                 <Button
@@ -228,8 +221,8 @@ const InstallForm = () => {
                   {t(($) => $.installBtn, { ns: 'login' })}
                 </Button>
               </div>
-            </form>
-          </formContext.Provider>
+            </Form>
+          </FormContext>
           <div className="mt-2 block w-full text-xs text-text-secondary">
             {t(($) => $['license.tip'], { ns: 'login' })}
             &nbsp;

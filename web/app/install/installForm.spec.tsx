@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -44,15 +45,36 @@ describe('InstallForm', () => {
   it('should render form after loading', async () => {
     render(<InstallForm />)
 
-    expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    const emailInput = await screen.findByLabelText('login.email')
+    const nameInput = screen.getByLabelText('login.name')
+    const passwordInput = screen.getByLabelText('login.password')
+
+    expect(emailInput).toHaveAttribute('type', 'email')
+    expect(emailInput).toHaveAttribute('autocomplete', 'email')
+    expect(nameInput).toHaveAttribute('autocomplete', 'name')
+    expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.setAdminAccount')
     expect(screen.getByRole('button', { name: /login\.installBtn/ })).toBeInTheDocument()
+  })
+
+  it('should reveal and hide the password with an accessible action', async () => {
+    const user = userEvent.setup()
+    render(<InstallForm />)
+
+    const passwordInput = await screen.findByLabelText('login.password')
+
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
   })
 
   it('should show validation error when required fields are empty', async () => {
     render(<InstallForm />)
 
-    await screen.findByLabelText('login.email')
+    const emailInput = await screen.findByLabelText('login.email')
+    const nameInput = screen.getByLabelText('login.name')
 
     fireEvent.click(screen.getByRole('button', { name: /login\.installBtn/ }))
 
@@ -60,6 +82,8 @@ describe('InstallForm', () => {
       expect(screen.getByText('login.error.emailInValid')).toBeInTheDocument()
       expect(screen.getByText('login.error.nameEmpty')).toBeInTheDocument()
     })
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     expect(mockSetup).not.toHaveBeenCalled()
   })
 
