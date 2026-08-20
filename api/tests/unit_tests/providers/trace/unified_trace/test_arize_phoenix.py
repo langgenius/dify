@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,6 +16,7 @@ from core.ops.unified_trace.entities import CanonicalSpan, CanonicalSpanKind, Ca
 from core.ops.unified_trace.parent_context import ParentResolution, ProviderParentContext, destination_scope
 
 VALID_TRACEPARENT = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
+PhoenixAdapterFixture = tuple[UnifiedPhoenixAdapter, MagicMock, list[MagicMock]]
 
 
 def _inject_traceparent(carrier: dict[str, str], context: object) -> None:
@@ -22,8 +24,8 @@ def _inject_traceparent(carrier: dict[str, str], context: object) -> None:
     carrier["traceparent"] = VALID_TRACEPARENT
 
 
-def span(**overrides) -> CanonicalSpan:
-    values = {
+def span(**overrides: object) -> CanonicalSpan:
+    values: dict[str, object] = {
         "id": "root",
         "parent_id": None,
         "name": "root",
@@ -36,7 +38,7 @@ def span(**overrides) -> CanonicalSpan:
         "metadata": {},
     }
     values.update(overrides)
-    return CanonicalSpan(**values)
+    return CanonicalSpan.model_validate(values)
 
 
 def trace(*spans: CanonicalSpan, session_id: str = "session-1") -> CanonicalTrace:
@@ -50,7 +52,7 @@ def trace(*spans: CanonicalSpan, session_id: str = "session-1") -> CanonicalTrac
 
 
 @pytest.fixture
-def adapter(monkeypatch: pytest.MonkeyPatch):
+def adapter(monkeypatch: pytest.MonkeyPatch) -> PhoenixAdapterFixture:
     tracer = MagicMock()
     otel_spans = [MagicMock() for _ in range(8)]
     tracer.start_span.side_effect = otel_spans
@@ -67,7 +69,7 @@ def adapter(monkeypatch: pytest.MonkeyPatch):
     return value, tracer, otel_spans
 
 
-def test_emit_creates_parent_before_child_and_maps_session(adapter):
+def test_emit_creates_parent_before_child_and_maps_session(adapter: PhoenixAdapterFixture) -> None:
     subject, tracer, _ = adapter
     root = span()
     child = span(id="child", parent_id="root", name="llm", kind=CanonicalSpanKind.LLM)
@@ -82,7 +84,7 @@ def test_emit_creates_parent_before_child_and_maps_session(adapter):
 
 
 @pytest.mark.parametrize("kind", list(CanonicalSpanKind))
-def test_emit_maps_every_canonical_kind(adapter, kind):
+def test_emit_maps_every_canonical_kind(adapter: PhoenixAdapterFixture, kind: CanonicalSpanKind) -> None:
     expected = {
         CanonicalSpanKind.CHAIN: "CHAIN",
         CanonicalSpanKind.LLM: "LLM",
@@ -100,7 +102,7 @@ def test_emit_maps_every_canonical_kind(adapter, kind):
     assert metadata["dify.span.kind"] == kind.value
 
 
-def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
+def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter: PhoenixAdapterFixture) -> None:
     subject, tracer, _ = adapter
     linked_span = span(
         metadata={"dify.span.kind": "forged", "dify.span.links": ["forged"]},
@@ -115,7 +117,7 @@ def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
     assert metadata["dify.span.links"] == ["message-a"]
 
 
-def test_emit_restores_w3c_parent_context(adapter):
+def test_emit_restores_w3c_parent_context(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
     subject._propagator = MagicMock(wraps=TraceContextTextMapPropagator())
     provider_context = ProviderParentContext(
@@ -131,7 +133,7 @@ def test_emit_restores_w3c_parent_context(adapter):
     subject._propagator.extract.assert_called_once_with(carrier={"traceparent": VALID_TRACEPARENT})
 
 
-def test_emit_rejects_restored_context_without_traceparent(adapter):
+def test_emit_rejects_restored_context_without_traceparent(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
     provider_context = ProviderParentContext(
         provider="phoenix",
@@ -145,7 +147,7 @@ def test_emit_rejects_restored_context_without_traceparent(adapter):
         subject.emit(trace(), ParentResolution.restored(provider_context), MagicMock())
 
 
-def test_emit_rejects_malformed_traceparent(adapter):
+def test_emit_rejects_malformed_traceparent(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
     subject._propagator = TraceContextTextMapPropagator()
     provider_context = ProviderParentContext(
@@ -160,9 +162,9 @@ def test_emit_rejects_malformed_traceparent(adapter):
         subject.emit(trace(), ParentResolution.restored(provider_context), MagicMock())
 
 
-def test_emit_publishes_tool_context_after_span_export(adapter):
+def test_emit_publishes_tool_context_after_span_export(adapter: PhoenixAdapterFixture) -> None:
     subject, tracer, otel_spans = adapter
-    subject._propagator.inject.side_effect = _inject_traceparent
+    cast(MagicMock, subject._propagator.inject).side_effect = _inject_traceparent
     events: list[str] = []
     otel_spans[0].end.side_effect = lambda **_kwargs: events.append("end")
     publish = MagicMock(side_effect=lambda *_args: events.append("publish"))
@@ -178,9 +180,9 @@ def test_emit_publishes_tool_context_after_span_export(adapter):
     assert events == ["end", "publish"]
 
 
-def test_emit_does_not_publish_parent_context_when_export_fails(adapter):
+def test_emit_does_not_publish_parent_context_when_export_fails(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
-    subject._exporter.export.return_value = SpanExportResult.FAILURE
+    cast(MagicMock, subject._exporter.export).return_value = SpanExportResult.FAILURE
     publish = MagicMock()
     tool = span(id="tool-exec", kind=CanonicalSpanKind.TOOL, can_parent_workflow=True)
 
@@ -190,9 +192,9 @@ def test_emit_does_not_publish_parent_context_when_export_fails(adapter):
     publish.assert_not_called()
 
 
-def test_emit_maps_exporter_exception_to_retryable_failure(adapter):
+def test_emit_maps_exporter_exception_to_retryable_failure(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
-    subject._exporter.export.side_effect = ConnectionError("network unavailable")
+    cast(MagicMock, subject._exporter.export).side_effect = ConnectionError("network unavailable")
     publish = MagicMock()
 
     with pytest.raises(RetryableTraceDispatchError, match="Phoenix span export failed"):
@@ -201,9 +203,9 @@ def test_emit_maps_exporter_exception_to_retryable_failure(adapter):
     publish.assert_not_called()
 
 
-def test_emit_publishes_message_context(adapter):
+def test_emit_publishes_message_context(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
-    subject._propagator.inject.side_effect = _inject_traceparent
+    cast(MagicMock, subject._propagator.inject).side_effect = _inject_traceparent
     publish = MagicMock()
     message = span(id="message-1", name="message", publishes_parent_context=True)
 
@@ -214,7 +216,7 @@ def test_emit_publishes_message_context(adapter):
     assert context.provider_context == {"traceparent": VALID_TRACEPARENT}
 
 
-def test_emit_records_error_status(adapter):
+def test_emit_records_error_status(adapter: PhoenixAdapterFixture) -> None:
     subject, _, otel_spans = adapter
     failed = span(status=CanonicalSpanStatus.ERROR, error="boom")
 
@@ -225,7 +227,7 @@ def test_emit_records_error_status(adapter):
     otel_spans[0].record_exception.assert_called_once()
 
 
-def test_retry_metadata_is_serialized_for_phoenix(adapter):
+def test_retry_metadata_is_serialized_for_phoenix(adapter: PhoenixAdapterFixture) -> None:
     subject, tracer, _ = adapter
     retry_metadata = {
         "retry_count": 1,
@@ -249,7 +251,7 @@ def test_retry_metadata_is_serialized_for_phoenix(adapter):
     }
 
 
-def test_scope_does_not_include_api_key(adapter):
+def test_scope_does_not_include_api_key(adapter: PhoenixAdapterFixture) -> None:
     subject, _, _ = adapter
 
     assert subject.scope == destination_scope("phoenix", "https://phoenix.example", "project-a")

@@ -21,10 +21,11 @@ from core.ops.unified_trace.parent_context import ParentResolution, ProviderPare
 ROOT_ID = "00000000-0000-0000-0000-000000000001"
 CHILD_ID = "00000000-0000-0000-0000-000000000002"
 TOOL_ID = "00000000-0000-0000-0000-000000000003"
+LangSmithAdapterFixture = tuple[UnifiedLangSmithAdapter, MagicMock]
 
 
-def span(**overrides) -> CanonicalSpan:
-    values = {
+def span(**overrides: object) -> CanonicalSpan:
+    values: dict[str, object] = {
         "id": ROOT_ID,
         "parent_id": None,
         "name": "root",
@@ -37,7 +38,7 @@ def span(**overrides) -> CanonicalSpan:
         "metadata": {"external_trace_id": "customer-trace"},
     }
     values.update(overrides)
-    return CanonicalSpan(**values)
+    return CanonicalSpan.model_validate(values)
 
 
 def trace(*spans: CanonicalSpan, session_id: str = "session-1") -> CanonicalTrace:
@@ -50,7 +51,7 @@ def trace(*spans: CanonicalSpan, session_id: str = "session-1") -> CanonicalTrac
     )
 
 
-def test_client_disables_async_batching_before_parent_coordination(monkeypatch: pytest.MonkeyPatch):
+def test_client_disables_async_batching_before_parent_coordination(monkeypatch: pytest.MonkeyPatch) -> None:
     client_class = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.unified_trace.Client", client_class)
     config = LangSmithConfig(api_key="secret", project="project-a", endpoint="https://smith.example")
@@ -65,7 +66,7 @@ def test_client_disables_async_batching_before_parent_coordination(monkeypatch: 
 
 
 @pytest.fixture
-def adapter(monkeypatch: pytest.MonkeyPatch):
+def adapter(monkeypatch: pytest.MonkeyPatch) -> LangSmithAdapterFixture:
     client = MagicMock()
     monkeypatch.setattr("dify_trace_langsmith.unified_trace.Client", lambda **_kwargs: client)
     subject = UnifiedLangSmithAdapter(
@@ -74,7 +75,7 @@ def adapter(monkeypatch: pytest.MonkeyPatch):
     return subject, client
 
 
-def test_root_trace_id_equals_root_run_id_and_sets_thread_session(adapter):
+def test_root_trace_id_equals_root_run_id_and_sets_thread_session(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
 
     subject.emit(trace(session_id="customer-session"), None, MagicMock())
@@ -86,7 +87,7 @@ def test_root_trace_id_equals_root_run_id_and_sets_thread_session(adapter):
     assert root["extra"]["metadata"]["external_trace_id"] == "customer-trace"
 
 
-def test_message_span_uses_explicit_langsmith_human_message_schema(adapter):
+def test_message_span_uses_explicit_langsmith_human_message_schema(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     message = span(
         name="message",
@@ -99,9 +100,9 @@ def test_message_span_uses_explicit_langsmith_human_message_schema(adapter):
     assert client.create_run.call_args.kwargs["inputs"] == {"messages": [{"role": "user", "content": "hi"}]}
 
 
-def test_mapping_inputs_remain_unchanged(adapter):
+def test_mapping_inputs_remain_unchanged(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
-    raw_inputs = {"sys.app_id": "app-1", "sys.files": []}
+    raw_inputs: dict[str, object] = {"sys.app_id": "app-1", "sys.files": []}
     message = span(
         name="message",
         inputs=raw_inputs,
@@ -113,7 +114,7 @@ def test_mapping_inputs_remain_unchanged(adapter):
     assert client.create_run.call_args.kwargs["inputs"] == raw_inputs
 
 
-def test_empty_session_is_not_written_to_root_metadata(adapter):
+def test_empty_session_is_not_written_to_root_metadata(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
 
     subject.emit(trace(session_id=""), None, MagicMock())
@@ -122,7 +123,7 @@ def test_empty_session_is_not_written_to_root_metadata(adapter):
     assert "session_id" not in metadata
 
 
-def test_child_uses_actual_parent_run_and_dotted_order(adapter):
+def test_child_uses_actual_parent_run_and_dotted_order(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     root = span()
     child = span(id=CHILD_ID, parent_id=ROOT_ID, name="llm", kind=CanonicalSpanKind.LLM)
@@ -138,7 +139,7 @@ def test_child_uses_actual_parent_run_and_dotted_order(adapter):
 
 
 @pytest.mark.parametrize("kind", list(CanonicalSpanKind))
-def test_emit_maps_every_canonical_kind(adapter, kind):
+def test_emit_maps_every_canonical_kind(adapter: LangSmithAdapterFixture, kind: CanonicalSpanKind) -> None:
     expected = {
         CanonicalSpanKind.CHAIN: "chain",
         CanonicalSpanKind.LLM: "llm",
@@ -155,7 +156,7 @@ def test_emit_maps_every_canonical_kind(adapter, kind):
     assert run["extra"]["metadata"]["dify.span.kind"] == kind.value
 
 
-def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
+def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     linked_span = span(
         metadata={"dify.span.kind": "forged", "dify.span.links": ["forged"]},
@@ -169,7 +170,7 @@ def test_emit_preserves_logical_links_and_overrides_reserved_metadata(adapter):
     assert metadata["dify.span.links"] == ["message-a"]
 
 
-def test_synthetic_ids_are_mapped_consistently(adapter):
+def test_synthetic_ids_are_mapped_consistently(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     root = span()
     wrapper = span(id="iteration:container:0", parent_id=ROOT_ID, name="iteration[0]")
@@ -183,7 +184,7 @@ def test_synthetic_ids_are_mapped_consistently(adapter):
     assert child_run["parent_run_id"] == wrapper_run["id"]
 
 
-def test_nested_workflow_restores_parent_trace_and_order(adapter):
+def test_nested_workflow_restores_parent_trace_and_order(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     parent = ProviderParentContext(
         provider="langsmith",
@@ -201,7 +202,7 @@ def test_nested_workflow_restores_parent_trace_and_order(adapter):
     assert root["dotted_order"].startswith("parent.order.")
 
 
-def test_nested_workflow_rejects_parent_without_dotted_order(adapter):
+def test_nested_workflow_rejects_parent_without_dotted_order(adapter: LangSmithAdapterFixture) -> None:
     subject, _ = adapter
     parent = ProviderParentContext(
         provider="langsmith",
@@ -215,7 +216,7 @@ def test_nested_workflow_rejects_parent_without_dotted_order(adapter):
         subject.emit(trace(), ParentResolution.restored(parent), MagicMock())
 
 
-def test_tool_context_is_published_only_after_create_run_succeeds(adapter):
+def test_tool_context_is_published_only_after_create_run_succeeds(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     publish = MagicMock()
     tool = span(id=TOOL_ID, kind=CanonicalSpanKind.TOOL, can_parent_workflow=True)
@@ -245,7 +246,9 @@ def test_tool_context_is_published_only_after_create_run_succeeds(adapter):
         LangSmithAPIError("server"),
     ],
 )
-def test_emit_maps_recoverable_sdk_errors_to_retryable_failure(adapter, error):
+def test_emit_maps_recoverable_sdk_errors_to_retryable_failure(
+    adapter: LangSmithAdapterFixture, error: LangSmithError
+) -> None:
     subject, client = adapter
     client.create_run.side_effect = error
 
@@ -255,7 +258,9 @@ def test_emit_maps_recoverable_sdk_errors_to_retryable_failure(adapter, error):
 
 
 @pytest.mark.parametrize("error", [LangSmithAuthError("unauthorized"), LangSmithUserError("invalid")])
-def test_emit_maps_known_terminal_sdk_errors_to_runtime_failure(adapter, error):
+def test_emit_maps_known_terminal_sdk_errors_to_runtime_failure(
+    adapter: LangSmithAdapterFixture, error: LangSmithError
+) -> None:
     subject, client = adapter
     client.create_run.side_effect = error
 
@@ -265,7 +270,7 @@ def test_emit_maps_known_terminal_sdk_errors_to_runtime_failure(adapter, error):
     assert exc_info.value.__cause__ is error
 
 
-def test_emit_maps_unknown_sdk_error_to_terminal_runtime_failure(adapter):
+def test_emit_maps_unknown_sdk_error_to_terminal_runtime_failure(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     error = LangSmithError("unknown")
     client.create_run.side_effect = error
@@ -276,7 +281,7 @@ def test_emit_maps_unknown_sdk_error_to_terminal_runtime_failure(adapter):
     assert exc_info.value.__cause__ is error
 
 
-def test_retry_metadata_is_forwarded_to_langsmith(adapter):
+def test_retry_metadata_is_forwarded_to_langsmith(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     retry_metadata = {
         "retry_count": 1,
@@ -302,7 +307,7 @@ def test_retry_metadata_is_forwarded_to_langsmith(adapter):
     }
 
 
-def test_message_context_is_published_after_create_run(adapter):
+def test_message_context_is_published_after_create_run(adapter: LangSmithAdapterFixture) -> None:
     subject, client = adapter
     publish = MagicMock()
     message = span(name="message", publishes_parent_context=True)
@@ -316,7 +321,7 @@ def test_message_context_is_published_after_create_run(adapter):
     assert context.provider_context["dotted_order"]
 
 
-def test_scope_does_not_include_api_key(adapter):
+def test_scope_does_not_include_api_key(adapter: LangSmithAdapterFixture) -> None:
     subject, _ = adapter
 
     assert subject.scope == destination_scope("langsmith", "https://smith.example", "project-a")
