@@ -15,6 +15,7 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_repository import SQLAlchemyAccountRepository
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
@@ -149,6 +150,21 @@ def test_build_application_services_does_not_construct_schema_manager(
         )
 
     schema_manager.assert_not_called()
+
+
+def test_build_application_services_wires_account_profile_repository(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    accounts = services.accounts.profile._accounts
+    assert isinstance(accounts, SQLAlchemyAccountRepository)
+    assert accounts._session_factory is sqlite_session_factory
 
 
 @pytest.mark.parametrize(

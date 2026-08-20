@@ -27,7 +27,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
 
-### [POST] /account/avatar
+### ~~[POST] /account/avatar~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -187,7 +192,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountIntegrateListResponse](#accountintegratelistresponse)<br> |
 
-### [POST] /account/interface-language
+### ~~[POST] /account/interface-language~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -200,7 +210,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/interface-theme
+### ~~[POST] /account/interface-theme~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -213,7 +228,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/name
+### ~~[POST] /account/name~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -246,7 +266,25 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/timezone
+### [PATCH] /account/profile
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountProfilePatchPayload](#accountprofilepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+
+### ~~[POST] /account/timezone~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -12770,6 +12808,16 @@ Model class for AI model.
 | new_password | string |  | Yes |
 | password | string |  | No |
 | repeat_new_password | string |  | Yes |
+
+#### AccountProfilePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| interface_language | string |  | No |
+| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | No |
+| name | string |  | No |
+| timezone | string |  | No |
 
 #### AccountResponse
 
