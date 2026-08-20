@@ -53,7 +53,7 @@ class TagBindingRemovePayload(BaseModel):
 
 
 class TagListQueryParam(BaseModel):
-    type: Literal["knowledge", "app", "snippet", ""] = Field("", description="Tag type filter")
+    type: Literal["knowledge", "app", "snippet"] = Field(description="Tag type filter")
     keyword: str | None = Field(None, description="Search keyword")
 
 
@@ -135,8 +135,8 @@ def _require_tag_edit_permission(*, allow_dataset_editor: bool) -> None:
 
 def _raise_transport_error(error: TagApplicationError) -> NoReturn:
     if isinstance(error, TagNameConflictError):
-        raise ValueError(str(error)) from error
-    raise NotFound(str(error)) from error
+        raise ValueError(str(error)) from None
+    raise NotFound(str(error)) from None
 
 
 @console_ns.route("/tags")

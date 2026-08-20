@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
 import controllers.console.tag.tags as module
 from controllers.console import console_ns
@@ -73,6 +73,17 @@ def tags_service() -> MagicMock:
 
 
 class TestTagListApi:
+    @pytest.mark.parametrize("url", ["/", "/?type="])
+    def test_get_requires_non_empty_type(self, app: Flask, url: str) -> None:
+        class Handler:
+            @module.model_validate(TagListQueryParam)
+            def get(self, req_data: TagListQueryParam) -> TagListQueryParam:
+                return req_data
+
+        with app.test_request_context(url, method="GET"):
+            with pytest.raises(UnprocessableEntity):
+                Handler().get()
+
     def test_get_uses_application_service(
         self, app: Flask, request_context: RequestContext, tags_service: MagicMock
     ) -> None:
@@ -178,12 +189,15 @@ class TestTagListApi:
             patch.object(module.dify_config, "RBAC_ENABLED", False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
-            with pytest.raises(ValueError, match="Tag name already exists"):
+            with pytest.raises(ValueError, match="Tag name already exists") as exc_info:
                 unwrap(TagListApi().post)(
                     TagListApi(),
                     TagBasePayload(name="Tag", type=TagType.KNOWLEDGE),
                     request_context,
                 )
+
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__ is True
 
 
 class TestTagUpdateDeleteApi:
@@ -245,13 +259,16 @@ class TestTagUpdateDeleteApi:
             patch.object(module.dify_config, "RBAC_ENABLED", False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
-            with pytest.raises(NotFound, match="Tag not found"):
+            with pytest.raises(NotFound, match="Tag not found") as exc_info:
                 unwrap(TagUpdateDeleteApi().patch)(
                     TagUpdateDeleteApi(),
                     TagUpdateRequestPayload(name="Updated"),
                     request_context,
                     "tag-1",
                 )
+
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__ is True
 
     def test_delete_does_not_grant_dataset_operator_legacy_edit_permission(
         self, app: Flask, request_context: RequestContext
