@@ -2,8 +2,14 @@
 
 Upload, remote-upload, produce, and resolve authenticate with a Bearer grant;
 content authenticates with a per-file token in the query string, because an
-``<img src>`` cannot carry a header. All five are additive: the existing
-``file-preview`` and ``tools`` signature surfaces are untouched.
+``<img src>`` cannot carry a header.
+
+They stay on the public ``files`` blueprint rather than moving under
+``inner_api``, whose contract is a fully trusted caller holding the master key.
+None of the five meets it: ``content`` is a browser-facing surface, ``upload``
+carries an end user's payload, and ``produced`` and ``resolve`` are called by
+workers executing third-party plugin code. The one genuinely server-to-server
+step, minting the grant, already lives in ``inner_api``.
 """
 
 from __future__ import annotations
@@ -131,7 +137,7 @@ register_schema_models(files_ns, RemoteFileUploadPayload, FileResolvePayload)
 register_response_schema_models(files_ns, GrantedFileResponse, ProducedFileResponse, FileResolveResponse)
 
 
-@files_ns.route("/api/upload")
+@files_ns.route("/appdeploy/upload")
 class GrantedFileUploadApi(Resource):
     """Store one uploaded file against the grant's end user."""
 
@@ -159,7 +165,7 @@ class GrantedFileUploadApi(Resource):
         return _granted_file_response(upload_file), 201
 
 
-@files_ns.route("/api/remote-upload")
+@files_ns.route("/appdeploy/remote-upload")
 class GrantedRemoteFileUploadApi(Resource):
     """Fetch a remote URL through the SSRF-safe fetcher and store it."""
 
@@ -213,7 +219,7 @@ class GrantedRemoteFileUploadApi(Resource):
         return _granted_file_response(upload_file), 201
 
 
-@files_ns.route("/api/produced")
+@files_ns.route("/appdeploy/produced")
 class ProducedFileApi(Resource):
     """Store one file produced by a running workflow node."""
 
@@ -254,7 +260,7 @@ class ProducedFileApi(Resource):
         ).model_dump(mode="json"), 201
 
 
-@files_ns.route("/api/resolve")
+@files_ns.route("/appdeploy/resolve")
 class GrantedFileResolveApi(Resource):
     """Re-check ownership and sign fresh URLs at the moment of use."""
 
@@ -288,7 +294,7 @@ class GrantedFileResolveApi(Resource):
         ).model_dump(mode="json")
 
 
-@files_ns.route("/api/<uuid:file_id>/content")
+@files_ns.route("/appdeploy/<uuid:file_id>/content")
 class GrantedFileContentApi(Resource):
     """Stream one file's bytes to a holder of its content token."""
 

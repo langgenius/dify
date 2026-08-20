@@ -116,7 +116,7 @@ def decode_file_content_token(token: str) -> FileContentClaims:
 def build_content_url(*, file_id: str, kind: FileKind, external: bool) -> str:
     base_url = dify_config.FILES_URL if external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
     token = issue_file_content_token(file_id=file_id, kind=kind)
-    return f"{base_url}/files/api/{file_id}/content?token={token}"
+    return f"{base_url}/files/appdeploy/{file_id}/content?token={token}"
 
 
 def _decode(token: str, *, audience: str, required: list[str]) -> dict[str, object]:

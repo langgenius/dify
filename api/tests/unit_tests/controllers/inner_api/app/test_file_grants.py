@@ -270,9 +270,9 @@ def test_mint_reports_optional_files_item_by_item(app: Flask, sqlite_session: Se
     present, absent = response["optional_files"]
     assert present["ok"] is True
     assert present["name"] == "report.pdf"
-    assert present["url"].startswith(f"https://files.example.com/files/api/{upload_file.id}/content?token=")
+    assert present["url"].startswith(f"https://files.example.com/files/appdeploy/{upload_file.id}/content?token=")
     assert present["internal_url"].startswith(
-        f"http://dify-api.dify.svc:5001/files/api/{upload_file.id}/content?token="
+        f"http://dify-api.dify.svc:5001/files/appdeploy/{upload_file.id}/content?token="
     )
     assert absent == {
         "id": missing_id,

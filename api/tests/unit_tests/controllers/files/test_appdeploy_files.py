@@ -15,7 +15,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from controllers.common.errors import FileTooLargeError
-from controllers.files.api_files import (
+from controllers.files.appdeploy_files import (
     GrantedFileContentApi,
     GrantedFileResolveApi,
     GrantedFileUploadApi,
@@ -30,7 +30,7 @@ from models.enums import CreatorUserRole, EndUserType
 from models.model import EndUser, UploadFile
 from models.tools import ToolFile
 
-CONTROLLER_MODULE = "controllers.files.api_files"
+CONTROLLER_MODULE = "controllers.files.appdeploy_files"
 SERVICE_MODULE = "services.file_grant_service"
 
 SECRET_KEY = "file-grant-test-secret-long-enough-for-hs256"
@@ -149,7 +149,7 @@ def test_upload_stores_the_file_for_the_grant_end_user(app: Flask, end_user: End
     with patch(f"{CONTROLLER_MODULE}.FileService") as file_service:
         file_service.return_value.upload_file.return_value = _stub_upload_file()
         with app.test_request_context(
-            "/files/api/upload",
+            "/files/appdeploy/upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
@@ -161,7 +161,7 @@ def test_upload_stores_the_file_for_the_grant_end_user(app: Flask, end_user: End
     assert body["id"] == "77777777-7777-4777-8777-777777777777"
     assert body["extension"] == "pdf"
     assert body["url"].startswith(
-        "https://files.example.com/files/api/77777777-7777-4777-8777-777777777777/content?token="
+        "https://files.example.com/files/appdeploy/77777777-7777-4777-8777-777777777777/content?token="
     )
     assert file_service.return_value.upload_file.call_args.kwargs["user"].id == end_user.id
 
@@ -169,7 +169,7 @@ def test_upload_stores_the_file_for_the_grant_end_user(app: Flask, end_user: End
 @pytest.mark.usefixtures("sqlite_db")
 def test_upload_rejects_a_grant_from_another_tenant(app: Flask, end_user: EndUser) -> None:
     with app.test_request_context(
-        "/files/api/upload",
+        "/files/appdeploy/upload",
         method="POST",
         headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id, tenant_id=OTHER_TENANT_ID),
         data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
@@ -191,7 +191,7 @@ def test_upload_rejects_a_body_over_the_largest_limit(
     )
 
     with app.test_request_context(
-        "/files/api/upload",
+        "/files/appdeploy/upload",
         method="POST",
         headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
         data={"file": (BytesIO(b"0" * (1024 * 1024 + 1)), "big.bin")},
@@ -215,7 +215,7 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(app: Flask, end_use
         file_service.return_value.upload_file.return_value = _stub_upload_file()
 
         with app.test_request_context(
-            "/files/api/remote-upload",
+            "/files/appdeploy/remote-upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             json={"url": url},
@@ -245,7 +245,7 @@ def test_remote_upload_honours_the_size_precheck(app: Flask, end_user: EndUser) 
         file_service.is_file_size_within_limit.return_value = False
 
         with app.test_request_context(
-            "/files/api/remote-upload",
+            "/files/appdeploy/remote-upload",
             method="POST",
             headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
             json={"url": url},
@@ -267,7 +267,7 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(app: Flask) -> None:
     with patch(f"{CONTROLLER_MODULE}.ToolFileManager") as tool_file_manager:
         tool_file_manager.return_value.create_file_by_raw.return_value = tool_file
         with app.test_request_context(
-            "/files/api/produced",
+            "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
             data={"file": (BytesIO(b"0" * 16), "chart.png")},
@@ -280,8 +280,8 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(app: Flask) -> None:
     assert kwargs["user_id"] == "99999999-9999-4999-8999-999999999999"
     assert kwargs["tenant_id"] == TENANT_ID
     assert kwargs["conversation_id"] is None
-    assert body["url"].startswith(f"https://files.example.com/files/api/{tool_file.id}/content?token=")
-    assert body["internal_url"].startswith(f"http://dify-api.dify.svc:5001/files/api/{tool_file.id}/content?token=")
+    assert body["url"].startswith(f"https://files.example.com/files/appdeploy/{tool_file.id}/content?token=")
+    assert body["internal_url"].startswith(f"http://dify-api.dify.svc:5001/files/appdeploy/{tool_file.id}/content?token=")
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -298,7 +298,7 @@ def test_resolve_signs_urls_per_item_and_hides_foreign_files(
     }
 
     with app.test_request_context(
-        "/files/api/resolve",
+        "/files/appdeploy/resolve",
         method="POST",
         headers=_bearer(FileGrantScope.RESOLVE, end_user_id=end_user.id),
         json=payload,
@@ -311,8 +311,8 @@ def test_resolve_signs_urls_per_item_and_hides_foreign_files(
     assert resolved["ok"] is True
     assert resolved["kind"] == "upload"
     assert resolved["extension"] == "pdf"
-    assert resolved["url"].startswith(f"https://files.example.com/files/api/{owned.id}/content?token=")
-    assert resolved["internal_url"].startswith(f"http://dify-api.dify.svc:5001/files/api/{owned.id}/content?token=")
+    assert resolved["url"].startswith(f"https://files.example.com/files/appdeploy/{owned.id}/content?token=")
+    assert resolved["internal_url"].startswith(f"http://dify-api.dify.svc:5001/files/appdeploy/{owned.id}/content?token=")
     assert hidden == {
         "id": foreign.id,
         "ok": False,
@@ -357,7 +357,7 @@ def test_content_disposition_follows_the_inline_whitelist(
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone", mimetype=mime_type)
     token = _content_token(file_id=tool_file.id, kind=FileKind.TOOL)
 
-    with app.test_request_context(f"/files/api/{tool_file.id}/content", query_string={"token": token}):
+    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
         response = GrantedFileContentApi().get(UUID(tool_file.id))
 
     assert response.headers["X-Content-Type-Options"] == "nosniff"
@@ -374,7 +374,7 @@ def test_content_rejects_an_expired_token(app: Flask, sqlite_session: Session) -
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone")
     token = _content_token(file_id=tool_file.id, kind=FileKind.TOOL, expires_in=-1)
 
-    with app.test_request_context(f"/files/api/{tool_file.id}/content", query_string={"token": token}):
+    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
         with pytest.raises(FileGrantInvalidError):
             GrantedFileContentApi().get(UUID(tool_file.id))
 
@@ -384,7 +384,7 @@ def test_content_rejects_a_token_minted_for_another_file(app: Flask, sqlite_sess
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone")
     token = _content_token(file_id=str(FILE_ID), kind=FileKind.TOOL)
 
-    with app.test_request_context(f"/files/api/{tool_file.id}/content", query_string={"token": token}):
+    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
         with pytest.raises(GrantedFileNotFoundError):
             GrantedFileContentApi().get(UUID(tool_file.id))
 
@@ -394,7 +394,7 @@ def test_content_rejects_a_token_naming_the_wrong_table(app: Flask, sqlite_sessi
     tool_file = _persist_tool_file(sqlite_session, owner_id="anyone")
     token = _content_token(file_id=tool_file.id, kind=FileKind.UPLOAD)
 
-    with app.test_request_context(f"/files/api/{tool_file.id}/content", query_string={"token": token}):
+    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": token}):
         with pytest.raises(GrantedFileNotFoundError):
             GrantedFileContentApi().get(UUID(tool_file.id))
 
@@ -410,6 +410,6 @@ def test_content_rejects_a_file_grant_replayed_as_a_content_token(app: Flask, sq
         ttl_seconds=600,
     )
 
-    with app.test_request_context(f"/files/api/{tool_file.id}/content", query_string={"token": grant}):
+    with app.test_request_context(f"/files/appdeploy/{tool_file.id}/content", query_string={"token": grant}):
         with pytest.raises(FileGrantInvalidError):
             GrantedFileContentApi().get(UUID(tool_file.id))

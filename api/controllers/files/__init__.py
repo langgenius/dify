@@ -14,13 +14,13 @@ api = ExternalApi(
 
 files_ns = Namespace("files", description="File operations", path="/")
 
-from . import api_files, image_preview, tool_files, upload
+from . import appdeploy_files, image_preview, tool_files, upload
 
 api.add_namespace(files_ns)
 
 __all__ = [
     "api",
-    "api_files",
+    "appdeploy_files",
     "bp",
     "files_ns",
     "image_preview",
