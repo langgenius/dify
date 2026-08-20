@@ -293,7 +293,7 @@ export function createResearchEvidenceReasoning({
           { content: query, role: "user" },
         ],
         observer: input.researchModelCallObserver,
-        parse: (text) => parseJson(text, QueryPlanSchema, "research.plan"),
+        parse: parseQueryPlan,
         reasoningModel: input.reasoningModel,
         reserveModelCall: input.reserveModelCall,
         schema: zodJsonSchema(QueryPlanSchema),
@@ -429,13 +429,33 @@ function zodJsonSchema(schema: z.ZodTypeAny): Readonly<Record<string, unknown>> 
   };
 }
 
-function parseJson<T>(text: string, schema: z.ZodType<T>, label: string): T {
+function parseQueryPlan(text: string): z.infer<typeof QueryPlanSchema> {
+  let value: unknown;
   try {
-    return schema.parse(JSON.parse(text));
+    value = JSON.parse(text);
   } catch (cause) {
-    throw new ResearchEvidenceReasoningContractError(`${label} returned invalid structured JSON`, {
-      cause,
-    });
+    throw new ResearchEvidenceReasoningContractError(
+      "research.plan returned invalid structured JSON",
+      { cause },
+    );
+  }
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    // Dify's structured-output compatibility layer represents JSON Schema booleans as strings
+    // for providers that do not accept native boolean fields. Normalize that transport detail
+    // before applying the strict domain schema, just as the evidence judge does below.
+    const useGraph = normalizeBooleanValue(record.useGraph);
+    if (useGraph !== undefined) {
+      value = { ...record, useGraph };
+    }
+  }
+  try {
+    return QueryPlanSchema.parse(value);
+  } catch (cause) {
+    throw new ResearchEvidenceReasoningContractError(
+      "research.plan returned invalid structured JSON",
+      { cause },
+    );
   }
 }
 
@@ -451,7 +471,7 @@ function parseEvidenceJudgement(text: string): z.infer<typeof EvidenceJudgementS
   }
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
-    const sufficient = normalizeSufficientValue(record.sufficient);
+    const sufficient = normalizeBooleanValue(record.sufficient);
     if (sufficient !== undefined) {
       value = { ...record, sufficient };
     }
@@ -505,7 +525,7 @@ function lowReasoningEffortSupported(selection: KnowledgeSpaceModelSelection): b
   );
 }
 
-function normalizeSufficientValue(value: unknown): boolean | undefined {
+function normalizeBooleanValue(value: unknown): boolean | undefined {
   if (typeof value === "boolean") return value;
   if (typeof value !== "string") return undefined;
   const normalized = value.trim().toLocaleLowerCase();

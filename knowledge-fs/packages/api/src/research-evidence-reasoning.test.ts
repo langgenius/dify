@@ -85,6 +85,72 @@ describe("Research evidence reasoning", () => {
     expect(generate).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    { expected: false, providerValue: "false" },
+    { expected: true, providerValue: "true" },
+  ])(
+    "normalizes the structured-output string boolean useGraph=$providerValue",
+    async ({ expected, providerValue }) => {
+      const generate = vi.fn(async (_input: unknown) => ({
+        metadata: { model: reasoningModel.model, usage: { totalTokens: 24 } },
+        model: reasoningModel.model,
+        text: JSON.stringify({
+          evidenceDimensions: ["模型管理", "部署管理"],
+          intent: "multi-hop",
+          subqueries: ["Dify 模型管理", "Dify 部署管理"],
+          useGraph: providerValue,
+        }),
+      }));
+      const reasoning = createResearchEvidenceReasoning({
+        maxOutputTokens: 256,
+        providerFactory: () => ({ generate }),
+        timeoutMs: 1_000,
+      });
+
+      await expect(
+        reasoning.plan({
+          query: "Dify 的模型和部署是怎么管理的？",
+          reasoningModel,
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toEqual({
+        evidenceDimensions: ["模型管理", "部署管理"],
+        intent: "multi-hop",
+        modelCalled: true,
+        subqueries: ["Dify 模型管理", "Dify 部署管理"],
+        useGraph: expected,
+      });
+      expect(generate).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("still rejects an unrecognized structured-output useGraph value", async () => {
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 256,
+      providerFactory: () => ({
+        generate: async () => ({
+          metadata: { model: reasoningModel.model },
+          model: reasoningModel.model,
+          text: JSON.stringify({
+            evidenceDimensions: ["模型管理", "部署管理"],
+            intent: "multi-hop",
+            subqueries: ["Dify 模型管理", "Dify 部署管理"],
+            useGraph: "sometimes",
+          }),
+        }),
+      }),
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.plan({
+        query: "Dify 的模型和部署是怎么管理的？",
+        reasoningModel,
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toMatchObject({ code: "RESEARCH_EVIDENCE_REASONING_INVALID" });
+  });
+
   it("routes every judgement through the reasoning model selected by its knowledge space", async () => {
     const configuredModels = [
       {
