@@ -63,7 +63,6 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
             ("controllers.console.wraps.is_admin_or_owner_required", _noop),
             ("controllers.console.wraps.enterprise_license_required", _noop),
         ]
-        monkeypatch.setenv("DIFY_SETUP_READY", "true")
         with ExitStack() as stack:
             for target, value in patch_targets:
                 stack.enter_context(patch(target, value))
@@ -764,3 +763,187 @@ def test_resolve_identity_mode_off_is_passthrough_when_not_enterprise(
     monkeypatch.setattr(controller_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     assert controller_module._resolve_identity_mode(None, current=identity_mode.OFF) == identity_mode.OFF
+
+
+# --- OAuth start + callback: visibility passthrough (PR #39840 review) ---
+#
+# The OAuth flow stashes the user-chosen visibility in the proxy context on the
+# start endpoint, then reads it back on the callback to persist the credential.
+# These tests pin down: (a) the value round-trips for the two supported levels,
+# and (b) unknown/missing values collapse to ONLY_ME on both ends.
+
+
+_OAUTH_PROVIDER_PATH = "langgenius/github/github"
+
+
+def _invoke_oauth_start(
+    controller_module: ModuleType,
+    app: Flask,
+    user: Account,
+    tenant_id: str,
+    *,
+    query_string: str = "",
+    provider: str = _OAUTH_PROVIDER_PATH,
+):
+    """Call ToolPluginOAuthApi.get bypassing decorators (matches the pattern
+    used by test_builtin_provider_credentials_get_reads_repeated_include_ids)."""
+    api = controller_module.ToolPluginOAuthApi()
+    path = f"/oauth/plugin/{provider}/tool/authorization-url"
+    if query_string:
+        path = f"{path}?{query_string}"
+    with app.test_request_context(path, method="GET"):
+        return unwrap(api.get)(api, tenant_id, user, provider=provider)
+
+
+@contextmanager
+def _mock_oauth_start_deps(controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch):
+    """Mock everything ToolPluginOAuthApi.get calls out to and capture the
+    create_proxy_context kwargs so tests can assert on extra_data."""
+    monkeypatch.setattr(
+        controller_module.BuiltinToolManageService,
+        "get_oauth_client",
+        MagicMock(return_value={"client_id": "abc"}),
+    )
+    create_proxy_context = MagicMock(return_value="ctx-id")
+    monkeypatch.setattr(controller_module.OAuthProxyService, "create_proxy_context", create_proxy_context)
+    auth_response = MagicMock(authorization_url="https://oauth.example.com/authorize", state="s")
+    oauth_handler_instance = MagicMock()
+    oauth_handler_instance.get_authorization_url.return_value = auth_response
+    monkeypatch.setattr(controller_module, "OAuthHandler", MagicMock(return_value=oauth_handler_instance))
+    # dump_response is called with the pydantic response class; short-circuit it.
+    monkeypatch.setattr(
+        controller_module, "dump_response", lambda _cls, obj: {"authorization_url": obj.authorization_url}
+    )
+    yield create_proxy_context
+
+
+@pytest.mark.parametrize(
+    ("query_visibility", "expected_stored"),
+    [
+        ("only_me", "only_me"),
+        ("all_team_members", "all_team_members"),
+    ],
+)
+def test_tool_plugin_oauth_url_stashes_valid_visibility(
+    app: Flask,
+    controller_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    query_visibility: str,
+    expected_stored: str,
+):
+    user = _mock_account("user-oauth")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-oauth")
+
+    with _mock_oauth_start_deps(controller_module, monkeypatch) as create_proxy_context:
+        _invoke_oauth_start(
+            controller_module,
+            app,
+            user,
+            "tenant-oauth",
+            query_string=f"visibility={query_visibility}",
+        )
+
+    _, kwargs = create_proxy_context.call_args
+    assert kwargs["extra_data"] == {"visibility": expected_stored}
+
+
+@pytest.mark.parametrize("query_string", ["", "visibility=partial_members", "visibility=nonsense"])
+def test_tool_plugin_oauth_url_unknown_visibility_falls_back_to_only_me(
+    app: Flask,
+    controller_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    query_string: str,
+):
+    """Missing, partial_members (rejected for plugin creds), and garbage inputs
+    all collapse to only_me — OAuth tokens are personal by default."""
+    user = _mock_account("user-oauth-fallback")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-oauth")
+
+    with _mock_oauth_start_deps(controller_module, monkeypatch) as create_proxy_context:
+        _invoke_oauth_start(
+            controller_module,
+            app,
+            user,
+            "tenant-oauth",
+            query_string=query_string,
+        )
+
+    _, kwargs = create_proxy_context.call_args
+    assert kwargs["extra_data"] == {"visibility": "only_me"}
+
+
+def _invoke_oauth_callback(
+    controller_module: ModuleType,
+    app: Flask,
+    *,
+    stored_visibility: str | None,
+    provider: str = _OAUTH_PROVIDER_PATH,
+):
+    api = controller_module.ToolOAuthCallback()
+    ctx = {"user_id": "user-oauth", "tenant_id": "tenant-oauth"}
+    if stored_visibility is not None:
+        ctx["visibility"] = stored_visibility
+    with app.test_request_context(
+        f"/oauth/plugin/{provider}/tool/callback",
+        method="GET",
+        headers={"Cookie": "context_id=ctx-id"},
+    ):
+        with patch.object(controller_module.OAuthProxyService, "use_proxy_context", return_value=ctx):
+            return unwrap(api.get)(api, provider=provider)
+
+
+@contextmanager
+def _mock_oauth_callback_deps(controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch):
+    """Mock everything ToolOAuthCallback.get calls out to and capture the
+    add_builtin_tool_provider kwargs so tests can assert visibility."""
+    monkeypatch.setattr(
+        controller_module.BuiltinToolManageService,
+        "get_oauth_client",
+        MagicMock(return_value={"client_id": "abc"}),
+    )
+    add_provider = MagicMock()
+    monkeypatch.setattr(controller_module.BuiltinToolManageService, "add_builtin_tool_provider", add_provider)
+    credentials_response = MagicMock(credentials={"access_token": "tok"}, expires_at=-1)
+    oauth_handler_instance = MagicMock()
+    oauth_handler_instance.get_credentials.return_value = credentials_response
+    monkeypatch.setattr(controller_module, "OAuthHandler", MagicMock(return_value=oauth_handler_instance))
+    monkeypatch.setattr(controller_module, "redirect", lambda url: {"redirect": url})
+    yield add_provider
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        ("only_me", "only_me"),
+        ("all_team_members", "all_team_members"),
+    ],
+)
+def test_tool_oauth_callback_persists_stored_visibility(
+    app: Flask,
+    controller_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    stored: str,
+    expected: str,
+):
+    with _mock_oauth_callback_deps(controller_module, monkeypatch) as add_provider:
+        _invoke_oauth_callback(controller_module, app, stored_visibility=stored)
+
+    _, kwargs = add_provider.call_args
+    assert kwargs["visibility"] == expected
+    assert kwargs["api_type"] == controller_module.CredentialType.OAUTH2
+
+
+@pytest.mark.parametrize("stored", [None, "partial_members", "garbage"])
+def test_tool_oauth_callback_unknown_stored_visibility_falls_back_to_only_me(
+    app: Flask,
+    controller_module: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    stored: str | None,
+):
+    """Older proxy contexts (pre-feature) and anything unexpected must default
+    to only_me — matches the safe-default we apply on the start endpoint."""
+    with _mock_oauth_callback_deps(controller_module, monkeypatch) as add_provider:
+        _invoke_oauth_callback(controller_module, app, stored_visibility=stored)
+
+    _, kwargs = add_provider.call_args
+    assert kwargs["visibility"] == "only_me"

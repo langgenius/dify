@@ -43,6 +43,7 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
     HomeSnapshotResponse,
     RUN_EVENT_ADAPTER,
+    RunCancelledEvent,
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
@@ -384,8 +385,8 @@ class Client:
     async def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for ``run_id``.
 
-        Acceptance atomically persists the cancelled state. The process executing
-        the run observes that state and performs runner cleanup asynchronously.
+        Acceptance atomically persists cancellation intent. The process executing
+        the run publishes ``run_cancelled`` after runner cleanup completes.
         """
         request_model = request or CancelRunRequest()
         try:
@@ -416,6 +417,44 @@ class Client:
         except httpx.RequestError as exc:
             raise DifyAgentClientError(f"cancel_run_sync request failed: {exc}") from exc
         return _parse_model_response(response, CancelRunResponse)
+
+    async def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Request cancellation and wait for its public terminal event."""
+        _ = await self.cancel_run(run_id, request)
+        resume_after = after
+        if after is not None and (await self.get_run(run_id)).status == "cancelled":
+            resume_after = None
+        async for event in self.stream_events(run_id, after=resume_after):
+            if isinstance(event, RunCancelledEvent):
+                return event
+            if event.type in _TERMINAL_EVENT_TYPES:
+                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
+
+    def cancel_run_and_wait_sync(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Synchronous variant of ``cancel_run_and_wait``."""
+        _ = self.cancel_run_sync(run_id, request)
+        resume_after = after
+        if after is not None and self.get_run_sync(run_id).status == "cancelled":
+            resume_after = None
+        for event in self.stream_events_sync(run_id, after=resume_after):
+            if isinstance(event, RunCancelledEvent):
+                return event
+            if event.type in _TERMINAL_EVENT_TYPES:
+                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
 
     async def get_run(self, run_id: str) -> RunStatusResponse:
         """Return the current status for ``run_id`` or raise a mapped client error."""

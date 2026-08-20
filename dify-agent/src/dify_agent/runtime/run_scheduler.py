@@ -20,10 +20,11 @@ from typing import Protocol
 
 import httpx
 
-from agenton.compositor import LayerProviderInput
-from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, CreateRunRequest
+from agenton.compositor import CompositorSessionSnapshot, LayerProviderInput
+from dify_agent.protocol.schemas import AgentRunUsage, CancelRunRequest, CancelRunResponse, CreateRunRequest, RunStatus
+from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime.event_sink import RunEventSink, emit_run_cancelled, emit_run_failed
+from dify_agent.runtime.event_sink import RunEventSink, RunFinalizationResult, emit_run_failed
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, AgentRunRunner
 from dify_agent.server.schemas import RunRecord
 
@@ -45,13 +46,42 @@ class RunStore(RunEventSink, Protocol):
         """Persist a new run record and return it with status ``running``."""
         ...
 
-    async def wait_for_cancellation(self, run_id: str) -> bool:
-        """Wait for a terminal state and report whether cancellation won."""
+    async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
+        """Persist the first cancellation intent and return the current status."""
+        ...
+
+    async def get_cancellation_intent(self, run_id: str) -> RunCancellationIntent | None:
+        """Return the accepted cancellation intent, if one exists."""
+        ...
+
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        """Wait for an accepted cancellation intent."""
+        ...
+
+    async def finalize_cancellation(
+        self,
+        run_id: str,
+        intent: RunCancellationIntent,
+        *,
+        session_snapshot: CompositorSessionSnapshot | None = None,
+        usage: AgentRunUsage | None = None,
+    ) -> RunFinalizationResult:
+        """Publish cancellation after the owner runner has exited."""
         ...
 
 
 class RunnableRun(Protocol):
     """Executable unit for one scheduled run."""
+
+    @property
+    def terminal_session_snapshot(self) -> CompositorSessionSnapshot | None:
+        """Return the post-exit snapshot for the current invocation, if available."""
+        ...
+
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        """Return usage accumulated before this run exited, if available."""
+        ...
 
     async def run(self) -> None:
         """Run until terminal status/events have been written or cancellation occurs."""
@@ -125,14 +155,9 @@ class RunScheduler:
 
     async def cancel_run(self, run_id: str, request: CancelRunRequest) -> CancelRunResponse:
         """Persist an idempotent cancellation without relying on local task ownership."""
-        finalization = await emit_run_cancelled(
-            self.store,
-            run_id=run_id,
-            reason=request.reason,
-            message=request.message,
-        )
-        if finalization.status != "cancelled":
-            raise RunCancellationConflictError(f"run already finished with status {finalization.status!r}")
+        status = await self.store.request_cancellation(run_id, request)
+        if status in {"succeeded", "failed"}:
+            raise RunCancellationConflictError(f"run already finished with status {status!r}")
         return CancelRunResponse(run_id=run_id, status="cancelled")
 
     async def shutdown(self) -> None:
@@ -141,18 +166,14 @@ class RunScheduler:
             self.stopping = True
             if not self.active_tasks:
                 return
-            tasks_by_run_id = dict(self.active_tasks)
-        done, pending = await asyncio.wait(tasks_by_run_id.values(), timeout=self.shutdown_grace_seconds)
-        del done
+            tasks = tuple(self.active_tasks.values())
+        _done, pending = await asyncio.wait(tasks, timeout=self.shutdown_grace_seconds)
         if not pending:
             return
 
-        pending_run_ids = [run_id for run_id, task in tasks_by_run_id.items() if task in pending]
         for task in pending:
             _ = task.cancel()
         _ = await asyncio.gather(*pending, return_exceptions=True)
-        for run_id in pending_run_ids:
-            await self._mark_cancelled_run_failed(run_id)
 
     async def _run_record(self, record: RunRecord, request: CreateRunRequest) -> None:
         """Supervise one local runner and its durable cancellation observer."""
@@ -163,41 +184,96 @@ class RunScheduler:
             self.store.wait_for_cancellation(record.run_id),
             name=f"dify-agent-cancellation-observer-{record.run_id}",
         )
+
+        async def cancel_runner_and_wait() -> None:
+            if not cancel_requested.is_set() and not runner_task.done():
+                cancel_requested.set()
+                _ = runner_task.cancel()
+            _ = await asyncio.shield(asyncio.gather(runner_task, return_exceptions=True))
+
         try:
             _ = await asyncio.wait((runner_task, observer_task), return_when=asyncio.FIRST_COMPLETED)
             if observer_task.done():
                 try:
-                    cancellation_won = observer_task.result()
+                    intent = observer_task.result()
                 except Exception as exc:
-                    cancel_requested.set()
-                    await self._cancel_and_wait(runner_task, reinject=True)
-                    _ = await emit_run_failed(
+                    await cancel_runner_and_wait()
+                    finalization = await emit_run_failed(
                         self.store,
                         run_id=record.run_id,
                         error=f"run cancellation observer failed: {exc}",
                         reason="cancellation_observer",
+                        session_snapshot=runner.terminal_session_snapshot,
+                        usage=runner.terminal_usage,
                     )
+                    if not finalization.applied and finalization.status == "running":
+                        intent = await self.store.get_cancellation_intent(record.run_id)
+                        if intent is not None:
+                            _ = await self.store.finalize_cancellation(
+                                record.run_id,
+                                intent,
+                                session_snapshot=runner.terminal_session_snapshot,
+                                usage=runner.terminal_usage,
+                            )
                     raise
 
-                if cancellation_won:
-                    cancel_requested.set()
-                    await self._cancel_and_wait(runner_task, reinject=True)
-                else:
-                    await runner_task
+                await cancel_runner_and_wait()
+                _ = await self.store.finalize_cancellation(
+                    record.run_id,
+                    intent,
+                    session_snapshot=runner.terminal_session_snapshot,
+                    usage=runner.terminal_usage,
+                )
             else:
-                await runner_task
+                runner_error: Exception | None = None
+                try:
+                    await runner_task
+                except Exception as exc:
+                    runner_error = exc
+
+                intent = await self.store.get_cancellation_intent(record.run_id)
+                if intent is not None:
+                    _ = await self.store.finalize_cancellation(
+                        record.run_id,
+                        intent,
+                        session_snapshot=runner.terminal_session_snapshot,
+                        usage=runner.terminal_usage,
+                    )
+                if runner_error is not None:
+                    raise runner_error
         except asyncio.CancelledError:
-            cancel_requested.set()
             await self._cancel_and_wait(observer_task)
-            await self._cancel_and_wait(runner_task, reinject=True)
+            await cancel_runner_and_wait()
+            intent = await self.store.get_cancellation_intent(record.run_id)
+            if intent is not None:
+                _ = await self.store.finalize_cancellation(
+                    record.run_id,
+                    intent,
+                    session_snapshot=runner.terminal_session_snapshot,
+                    usage=runner.terminal_usage,
+                )
+            else:
+                finalization = await self._mark_cancelled_run_failed(
+                    record.run_id,
+                    session_snapshot=runner.terminal_session_snapshot,
+                    usage=runner.terminal_usage,
+                )
+                if finalization is not None and not finalization.applied and finalization.status == "running":
+                    intent = await self.store.get_cancellation_intent(record.run_id)
+                    if intent is not None:
+                        _ = await self.store.finalize_cancellation(
+                            record.run_id,
+                            intent,
+                            session_snapshot=runner.terminal_session_snapshot,
+                            usage=runner.terminal_usage,
+                        )
             raise
         except Exception:
             logger.exception("scheduled run failed", extra={"run_id": record.run_id})
         finally:
             await self._cancel_and_wait(observer_task)
             if not runner_task.done():
-                cancel_requested.set()
-                await self._cancel_and_wait(runner_task, reinject=True)
+                await cancel_runner_and_wait()
 
     def _create_runner(
         self,
@@ -234,25 +310,33 @@ class RunScheduler:
         _ = self.active_tasks.pop(run_id, None)
 
     @staticmethod
-    async def _cancel_and_wait(task: asyncio.Task[object], *, reinject: bool = False) -> None:
-        """Cancel and reap a child task, with bounded reinjection for runners."""
+    async def _cancel_and_wait(task: asyncio.Task[object]) -> None:
+        """Cancel a child task once and await its complete exit."""
         if not task.done():
             _ = task.cancel()
-            if reinject:
-                for _attempt in range(2):
-                    await asyncio.sleep(0)
-                    if task.done():
-                        break
-                    _ = task.cancel()
         _ = await asyncio.gather(task, return_exceptions=True)
 
-    async def _mark_cancelled_run_failed(self, run_id: str) -> None:
+    async def _mark_cancelled_run_failed(
+        self,
+        run_id: str,
+        *,
+        session_snapshot: CompositorSessionSnapshot | None = None,
+        usage: AgentRunUsage | None = None,
+    ) -> RunFinalizationResult | None:
         """Best-effort failure event/status for shutdown-cancelled runs."""
         message = "run cancelled during server shutdown"
         try:
-            _ = await emit_run_failed(self.store, run_id=run_id, error=message, reason="shutdown")
+            return await emit_run_failed(
+                self.store,
+                run_id=run_id,
+                error=message,
+                reason="shutdown",
+                session_snapshot=session_snapshot,
+                usage=usage,
+            )
         except Exception:
             logger.exception("failed to mark cancelled run failed", extra={"run_id": run_id})
+            return None
 
 
 __all__ = ["RunCancellationConflictError", "RunScheduler", "SchedulerStoppingError"]

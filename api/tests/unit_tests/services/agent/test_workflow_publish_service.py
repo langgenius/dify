@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.agent import Agent, WorkflowAgentBindingType, WorkflowAgentNodeBinding
-from models.agent_config_entities import WorkflowNodeJobConfig
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -140,7 +139,10 @@ def test_publish_binding_replacement_returns_only_previous_inline_agent(
     sqlite_session: Session,
 ) -> None:
     draft_workflow = _workflow()
-    draft_workflow.graph = '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2"}}],"edges":[]}'
+    draft_workflow.graph = (
+        '{"nodes":[{"id":"agent-node","data":{"type":"agent","version":"2",'
+        '"agent_node_kind":"dify_agent"}}],"edges":[]}'
+    )
     published_workflow = _workflow(workflow_id="published-new", version="published-new")
     app = App(
         id="app-1",
@@ -323,7 +325,6 @@ def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch: pytest.M
     target_snapshot = SimpleNamespace(id="target-snapshot")
     clone = Mock(return_value=(target_agent, target_snapshot))
     monkeypatch.setattr(AgentDslService, "clone_inline_binding_for_node", clone)
-    node_job = WorkflowNodeJobConfig(workflow_prompt="work")
 
     result = WorkflowAgentPublishService._clone_inline_graph_binding_for_node(
         session=session,
@@ -331,7 +332,6 @@ def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch: pytest.M
         node_id="target-node",
         source_agent_id="source-agent",
         source_snapshot_id="source-snapshot",
-        node_job=node_job,
         account_id="account-1",
     )
 
@@ -341,7 +341,6 @@ def test_clone_inline_graph_binding_for_node_clones_source(monkeypatch: pytest.M
         node_id="target-node",
         source_agent=source_agent,
         source_snapshot=source_snapshot,
-        node_job=node_job,
         account_id="account-1",
     )
 
@@ -358,7 +357,6 @@ def test_clone_inline_graph_binding_for_node_rejects_missing_source(scalar_resul
             node_id="target-node",
             source_agent_id="source-agent",
             source_snapshot_id="source-snapshot",
-            node_job=WorkflowNodeJobConfig(),
             account_id="account-1",
         )
 

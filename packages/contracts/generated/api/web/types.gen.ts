@@ -1543,7 +1543,9 @@ export type GetWebappAccessModeData = {
 
 export type GetWebappAccessModeErrors = {
   400: unknown
+  404: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappAccessModeResponses = {

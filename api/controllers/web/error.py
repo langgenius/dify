@@ -121,6 +121,18 @@ class WebAppAuthAccessDeniedError(BaseHTTPException):
     code = 401
 
 
+class WebAppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "App not found."
+    code = 404
+
+
+class WebAppAccessServiceUnavailableError(BaseHTTPException):
+    error_code = "web_app_access_unavailable"
+    description = "Web app access service is unavailable."
+    code = 503
+
+
 class InvokeRateLimitError(BaseHTTPException):
     """Raised when the Invoke returns rate limit error."""
 

@@ -1,6 +1,5 @@
 import './types/i18n'
 import './types/jsx'
-import './types/mdx'
 import './types/assets'
 
 declare global {

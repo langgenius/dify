@@ -28,6 +28,21 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
 
 
+@pytest.fixture(autouse=True)
+def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
+    calls: list[tuple[object, str, str]] = []
+
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+        calls.append((run_context, provider_name, model_name))
+        return 32_768
+
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        resolve,
+    )
+    return calls
+
+
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
     return DifyExecutionContextLayerConfig(
         tenant_id="tenant-1",
@@ -175,11 +190,12 @@ def _soul_with_model() -> AgentSoulConfig:
 
 
 class TestAgentAppRuntimeRequestBuilder:
-    def test_build_maps_soul_to_run_request(self):
+    def test_build_maps_soul_to_run_request(self, model_context_window_calls: list[tuple[object, str, str]]):
         builder = AgentAppRuntimeRequestBuilder(
             dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
-        result = builder.build(_ctx(_soul_with_model()))
+        context = _ctx(_soul_with_model())
+        result = builder.build(context)
 
         req = result.request
         names = [layer.name for layer in req.composition.layers]
@@ -197,6 +213,8 @@ class TestAgentAppRuntimeRequestBuilder:
         llm = next(layer for layer in req.composition.layers if layer.name == "llm")
         assert llm.config.plugin_id == "langgenius/openai"
         assert llm.config.model_provider == "openai"
+        assert llm.config.context_window_tokens == 32_768
+        assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-4o-mini")]
         # execution context carries conversation + agent_app invoke source.
         exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
         assert exec_ctx.config.conversation_id == "conv-1"
@@ -477,7 +495,6 @@ class TestAgentAppConfigLayer:
             "execution_context": "execution_context",
             "runtime": "runtime",
         }
-        assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
     def test_config_layer_for_build_draft_marks_config_writable(self):
         builder = AgentAppRuntimeRequestBuilder(

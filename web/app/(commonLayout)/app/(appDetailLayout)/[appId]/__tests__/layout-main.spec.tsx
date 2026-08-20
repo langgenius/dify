@@ -87,7 +87,6 @@ describe('AppDetailLayout', () => {
       ['/app/app-1/workflow', 'common.appMenus.promptEng', AppModeEnum.WORKFLOW],
       ['/app/app-1/configuration', 'common.appMenus.promptEng', AppModeEnum.CHAT],
       ['/app/app-1/access-point', 'common.appMenus.accessPoint', AppModeEnum.WORKFLOW],
-      ['/app/app-1/develop', 'common.appMenus.apiAccess', AppModeEnum.WORKFLOW],
       ['/app/app-1/deploy', 'common.appMenus.deploy', AppModeEnum.WORKFLOW],
       ['/app/app-1/logs', 'common.appMenus.logs', AppModeEnum.WORKFLOW],
       ['/app/app-1/annotations', 'common.appMenus.annotations', AppModeEnum.CHAT],
