@@ -650,6 +650,40 @@ def test_export_snippet_dsl_returns_yaml(monkeypatch: pytest.MonkeyPatch):
     assert "input_fields:" in result
 
 
+def test_export_snippet_dsl_uses_requested_published_workflow(monkeypatch: pytest.MonkeyPatch):
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
+    workflow = SimpleNamespace(
+        to_dict=Mock(return_value={"graph": {"nodes": []}}),
+        graph_dict={"nodes": []},
+    )
+    snippet = SimpleNamespace(
+        tenant_id="tenant-1",
+        name="Exported",
+        description=None,
+        type="node",
+        icon_info=None,
+        input_fields_list=[],
+    )
+    get_published_workflow_by_id = Mock(return_value=workflow)
+    get_draft_workflow = Mock()
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.SnippetService",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            get_draft_workflow=get_draft_workflow,
+            get_published_workflow_by_id=get_published_workflow_by_id,
+        ),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        Mock(return_value=[]),
+    )
+
+    service.export_snippet_dsl(snippet, workflow_id="workflow-1")
+
+    get_published_workflow_by_id.assert_called_once_with(snippet=snippet, workflow_id="workflow-1")
+    get_draft_workflow.assert_not_called()
+
+
 def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     workflow_dict = {

@@ -242,6 +242,12 @@ name = Tag application service is framework and persistence neutral
 type = forbidden
 source_modules =
     services.tag_application_service
+
+[importlinter:contract:recommended-app-query-service-boundary]
+name = Recommended app query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.recommended_app_query_service
 forbidden_modules =
     configs
     controllers
@@ -249,5 +255,8 @@ forbidden_modules =
     flask
     models
     repositories
+    services.recommend_app
+    services.recommended_app_query_compat
+    services.recommended_app_service
     sqlalchemy
     werkzeug
