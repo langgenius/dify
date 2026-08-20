@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -28,7 +29,7 @@ from models.dataset import (
     PipelineRecommendedPlugin,
 )
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowRun
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -69,6 +70,22 @@ class MockRepo:
     pass
 
 
+def test_get_published_workflow_by_id_locks_restore_source(mocker: MockerFixture) -> None:
+    session = mocker.Mock(spec=Session)
+    workflow = _make_workflow()
+    workflow.version = "v1"
+    session.scalar.return_value = workflow
+    service = RagPipelineService.__new__(RagPipelineService)
+    service._session = session
+
+    result = service.get_published_workflow_by_id(_make_pipeline(), workflow.id)
+
+    stmt = session.scalar.call_args.args[0]
+    sql = str(stmt.compile(dialect=postgresql.dialect()))
+    assert result is workflow
+    assert "FOR UPDATE" in sql
+
+
 def _make_account(account_id: str = "u1", tenant_id: str = "t1") -> Account:
     account = Account(name="Test User", email=f"{account_id}@example.com")
     account.id = account_id
@@ -107,6 +124,7 @@ def _make_workflow(
     app_id: str = "p1",
     graph: dict[str, object] | None = None,
     features: dict[str, object] | None = None,
+    rag_pipeline_variables: list[dict[str, object]] | None = None,
     created_by: str = "u1",
     version: str = Workflow.VERSION_DRAFT,
 ) -> Workflow:
@@ -126,7 +144,7 @@ def _make_workflow(
         updated_at=datetime(2024, 1, 1),
         environment_variables=[],
         conversation_variables=[],
-        rag_pipeline_variables=[],
+        rag_pipeline_variables=rag_pipeline_variables or [],
     )
     return workflow
 
@@ -156,6 +174,15 @@ def _make_document(*, document_id: str = "doc-1", dataset_id: str = "d1", tenant
         indexing_status=IndexingStatus.WAITING,
         doc_form=IndexStructureType.PARAGRAPH_INDEX,
     )
+
+
+def _rag_variable(variable: str, *, belong_to_node_id: str = "shared") -> dict[str, object]:
+    return {
+        "variable": variable,
+        "belong_to_node_id": belong_to_node_id,
+        "type": "text-input",
+        "label": variable.title(),
+    }
 
 
 def _persist(session: Session, *entities: object) -> None:
@@ -629,25 +656,24 @@ def test_run_datasource_workflow_node_website_crawl(
     from core.datasource.entities.datasource_entities import DatasourceProviderType
 
     # 1. Setup workflow and node
-    pipeline = mocker.Mock()
-    pipeline.id = "p1"
-    pipeline.tenant_id = "t1"
+    pipeline = _make_pipeline()
 
-    workflow = mocker.Mock()
-    workflow.graph_dict = {
-        "nodes": [
-            {
-                "id": "node-1",
-                "data": {
-                    "type": "datasource",
-                    "plugin_id": "p-1",
-                    "provider_name": "firecrawl",
-                    "datasource_name": "website_crawl",
-                    "datasource_parameters": {"url": {"value": "{{#start.url#}}"}},
-                },
-            }
-        ]
-    }
+    workflow = _make_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "type": "datasource",
+                        "plugin_id": "p-1",
+                        "provider_name": "firecrawl",
+                        "datasource_name": "website_crawl",
+                        "datasource_parameters": {"url": {"value": "{{#start.url#}}"}},
+                    },
+                }
+            ]
+        }
+    )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     # 2. Mock DatasourceManager and Runtime
@@ -682,7 +708,7 @@ def test_run_datasource_workflow_node_website_crawl(
         pipeline=pipeline,
         node_id="node-1",
         user_inputs={"url": "https://example.com"},
-        account=mocker.Mock(id="u1"),
+        account=_make_account(),
         datasource_type="website_crawl",
         is_published=True,
     )
@@ -707,29 +733,28 @@ def test_run_datasource_node_preview_online_document(
     from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
 
     # 1. Setup workflow and node
-    pipeline = mocker.Mock()
-    pipeline.id = "p1"
-    pipeline.tenant_id = "t1"
+    pipeline = _make_pipeline()
 
-    workflow = mocker.Mock()
-    workflow.graph_dict = {
-        "nodes": [
-            {
-                "id": "node-1",
-                "data": {
-                    "type": "datasource",
-                    "plugin_id": "p-1",
-                    "provider_name": "notion",
-                    "datasource_name": "online_document",
-                    "datasource_parameters": {
-                        "workspace_id": {"value": "ws-1"},
-                        "page_id": {"value": "pg-1"},
-                        "type": {"value": "page"},
+    workflow = _make_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "type": "datasource",
+                        "plugin_id": "p-1",
+                        "provider_name": "notion",
+                        "datasource_name": "online_document",
+                        "datasource_parameters": {
+                            "workspace_id": {"value": "ws-1"},
+                            "page_id": {"value": "pg-1"},
+                            "type": {"value": "page"},
+                        },
                     },
-                },
-            }
-        ]
-    }
+                }
+            ]
+        }
+    )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     # 2. Mock Runtime and results
@@ -764,7 +789,7 @@ def test_run_datasource_node_preview_online_document(
         pipeline=pipeline,
         node_id="node-1",
         user_inputs={},
-        account=mocker.Mock(id="u1"),
+        account=_make_account(),
         datasource_type="online_document",
         is_published=True,
     )
@@ -825,12 +850,11 @@ def test_get_first_step_parameters_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
     # 1. Setup mock workflow
-    pipeline = mocker.Mock()
-    workflow = mocker.Mock()
-    workflow.graph_dict = {
-        "nodes": [{"id": "node-1", "data": {"datasource_parameters": {"url": {"value": "{{#start.url#}}"}}}}]
-    }
-    workflow.rag_pipeline_variables = [{"variable": "url", "label": "URL", "type": "string"}]
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={"nodes": [{"id": "node-1", "data": {"datasource_parameters": {"url": {"value": "{{#start.url#}}"}}}}]},
+        rag_pipeline_variables=[_rag_variable("url")],
+    )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     # 2. Run test
@@ -845,17 +869,18 @@ def test_get_second_step_parameters_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
     # 1. Setup mock workflow
-    pipeline = mocker.Mock()
-    workflow = mocker.Mock()
-    workflow.graph_dict = {
-        "nodes": [
-            {
-                "id": "node-1",
-                "data": {},  # Second step logic is slightly different in how it gets variables
-            }
-        ]
-    }
-    workflow.rag_pipeline_variables = [{"variable": "var1", "label": "Var 1"}]
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {},  # Second step logic is slightly different in how it gets variables
+                }
+            ]
+        },
+        rag_pipeline_variables=[_rag_variable("var1", belong_to_node_id="other-node")],
+    )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     # 2. Run test
@@ -952,8 +977,8 @@ def test_get_datasource_plugins_success(
 def test_retry_error_document_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    dataset = mocker.Mock()
-    document = SimpleNamespace(id="doc-1")
+    dataset = _make_dataset()
+    document = _make_document()
 
     log = DocumentPipelineExecutionLog(
         pipeline_id="p-1",
@@ -1023,9 +1048,6 @@ def test_set_datasource_variables_success(
     mock_db_exec.node_id = "node-1"
     mock_db_exec.node_type = "datasource"
     mock_repo_instance._to_db_model.return_value = mock_db_exec
-
-    # Mock Session and begin
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=mocker.MagicMock())
 
     # Mock DraftVariableSaver
     mock_saver_instance = mocker.Mock()
@@ -1158,9 +1180,10 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
             "description": "Shared summarization model",
         }
     )
-    draft_workflow = mocker.Mock(id="wf-1", environment_variables=[llm_environment_variable])
-    draft_workflow.get_node_config_by_id.return_value = {"id": "node-1"}
-    draft_workflow.get_enclosing_node_type_and_id.return_value = None
+    draft_workflow = _make_workflow(workflow_id="wf-1")
+    draft_workflow.environment_variables = [llm_environment_variable]
+    mocker.patch.object(draft_workflow, "get_node_config_by_id", return_value={"id": "node-1"})
+    mocker.patch.object(draft_workflow, "get_enclosing_node_type_and_id", return_value=None)
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_workflow)
 
     execution = SimpleNamespace(id="exec-1", node_id="node-1", node_type="llm", process_data={}, outputs={})
@@ -1178,10 +1201,6 @@ def test_run_draft_workflow_node_seeds_llm_environment_variable(
         get_execution_by_id=mocker.Mock(return_value="db")
     )
     mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=mocker.Mock())
-    session_ctx = mocker.MagicMock()
-    session_ctx.begin.return_value = mocker.MagicMock()
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
-
     rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {}, account)
 
     getter = handle_node_run_result.call_args.kwargs["getter"]
@@ -1201,9 +1220,9 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
 ) -> None:
     pipeline = _make_pipeline()
     account = _make_account()
-    draft_workflow = mocker.Mock(id="wf-1")
-    draft_workflow.get_node_config_by_id.return_value = {"id": "node-1"}
-    draft_workflow.get_enclosing_node_type_and_id.return_value = ("loop", "enclosing-node")
+    draft_workflow = _make_workflow(workflow_id="wf-1")
+    mocker.patch.object(draft_workflow, "get_node_config_by_id", return_value={"id": "node-1"})
+    mocker.patch.object(draft_workflow, "get_enclosing_node_type_and_id", return_value=("loop", "enclosing-node"))
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=draft_workflow)
 
     execution = SimpleNamespace(id="exec-1", node_id="node-1", node_type="llm", process_data={}, outputs={})
@@ -1220,11 +1239,6 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
     saver = mocker.Mock()
     mocker.patch("services.rag_pipeline.rag_pipeline.DraftVariableSaver", return_value=saver)
 
-    session_ctx = mocker.MagicMock()
-    begin_ctx = mocker.MagicMock()
-    session_ctx.begin.return_value = begin_ctx
-    mocker.patch("services.rag_pipeline.rag_pipeline.Session", return_value=session_ctx)
-
     result = rag_pipeline_service.service.run_draft_workflow_node(pipeline, "node-1", {"q": "x"}, account)
 
     assert result == "db"
@@ -1236,7 +1250,7 @@ def test_run_draft_workflow_node_saves_execution_and_variables(
 def test_run_datasource_workflow_node_returns_error_when_workflow_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
+    pipeline = _make_pipeline()
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=None)
 
     events = list(
@@ -1244,7 +1258,7 @@ def test_run_datasource_workflow_node_returns_error_when_workflow_missing(
             pipeline=pipeline,
             node_id="node-1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_document",
             is_published=False,
         )
@@ -1258,22 +1272,23 @@ def test_run_datasource_workflow_node_online_document_success(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceProviderType
 
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = mocker.Mock()
-    workflow.graph_dict = {
-        "nodes": [
-            {
-                "id": "node-1",
-                "data": {
-                    "type": "datasource",
-                    "plugin_id": "pid",
-                    "provider_name": "notion",
-                    "datasource_name": "online_document",
-                    "datasource_parameters": {"workspace_id": {"value": None}, "page_id": {"value": "fixed"}},
-                },
-            }
-        ]
-    }
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "type": "datasource",
+                        "plugin_id": "pid",
+                        "provider_name": "notion",
+                        "datasource_name": "online_document",
+                        "datasource_parameters": {"workspace_id": {"value": None}, "page_id": {"value": "fixed"}},
+                    },
+                }
+            ]
+        }
+    )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     runtime = mocker.Mock()
@@ -1291,7 +1306,7 @@ def test_run_datasource_workflow_node_online_document_success(
             pipeline=pipeline,
             node_id="node-1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
             is_published=True,
         )
@@ -1306,22 +1321,26 @@ def test_run_datasource_workflow_node_online_drive_success(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceProviderType
 
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = mocker.Mock()
-    workflow.graph_dict = {
-        "nodes": [
-            {
-                "id": "node-1",
-                "data": {
-                    "type": "datasource",
-                    "plugin_id": "pid",
-                    "provider_name": "drive",
-                    "datasource_name": "online_drive",
-                    "datasource_parameters": {"bucket": {"value": "bucket-1"}, "next_page_parameters": {"value": []}},
-                },
-            }
-        ]
-    }
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "data": {
+                        "type": "datasource",
+                        "plugin_id": "pid",
+                        "provider_name": "drive",
+                        "datasource_name": "online_drive",
+                        "datasource_parameters": {
+                            "bucket": {"value": "bucket-1"},
+                            "next_page_parameters": {"value": []},
+                        },
+                    },
+                }
+            ]
+        }
+    )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     runtime = mocker.Mock()
@@ -1339,7 +1358,7 @@ def test_run_datasource_workflow_node_online_drive_success(
             pipeline=pipeline,
             node_id="node-1",
             user_inputs={"bucket": "bucket-1"},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type=DatasourceProviderType.ONLINE_DRIVE,
             is_published=True,
         )
@@ -1398,23 +1417,23 @@ def test_handle_node_run_result_default_value_strategy(
 def test_get_first_step_parameters_raises_when_datasource_node_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    workflow = SimpleNamespace(graph_dict={"nodes": []}, rag_pipeline_variables=[{"variable": "url"}])
+    workflow = _make_workflow(graph={"nodes": []}, rag_pipeline_variables=[_rag_variable("url")])
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     with pytest.raises(ValueError, match="Datasource node data not found"):
-        rag_pipeline_service.service.get_first_step_parameters(SimpleNamespace(), "missing-node")
+        rag_pipeline_service.service.get_first_step_parameters(_make_pipeline(), "missing-node")
 
 
 def test_get_second_step_parameters_handles_string_and_list_variable_references(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    workflow = SimpleNamespace(
+    workflow = _make_workflow(
         rag_pipeline_variables=[
-            {"variable": "url", "belong_to_node_id": "node-1"},
-            {"variable": "bucket", "belong_to_node_id": "shared"},
-            {"variable": "keep", "belong_to_node_id": "node-1"},
+            _rag_variable("url", belong_to_node_id="node-1"),
+            _rag_variable("bucket"),
+            _rag_variable("keep", belong_to_node_id="node-1"),
         ],
-        graph_dict={
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -1430,9 +1449,10 @@ def test_get_second_step_parameters_handles_string_and_list_variable_references(
     )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
-    result = rag_pipeline_service.service.get_second_step_parameters(SimpleNamespace(), "node-1")
+    result = rag_pipeline_service.service.get_second_step_parameters(_make_pipeline(), "node-1")
 
-    assert result == [{"variable": "keep", "belong_to_node_id": "node-1"}]
+    assert [item["variable"] for item in result] == ["keep"]
+    assert result[0]["belong_to_node_id"] == "node-1"
 
 
 def test_get_rag_pipeline_workflow_run_node_executions_empty_when_run_missing(
@@ -1453,7 +1473,7 @@ def test_get_rag_pipeline_workflow_run_node_executions_assembles_configured_repo
 ) -> None:
     pipeline = _make_pipeline()
     mocker.patch.object(
-        rag_pipeline_service.service, "get_rag_pipeline_workflow_run", return_value=SimpleNamespace(id="run-1")
+        rag_pipeline_service.service, "get_rag_pipeline_workflow_run", return_value=WorkflowRun(id="run-1")
     )
     node_repo = rag_pipeline_service.service._node_execution_service_repo
     expected_executions = ["n1", "n2"]
@@ -1526,12 +1546,12 @@ def test_get_node_last_run_delegates_to_repository(
 def test_set_datasource_variables_raises_when_node_id_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = mocker.Mock()
+    pipeline = _make_pipeline()
+    workflow = _make_workflow()
     mocker.patch.object(rag_pipeline_service.service, "get_draft_workflow", return_value=workflow)
 
     with pytest.raises(ValueError, match="Node id is required"):
-        rag_pipeline_service.service.set_datasource_variables(pipeline, {"start_node_id": ""}, SimpleNamespace(id="u1"))
+        rag_pipeline_service.service.set_datasource_variables(pipeline, {"start_node_id": ""}, _make_account())
 
 
 def test_get_default_block_configs_skips_empty_configs(
@@ -1562,8 +1582,8 @@ def test_get_default_block_configs_skips_empty_configs(
 def test_run_datasource_workflow_node_returns_error_when_node_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = SimpleNamespace(graph_dict={"nodes": []})
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(graph={"nodes": []})
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
     events = list(
@@ -1571,7 +1591,7 @@ def test_run_datasource_workflow_node_returns_error_when_node_missing(
             pipeline=pipeline,
             node_id="missing-node",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_document",
             is_published=True,
         )
@@ -1584,9 +1604,9 @@ def test_run_datasource_workflow_node_returns_error_when_node_missing(
 def test_run_datasource_workflow_node_online_document_exception(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = SimpleNamespace(
-        graph_dict={
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -1624,7 +1644,7 @@ def test_run_datasource_workflow_node_online_document_exception(
             pipeline=pipeline,
             node_id="node-1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_document",
             is_published=True,
         )
@@ -1640,9 +1660,9 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceMessage
 
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = SimpleNamespace(
-        graph_dict={
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -1679,7 +1699,7 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
             pipeline=pipeline,
             node_id="node-1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_document",
             is_published=True,
         )
@@ -1688,13 +1708,13 @@ def test_run_datasource_node_preview_raises_for_stream_non_string(
 def test_get_first_step_parameters_returns_empty_when_no_rag_variables(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={"nodes": [{"id": "node-1", "data": {"datasource_parameters": {"url": {"value": "literal"}}}}]},
+    workflow = _make_workflow(
+        graph={"nodes": [{"id": "node-1", "data": {"datasource_parameters": {"url": {"value": "literal"}}}}]},
         rag_pipeline_variables=[],
     )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
-    result = rag_pipeline_service.service.get_first_step_parameters(SimpleNamespace(), "node-1")
+    result = rag_pipeline_service.service.get_first_step_parameters(_make_pipeline(), "node-1")
 
     assert result == []
 
@@ -1702,8 +1722,8 @@ def test_get_first_step_parameters_returns_empty_when_no_rag_variables(
 def test_get_second_step_parameters_filters_first_step_variables(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -1717,26 +1737,25 @@ def test_get_second_step_parameters_filters_first_step_variables(
             ]
         },
         rag_pipeline_variables=[
-            {"variable": "workspace", "belong_to_node_id": "shared"},
-            {"variable": "bucket", "belong_to_node_id": "shared"},
-            {"variable": "keep", "belong_to_node_id": "shared"},
-            {"variable": "other-node", "belong_to_node_id": "node-x"},
+            _rag_variable("workspace"),
+            _rag_variable("bucket"),
+            _rag_variable("keep"),
+            _rag_variable("other-node", belong_to_node_id="node-x"),
         ],
     )
     mocker.patch.object(rag_pipeline_service.service, "get_published_workflow", return_value=workflow)
 
-    result = rag_pipeline_service.service.get_second_step_parameters(SimpleNamespace(), "node-1")
+    result = rag_pipeline_service.service.get_second_step_parameters(_make_pipeline(), "node-1")
 
-    assert result == [{"variable": "keep", "belong_to_node_id": "shared"}]
+    assert [item["variable"] for item in result] == ["keep"]
+    assert result[0]["belong_to_node_id"] == "shared"
 
 
 def test_retry_error_document_raises_when_execution_log_not_found(
     rag_pipeline_service: RagPipelineServiceTestContext,
 ) -> None:
     with pytest.raises(ValueError, match="Document pipeline execution log not found"):
-        rag_pipeline_service.service.retry_error_document(
-            SimpleNamespace(), SimpleNamespace(id="doc-1"), SimpleNamespace(id="u1")
-        )
+        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
 
 
 def test_get_datasource_plugins_raises_when_workflow_not_found(
@@ -1819,9 +1838,9 @@ def test_handle_node_run_result_does_not_write_when_pipeline_dataset_is_missing(
 def test_run_datasource_node_preview_raises_for_unsupported_provider(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    pipeline = SimpleNamespace(id="p1", tenant_id="t1")
-    workflow = SimpleNamespace(
-        graph_dict={
+    pipeline = _make_pipeline()
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -1848,7 +1867,7 @@ def test_run_datasource_node_preview_raises_for_unsupported_provider(
             pipeline=pipeline,
             node_id="node-1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="website_crawl",
             is_published=True,
         )
@@ -1882,10 +1901,7 @@ def test_get_pipeline_raises_when_pipeline_missing(
         rag_pipeline_service.service.get_pipeline("t1", "d1")
 
 
-def test_init_uses_default_sessionmaker_when_none(
-    mocker: MockerFixture, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.sessionmaker", return_value=sqlite_session_factory)
+def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture, sqlite_session: Session) -> None:
     mocker.patch("services.rag_pipeline.rag_pipeline.db", SimpleNamespace(engine=sqlite_session.get_bind()))
     create_exec_repo = mocker.patch(
         "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository"
@@ -1896,8 +1912,11 @@ def test_init_uses_default_sessionmaker_when_none(
 
     RagPipelineService(session=sqlite_session, session_maker=None)
 
-    create_exec_repo.assert_called_once_with(sqlite_session_factory)
-    create_run_repo.assert_called_once_with(sqlite_session_factory)
+    exec_session_maker = create_exec_repo.call_args.args[0]
+    run_session_maker = create_run_repo.call_args.args[0]
+    assert exec_session_maker is run_session_maker
+    assert exec_session_maker.kw["bind"] is sqlite_session.get_bind()
+    assert exec_session_maker.kw["expire_on_commit"] is False
 
 
 def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture, sqlite_session: Session) -> None:
@@ -1990,8 +2009,8 @@ def test_run_datasource_workflow_node_handles_variable_parameter_types(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceProviderType
 
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -2024,10 +2043,10 @@ def test_run_datasource_workflow_node_handles_variable_parameter_types(
 
     events = list(
         rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            pipeline=_make_pipeline(),
             node_id="node-1",
             user_inputs={"k": "mapped"},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="website_crawl",
             is_published=True,
         )
@@ -2042,8 +2061,8 @@ def test_run_datasource_workflow_node_online_drive_branch(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceProviderType
 
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "node-1",
@@ -2072,10 +2091,10 @@ def test_run_datasource_workflow_node_online_drive_branch(
 
     events = list(
         rag_pipeline_service.service.run_datasource_workflow_node(
-            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            pipeline=_make_pipeline(),
             node_id="node-1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_drive",
             is_published=True,
         )
@@ -2090,8 +2109,8 @@ def test_run_datasource_node_preview_not_published_uses_draft(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceMessage
 
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "n1",
@@ -2121,10 +2140,10 @@ def test_run_datasource_node_preview_not_published_uses_draft(
     )
 
     result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+        pipeline=_make_pipeline(),
         node_id="n1",
         user_inputs={},
-        account=SimpleNamespace(id="u1"),
+        account=_make_account(),
         datasource_type="online_document",
         is_published=False,
     )
@@ -2244,9 +2263,7 @@ def test_retry_error_document_raises_when_pipeline_missing(
     _persist(rag_pipeline_service.session, exec_log)
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        rag_pipeline_service.service.retry_error_document(
-            SimpleNamespace(), SimpleNamespace(id="doc-1"), SimpleNamespace(id="u1")
-        )
+        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
 
 
 def test_retry_error_document_raises_when_workflow_missing(
@@ -2265,9 +2282,7 @@ def test_retry_error_document_raises_when_workflow_missing(
     _persist(rag_pipeline_service.session, exec_log, pipeline)
 
     with pytest.raises(ValueError, match="Workflow not found"):
-        rag_pipeline_service.service.retry_error_document(
-            SimpleNamespace(), SimpleNamespace(id="doc-1"), SimpleNamespace(id="u1")
-        )
+        rag_pipeline_service.service.retry_error_document(_make_dataset(), _make_document(), _make_account())
 
 
 def test_get_datasource_plugins_returns_empty_for_non_datasource_nodes(
@@ -2302,10 +2317,10 @@ def test_run_datasource_node_preview_raises_when_workflow_missing(
 
     with pytest.raises(RuntimeError, match="Workflow not initialized"):
         rag_pipeline_service.service.run_datasource_node_preview(
-            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            pipeline=_make_pipeline(),
             node_id="n1",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_document",
             is_published=True,
         )
@@ -2315,15 +2330,15 @@ def test_run_datasource_node_preview_raises_when_node_missing(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
     mocker.patch.object(
-        rag_pipeline_service.service, "get_published_workflow", return_value=SimpleNamespace(graph_dict={"nodes": []})
+        rag_pipeline_service.service, "get_published_workflow", return_value=_make_workflow(graph={"nodes": []})
     )
 
     with pytest.raises(RuntimeError, match="Datasource node data not found"):
         rag_pipeline_service.service.run_datasource_node_preview(
-            pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+            pipeline=_make_pipeline(),
             node_id="missing",
             user_inputs={},
-            account=SimpleNamespace(id="u1"),
+            account=_make_account(),
             datasource_type="online_document",
             is_published=True,
         )
@@ -2334,8 +2349,8 @@ def test_run_datasource_node_preview_keeps_existing_user_input(
 ) -> None:
     from core.datasource.entities.datasource_entities import DatasourceMessage
 
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "n1",
@@ -2367,10 +2382,10 @@ def test_run_datasource_node_preview_keeps_existing_user_input(
     )
 
     result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+        pipeline=_make_pipeline(),
         node_id="n1",
         user_inputs={"workspace_id": "existing"},
-        account=SimpleNamespace(id="u1"),
+        account=_make_account(),
         datasource_type="online_document",
         is_published=True,
     )
@@ -2380,8 +2395,8 @@ def test_run_datasource_node_preview_keeps_existing_user_input(
 def test_run_datasource_node_preview_ignores_non_variable_messages(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
-    workflow = SimpleNamespace(
-        graph_dict={
+    workflow = _make_workflow(
+        graph={
             "nodes": [
                 {
                     "id": "n1",
@@ -2408,10 +2423,10 @@ def test_run_datasource_node_preview_ignores_non_variable_messages(
     )
 
     result = rag_pipeline_service.service.run_datasource_node_preview(
-        pipeline=SimpleNamespace(id="p1", tenant_id="t1"),
+        pipeline=_make_pipeline(),
         node_id="n1",
         user_inputs={},
-        account=SimpleNamespace(id="u1"),
+        account=_make_account(),
         datasource_type="online_document",
         is_published=True,
     )
@@ -2425,9 +2440,9 @@ def test_set_datasource_variables_raises_when_workflow_missing(
 
     with pytest.raises(ValueError, match="Workflow not initialized"):
         rag_pipeline_service.service.set_datasource_variables(
-            SimpleNamespace(id="p1", tenant_id="t1"),
+            _make_pipeline(),
             {"start_node_id": "n1"},
-            SimpleNamespace(id="u1"),
+            _make_account(),
         )
 
 

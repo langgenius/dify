@@ -124,6 +124,13 @@ class TestMemberListApi:
 
 class TestMemberInviteEmailApi:
     @pytest.fixture(autouse=True)
+    def _invite_config(self, config_overrides) -> None:
+        config_overrides(
+            CONSOLE_WEB_URL="http://x",
+            DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        )
+
+    @pytest.fixture(autouse=True)
     def _mock_member_invite_lock(self):
         with patch("controllers.console.workspace.members.redis_client.lock", return_value=nullcontext()):
             yield
@@ -151,8 +158,6 @@ class TestMemberInviteEmailApi:
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -163,7 +168,8 @@ class TestMemberInviteEmailApi:
         mock_invite.assert_called_once()
         assert mock_invite.call_args.kwargs["email"] == "a@test.com"
 
-    def test_invite_limit_exceeded(self, app: Flask):
+    def test_invite_limit_exceeded(self, app: Flask, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -182,12 +188,12 @@ class TestMemberInviteEmailApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api, user)
 
-    def test_invite_cloud_member_limit_exceeded(self, app: Flask):
+    def test_invite_cloud_member_limit_exceeded(self, app: Flask, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -208,7 +214,6 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch("controllers.console.workspace.members._count_current_members", return_value=9),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
         ):
             with pytest.raises(WorkspaceMembersLimitExceeded):
                 method(api, user)
@@ -236,8 +241,6 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=AccountAlreadyInTenantError(),
             ),
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -302,14 +305,13 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=Exception("boom"),
             ),
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, _ = method(api, user)
 
         assert result["invitation_results"][0]["status"] == "failed"
 
-    def test_invite_seats_limit_exceeded(self, app: Flask):
+    def test_invite_seats_limit_exceeded(self, app: Flask, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -334,7 +336,6 @@ class TestMemberInviteEmailApi:
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             with pytest.raises(SeatsLimitExceeded):
                 method(api, user)
@@ -343,7 +344,8 @@ class TestMemberInviteEmailApi:
         license_info.seats.is_available.assert_called_once_with(2)
         mock_invite.assert_not_called()
 
-    def test_invite_existing_accounts_do_not_consume_seats(self, app: Flask):
+    def test_invite_existing_accounts_do_not_consume_seats(self, app: Flask, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -370,8 +372,6 @@ class TestMemberInviteEmailApi:
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 
@@ -381,7 +381,8 @@ class TestMemberInviteEmailApi:
         license_info.seats.is_available.assert_not_called()
         assert mock_invite.call_count == 2
 
-    def test_invite_mixed_accounts_with_available_seats(self, app: Flask):
+    def test_invite_mixed_accounts_with_available_seats(self, app: Flask, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -408,8 +409,6 @@ class TestMemberInviteEmailApi:
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 
@@ -444,8 +443,6 @@ class TestMemberInviteEmailApi:
                 return_value=license_info,
             ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             result, status = method(api, user)
 
@@ -454,7 +451,8 @@ class TestMemberInviteEmailApi:
         mock_get_license.assert_not_called()
         license_info.seats.is_available.assert_not_called()
 
-    def test_invite_seats_error_is_reported_as_failed_result(self, app: Flask):
+    def test_invite_seats_error_is_reported_as_failed_result(self, app: Flask, config_overrides):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
@@ -482,8 +480,6 @@ class TestMemberInviteEmailApi:
                 "controllers.console.workspace.members.RegisterService.invite_new_member",
                 side_effect=SeatsLimitExceededError("licensed seats limit exceeded"),
             ),
-            patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
-            patch("controllers.console.workspace.members.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE),
         ):
             result, status = method(api, user)
 

@@ -1,10 +1,12 @@
 import inspect
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from flask import Flask
+from jsonschema import Draft202012Validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -13,7 +15,7 @@ from controllers.console.auth.error import (
     EmailAlreadyInUseError,
     EmailCodeError,
 )
-from controllers.console.error import AccountInFreezeError
+from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountAvatarApi,
     AccountAvatarQuery,
@@ -26,6 +28,7 @@ from controllers.console.workspace.account import (
     AccountNameApi,
     AccountPasswordApi,
     AccountProfileApi,
+    AccountProfilePatchPayload,
     AccountTimezoneApi,
     ChangeEmailCheckApi,
     ChangeEmailResetApi,
@@ -38,10 +41,12 @@ from controllers.console.workspace.error import (
 )
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
+from machinery.context import RequestContext
 from models import Account, AccountIntegrate, InvitationCode, Tenant, TenantAccountJoin
 from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
 from models.enums import CreatorUserRole
 from models.model import UploadFile
+from services.entities.account_entities import AccountProfileChanges
 from services.errors.account import CurrentPasswordIncorrectError as ServicePwdError
 
 
@@ -165,28 +170,146 @@ class TestAccountProfileApi:
 
 class TestAccountUpdateApis:
     @pytest.mark.parametrize(
-        ("api_cls", "payload"),
+        ("api_cls", "payload", "expected_changes"),
         [
-            (AccountNameApi, {"name": "test"}),
-            (AccountAvatarApi, {"avatar": "img.png"}),
-            (AccountInterfaceLanguageApi, {"interface_language": "en-US"}),
-            (AccountInterfaceThemeApi, {"interface_theme": "dark"}),
-            (AccountTimezoneApi, {"timezone": "UTC"}),
+            (AccountNameApi, {"name": "test"}, AccountProfileChanges(name="test")),
+            (AccountAvatarApi, {"avatar": "img.png"}, AccountProfileChanges(avatar="img.png")),
+            (
+                AccountInterfaceLanguageApi,
+                {"interface_language": "en-US"},
+                AccountProfileChanges(interface_language="en-US"),
+            ),
+            (
+                AccountInterfaceThemeApi,
+                {"interface_theme": "dark"},
+                AccountProfileChanges(interface_theme="dark"),
+            ),
+            (AccountTimezoneApi, {"timezone": "UTC"}, AccountProfileChanges(timezone="UTC")),
         ],
     )
-    def test_update_success(self, app: Flask, api_cls, payload):
+    def test_deprecated_update_routes_delegate_to_profile_service(
+        self, app: Flask, api_cls, payload, expected_changes: AccountProfileChanges
+    ):
         api = api_cls()
         method = inspect.unwrap(api.post)
-
         user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id=user.id,
+            active_workspace_id=None,
+        )
+        profile = MagicMock()
+        profile.update.return_value = user
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.account.AccountService.update_account", return_value=user),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
+            ),
         ):
-            result = method(api, user)
+            result = method(api, request_context)
 
         assert result["id"] == user.id
+        profile.update.assert_called_once_with(request_context, expected_changes)
+
+    def test_deprecated_update_routes_are_marked_deprecated(self):
+        for api_cls in (
+            AccountNameApi,
+            AccountAvatarApi,
+            AccountInterfaceLanguageApi,
+            AccountInterfaceThemeApi,
+            AccountTimezoneApi,
+        ):
+            assert api_cls.post.__apidoc__["deprecated"] is True
+
+
+class TestAccountProfilePatchApi:
+    def test_json_schema_matches_runtime_patch_rules(self):
+        schema = AccountProfilePatchPayload.model_json_schema()
+        validator = Draft202012Validator(schema)
+
+        assert schema["type"] == "object"
+        assert schema["additionalProperties"] is False
+        assert "required" not in schema
+        assert set(schema["properties"]) == {
+            "name",
+            "avatar",
+            "interface_language",
+            "interface_theme",
+            "timezone",
+        }
+        validator.validate({})
+        validator.validate({"name": "Jane"})
+        validator.validate({"name": "Jane", "interface_language": "en-US", "timezone": "UTC"})
+        for payload in (
+            {"name": None},
+            {"unexpected": "value"},
+            {"name": "Jane", "unexpected": "value"},
+        ):
+            assert list(validator.iter_errors(payload))
+
+    def test_updates_multiple_profile_fields(self, app: Flask):
+        api = AccountProfileApi()
+        method = inspect.unwrap(api.patch)
+        user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id=user.id,
+            active_workspace_id="workspace-1",
+        )
+        profile = MagicMock()
+        profile.update.return_value = user
+        payload = {"name": "Jane", "interface_language": "en-US", "timezone": "UTC"}
+        args = AccountProfilePatchPayload.model_validate(payload)
+
+        with (
+            app.test_request_context("/account/profile", method="PATCH", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
+            ),
+        ):
+            result = method(api, args, request_context)
+
+        assert result["id"] == user.id
+        profile.update.assert_called_once_with(
+            request_context,
+            AccountProfileChanges(name="Jane", interface_language="en-US", timezone="UTC"),
+        )
+
+    def test_empty_patch_is_a_noop(self, app: Flask):
+        api = AccountProfileApi()
+        method = inspect.unwrap(api.patch)
+        user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id="trace-1",
+            account_id=user.id,
+            active_workspace_id="workspace-1",
+        )
+        profile = MagicMock()
+        profile.update.return_value = user
+        args = AccountProfilePatchPayload.model_validate({})
+
+        with (
+            app.test_request_context("/account/profile", method="PATCH", json={}),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(profile=profile)),
+            ),
+        ):
+            result = method(api, args, request_context)
+
+        assert result["id"] == user.id
+        profile.update.assert_called_once_with(request_context, AccountProfileChanges())
+
+    @pytest.mark.parametrize("payload", [{"name": None}, {"unexpected": "value"}])
+    def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]):
+        with pytest.raises(ValueError):
+            AccountProfilePatchPayload.model_validate(payload)
 
 
 class TestAccountAvatarApiGet:
@@ -480,7 +603,7 @@ class TestChangeEmailApis:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=False),
+            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
             patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=False),
         ):
             with pytest.raises(EmailAlreadyInUseError):
@@ -502,7 +625,7 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=False),
+            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
             patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=True),
         ):
             result = method(api)
@@ -523,7 +646,32 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=True),
+            patch(
+                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+                return_value="freeze",
+            ),
         ):
             with pytest.raises(AccountInFreezeError):
+                method(api)
+
+    def test_email_domain_is_suspended(self, app: Flask):
+        api = CheckEmailUnique()
+        method = inspect.unwrap(api.post)
+
+        payload = {"email": "user@suspended.example"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(
+                type(console_ns),
+                "payload",
+                new_callable=PropertyMock,
+                return_value=payload,
+            ),
+            patch(
+                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+                return_value="email_domain_suspended",
+            ),
+        ):
+            with pytest.raises(EmailDomainSuspendedError):
                 method(api)

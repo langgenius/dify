@@ -18,16 +18,11 @@ import {
   agentBuilderPreseededResources,
 } from './agent-builder-resources'
 import {
-  getAgentDriveSkills,
-  uploadAgentConfigFileToDraft,
-  uploadAgentConfigSkillToDraft,
-  uploadAgentDriveSkill,
-} from './agent-drive'
-import {
   createAgentSoulConfigWithKnowledgeDataset,
   createAgentSoulConfigWithModel,
   normalAgentSoulConfig,
 } from './agent-soul'
+import { uploadAgentConfigFileToDraft, uploadAgentConfigSkillToDraft } from './config-assets'
 import { isRecord, matchesNameOrLabel } from './fixtures/common'
 import { splitToolDisplayName } from './fixtures/tools'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials'
@@ -627,17 +622,6 @@ const saveSeededAgentComposer = async (
   }
 }
 
-const ensureDriveSkill = async (client: SeedContext['consoleClient'], agentId: string) => {
-  const skills = await getAgentDriveSkills(client, agentId)
-  if (skills.some((skill) => skill.name === agentBuilderPreseededResources.summarySkill)) return
-
-  await uploadAgentDriveSkill(client, {
-    agentId,
-    fileName: agentBuilderTestMaterials.summarySkill,
-    filePath: getAgentBuilderTestMaterialPath('summarySkill'),
-  })
-}
-
 const seedFullConfigAgent = async (context: SeedContext) => {
   const title = agentBuilderPreseededResources.fullConfigAgent
   const model = getStableModelResource(context)
@@ -669,7 +653,6 @@ const seedFullConfigAgent = async (context: SeedContext) => {
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })
-  await ensureDriveSkill(context.consoleClient, agentId)
 
   await saveSeededAgentComposer(context.consoleClient, {
     agentId,
@@ -712,7 +695,6 @@ const seedToolStatesAgent = async (context: SeedContext) => {
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
   })
-  await ensureDriveSkill(context.consoleClient, agent.id)
   await saveSeededAgentComposer(context.consoleClient, {
     agentId: agent.id,
     config: {

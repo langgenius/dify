@@ -98,7 +98,6 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -1306,7 +1305,7 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            workflow, retirement_candidates = workflow_service.publish_workflow(
+            workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
                 account=current_user,
@@ -1323,16 +1322,6 @@ class PublishedWorkflowApi(Resource):
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app_model.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=current_user.id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=app_model.tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
-        )
         return {
             "result": "success",
             "created_at": workflow_created_at,
@@ -1623,10 +1612,11 @@ class WorkflowByIdApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Workflow deleted successfully")
-    def delete(self, app_model: App, workflow_id: str):
+    def delete(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Delete workflow
         """
@@ -1636,7 +1626,7 @@ class WorkflowByIdApi(Resource):
         # Create a session and manage the transaction
         with sessionmaker(db.engine).begin() as session:
             try:
-                workflow_service.delete_workflow(
+                retirement_candidates = workflow_service.delete_workflow(
                     session=session,
                     workflow_ref=workflow_ref,
                 )
@@ -1647,6 +1637,11 @@ class WorkflowByIdApi(Resource):
             except ValueError as e:
                 raise NotFound(str(e))
 
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
         return None, 204
 
 

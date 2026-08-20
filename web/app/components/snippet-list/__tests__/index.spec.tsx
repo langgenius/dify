@@ -1,4 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -369,19 +370,22 @@ describe('SnippetList', () => {
   it('updates the search query state from the search input', () => {
     renderList()
 
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'summary' } })
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } })
 
     expect(mockSetKeywords).toHaveBeenCalledWith('summary')
   })
 
-  it('clears the search query state', () => {
+  it('clears the search query state and returns focus to the search input', async () => {
+    const user = userEvent.setup()
     mockQueryState.keywords = 'summary'
 
     renderList()
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    const searchInput = screen.getByRole('searchbox', { name: 'workflow.tabs.searchSnippets' })
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
     expect(mockSetKeywords).toHaveBeenCalledWith('')
+    expect(searchInput).toHaveFocus()
   })
 
   it('updates the creator query state as a multi creator filter', () => {

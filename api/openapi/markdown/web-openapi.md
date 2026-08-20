@@ -826,7 +826,9 @@ Retrieve the access mode for a web application (public or restricted).
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessModeResponse](#accessmoderesponse)<br> |
 | 400 | Bad Request |  |
+| 404 | App Not Found |  |
 | 500 | Internal Server Error |  |
+| 503 | Web App Access Service Unavailable |  |
 
 ### [GET] /webapp/permission
 Check if user has permission to access a web application.
@@ -845,6 +847,7 @@ Check if user has permission to access a web application.
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 500 | Internal Server Error |  |
+| 503 | Web App Access Service Unavailable |  |
 
 ### [POST] /workflows/run
 **Run workflow**

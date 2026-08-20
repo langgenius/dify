@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "トリガーについて詳しく見る",
   "overview.triggerInfo.noTriggerAdded": "トリガーが追加されていません",
   "overview.triggerInfo.title": "トリガー",
-  "overview.triggerInfo.triggerStatusDescription": "トリガーを含むバージョンを公開すると、ここに表示されます。",
+  "overview.triggerInfo.triggerStatusDescription": "公開すると、トリガーがここに表示されます。",
   "overview.triggerInfo.triggersAdded": "{{count}} 個のトリガーが追加されました",
   "welcome.enterKeyTip": "以下に OpenAI API キーを入力してください",
   "welcome.firstStepTip": "はじめるには、",

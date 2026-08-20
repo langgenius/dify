@@ -3,6 +3,9 @@ import json
 from unittest import mock
 from uuid import uuid4
 
+import pytest
+from sqlalchemy.orm import Session
+
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.workflow.file_reference import build_file_reference
@@ -12,6 +15,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
 from models.account import Account
+from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
@@ -162,7 +166,14 @@ def test_to_dict():
         assert workflow_dict["environment_variables"][1]["value"] == "text"
 
 
-def test_workflow_account_getters_use_caller_session():
+@pytest.mark.parametrize("sqlite_session", [(Workflow, Account)], indirect=True)
+def test_workflow_account_getters_use_caller_session(sqlite_session: Session):
+    created_account = Account(name="Created Account", email="created@example.com")
+    created_account.id = "created-account-id"
+    updated_account = Account(name="Updated Account", email="updated@example.com")
+    updated_account.id = "updated-account-id"
+    decoy_account = Account(name="Decoy Account", email="decoy@example.com")
+    decoy_account.id = "decoy-account-id"
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
@@ -175,23 +186,15 @@ def test_workflow_account_getters_use_caller_session():
         conversation_variables=[],
         updated_by="updated-account-id",
     )
-    created_account = Account(name="Test Account", email="test@example.com")
-    updated_account = Account(name="Test Account", email="test@example.com")
-    session = mock.Mock()
-    session.get.side_effect = [created_account, updated_account]
+    sqlite_session.add_all([decoy_account, updated_account, workflow, created_account])
+    sqlite_session.flush()
 
-    with mock.patch("models.workflow.db") as mock_db:
-        assert workflow.get_created_by_account(session=session) is created_account
-        assert workflow.get_updated_by_account(session=session) is updated_account
-
-    assert session.get.call_args_list == [
-        mock.call(Account, "created-account-id"),
-        mock.call(Account, "updated-account-id"),
-    ]
-    mock_db.session.get.assert_not_called()
+    assert workflow.get_created_by_account(session=sqlite_session) is created_account
+    assert workflow.get_updated_by_account(session=sqlite_session) is updated_account
 
 
-def test_workflow_tool_published_getter_uses_caller_session():
+@pytest.mark.parametrize("sqlite_session", [(Workflow, WorkflowToolProvider)], indirect=True)
+def test_workflow_tool_published_getter_uses_caller_session(sqlite_session: Session):
     workflow = Workflow(
         tenant_id="tenant_id",
         app_id="app_id",
@@ -203,14 +206,30 @@ def test_workflow_tool_published_getter_uses_caller_session():
         environment_variables=[],
         conversation_variables=[],
     )
-    session = mock.Mock()
-    session.execute.return_value.scalar_one.return_value = True
+    matching_provider = WorkflowToolProvider(
+        name="matching-provider",
+        label="Matching provider",
+        icon="tool",
+        app_id=workflow.app_id,
+        version="1",
+        user_id="account-id",
+        tenant_id=workflow.tenant_id,
+        description="Matching workflow tool",
+    )
+    decoy_provider = WorkflowToolProvider(
+        name="decoy-provider",
+        label="Decoy provider",
+        icon="tool",
+        app_id="other-app",
+        version="1",
+        user_id="account-id",
+        tenant_id=workflow.tenant_id,
+        description="Different app",
+    )
+    sqlite_session.add_all([decoy_provider, workflow, matching_provider])
+    sqlite_session.flush()
 
-    with mock.patch("models.workflow.db") as mock_db:
-        assert workflow.get_tool_published(session=session) is True
-
-    session.execute.assert_called_once()
-    mock_db.session.execute.assert_not_called()
+    assert workflow.get_tool_published(session=sqlite_session) is True
 
 
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():

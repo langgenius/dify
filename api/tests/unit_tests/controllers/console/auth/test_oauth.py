@@ -14,9 +14,20 @@ from controllers.console.auth.oauth import (
     _get_account_by_openid_or_email,
     get_oauth_providers,
 )
+from enums import DeploymentEdition
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
-from services.errors.account import AccountRegisterError
+from services.errors.account import (
+    AccountRegisterError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
+
+
+@pytest.fixture(autouse=True)
+def _oauth_config(config_overrides) -> None:
+    config_overrides(CONSOLE_WEB_URL="http://localhost:3000")
 
 
 class TestGetOAuthProviders:
@@ -38,15 +49,16 @@ class TestGetOAuthProviders:
             ({"id": None, "secret": None}, {"id": None, "secret": None}, False, False),
         ],
     )
-    @patch("controllers.console.auth.oauth.dify_config")
     def test_should_configure_oauth_providers_correctly(
-        self, mock_config, app: Flask, github_config, google_config, expected_github, expected_google
+        self, app: Flask, github_config, google_config, expected_github, expected_google, config_overrides
     ):
-        mock_config.GITHUB_CLIENT_ID = github_config["id"]
-        mock_config.GITHUB_CLIENT_SECRET = github_config["secret"]
-        mock_config.GOOGLE_CLIENT_ID = google_config["id"]
-        mock_config.GOOGLE_CLIENT_SECRET = google_config["secret"]
-        mock_config.CONSOLE_API_URL = "http://localhost"
+        config_overrides(
+            GITHUB_CLIENT_ID=github_config["id"],
+            GITHUB_CLIENT_SECRET=github_config["secret"],
+            GOOGLE_CLIENT_ID=google_config["id"],
+            GOOGLE_CLIENT_SECRET=google_config["secret"],
+            CONSOLE_API_URL="http://localhost",
+        )
 
         with app.app_context():
             providers = get_oauth_providers()
@@ -188,7 +200,6 @@ class TestOAuthCallback:
 
         return {"provider": oauth_provider, "account": account, "token_pair": token_pair}
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.AccountService")
@@ -201,12 +212,10 @@ class TestOAuthCallback:
         mock_account_service,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
         mock_generate_account.return_value = (oauth_setup["account"], True)
         mock_account_service.login.return_value = oauth_setup["token_pair"]
@@ -227,6 +236,38 @@ class TestOAuthCallback:
             ip_address="203.0.113.10",
         )
         mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
+
+    @pytest.mark.parametrize(
+        ("service_error", "expected_message"),
+        [
+            (
+                EmailDomainSuspendedRegistrationError(),
+                "This email domain has been suspended.",
+            ),
+            (AccountRegisterError("This email account is frozen."), "This email account is frozen."),
+        ],
+    )
+    @patch("controllers.console.auth.oauth.get_oauth_providers")
+    @patch("controllers.console.auth.oauth._generate_account")
+    @patch("controllers.console.auth.oauth.redirect")
+    def test_should_translate_registration_freeze_errors(
+        self,
+        mock_redirect,
+        mock_generate_account,
+        mock_get_providers,
+        resource: OAuthCallback,
+        app: Flask,
+        oauth_setup,
+        service_error,
+        expected_message,
+    ):
+        mock_get_providers.return_value = {"github": oauth_setup["provider"]}
+        mock_generate_account.side_effect = service_error
+
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+            resource.get("github")
+
+        mock_redirect.assert_called_once_with(f"http://localhost:3000/signin?message={expected_message}")
 
     @pytest.mark.parametrize(
         ("exception", "expected_error"),
@@ -257,7 +298,6 @@ class TestOAuthCallback:
         assert status_code == 400
         assert response["error"] == expected_error
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth.RegisterService")
     @patch("controllers.console.auth.oauth.AccountService")
@@ -268,12 +308,10 @@ class TestOAuthCallback:
         mock_account_service,
         mock_register_service,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         oauth_setup["provider"].get_user_info.return_value = OAuthUserInfo(
             id="123", name="Test User", email="User@Example.com"
         )
@@ -309,7 +347,6 @@ class TestOAuthCallback:
     )
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.redirect")
@@ -318,7 +355,6 @@ class TestOAuthCallback:
         mock_redirect,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         mock_tenant_service,
         mock_account_service,
         resource: OAuthCallback,
@@ -328,7 +364,6 @@ class TestOAuthCallback:
         expected_redirect,
     ):
 
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         account = MagicMock()
@@ -348,7 +383,6 @@ class TestOAuthCallback:
 
         mock_redirect.assert_called_once_with(expected_redirect)
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -359,7 +393,6 @@ class TestOAuthCallback:
         mock_tenant_service,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
@@ -382,7 +415,6 @@ class TestOAuthCallback:
         assert mock_account.status == AccountStatus.ACTIVE
         assert mock_account.initialized_at is not None
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -395,7 +427,6 @@ class TestOAuthCallback:
         mock_tenant_service,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
@@ -421,7 +452,6 @@ class TestOAuthCallback:
         Security consideration: Until properly implemented, CLOSED status provides no protection.
         """
         # Setup
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         # Create account with CLOSED status
@@ -544,6 +574,36 @@ class TestAccountGeneration:
                     )
                 else:
                     mock_register_service.register.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("freeze_type", "expected_error"),
+        [
+            ("email_domain_suspended", EmailDomainSuspendedRegistrationError),
+            ("freeze", AccountRegisterError),
+        ],
+    )
+    @patch("controllers.console.auth.oauth.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    @patch("controllers.console.auth.oauth.BillingService.get_email_freeze_type")
+    @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
+    @patch("controllers.console.auth.oauth.FeatureService")
+    def test_should_reject_registration_for_frozen_email(
+        self,
+        mock_feature_service,
+        mock_get_account,
+        mock_get_freeze_type,
+        freeze_type,
+        expected_error,
+        app: Flask,
+        user_info: OAuthUserInfo,
+    ):
+        mock_feature_service.get_system_features.return_value.is_allow_register = False
+        mock_get_freeze_type.return_value = freeze_type
+
+        with app.test_request_context("/"):
+            with pytest.raises(expected_error):
+                _generate_account("github", user_info)
+
+        mock_get_freeze_type.assert_called_once_with("test@example.com")
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
     @patch("controllers.console.auth.oauth.FeatureService")
