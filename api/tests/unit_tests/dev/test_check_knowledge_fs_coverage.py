@@ -125,6 +125,7 @@ def test_core_coverage_rejects_unclassified_knowledge_fs_production_files(tmp_pa
         "api/migrations/versions/2026_08_17_1200-4f8b2c7d9e10_add_knowledge_fs_icon_background.py",
         "api/migrations/versions/2026_08_17_1200-f3a8c1d7e920_add_knowledge_fs_upgrade_jobs.py",
         "api/migrations/versions/2026_08_18_1200-e6b4a2c9d731_limit_active_knowledge_fs_upgrades.py",
+        "api/migrations/versions/2026_08_20_1200-c4d8e2f7a1b6_merge_agent_drive_and_knowledge_fs_heads.py",
     ],
 )
 def test_core_coverage_allows_explicit_non_core_migrations(tmp_path: Path, migration: str) -> None:
