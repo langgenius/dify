@@ -47,6 +47,12 @@ export default defineConfig({
           globals: true,
           setupFiles: ['./vitest.setup.ts'],
           include: ['src/**/__tests__/**/*.spec.{ts,tsx}'],
+          browser: {
+            trace: {
+              mode: 'retain-on-failure',
+              tracesDir: './.vitest-browser/traces',
+            },
+          },
         },
       },
       {
