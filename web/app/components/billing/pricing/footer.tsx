@@ -26,9 +26,6 @@ const Footer = ({ pricingPageURL, currentCategory }: FooterProps) => {
             <span className="system-xs-regular">
               {t(($) => $['plansCommon.taxTip'], { ns: 'billing' })}
             </span>
-            <span className="system-xs-regular">
-              {t(($) => $['plansCommon.taxTipSecond'], { ns: 'billing' })}
-            </span>
           </div>
         )}
         <span className="flex h-fit items-center gap-x-1 text-saas-dify-blue-accessible">
