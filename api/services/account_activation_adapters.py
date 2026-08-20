@@ -54,8 +54,10 @@ class BillingAccountActivationEligibility(AccountActivationEligibility):
         self._enabled = enabled
 
     @override
-    def is_frozen(self, email: str) -> bool:
-        return self._enabled and BillingService.is_email_in_freeze(email)
+    def get_freeze_type(self, email: str) -> str | None:
+        if not self._enabled:
+            return None
+        return BillingService.get_email_freeze_type(email)
 
 
 class BillingWorkspaceMembershipCache(WorkspaceMembershipCache):

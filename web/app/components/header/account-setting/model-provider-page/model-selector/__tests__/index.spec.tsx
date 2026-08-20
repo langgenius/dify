@@ -1,8 +1,10 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Model, ModelItem } from '../../declarations'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '../../declarations'
 import { ModelSelector, SplitModelSelector } from '../index'
@@ -89,8 +91,29 @@ const makeModel = (overrides: Partial<Model> = {}): Model => ({
   ...overrides,
 })
 
+const makeProviderSummary = (): ModelProviderSummaryResponse => ({
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
+  supported_model_types: ['llm'],
+  configurate_methods: ['predefined-model'],
+  preferred_provider_type: 'system',
+  is_configured: true,
+  custom_configuration: {
+    status: 'active',
+    has_custom_models: false,
+    available_credentials: [],
+    current_credential_usable: false,
+  },
+  system_configuration: { enabled: true },
+})
+
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.key(), {
+    data: [makeProviderSummary()],
+    plugins: {},
+  })
   return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
 }
 

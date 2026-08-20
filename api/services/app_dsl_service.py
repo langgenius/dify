@@ -64,7 +64,6 @@ from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -583,15 +582,10 @@ class AppDslService:
                         draft_workflow=draft_workflow,
                     )
                     self._session.commit()
-                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                    WorkflowAgentRetirementService.retire_unowned(
                         tenant_id=app.tenant_id,
                         agent_ids=retirement_candidates,
                         account_id=account.id,
-                    )
-                    enqueue_agent_resource_collection(
-                        tenant_id=app.tenant_id,
-                        binding_ids=binding_ids,
-                        home_snapshot_ids=home_snapshot_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config

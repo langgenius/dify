@@ -33,6 +33,7 @@ from controllers.console.auth.login import (
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
@@ -43,7 +44,12 @@ from services.email_code_login_challenge import (
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
-from services.errors.account import AccountRegisterError
+from services.errors.account import (
+    AccountRegisterError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
@@ -308,7 +314,22 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app: Flask):
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (AccountRegisterError("Account frozen"), AccountInFreezeError),
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+        ],
+    )
+    def test_send_email_code_frozen_account(
+        self,
+        mock_get_user,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
         """
         Test email code sending to frozen account.
 
@@ -317,12 +338,12 @@ class TestEmailCodeLoginSendEmailApi:
         """
         # Arrange
         mock_is_ip_limit.return_value = False
-        mock_get_user.side_effect = AccountRegisterError("Account frozen")
+        mock_get_user.side_effect = service_error
 
         # Act & Assert
         with app.test_request_context("/email-code-login", method="POST", json={"email": "frozen@example.com"}):
             api = EmailCodeLoginSendEmailApi()
-            with pytest.raises(AccountInFreezeError):
+            with pytest.raises(expected_error):
                 api.post()
 
     @pytest.mark.parametrize(

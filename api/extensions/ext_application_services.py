@@ -19,6 +19,7 @@ from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from libs.passport import PassportService
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
@@ -34,6 +35,7 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
+from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
@@ -45,12 +47,14 @@ from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
 from services.feature_query_service import FeatureQueryService
 from services.feature_service_gateway import FeatureServiceGateway
+from services.file_service import FileService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
 from services.system_feature_service import SystemFeatureService
+from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.web_passport_gateways import (
     DeploymentWebPassportAuthGateway,
     PassportTokenGateway,
@@ -88,11 +92,18 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountServices:
+    profile: AccountProfileService
+
+
+@dataclass(frozen=True, slots=True)
 class ApplicationServices:
+    accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     data_source_api_key_auth: DataSourceApiKeyAuthService
     webapp_access: WebAppAccessQueryService
+    web_app_runtime: WebAppRuntimeQueryService
     explore_banner_queries: ExploreBannerQueryService
     schema_definitions: SchemaDefinitionService
     setup: SetupService
@@ -113,7 +124,12 @@ def build_application_services(
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
+    app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
+    feature_gateway = FeatureServiceGateway()
     return ApplicationServices(
+        accounts=AccountServices(
+            profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
+        ),
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
             accounts=SQLAlchemyAccountActivationRepository(database_client),
@@ -126,7 +142,7 @@ def build_application_services(
             ),
         ),
         app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=database_client),
+            definitions=app_definition_repository,
             builtin_icon_url_prefix=(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
@@ -142,6 +158,12 @@ def build_application_services(
             access_mode_for_app=_get_enterprise_webapp_access_mode,
             is_user_allowed_for_app=_is_user_allowed_to_access_webapp,
         ),
+        web_app_runtime=WebAppRuntimeQueryService(
+            runtime=app_definition_repository,
+            file_service=FileService(database_client),
+            workspace_features=feature_gateway.get_workspace_features,
+            files_url=dify_config.FILES_URL,
+        ),
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
             enabled=SystemFeatureService.is_explore_banner_enabled(),
@@ -154,7 +176,7 @@ def build_application_services(
             setup_required=deployment_edition != DeploymentEdition.CLOUD,
         ),
         feature_queries=FeatureQueryService(
-            features=FeatureServiceGateway(),
+            features=feature_gateway,
             trial_models=SystemFeatureService.get_trial_models(),
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
