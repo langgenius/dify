@@ -3,6 +3,7 @@ from binascii import hexlify, unhexlify
 from collections.abc import Generator
 from typing import Any
 
+from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
@@ -217,9 +218,11 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         # invoke model
         response = model_instance.invoke_tts(content_text=payload.content_text, voice=payload.voice)
 
+        audio_stream, mime_type = inspect_audio_stream(response, get_model_audio_mime_type(model_instance))
+
         def handle() -> Generator[dict[str, Any], None, None]:
-            for chunk in response:
-                yield {"result": hexlify(chunk).decode("utf-8")}
+            for chunk in audio_stream:
+                yield {"result": hexlify(chunk).decode("utf-8"), "mime_type": mime_type}
 
         return handle()
 

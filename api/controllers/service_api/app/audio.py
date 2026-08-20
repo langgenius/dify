@@ -142,6 +142,16 @@ class AudioApi(Resource):
 
 register_schema_model(service_api_ns, TextToAudioPayload)
 
+TTS_RESPONSE_MEDIA_TYPES = [
+    "audio/aac",
+    "audio/flac",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "audio/webm",
+]
+
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
@@ -151,8 +161,8 @@ class TextApi(Resource):
         tags=["TTS"],
         responses={
             200: (
-                "Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; "
-                "otherwise the provider output is returned directly."
+                "Returns the generated audio. The `Content-Type` header reflects the provider audio container, "
+                "verified from the response bytes when recognizable."
             ),
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
@@ -165,7 +175,7 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    @binary_response(service_api_ns, "audio/mpeg")
+    @binary_response(service_api_ns, TTS_RESPONSE_MEDIA_TYPES)
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(

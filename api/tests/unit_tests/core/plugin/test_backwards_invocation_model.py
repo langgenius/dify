@@ -1,8 +1,10 @@
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
-from core.plugin.entities.request import RequestInvokeSummary
+from core.plugin.entities.request import RequestInvokeSummary, RequestInvokeTTS
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
+from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from models.account import Tenant
 
 
@@ -60,3 +62,29 @@ def test_invoke_summary_uses_same_user_scope_for_token_helpers():
         prompt_messages=[UserPromptMessage(content="short")],
         user_id="user-1",
     )
+
+
+def test_invoke_tts_emits_the_verified_mime_type_for_backwards_invocation():
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-1"
+    model_instance = MagicMock()
+    model_instance.invoke_tts.return_value = [b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"]
+    model_instance.get_model_schema.return_value = SimpleNamespace(
+        model_properties={ModelPropertyKey.AUDIO_TYPE: "wav"}
+    )
+    payload = RequestInvokeTTS(
+        provider="provider-a",
+        model="qwen3-tts-flash",
+        content_text="hello",
+        voice="Cherry",
+    )
+
+    with patch.object(PluginModelBackwardsInvocation, "_get_bound_model_instance", return_value=model_instance):
+        result = list(PluginModelBackwardsInvocation.invoke_tts("user-1", tenant, payload))
+
+    assert result == [
+        {
+            "result": "524946462400000057415645666d742010000000617564696f2d64617461",
+            "mime_type": "audio/wav",
+        }
+    ]
