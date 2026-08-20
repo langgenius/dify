@@ -28,6 +28,7 @@ from models.workflow import (
     WorkflowType,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.snippet_service import SnippetService
 
 
@@ -339,6 +340,64 @@ def test_update_workflow_returns_none_when_missing(sqlite_session: Session) -> N
     )
 
     assert result is None
+
+
+def test_delete_workflow_removes_published_version(sqlite_session: Session) -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflow = _create_workflow(
+        workflow_id="workflow-1",
+        version="2026-01-01 00:00:00",
+        graph={"nodes": []},
+        features={},
+    )
+    snippet = _snippet(workflow_id="workflow-2")
+    sqlite_session.add_all([snippet, workflow])
+    sqlite_session.flush()
+
+    result = service.delete_workflow(session=sqlite_session, snippet=snippet, workflow_id="workflow-1")
+
+    assert result is True
+    sqlite_session.flush()
+    assert sqlite_session.get(Workflow, "workflow-1") is None
+
+
+def test_delete_workflow_raises_when_missing(sqlite_session: Session) -> None:
+    service = SnippetService.__new__(SnippetService)
+
+    with pytest.raises(ValueError, match="not found"):
+        service.delete_workflow(session=sqlite_session, snippet=_snippet(), workflow_id="missing-workflow")
+
+
+def test_delete_workflow_raises_for_draft_version(sqlite_session: Session) -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflow = _create_workflow(
+        workflow_id="workflow-1",
+        version=Workflow.VERSION_DRAFT,
+        graph={"nodes": []},
+        features={},
+    )
+    snippet = _snippet()
+    sqlite_session.add_all([snippet, workflow])
+    sqlite_session.flush()
+
+    with pytest.raises(DraftWorkflowDeletionError):
+        service.delete_workflow(session=sqlite_session, snippet=snippet, workflow_id="workflow-1")
+
+
+def test_delete_workflow_raises_when_currently_active(sqlite_session: Session) -> None:
+    service = SnippetService.__new__(SnippetService)
+    workflow = _create_workflow(
+        workflow_id="workflow-1",
+        version="2026-01-01 00:00:00",
+        graph={"nodes": []},
+        features={},
+    )
+    snippet = _snippet(workflow_id="workflow-1")
+    sqlite_session.add_all([snippet, workflow])
+    sqlite_session.flush()
+
+    with pytest.raises(WorkflowInUseError):
+        service.delete_workflow(session=sqlite_session, snippet=snippet, workflow_id="workflow-1")
 
 
 def test_get_default_block_configs_skips_empty_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
