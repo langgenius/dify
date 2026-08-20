@@ -11,7 +11,8 @@ shell-visible drive commands. Sandbox selection is a deployment concern.
 import re
 from typing import ClassVar, Final
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializationInfo, field_validator, model_serializer
+from pydantic.functional_serializers import SerializerFunctionWrapHandler
 
 from agenton.layers import LayerConfig
 
@@ -79,6 +80,13 @@ class DifyShellLayerConfig(LayerConfig):
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
     redact_patterns: list[str] = Field(default_factory=list)
+
+    @model_serializer(mode="wrap")
+    def _serialize_shell_config(self, handler: SerializerFunctionWrapHandler, info: SerializationInfo) -> dict[str, object]:
+        data = handler(self)
+        if info.mode == "json" and self.agent_stub_drive_ref is None:
+            data.pop("agent_stub_drive_ref", None)
+        return data
 
 
 __all__ = [
