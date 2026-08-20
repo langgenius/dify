@@ -156,14 +156,12 @@ function AllStartBlocks({
   return (
     <div
       className={cn(
-        'max-w-[500px] min-w-[400px]',
+        'max-w-125 min-w-100',
         variant === 'panel' && 'h-full max-w-none min-w-0',
         className,
       )}
     >
-      <div
-        className={cn('flex max-h-[640px] flex-col', variant === 'panel' && 'h-full max-h-none')}
-      >
+      <div className={cn('flex max-h-160 flex-col', variant === 'panel' && 'h-full max-h-none')}>
         <div
           ref={wrapElemRef}
           className="flex-1 overflow-y-auto"

@@ -1,40 +1,13 @@
-"""Shell runtime layer backed by a live shell provider resource.
-
-Shell command execution requires a bound execution-context layer with a safe
-``agent_id``. The layer uses the current bound execution context to run
-commands with ``HOME=<shell_home_root>/<agent_id>`` and a home-rooted workspace path. The
-persisted runtime state intentionally keeps the historical
-``~/workspace/<session>`` identity so existing session snapshots stay
-compatible while live command execution no longer depends on the sandbox user's
-ambient home directory. Entering or re-entering the layer re-ensures the live
-home/workspace directories for the currently bound ``agent_id`` before user
-commands are sent.
-
-Sandbox lifecycle:
-    The shell provider exposes four operations: ``create``, ``attach``,
-    ``suspend``, and ``delete``. On the first run (no ``sandbox_id`` in
-    runtime state) ``resource_context()`` calls ``create()`` to provision a
-    new sandbox and persists the returned ``sandbox_id``. On subsequent runs
-    it calls ``attach(sandbox_id)`` to re-connect to the existing sandbox.
-    If the sandbox has expired (the provider raises ``SandboxExpiredError``),
-    the error propagates to the caller — the user must start a new session.
-    On normal exit (suspend) the resource is detached via ``suspend()``,
-    keeping the sandbox alive. On final cleanup (``on_context_delete``) the
-    resource is destroyed via ``delete()``. This allows the enterprise
-    provider to reuse the same sandbox pod across conversation turns.
-"""
+"""Shell tools over the data plane exposed by the active Runtime layer."""
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import Sequence
 import json
 import logging
 import re
-import secrets
-import time
 from dataclasses import dataclass, field
-from typing import ClassVar, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
+from typing import ClassVar, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import Tool
@@ -54,14 +27,15 @@ from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
     ShellCommandResult,
     ShellPromptObservation,
-    ShellProviderProtocol,
-    ShellResourceProtocol,
 )
 from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
+from dify_agent.runtime.command_runner import execute_complete_with_commands
+from dify_agent.runtime_backend import RuntimeLease
 
 
 logger = logging.getLogger(__name__)
@@ -74,15 +48,7 @@ class _HasErrorCode(Protocol):
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
-_WORKSPACE_ROOT = "~/workspace"
-_WORKSPACE_DIR_NAME = "workspace"
-_WORKSPACE_COLLISION_EXIT_CODE = 17
-_SESSION_TIME_HEX_MASK = 0xFFFFF
-_SESSION_RANDOM_HEX_LENGTH = 2
-_SESSION_ID_ATTEMPT_LIMIT = 256
-_SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
-_AGENT_HOME_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
-_SHELL_OUTPUT_PROMPT_EDGE_BYTES = 8 * 1024
+_SHELL_OUTPUT_PROMPT_EDGE_BYTES = 4 * 1024
 _SHELLCTL_OUTPUT_LIMIT_BYTES = 2 * _SHELL_OUTPUT_PROMPT_EDGE_BYTES
 _REMOTE_COMPLETE_OUTPUT_MAX_BYTES = 1024 * 1024
 _REMOTE_COMMAND_TIMEOUT_SECONDS = 60.0
@@ -140,13 +106,11 @@ Installed CLI:
 - Use the generated `dify-agent ... --help` output in the config prompt for exact command syntax.
 - Do not install or recreate the `dify-agent` CLI.
 
-Workspace persistence rules:
+Filesystem spaces:
 
-- The current workspace cwd is stable during this run, but it is temporary and may be deleted later.
-- Do not treat files in the current workspace cwd as persisted state.
-- In build mode, config changes persist only after you run the matching `dify-agent config ...` mutation command.
-- Shell file edits alone do not save Agent config files, skills, env, or notes.
-- In non-build modes, local shell changes are not a persistence mechanism for Agent configuration.
+- `$HOME` is the system space.
+- The current working directory (`cwd`) is the temporary working space. Relative paths resolve from here.
+- Store temporary files under `<cwd>/.tmp` (normally `./.tmp`). Do not use `/tmp`.
 
 shell_run script rules:
 
@@ -187,6 +151,14 @@ from rich import print
 response = httpx.get("https://example.com", timeout=10)
 print(f"[green]status:[/green] {response.status_code}")
 [end script]"""
+_BUILD_DRAFT_WORKING_LOCATION_PROMPT = """Working location:
+
+- Prefer `$HOME` for work and changes intended for the system space.
+- Use `cwd` for scratch files, intermediate results, and other temporary work."""
+_DEFAULT_WORKING_LOCATION_PROMPT = """Working location:
+
+- Prefer `cwd` for your work.
+- Changes in `$HOME` or `cwd` do not update the saved Agent state."""
 _SHELL_LAYER_SUFFIX_PROMPT = """Environment variables may contain API keys, tokens, or credentials.
 You may refer to environment variable names when needed."""
 
@@ -202,23 +174,14 @@ type ShellInterruptToolResult = str | ShellToolErrorObservation
 
 class DifyShellLayerDeps(LayerDeps):
     execution_context: PlainLayer[NoLayerDeps, DifyExecutionContextLayerConfig, EmptyRuntimeState] | None  # pyright: ignore[reportUninitializedInstanceVariable]
+    runtime: DifyRuntimeLayer  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 class DifyShellRuntimeState(BaseModel):
-    session_id: str | None = None
-    workspace_cwd: str | None = None
-    sandbox_id: str | None = None
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
-
-    @field_validator("session_id")
-    @classmethod
-    def validate_session_id(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return _validated_session_id(value)
 
     @field_validator("job_ids")
     @classmethod
@@ -228,13 +191,7 @@ class DifyShellRuntimeState(BaseModel):
         return value
 
     @model_validator(mode="after")
-    def validate_workspace_and_offsets(self) -> Self:
-        if self.workspace_cwd is not None:
-            if self.session_id is None:
-                raise ValueError("workspace_cwd requires a matching session_id.")
-            expected_workspace = _workspace_cwd(self.session_id)
-            if self.workspace_cwd != expected_workspace:
-                raise ValueError(f"workspace_cwd must equal {expected_workspace!r} for session_id {self.session_id!r}.")
+    def validate_job_offsets(self) -> Self:
         unknown_offset_job_ids = set(self.job_offsets) - set(self.job_ids)
         if unknown_offset_job_ids:
             names = ", ".join(sorted(unknown_offset_job_ids))
@@ -247,51 +204,49 @@ CompleteRemoteCommandResult = CompleteShellCommandResult
 
 @dataclass(slots=True)
 class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
+    """Expose Shell tools over the active RuntimeLease without owning it.
+
+    Create optionally bootstraps configured CLI tools in the lease's Workspace.
+    Suspend and delete best-effort remove tracked shellctl jobs, then clear job
+    ids and offsets so they do not persist across requests. Commands, files,
+    Home, and cwd come only from ``DifyRuntimeLayer.lease``. Persistent Binding
+    and Workspace lifecycle remains exclusively owned by Dify API.
+    """
+
     type_id: ClassVar[str | None] = DIFY_SHELL_LAYER_TYPE_ID
 
     config: DifyShellLayerConfig
-    shell_provider: ShellProviderProtocol
-    shell_home_root: str = "/home"
     shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
-    _shell_resource: ShellResourceProtocol | None = None
-    _resource_should_delete: bool = False
+    _job_agent_stub_tokens: dict[str, str] = field(default_factory=dict, init=False, repr=False)
 
     @classmethod
     @override
     def from_config(cls, config: DifyShellLayerConfig) -> Self:
         del config
-        raise TypeError("DifyShellLayer requires a shell provider and must use a provider factory.")
+        raise TypeError("DifyShellLayer requires server-injected settings and must use a provider factory.")
 
     @classmethod
     def from_config_with_settings(
         cls,
         config: DifyShellLayerConfig,
         *,
-        shell_provider: ShellProviderProtocol | None,
-        shell_home_root: str = "/home",
         shell_redact_patterns: list[str] | None = None,
         agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
-        if shell_provider is None:
-            raise ValueError("DifyShellLayer requires a non-null shell provider when the 'dify.shell' layer is used.")
-        layer = cls(
+        return cls(
             config=config,
-            shell_provider=shell_provider,
-            shell_home_root=_normalize_shell_home_root(shell_home_root),
             shell_redact_patterns=shell_redact_patterns or [],
             agent_stub_api_base_url=agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
         )
-        layer.bind_deps({})
-        return layer
 
     @property
     @override
     def prefix_prompts(self) -> Sequence[PydanticAIPrompt[object]]:
-        return [_shell_layer_prefix_prompt]
+        return [self._build_prefix_prompt]
 
     @property
     @override
@@ -308,102 +263,50 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             Tool(self._tool_interrupt, name="shell_interrupt"),
         ]
 
-    @override
-    @asynccontextmanager
-    async def resource_context(self) -> AsyncGenerator[None]:
-        """Acquire the live shell resource for one run invocation.
-
-        On the first run (no ``sandbox_id`` in runtime state) the provider's
-        ``create()`` is called to provision a new sandbox. On subsequent runs
-        ``attach(sandbox_id)`` re-connects to the existing sandbox. If the
-        sandbox has expired (``SandboxExpiredError``), the error propagates
-        to the caller — the user must start a new session.
-
-        On exit, ``suspend()`` is called by default to keep the sandbox alive.
-        If ``on_context_delete()`` ran (setting ``_resource_should_delete``),
-        ``delete()`` is called instead to destroy the sandbox.
-        """
-        if self._shell_resource is not None:
-            raise RuntimeError("DifyShellLayer resource_context() is already active for this layer instance.")
-        sandbox_id = self.runtime_state.sandbox_id
-        if sandbox_id is not None:
-            resource = await self.shell_provider.attach(sandbox_id)
-        else:
-            resource = await self.shell_provider.create()
-            self.runtime_state = DifyShellRuntimeState.model_validate(
-                {
-                    **self.runtime_state.model_dump(mode="python"),
-                    "sandbox_id": resource.sandbox_id,
-                }
-            )
-        self._shell_resource = resource
-        self._resource_should_delete = False
-        try:
-            yield
-        finally:
-            self._shell_resource = None
-            if self._resource_should_delete:
-                await resource.delete()
-            else:
-                await resource.suspend()
+    def _build_prefix_prompt(self) -> str:
+        execution_context = self.deps.execution_context
+        is_build_draft = (
+            execution_context is not None and execution_context.config.agent_config_version_kind == "build_draft"
+        )
+        working_location_prompt = (
+            _BUILD_DRAFT_WORKING_LOCATION_PROMPT if is_build_draft else _DEFAULT_WORKING_LOCATION_PROMPT
+        )
+        return f"{_SHELL_LAYER_PREFIX_PROMPT}\n\n{working_location_prompt}"
 
     @override
     async def on_context_create(self) -> None:
-        _ = self._require_resource()
-        session_id: str | None = None
-        try:
-            session_id, workspace_cwd = await self._allocate_workspace()
-            await self._bootstrap_workspace(session_id)
-        except BaseException:
-            if session_id is not None:
-                await self._cleanup_workspace_best_effort(session_id)
-            self._resource_should_delete = True
-            raise
-        self.runtime_state = DifyShellRuntimeState.model_validate(
-            {
-                **self.runtime_state.model_dump(mode="python"),
-                "session_id": session_id,
-                "workspace_cwd": workspace_cwd,
-            }
-        )
+        bootstrap_script = _workspace_bootstrap_script(self.config)
+        if not bootstrap_script:
+            return
+        result = await self._run_internal_script_complete(bootstrap_script, cwd=self._require_workspace_cwd())
+        if result.exit_code != 0 or not result.output_complete:
+            raise RuntimeError(
+                f"Failed to bootstrap shell workspace {self._require_workspace_cwd()}: "
+                f"{result.status} exit_code={result.exit_code}"
+            )
 
     @override
     async def on_context_resume(self) -> None:
         _ = self._require_resource()
-        session_id, _workspace_cwd = self._require_session_identity()
-        await self._ensure_live_workspace_exists(session_id)
 
     @override
     async def on_context_suspend(self) -> None:
-        _ = self._require_resource()
+        await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
+        self._clear_tracked_jobs()
 
     @override
     async def on_context_delete(self) -> None:
-        _ = self._require_resource()
-        identity = self._try_session_identity()
-        if identity is not None:
-            session_id, _workspace_cwd = identity
-            result = await self._run_internal_script_complete(
-                _workspace_cleanup_script(session_id=session_id), cwd=None
-            )
-            if result.exit_code != 0 or not result.output_complete:
-                logger.warning(
-                    "Shell workspace cleanup for session %s ended with status=%s exit_code=%s output_complete=%s.",
-                    session_id,
-                    result.status,
-                    result.exit_code,
-                    result.output_complete,
-                )
         await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
         self._clear_tracked_jobs()
-        self._resource_should_delete = True
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
+            env = self._build_shell_command_env(include_agent_stub_env=True)
+            agent_stub_token = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
             result = await self._require_resource().commands.run(
                 _wrap_user_script(script, self.config),
                 cwd=self._require_workspace_cwd(),
-                env=self._build_shell_command_env(include_agent_stub_env=True),
+                env=env,
                 timeout=timeout,
             )
             observation = await render_prompt_observation_from_result(
@@ -413,6 +316,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
+            if agent_stub_token is not None and not result.done:
+                self._job_agent_stub_tokens[result.job_id] = agent_stub_token
+            else:
+                self._job_agent_stub_tokens.pop(result.job_id, None)
             return _tagged_shell_observation(
                 _metadata_dict(
                     job_id=result.job_id,
@@ -421,12 +328,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                self._redact_output(observation.text),
+                self._redact_output(observation.text, sensitive_values=(agent_stub_token,)),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc)
         except Exception as exc:
-            return _tool_unexpected_error("shell_run", exc, session_id=self.runtime_state.session_id)
+            return _tool_unexpected_error("shell_run", exc)
 
     async def _tool_wait(self, job_id: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
@@ -439,6 +346,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
+            redacted_output = self._redact_output(
+                observation.text,
+                sensitive_values=(self._job_agent_stub_tokens.get(job_id),),
+            )
+            if result.done:
+                self._job_agent_stub_tokens.pop(job_id, None)
             return _tagged_shell_observation(
                 _metadata_dict(
                     job_id=result.job_id,
@@ -447,12 +360,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                self._redact_output(observation.text),
+                redacted_output,
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
-            return _tool_unexpected_error("shell_wait", exc, session_id=self.runtime_state.session_id, job_id=job_id)
+            return _tool_unexpected_error("shell_wait", exc, job_id=job_id)
 
     async def _tool_input(self, job_id: str, text: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
@@ -465,6 +378,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
+            redacted_output = self._redact_output(
+                observation.text,
+                sensitive_values=(self._job_agent_stub_tokens.get(job_id),),
+            )
+            if result.done:
+                self._job_agent_stub_tokens.pop(job_id, None)
             return _tagged_shell_observation(
                 _metadata_dict(
                     job_id=result.job_id,
@@ -473,12 +392,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                self._redact_output(observation.text),
+                redacted_output,
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
-            return _tool_unexpected_error("shell_input", exc, session_id=self.runtime_state.session_id, job_id=job_id)
+            return _tool_unexpected_error("shell_input", exc, job_id=job_id)
 
     async def _tool_interrupt(
         self,
@@ -490,6 +409,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             result = await self._require_resource().commands.interrupt(job_id, grace_seconds=grace_seconds)
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, result.offset)
+            self._job_agent_stub_tokens.pop(result.job_id, None)
             output_path: str | None = None
             try:
                 # Once the interrupt itself succeeds, resolving the output path is
@@ -498,16 +418,14 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 output_path = (await self._require_resource().commands.tail(job_id)).output_path
             except (RuntimeError, ValueError) as exc:
                 logger.warning(
-                    "Failed to fetch output path for interrupted shell job %s in session %s: %s",
+                    "Failed to fetch output path for interrupted shell job %s: %s",
                     job_id,
-                    self.runtime_state.session_id,
                     exc,
                 )
             except Exception:
                 logger.exception(
-                    "Failed to fetch output path for interrupted shell job %s in session %s",
+                    "Failed to fetch output path for interrupted shell job %s",
                     job_id,
-                    self.runtime_state.session_id,
                 )
             return _tagged_shell_observation(
                 _metadata_dict(
@@ -522,9 +440,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
         except Exception as exc:
-            return _tool_unexpected_error(
-                "shell_interrupt", exc, session_id=self.runtime_state.session_id, job_id=job_id
-            )
+            return _tool_unexpected_error("shell_interrupt", exc, job_id=job_id)
 
     async def run_remote_script_complete(
         self,
@@ -559,45 +475,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             inject_agent_stub_env=inject_agent_stub_env,
         )
 
-    async def _allocate_workspace(self) -> tuple[str, str]:
-        for _attempt in range(_SESSION_ID_ATTEMPT_LIMIT):
-            session_id = _generate_session_id()
-            result = await self._run_internal_script_complete(_workspace_mkdir_script(session_id=session_id), cwd=None)
-            if result.exit_code == _WORKSPACE_COLLISION_EXIT_CODE:
-                continue
-            if result.exit_code != 0 or not result.output_complete:
-                raise RuntimeError(
-                    f"Failed to create shell workspace {_workspace_cwd(session_id)}: "
-                    + f"{result.status} exit_code={result.exit_code}"
-                )
-            return session_id, _workspace_cwd(session_id)
-        raise RuntimeError("Failed to allocate a unique shell workspace session id after 256 attempts.")
-
-    async def _bootstrap_workspace(self, session_id: str) -> None:
-        bootstrap_script = _workspace_bootstrap_script(self.config)
-        if not bootstrap_script:
-            return
-        workspace_cwd = _workspace_cwd_for_home(self._shell_home_dir(), session_id)
-        result = await self._run_internal_script_complete(bootstrap_script, cwd=workspace_cwd)
-        if result.exit_code != 0 or not result.output_complete:
-            raise RuntimeError(
-                f"Failed to bootstrap shell workspace {workspace_cwd}: {result.status} exit_code={result.exit_code}"
-            )
-
-    async def _cleanup_workspace_best_effort(self, session_id: str) -> None:
-        try:
-            _ = await self._run_internal_script_complete(_workspace_cleanup_script(session_id=session_id), cwd=None)
-        except (RuntimeError, ValueError) as exc:
-            logger.warning("Failed to remove shell workspace for session %s after create failure: %s", session_id, exc)
-
-    async def _ensure_live_workspace_exists(self, session_id: str) -> None:
-        result = await self._run_internal_script_complete(_workspace_ensure_script(session_id=session_id), cwd=None)
-        if result.exit_code != 0 or not result.output_complete:
-            raise RuntimeError(
-                f"Failed to ensure shell workspace {_workspace_cwd_for_home(self._shell_home_dir(), session_id)} "
-                + f"exists: {result.status} exit_code={result.exit_code}"
-            )
-
     async def _run_internal_script_complete(
         self,
         script: str,
@@ -613,36 +490,11 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
         )
 
-    def _require_resource(self) -> ShellResourceProtocol:
-        if self._shell_resource is None:
-            raise RuntimeError(
-                "DifyShellLayer requires an active shell resource inside resource_context(); "
-                + "enter the layer through Agenton or wrap direct hook/tool usage in resource_context()."
-            )
-        return self._shell_resource
+    def _require_resource(self) -> RuntimeLease:
+        return self.deps.runtime.lease
 
     def _require_workspace_cwd(self) -> str:
-        session_id, _workspace_cwd = self._require_session_identity()
-        return _workspace_cwd_for_home(self._shell_home_dir(), session_id)
-
-    def _require_session_identity(self) -> tuple[str, str]:
-        identity = self._try_session_identity()
-        if identity is None:
-            raise ValueError("DifyShellLayer runtime state is missing session_id or workspace_cwd.")
-        session_id, workspace_cwd = identity
-        expected_workspace = _workspace_cwd(session_id)
-        if workspace_cwd != expected_workspace:
-            raise ValueError(
-                f"DifyShellLayer runtime state has inconsistent workspace_cwd {workspace_cwd!r}; expected {expected_workspace!r}."
-            )
-        return session_id, workspace_cwd
-
-    def _try_session_identity(self) -> tuple[str, str] | None:
-        session_id = self.runtime_state.session_id
-        workspace_cwd = self.runtime_state.workspace_cwd
-        if session_id is None or workspace_cwd is None:
-            return None
-        return session_id, workspace_cwd
+        return self._require_resource().layout.workspace_dir
 
     def _ensure_tracked_job(self, job_id: str) -> None:
         if job_id not in self.runtime_state.job_ids:
@@ -669,32 +521,15 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 await commands.delete(job_id, force=True)
             except RuntimeError as exc:
                 logger.warning(
-                    "Failed to delete shell job %s for session %s: %s",
+                    "Failed to delete shell job %s: %s",
                     job_id,
-                    self.runtime_state.session_id,
                     exc,
                 )
 
     def _clear_tracked_jobs(self) -> None:
         self.runtime_state.job_offsets = {}
         self.runtime_state.job_ids = []
-
-    def _shell_home_dir(self) -> str:
-        return _shell_home_dir_for_agent_id(
-            self._require_current_execution_agent_id(),
-            shell_home_root=self.shell_home_root,
-        )
-
-    def _current_execution_agent_id(self) -> str | None:
-        execution_context_layer = self.deps.execution_context
-        execution_context = execution_context_layer.config if execution_context_layer is not None else None
-        return execution_context.agent_id if execution_context is not None else None
-
-    def _require_current_execution_agent_id(self) -> str:
-        agent_id = self._current_execution_agent_id()
-        if agent_id is None:
-            raise ValueError("ShellLayer command execution requires execution_context.agent_id.")
-        return _validated_agent_home_segment(agent_id)
+        self._job_agent_stub_tokens.clear()
 
     def _build_shell_command_env(
         self,
@@ -703,17 +538,16 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         require_agent_stub_env: bool = False,
     ) -> dict[str, str]:
         env = _shell_config_env(self.config)
-        env["HOME"] = self._shell_home_dir()
+        env["HOME"] = self._require_resource().layout.home_dir
         if not include_agent_stub_env:
             return env
         execution_context_layer = self.deps.execution_context
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
         agent_stub_env = build_shell_agent_stub_env(
             agent_stub_api_base_url=self.agent_stub_api_base_url,
-            agent_stub_drive_ref=self.config.agent_stub_drive_ref,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
-            session_id=self.runtime_state.session_id,
+            session_id=None,
         )
         if agent_stub_env is None:
             if not require_agent_stub_env:
@@ -722,7 +556,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         env.update(agent_stub_env)
         return env
 
-    def _redact_output(self, text: str) -> str:
+    def _redact_output(self, text: str, *, sensitive_values: Sequence[str | None] = ()) -> str:
         """Redact sensitive content from shell output before the model sees it.
 
         Two layers of redaction are applied:
@@ -736,86 +570,15 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         """
         if not text:
             return text
-        # Built-in: always redact the JWE token value.
-        env = self._build_shell_command_env(include_agent_stub_env=True)
-        jwe_value = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
-        if jwe_value and len(jwe_value) > 8:
-            text = text.replace(jwe_value, "***")
+        # Built-in: always redact actual sensitive values supplied by the
+        # command owner. Redaction must never mint replacement credentials.
+        for value in sensitive_values:
+            if value and len(value) > 8:
+                text = text.replace(value, "***")
         # Server-level + per-agent regex patterns.
         for pattern in (*self.shell_redact_patterns, *self.config.redact_patterns):
             text = re.sub(pattern, "***", text)
         return text
-
-
-async def execute_complete_with_commands(
-    commands: ShellCommandProtocol,
-    script: str,
-    *,
-    cwd: str | None,
-    env: dict[str, str] | None,
-    timeout: float,
-    max_output_bytes: int,
-) -> CompleteShellCommandResult:
-    deadline = time.monotonic() + timeout
-    job_id: str | None = None
-    result: ShellCommandResult | None = None
-    output_parts: list[str] = []
-    captured_bytes = 0
-    incomplete_reason: Literal["output_limit", "timeout"] | None = None
-    try:
-        result = await commands.run(script, cwd=cwd, env=env, timeout=_remaining_time(deadline))
-        job_id = result.job_id
-        while True:
-            remaining_bytes = max(max_output_bytes - captured_bytes, 0)
-            limited_output = utf8_prefix(result.output, remaining_bytes)
-            output_parts.append(limited_output)
-            captured_bytes += len(limited_output.encode("utf-8"))
-            if limited_output != result.output:
-                incomplete_reason = "output_limit"
-                break
-            if captured_bytes >= max_output_bytes and (result.truncated or not result.done):
-                incomplete_reason = "output_limit"
-                break
-            if result.truncated:
-                result = await commands.read_output(result.job_id, offset=result.offset)
-                continue
-            if result.done:
-                break
-            remaining_time = _remaining_time(deadline)
-            if remaining_time <= 0.0:
-                incomplete_reason = "timeout"
-                break
-            result = await commands.wait(result.job_id, offset=result.offset, timeout=remaining_time)
-
-        assert result is not None
-        final_status = result.status
-        final_done = result.done
-        final_exit_code = result.exit_code
-        final_offset = result.offset
-        final_output_path = result.output_path
-        if incomplete_reason is not None and not result.done:
-            terminal_status = await commands.interrupt(result.job_id, grace_seconds=DEFAULT_TERMINATE_GRACE_SECONDS)
-            final_status = terminal_status.status
-            final_done = terminal_status.done
-            final_exit_code = terminal_status.exit_code
-            final_offset = terminal_status.offset
-        return CompleteShellCommandResult(
-            job_id=result.job_id,
-            status=final_status,
-            done=final_done,
-            exit_code=final_exit_code,
-            output="".join(output_parts),
-            output_complete=incomplete_reason is None,
-            incomplete_reason=incomplete_reason,
-            offset=final_offset,
-            output_path=final_output_path,
-        )
-    finally:
-        if job_id is not None:
-            try:
-                await commands.delete(job_id, force=True)
-            except RuntimeError as exc:
-                logger.warning("Failed to delete transient shell job %s: %s", job_id, exc)
 
 
 async def render_prompt_observation_from_result(
@@ -847,10 +610,6 @@ async def render_prompt_observation_from_result(
         truncated_in_middle=result.truncated or output_exceeds_edge_budget,
     )
     return ShellPromptObservation(text=text, output_path=output_path, offset=offset)
-
-
-def _shell_layer_prefix_prompt() -> str:
-    return _SHELL_LAYER_PREFIX_PROMPT
 
 
 def _shell_layer_suffix_prompt() -> str:
@@ -897,56 +656,17 @@ def _tool_unexpected_error(
     tool_name: str,
     exc: Exception,
     *,
-    session_id: str | None,
     job_id: str | None = None,
 ) -> ShellToolErrorObservation:
     # Unexpected Exception still becomes a tool observation so one shell tool
     # failure does not abort the agent loop, but it is logged with traceback for
     # debugging. BaseException is intentionally not caught by callers.
     logger.exception(
-        "Unexpected shell tool failure: tool=%s session_id=%s job_id=%s",
+        "Unexpected shell tool failure: tool=%s job_id=%s",
         tool_name,
-        session_id,
         job_id,
     )
     return _tool_error_from_exception(exc, job_id=job_id)
-
-
-def _generate_session_id() -> str:
-    time_component = int(time.time()) & _SESSION_TIME_HEX_MASK
-    random_component = secrets.token_hex(1)
-    if len(random_component) != _SESSION_RANDOM_HEX_LENGTH:
-        raise RuntimeError("Expected a one-byte random hex suffix for Dify shell session ids.")
-    return f"{time_component:05x}{random_component}"
-
-
-def _workspace_cwd(session_id: str) -> str:
-    return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
-
-
-def _normalize_shell_home_root(shell_home_root: str) -> str:
-    stripped = shell_home_root.strip().rstrip("/")
-    if not stripped:
-        raise ValueError("shell_home_root must not be empty")
-    if not stripped.startswith("/"):
-        raise ValueError("shell_home_root must be an absolute path")
-    return stripped
-
-
-def _shell_home_dir_for_agent_id(agent_id: str | None, *, shell_home_root: str = "/home") -> str:
-    if agent_id is None:
-        raise ValueError("ShellLayer command execution requires execution_context.agent_id.")
-    return f"{_normalize_shell_home_root(shell_home_root)}/{_validated_agent_home_segment(agent_id)}"
-
-
-def _validated_agent_home_segment(agent_id: str) -> str:
-    if agent_id in {".", ".."} or not _AGENT_HOME_SEGMENT_PATTERN.fullmatch(agent_id):
-        raise ValueError("execution_context.agent_id must be a safe single path segment for shell HOME.")
-    return agent_id
-
-
-def _workspace_cwd_for_home(home_dir: str, session_id: str) -> str:
-    return f"{home_dir}/{_WORKSPACE_DIR_NAME}/{_validated_session_id(session_id)}"
 
 
 def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
@@ -966,12 +686,6 @@ def _shell_config_export_lines(config: DifyShellLayerConfig) -> list[str]:
     for tool in config.cli_tools:
         for secret_ref in tool.secret_refs:
             lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
-    if config.sandbox is not None:
-        if config.sandbox.provider:
-            lines.append(f"export DIFY_SANDBOX_PROVIDER={_shquote(config.sandbox.provider)}")
-        if config.sandbox.config:
-            sandbox_config = json.dumps(config.sandbox.config, ensure_ascii=True, sort_keys=True)
-            lines.append(f"export DIFY_SANDBOX_CONFIG_JSON={_shquote(sandbox_config)}")
     return lines
 
 
@@ -992,33 +706,8 @@ def _wrap_user_script(script: str, config: DifyShellLayerConfig) -> str:
     return "\n".join([*lines, script])
 
 
-def _workspace_mkdir_script(*, session_id: str) -> str:
-    safe_session_id = _validated_session_id(session_id)
-    workspace_dir = f"$HOME/workspace/{safe_session_id}"
-    return (
-        'mkdir -p "$HOME/workspace"; '
-        f'if mkdir "{workspace_dir}"; then exit 0; fi; '
-        f'if [ -e "{workspace_dir}" ]; then exit {_WORKSPACE_COLLISION_EXIT_CODE}; fi; '
-        "exit 1"
-    )
-
-
-def _workspace_cleanup_script(*, session_id: str) -> str:
-    return f'rm -rf -- "$HOME/workspace/{_validated_session_id(session_id)}"'
-
-
-def _workspace_ensure_script(*, session_id: str) -> str:
-    return f'mkdir -p "$HOME/workspace/{_validated_session_id(session_id)}"'
-
-
 def _shquote(value: str) -> str:
     return "'" + value.replace("'", "'\\''") + "'"
-
-
-def _validated_session_id(session_id: str) -> str:
-    if not _SESSION_ID_PATTERN.fullmatch(session_id):
-        raise ValueError("session_id must match the 5+2 lowercase hex format '<5 hex><2 hex>'.")
-    return session_id
 
 
 def _deduplicate_preserving_order(values: Sequence[str]) -> list[str]:
@@ -1037,10 +726,6 @@ def _tagged_shell_observation(metadata: dict[str, object], output: str) -> str:
     return f"<metadata>\n{compact_metadata}\n</metadata>\n\n<output>\n{output}\n</output>"
 
 
-def _remaining_time(deadline: float) -> float:
-    return max(0.0, deadline - time.monotonic())
-
-
 __all__ = [
     "CompleteRemoteCommandResult",
     "DifyShellLayer",
@@ -1048,6 +733,5 @@ __all__ = [
     "DifyShellRuntimeState",
     "DEFAULT_TERMINATE_GRACE_SECONDS",
     "DEFAULT_TIMEOUT_SECONDS",
-    "execute_complete_with_commands",
     "render_prompt_observation_from_result",
 ]

@@ -29,7 +29,7 @@ const EmptyElement: FC = () => {
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4">
+      <div className="box-border h-fit w-140 rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
           {t(($) => $['noData.title'], { ns: 'appAnnotation' })}
           <ThreeDotsIcon className="relative -top-3 -left-1.5 inline" />

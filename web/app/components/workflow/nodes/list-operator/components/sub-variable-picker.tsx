@@ -67,7 +67,7 @@ const SubVariablePicker: FC<Props> = ({ value, onChange, className }) => {
             <SelectItem key={option.value} value={option.value} className="h-8 py-0 pr-5 pl-1">
               <div className="flex h-6 items-center justify-between">
                 <div className="flex h-full items-center">
-                  <Variable02 className="mr-[5px] h-3.5 w-3.5 text-text-accent" />
+                  <Variable02 className="mr-1.25 h-3.5 w-3.5 text-text-accent" />
                   <SelectItemText className="mr-0 px-0 system-sm-medium text-text-secondary">
                     {option.name}
                   </SelectItemText>

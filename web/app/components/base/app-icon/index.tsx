@@ -86,7 +86,7 @@ const EditIconVariants = cva('text-text-primary-on-surface', {
       xs: 'size-3',
       tiny: 'size-3.5',
       small: 'size-5',
-      medium: 'size-[22px]',
+      medium: 'size-5.5',
       large: 'size-6',
       xl: 'size-7',
       xxl: 'size-8',

@@ -1,6 +1,6 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import TemplateCard from '../index'
 
@@ -686,7 +686,7 @@ describe('TemplateCard', () => {
     it('should have fixed height', () => {
       const { container } = render(<TemplateCard {...defaultProps} />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {

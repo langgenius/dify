@@ -7,8 +7,8 @@ import type {
 } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -149,7 +149,7 @@ const TriggerPluginItem: FC<Props> = ({
               toolIcon={providerIcon}
             />
             <div className="flex min-w-0 flex-1 items-center text-sm text-text-primary">
-              <span className="max-w-[200px] truncate">
+              <span className="max-w-50 truncate">
                 {notShowProvider ? actions[0]?.label[language] : payload.label[language]}
               </span>
               <span className="ml-2 truncate system-xs-regular text-text-quaternary">
@@ -171,10 +171,10 @@ const TriggerPluginItem: FC<Props> = ({
         </BlockSelectorRow>
 
         {!notShowProvider && hasAction && !isFold && (
-          <ScrollAreaRoot className="relative max-h-[240px] overflow-hidden overscroll-contain">
+          <ScrollArea className="relative max-h-60 overflow-hidden">
             <ScrollAreaViewport
               aria-label={t(($) => $['tabs.allTriggers'], { ns: 'workflow' })}
-              className="max-h-[240px] overscroll-contain"
+              className="max-h-60 overscroll-contain"
               role="region"
             >
               <ScrollAreaContent>
@@ -194,7 +194,7 @@ const TriggerPluginItem: FC<Props> = ({
             <ScrollAreaScrollbar>
               <ScrollAreaThumb />
             </ScrollAreaScrollbar>
-          </ScrollAreaRoot>
+          </ScrollArea>
         )}
       </div>
     </div>

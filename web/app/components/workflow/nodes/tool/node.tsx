@@ -48,7 +48,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
               >
                 <div
                   title={key}
-                  className="max-w-[100px] shrink-0 truncate text-xs font-medium text-text-tertiary uppercase"
+                  className="max-w-25 shrink-0 truncate text-xs font-medium text-text-tertiary uppercase"
                 >
                   {key}
                 </div>
@@ -97,7 +97,7 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
             ))}
           {showAuthorizationWarning && (
             <div className="flex h-6 items-center rounded-md border-[0.5px] border-state-warning-active bg-state-warning-hover px-1.5">
-              <span className="mr-1 size-[4px] shrink-0 rounded-xs bg-text-warning-secondary" />
+              <span className="mr-1 size-1 shrink-0 rounded-xs bg-text-warning-secondary" />
               <div
                 className="grow truncate system-xs-medium text-text-warning"
                 title={t(($) => $['nodes.tool.authorizationRequired'], { ns: 'workflow' })}

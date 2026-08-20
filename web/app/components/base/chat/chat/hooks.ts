@@ -1,6 +1,6 @@
 import type { ChatConfig, ChatItem, ChatItemInTree, Inputs } from '../types'
 import type { InputForm, ThoughtItem } from './type'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
 import type { IOnDataMoreInfo, IOtherOptions } from '@/service/base'
@@ -68,6 +68,7 @@ type SendCallback = {
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
+  onNotifyError?: IOtherOptions['onNotifyError']
   isPublicAPI?: boolean
 }
 
@@ -180,6 +181,10 @@ function getConversationMessagesData(response: unknown): ConversationMessagesRes
   return Array.isArray(data) ? data.filter(isHistoryConversationMessage) : []
 }
 
+function abortWorkflowEventsRequest(abortController: AbortController | null) {
+  abortController?.abort(new DOMException('The user aborted a request.', 'AbortError'))
+}
+
 export const useChat = (
   config?: ChatConfig,
   formSettings?: {
@@ -206,6 +211,26 @@ export const useChat = (
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
+  const pausedWorkflowEventsAbortControllerRef = useRef<AbortController | null>(null)
+  const pausedWorkflowEventsRef = useRef<{
+    workflowRunId: string
+    options: IOtherOptions
+  } | null>(null)
+  const workflowEventsSubscriptionActiveRef = useRef(false)
+  const workflowEventsSubscriptionRunIdRef = useRef<string | null>(null)
+  const workflowEventsSubscriptionGenerationRef = useRef(0)
+  const workflowRequestGenerationRef = useRef(0)
+  const workflowEventsReadyRef = useRef(false)
+  const workflowPauseConfirmedRef = useRef(false)
+  const workflowEventsReadyWaitersRef = useRef<
+    Array<{
+      workflowRunId: string | null
+      resolve: (isReady: boolean) => void
+    }>
+  >([])
+  const startWorkflowEventsSubscriptionRef = useRef<
+    ((workflowRunId: string, options: IOtherOptions) => void) | null
+  >(null)
   const params = useParams()
   const pathname = usePathname()
 
@@ -331,6 +356,174 @@ export const useChat = (
     isRespondingRef.current = isResponding
   }, [])
 
+  const resolveWorkflowEventsReadyWaiters = useCallback((isReady: boolean) => {
+    const waiters = workflowEventsReadyWaitersRef.current.splice(0)
+    waiters.forEach(({ resolve }) => resolve(isReady))
+  }, [])
+
+  const bindWorkflowEventsReadyWaiters = useCallback((workflowRunId: string) => {
+    workflowEventsReadyWaitersRef.current = workflowEventsReadyWaitersRef.current.filter(
+      (waiter) => {
+        if (waiter.workflowRunId && waiter.workflowRunId !== workflowRunId) {
+          waiter.resolve(false)
+          return false
+        }
+
+        waiter.workflowRunId = workflowRunId
+        return true
+      },
+    )
+  }, [])
+
+  const markWorkflowEventsPending = useCallback(() => {
+    workflowEventsReadyRef.current = false
+  }, [])
+
+  const startWorkflowEventsSubscription = useCallback(
+    (workflowRunId: string, options: IOtherOptions) => {
+      const generation = ++workflowEventsSubscriptionGenerationRef.current
+      abortWorkflowEventsRequest(pausedWorkflowEventsAbortControllerRef.current)
+      pausedWorkflowEventsAbortControllerRef.current = null
+      pausedWorkflowEventsRef.current = { workflowRunId, options }
+      bindWorkflowEventsReadyWaiters(workflowRunId)
+      workflowEventsSubscriptionActiveRef.current = true
+      workflowEventsSubscriptionRunIdRef.current = workflowRunId
+      markWorkflowEventsPending()
+
+      let hasWorkflowFinished = false
+      const releaseSubscription = () => {
+        if (generation !== workflowEventsSubscriptionGenerationRef.current) return false
+
+        workflowEventsSubscriptionActiveRef.current = false
+        workflowEventsSubscriptionRunIdRef.current = null
+        pausedWorkflowEventsAbortControllerRef.current = null
+        return true
+      }
+      const subscriptionOptions: IOtherOptions = {
+        ...options,
+        getAbortController: (abortController) => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) {
+            abortWorkflowEventsRequest(abortController)
+            return
+          }
+          pausedWorkflowEventsAbortControllerRef.current = abortController
+        },
+        onHumanInputRequired: (event) => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) return
+          options.onHumanInputRequired?.(event)
+        },
+        onWorkflowFinished: (event) => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) return
+          hasWorkflowFinished = true
+          options.onWorkflowFinished?.(event)
+        },
+        onWorkflowPaused: (event) => {
+          if (generation !== workflowEventsSubscriptionGenerationRef.current) return
+
+          options.onWorkflowPaused?.(event)
+          workflowEventsReadyRef.current = true
+          resolveWorkflowEventsReadyWaiters(true)
+        },
+        onError: (...args) => {
+          if (!releaseSubscription()) return
+
+          markWorkflowEventsPending()
+          resolveWorkflowEventsReadyWaiters(false)
+          options.onError?.(...args)
+        },
+        async onCompleted(hasError?: boolean, errorMessage?: string) {
+          if (!releaseSubscription()) return
+
+          markWorkflowEventsPending()
+          if (!hasWorkflowFinished) {
+            if (hasError) {
+              resolveWorkflowEventsReadyWaiters(false)
+              await options.onCompleted?.(hasError, errorMessage)
+            } else {
+              resolveWorkflowEventsReadyWaiters(false)
+              if (!workflowPauseConfirmedRef.current)
+                startWorkflowEventsSubscriptionRef.current?.(workflowRunId, options)
+            }
+            return
+          }
+
+          workflowPauseConfirmedRef.current = false
+          pausedWorkflowEventsRef.current = null
+          resolveWorkflowEventsReadyWaiters(false)
+          await options.onCompleted?.(hasError, errorMessage)
+        },
+      }
+
+      void sseGet(
+        `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`,
+        {},
+        subscriptionOptions,
+      )
+    },
+    [bindWorkflowEventsReadyWaiters, markWorkflowEventsPending, resolveWorkflowEventsReadyWaiters],
+  )
+  useEffect(() => {
+    startWorkflowEventsSubscriptionRef.current = startWorkflowEventsSubscription
+  }, [startWorkflowEventsSubscription])
+
+  const ensureWorkflowEventsSubscription = useCallback(
+    (workflowRunId: string, options: IOtherOptions) => {
+      pausedWorkflowEventsRef.current = { workflowRunId, options }
+      if (
+        workflowEventsSubscriptionActiveRef.current &&
+        workflowEventsSubscriptionRunIdRef.current === workflowRunId
+      )
+        return
+
+      startWorkflowEventsSubscription(workflowRunId, options)
+    },
+    [startWorkflowEventsSubscription],
+  )
+
+  const prepareHumanInputSubmission = useCallback(async () => {
+    if (workflowEventsReadyRef.current) {
+      workflowPauseConfirmedRef.current = false
+      return true
+    }
+
+    const isReady = await new Promise<boolean>((resolve) => {
+      const pausedWorkflowEvents = pausedWorkflowEventsRef.current
+      workflowEventsReadyWaitersRef.current.push({
+        workflowRunId: pausedWorkflowEvents?.workflowRunId ?? null,
+        resolve,
+      })
+      if (
+        pausedWorkflowEvents &&
+        workflowPauseConfirmedRef.current &&
+        !workflowEventsSubscriptionActiveRef.current
+      ) {
+        startWorkflowEventsSubscription(
+          pausedWorkflowEvents.workflowRunId,
+          pausedWorkflowEvents.options,
+        )
+      }
+    })
+    if (isReady) {
+      workflowPauseConfirmedRef.current = false
+    }
+    return isReady
+  }, [startWorkflowEventsSubscription])
+
+  const resetWorkflowEventsSubscription = useCallback(() => {
+    workflowRequestGenerationRef.current += 1
+    workflowEventsSubscriptionGenerationRef.current += 1
+    workflowEventsSubscriptionActiveRef.current = false
+    workflowEventsSubscriptionRunIdRef.current = null
+    workflowEventsReadyRef.current = false
+    workflowPauseConfirmedRef.current = false
+    pausedWorkflowEventsRef.current = null
+    abortWorkflowEventsRequest(pausedWorkflowEventsAbortControllerRef.current)
+    pausedWorkflowEventsAbortControllerRef.current = null
+    resolveWorkflowEventsReadyWaiters(false)
+  }, [resolveWorkflowEventsReadyWaiters])
+
+  useEffect(() => resetWorkflowEventsSubscription, [resetWorkflowEventsSubscription])
+
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
@@ -340,7 +533,8 @@ export const useChat = (
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
-  }, [stopChat, handleResponding])
+    resetWorkflowEventsSubscription()
+  }, [stopChat, handleResponding, resetWorkflowEventsSubscription])
 
   const handleRestart = useCallback(
     (cb?: any) => {
@@ -387,8 +581,24 @@ export const useChat = (
     async (
       messageId: string,
       workflowRunId: string,
-      { onGetSuggestedQuestions, onConversationComplete, onSendSettled, isPublicAPI }: SendCallback,
+      {
+        onGetSuggestedQuestions,
+        onConversationComplete,
+        onSendSettled,
+        onNotifyError,
+        isPublicAPI,
+      }: SendCallback,
     ) => {
+      const hasActiveSubscription =
+        workflowEventsSubscriptionActiveRef.current &&
+        workflowEventsSubscriptionRunIdRef.current === workflowRunId
+      const requestGeneration = hasActiveSubscription
+        ? workflowRequestGenerationRef.current
+        : ++workflowRequestGenerationRef.current
+      if (!hasActiveSubscription) {
+        workflowEventsAbortControllerRef.current?.abort()
+        workflowEventsAbortControllerRef.current = null
+      }
       const getOrCreatePlayer = createAudioPlayerManager()
       let hasSettled = false
       const settleSend = (hasError?: boolean) => {
@@ -397,11 +607,9 @@ export const useChat = (
         hasSettled = true
         onSendSettled?.(hasError)
       }
-      // Re-subscribe to workflow events for the specific message
-      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
-
       const otherOptions: IOtherOptions = {
         isPublicAPI,
+        onNotifyError,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -440,6 +648,8 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           handleResponding(false)
 
           try {
@@ -575,10 +785,14 @@ export const useChat = (
           })
         },
         onError() {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           handleResponding(false)
           settleSend(true)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           handleResponding(true)
           hasStopRespondedRef.current = false
           updateChatTreeNode(messageId, (responseItem) => {
@@ -599,6 +813,9 @@ export const useChat = (
           })
         },
         onWorkflowFinished: ({ data: workflowFinishedData }) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
+          pausedStateRef.current = false
           updateChatTreeNode(messageId, (responseItem) => {
             if (responseItem.workflowProcess) {
               responseItem.workflowProcess = {
@@ -724,7 +941,18 @@ export const useChat = (
             }
           })
         },
-        onHumanInputRequired: ({ data: humanInputRequiredData }) => {
+        onHumanInputRequired: ({
+          workflow_run_id: pausedWorkflowRunId,
+          data: humanInputRequiredData,
+        }) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
+          markWorkflowEventsPending()
+          workflowPauseConfirmedRef.current = false
+          pausedWorkflowEventsRef.current = {
+            workflowRunId: pausedWorkflowRunId || workflowRunId,
+            options: otherOptions,
+          }
           updateChatTreeNode(messageId, (responseItem) => {
             if (!responseItem.humanInputFormDataList) {
               responseItem.humanInputFormDataList = [humanInputRequiredData]
@@ -749,6 +977,8 @@ export const useChat = (
           })
         },
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+          workflowPauseConfirmedRef.current = false
+          handleResponding(true)
           updateChatTreeNode(messageId, (responseItem) => {
             let requiredFormData:
               | NonNullable<ChatItem['humanInputFormDataList']>[number]
@@ -785,18 +1015,20 @@ export const useChat = (
           })
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
-          const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           pausedStateRef.current = true
-          sseGet(resumeUrl, {}, otherOptions)
+          workflowPauseConfirmedRef.current = true
+          handleResponding(false)
+          ensureWorkflowEventsSubscription(workflowPausedData.workflow_run_id, otherOptions)
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           })
         },
       }
 
-      if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
-
-      sseGet(url, {}, otherOptions)
+      workflowPauseConfirmedRef.current = true
+      ensureWorkflowEventsSubscription(workflowRunId, otherOptions)
     },
     [
       updateChatTreeNode,
@@ -804,6 +1036,8 @@ export const useChat = (
       createAudioPlayerManager,
       config?.suggested_questions_after_answer,
       options.isNewAgent,
+      ensureWorkflowEventsSubscription,
+      markWorkflowEventsPending,
     ],
   )
 
@@ -861,6 +1095,7 @@ export const useChat = (
         onConversationComplete,
         onUnhandledEvent,
         onSendSettled,
+        onNotifyError,
         isPublicAPI,
       }: SendCallback,
     ) => {
@@ -870,6 +1105,10 @@ export const useChat = (
         toast.info(t(($) => $['errorMessage.waitForResponse'], { ns: 'appDebug' }))
         return false
       }
+
+      pausedStateRef.current = false
+      resetWorkflowEventsSubscription()
+      const requestGeneration = ++workflowRequestGenerationRef.current
 
       const parentMessage = threadMessages.find((item) => item.id === data.parent_message_id)
 
@@ -938,17 +1177,27 @@ export const useChat = (
       let isAgentMode = false
       let hasSetResponseId = false
       let hasSettled = false
+      let hasPaused = false
+      let hasNotifiedConversationComplete = false
+      let currentWorkflowRunId = ''
       const settleSend = (hasError?: boolean) => {
         if (hasSettled) return
 
         hasSettled = true
         onSendSettled?.(hasError)
       }
+      const notifyConversationComplete = (workflowRunId?: string) => {
+        if (hasNotifiedConversationComplete) return
+
+        hasNotifiedConversationComplete = true
+        onConversationComplete?.(conversationIdRef.current, workflowRunId)
+      }
 
       const getOrCreatePlayer = createAudioPlayerManager()
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
+        onNotifyError,
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
@@ -1005,6 +1254,8 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           handleResponding(false)
 
           try {
@@ -1025,8 +1276,7 @@ export const useChat = (
               const data = getConversationMessagesData(conversationMessagesResponse)
               const newResponseItem = data.find((item) => item.id === responseItem.id)
               completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
-              if (!newResponseItem)
-                return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
+              if (!newResponseItem) return notifyConversationComplete(completedWorkflowRunId)
 
               const historyAgentThoughts = getHistoryAgentThoughts(newResponseItem)
               const lastHistoryAgentThought = historyAgentThoughts.at(-1)
@@ -1082,7 +1332,7 @@ export const useChat = (
               })
             }
 
-            onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
+            notifyConversationComplete(completedWorkflowRunId)
 
             if (
               config?.suggested_questions_after_answer?.enabled &&
@@ -1236,6 +1486,8 @@ export const useChat = (
           responseItem.content = messageReplace.answer
         },
         onError() {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({
@@ -1246,6 +1498,9 @@ export const useChat = (
           })
         },
         onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
+          currentWorkflowRunId = workflow_run_id
           handleResponding(true)
           // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
           if (conversation_id) {
@@ -1280,6 +1535,8 @@ export const useChat = (
           })
         },
         onWorkflowFinished: ({ data: workflowFinishedData }) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
           if (pausedStateRef.current) pausedStateRef.current = false
           responseItem.workflowProcess = {
             ...responseItem.workflowProcess!,
@@ -1425,7 +1682,18 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
-        onHumanInputRequired: ({ data: humanInputRequiredData }) => {
+        onHumanInputRequired: ({
+          workflow_run_id: pausedWorkflowRunId,
+          data: humanInputRequiredData,
+        }) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
+          markWorkflowEventsPending()
+          workflowPauseConfirmedRef.current = false
+          pausedWorkflowEventsRef.current = {
+            workflowRunId: pausedWorkflowRunId || currentWorkflowRunId,
+            options: otherOptions,
+          }
           if (!responseItem.humanInputFormDataList) {
             responseItem.humanInputFormDataList = [humanInputRequiredData]
           } else {
@@ -1453,6 +1721,8 @@ export const useChat = (
           }
         },
         onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+          workflowPauseConfirmedRef.current = false
+          handleResponding(true)
           let requiredFormData: NonNullable<ChatItem['humanInputFormDataList']>[number] | undefined
           if (responseItem.humanInputFormDataList?.length) {
             const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(
@@ -1495,9 +1765,13 @@ export const useChat = (
           })
         },
         onWorkflowPaused: ({ data: workflowPausedData }) => {
-          const url = `/workflow/${workflowPausedData.workflow_run_id}/events`
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
+          hasPaused = true
           pausedStateRef.current = true
-          sseGet(url, {}, otherOptions)
+          workflowPauseConfirmedRef.current = true
+          handleResponding(false)
+          ensureWorkflowEventsSubscription(workflowPausedData.workflow_run_id, otherOptions)
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -1511,12 +1785,34 @@ export const useChat = (
       // Abort the previous workflow events SSE request
       if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
 
+      const postOptions: IOtherOptions = {
+        ...otherOptions,
+        onError: (...args) => {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+
+          if (!hasPaused) {
+            markWorkflowEventsPending()
+            workflowPauseConfirmedRef.current = false
+            pausedWorkflowEventsRef.current = null
+            resolveWorkflowEventsReadyWaiters(false)
+            responseItem.humanInputFormDataList = []
+          }
+          otherOptions.onError?.(...args)
+        },
+        onCompleted: (hasError?: boolean, errorMessage?: string) => {
+          if (hasPaused && !hasError) {
+            notifyConversationComplete(currentWorkflowRunId)
+            return
+          }
+          return otherOptions.onCompleted?.(hasError, errorMessage)
+        },
+      }
       ssePost(
         url,
         {
           body: bodyParams,
         },
-        otherOptions,
+        postOptions,
       )
       return true
     },
@@ -1532,6 +1828,10 @@ export const useChat = (
       createAudioPlayerManager,
       formSettings,
       options.isNewAgent,
+      ensureWorkflowEventsSubscription,
+      markWorkflowEventsPending,
+      resetWorkflowEventsSubscription,
+      resolveWorkflowEventsReadyWaiters,
     ],
   )
 
@@ -1640,6 +1940,7 @@ export const useChat = (
     handleSend,
     handleResume,
     handleSwitchSibling,
+    prepareHumanInputSubmission,
     suggestedQuestions,
     handleRestart,
     handleStop,

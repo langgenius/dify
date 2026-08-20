@@ -65,7 +65,7 @@ const Installed: FC<Props> = ({ list, installStatus, versionInfo, onCancel, isHi
       {/* Action Buttons */}
       {!isHideButton && (
         <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
-          <Button variant="primary" className="min-w-[72px]" onClick={onCancel}>
+          <Button variant="primary" className="min-w-18" onClick={onCancel}>
             {t(($) => $['operation.close'], { ns: 'common' })}
           </Button>
         </div>

@@ -19,6 +19,11 @@ from models.account import AccountStatus
 from services.errors.account import AccountRegisterError
 
 
+@pytest.fixture(autouse=True)
+def _oauth_config(config_overrides) -> None:
+    config_overrides(CONSOLE_WEB_URL="http://localhost:3000")
+
+
 class TestGetOAuthProviders:
     @pytest.mark.parametrize(
         ("github_config", "google_config", "expected_github", "expected_google"),
@@ -38,15 +43,16 @@ class TestGetOAuthProviders:
             ({"id": None, "secret": None}, {"id": None, "secret": None}, False, False),
         ],
     )
-    @patch("controllers.console.auth.oauth.dify_config")
     def test_should_configure_oauth_providers_correctly(
-        self, mock_config, app: Flask, github_config, google_config, expected_github, expected_google
+        self, app: Flask, github_config, google_config, expected_github, expected_google, config_overrides
     ):
-        mock_config.GITHUB_CLIENT_ID = github_config["id"]
-        mock_config.GITHUB_CLIENT_SECRET = github_config["secret"]
-        mock_config.GOOGLE_CLIENT_ID = google_config["id"]
-        mock_config.GOOGLE_CLIENT_SECRET = google_config["secret"]
-        mock_config.CONSOLE_API_URL = "http://localhost"
+        config_overrides(
+            GITHUB_CLIENT_ID=github_config["id"],
+            GITHUB_CLIENT_SECRET=github_config["secret"],
+            GOOGLE_CLIENT_ID=google_config["id"],
+            GOOGLE_CLIENT_SECRET=google_config["secret"],
+            CONSOLE_API_URL="http://localhost",
+        )
 
         with app.app_context():
             providers = get_oauth_providers()
@@ -188,7 +194,6 @@ class TestOAuthCallback:
 
         return {"provider": oauth_provider, "account": account, "token_pair": token_pair}
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.AccountService")
@@ -201,21 +206,29 @@ class TestOAuthCallback:
         mock_account_service,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
         mock_generate_account.return_value = (oauth_setup["account"], True)
         mock_account_service.login.return_value = oauth_setup["token_pair"]
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with (
+            patch("controllers.console.auth.oauth.extract_remote_ip", return_value="203.0.113.10"),
+            app.test_request_context("/auth/oauth/github/callback?code=test_code"),
+        ):
             resource.get("github")
 
         oauth_setup["provider"].get_access_token.assert_called_once_with("test_code")
         oauth_setup["provider"].get_user_info.assert_called_once_with("access_token")
+        mock_generate_account.assert_called_once_with(
+            "github",
+            oauth_setup["provider"].get_user_info.return_value,
+            timezone=None,
+            language=None,
+            ip_address="203.0.113.10",
+        )
         mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
 
     @pytest.mark.parametrize(
@@ -247,7 +260,6 @@ class TestOAuthCallback:
         assert status_code == 400
         assert response["error"] == expected_error
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth.RegisterService")
     @patch("controllers.console.auth.oauth.AccountService")
@@ -258,12 +270,10 @@ class TestOAuthCallback:
         mock_account_service,
         mock_register_service,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
     ):
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         oauth_setup["provider"].get_user_info.return_value = OAuthUserInfo(
             id="123", name="Test User", email="User@Example.com"
         )
@@ -299,7 +309,6 @@ class TestOAuthCallback:
     )
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.redirect")
@@ -308,7 +317,6 @@ class TestOAuthCallback:
         mock_redirect,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         mock_tenant_service,
         mock_account_service,
         resource: OAuthCallback,
@@ -318,7 +326,6 @@ class TestOAuthCallback:
         expected_redirect,
     ):
 
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         account = MagicMock()
@@ -338,7 +345,6 @@ class TestOAuthCallback:
 
         mock_redirect.assert_called_once_with(expected_redirect)
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -349,7 +355,6 @@ class TestOAuthCallback:
         mock_tenant_service,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
@@ -372,7 +377,6 @@ class TestOAuthCallback:
         assert mock_account.status == AccountStatus.ACTIVE
         assert mock_account.initialized_at is not None
 
-    @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth._generate_account")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -385,7 +389,6 @@ class TestOAuthCallback:
         mock_tenant_service,
         mock_generate_account,
         mock_get_providers,
-        mock_config,
         resource: OAuthCallback,
         app: Flask,
         oauth_setup,
@@ -411,7 +414,6 @@ class TestOAuthCallback:
         Security consideration: Until properly implemented, CLOSED status provides no protection.
         """
         # Setup
-        mock_config.CONSOLE_WEB_URL = "http://localhost:3000"
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
 
         # Create account with CLOSED status
@@ -529,6 +531,7 @@ class TestAccountGeneration:
                         provider="github",
                         language="en-US",
                         timezone=None,
+                        ip_address=None,
                         session=ANY,
                     )
                 else:
@@ -563,6 +566,7 @@ class TestAccountGeneration:
             provider="github",
             language="en-US",
             timezone=None,
+            ip_address=None,
             session=ANY,
         )
 
@@ -595,6 +599,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
+            ip_address=None,
             session=ANY,
         )
 
@@ -627,6 +632,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
+            ip_address=None,
             session=ANY,
         )
 

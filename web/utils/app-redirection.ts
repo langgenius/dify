@@ -1,10 +1,11 @@
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ResourceMaintainerPermissionOptions } from '@/utils/permission'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 
 export type AppRedirectionTarget = {
   id: string
-  mode: AppModeEnum
+  mode: AppPartial['mode']
   permission_keys?: string[]
   bound_agent_id?: string | null
 }
@@ -30,7 +31,10 @@ export const getRedirectionPath = (
 
   if (appACLCapabilities.canAccessConfig) return `/app/${app.id}/access-config`
 
-  return `/app/${app.id}/develop`
+  if (app.mode === AppModeEnum.WORKFLOW && appACLCapabilities.canDeploy)
+    return `/app/${app.id}/deploy`
+
+  return `/app/${app.id}/access-point`
 }
 
 export const getRedirection = (

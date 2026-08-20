@@ -76,7 +76,7 @@ const AuthorizedInNode = ({
           )}
           variant={defaultUnavailable || unavailable ? 'ghost' : 'secondary'}
         >
-          <StatusDot className="mr-1.5" status={color} />
+          <StatusDot status={color} />
           {label}
           {(unavailable || defaultUnavailable) && (
             <>

@@ -13,14 +13,9 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
@@ -38,6 +33,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
@@ -88,6 +84,7 @@ async function uploadCreatedDocuments(knowledgeSpaceId: string, files: File[]) {
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  useDocumentTitle(t(($) => $['newKnowledge.createTitle']))
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
@@ -361,9 +358,9 @@ export function CreateKnowledgePage() {
           </button>
 
           <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
-            <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <div className="min-h-6 w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
-              className="flex max-h-full min-h-0 w-full max-w-[760px] flex-col"
+              className="flex max-h-full min-h-0 w-full max-w-190 flex-col"
               onFormSubmit={handleSubmit}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
@@ -390,7 +387,7 @@ export function CreateKnowledgePage() {
                         *
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       disabled={submissionLocked}
                       maxLength={NAME_MAX_LENGTH}
@@ -579,7 +576,7 @@ export function CreateKnowledgePage() {
                 </div>
               </div>
             </Form>
-            <div className="min-h-px w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <div className="min-h-px w-full max-w-190 flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">

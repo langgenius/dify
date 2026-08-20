@@ -1,7 +1,6 @@
 import type { StartNodeType } from './types'
 import type { InputVar, MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,13 +21,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const { deleteNodeInspectorVars, renameInspectVarName, nodesWithInspectVars, deleteInspectVar } =
     useInspectVarsCrud()
 
-  const [isShowAddVarModal, { setTrue: showAddVarModal, setFalse: hideAddVarModal }] =
-    useBoolean(false)
-
-  const [
-    isShowRemoveVarConfirm,
-    { setTrue: showRemoveVarConfirm, setFalse: hideRemoveVarConfirm },
-  ] = useBoolean(false)
+  const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
+  const [isShowRemoveVarConfirm, setIsShowRemoveVarConfirm] = useState(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const [removedIndex, setRemoveIndex] = useState(0)
   const handleVarListChange = useCallback(
@@ -42,7 +36,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
         if (varId) deleteInspectVar(id, varId)
 
         if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
-          showRemoveVarConfirm()
+          setIsShowRemoveVarConfirm(true)
           setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
           setRemoveIndex(moreInfo?.index as number)
           return
@@ -76,7 +70,6 @@ const useConfig = (id: string, payload: StartNodeType) => {
       nodesWithInspectVars,
       renameInspectVarName,
       setInputs,
-      showRemoveVarConfirm,
     ],
   )
 
@@ -86,8 +79,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
     })
     setInputs(newInputs)
     removeUsedVarInNodes(removedVar)
-    hideRemoveVarConfirm()
-  }, [hideRemoveVarConfirm, inputs, removeUsedVarInNodes, removedIndex, removedVar, setInputs])
+    setIsShowRemoveVarConfirm(false)
+  }, [inputs, removeUsedVarInNodes, removedIndex, removedVar, setInputs])
 
   const handleAddVariable = useCallback(
     (payload: InputVar) => {
@@ -124,12 +117,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
     isChatMode,
     inputs,
     isShowAddVarModal,
-    showAddVarModal,
-    hideAddVarModal,
+    showAddVarModal: () => setIsShowAddVarModal(true),
+    hideAddVarModal: () => setIsShowAddVarModal(false),
     handleVarListChange,
     handleAddVariable,
     isShowRemoveVarConfirm,
-    hideRemoveVarConfirm,
+    hideRemoveVarConfirm: () => setIsShowRemoveVarConfirm(false),
     onRemoveVarConfirm: removeVarInNode,
   }
 }

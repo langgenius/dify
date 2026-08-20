@@ -16,7 +16,6 @@ type PaginationContextValue = {
   page: number
   totalPages: number
   hasPages: boolean
-  disabled: boolean
   onPageChange: (page: number) => void
   items: PageItem[]
 }
@@ -37,6 +36,12 @@ function clampPage(page: number, totalPages: number) {
   return Math.min(Math.max(Math.trunc(page), 1), Math.max(totalPages, 1))
 }
 
+function normalizeTotalPages(totalPages: number) {
+  if (!Number.isFinite(totalPages)) return 0
+
+  return Math.max(Math.trunc(totalPages), 0)
+}
+
 function range(start: number, end: number) {
   if (end < start) return []
 
@@ -48,7 +53,6 @@ type GetPageItemsOptions = {
   totalPages: number
   siblingCount: number
   boundaryCount: number
-  visiblePageCount: number
 }
 
 function getPageItems({
@@ -56,88 +60,78 @@ function getPageItems({
   totalPages,
   siblingCount,
   boundaryCount,
-  visiblePageCount,
 }: GetPageItemsOptions): PageItem[] {
   if (totalPages <= 0) return []
 
   const normalizedPage = clampPage(page, totalPages)
-  const normalizedBoundaryCount = Math.max(Math.trunc(boundaryCount), 1)
-  const normalizedSiblingCount = Math.max(Math.trunc(siblingCount), 0)
-  const windowSize = Math.max(Math.trunc(visiblePageCount), normalizedSiblingCount * 2 + 1)
+  const normalizedBoundaryCount = Number.isFinite(boundaryCount)
+    ? Math.max(Math.trunc(boundaryCount), 0)
+    : 1
+  const normalizedSiblingCount = Number.isFinite(siblingCount)
+    ? Math.max(Math.trunc(siblingCount), 0)
+    : 1
+  const visibleItemCount = normalizedBoundaryCount * 2 + normalizedSiblingCount * 2 + 3
 
-  if (totalPages <= windowSize + normalizedBoundaryCount) return range(1, totalPages)
+  if (totalPages <= visibleItemCount) return range(1, totalPages)
 
-  const nearStartEnd = windowSize
-  const nearEndStart = totalPages - windowSize + 1
-  const middleStart = Math.max(normalizedBoundaryCount + 1, normalizedPage - normalizedSiblingCount)
-  const middleEnd = Math.min(
-    totalPages - normalizedBoundaryCount,
-    normalizedPage + normalizedSiblingCount,
+  const startPages = range(1, Math.min(normalizedBoundaryCount, totalPages))
+  const endPages = range(
+    Math.max(totalPages - normalizedBoundaryCount + 1, normalizedBoundaryCount + 1),
+    totalPages,
   )
+  const firstEndPage = endPages.at(0)
+  const siblingStart = Math.max(
+    Math.min(
+      normalizedPage - normalizedSiblingCount,
+      totalPages - normalizedBoundaryCount - normalizedSiblingCount * 2 - 1,
+    ),
+    normalizedBoundaryCount + 2,
+  )
+  const siblingEnd = Math.min(
+    Math.max(
+      normalizedPage + normalizedSiblingCount,
+      normalizedBoundaryCount + normalizedSiblingCount * 2 + 2,
+    ),
+    firstEndPage !== undefined ? firstEndPage - 2 : totalPages - 1,
+  )
+  const items: PageItem[] = [...startPages]
 
-  const windowPages =
-    normalizedPage <= nearStartEnd - normalizedSiblingCount
-      ? range(1, nearStartEnd)
-      : normalizedPage >= nearEndStart + normalizedSiblingCount
-        ? range(nearEndStart, totalPages)
-        : range(middleStart, middleEnd)
+  if (siblingStart > normalizedBoundaryCount + 2) items.push('ellipsis-start')
+  else if (normalizedBoundaryCount + 1 < totalPages - normalizedBoundaryCount)
+    items.push(normalizedBoundaryCount + 1)
 
-  const pageSet = new Set([
-    ...range(1, normalizedBoundaryCount),
-    ...windowPages,
-    ...range(totalPages - normalizedBoundaryCount + 1, totalPages),
-  ])
-  const pages = Array.from(pageSet)
-    .filter((item) => item >= 1 && item <= totalPages)
-    .sort((a, b) => a - b)
+  items.push(...range(siblingStart, siblingEnd))
 
-  return pages.reduce<PageItem[]>((items, item, index) => {
-    const previous = pages[index - 1]
+  if (siblingEnd < totalPages - normalizedBoundaryCount - 1) items.push('ellipsis-end')
+  else if (totalPages - normalizedBoundaryCount > normalizedBoundaryCount)
+    items.push(totalPages - normalizedBoundaryCount)
 
-    if (previous && item - previous === 2) items.push(previous + 1)
-    else if (previous && item - previous > 2)
-      items.push(item < normalizedPage ? 'ellipsis-start' : 'ellipsis-end')
-
-    items.push(item)
-    return items
-  }, [])
+  items.push(...endPages)
+  return items
 }
 
-type PaginationRootState = {
-  page: number
-  totalPages: number
-  hasPages: boolean
-  disabled: boolean
-}
-
-export type PaginationRootProps = Omit<
-  useRender.ComponentProps<'nav', PaginationRootState>,
-  'onChange'
-> & {
+type PaginationRootProps = Omit<useRender.ComponentProps<'nav'>, 'onChange'> & {
   page: number
   totalPages: number
   onPageChange: (page: number) => void
   siblingCount?: number
   boundaryCount?: number
-  visiblePageCount?: number
 }
 
-export function PaginationRoot({
+function PaginationRoot({
   page,
   totalPages,
   onPageChange,
   siblingCount = 1,
   boundaryCount = 1,
-  visiblePageCount = 8,
   render,
   children,
   className,
   ...props
 }: PaginationRootProps) {
-  const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
+  const normalizedTotalPages = normalizeTotalPages(totalPages)
   const normalizedPage = clampPage(page, normalizedTotalPages)
   const hasPages = normalizedTotalPages > 0
-  const disabled = normalizedTotalPages <= 1
   const items = React.useMemo(
     () =>
       getPageItems({
@@ -145,9 +139,8 @@ export function PaginationRoot({
         totalPages: normalizedTotalPages,
         siblingCount,
         boundaryCount,
-        visiblePageCount,
       }),
-    [boundaryCount, normalizedPage, normalizedTotalPages, siblingCount, visiblePageCount],
+    [boundaryCount, normalizedPage, normalizedTotalPages, siblingCount],
   )
 
   const context = React.useMemo<PaginationContextValue>(
@@ -155,11 +148,14 @@ export function PaginationRoot({
       page: normalizedPage,
       totalPages: normalizedTotalPages,
       hasPages,
-      disabled,
-      onPageChange: (nextPage) => onPageChange(clampPage(nextPage, normalizedTotalPages)),
+      onPageChange: (nextPage) => {
+        const normalizedNextPage = clampPage(nextPage, normalizedTotalPages)
+
+        if (normalizedNextPage !== normalizedPage) onPageChange(normalizedNextPage)
+      },
       items,
     }),
-    [disabled, hasPages, items, normalizedPage, normalizedTotalPages, onPageChange],
+    [hasPages, items, normalizedPage, normalizedTotalPages, onPageChange],
   )
 
   const defaultProps: useRender.ElementProps<'nav'> = {
@@ -174,21 +170,15 @@ export function PaginationRoot({
   return useRender({
     defaultTagName: 'nav',
     render,
-    state: {
-      page: normalizedPage,
-      totalPages: normalizedTotalPages,
-      hasPages,
-      disabled,
-    },
     props: mergeProps<'nav'>(defaultProps, props),
   })
 }
 
-export type PaginationNavigationProps = useRender.ComponentProps<'div'>
+type PaginationNavigationProps = useRender.ComponentProps<'div'>
 
-export type PaginationContentProps = useRender.ComponentProps<'div'>
+type PaginationContentProps = useRender.ComponentProps<'div'>
 
-export function PaginationContent({ render, className, ...props }: PaginationContentProps) {
+function PaginationContent({ render, className, ...props }: PaginationContentProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     className: cn(
       'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2',
@@ -203,7 +193,7 @@ export function PaginationContent({ render, className, ...props }: PaginationCon
   })
 }
 
-export function PaginationNavigation({ render, className, ...props }: PaginationNavigationProps) {
+function PaginationNavigation({ render, className, ...props }: PaginationNavigationProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     className: cn(
       'flex shrink-0 items-center gap-0.5 justify-self-start rounded-[10px] bg-background-section-burn p-0.5',
@@ -218,8 +208,14 @@ export function PaginationNavigation({ render, className, ...props }: Pagination
   })
 }
 
-type PaginationButtonProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
   children?: React.ReactNode
+  className?: string
+}
+
+type PaginationNextProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
+  children?: React.ReactNode
+  className?: string
 }
 
 const paginationArrowButtonClassName = [
@@ -230,17 +226,17 @@ const paginationArrowButtonClassName = [
   'motion-reduce:transition-none',
 ]
 
-export function PaginationPrevious({
+function PaginationPrevious({
   className,
   children,
   'aria-label': ariaLabel,
   ...props
-}: PaginationButtonProps) {
+}: PaginationPreviousProps) {
   const pagination = usePaginationContext('PaginationPrevious')
 
   if (!pagination.hasPages) return null
 
-  const disabled = props.disabled || pagination.page <= 1 || pagination.disabled
+  const disabled = props.disabled || pagination.page <= 1
 
   return (
     <BaseButton
@@ -260,17 +256,17 @@ export function PaginationPrevious({
   )
 }
 
-export function PaginationNext({
+function PaginationNext({
   className,
   children,
   'aria-label': ariaLabel,
   ...props
-}: PaginationButtonProps) {
+}: PaginationNextProps) {
   const pagination = usePaginationContext('PaginationNext')
 
   if (!pagination.hasPages) return null
 
-  const disabled = props.disabled || pagination.page >= pagination.totalPages || pagination.disabled
+  const disabled = props.disabled || pagination.page >= pagination.totalPages
 
   return (
     <BaseButton
@@ -290,12 +286,13 @@ export function PaginationNext({
   )
 }
 
-export type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
   inputLabel?: string
   children?: React.ReactNode
+  className?: string
 }
 
-export function PaginationPageJump({
+function PaginationPageJump({
   className,
   inputLabel = 'Page number',
   children,
@@ -402,9 +399,9 @@ export function PaginationPageJump({
   )
 }
 
-export type PaginationPageListProps = useRender.ComponentProps<'ol'>
+type PaginationPageListProps = useRender.ComponentProps<'ol'>
 
-export function PaginationPageList({ render, className, ...props }: PaginationPageListProps) {
+function PaginationPageList({ render, className, ...props }: PaginationPageListProps) {
   const pagination = usePaginationContext('PaginationPageList')
 
   const defaultProps: useRender.ElementProps<'ol'> = {
@@ -427,12 +424,13 @@ export function PaginationPageList({ render, className, ...props }: PaginationPa
   })
 }
 
-export type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPageProps = Omit<BaseButtonNS.Props, 'children' | 'className'> & {
   page: number
   children?: React.ReactNode
+  className?: string
 }
 
-export function PaginationPage({
+function PaginationPage({
   page,
   className,
   children,
@@ -465,9 +463,9 @@ export function PaginationPage({
   )
 }
 
-export type PaginationEllipsisProps = useRender.ComponentProps<'span'>
+type PaginationEllipsisProps = useRender.ComponentProps<'span'>
 
-export function PaginationEllipsis({ render, className, ...props }: PaginationEllipsisProps) {
+function PaginationEllipsis({ render, className, ...props }: PaginationEllipsisProps) {
   const defaultProps: useRender.ElementProps<'span'> = {
     'aria-hidden': true,
     className: cn(
@@ -484,7 +482,7 @@ export function PaginationEllipsis({ render, className, ...props }: PaginationEl
   })
 }
 
-export type PaginationPageSizeProps<Value extends number = number> = {
+type PaginationPageSizeProps<Value extends number = number> = {
   value: Value
   options: readonly Value[]
   onValueChange: (value: Value) => void
@@ -493,7 +491,7 @@ export type PaginationPageSizeProps<Value extends number = number> = {
   className?: string
 }
 
-export function PaginationPageSize<Value extends number = number>({
+function PaginationPageSize<Value extends number = number>({
   value,
   options,
   onValueChange,
@@ -512,23 +510,15 @@ export function PaginationPageSize<Value extends number = number>({
         {label}
       </div>
       <SegmentedControl
-        value={[String(value)]}
+        value={value}
         aria-label={ariaLabel}
-        onValueChange={(nextValue) => {
-          const [selectedValue] = nextValue
-
-          if (!selectedValue) return
-
-          const selectedOption = options.find((option) => String(option) === selectedValue)
-
-          if (selectedOption !== undefined) onValueChange(selectedOption)
-        }}
+        onValueChange={(value) => onValueChange(value)}
       >
         {options.map((option) => (
-          <SegmentedControlItem
+          <SegmentedControlItem<Value>
             key={option}
-            value={String(option)}
-            className="min-w-9 data-pressed:text-text-primary"
+            value={option}
+            className="min-w-9 data-checked:text-text-primary"
           >
             {option}
           </SegmentedControlItem>
@@ -538,14 +528,14 @@ export function PaginationPageSize<Value extends number = number>({
   )
 }
 
-export type PaginationLabels = {
+type PaginationLabels = {
   previous?: string
   next?: string
   editPageNumber?: (page: number, totalPages: number) => string
   pageNumberInput?: string
 }
 
-export type PaginationPageSizeConfig<Value extends number = number> = {
+type PaginationPageSizeConfig<Value extends number = number> = {
   value: Value
   options: readonly Value[]
   onValueChange: (value: Value) => void
@@ -553,15 +543,12 @@ export type PaginationPageSizeConfig<Value extends number = number> = {
   ariaLabel?: string
 }
 
-export type PaginationProps<Value extends number = number> = Omit<
-  PaginationRootProps,
-  'children'
-> & {
+type PaginationProps<Value extends number = number> = Omit<PaginationRootProps, 'children'> & {
   labels?: PaginationLabels
   pageSize?: PaginationPageSizeConfig<Value>
 }
 
-export function Pagination<Value extends number = number>({
+function Pagination<Value extends number = number>({
   labels,
   pageSize,
   page,
@@ -569,7 +556,7 @@ export function Pagination<Value extends number = number>({
   onPageChange,
   ...props
 }: PaginationProps<Value>) {
-  const normalizedTotalPages = Math.max(Math.trunc(totalPages), 0)
+  const normalizedTotalPages = normalizeTotalPages(totalPages)
   const normalizedPage = clampPage(page, normalizedTotalPages)
   const editPageNumber = labels?.editPageNumber?.(normalizedPage, normalizedTotalPages)
 
@@ -598,9 +585,9 @@ export function Pagination<Value extends number = number>({
   )
 }
 
-export type PaginationSkeletonProps = useRender.ComponentProps<'div'>
+type PaginationSkeletonProps = useRender.ComponentProps<'div'>
 
-export function PaginationSkeleton({ render, className, ...props }: PaginationSkeletonProps) {
+function PaginationSkeleton({ render, className, ...props }: PaginationSkeletonProps) {
   const defaultProps: useRender.ElementProps<'div'> = {
     'aria-hidden': true,
     className: cn(
@@ -634,4 +621,33 @@ export function PaginationSkeleton({ render, className, ...props }: PaginationSk
     render,
     props: mergeProps<'div'>(defaultProps, props),
   })
+}
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationNavigation,
+  PaginationNext,
+  PaginationPage,
+  PaginationPageJump,
+  PaginationPageList,
+  PaginationPageSize,
+  PaginationPrevious,
+  PaginationRoot,
+  PaginationSkeleton,
+}
+export type {
+  PaginationContentProps,
+  PaginationEllipsisProps,
+  PaginationNavigationProps,
+  PaginationNextProps,
+  PaginationPageJumpProps,
+  PaginationPageListProps,
+  PaginationPageProps,
+  PaginationPageSizeProps,
+  PaginationPreviousProps,
+  PaginationProps,
+  PaginationRootProps,
+  PaginationSkeletonProps,
 }

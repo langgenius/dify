@@ -6,11 +6,13 @@ import type { TopBarProps } from '../top-bar'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { DataSet, FileItem } from '@/models/datasets'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import DatasetUpdateForm from '../index'
 
@@ -42,15 +44,15 @@ let mockCurrentUserId = 'user-1'
 let mockWorkspacePermissionKeys = ['dataset.create_and_management']
 let mockIsLoadingWorkspacePermissionKeys = false
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
+  const queryClient = createAccountProfileQueryClient({ id: mockCurrentUserId })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
 
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: mockCurrentUserId },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -69,7 +71,7 @@ vi.mock('@/context/permission-state', async () => {
     isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
   return createSystemFeaturesStateModuleMock(() => ({
@@ -79,23 +81,11 @@ vi.mock('@/context/system-features-state', async () => {
   }))
 })
 
-// Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (state: {
-      setShowAccountSettingModal: typeof mockSetShowAccountSettingModal
-    }) => unknown,
-  ) => {
-    const state = {
-      setShowAccountSettingModal: mockSetShowAccountSettingModal,
-    }
-    return selector(state)
-  },
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock dataset detail context
 let mockDatasetDetail: DataSet | undefined
@@ -650,7 +640,7 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-one-setting'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should open provider settings when onSetting is called from StepTwo', () => {
@@ -659,7 +649,7 @@ describe('DatasetUpdateForm', () => {
 
       fireEvent.click(screen.getByTestId('step-two-setting'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'provider' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
     })
 
     it('should update crawl options when onCrawlOptionsChange is called', () => {

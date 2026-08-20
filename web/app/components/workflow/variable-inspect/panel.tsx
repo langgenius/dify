@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
@@ -175,9 +175,12 @@ const Panel: FC = () => {
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
+            <RiCloseLine aria-hidden className="size-4" />
+          </IconButton>
         </div>
         <div className="grow p-2">
           <Listening onStop={handleStopListening} />
@@ -193,9 +196,12 @@ const Panel: FC = () => {
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
+            <RiCloseLine aria-hidden className="size-4" />
+          </IconButton>
         </div>
         <div className="grow p-2">
           <Empty />
@@ -218,7 +224,7 @@ const Panel: FC = () => {
           'w-60 shrink-0 border-r border-divider-burn',
           bottomPanelWidth < 488
             ? showLeftPanel
-              ? 'absolute top-0 left-0 z-10 h-full w-[217px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
+              ? 'absolute top-0 left-0 z-10 h-full w-54.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg backdrop-blur-xs'
               : 'hidden'
             : 'block',
         )}

@@ -493,7 +493,7 @@ describe('RunOnce', () => {
   })
 
   describe('maxLength behavior', () => {
-    it('should not have maxLength attribute when max_length is not set', async () => {
+    it('should not have maxLength attribute when max_length is zero', async () => {
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
         prompt_variables: [
@@ -501,6 +501,7 @@ describe('RunOnce', () => {
             key: 'textInput',
             name: 'Text Input',
             type: 'string',
+            max_length: 0,
           }),
         ],
       }

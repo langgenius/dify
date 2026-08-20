@@ -1,13 +1,12 @@
 import time
 import uuid
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
-from extensions.ext_database import db
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
@@ -124,9 +123,6 @@ def test_execute_if_else_result_true():
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
@@ -187,9 +183,6 @@ def test_execute_if_else_result_false():
         init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Mock db.session.close()
-    db.session.close = MagicMock()
 
     # execute node
     result = node._run()
@@ -335,9 +328,6 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     # execute node
     result = node._run()
 
@@ -399,9 +389,6 @@ def test_execute_if_else_boolean_false_conditions():
         init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Mock db.session.close()
-    db.session.close = MagicMock()
 
     # execute node
     result = node._run()
@@ -467,9 +454,6 @@ def test_execute_if_else_boolean_cases_structure():
         init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Mock db.session.close()
-    db.session.close = MagicMock()
 
     # execute node
     result = node._run()

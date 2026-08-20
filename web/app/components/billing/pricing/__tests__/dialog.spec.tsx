@@ -1,30 +1,14 @@
-import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { UsagePlanInfo } from '../../type'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
-import { Plan } from '../../type'
 import Pricing from '../index'
 
-type DialogProps = {
-  children: ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
-
-let latestOnOpenChange: DialogProps['onOpenChange']
 let mockConsoleState: Record<string, unknown> = {}
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, onOpenChange }: DialogProps) => {
-    latestOnOpenChange = onOpenChange
-    return <div>{children}</div>
-  },
-  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
-}))
 
 vi.mock('../header', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
@@ -72,13 +56,13 @@ const buildUsage = (): UsagePlanInfo => ({
 describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    latestOnOpenChange = undefined
     mockConsoleState = {
       isCurrentWorkspaceManager: true,
     }
     ;(useProviderContext as Mock).mockReturnValue({
+      enableEducationPlan: false,
       plan: {
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: buildUsage(),
         total: buildUsage(),
       },
@@ -86,12 +70,13 @@ describe('Pricing dialog lifecycle', () => {
     ;(useGetPricingPageLanguage as Mock).mockReturnValue('en')
   })
 
-  it('should only call onCancel when the dialog requests closing', () => {
+  it('should call onCancel when the pricing dialog is closed', async () => {
+    const user = userEvent.setup()
     const onCancel = vi.fn()
-    render(<Pricing onCancel={onCancel} />)
+    const { wrapper } = createConsoleQueryWrapper()
+    render(<Pricing onCancel={onCancel} />, { wrapper })
 
-    latestOnOpenChange?.(true)
-    latestOnOpenChange?.(false)
+    await user.click(screen.getByRole('button', { name: 'close' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })

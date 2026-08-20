@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { isBaseError } from '@/errors/base'
 import { ExitCode } from '@/errors/codes'
 import { LIMIT_DEFAULT, LIMIT_MAX, LIMIT_MIN, parseLimit } from './limit'

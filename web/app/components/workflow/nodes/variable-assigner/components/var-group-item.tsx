@@ -4,10 +4,9 @@ import type { VarGroupItem as VarGroupItemType } from '../types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -92,8 +91,7 @@ const VarGroupItem: FC<Props> = ({
     [payload.output_type],
   )
 
-  const [isEditGroupName, { setTrue: setEditGroupName, setFalse: setNotEditGroupName }] =
-    useBoolean(false)
+  const [isEditGroupName, setIsEditGroupName] = useState(false)
 
   const handleGroupNameChange = useCallback(
     (e: ChangeEvent<any>) => {
@@ -122,7 +120,7 @@ const VarGroupItem: FC<Props> = ({
               {!isEditGroupName ? (
                 <div
                   className="flex h-6 cursor-text items-center rounded-lg px-1 system-sm-semibold text-text-secondary hover:bg-gray-100"
-                  onClick={setEditGroupName}
+                  onClick={() => setIsEditGroupName(true)}
                 >
                   {payload.group_name}
                 </div>
@@ -137,7 +135,7 @@ const VarGroupItem: FC<Props> = ({
                   autoFocus
                   value={payload.group_name}
                   onChange={handleGroupNameChange}
-                  onBlur={setNotEditGroupName}
+                  onBlur={() => setIsEditGroupName(false)}
                   maxLength={30}
                 />
               )}
@@ -158,7 +156,7 @@ const VarGroupItem: FC<Props> = ({
       operations={
         <div className="flex h-6 items-center space-x-2">
           {payload.variables.length > 0 && (
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary">
               {payload.output_type}
             </div>
           )}

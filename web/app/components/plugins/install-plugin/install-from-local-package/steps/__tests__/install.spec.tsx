@@ -1,7 +1,9 @@
+import type { ReactElement } from 'react'
 import type { PluginDeclaration } from '../../../../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
@@ -62,13 +64,14 @@ const mockConsoleState = vi.hoisted(() => ({
   langGeniusVersionInfo: { current_version: '1.0.0' as string | undefined },
 }))
 
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createVersionStateModuleMock(() => ({
-    langGeniusVersionInfo: mockConsoleState.langGeniusVersionInfo,
-  }))
-})
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    accountProfileMeta: {
+      currentVersion: mockConsoleState.langGeniusVersionInfo.current_version ?? null,
+    },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 vi.mock('../../../../card', () => ({
   default: ({
@@ -372,7 +375,7 @@ describe('Install', () => {
       })
     })
 
-    it('should uninstall existing plugin before installing new version', async () => {
+    it('should preserve credentials when replacing an installed plugin', async () => {
       mockUseCheckInstalled.mockReturnValue({
         installedInfo: {
           'test-author/Test Plugin': {
@@ -394,7 +397,9 @@ describe('Install', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
 
       await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('installed-id-to-uninstall')
+        expect(mockUninstallPlugin).toHaveBeenCalledWith('installed-id-to-uninstall', {
+          preserveCredentials: true,
+        })
       })
 
       await waitFor(() => {

@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,6 +14,10 @@ vi.mock('@/next/navigation', () => ({
     push: vi.fn(),
     refresh: vi.fn(),
   }),
+}))
+
+vi.mock('@/hooks/use-document-title', () => ({
+  default: vi.fn(),
 }))
 
 // Mock useDocLink hook
@@ -79,12 +83,27 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
 
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  useExternalKnowledgeApi: () => ({
-    externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: vi.fn(),
-    isLoading: false,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useQuery: () => ({ data: { data: mockExternalKnowledgeApiList } }),
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  }
+})
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    datasets: {
+      externalKnowledgeApi: {
+        get: {
+          queryOptions: () => ({
+            queryKey: ['console', 'datasets', 'externalKnowledgeApi', 'get'],
+          }),
+        },
+      },
+    },
+  },
 }))
 
 // Suppress console.error helper

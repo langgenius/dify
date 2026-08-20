@@ -436,7 +436,7 @@ function ReadyCrawlSelectionForm({
             />
             {t(($) => $['newKnowledge.selectAll'])}
           </label>
-          <ul className="max-h-[280px] divide-y divide-divider-subtle overflow-y-auto">
+          <ul className="max-h-70 divide-y divide-divider-subtle overflow-y-auto">
             {pages.map((page, index) => {
               const skipReason = pageSkipReasons.get(page.pageId)
               const selectable = !skipReason

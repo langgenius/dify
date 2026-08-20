@@ -100,7 +100,7 @@ class TestSavedMessageListApi:
             payload_patch(payload),
             patch.object(module.SavedMessageService, "save") as save_mock,
         ):
-            result = method(api, current_user, installed_app)
+            result = method(api, module.SavedMessageCreatePayload.model_validate(payload), current_user, installed_app)
 
         save_mock.assert_called_once()
         assert save_mock.call_args.args[1] is current_user
@@ -124,7 +124,7 @@ class TestSavedMessageListApi:
             ),
         ):
             with pytest.raises(NotFound):
-                method(api, MagicMock(), installed_app)
+                method(api, module.SavedMessageCreatePayload.model_validate(payload), MagicMock(), installed_app)
 
 
 class TestSavedMessageApi:

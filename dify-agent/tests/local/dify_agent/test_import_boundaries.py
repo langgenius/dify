@@ -104,7 +104,6 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         blocked_imports=[
             "anthropic",
             "dify_agent.adapters.llm",
-            "dify_agent.layers.drive.layer",
             "dify_agent.layers.execution_context.layer",
             "dify_agent.layers.ask_human.layer",
             "dify_agent.layers.dify_plugin.llm_layer",
@@ -125,7 +124,6 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         ],
         imports=[
             "dify_agent.protocol",
-            "dify_agent.layers.drive",
             "dify_agent.layers.execution_context",
             "dify_agent.layers.ask_human",
             "dify_agent.layers.dify_plugin",
@@ -135,7 +133,6 @@ def test_protocol_and_dify_plugin_exports_do_not_import_server_only_modules() ->
         ],
         assertions=[
             "assert hasattr(dify_agent_protocol, 'CreateRunRequest')",
-            "assert hasattr(dify_agent_layers_drive, 'DifyDriveLayerConfig')",
             "assert hasattr(dify_agent_layers_execution_context, 'DifyExecutionContextLayerConfig')",
             "assert hasattr(dify_agent_layers_ask_human, 'DifyAskHumanLayerConfig')",
             "assert hasattr(dify_agent_layers_dify_plugin, 'DifyPluginLLMLayerConfig')",
@@ -152,8 +149,6 @@ def test_agent_cli_help_import_is_client_safe() -> None:
             "dify_agent.server",
             "dify_agent.agent_stub.server",
             "fastapi",
-            "google.protobuf",
-            "grpclib",
             "jwcrypto",
             "pydantic_settings",
             "redis",
@@ -229,8 +224,6 @@ def test_agent_cli_help_render_does_not_load_server_or_cli_modules() -> None:
         "dify_agent.server",
         "dify_agent.agent_stub.server",
         "fastapi",
-        "google.protobuf",
-        "grpclib",
         "jwcrypto",
         "pydantic_settings",
         "redis",

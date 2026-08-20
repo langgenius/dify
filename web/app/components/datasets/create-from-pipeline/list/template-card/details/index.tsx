@@ -48,7 +48,7 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
       <div className="flex grow items-center justify-center p-3 pr-0">
         <WorkflowPreview {...pipelineTemplateInfo.graph} className="overflow-hidden rounded-2xl" />
       </div>
-      <div className="relative flex w-[360px] shrink-0 flex-col">
+      <div className="relative flex w-90 shrink-0 flex-col">
         <button
           type="button"
           className="absolute top-4 right-4 z-10 flex size-8 items-center justify-center"
@@ -89,11 +89,9 @@ const Details = ({ id, type, onApplyTemplate, onClose }: DetailsProps) => {
           {pipelineTemplateInfo.description}
         </p>
         <div className="p-3">
-          <Button variant="primary" onClick={onApplyTemplate} className="w-full gap-x-0.5">
+          <Button variant="primary" onClick={onApplyTemplate} className="w-full">
             <RiAddLine className="size-4" />
-            <span className="px-0.5">
-              {t(($) => $['operations.useTemplate'], { ns: 'datasetPipeline' })}
-            </span>
+            <span>{t(($) => $['operations.useTemplate'], { ns: 'datasetPipeline' })}</span>
           </Button>
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">

@@ -24,7 +24,7 @@ const PlugInfo: FC<Props> = ({ repository, release, packageName, onHide }) => {
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
+      <DialogContent className="w-full max-w-120! overflow-hidden! border-none text-left align-middle">
         <DialogCloseButton />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}.title`], { ns: 'plugin' })}

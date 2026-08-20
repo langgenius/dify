@@ -73,7 +73,12 @@ const createRole = (overrides: Partial<Role> = {}): Role => ({
 
 const openMenu = async () => {
   const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: 'common.operation.moreActions' }))
+  const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
+  expect(trigger).not.toHaveAttribute('data-popup-open')
+
+  await user.click(trigger)
+
+  expect(trigger).toHaveAttribute('data-popup-open', '')
   const menus = screen.getAllByRole('menu')
   return {
     user,

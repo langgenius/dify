@@ -3,7 +3,6 @@ from __future__ import annotations
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime
-from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -14,8 +13,11 @@ from controllers.console import console_ns
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow_comment as workflow_comment_module
 from controllers.console.app import wraps as app_wraps
+from enums import DeploymentEdition
 from libs import login as login_lib
+from models import App, Tenant, WorkflowComment, WorkflowCommentMention, WorkflowCommentReply
 from models.account import Account, AccountStatus, TenantAccountRole
+from models.model import AppMode, IconType
 
 JAN_1_2024_NOON = datetime(2024, 1, 1, 12, 0, 0)
 JAN_1_2024_NOON_TS = int(JAN_1_2024_NOON.timestamp())
@@ -32,22 +34,36 @@ def _make_account(role: TenantAccountRole) -> Account:
     account.status = AccountStatus.ACTIVE
     account.role = role
     account.id = "account-123"  # type: ignore[assignment]
-    account._current_tenant = SimpleNamespace(id="tenant-123")  # type: ignore[attr-defined]
+    tenant = Tenant(name="Test tenant")
+    tenant.id = "tenant-123"
+    account._current_tenant = tenant
     account._get_current_object = lambda: account  # type: ignore[attr-defined]
     return account
 
 
-def _make_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-123", tenant_id="tenant-123", status="normal", mode="workflow")
+def _make_app() -> App:
+    return App(
+        id="app-123",
+        tenant_id="tenant-123",
+        name="Workflow comments app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=None,
+    )
 
 
-def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app_model: SimpleNamespace) -> None:
+def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app_model: App) -> None:
     monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)
 
@@ -245,29 +261,29 @@ def test_list_comments_serializes_response_model(app: Flask, monkeypatch: pytest
     app_model = _make_app()
     _patch_console_guards(monkeypatch, account, app_model)
 
-    comment_author = SimpleNamespace(
-        id="account-123",
+    comment_author = Account(
         name="tester",
         email="tester@example.com",
         avatar="https://example.com/avatar.png",
+        status=AccountStatus.ACTIVE,
     )
-    comment = SimpleNamespace(
-        id="comment-1",
+    comment_author.id = "account-123"
+    comment = WorkflowComment(
+        tenant_id="tenant-123",
+        app_id="app-123",
         position_x=1.5,
         position_y=2.5,
         content="hello",
         created_by="account-123",
-        created_by_account=comment_author,
-        created_at=1_700_000_000,
-        updated_at=1_700_000_001,
         resolved=False,
         resolved_at=None,
         resolved_by=None,
-        resolved_by_account=None,
-        reply_count=0,
-        mention_count=0,
-        participants=[comment_author],
     )
+    comment.id = "comment-1"
+    comment.created_at = datetime.fromtimestamp(1_700_000_000)
+    comment.updated_at = datetime.fromtimestamp(1_700_000_001)
+    comment.cache_created_by_account(comment_author)
+    comment.cache_resolved_by_account(None)
     get_comments_mock = MagicMock(return_value=[comment])
     monkeypatch.setattr(workflow_comment_module.WorkflowCommentService, "get_comments", get_comments_mock)
 
@@ -316,48 +332,49 @@ def test_get_comment_serializes_detail_response_model(app: Flask, monkeypatch: p
     app_model = _make_app()
     _patch_console_guards(monkeypatch, account, app_model)
 
-    comment_author = SimpleNamespace(
-        id="account-123",
+    comment_author = Account(
         name="tester",
         email="tester@example.com",
         avatar="https://example.com/avatar.png",
+        status=AccountStatus.ACTIVE,
     )
-    mentioned_user = SimpleNamespace(
-        id="account-456",
+    comment_author.id = "account-123"
+    mentioned_user = Account(
         name="mentioned",
         email="mentioned@example.com",
         avatar=None,
+        status=AccountStatus.ACTIVE,
     )
-    comment = SimpleNamespace(
-        id="comment-1",
+    mentioned_user.id = "account-456"
+    comment = WorkflowComment(
+        tenant_id="tenant-123",
+        app_id="app-123",
         position_x=1.5,
         position_y=2.5,
         content="hello",
         created_by="account-123",
-        created_by_account=comment_author,
-        created_at=JAN_1_2024_NOON,
-        updated_at=JAN_1_2024_1201,
         resolved=True,
         resolved_at=JAN_1_2024_1202,
         resolved_by="account-123",
-        resolved_by_account=comment_author,
-        replies=[
-            SimpleNamespace(
-                id="reply-1",
-                content="reply",
-                created_by="account-456",
-                created_by_account=mentioned_user,
-                created_at=JAN_1_2024_1203,
-            )
-        ],
-        mentions=[
-            SimpleNamespace(
-                mentioned_user_id="account-456",
-                mentioned_user_account=mentioned_user,
-                reply_id="reply-1",
-            )
-        ],
     )
+    comment.id = "comment-1"
+    comment.created_at = JAN_1_2024_NOON
+    comment.updated_at = JAN_1_2024_1201
+    comment.cache_created_by_account(comment_author)
+    comment.cache_resolved_by_account(comment_author)
+    reply = WorkflowCommentReply(comment_id=comment.id, content="reply", created_by="account-456")
+    reply.id = "reply-1"
+    reply.created_at = JAN_1_2024_1203
+    reply.updated_at = JAN_1_2024_1203
+    reply.cache_created_by_account(mentioned_user)
+    mention = WorkflowCommentMention(
+        comment_id=comment.id,
+        mentioned_user_id="account-456",
+        reply_id=reply.id,
+    )
+    mention.cache_mentioned_user_account(mentioned_user)
+    comment.replies.append(reply)
+    comment.mentions.append(mention)
     get_comment_mock = MagicMock(return_value=comment)
     monkeypatch.setattr(workflow_comment_module.WorkflowCommentService, "get_comment", get_comment_mock)
 

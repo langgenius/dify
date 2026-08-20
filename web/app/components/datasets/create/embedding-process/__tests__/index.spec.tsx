@@ -73,6 +73,22 @@ vi.mock('../upgrade-banner', () => ({
   default: () => <div>upgrade processing priority</div>,
 }))
 
+vi.mock('@/app/components/datasets/common/vector-space-admission-alert', () => ({
+  default: ({
+    showUpgrade,
+    estimatedMb,
+    planLimitMb,
+  }: {
+    showUpgrade: boolean
+    estimatedMb: number
+    planLimitMb: number
+  }) => (
+    <div>{`vector space admission alert ${estimatedMb}MB / ${planLimitMb}MB ${
+      showUpgrade ? 'with upgrade' : 'without upgrade'
+    }`}</div>
+  ),
+}))
+
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -99,6 +115,73 @@ describe('EmbeddingProcess', () => {
     render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
 
     expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+  })
+
+  it('shows the vector-space admission alert after processing completes', () => {
+    mockPollingState = {
+      statusList: [
+        {
+          id: 'document-1',
+          indexing_status: 'error',
+          error_code: 'vector_space_estimate_exceeded',
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        } as IndexingStatusResponse,
+      ],
+      isEmbedding: false,
+      isEmbeddingCompleted: true,
+    }
+
+    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+
+    expect(screen.getByText('datasetDocuments.embedding.completed')).toBeInTheDocument()
+    expect(
+      screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
+    ).toBeInTheDocument()
+  })
+
+  it('does not show the vector-space alert for another indexing error', () => {
+    mockPollingState = {
+      statusList: [
+        {
+          id: 'document-1',
+          indexing_status: 'error',
+          error_code: null,
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        } as IndexingStatusResponse,
+      ],
+      isEmbedding: false,
+      isEmbeddingCompleted: true,
+    }
+
+    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+
+    expect(screen.queryByText(/vector space admission alert/)).not.toBeInTheDocument()
+  })
+
+  it('does not suggest an upgrade to team users', () => {
+    mockEnableBilling = true
+    mockPlanType = 'team'
+    mockPollingState = {
+      statusList: [
+        {
+          id: 'document-1',
+          indexing_status: 'error',
+          error_code: 'vector_space_estimate_exceeded',
+          estimated_vector_space_mb: 61,
+          vector_space_limit_mb: 50,
+        } as IndexingStatusResponse,
+      ],
+      isEmbedding: false,
+      isEmbeddingCompleted: true,
+    }
+
+    render(<EmbeddingProcess datasetId="dataset-1" batchId="batch-1" />)
+
+    expect(
+      screen.getByText('vector space admission alert 61MB / 50MB without upgrade'),
+    ).toBeInTheDocument()
   })
 
   it('invalidates the document list before navigating to it', async () => {

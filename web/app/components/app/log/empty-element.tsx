@@ -5,8 +5,8 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { AppModeEnum } from '@/types/app'
@@ -36,7 +36,10 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
 
 const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
@@ -49,7 +52,7 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
 
   return (
     <div className="flex h-full items-center justify-center">
-      <div className="box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4">
+      <div className="box-border h-fit w-140 rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
           {t(($) => $['table.empty.element.title'], { ns: 'appLog' })}
           <ThreeDotsIcon className="relative -top-3 -left-1.5 inline text-text-secondary" />

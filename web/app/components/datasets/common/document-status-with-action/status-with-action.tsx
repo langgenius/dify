@@ -51,7 +51,7 @@ const StatusAction: FC<Props> = ({
 }) => {
   const { Icon, color } = getIcon(type)
   return (
-    <div className="relative flex h-[34px] items-center rounded-lg border border-components-panel-border bg-components-panel-bg-blur pr-3 pl-2 shadow-xs">
+    <div className="relative flex h-8.5 items-center rounded-lg border border-components-panel-border bg-components-panel-bg-blur pr-3 pl-2 shadow-xs">
       <div
         className={`absolute inset-0 rounded-lg opacity-40 ${
           (type === 'success' &&

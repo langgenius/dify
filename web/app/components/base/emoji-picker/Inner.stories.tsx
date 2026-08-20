@@ -24,7 +24,7 @@ const InnerDemo = () => {
   const [selection, setSelection] = useState<{ emoji: string; background: string } | null>(null)
 
   return (
-    <div className="flex h-[520px] flex-col gap-4 rounded-xl border border-divider-subtle bg-components-panel-bg p-6 shadow-lg">
+    <div className="flex h-130 flex-col gap-4 rounded-xl border border-divider-subtle bg-components-panel-bg p-6 shadow-lg">
       <EmojiPickerInner
         onSelect={(emoji, background) => setSelection({ emoji, background })}
         className="flex-1 overflow-hidden rounded-xl border border-divider-subtle bg-white"

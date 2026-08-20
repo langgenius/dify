@@ -40,6 +40,7 @@ RUN apt-get update \
         openssh-client \
         procps \
         ripgrep \
+        tini \
         tmux \
         unzip \
         xz-utils \
@@ -70,13 +71,13 @@ COPY --from=go-builder /bin/shellctl-runner /usr/local/bin/shellctl-runner
 COPY --from=go-builder /bin/dify-agent /usr/local/bin/dify-agent
 
 RUN useradd --create-home --shell /bin/sh dify \
-    && mkdir -p /mnt/drive \
     && chown dify:dify /home \
-    && chown -R dify:dify /home/dify /mnt/drive
+    && chown -R dify:dify /home/dify
 
 USER dify
 WORKDIR /home/dify
 
 EXPOSE 5004
 
+ENTRYPOINT ["/usr/bin/tini", "-g", "--"]
 CMD ["shellctl", "serve", "--listen", "0.0.0.0:5004"]

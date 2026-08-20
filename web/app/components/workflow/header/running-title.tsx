@@ -11,7 +11,7 @@ const RunningTitle = () => {
   const historyWorkflowData = useStore((s) => s.historyWorkflowData)
 
   return (
-    <div className="flex h-[18px] items-center text-xs text-gray-500">
+    <div className="flex h-4.5 items-center text-xs text-gray-500">
       <ClockPlay className="mr-1 size-3 text-gray-500" />
       <span>
         {isChatMode
@@ -19,7 +19,7 @@ const RunningTitle = () => {
           : `Test Run${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
       </span>
       <span className="mx-1">·</span>
-      <span className="ml-1 flex h-[18px] items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-[10px] font-semibold text-indigo-600 uppercase">
+      <span className="ml-1 flex h-4.5 items-center rounded-[5px] border border-indigo-300 bg-white/48 px-1 text-2xs font-semibold text-indigo-600 uppercase">
         {t(($) => $['common.viewOnly'], { ns: 'workflow' })}
       </span>
     </div>

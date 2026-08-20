@@ -31,6 +31,7 @@ const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string)
   const knowledgeSets = asArray(asRecord(soul.knowledge).sets)
 
   return {
+    activeConfigIsPublished: draft.active_config_is_published,
     fileNames: files
       .map((file) => asString(asRecord(file).name))
       .filter(Boolean)
@@ -173,12 +174,12 @@ Then('I should see the Agent v2 full-config fixture sections', async function (t
   const advancedSettings = page.getByRole('region', { name: 'Advanced Settings' })
   await expect(advancedSettings).toBeVisible()
   await expect(
-    advancedSettings.getByText('For power users. Env vars, sandbox & memory.'),
+    advancedSettings.getByText('For power users, such as environment variables.'),
   ).toBeVisible()
 })
 
 Then(
-  'the duplicated Agent v2 should inherit the full-config fixture from {string}',
+  'the duplicated Agent v2 should inherit the full-config fixture from {string} without inheriting its publication state',
   async function (this: DifyWorld, agentName: string) {
     const sourceAgent = getPreseededAgent(this, agentName)
     const duplicatedAgentId = getCurrentAgentId(this)
@@ -189,8 +190,7 @@ Then(
       )
 
     const client = this.getConsoleClient()
-    const [sourceDetail, duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
-      client.agent.byAgentId.get({ params: { agent_id: sourceAgent.id } }),
+    const [duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
       client.agent.byAgentId.get({ params: { agent_id: duplicatedAgentId } }),
       getComposerInheritanceSnapshot(this, sourceAgent.id),
       getComposerInheritanceSnapshot(this, duplicatedAgentId),
@@ -198,9 +198,8 @@ Then(
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
     expect(duplicatedDetail.name).toBe(this.lastCreatedAgentName)
-    expect(duplicatedDetail.active_config_is_published).toBe(
-      sourceDetail.active_config_is_published,
-    )
+    expect(sourceSnapshot.activeConfigIsPublished).toBe(true)
+    expect(duplicatedSnapshot.activeConfigIsPublished).toBe(false)
     expect(duplicatedSnapshot.model).toEqual({
       name: stableModel.name,
       provider: stableModel.provider,
@@ -249,11 +248,12 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
   const toolsSection = page.getByRole('region', { name: 'Tools' })
 
   await expect(toolsSection).toBeVisible({ timeout: 30_000 })
-  await expect(
-    toolsSection.getByRole('button', { exact: true, name: 'Not authorized' }),
-  ).toHaveCount(2)
 
-  const { action: jsonReplaceAction, tool: jsonTool } = await expectProviderToolActionVisible(
+  const {
+    action: jsonReplaceAction,
+    provider: jsonProvider,
+    tool: jsonTool,
+  } = await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.jsonReplaceTool,
   )
@@ -271,10 +271,16 @@ Then('I should see the Agent v2 tool state fixture tools', async function (this:
     }),
   ).toBeVisible()
 
-  await expectProviderToolActionVisible(
+  const { provider: tavilyProvider } = await expectProviderToolActionVisible(
     toolsSection,
     agentBuilderPreseededResources.tavilySearchTool,
   )
+  await expect(
+    tavilyProvider.locator('..').getByRole('button', { exact: true, name: 'Not authorized' }),
+  ).toBeVisible()
+  await expect(
+    jsonProvider.locator('..').getByRole('button', { exact: true, name: 'Not authorized' }),
+  ).toHaveCount(0)
 })
 
 Then('I should see the Agent v2 dual retrieval fixture settings', async function (this: DifyWorld) {

@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import {
   createCodeInspectorPlugin,
   createForceInspectorClientInjectionPlugin,
@@ -23,18 +23,7 @@ export default defineConfig(({ mode }) => {
       const { default: react } = await import('@vitejs/plugin-react')
 
       if (isTest) {
-        return [
-          nextStaticImageTestPlugin({ projectRoot }),
-          react(),
-          {
-            // Stub .mdx files so components importing them can be unit-tested
-            name: 'mdx-stub',
-            enforce: 'pre',
-            transform(_: string, id: string) {
-              if (id.endsWith('.mdx')) return { code: 'export default () => null', map: null }
-            },
-          },
-        ]
+        return [nextStaticImageTestPlugin({ projectRoot }), react()]
       }
 
       if (isStorybook) return [react()]
@@ -95,6 +84,7 @@ export default defineConfig(({ mode }) => {
       environment: 'happy-dom',
       globals: true,
       setupFiles: ['./vitest.setup.ts'],
+      exclude: [...configDefaults.exclude, '**/*.browser.spec.{ts,tsx}'],
       coverage: {
         provider: 'v8',
         reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],

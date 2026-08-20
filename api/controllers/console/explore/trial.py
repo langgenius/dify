@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
@@ -49,9 +48,8 @@ from controllers.console.explore.error import (
 from controllers.console.explore.wraps import TrialAppResource
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request
 from controllers.console.remote_files import RemoteFileUploadPayload, upload_remote_file_from_request
-from controllers.console.wraps import cloud_edition_billing_resource_check, with_current_user
+from controllers.console.wraps import cloud_edition_billing_resource_check, model_validate, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -59,6 +57,9 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from core.helper import encrypter
+from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -67,13 +68,15 @@ from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
+from graphon.variables import SecretVariable, VariableBase
 from libs import helper
 from libs.helper import dump_response, to_timestamp, uuid_value
 from models import Account, App
 from models.account import TenantStatus
-from models.model import AppMode, Site, load_annotation_reply_config
+from models.model import AppMode, Site
 from models.workflow import Workflow
 from services.account_service import TenantService
+from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_generate_service import AppGenerateService
 from services.app_ref_service import AppRefService
 from services.app_service import AppResponseView, AppService
@@ -385,6 +388,26 @@ class TrialWorkflowResponse(ResponseModel):
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
 
+    @field_validator("environment_variables", mode="before")
+    @classmethod
+    def _serialize_environment_variables(cls, value: Any) -> list[Any]:
+        if value is None:
+            return []
+
+        result: list[Any] = []
+        for item in value:
+            if isinstance(item, SecretVariable):
+                serialized = item.model_dump(mode="json")
+                serialized["value"] = encrypter.full_mask_token()
+                result.append(serialized)
+            elif isinstance(item, LLMEnvironmentVariable):
+                result.append(dump_environment_variable(item, mode="json"))
+            elif isinstance(item, VariableBase):
+                result.append(item.model_dump(mode="json"))
+            else:
+                result.append(item)
+        return result
+
 
 @dataclass(frozen=True)
 class TrialWorkflowResponseSource:
@@ -404,7 +427,7 @@ class TrialWorkflowResponseSource:
         return self.workflow.get_tool_published(session=self.session)
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.workflow, name)  # noqa: no-new-getattr response adapter delegates model fields
+        return getattr(self.workflow, name)  # guard-ignore: no-new-getattr -- delegates model fields
 
 
 register_schema_models(
@@ -464,7 +487,8 @@ class TrialAppWorkflowRunApi(TrialAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(WorkflowRunRequest)
+    def post(self, req_data: WorkflowRunRequest, session: Session, current_user: Account, trial_app):
         """
         Run workflow
         """
@@ -475,8 +499,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        request_data = WorkflowRunRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
         try:
             app_id = app_model.id
             user_id = current_user.id
@@ -536,14 +559,14 @@ class TrialChatApi(TrialAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(ChatRequest)
+    def post(self, req_data: ChatRequest, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        request_data = ChatRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
 
         # Validate UUID values if provided
         if args.get("conversation_id"):
@@ -686,14 +709,13 @@ class TrialChatTextApi(TrialAppResource):
     @console_ns.expect(console_ns.models[TextToSpeechRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     @with_current_user
-    def post(self, current_user: Account, trial_app):
+    @model_validate(TextToSpeechRequest)
+    def post(self, req_data: TextToSpeechRequest, current_user: Account, trial_app):
         app_model = trial_app
         try:
-            request_data = TextToSpeechRequest.model_validate(console_ns.payload)
-
-            message_id = request_data.message_id
-            text = request_data.text
-            voice = request_data.voice
+            message_id = req_data.message_id
+            text = req_data.text
+            voice = req_data.voice
             message_ref = None
             if message_id:
                 app_ref = AppRefService.create_app_ref(app_model)
@@ -747,13 +769,13 @@ class TrialCompletionApi(TrialAppResource):
     @console_ns.response(200, "Success")
     @with_current_user
     @with_session
-    def post(self, session: Session, current_user: Account, trial_app):
+    @model_validate(CompletionRequest)
+    def post(self, req_data: CompletionRequest, session: Session, current_user: Account, trial_app):
         app_model = trial_app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        request_data = CompletionRequest.model_validate(console_ns.payload)
-        args = request_data.model_dump()
+        args = req_data.model_dump()
 
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False
@@ -833,26 +855,12 @@ class TrialAppParameterApi(Resource):
         if app_model is None:
             raise AppUnavailableError()
 
-        features_dict: Mapping[str, Any]
-        if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow = app_model.workflow_with_session(session=session)
-            if workflow is None:
-                raise AppUnavailableError()
+        try:
+            parameters = application_services().app_definitions.get_parameters(app_model.id)
+        except AppDefinitionUnavailableError:
+            raise AppUnavailableError() from None
 
-            features_dict = workflow.features_dict
-            user_input_form = workflow.user_input_form(to_old_structure=True)
-        else:
-            app_model_config = app_model.app_model_config_with_session(session=session)
-            if app_model_config is None:
-                raise AppUnavailableError()
-
-            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
-            features_dict = app_model_config.to_dict(annotation_reply=annotation_reply)
-
-            user_input_form = features_dict.get("user_input_form", [])
-
-        parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
-        return ParametersResponse.model_validate(parameters).model_dump(mode="json")
+        return dump_response(ParametersResponse, parameters)
 
 
 class AppApi(Resource):

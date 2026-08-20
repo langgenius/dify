@@ -52,7 +52,7 @@ const Item = ({
 
   return (
     <div
-      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-[3px] hover:bg-state-base-hover"
+      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-0.75 hover:bg-state-base-hover"
       onClick={handleClickItem}
     >
       {!isBucket && isMultipleChoice && (

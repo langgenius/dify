@@ -1,7 +1,14 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { ComboboxProps } from '@langgenius/dify-ui/combobox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
+import {
+  Combobox,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxTrigger,
+} from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -86,7 +93,7 @@ export const TagFilter = ({
           aria-label={triggerLabel}
           icon={false}
           className={cn(
-            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left whitespace-nowrap select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-components-input-bg-normal',
+            'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left whitespace-nowrap select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
             triggerClassName,
           )}
@@ -115,10 +122,10 @@ export const TagFilter = ({
           </span>
         </ComboboxTrigger>
         {!!value.length && (
-          <button
-            type="button"
+          <IconButton
+            size="xs"
             aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-            className="group/clear absolute top-1/2 right-2 -translate-y-1/2 rounded-md border-none bg-transparent p-px outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            className="group/clear absolute top-1/2 right-2 -translate-y-1/2"
             onClick={(event) => {
               event.stopPropagation()
               onChange([])
@@ -128,21 +135,24 @@ export const TagFilter = ({
               className="size-3.5 text-text-tertiary group-hover/clear:text-text-secondary"
               aria-hidden="true"
             />
-          </button>
+          </IconButton>
         )}
-        <ComboboxContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
-        >
-          <TagSearchContent
-            type={type}
-            inputValue={inputValue}
-            onInputValueChange={setInputValue}
-            onOpenTagManagement={onOpenTagManagement}
-            onClose={() => setOpen(false)}
-          />
-        </ComboboxContent>
+        <ComboboxPortal>
+          <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+            <ComboboxPopup
+              aria-label={triggerLabel}
+              className="w-60 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+            >
+              <TagSearchContent
+                type={type}
+                inputValue={inputValue}
+                onInputValueChange={setInputValue}
+                onOpenTagManagement={onOpenTagManagement}
+                onClose={() => setOpen(false)}
+              />
+            </ComboboxPopup>
+          </ComboboxPositioner>
+        </ComboboxPortal>
       </div>
     </Combobox>
   )

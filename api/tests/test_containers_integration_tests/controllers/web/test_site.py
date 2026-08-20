@@ -11,11 +11,12 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigResponse
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
 from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 @pytest.fixture
@@ -97,6 +98,7 @@ class TestAppSiteApi:
         assert result["end_user_id"] == end_user.id
         assert result["plan"] == "basic"
         assert result["enable_site"] is True
+        assert result["mode"] == AppMode.CHAT
 
     @patch("controllers.web.site.FileService.get_file_presigned_url")
     @patch("controllers.web.site.FeatureService.get_features")
@@ -119,7 +121,7 @@ class TestAppSiteApi:
         mock_get_file_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
 
         with (
-            patch.object(dify_config, "EDITION", "CLOUD"),
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
             app.test_request_context("/site"),
         ):
@@ -178,6 +180,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=_site_model(app_id=app_model.id),
             end_user_id="eu-1",
             features=FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True),
@@ -185,6 +188,7 @@ class TestWebAppSiteResponse:
         )
 
         assert response.app_id == app_model.id
+        assert response.mode == AppMode.CHAT
         assert response.end_user_id == "eu-1"
         assert response.enable_site is True
         assert response.plan == "basic"
@@ -209,6 +213,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=site,
             end_user_id=None,
             features=FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True),
@@ -236,6 +241,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=_site_model(app_id=app_model.id),
             end_user_id="eu-1",
             features=FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),

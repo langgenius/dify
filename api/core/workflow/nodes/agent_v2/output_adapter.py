@@ -98,7 +98,7 @@ class WorkflowAgentOutputAdapter:
         match event:
             case AgentBackendRunFailedInternalEvent():
                 error = event.error
-                error_type = event.reason or "agent_backend_run_failed"
+                error_type = event.error_type or event.reason or "agent_backend_run_failed"
                 terminal_status = "failed"
             case AgentBackendRunCancelledInternalEvent():
                 error = event.message or "Agent backend run was cancelled."
@@ -331,7 +331,13 @@ class WorkflowAgentOutputAdapter:
             }
         )
         session_snapshot = None
-        if isinstance(event, AgentBackendRunSucceededInternalEvent | AgentBackendDeferredToolCallInternalEvent):
+        if isinstance(
+            event,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendDeferredToolCallInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        ):
             session_snapshot = event.session_snapshot
             if event.usage is not None:
                 agent_backend["usage"] = dict(event.usage)
