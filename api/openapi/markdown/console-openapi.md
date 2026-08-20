@@ -22015,19 +22015,6 @@ How a draft file's content is stored.
 | page | integer, <br>**Default:** 1 |  | No |
 | total | integer |  | No |
 
-#### SkillManifest
-
-Validated metadata extracted from a Skill package.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| entry_path | string |  | Yes |
-| files | [ string ] |  | Yes |
-| hash | string |  | Yes |
-| name | string |  | Yes |
-| size | integer |  | Yes |
-
 #### SkillMetadataPayload
 
 | Name | Type | Description | Required |
@@ -22114,14 +22101,6 @@ Validated metadata extracted from a Skill package.
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
 | tag | string |  | Yes |
-
-#### SkillToolInferenceResult
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| cli_tools | [ [CliToolSuggestion](#clitoolsuggestion) ] |  | No |
-| inferable | boolean |  | Yes |
-| reason | string |  | No |
 
 #### SkillVersionDeleteResponse
 

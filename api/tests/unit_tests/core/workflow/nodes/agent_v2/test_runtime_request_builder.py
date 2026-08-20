@@ -1509,6 +1509,7 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch
         "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
         "runtime": "runtime",
     }
+    assert "agent_stub_drive_ref" not in layers[DIFY_SHELL_LAYER_ID]["config"]
 
 
 def test_workflow_run_request_contains_config_layer():

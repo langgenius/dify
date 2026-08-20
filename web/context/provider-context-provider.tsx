@@ -11,6 +11,7 @@ import {
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { isEducationPlanAvailable } from '@/app/education/availability'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
@@ -42,7 +43,10 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   const plan = enableBilling && features ? parseCurrentPlan(features) : defaultPlan
   const isFetchedPlan = featuresQuery.isSuccess && enableBilling
   const isFetchedPlanInfo = featuresQuery.isFetched
-  const enableEducationPlan = features?.education.enabled ?? false
+  const enableEducationPlan = isEducationPlanAvailable({
+    deploymentEdition,
+    enabled: features?.education.enabled,
+  })
   const enableReplaceWebAppLogo = features?.can_replace_logo ?? false
   const modelLoadBalancingEnabled = features?.model_load_balancing_enabled ?? false
   const webappCopyrightEnabled = features?.webapp_copyright_enabled ?? false

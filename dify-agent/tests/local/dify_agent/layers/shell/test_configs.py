@@ -32,6 +32,12 @@ def test_shell_layer_config_defaults_and_forbids_unknown_fields() -> None:
         "secret_refs": [],
         "redact_patterns": [],
     }
+    assert config.model_dump(mode="json") == {
+        "cli_tools": [],
+        "env": [],
+        "secret_refs": [],
+        "redact_patterns": [],
+    }
 
     with pytest.raises(ValidationError):
         _ = DifyShellLayerConfig.model_validate({"entrypoint": "http://shellctl"})

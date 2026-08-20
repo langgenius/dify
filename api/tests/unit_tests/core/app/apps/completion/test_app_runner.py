@@ -10,7 +10,6 @@ from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.moderation.base import ModerationError
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.model import App, AppMode, IconType
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"

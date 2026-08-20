@@ -10,7 +10,10 @@ import Badge from '@/app/components/base/badge'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
-import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceEditorAtom,
+} from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
@@ -28,9 +31,10 @@ import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
 const WebAppsSection = dynamic(() => import('./components/web-apps-section'), { ssr: false })
 
 export function MainNav({ className }: MainNavProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation('common')
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { data: currentEnv } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -38,6 +42,7 @@ export function MainNav({ className }: MainNavProps) {
   })
   const agentV2Enabled = isAgentV2Enabled()
   const canManageAgents = useCanManageAgents()
+  const canUseAppDeploy = isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   const navItems = useMemo<MainNavItem[]>(
@@ -46,12 +51,13 @@ export function MainNav({ className }: MainNavProps) {
         isMainNavRouteVisible(route, {
           agentV2Enabled,
           canManageAgents,
+          canUseAppDeploy,
           isCurrentWorkspaceDatasetOperator,
           marketplaceEnabled: systemFeatures.enable_marketplace,
         }),
       ).map((route) => ({
         href: route.href,
-        label: 'label' in route ? route.label : t(($) => $[route.labelKey], { ns: 'common' }),
+        label: 'label' in route ? route.label : t(($) => $[route.labelKey as keyof typeof $]),
         active: route.active,
         icon: route.icon,
         activeIcon: route.activeIcon,
@@ -59,6 +65,7 @@ export function MainNav({ className }: MainNavProps) {
     [
       agentV2Enabled,
       canManageAgents,
+      canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
       systemFeatures.enable_marketplace,
       t,

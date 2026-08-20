@@ -2310,8 +2310,10 @@ class SkillManagementService:
         description = frontmatter.get("description")
         if not isinstance(name, str) or not name:
             return skill.name, skill.display_name, skill.description
-        return name, cls._display_name_from_frontmatter(metadata=frontmatter, name=name), (
-            description if isinstance(description, str) else ""
+        return (
+            name,
+            cls._display_name_from_frontmatter(metadata=frontmatter, name=name),
+            (description if isinstance(description, str) else ""),
         )
 
     @classmethod
@@ -2334,11 +2336,7 @@ class SkillManagementService:
                 current_name = frontmatter.get("name")
                 current_description = frontmatter.get("description")
                 current_display_name = cls._display_name_from_frontmatter(metadata=frontmatter, name=str(current_name))
-                if (
-                    current_name == name
-                    and current_description == description
-                    and current_display_name == display_name
-                ):
+                if current_name == name and current_description == description and current_display_name == display_name:
                     return archive_bytes
 
                 metadata = frontmatter.get("metadata")
@@ -2358,9 +2356,7 @@ class SkillManagementService:
                 with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as normalized_archive:
                     for info in archive.infolist():
                         payload = (
-                            normalized_skill_md.encode("utf-8")
-                            if info.filename == _SKILL_MD
-                            else archive.read(info)
+                            normalized_skill_md.encode("utf-8") if info.filename == _SKILL_MD else archive.read(info)
                         )
                         normalized_archive.writestr(info.filename, payload)
                 return output.getvalue()

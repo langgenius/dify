@@ -106,15 +106,17 @@ export function SkillPublishBar({
       <div
         role="status"
         aria-label={`${currentState.statusLabel}. ${metaLabel}`}
-        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary"
+        className="flex shrink-0 items-center gap-1 px-2 system-xs-regular text-text-tertiary"
       >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={currentState.dotStatus} />
         </span>
-        <span className="flex min-w-0 flex-wrap items-center gap-x-1 leading-4">
-          <span>{currentState.statusLabel}</span>
-          <span aria-hidden>·</span>
-          <span>{metaLabel}</span>
+        <span className="flex shrink-0 items-center gap-x-1 leading-4 whitespace-nowrap">
+          <span className="shrink-0">{currentState.statusLabel}</span>
+          <span aria-hidden className="shrink-0">
+            ·
+          </span>
+          <span className="shrink-0">{metaLabel}</span>
         </span>
       </div>
       <button

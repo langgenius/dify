@@ -30,6 +30,7 @@ describe('EducationApplyRoute', () => {
   it('renders the application form for a direct token URL', () => {
     const { queryClient, wrapper } = createConsoleQueryWrapper({
       educationStatus: { is_student: false },
+      systemFeatures: { deployment_edition: 'CLOUD' },
     })
     seedFeatures(queryClient, {
       billing: { subscription: { plan: 'sandbox' } },
@@ -39,5 +40,19 @@ describe('EducationApplyRoute', () => {
     render(<EducationApplyRoute token="education-token" />, { wrapper })
 
     expect(screen.getByText('Application form: education-token')).toBeInTheDocument()
+  })
+
+  it('returns to home outside Cloud edition even when the feature flag is enabled', () => {
+    const { queryClient, wrapper } = createConsoleQueryWrapper({
+      systemFeatures: { deployment_edition: 'COMMUNITY' },
+    })
+    seedFeatures(queryClient, {
+      billing: { subscription: { plan: 'sandbox' } },
+      education: { enabled: true },
+    })
+
+    render(<EducationApplyRoute token="education-token" />, { wrapper })
+
+    expect(mockRedirect).toHaveBeenCalledWith('/')
   })
 })

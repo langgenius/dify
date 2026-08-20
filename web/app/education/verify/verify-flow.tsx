@@ -2,6 +2,7 @@
 
 import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -10,9 +11,11 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useDocLink } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { redirect, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { isEducationPlanAvailable } from '../availability'
 import { EducationStatusCard } from '../status-card'
 import UserInfo from '../user-info'
 
@@ -26,6 +29,8 @@ const selectEducationStatus = ({ allow_refresh, is_student }: EducationStatusRes
 })
 
 const selectEducationPlanEnabled = ({ education }: GetFeaturesResponse) => education.enabled
+const selectDeploymentEdition = ({ deployment_edition }: GetSystemFeaturesResponse) =>
+  deployment_edition
 
 const requestEducationVerification: EducationVerificationRequest = () =>
   consoleClient.account.education.verify.get({}, { context: { silent: true } })
@@ -59,7 +64,14 @@ export function EducationVerifyFlow({
   const featuresQuery = useQuery(
     consoleQuery.features.get.queryOptions({ select: selectEducationPlanEnabled }),
   )
-  const enableEducationPlan = featuresQuery.data === true
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: selectDeploymentEdition,
+  })
+  const enableEducationPlan = isEducationPlanAvailable({
+    deploymentEdition,
+    enabled: featuresQuery.data,
+  })
   const educationStatusQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
       enabled: featuresQuery.isSuccess && enableEducationPlan,
