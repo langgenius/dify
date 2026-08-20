@@ -39,6 +39,7 @@ from controllers.files import files_ns
 from controllers.files.wraps import FileGrantInvalidError, GrantedFileNotFoundError, file_grant_required
 from core.file import remote_fetcher
 from fields.base import ResponseModel
+from fields.file_fields import FileResponse
 from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
 from libs.file_grant import (
@@ -49,6 +50,7 @@ from libs.file_grant import (
     build_content_url,
     decode_file_content_token,
 )
+from libs.helper import dump_response
 from models.model import UploadFile
 from services.file_grant_service import EndUserNotFoundError, FileContent, FileGrantService, FileRef
 from services.file_service import FileService
@@ -82,15 +84,6 @@ class FileContentQuery(BaseModel):
     token: str = Field(description="Signed content token scoped to this file")
 
 
-class GrantedFileResponse(ResponseModel):
-    id: str
-    name: str
-    size: int
-    extension: str
-    mime_type: str | None = None
-    url: str
-
-
 class ProducedFileResponse(ResponseModel):
     id: str
     name: str
@@ -105,7 +98,7 @@ class FileResolveResponse(ResponseModel):
 
 
 register_schema_models(files_ns, RemoteFileUploadPayload, FileResolvePayload)
-register_response_schema_models(files_ns, GrantedFileResponse, ProducedFileResponse, FileResolveResponse)
+register_response_schema_models(files_ns, FileResponse, ProducedFileResponse, FileResolveResponse)
 
 
 @files_ns.route("/appdeploy/upload")
@@ -124,7 +117,7 @@ class GrantedFileUploadApi(Resource):
             415: "Unsupported file type",
         }
     )
-    @files_ns.response(201, "File uploaded", files_ns.models[GrantedFileResponse.__name__])
+    @files_ns.response(201, "File uploaded", files_ns.models[FileResponse.__name__])
     def post(self, grant: FileGrantClaims):
         upload = _single_upload()
         upload_file = _store_upload(
@@ -153,7 +146,7 @@ class GrantedRemoteFileUploadApi(Resource):
             415: "Unsupported file type",
         }
     )
-    @files_ns.response(201, "Remote file uploaded", files_ns.models[GrantedFileResponse.__name__])
+    @files_ns.response(201, "Remote file uploaded", files_ns.models[FileResponse.__name__])
     def post(self, grant: FileGrantClaims):
         try:
             payload = RemoteFileUploadPayload.model_validate(files_ns.payload or {})
@@ -362,14 +355,18 @@ def _store_upload(
 
 
 def _granted_file_response(upload_file: UploadFile) -> dict[str, object]:
-    return GrantedFileResponse(
-        id=upload_file.id,
-        name=upload_file.name,
-        size=upload_file.size,
-        extension=upload_file.extension,
-        mime_type=upload_file.mime_type,
-        url=build_content_url(file_id=upload_file.id, kind=FileKind.UPLOAD, external=True),
-    ).model_dump(mode="json")
+    """Answer an upload exactly as dify's own upload endpoints answer it.
+
+    A client moving off ``POST /v1/files/upload`` must not have to read a second
+    shape, so the same model reads the same ``upload_files`` row: every key dify
+    leaves null for such a row is null here too. Only the value of ``source_url``
+    is ours. Dify signs a ``file-preview`` URL there and this channel signs a
+    content-token URL, which keeps that key's promise of a signed URL that
+    retrieves the file while keeping the grant its only way in.
+    """
+
+    signed_url = build_content_url(file_id=upload_file.id, kind=FileKind.UPLOAD, external=True)
+    return dump_response(FileResponse, upload_file) | {"source_url": signed_url}
 
 
 __all__ = [

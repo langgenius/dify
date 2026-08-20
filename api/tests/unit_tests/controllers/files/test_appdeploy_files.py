@@ -2,6 +2,7 @@
 
 import time
 from collections.abc import Callable
+from datetime import datetime
 from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -44,6 +45,47 @@ TENANT_ID = "11111111-1111-4111-8111-111111111111"
 OTHER_TENANT_ID = "1a1a1a1a-1111-4111-8111-111111111111"
 APP_ID = "22222222-2222-4222-8222-222222222222"
 FILE_ID = UUID("66666666-6666-4666-8666-666666666666")
+UPLOAD_FILE_ID = "77777777-7777-4777-8777-777777777777"
+UPLOADED_AT = datetime(2026, 8, 20, 12, 0)
+
+# What ``POST /v1/files/upload`` answers with. The grant channel is a drop-in
+# for it, so the whole key set travels together and a key dify leaves null must
+# still be present and null here.
+DIFY_UPLOAD_RESPONSE_KEYS = frozenset(
+    {
+        "id",
+        "reference",
+        "name",
+        "size",
+        "extension",
+        "mime_type",
+        "created_by",
+        "created_at",
+        "preview_url",
+        "source_url",
+        "original_url",
+        "user_id",
+        "tenant_id",
+        "conversation_id",
+        "file_key",
+    }
+)
+
+# The subset dify's own web upload client reads, from
+# ``web/app/components/base/file-uploader/utils.ts``.
+WEB_CLIENT_KEYS = frozenset(
+    {
+        "id",
+        "name",
+        "size",
+        "extension",
+        "mime_type",
+        "created_by",
+        "created_at",
+        "preview_url",
+        "source_url",
+    }
+)
 
 
 @pytest.fixture(autouse=True)
@@ -103,13 +145,21 @@ def _content_token(*, file_id: str, kind: FileKind, expires_in: int = 300) -> st
 
 
 def _stub_upload_file(**overrides: object) -> SimpleNamespace:
+    """Stand in for the ``upload_files`` row ``FileService`` hands back."""
+
     return SimpleNamespace(
-        id="77777777-7777-4777-8777-777777777777",
-        name="report.pdf",
-        size=2048,
-        extension="pdf",
-        mime_type="application/pdf",
-        **overrides,
+        **{
+            "id": UPLOAD_FILE_ID,
+            "name": "report.pdf",
+            "size": 2048,
+            "extension": "pdf",
+            "mime_type": "application/pdf",
+            "tenant_id": TENANT_ID,
+            "created_by": "99999999-9999-4999-8999-999999999999",
+            "created_at": UPLOADED_AT,
+            "source_url": "",
+            **overrides,
+        }
     )
 
 
@@ -161,12 +211,60 @@ def test_upload_stores_the_file_for_the_grant_end_user(app: Flask, end_user: End
             body, status = GrantedFileUploadApi().post()
 
     assert status == 201
-    assert body["id"] == "77777777-7777-4777-8777-777777777777"
+    assert body["id"] == UPLOAD_FILE_ID
     assert body["extension"] == "pdf"
-    assert body["url"].startswith(
-        "https://files.example.com/files/appdeploy/77777777-7777-4777-8777-777777777777/content?token="
-    )
     assert file_service.return_value.upload_file.call_args.kwargs["user"].id == end_user.id
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_upload_answers_in_dify_s_own_upload_shape(app: Flask, end_user: EndUser) -> None:
+    """A client moving off ``POST /v1/files/upload`` must not meet a second shape."""
+
+    with patch(f"{SERVICE_MODULE}.FileService") as file_service:
+        file_service.return_value.upload_file.return_value = _stub_upload_file(created_by=end_user.id)
+        with app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
+            content_type="multipart/form-data",
+        ):
+            body, _ = GrantedFileUploadApi().post()
+
+    source_url = body.pop("source_url")
+    assert body == {
+        "id": UPLOAD_FILE_ID,
+        "reference": None,
+        "name": "report.pdf",
+        "size": 2048,
+        "extension": "pdf",
+        "mime_type": "application/pdf",
+        "created_by": end_user.id,
+        "created_at": int(UPLOADED_AT.timestamp()),
+        "preview_url": None,
+        "original_url": None,
+        "user_id": None,
+        "tenant_id": TENANT_ID,
+        "conversation_id": None,
+        "file_key": None,
+    }
+    assert source_url.startswith(f"https://files.example.com/files/appdeploy/{UPLOAD_FILE_ID}/content?token=")
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_upload_carries_every_key_dify_s_web_client_reads(app: Flask, end_user: EndUser) -> None:
+    with patch(f"{SERVICE_MODULE}.FileService") as file_service:
+        file_service.return_value.upload_file.return_value = _stub_upload_file()
+        with app.test_request_context(
+            "/files/appdeploy/upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            data={"file": (BytesIO(b"pdf-bytes"), "report.pdf")},
+            content_type="multipart/form-data",
+        ):
+            body, _ = GrantedFileUploadApi().post()
+
+    assert set(body) >= WEB_CLIENT_KEYS
 
 
 @pytest.mark.usefixtures("sqlite_db")
@@ -281,11 +379,41 @@ def test_remote_upload_fetches_through_the_ssrf_safe_fetcher(app: Flask, end_use
                 body, status = GrantedRemoteFileUploadApi().post()
 
     assert status == 201
-    assert body["id"] == "77777777-7777-4777-8777-777777777777"
+    assert body["id"] == UPLOAD_FILE_ID
     kwargs = file_service.return_value.upload_file.call_args.kwargs
     assert kwargs["source_url"] == url
     assert kwargs["content"] == b"pdf-bytes"
     assert kwargs["user"].id == end_user.id
+
+
+@pytest.mark.usefixtures("sqlite_db")
+def test_remote_upload_answers_in_the_same_shape_as_upload(app: Flask, end_user: EndUser) -> None:
+    """Both ways in produce one ``upload_files`` row, so both answer alike."""
+
+    url = "https://example.com/docs/report.pdf"
+    response = httpx.Response(200, content=b"pdf-bytes", request=httpx.Request("GET", url))
+
+    with (
+        patch(f"{CONTROLLER_MODULE}.remote_fetcher") as fetcher,
+        patch(f"{SERVICE_MODULE}.FileService") as file_service,
+    ):
+        fetcher.make_request.return_value = response
+        file_service.return_value.upload_file.return_value = _stub_upload_file(source_url=url)
+
+        with app.test_request_context(
+            "/files/appdeploy/remote-upload",
+            method="POST",
+            headers=_bearer(FileGrantScope.UPLOAD, end_user_id=end_user.id),
+            json={"url": url},
+        ):
+            with patch(f"{CONTROLLER_MODULE}.files_ns") as files_ns:
+                files_ns.payload = {"url": url}
+                body, _ = GrantedRemoteFileUploadApi().post()
+
+    assert set(body) == DIFY_UPLOAD_RESPONSE_KEYS
+    # The row records where the bytes came from; the response hands back the
+    # signed URL that fetches them, exactly as dify's own remote upload does.
+    assert body["source_url"].startswith(f"https://files.example.com/files/appdeploy/{UPLOAD_FILE_ID}/content?token=")
 
 
 @pytest.mark.usefixtures("sqlite_db")
