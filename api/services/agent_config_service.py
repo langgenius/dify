@@ -51,7 +51,6 @@ from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
-from services.agent_drive_service import DriveFileRef
 from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
@@ -64,6 +63,13 @@ class AgentConfigVersionKind(StrEnum):
 class AgentConfigMutationSurface(StrEnum):
     AGENT_STUB = "agent_stub"
     CONSOLE = "console"
+
+
+class ConfigFileRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["upload_file", "tool_file"]
+    id: str
 
 
 class AgentConfigServiceError(Exception):
@@ -84,14 +90,14 @@ class ConfigPushFileItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    file_ref: DriveFileRef | None = None
+    file_ref: ConfigFileRef | None = None
 
 
 class ConfigPushSkillItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    file_ref: DriveFileRef | None = None
+    file_ref: ConfigFileRef | None = None
 
 
 class ConfigPushPayload(BaseModel):
@@ -1115,7 +1121,7 @@ class AgentConfigService:
         session: Session,
         *,
         tenant_id: str,
-        file_ref: DriveFileRef,
+        file_ref: ConfigFileRef,
     ) -> tuple[int | None, str | None, str | None]:
         if file_ref.kind == "tool_file":
             tool_file = self._require_tool_file_source(

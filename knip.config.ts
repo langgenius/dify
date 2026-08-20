@@ -15,8 +15,6 @@ const config: KnipConfig = {
         'tsslint.config.ts',
         'dev-proxy.config.ts',
         'plugins/eslint/index.js',
-        'vitest.browser.config.ts',
-        'vitest.browser.setup.ts',
         // Consumed by the dify-marketplace repository, which mounts this
         // repo as a submodule and imports these modules via path aliases.
         'app/components/plugins/marketplace/index.tsx',
@@ -31,6 +29,7 @@ const config: KnipConfig = {
         '!.storybook/**!',
         '!plugins/**!',
         '!test/**!',
+        '!vitest.browser.setup.ts!',
         '!vitest.setup.ts!',
       ],
       ignore: ['public/**'],

@@ -4,12 +4,18 @@ import type {
   MarketplacePlugin,
   MarketplaceTemplate,
 } from '@dify/contracts/marketplace'
-import type { LoadedCreatorProfile } from './model'
+import type { CreatorSortField, CreatorSortOrder, LoadedCreatorProfile } from './model'
 import { cache } from 'react'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import { marketplaceClient } from '@/service/client'
 import { getFormattedPlugin, getPluginIconInMarketplace } from '../utils'
-import { adaptCreatorProfile } from './model'
+import {
+  adaptCreatorProfile,
+  parseCreatorSortField,
+  parseCreatorSortOrder,
+  sortCreatorCreations,
+  toPublisherSortQuery,
+} from './model'
 import 'server-only'
 
 const PAGE_SIZE = 40
@@ -50,18 +56,28 @@ const getPublisher = async (uniqueHandle: string, publisherType?: string) => {
   return response.data?.creator
 }
 
-const getPublisherPlugins = async (uniqueHandle: string) => {
+const getPublisherPlugins = async (
+  uniqueHandle: string,
+  sortField: CreatorSortField,
+  sortOrder: CreatorSortOrder,
+) => {
+  const { plugins } = toPublisherSortQuery(sortField, sortOrder)
   const response = await marketplaceClient.publisherPlugins({
     params: { uniqueHandle },
-    query: { page: 1, page_size: PAGE_SIZE },
+    query: { page: 1, page_size: PAGE_SIZE, ...plugins },
   })
   return response.data?.plugins ?? []
 }
 
-const getPublisherTemplates = async (uniqueHandle: string) => {
+const getPublisherTemplates = async (
+  uniqueHandle: string,
+  sortField: CreatorSortField,
+  sortOrder: CreatorSortOrder,
+) => {
+  const { templates } = toPublisherSortQuery(sortField, sortOrder)
   const response = await marketplaceClient.publisherTemplates({
     params: { uniqueHandle },
-    query: { page: 1, page_size: PAGE_SIZE },
+    query: { page: 1, page_size: PAGE_SIZE, ...templates },
   })
   return response.data?.templates ?? []
 }
@@ -79,11 +95,13 @@ const loadCreatorProfileCached = cache(
     uniqueHandle: string,
     publisherType: string | undefined,
     locale: string,
+    sortField: CreatorSortField,
+    sortOrder: CreatorSortOrder,
   ): Promise<LoadedCreatorProfile | null> => {
     const [creatorResult, pluginsResult, templatesResult] = await Promise.allSettled([
       getPublisher(uniqueHandle, publisherType),
-      getPublisherPlugins(uniqueHandle),
-      getPublisherTemplates(uniqueHandle),
+      getPublisherPlugins(uniqueHandle, sortField, sortOrder),
+      getPublisherTemplates(uniqueHandle, sortField, sortOrder),
     ])
 
     const creator = creatorResult.status === 'fulfilled' ? creatorResult.value : undefined
@@ -99,11 +117,14 @@ const loadCreatorProfileCached = cache(
     const backgroundUrl = creator.background_image
       ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/background-image`
       : ''
+    const avatarUrl = creator.avatar
+      ? `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/avatar`
+      : ''
     const viewModel = adaptCreatorProfile({
       creator,
       kind,
       locale,
-      avatarUrl: `${MARKETPLACE_API_PREFIX}/${resource}/${encodedHandle}/avatar`,
+      avatarUrl,
       backgroundUrl,
       plugins,
       templates,
@@ -113,7 +134,10 @@ const loadCreatorProfileCached = cache(
     })
 
     return {
-      viewModel,
+      viewModel: {
+        ...viewModel,
+        creations: sortCreatorCreations(viewModel.creations, sortField, sortOrder),
+      },
       pluginsByCreationId: Object.fromEntries(
         plugins.map((plugin) => [
           `${plugin.type}:${plugin.org}/${plugin.name}`,
@@ -131,8 +155,19 @@ export const loadCreatorProfile = ({
   uniqueHandle,
   publisherType,
   locale,
+  sortBy,
+  sortOrder,
 }: {
   uniqueHandle: string
   publisherType?: string
   locale: string
-}) => loadCreatorProfileCached(uniqueHandle, publisherType, locale)
+  sortBy?: string
+  sortOrder?: string
+}) =>
+  loadCreatorProfileCached(
+    uniqueHandle,
+    publisherType,
+    locale,
+    parseCreatorSortField(sortBy),
+    parseCreatorSortOrder(sortOrder),
+  )

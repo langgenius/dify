@@ -16,6 +16,7 @@ import {
   rememberMarketplaceSiteReferrer,
   trackMarketplaceSiteEvent,
 } from '@/utils/marketplace-site-track'
+import { buildMarketplaceBannerClickProperties } from './home-trending-track'
 import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import { MARKETPLACE_API_PREFIX } from '@/config'
@@ -80,29 +81,14 @@ const getBannerFrameProps = (banner: PluginBanner, page: MarketplaceBannerPage) 
   style_type: banner.style_type,
 })
 
-const getBannerLink = (banner: PluginBanner) => {
-  if (banner.style_type === 'recommend')
-    return ''
-  return banner.content.link
-}
-
 const trackMarketplaceBannerClick = (
   banner: PluginBanner,
-  extras: Record<string, unknown> = {},
+  cardClick?: Parameters<typeof buildMarketplaceBannerClickProperties>[1],
 ) => {
-  trackMarketplaceSiteEvent('marketplace_banner_click', {
-    banner_id: banner.id,
-    title: banner.title,
-    sort: banner.sort,
-    link: getBannerLink(banner),
-    theme_type: banner.style_type === 'recommend' ? banner.content.theme_type : undefined,
-    click_target: banner.style_type,
-    target_type: banner.style_type === 'blog' ? banner.content.link_target_type : undefined,
-    partner_id: banner.style_type === 'ad' ? banner.content.partner_id : undefined,
-    campaign_id: banner.style_type === 'ad' ? banner.content.campaign_id : undefined,
-    activity_id: banner.style_type === 'event' ? banner.content.activity_id : undefined,
-    ...extras,
-  })
+  trackMarketplaceSiteEvent(
+    'marketplace_banner_click',
+    buildMarketplaceBannerClickProperties(banner, cardClick),
+  )
 }
 
 function TrendingCopy({

@@ -71,6 +71,19 @@ describe('HomeCatalogNavigation', () => {
     expect(templatesTab).not.toHaveClass('bg-state-base-active')
   })
 
+  it('leaves both catalog tabs inactive when no page is selected', () => {
+    render(<HomeCatalogTabs activeTab={null} isMarketplacePlatform={false} />)
+
+    const pluginsTab = screen.getByRole('link', { name: 'plugin.marketplace.home.plugins' })
+    const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
+
+    expect(pluginsTab).toHaveAttribute('href', '/marketplace')
+    expect(pluginsTab).not.toHaveAttribute('aria-current')
+    expect(pluginsTab).not.toHaveClass('bg-state-base-active')
+    expect(templatesTab).not.toHaveAttribute('aria-current')
+    expect(templatesTab).not.toHaveClass('bg-state-base-active')
+  })
+
   it('marks Templates as active when rendering the Templates catalog', () => {
     render(<HomeCatalogTabs activeTab="templates" isMarketplacePlatform />)
 

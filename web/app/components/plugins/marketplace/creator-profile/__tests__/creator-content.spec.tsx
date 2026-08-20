@@ -1,7 +1,8 @@
 import type { CreatorCreation } from '../model'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import CreatorContent from '../creator-content'
 
 vi.mock('#i18n', async () => {
@@ -58,9 +59,9 @@ const creations = [
 const cardNames = () => screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))
 
 describe('CreatorContent', () => {
-  it('changes the card DOM order by field and direction without leaving the page', async () => {
+  it('writes sort into the URL and reorders the current cards', async () => {
     const user = userEvent.setup()
-    render(
+    const { onUrlUpdate } = renderWithNuqs(
       <CreatorContent
         creations={creations}
         getCreationAction={(creation) => ({ type: 'link', href: `/creation/${creation.id}` })}
@@ -78,9 +79,16 @@ describe('CreatorContent', () => {
     expect(mostPopularOption).toHaveAttribute('aria-checked', 'false')
 
     await user.click(mostPopularOption)
-    expect(cardNames()).toEqual(['Charlie', 'Bravo', 'Alpha'])
+    await waitFor(() => {
+      expect(cardNames()).toEqual(['Charlie', 'Bravo', 'Alpha'])
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort_by')).toBe('popularity')
+    })
 
     await user.click(screen.getByRole('button', { name: 'Sort ascending' }))
-    expect(cardNames()).toEqual(['Alpha', 'Bravo', 'Charlie'])
+    await waitFor(() => {
+      expect(cardNames()).toEqual(['Alpha', 'Bravo', 'Charlie'])
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort_order')).toBe('asc')
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort_by')).toBe('popularity')
+    })
   })
 })

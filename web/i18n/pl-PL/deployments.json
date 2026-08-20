@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Więcej akcji",
   "deployTab.redeploy": "Ponownie wdróż",
   "deployTab.undeploy": "Wycofaj wdrożenie",
-  "deployTab.undeployConfirmWarning": "Po potwierdzeniu to środowisko przejdzie w stan wycofywania wdrożenia, a działania zostaną tymczasowo wyłączone.",
   "health.ENVIRONMENT_STATUS_FAILED": "Niedostępne",
   "list.emptyTitle": "Brak wdrożeń",
   "overview.chip.latest": "najnowsze",

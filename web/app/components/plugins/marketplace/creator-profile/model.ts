@@ -11,6 +11,39 @@ export type CreatorProfileBadge = 'partner' | 'verified'
 export type CreatorSocialPlatform = 'website' | 'x' | 'instagram' | 'youtube' | 'figma' | 'github'
 export type CreatorSortField = 'updatedAt' | 'createdAt' | 'popularity'
 export type CreatorSortOrder = 'asc' | 'desc'
+export const CREATOR_SORT_FIELDS = ['updatedAt', 'createdAt', 'popularity'] as const
+export const DEFAULT_CREATOR_SORT_FIELD: CreatorSortField = 'updatedAt'
+export const DEFAULT_CREATOR_SORT_ORDER: CreatorSortOrder = 'desc'
+
+export const parseCreatorSortField = (value?: string | null): CreatorSortField =>
+  CREATOR_SORT_FIELDS.includes(value as CreatorSortField)
+    ? (value as CreatorSortField)
+    : DEFAULT_CREATOR_SORT_FIELD
+
+export const parseCreatorSortOrder = (value?: string | null): CreatorSortOrder => {
+  const normalized = value?.toLowerCase()
+  return normalized === 'asc' || normalized === 'desc' ? normalized : DEFAULT_CREATOR_SORT_ORDER
+}
+
+export const toPublisherSortQuery = (field: CreatorSortField, order: CreatorSortOrder) => {
+  const sort_order = order === 'asc' ? 'ASC' : 'DESC'
+  return {
+    plugins: {
+      sort_by:
+        field === 'updatedAt'
+          ? 'version_updated_at'
+          : field === 'createdAt'
+            ? 'created_at'
+            : 'install_count',
+      sort_order,
+    },
+    templates: {
+      sort_by:
+        field === 'updatedAt' ? 'updated_at' : field === 'createdAt' ? 'created_at' : 'usage_count',
+      sort_order,
+    },
+  }
+}
 
 export type CreatorSocialLink = {
   platform: CreatorSocialPlatform
@@ -180,32 +213,30 @@ export const adaptCreatorProfile = ({
   resolveTemplateIcon,
   resolveDependencyIcon,
 }: CreatorProfileAdapterInput): CreatorProfileViewModel => {
-  const pluginCreations = plugins.map(
-    (plugin): CreatorCreation => ({
-      id: `${plugin.type}:${plugin.org}/${plugin.name}`,
-      kind: 'plugin',
-      title: getCreatorLocalizedText(plugin.labels ?? plugin.label, locale) || plugin.name,
-      description:
-        getCreatorLocalizedText(
-          plugin.type === 'bundle' ? plugin.description : plugin.brief,
-          locale,
-        ) ||
-        plugin.introduction ||
-        '',
-      target: {
-        type: 'plugin',
-        org: plugin.org,
-        name: plugin.name,
-        pluginType: plugin.type,
-      },
-      icon: { type: 'image', src: resolvePluginIcon(plugin) },
-      dependencyIcons: [],
-      dependencyCount: 0,
-      updatedAt: toTimestamp(plugin.version_updated_at || plugin.updated_at),
-      createdAt: toTimestamp(plugin.created_at),
-      popularity: plugin.install_count || 0,
-    }),
-  )
+  const pluginCreations = plugins.map((plugin): CreatorCreation => ({
+    id: `${plugin.type}:${plugin.org}/${plugin.name}`,
+    kind: 'plugin',
+    title: getCreatorLocalizedText(plugin.labels ?? plugin.label, locale) || plugin.name,
+    description:
+      getCreatorLocalizedText(
+        plugin.type === 'bundle' ? plugin.description : plugin.brief,
+        locale,
+      ) ||
+      plugin.introduction ||
+      '',
+    target: {
+      type: 'plugin',
+      org: plugin.org,
+      name: plugin.name,
+      pluginType: plugin.type,
+    },
+    icon: { type: 'image', src: resolvePluginIcon(plugin) },
+    dependencyIcons: [],
+    dependencyCount: 0,
+    updatedAt: toTimestamp(plugin.version_updated_at || plugin.updated_at),
+    createdAt: toTimestamp(plugin.created_at),
+    popularity: plugin.install_count || 0,
+  }))
 
   const templateCreations = templates.map((template): CreatorCreation => {
     const templateIcon = resolveTemplateIcon(template)

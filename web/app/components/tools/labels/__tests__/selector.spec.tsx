@@ -18,28 +18,12 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
-// Mock useDebounceFn to store the function and allow manual triggering
-let debouncedFn: (() => void) | null = null
-vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: () => void) => {
-    debouncedFn = fn
-    return {
-      run: () => {
-        // Schedule to run after React state updates
-        setTimeout(() => debouncedFn?.(), 0)
-      },
-      cancel: vi.fn(),
-    }
-  },
-}))
-
 describe('LabelSelector', () => {
   const mockOnChange = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    debouncedFn = null
   })
 
   afterEach(() => {
@@ -198,7 +182,7 @@ describe('LabelSelector', () => {
         const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // Filter by 'rag' which only matches 'rag' name
         fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
+        vi.advanceTimersByTime(500)
       })
 
       // Only RAG should be visible (rag contains 'rag')
@@ -220,7 +204,7 @@ describe('LabelSelector', () => {
       await act(async () => {
         const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
-        vi.advanceTimersByTime(10)
+        vi.advanceTimersByTime(500)
       })
 
       expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
@@ -240,7 +224,7 @@ describe('LabelSelector', () => {
         const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
         // First filter to show only RAG
         fireEvent.change(searchInput, { target: { value: 'rag' } })
-        vi.advanceTimersByTime(10)
+        vi.advanceTimersByTime(500)
       })
 
       expect(screen.getByText('RAG')).toBeInTheDocument()

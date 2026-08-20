@@ -14,20 +14,37 @@ import {
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useMemo, useState } from 'react'
+import { parseAsStringEnum, useQueryStates } from 'nuqs'
+import { useMemo } from 'react'
 import { useTranslation } from '#i18n'
 import CreationCard from './creation-card'
-import { sortCreatorCreations } from './model'
+import {
+  CREATOR_SORT_FIELDS,
+  DEFAULT_CREATOR_SORT_FIELD,
+  DEFAULT_CREATOR_SORT_ORDER,
+  sortCreatorCreations,
+} from './model'
 
 type CreatorContentProps = {
   creations: CreatorCreation[]
   getCreationAction: (creation: CreatorCreation) => CreatorCreationAction
 }
 
+const sortSearchOptions = { history: 'replace' as const, shallow: false, scroll: false }
+const creatorSortSearchParsers = {
+  sort_by: parseAsStringEnum<CreatorSortField>([...CREATOR_SORT_FIELDS]).withDefault(
+    DEFAULT_CREATOR_SORT_FIELD,
+  ),
+  sort_order: parseAsStringEnum<CreatorSortOrder>(['asc', 'desc']).withDefault(
+    DEFAULT_CREATOR_SORT_ORDER,
+  ),
+}
+
 export default function CreatorContent({ creations, getCreationAction }: CreatorContentProps) {
   const { t } = useTranslation()
-  const [sortField, setSortField] = useState<CreatorSortField>('updatedAt')
-  const [sortOrder, setSortOrder] = useState<CreatorSortOrder>('desc')
+  const [sort, setSort] = useQueryStates(creatorSortSearchParsers, sortSearchOptions)
+  const sortField = sort.sort_by
+  const sortOrder = sort.sort_order
   const sortOptions: Array<{ value: CreatorSortField; label: string }> = [
     {
       value: 'updatedAt',
@@ -78,7 +95,9 @@ export default function CreatorContent({ creations, getCreationAction }: Creator
             >
               <DropdownMenuRadioGroup<CreatorSortField>
                 value={sortField}
-                onValueChange={setSortField}
+                onValueChange={(nextField) => {
+                  void setSort({ sort_by: nextField, sort_order: sortOrder })
+                }}
               >
                 {sortOptions.map((option) => (
                   <DropdownMenuRadioItem<CreatorSortField>
@@ -105,7 +124,9 @@ export default function CreatorContent({ creations, getCreationAction }: Creator
               ns: 'plugin',
             })}
             className="flex size-8 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={() => setSortOrder(nextSortOrder)}
+            onClick={() => {
+              void setSort({ sort_by: sortField, sort_order: nextSortOrder })
+            }}
           >
             <span
               aria-hidden

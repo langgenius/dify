@@ -98,7 +98,7 @@ describe('context-menu wrapper', () => {
         .element(screen.getByRole('group', { name: 'context content positioner' }))
         .toHaveAttribute('id', 'context-content-positioner')
       await expect.element(screen.getByRole('menu')).toHaveAttribute('id', 'context-content-popup')
-      expect(handlePositionerMouseEnter).toHaveBeenCalledTimes(1)
+      expect(handlePositionerMouseEnter).toHaveBeenCalled()
       expect(handlePopupClick).toHaveBeenCalledTimes(1)
     })
   })

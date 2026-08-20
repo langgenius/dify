@@ -54,7 +54,7 @@ export default function CreatorProfileHeader({
           />
         </Link>
         <div className="hidden md:block">
-          <HomeCatalogTabs activeTab={null} isMarketplacePlatform pluginsHref="/marketplace" />
+          <HomeCatalogTabs activeTab={null} isMarketplacePlatform={false} />
         </div>
       </div>
 

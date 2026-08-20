@@ -2,9 +2,10 @@ import type { MarketplaceTemplate } from '@dify/contracts/marketplace'
 import type { MarketplaceSearchSelection } from '../../home/marketplace-search-autocomplete'
 import type { LoadedCreatorProfile } from '../model'
 import type { Plugin } from '@/app/components/plugins/types'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithNuqs } from '@/test/nuqs-testing'
 import DifyCreatorProfile from '../dify-profile'
 
 const mocks = vi.hoisted(() => ({
@@ -192,7 +193,7 @@ describe('DifyCreatorProfile', () => {
 
   it('opens the existing plugin detail flow with installed state', async () => {
     const user = userEvent.setup()
-    render(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
+    renderWithNuqs(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
 
     await user.click(screen.getByRole('button', { name: 'Deep Research' }))
 
@@ -206,7 +207,7 @@ describe('DifyCreatorProfile', () => {
 
   it('opens a template detail and imports it inside Dify', async () => {
     const user = userEvent.setup()
-    render(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
+    renderWithNuqs(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
 
     await user.click(screen.getByRole('button', { name: 'Research Template' }))
     expect(screen.getByRole('dialog', { name: 'template-detail' })).toBeInTheDocument()
@@ -217,7 +218,7 @@ describe('DifyCreatorProfile', () => {
 
   it('opens search results in the same plugin dialog controller', async () => {
     const user = userEvent.setup()
-    render(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
+    renderWithNuqs(<DifyCreatorProfile loadedProfile={loadedProfile} locale="en-US" />)
 
     await user.click(screen.getByRole('button', { name: 'Select search plugin' }))
 

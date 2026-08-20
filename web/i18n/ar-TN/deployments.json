@@ -22,7 +22,6 @@
   "deployTab.moreActions": "المزيد من الإجراءات",
   "deployTab.redeploy": "إعادة النشر",
   "deployTab.undeploy": "إلغاء النشر",
-  "deployTab.undeployConfirmWarning": "بعد التأكيد، ستدخل هذه البيئة حالة إلغاء النشر وسيتم تعطيل الإجراءات مؤقتًا.",
   "health.ENVIRONMENT_STATUS_FAILED": "غير متاح",
   "list.emptyTitle": "لا توجد عمليات نشر بعد",
   "overview.chip.latest": "الأحدث",
