@@ -2,6 +2,7 @@ import { chromium } from '@playwright/test'
 import { createAgentV2SeedTasks } from '../features/agent-v2/support/seed'
 import { ensureAuthenticatedState } from '../fixtures/auth'
 import { createStandaloneConsoleSession } from '../support/api/console-session'
+import { launchBrowser } from '../support/browser'
 import { runSeedTasks, writeSeedReport } from '../support/seed'
 import { baseURL } from '../test-env'
 
@@ -19,7 +20,7 @@ const getTasks = (pack: string, profile: string) => {
 }
 
 const ensureAuth = async () => {
-  const browser = await chromium.launch({ headless: true })
+  const browser = await launchBrowser(chromium, { headless: true })
   try {
     await ensureAuthenticatedState(browser, baseURL)
   } finally {

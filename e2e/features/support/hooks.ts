@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium, webkit } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
+import { launchBrowser } from '../../support/browser'
 import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup'
 import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
 import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env'
@@ -80,7 +81,7 @@ const captureDiagnosticPage = async (
 }
 
 const getMicrophoneBrowser = () => {
-  microphoneBrowserPromise ??= chromium.launch({
+  microphoneBrowserPromise ??= launchBrowser(chromium, {
     args: [
       '--use-fake-device-for-media-stream',
       '--use-fake-ui-for-media-stream',
@@ -98,7 +99,7 @@ Before({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async function (this: DifyWorld, 
 
   if (!browser) {
     const browserType = e2eBrowser === 'webkit' ? webkit : chromium
-    browser = await browserType.launch({
+    browser = await launchBrowser(browserType, {
       headless: cucumberHeadless,
       slowMo: cucumberSlowMo,
     })

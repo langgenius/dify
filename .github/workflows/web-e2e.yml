@@ -14,7 +14,7 @@ permissions:
 jobs:
   test:
     name: Web Full-Stack E2E
-    runs-on: ubuntu-24.04
+    runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 120
     defaults:
       run:
@@ -46,17 +46,29 @@ jobs:
         working-directory: ./e2e
         run: vp run test:unit
 
-      - name: Install Playwright browsers for core E2E
-        if: ${{ !inputs.run-external-runtime }}
-        timeout-minutes: 15
+      - name: Start Playwright browser server
         working-directory: ./e2e
-        run: vp run e2e:install:ci
+        run: |
+          playwright_version="$(node --print "require('@playwright/test/package.json').version")"
+          docker run --detach --init \
+            --ipc=host \
+            --name dify-playwright \
+            --network=host \
+            --volume "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE:ro" \
+            --workdir "$GITHUB_WORKSPACE/e2e" \
+            "mcr.microsoft.com/playwright:v${playwright_version}-noble" \
+            ./node_modules/.bin/playwright run-server \
+            --host 127.0.0.1 \
+            --port 3001 \
+            --unsafe
 
-      - name: Install Chromium for external runtime E2E
-        if: ${{ inputs.run-external-runtime }}
-        timeout-minutes: 15
-        working-directory: ./e2e
-        run: vp run e2e:install:ci:chromium
+          if ! curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:3001/json >/dev/null; then
+            docker logs dify-playwright
+            exit 1
+          fi
+
+          echo 'PW_TEST_CONNECT_WS_ENDPOINT=ws://127.0.0.1:3001/' >> "$GITHUB_ENV"
 
       - name: Run isolated source-api and built-web Cucumber E2E tests
         if: ${{ !inputs.run-external-runtime }}
@@ -143,6 +155,11 @@ jobs:
           fi
 
           vp run e2e:post-merge
+
+      - name: Stop Playwright browser server
+        if: ${{ always() }}
+        continue-on-error: true
+        run: docker rm --force dify-playwright
 
       - name: Upload Cucumber report
         if: ${{ !cancelled() }}
