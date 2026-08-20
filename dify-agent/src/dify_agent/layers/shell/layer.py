@@ -108,9 +108,10 @@ Installed CLI:
 
 Filesystem spaces:
 
-- `$HOME` is the system space.
-- The current working directory (`cwd`) is the temporary working space. Relative paths resolve from here.
-- Store temporary files under `<cwd>/.tmp` (normally `./.tmp`). Do not use `/tmp`.
+- `$HOME` is the system space for reusable tools and state.
+- The current working directory (`cwd`) is the active Workspace and temporary working space.
+- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.
+- Do not use `/tmp`.
 
 shell_run script rules:
 
