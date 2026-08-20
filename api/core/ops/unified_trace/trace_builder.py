@@ -166,12 +166,13 @@ class CanonicalTraceBuilder:
         workflow_data = trace_info.workflow_data
         workflow_start = _started_at(_read_attribute(workflow_data, "created_at") or trace_info.start_time)
         workflow_end = _read_attribute(workflow_data, "finished_at") or trace_info.end_time
-        root_id = trace_info.message_id or trace_info.workflow_run_id
+        message_span_id = trace_info.message_id
+        workflow_span_id = trace_info.workflow_run_id
         spans: dict[str, CanonicalSpan] = {}
 
-        if trace_info.message_id:
-            spans[root_id] = CanonicalSpan(
-                id=root_id,
+        if message_span_id:
+            spans[message_span_id] = CanonicalSpan(
+                id=message_span_id,
                 parent_id=None,
                 name=f"chatflow_{trace_info.workflow_run_id}",
                 kind=CanonicalSpanKind.CHAIN,
@@ -184,15 +185,16 @@ class CanonicalTraceBuilder:
                 metadata={**trace_info.metadata, "trace_entity_type": "message"},
                 publishes_parent_context=True,
             )
-            workflow_parent_id: str | None = root_id
+            root_span_id = message_span_id
+            workflow_parent_id: str | None = message_span_id
         else:
+            root_span_id = workflow_span_id
             workflow_parent_id = None
 
-        workflow_id = trace_info.workflow_run_id
-        spans[workflow_id] = CanonicalSpan(
-            id=workflow_id,
+        spans[workflow_span_id] = CanonicalSpan(
+            id=workflow_span_id,
             parent_id=workflow_parent_id,
-            name=f"workflow_{workflow_id}",
+            name=f"workflow_{workflow_span_id}",
             kind=CanonicalSpanKind.CHAIN,
             start_time=workflow_start,
             end_time=workflow_end,
@@ -203,7 +205,7 @@ class CanonicalTraceBuilder:
             metadata={
                 **trace_info.metadata,
                 "workflow_id": trace_info.workflow_id,
-                "workflow_run_id": workflow_id,
+                "workflow_run_id": workflow_span_id,
                 "workflow_app_log_id": trace_info.workflow_app_log_id,
                 "total_tokens": trace_info.total_tokens,
             },
@@ -260,7 +262,7 @@ class CanonicalTraceBuilder:
             name = f"{node_type}_{title}" if isinstance(title, str) and title else node_type
             spans[item_execution_id] = CanonicalSpan(
                 id=item_execution_id,
-                parent_id=hierarchy.parent_by_execution_id.get(item_execution_id, workflow_id),
+                parent_id=hierarchy.parent_by_execution_id.get(item_execution_id, workflow_span_id),
                 name=name,
                 kind=_NODE_KIND.get(node_type, CanonicalSpanKind.CHAIN),
                 start_time=started_at,
@@ -289,9 +291,9 @@ class CanonicalTraceBuilder:
             emit(span_id)
 
         return CanonicalTrace(
-            trace_id=trace_info.resolved_trace_id or root_id,
+            trace_id=trace_info.resolved_trace_id or root_span_id,
             session_id=resolve_session_id(trace_info),
-            root_span_id=root_id,
+            root_span_id=root_span_id,
             spans=tuple(ordered),
             external_parent=_external_parent(trace_info),
         )

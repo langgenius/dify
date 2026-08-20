@@ -153,11 +153,14 @@ def test_chatflow_message_uses_query_while_workflow_keeps_complete_inputs() -> N
 
     assert trace is not None
     spans = {span.id: span for span in trace.spans}
+    assert trace.root_span_id == "message-1"
+    assert [span.id for span in trace.spans[:2]] == ["message-1", "run-1"]
     assert spans["message-1"].name == "chatflow_run-1"
     assert spans["message-1"].inputs == "hi"
     assert spans["message-1"].metadata["trace_entity_type"] == "message"
     assert spans["message-1"].publishes_parent_context is True
     assert spans["run-1"].name == "workflow_run-1"
+    assert spans["run-1"].parent_id == "message-1"
     assert spans["run-1"].inputs == CHATFLOW_INPUTS
 
 

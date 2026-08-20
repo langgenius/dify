@@ -1361,6 +1361,8 @@ class OpsTraceConfig(BaseSettings):
 
     @model_validator(mode="after")
     def validate_parent_context_retention(self) -> "OpsTraceConfig":
+        if not self.OPS_TRACE_UNIFIED_ENABLED:
+            return self
         retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
         if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
             raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")

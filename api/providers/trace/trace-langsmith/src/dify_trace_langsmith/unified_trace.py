@@ -7,9 +7,12 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from langsmith import Client
 from langsmith.utils import (
     LangSmithAPIError,
+    LangSmithAuthError,
     LangSmithConnectionError,
+    LangSmithError,
     LangSmithRateLimitError,
     LangSmithRequestTimeout,
+    LangSmithUserError,
 )
 
 from core.ops.exceptions import InvalidTraceParentContextError, RetryableTraceDispatchError
@@ -149,6 +152,10 @@ class UnifiedLangSmithAdapter:
                 LangSmithRequestTimeout,
             ) as error:
                 raise RetryableTraceDispatchError("LangSmith run export failed") from error
+            except (LangSmithAuthError, LangSmithUserError) as error:
+                raise RuntimeError("LangSmith run export rejected") from error
+            except LangSmithError as error:
+                raise RuntimeError("LangSmith run export failed") from error
             dotted_order_by_canonical_id[canonical_span.id] = dotted_order
 
             if canonical_span.can_parent_workflow or canonical_span.publishes_parent_context:

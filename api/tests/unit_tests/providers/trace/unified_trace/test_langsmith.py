@@ -8,6 +8,7 @@ from langsmith.utils import (
     LangSmithAPIError,
     LangSmithAuthError,
     LangSmithConnectionError,
+    LangSmithError,
     LangSmithRateLimitError,
     LangSmithRequestTimeout,
     LangSmithUserError,
@@ -66,7 +67,7 @@ def test_client_disables_async_batching_before_parent_coordination(monkeypatch: 
 @pytest.fixture
 def adapter(monkeypatch: pytest.MonkeyPatch):
     client = MagicMock()
-    monkeypatch.setattr("dify_trace_langsmith.unified_trace.Client", lambda **kwargs: client)
+    monkeypatch.setattr("dify_trace_langsmith.unified_trace.Client", lambda **_kwargs: client)
     subject = UnifiedLangSmithAdapter(
         LangSmithConfig(api_key="secret", project="project-a", endpoint="https://smith.example")
     )
@@ -248,17 +249,31 @@ def test_emit_maps_recoverable_sdk_errors_to_retryable_failure(adapter, error):
     subject, client = adapter
     client.create_run.side_effect = error
 
-    with pytest.raises(RetryableTraceDispatchError):
+    with pytest.raises(RetryableTraceDispatchError) as exc_info:
         subject.emit(trace(), None, MagicMock())
+    assert exc_info.value.__cause__ is error
 
 
 @pytest.mark.parametrize("error", [LangSmithAuthError("unauthorized"), LangSmithUserError("invalid")])
-def test_emit_keeps_terminal_sdk_errors(adapter, error):
+def test_emit_maps_known_terminal_sdk_errors_to_runtime_failure(adapter, error):
     subject, client = adapter
     client.create_run.side_effect = error
 
-    with pytest.raises(type(error)):
+    with pytest.raises(RuntimeError, match="LangSmith run export rejected") as exc_info:
         subject.emit(trace(), None, MagicMock())
+    assert not isinstance(exc_info.value, RetryableTraceDispatchError)
+    assert exc_info.value.__cause__ is error
+
+
+def test_emit_maps_unknown_sdk_error_to_terminal_runtime_failure(adapter):
+    subject, client = adapter
+    error = LangSmithError("unknown")
+    client.create_run.side_effect = error
+
+    with pytest.raises(RuntimeError, match="LangSmith run export failed") as exc_info:
+        subject.emit(trace(), None, MagicMock())
+    assert not isinstance(exc_info.value, RetryableTraceDispatchError)
+    assert exc_info.value.__cause__ is error
 
 
 def test_retry_metadata_is_forwarded_to_langsmith(adapter):

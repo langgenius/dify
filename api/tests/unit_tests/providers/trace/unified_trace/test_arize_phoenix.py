@@ -17,6 +17,11 @@ from core.ops.unified_trace.parent_context import ParentResolution, ProviderPare
 VALID_TRACEPARENT = "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
 
 
+def _inject_traceparent(carrier: dict[str, str], context: object) -> None:
+    assert context is not None
+    carrier["traceparent"] = VALID_TRACEPARENT
+
+
 def span(**overrides) -> CanonicalSpan:
     values = {
         "id": "root",
@@ -53,7 +58,7 @@ def adapter(monkeypatch: pytest.MonkeyPatch):
     exporter.export.return_value = SpanExportResult.SUCCESS
     monkeypatch.setattr(
         "dify_trace_arize_phoenix.unified_trace.setup_unified_tracer",
-        lambda config: (tracer, exporter),
+        lambda _config: (tracer, exporter),
     )
     value = UnifiedPhoenixAdapter(
         PhoenixConfig(api_key="secret", project="project-a", endpoint="https://phoenix.example")
@@ -157,10 +162,10 @@ def test_emit_rejects_malformed_traceparent(adapter):
 
 def test_emit_publishes_tool_context_after_span_export(adapter):
     subject, tracer, otel_spans = adapter
-    subject._propagator.inject.side_effect = lambda carrier, context: carrier.update({"traceparent": VALID_TRACEPARENT})
+    subject._propagator.inject.side_effect = _inject_traceparent
     events: list[str] = []
-    otel_spans[0].end.side_effect = lambda **kwargs: events.append("end")
-    publish = MagicMock(side_effect=lambda *args: events.append("publish"))
+    otel_spans[0].end.side_effect = lambda **_kwargs: events.append("end")
+    publish = MagicMock(side_effect=lambda *_args: events.append("publish"))
     tool = span(id="tool-exec", kind=CanonicalSpanKind.TOOL, can_parent_workflow=True)
 
     subject.emit(trace(tool), None, publish)
@@ -198,7 +203,7 @@ def test_emit_maps_exporter_exception_to_retryable_failure(adapter):
 
 def test_emit_publishes_message_context(adapter):
     subject, _, _ = adapter
-    subject._propagator.inject.side_effect = lambda carrier, context: carrier.update({"traceparent": VALID_TRACEPARENT})
+    subject._propagator.inject.side_effect = _inject_traceparent
     publish = MagicMock()
     message = span(id="message-1", name="message", publishes_parent_context=True)
 
