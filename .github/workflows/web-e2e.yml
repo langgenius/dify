@@ -46,21 +46,19 @@ jobs:
         working-directory: ./e2e
         run: vp run test:unit
 
-      - name: Install Playwright browsers for core E2E
-        id: install_core_playwright
+      - name: Use Ubuntu archive for core E2E dependencies
         if: ${{ !inputs.run-external-runtime }}
-        continue-on-error: true
+        run: |
+          sudo sed -i \
+            's|us-east-1\.ec2\.archive\.ubuntu\.com|archive.ubuntu.com|g' \
+            /etc/apt/apt-mirrors.txt \
+            /etc/apt/sources.list.d/ubuntu.sources
+
+      - name: Install Playwright browsers for core E2E
+        if: ${{ !inputs.run-external-runtime }}
         timeout-minutes: 15
         working-directory: ./e2e
         run: vp run e2e:install:ci
-
-      - name: Retry core E2E browser install with Ubuntu archive
-        if: ${{ !inputs.run-external-runtime && steps.install_core_playwright.outcome == 'failure' }}
-        timeout-minutes: 45
-        working-directory: ./e2e
-        run: |
-          sudo sed -i 's|us-east-1\.ec2\.archive\.ubuntu\.com|archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
-          vp run e2e:install:ci
 
       - name: Install Chromium for external runtime E2E
         if: ${{ inputs.run-external-runtime }}
