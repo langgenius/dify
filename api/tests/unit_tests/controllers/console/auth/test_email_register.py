@@ -18,7 +18,7 @@ from services.entities.feature_entities import SystemFeatureModel
 class TestEmailRegisterSendEmailApi:
     @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.email_register.AccountService.send_email_register_email")
-    @patch("controllers.console.auth.email_register.BillingService.is_email_in_freeze")
+    @patch("controllers.console.auth.email_register.BillingService.get_email_freeze_type")
     @patch("controllers.console.auth.email_register.AccountService.is_email_send_ip_limit", return_value=False)
     @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
     def test_send_email_normalizes_and_falls_back(
@@ -31,7 +31,7 @@ class TestEmailRegisterSendEmailApi:
         app: Flask,
     ):
         mock_send_mail.return_value = "token-123"
-        mock_is_freeze.return_value = False
+        mock_is_freeze.return_value = None
         mock_account = MagicMock()
         mock_get_account.return_value = mock_account
 

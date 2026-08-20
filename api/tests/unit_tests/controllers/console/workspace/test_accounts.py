@@ -603,7 +603,7 @@ class TestChangeEmailApis:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=False),
+            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
             patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=False),
         ):
             with pytest.raises(EmailAlreadyInUseError):
@@ -625,7 +625,7 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=False),
+            patch("controllers.console.workspace.account.AccountService.get_account_freeze_type", return_value=None),
             patch("controllers.console.workspace.account.AccountService.check_email_unique", return_value=True),
         ):
             result = method(api)
@@ -646,7 +646,10 @@ class TestCheckEmailUniqueApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch("controllers.console.workspace.account.AccountService.is_account_in_freeze", return_value=True),
+            patch(
+                "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+                return_value="freeze",
+            ),
         ):
             with pytest.raises(AccountInFreezeError):
                 method(api)
