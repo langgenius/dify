@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -37,6 +38,14 @@ def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
     client = MagicMock()
     client.create_home_snapshot_from_binding_sync.return_value = SimpleNamespace(snapshot_ref=snapshot_ref)
     return client
+
+
+def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent.example")
+
+    client = AgentHomeSnapshotService._client()
+
+    assert client._timeout == 45.0
 
 
 def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup() -> None:

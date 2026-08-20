@@ -25,6 +25,10 @@ from models.agent import (
 from services.agent.errors import AgentBuildSandboxNotFoundError
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
+# Above the dify-agent adapter's 35.0s, which is above the sandbox-gateway's 30s snapshot budget,
+# so the lower layer's structured error wins the race instead of an opaque client timeout.
+HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS = 45.0
+
 
 class AgentHomeSnapshotUnavailableError(RuntimeError):
     """The requested owner-scoped Home Snapshot cannot be used."""
@@ -163,6 +167,7 @@ class AgentHomeSnapshotService:
         return create_agent_backend_client(
             base_url=base_url,
             api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+            timeout=HOME_SNAPSHOT_CLIENT_TIMEOUT_SECONDS,
         )
 
 
