@@ -87,6 +87,35 @@ describe('InstallForm', () => {
     expect(mockSetup).not.toHaveBeenCalled()
   })
 
+  it('should identify an invalid email and focus the field', async () => {
+    const user = userEvent.setup()
+    render(<InstallForm />)
+
+    const emailInput = await screen.findByLabelText('login.email')
+    await user.type(emailInput, 'invalid-email')
+    await user.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+
+    expect(await screen.findByText('login.error.emailInValid')).toBeInTheDocument()
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveFocus()
+    expect(mockSetup).not.toHaveBeenCalled()
+  })
+
+  it('should enforce the password requirements before submission', async () => {
+    const user = userEvent.setup()
+    render(<InstallForm />)
+
+    await user.type(await screen.findByLabelText('login.email'), 'admin@example.com')
+    await user.type(screen.getByLabelText('login.name'), 'Admin')
+    const passwordInput = screen.getByLabelText('login.password')
+    await user.type(passwordInput, 'abcdefgh')
+    await user.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+
+    expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+    expect(passwordInput).toHaveFocus()
+    expect(mockSetup).not.toHaveBeenCalled()
+  })
+
   it('should submit and redirect to the console root on successful login', async () => {
     mockSetup.mockResolvedValue({ result: 'success' } as any)
     mockLogin.mockResolvedValue({ result: 'success', data: { access_token: 'token' } } as any)
