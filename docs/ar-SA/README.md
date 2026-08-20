@@ -173,6 +173,10 @@ docker compose up -d
 
 انشر Dify على AKS بنقرة واحدة باستخدام [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### استخدام Sealos للنشر
+
+انشر Dify بنقرة واحدة باستخدام [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
 ## المساهمة
 
 لأولئك الذين يرغبون في المساهمة، انظر إلى [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) لدينا.
