@@ -282,7 +282,7 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
       )
 
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(
         screen.queryByRole('button', {
@@ -733,7 +733,7 @@ describe('AgentKnowledgeRetrieval', () => {
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add',
         }),
       )
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(
         screen.queryByRole('dialog', {
@@ -765,7 +765,7 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
         'temporary query',
       )
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await user.click(
         screen.getByRole('button', {
