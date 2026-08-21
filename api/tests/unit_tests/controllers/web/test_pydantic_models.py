@@ -120,6 +120,12 @@ class TestChatMessagePayload:
 # ---------------------------------------------------------------------------
 # conversation.py models
 # ---------------------------------------------------------------------------
+from controllers.common.controller_schemas import (
+    CONVERSATION_NAME_MAX_LENGTH,
+    MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH,
+    METADATA_NAME_MAX_LENGTH,
+    MetadataUpdatePayload,
+)
 from controllers.web.conversation import ConversationListQuery, ConversationRenamePayload
 
 
@@ -182,6 +188,16 @@ class TestConversationRenamePayload:
         assert p.auto_generate is False
         assert p.name == "test"
 
+    def test_payload_accepts_name_at_max_length(self) -> None:
+        """Name exactly at CONVERSATION_NAME_MAX_LENGTH is accepted."""
+        p = ConversationRenamePayload(name="A" * CONVERSATION_NAME_MAX_LENGTH, auto_generate=False)
+        assert len(p.name) == CONVERSATION_NAME_MAX_LENGTH
+
+    def test_payload_rejects_name_above_max_length(self) -> None:
+        """Name one character over the cap is rejected with ValidationError."""
+        with pytest.raises(ValidationError):
+            ConversationRenamePayload(name="A" * (CONVERSATION_NAME_MAX_LENGTH + 1), auto_generate=False)
+
 
 # ---------------------------------------------------------------------------
 # message.py models
@@ -233,6 +249,38 @@ class TestMessageFeedbackPayload:
     def test_invalid_rating(self) -> None:
         with pytest.raises(ValidationError):
             MessageFeedbackPayload(rating="neutral")
+
+    def test_payload_accepts_content_at_max_length(self) -> None:
+        """Content exactly at MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH is accepted."""
+        p = MessageFeedbackPayload(rating="like", content="A" * MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH)
+        assert len(p.content) == MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH
+
+    def test_payload_rejects_content_above_max_length(self) -> None:
+        """Content one character over the cap is rejected with ValidationError."""
+        with pytest.raises(ValidationError):
+            MessageFeedbackPayload(rating="like", content="A" * (MESSAGE_FEEDBACK_CONTENT_MAX_LENGTH + 1))
+
+
+# ---------------------------------------------------------------------------
+# controller_schemas.MetadataUpdatePayload
+# ---------------------------------------------------------------------------
+
+
+class TestMetadataUpdatePayload:
+    def test_payload_with_name(self) -> None:
+        """Payload with a typical name is accepted."""
+        p = MetadataUpdatePayload(name="author")
+        assert p.name == "author"
+
+    def test_payload_accepts_name_at_max_length(self) -> None:
+        """Name exactly at METADATA_NAME_MAX_LENGTH is accepted."""
+        p = MetadataUpdatePayload(name="A" * METADATA_NAME_MAX_LENGTH)
+        assert len(p.name) == METADATA_NAME_MAX_LENGTH
+
+    def test_payload_rejects_name_above_max_length(self) -> None:
+        """Name one character over the cap is rejected with ValidationError."""
+        with pytest.raises(ValidationError):
+            MetadataUpdatePayload(name="A" * (METADATA_NAME_MAX_LENGTH + 1))
 
 
 class TestMessageMoreLikeThisQuery:

@@ -311,7 +311,7 @@ export const zAppExportResponse = z.object({
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish(),
+  content: z.string().max(2000).nullish(),
   message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })

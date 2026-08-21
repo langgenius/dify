@@ -75,7 +75,7 @@ export const zConversationRenamePayload = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish(),
+      name: z.string().max(200).nullish(),
     }),
     z.object({
       auto_generate: z.literal(false).optional().default(false),
@@ -84,7 +84,7 @@ export const zConversationRenamePayload = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish(),
+    name: z.string().max(200).nullish(),
   }),
 )
 
@@ -99,7 +99,7 @@ export const zResultResponse = z.object({
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish(),
+  content: z.string().max(2000).nullish(),
   message_id: z.string(),
   rating: z.enum(['dislike', 'like']).nullish(),
 })
