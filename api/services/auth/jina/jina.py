@@ -15,7 +15,7 @@ from services.entities.data_source_api_key_auth_entities import DataSourceApiKey
 _http_client: httpx.Client = get_pooled_http_client(
     "auth:jina",
     lambda: httpx.Client(
-        timeout=httpx.Timeout(10.0),
+        timeout=httpx.Timeout(10.0, connect=3.0),
         limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
     ),
 )

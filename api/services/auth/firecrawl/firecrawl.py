@@ -13,7 +13,7 @@ from services.entities.data_source_api_key_auth_entities import DataSourceApiKey
 
 # Explicit bounded timeout for credential-validation requests so a slow or
 # hanging Firecrawl endpoint cannot block the worker indefinitely.
-_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0)
+_CREDENTIAL_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
 
 
 class FirecrawlAuth:

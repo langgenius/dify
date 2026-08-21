@@ -85,7 +85,7 @@ class TestFirecrawlAuth:
             "https://api.firecrawl.dev/v1/crawl",
             headers={"Content-Type": "application/json", "Authorization": "Bearer test_api_key_123"},
             json=expected_data,
-            timeout=httpx.Timeout(10.0),
+            timeout=httpx.Timeout(10.0, connect=3.0),
         )
 
     @pytest.mark.parametrize(
@@ -218,3 +218,24 @@ class TestFirecrawlAuth:
 
         # Verify the timeout exception is raised with original message
         assert "timed out" in str(exc_info.value)
+
+    def test_credential_timeout_bounds_connect_phase(self):
+        """Test that the credential timeout bounds the connect phase to 3.0s"""
+        from services.auth.firecrawl.firecrawl import _CREDENTIAL_TIMEOUT
+
+        assert _CREDENTIAL_TIMEOUT.connect == 3.0
+        assert _CREDENTIAL_TIMEOUT.read == 10.0
+
+    @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
+    def test_post_request_passes_credential_timeout_with_connect(self, mock_post: MagicMock):
+        """Test that _post_request forwards the connect-bounded timeout to httpx.post"""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_post.return_value = mock_response
+
+        credentials = {"auth_type": "bearer", "config": {"api_key": "test_api_key_123"}}
+        FirecrawlAuth(credentials).validate_credentials()
+
+        passed_timeout = mock_post.call_args.kwargs["timeout"]
+        assert passed_timeout.connect == 3.0
+        assert passed_timeout.read == 10.0
