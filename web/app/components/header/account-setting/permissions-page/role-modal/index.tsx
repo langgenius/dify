@@ -13,7 +13,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocale } from '@/context/i18n'
+import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
 import { getDocLanguage } from '@/i18n-config/language'
 import PermissionField from './permission-field'
 
@@ -113,7 +113,7 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         </div>
         <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
           <a
-            href={`https://enterprise-docs.dify.ai/${docLanguage}/3.11.x/use/workspace/permission-reference`}
+            href={getEnterpriseDocUrl('/use/workspace/permission-reference', docLanguage)}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
