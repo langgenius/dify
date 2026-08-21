@@ -311,45 +311,6 @@ class AgentConfigService:
             missing_message="config file payload is missing",
         )
 
-    def pull_skill(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
-        name: str,
-        user_id: str | None = None,
-    ) -> ConfigDownload:
-        target = self.resolve_target(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            config_version_id=config_version_id,
-            config_version_kind=config_version_kind,
-            user_id=user_id,
-        )
-        try:
-            skill = self._require_skill(target.agent_soul, name=name)
-            file_id = self._available_skill_file_id(skill)
-            payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
-            return ConfigDownload(
-                filename=f"{skill.name}.zip",
-                mime_type=mime_type or "application/zip",
-                payload=payload,
-            )
-        except AgentConfigServiceError as exc:
-            if exc.code != "config_skill_not_found":
-                raise
-        try:
-            result = SkillManagementService().pull_runtime_agent_skill(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                name=name,
-            )
-            return ConfigDownload(filename=result.filename, mime_type=result.mime_type, payload=result.payload)
-        except SkillManagementServiceError as exc:
-            raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404) from exc
-
     def download_skill_url(
         self,
         *,
