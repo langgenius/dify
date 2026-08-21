@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
@@ -100,15 +101,17 @@ describe('Signup Set Password Page', () => {
 
   describe('Registration payload', () => {
     it('should submit locale and browser timezone when setting password', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+      expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+      expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+      await user.type(passwordInput, 'ValidPass123!')
+      await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({

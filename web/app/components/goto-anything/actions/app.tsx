@@ -72,12 +72,6 @@ const getAppSections = (app: AppPartial): AppSection[] => {
       path: `${base}/logs`,
       iconClassName: 'i-ri-file-list-line size-4 text-text-tertiary',
     },
-    {
-      id: 'develop',
-      label: 'Develop',
-      path: `${base}/develop`,
-      iconClassName: 'i-ri-terminal-box-line size-4 text-text-tertiary',
-    },
   ]
 }
 

@@ -1,11 +1,10 @@
 from inspect import unwrap
-from types import SimpleNamespace
-from typing import cast
 from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
 from pydantic_core import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -44,7 +43,9 @@ INVALID_UUID = "123"
 
 
 def make_account() -> Account:
-    return cast(Account, SimpleNamespace(id="account-1", email="owner@example.com"))
+    account = Account(name="Provider Owner", email="owner@example.com")
+    account.id = "account-1"
+    return account
 
 
 def make_provider_response() -> ProviderResponse:
@@ -225,10 +226,10 @@ class TestModelProviderSummaryListApi:
 
 
 class TestModelProviderCreditsApi:
-    def test_get_success(self):
+    def test_get_success(self, unbound_session: Session):
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = SimpleNamespace()
+        session = unbound_session
         credit_pool = EffectiveCreditPool(
             plan="team",
             pool_type="paid",
@@ -255,10 +256,10 @@ class TestModelProviderCreditsApi:
             "next_credit_reset_date": 1775001600,
         }
 
-    def test_get_without_effective_pool(self):
+    def test_get_without_effective_pool(self, unbound_session: Session):
         api = ModelProviderCreditsApi()
         method = unwrap(api.get)
-        session = SimpleNamespace()
+        session = unbound_session
 
         with patch(
             "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",

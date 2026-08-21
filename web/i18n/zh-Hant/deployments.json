@@ -22,7 +22,6 @@
   "deployTab.moreActions": "更多操作",
   "deployTab.redeploy": "重新部署",
   "deployTab.undeploy": "下線",
-  "deployTab.undeployConfirmWarning": "確認後，此環境將進入下線中狀態，相關操作將暫時停用。",
   "health.ENVIRONMENT_STATUS_FAILED": "不可用",
   "list.emptyTitle": "尚無部署",
   "overview.chip.latest": "最新",

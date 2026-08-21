@@ -8,6 +8,7 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.console.error import EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
     ChangeEmailCheckApi,
@@ -24,6 +25,7 @@ from services.entities.auth_entities import (
     ChangeEmailNewEmailVerifiedToken,
     ChangeEmailOldEmailToken,
     ChangeEmailOldEmailVerifiedToken,
+    ChangeEmailPhase,
 )
 
 
@@ -98,11 +100,11 @@ def _build_change_email_token(
     }
     if phase == AccountService.CHANGE_EMAIL_PHASE_OLD:
         return ChangeEmailOldEmailToken(**token_kwargs)
-    if phase == AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED:
+    if phase == ChangeEmailPhase.OLD_EMAIL_VERIFIED:
         return ChangeEmailOldEmailVerifiedToken(**token_kwargs)
     if phase == AccountService.CHANGE_EMAIL_PHASE_NEW:
         return ChangeEmailNewEmailToken(**token_kwargs)
-    if phase == AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED:
+    if phase == ChangeEmailPhase.NEW_EMAIL_VERIFIED:
         return ChangeEmailNewEmailVerifiedToken(**token_kwargs)
     raise AssertionError(f"Unsupported phase for test helper: {phase}")
 
@@ -166,7 +168,7 @@ class TestChangeEmailSend:
     ):
         mock_account = _build_account("current@example.com", "acc1")
         mock_get_change_data.return_value = _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+            ChangeEmailPhase.OLD_EMAIL_VERIFIED,
             account_id="acc1",
             email="current@example.com",
             old_email="current@example.com",
@@ -244,7 +246,7 @@ class TestChangeEmailSend:
 
         mock_account = _build_account("current@example.com", "acc1")
         mock_get_change_data.return_value = _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+            ChangeEmailPhase.OLD_EMAIL_VERIFIED,
             account_id="other-account",
             email="current@example.com",
             old_email="current@example.com",
@@ -305,7 +307,7 @@ class TestChangeEmailValidity:
         mock_revoke_token.assert_called_once_with("token-123")
         mock_generate_token.assert_called_once_with(
             _build_change_email_token(
-                AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+                ChangeEmailPhase.OLD_EMAIL_VERIFIED,
                 account_id="acc2",
                 email="user@example.com",
                 old_email="user@example.com",
@@ -352,7 +354,7 @@ class TestChangeEmailValidity:
         assert response == {"is_valid": True, "email": "new@example.com", "token": "new-verified-token"}
         mock_generate_token.assert_called_once_with(
             _build_change_email_token(
-                AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+                ChangeEmailPhase.NEW_EMAIL_VERIFIED,
                 account_id="acc",
                 email="new@example.com",
                 old_email="old@example.com",
@@ -381,7 +383,7 @@ class TestChangeEmailValidity:
         current_user = _build_account("old@example.com", "acc")
         mock_is_rate_limit.return_value = False
         mock_get_data.return_value = _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_OLD_VERIFIED,
+            ChangeEmailPhase.OLD_EMAIL_VERIFIED,
             account_id="acc",
             email="old@example.com",
             old_email="old@example.com",
@@ -442,10 +444,29 @@ class TestChangeEmailValidity:
 
 
 class TestChangeEmailReset:
+    @patch(
+        "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+        return_value="email_domain_suspended",
+    )
+    def test_should_reject_suspended_email_domain(self, mock_get_freeze_type, app: Flask):
+        current_user = _build_account("old@example.com", "email-reset-account")
+
+        with app.test_request_context(
+            "/account/change-email/reset",
+            method="POST",
+            json={"new_email": "new@suspended.example", "token": "token-123"},
+        ):
+            api = ChangeEmailResetApi()
+            method = inspect.unwrap(api.post)
+            with pytest.raises(EmailDomainSuspendedError):
+                method(api, current_user)
+
+        mock_get_freeze_type.assert_called_once_with("new@suspended.example")
+
     @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     @pytest.mark.parametrize(
         "sqlite_session",
         [(Account, Tenant, TenantAccountJoin, AccountIntegrate)],
@@ -477,7 +498,7 @@ class TestChangeEmailReset:
             database_session.add(account_integration)
             database_session.commit()
             mock_get_data.return_value = _build_change_email_token(
-                AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+                ChangeEmailPhase.NEW_EMAIL_VERIFIED,
                 account_id=current_user.id,
                 email="new@example.com",
                 old_email="OLD@example.com",
@@ -507,7 +528,7 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     def test_should_reject_reset_when_token_phase_is_not_new_verified(
         self,
         mock_is_freeze: MagicMock,
@@ -550,7 +571,7 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     def test_should_reject_reset_when_token_email_differs_from_payload_new_email(
         self,
         mock_is_freeze: MagicMock,
@@ -568,7 +589,7 @@ class TestChangeEmailReset:
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
         mock_get_data.return_value = _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+            ChangeEmailPhase.NEW_EMAIL_VERIFIED,
             account_id="acc3",
             email="verified@example.com",
             old_email="old@example.com",
@@ -593,7 +614,7 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     def test_should_reject_reset_when_token_account_id_does_not_match_current_user(
         self,
         mock_is_freeze: MagicMock,
@@ -610,7 +631,7 @@ class TestChangeEmailReset:
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
         mock_get_data.return_value = _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+            ChangeEmailPhase.NEW_EMAIL_VERIFIED,
             account_id="other-account",
             email="new@example.com",
             old_email="old@example.com",
@@ -693,13 +714,13 @@ class TestAccountServiceGetChangeEmailData:
             "email": "new@example.com",
             "old_email": "old@example.com",
             "code": "654321",
-            "email_change_phase": AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+            "email_change_phase": ChangeEmailPhase.NEW_EMAIL_VERIFIED,
         }
 
         token_data = AccountService.get_change_email_data("token-123")
 
         assert token_data == _build_change_email_token(
-            AccountService.CHANGE_EMAIL_PHASE_NEW_VERIFIED,
+            ChangeEmailPhase.NEW_EMAIL_VERIFIED,
             account_id="acc-1",
             email="new@example.com",
             old_email="old@example.com",
@@ -736,7 +757,7 @@ class TestAccountDeletionFeedback:
 
 
 class TestCheckEmailUnique:
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     @pytest.mark.parametrize(
         "sqlite_session",
         [(Account, Tenant, TenantAccountJoin)],

@@ -51,11 +51,13 @@ from pydantic_ai.messages import (
     ModelResponseStreamEvent,
     MultiModalContent,
     RetryPromptPart,
+    SpeechPart,
     SystemPromptPart,
     TextContent,
     TextPart,
     ThinkingPart,
     ToolCallPart,
+    ToolAvailabilityDeltaPart,
     ToolReturnPart,
     UploadedFile,
     UserContent,
@@ -302,14 +304,38 @@ def _map_messages_to_prompt_messages(
         for part in (Model._get_instruction_parts(messages, model_request_parameters) or [])
         if part.content.strip()
     ]
-    if instruction_messages:
-        insert_at = next(
-            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
-            len(prompt_messages),
-        )
-        prompt_messages[insert_at:insert_at] = instruction_messages
+    prompt_messages = _order_system_messages_first(prompt_messages, instruction_messages)
 
     return prompt_messages
+
+
+def _order_system_messages_first(
+    prompt_messages: Sequence[PromptMessage],
+    instruction_messages: Sequence[SystemPromptMessage],
+) -> list[PromptMessage]:
+    """Merge all system content into a single leading system message.
+
+    Some providers (e.g. vLLM serving Qwen3.5/3.6 chat templates) reject any
+    system message that is not exactly the first message, so sorting alone is
+    not enough: multiple system messages must be merged into one.
+    """
+    system_contents: list[str] = []
+    non_system_messages: list[PromptMessage] = []
+    for message in prompt_messages:
+        if isinstance(message, SystemPromptMessage):
+            text = message.get_text_content()
+            if text.strip():
+                system_contents.append(text)
+        else:
+            non_system_messages.append(message)
+    for instruction in instruction_messages:
+        text = instruction.get_text_content()
+        if text.strip():
+            system_contents.append(text)
+
+    if not system_contents:
+        return non_system_messages
+    return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
@@ -333,6 +359,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
                         name=part.tool_name,
                     )
                 )
+        elif isinstance(part, SpeechPart | ToolAvailabilityDeltaPart):
+            raise UnexpectedModelBehavior(f"Unsupported request part for daemon adapter: {type(part).__name__}")
         else:
             assert_never(part)
 

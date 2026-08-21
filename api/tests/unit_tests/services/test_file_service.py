@@ -12,6 +12,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from configs.extra.public_storage_config import PublicStoragePolicyConfig
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole, UploadFilePurpose
@@ -386,6 +387,33 @@ class TestFileService:
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
 
+    def test_get_file_presigned_url_success(self, file_service: FileService, db_session: Session):
+        self._persist_upload_file(
+            db_session,
+            extension="png",
+            mime_type="image/png",
+            key="upload_files/tenant_id/icon.png",
+        )
+
+        with (
+            patch.object(dify_config, "FILES_ACCESS_TIMEOUT", 300),
+            patch("services.file_service.storage") as mock_storage,
+        ):
+            mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
+
+            result = file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
+        assert result == "https://s3.example.com/icon.png?signature=test"
+        mock_storage.generate_presigned_url.assert_called_once_with(
+            "upload_files/tenant_id/icon.png",
+            expires_in=300,
+            content_type="image/png",
+        )
+
+    def test_get_file_presigned_url_not_found(self, file_service: FileService):
+        with pytest.raises(NotFound, match="File not found"):
+            file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
     def test_get_icon_url_with_presigned_fallback_preserves_legacy_behavior(
         self, file_service: FileService, db_session: Session
     ):
@@ -479,6 +507,44 @@ class TestFileService:
     def test_get_icon_url_with_presigned_fallback_not_found(self, file_service: FileService):
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_icon_url_with_presigned_fallback(file_id="file_id", tenant_id="tenant_id")
+
+    def test_get_icon_url_uses_direct_storage_url_for_cloud_s3(self, file_service: FileService):
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
+            patch.object(
+                file_service,
+                "get_icon_url_with_presigned_fallback",
+                return_value="direct-url",
+            ) as get_icon_url,
+        ):
+            result = file_service.get_icon_url("file_id", "tenant_id")
+
+        assert result == "direct-url"
+        get_icon_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
+
+    @pytest.mark.parametrize(
+        ("deployment_edition", "storage_type"),
+        [
+            (DeploymentEdition.COMMUNITY, StorageType.S3),
+            (DeploymentEdition.CLOUD, StorageType.LOCAL),
+        ],
+    )
+    def test_get_icon_url_uses_preview_url_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        deployment_edition: DeploymentEdition,
+        storage_type: StorageType,
+    ):
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", deployment_edition),
+            patch.object(dify_config, "STORAGE_TYPE", storage_type),
+            patch("services.file_service.build_icon_url", return_value="preview-url") as build_url,
+        ):
+            result = file_service.get_icon_url("file_id", "tenant_id")
+
+        assert result == "preview-url"
+        build_url.assert_called_once_with("image", "file_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup

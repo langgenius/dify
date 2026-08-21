@@ -1,6 +1,6 @@
 import os
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -110,6 +110,26 @@ def reset_secret_key() -> Iterator[None]:
         yield
     finally:
         dify_config.SECRET_KEY = original
+
+
+@pytest.fixture
+def config_overrides(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+    """Temporarily override fields on the shared typed application config.
+
+    Application modules import the same config instance, so mutating known
+    field names keeps tests scoped without replacing that instance with an
+    unconstrained mock. ``monkeypatch`` restores every value after the test.
+    """
+    from configs import dify_config
+
+    def apply(**values: object) -> None:
+        unknown_fields = values.keys() - type(dify_config).model_fields.keys()
+        if unknown_fields:
+            raise ValueError(f"Unknown DifyConfig fields: {sorted(unknown_fields)}")
+        for name, value in values.items():
+            monkeypatch.setattr(dify_config, name, value)
+
+    return apply
 
 
 @pytest.fixture

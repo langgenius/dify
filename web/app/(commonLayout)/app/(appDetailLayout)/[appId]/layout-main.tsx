@@ -37,7 +37,6 @@ const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslatio
     return t(($) => $['appMenus.promptEng'], { ns: 'common' })
   if (pathname.endsWith('/access-point'))
     return t(($) => $['appMenus.accessPoint'], { ns: 'common' })
-  if (pathname.endsWith('/develop')) return t(($) => $['appMenus.apiAccess'], { ns: 'common' })
   if (pathname.endsWith('/deploy')) return t(($) => $['appMenus.deploy'], { ns: 'common' })
   if (pathname.endsWith('/logs')) return t(($) => $['appMenus.logs'], { ns: 'common' })
   if (pathname.endsWith('/annotations'))

@@ -23,6 +23,7 @@ from core.file.upload_file_policy import (
     resolve_upload_file_storage_policy,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
+from enums import DeploymentEdition
 from extensions.ext_storage import Storage, storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
@@ -212,8 +213,7 @@ class FileService:
         blob = upload_storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
-    def get_icon_url_with_presigned_fallback(self, *, file_id: str, tenant_id: str) -> str:
-        """Use the icon purpose policy when configured, otherwise preserve the legacy presigned URL."""
+    def _get_tenant_upload_file(self, *, file_id: str, tenant_id: str) -> UploadFile:
         with self._session_maker(expire_on_commit=False) as session:
             upload_file = session.scalar(
                 select(UploadFile)
@@ -225,14 +225,34 @@ class FileService:
             )
             if upload_file is None:
                 raise NotFound("File not found")
+            return upload_file
 
-            file_key = upload_file.key
-            content_type = upload_file.mime_type
-            upload_policy = resolve_upload_file_storage_policy(
-                upload_file.purpose,
-                storage_type=upload_file.storage_type,
-                key=file_key,
-            )
+    @staticmethod
+    def _generate_upload_file_presigned_url(upload_file: UploadFile) -> str:
+        upload_storage = resolve_upload_file_storage(
+            upload_file.purpose,
+            storage_type=upload_file.storage_type,
+            key=upload_file.key,
+        )
+        return upload_storage.generate_presigned_url(
+            upload_file.key,
+            expires_in=dify_config.FILES_ACCESS_TIMEOUT,
+            content_type=upload_file.mime_type,
+        )
+
+    def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
+        """Generate a direct storage URL for a tenant-owned upload file."""
+        upload_file = self._get_tenant_upload_file(file_id=file_id, tenant_id=tenant_id)
+        return self._generate_upload_file_presigned_url(upload_file)
+
+    def get_icon_url_with_presigned_fallback(self, *, file_id: str, tenant_id: str) -> str:
+        """Use the icon purpose policy when configured, otherwise preserve the legacy presigned URL."""
+        upload_file = self._get_tenant_upload_file(file_id=file_id, tenant_id=tenant_id)
+        upload_policy = resolve_upload_file_storage_policy(
+            upload_file.purpose,
+            storage_type=upload_file.storage_type,
+            key=upload_file.key,
+        )
 
         if upload_policy is not None:
             icon_url = build_icon_url("image", file_id)
@@ -240,16 +260,18 @@ class FileService:
                 raise AssertionError("image icon URL must not be None")
             return icon_url
 
-        upload_storage = resolve_upload_file_storage(
-            upload_file.purpose,
-            storage_type=upload_file.storage_type,
-            key=file_key,
-        )
-        return upload_storage.generate_presigned_url(
-            file_key,
-            expires_in=dify_config.FILES_ACCESS_TIMEOUT,
-            content_type=content_type,
-        )
+        return self._generate_upload_file_presigned_url(upload_file)
+
+    def get_icon_url(self, file_id: str, tenant_id: str) -> str:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+            StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+        ):
+            return self.get_icon_url_with_presigned_fallback(file_id=file_id, tenant_id=tenant_id)
+
+        icon_url = build_icon_url("image", file_id)
+        if icon_url is None:
+            raise AssertionError("image icon URL must not be None")
+        return icon_url
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:

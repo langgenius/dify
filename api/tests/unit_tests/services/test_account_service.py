@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import UUID
@@ -28,7 +28,7 @@ from services.errors.account import (
     AccountLoginError,
     AccountPasswordError,
     AccountRegisterError,
-    CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     NoPermissionError,
 )
 
@@ -224,6 +224,7 @@ class TestAccountService:
                 interface_language="en-US",
                 password="password123",
                 interface_theme="light",
+                ip_address="203.0.113.10",
                 session=service_session,
             )
             account_id = result.id
@@ -235,6 +236,7 @@ class TestAccountService:
             assert result.password is not None
             assert result.password_salt is not None
             assert result.timezone == "America/New_York"
+            assert result.last_login_ip == "203.0.113.10"
 
         with sqlite_session_factory() as assertion_session:
             persisted_account = assertion_session.get(Account, account_id)
@@ -246,6 +248,7 @@ class TestAccountService:
             assert persisted_account.password is not None
             assert persisted_account.password_salt is not None
             assert persisted_account.timezone == "America/New_York"
+            assert persisted_account.last_login_ip == "203.0.113.10"
 
     def test_create_account_uses_explicit_timezone(
         self,
@@ -309,6 +312,50 @@ class TestAccountService:
                     session=unbound_session,
                 )
 
+    def test_create_account_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.create_account(
+                    email="user@suspended.example",
+                    name="Test User",
+                    interface_language="en-US",
+                    session=unbound_session,
+                )
+
+    def test_get_user_through_email_rejects_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
+
+    def test_get_account_freeze_type_is_enabled_only_for_cloud(
+        self, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+            assert AccountService.get_account_freeze_type("frozen@example.com") is None
+
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
+            "frozen@example.com"
+        )
+
     def test_create_account_without_password(
         self,
         sqlite_session_factory: sessionmaker[Session],
@@ -338,6 +385,7 @@ class TestAccountService:
             assert result.password is None
             assert result.password_salt is None
             assert result.timezone is not None
+            assert result.last_login_ip is None
 
         with sqlite_session_factory() as assertion_session:
             persisted_account = assertion_session.get(Account, account_id)
@@ -349,103 +397,33 @@ class TestAccountService:
             assert persisted_account.password is None
             assert persisted_account.password_salt is None
             assert persisted_account.timezone is not None
+            assert persisted_account.last_login_ip is None
 
-    # ==================== Password Management Tests ====================
-
-    def test_update_account_password_success(
+    def test_update_login_info_overwrites_initial_registration_ip(
         self,
         sqlite_session_factory: sessionmaker[Session],
-        mock_password_dependencies: _MockDependencies,
+        mock_external_service_dependencies: _MockDependencies,
     ) -> None:
-        """Test successful password update with correct current password and valid new password."""
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+
         with sqlite_session_factory() as service_session:
-            account = Account(
-                name="Test User",
+            account = AccountService.create_account(
                 email="test@example.com",
-                password="hashed_password",
-                password_salt="salt",
-            )
-            service_session.add(account)
-            service_session.commit()
-            account_id = account.id
-
-            mock_password_dependencies["compare_password"].return_value = True
-            mock_password_dependencies["valid_password"].return_value = None
-            mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
-
-            result = AccountService.update_account_password(
-                account,
-                "old_password",
-                "new_password123",
+                name="Test User",
+                interface_language="en-US",
+                ip_address="203.0.113.10",
                 session=service_session,
             )
-            assert result is account
+            account_id = account.id
 
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "old_password", "hashed_password", "salt"
-        )
-        mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
+            AccountService.update_login_info(account, service_session, ip_address="203.0.113.11")
 
         with sqlite_session_factory() as assertion_session:
             persisted_account = assertion_session.get(Account, account_id)
             assert persisted_account is not None
-            assert persisted_account.password is not None
-            assert persisted_account.password != "hashed_password"
-            assert persisted_account.password_salt is not None
-            assert persisted_account.password_salt != "salt"
-
-    def test_update_account_password_current_password_incorrect(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with incorrect current password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = False
-
-        # Execute test and verify exception
-        with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(
-                mock_account,
-                "wrong_password",
-                "new_password123",
-                session=unbound_session,
-            )
-
-        # Verify password comparison was called
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "wrong_password", "hashed_password", "salt"
-        )
-
-    def test_update_account_password_invalid_new_password(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with invalid new password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = True
-        mock_password_dependencies["valid_password"].side_effect = ValueError("Password too short")
-
-        # Execute test and verify exception
-        with pytest.raises(ValueError):
-            AccountService.update_account_password(
-                mock_account,
-                "old_password",
-                "short",
-                session=unbound_session,
-            )
-
-        # Verify password validation was called
-        mock_password_dependencies["valid_password"].assert_called_once_with("short")
+            assert persisted_account.last_login_ip == "203.0.113.11"
+            assert persisted_account.last_login_at is not None
 
     # ==================== User Loading Tests ====================
 
@@ -1448,6 +1426,7 @@ class TestRegisterService:
                         interface_language="en-US",
                         password="password123",
                         is_setup=True,
+                        ip_address="192.168.1.1",
                         session=service_session,
                     )
                     mock_create_tenant.assert_called_once_with(
@@ -1555,10 +1534,20 @@ class TestRegisterService:
                 name="Test User",
                 interface_language="en-US",
                 password=None,
+                ip_address="203.0.113.10",
                 session=sqlite_session,
             )
 
             assert result == mock_account
+            mock_create_account.assert_called_once_with(
+                email="test@example.com",
+                name="Test User",
+                interface_language="en-US",
+                password=None,
+                timezone=None,
+                ip_address="203.0.113.10",
+                session=sqlite_session,
+            )
             mock_create_workspace.assert_called_once_with(account=mock_account, session=sqlite_session)
             mock_join_default_workspace.assert_called_once_with(mock_account.id)
 
@@ -1658,6 +1647,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    ip_address="203.0.113.10",
                     session=sqlite_session,
                 )
 
@@ -1672,6 +1662,7 @@ class TestRegisterService:
                     password="password123",
                     is_setup=False,
                     timezone=None,
+                    ip_address="203.0.113.10",
                     session=sqlite_session,
                 )
                 mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
@@ -2244,18 +2235,19 @@ class TestRegisterService:
     # ==================== RBAC Member Invitation Tests ====================
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_enabled_new_account(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_enabled_new_account(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is enabled, create the member join and replace RBAC member roles."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = None
-            mock_config.RBAC_ENABLED = True
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="new-user-rbac", email="rbac@example.com", name="rbacuser", status="pending"
@@ -2292,8 +2284,11 @@ class TestRegisterService:
                 )
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_enabled_existing_account(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_enabled_existing_account(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is enabled and account exists, create the member join and replace RBAC member roles."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
@@ -2303,10 +2298,8 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = mock_existing_account
-            mock_config.RBAC_ENABLED = True
 
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
@@ -2339,9 +2332,13 @@ class TestRegisterService:
                 )
 
     def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
-        self, sqlite_session: Session, mock_task_dependencies: MagicMock
+        self,
+        sqlite_session: Session,
+        mock_task_dependencies: MagicMock,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
@@ -2351,10 +2348,8 @@ class TestRegisterService:
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = mock_existing_account
-            mock_config.RBAC_ENABLED = True
 
             with (
                 patch("services.account_service.TenantService.check_member_permission"),
@@ -2387,18 +2382,19 @@ class TestRegisterService:
                 mock_task_dependencies.delay.assert_not_called()
 
     @pytest.mark.usefixtures("mock_task_dependencies")
-    def test_invite_new_member_rbac_disabled_uses_legacy_role(self, sqlite_session: Session) -> None:
+    def test_invite_new_member_rbac_disabled_uses_legacy_role(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """When RBAC is disabled, create_tenant_member should be called and MemberRoles.replace should NOT."""
+        config_overrides(RBAC_ENABLED=False)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-legacy"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-789", name="Inviter")
 
         with (
             patch("services.account_service.AccountService.get_account_by_email_with_case_fallback") as mock_lookup,
-            patch("services.account_service.dify_config") as mock_config,
         ):
             mock_lookup.return_value = None
-            mock_config.RBAC_ENABLED = False
 
             mock_new_account = TestAccountAssociatedDataFactory.create_account_mock(
                 account_id="legacy-user", email="legacy@example.com", name="legacyuser", status="pending"

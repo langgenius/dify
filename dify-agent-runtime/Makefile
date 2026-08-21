@@ -1,4 +1,4 @@
-.PHONY: build clean test lint gen-cli-help integration integration-up integration-test integration-down
+.PHONY: build clean test lint gen-cli-help integration integration-up integration-test integration-down sync-e2b-template-dev sync-e2b-template-prod sync-e2b-template-dry-run
 BIN_DIR := bin
 AGENT_CLI_HELP_JSON := ../dify-agent/src/dify_agent/layers/_agent_cli_help.json
 
@@ -128,3 +128,18 @@ integration:
 	@$(MAKE) integration-up
 	@trap '$(MAKE) integration-down' EXIT; \
 	$(MAKE) integration-test
+
+# --- E2B Template sync ---
+#
+# Both E2B projects publish the same template name (dify-agent-local-sandbox);
+# the project itself is the isolation boundary. Export E2B_API_KEY_DEV /
+# E2B_API_KEY_PROD in your shell before running the non-dry-run targets.
+
+sync-e2b-template-dry-run:
+	./docker/sync-e2b-template.sh --dry-run
+
+sync-e2b-template-dev:
+	E2B_API_KEY=$(E2B_API_KEY_DEV) ./docker/sync-e2b-template.sh
+
+sync-e2b-template-prod:
+	E2B_API_KEY=$(E2B_API_KEY_PROD) ./docker/sync-e2b-template.sh

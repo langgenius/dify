@@ -48,7 +48,7 @@ function ResourceOpenScopeSection({ value, disabled, onChange }: ResourceOpenSco
         </h2>
         <TitleInfotip content={resourceOpenScopeDescription} />
       </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <OpenScopeOption
           value="all"
           selected={value === 'all'}
@@ -57,14 +57,6 @@ function ResourceOpenScopeSection({ value, disabled, onChange }: ResourceOpenSco
           description={t(($) => $['accessRule.allPermittedMembersDescription'], {
             ns: 'permission',
           })}
-          onChange={onChange ? handleRequestChange : undefined}
-        />
-        <OpenScopeOption
-          value="only_me"
-          selected={value === 'only_me'}
-          disabled={disabled || !onChange}
-          title={t(($) => $['accessRule.onlyMe'], { ns: 'permission' })}
-          description={t(($) => $['accessRule.onlyMeDescription'], { ns: 'permission' })}
           onChange={onChange ? handleRequestChange : undefined}
         />
         <OpenScopeOption

@@ -220,6 +220,30 @@ class TestBillingServiceSendRequest:
         call_args = mock_httpx_request.call_args
         assert call_args[0][0] == method
 
+    def test_new_agent_beta_ensure_uses_secret_authenticated_v1_base(self, mock_httpx_request, mock_billing_config):
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.return_value = {"status": "issued"}
+        mock_httpx_request.return_value = mock_response
+
+        BillingService.ensure_new_agent_beta_revision("revision-1")
+
+        call_args = mock_httpx_request.call_args
+        assert call_args.args == (
+            "POST",
+            "https://billing-api.example.com/new-agent-beta/revisions/revision-1/ensure",
+        )
+        assert call_args.kwargs["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
+
+    def test_new_agent_beta_ensure_requires_json_response(self, mock_httpx_request, mock_billing_config):
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_httpx_request.return_value = mock_response
+
+        with pytest.raises(json.JSONDecodeError):
+            BillingService.ensure_new_agent_beta_revision("revision-1")
+
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
@@ -1271,6 +1295,15 @@ class TestBillingServiceAccountManagement:
 
         # Assert
         assert result is True
+        mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
+
+    def test_get_email_freeze_type_for_suspended_domain(self, mock_send_request):
+        email = "user@suspended.example"
+        mock_send_request.return_value = {"data": True, "freezeType": "email_domain_suspended"}
+
+        result = BillingService.get_email_freeze_type(email)
+
+        assert result == "email_domain_suspended"
         mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
 
     def test_is_email_in_freeze_false(self, mock_send_request):

@@ -5,7 +5,7 @@ from typing import cast
 
 import pytest
 
-from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus
+from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus, ShellExecutionMode
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend.protocols import RuntimeLayout
 from dify_agent.runtime_backend.shellctl import (
@@ -43,6 +43,7 @@ class _FakeCommands:
     wait_error: Exception | None = None
     delete_error: Exception | None = None
     delete_calls: list[tuple[str, bool]] = field(default_factory=list)
+    run_modes: list[ShellExecutionMode] = field(default_factory=list)
 
     async def run(
         self,
@@ -51,8 +52,10 @@ class _FakeCommands:
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         timeout: float,
+        mode: ShellExecutionMode = "pty",
     ) -> ShellCommandResult:
         del script, cwd, env, timeout
+        self.run_modes.append(mode)
         return self.initial
 
     async def wait(self, job_id: str, *, offset: int, timeout: float) -> ShellCommandResult:
@@ -169,6 +172,7 @@ async def test_control_command_success_is_preserved_when_delete_fails(
         result = await run_shellctl_control_command(commands, "true")
 
     assert result.output == "ok"
+    assert commands.run_modes == ["stdio"]
     assert commands.delete_calls == [("job-1", True)]
     assert "delete failed" in caplog.text
 
@@ -188,4 +192,5 @@ async def test_control_command_error_is_preserved_when_delete_also_fails(
             _ = await run_shellctl_control_command(commands, "false")
 
     assert commands.delete_calls == [("job-1", True)]
+    assert commands.run_modes == ["stdio"]
     assert "delete failed" in caplog.text
