@@ -1,5 +1,5 @@
 """
-This test file is used to verify the compatibility of Workflow before and after supporting multiple file types.
+This unit test verifies Workflow compatibility before and after supporting multiple file types.
 """
 
 import json

@@ -1,3 +1,5 @@
+"""Unit coverage for datasource event-stream accumulation."""
+
 from collections.abc import Generator
 
 from pytest_mock import MockerFixture
