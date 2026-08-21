@@ -100,7 +100,8 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile,
   })
-  const { isConnected, nodePanelPresence } = useCollaboration(appId as string)
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
+  const { isConnected, nodePanelPresence } = useCollaboration(appId as string, canEdit)
   const { showMessageLogModal } = useAppStore(
     useShallow((state) => ({
       showMessageLogModal: state.showMessageLogModal,

@@ -335,7 +335,7 @@ def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database
     assert f"{MCPToolProvider.__tablename__}.name" not in where_clause
 
 
-def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(
+def test_workflow_app_import_closes_read_transaction_before_dsl_overwrite(
     monkeypatch: pytest.MonkeyPatch, database: Database
 ):
     class StubAppDslService:
@@ -343,32 +343,25 @@ def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(
             self.session = session
 
         def import_app(self, **kwargs):
+            assert not self.session.in_transaction()
             return Import(id="import-id", status=ImportStatus.COMPLETED, app_id="imported-app-id")
 
     monkeypatch.setattr(import_service, "AppDslService", StubAppDslService)
-    nested_transactions = []
+    monkeypatch.setattr(import_service.dify_config, "RBAC_ENABLED", True)
+    existing_app = _persist_app(database.session, app_id="11111111-1111-4111-8111-111111111111")
+    database.session.begin()
 
-    def capture_transaction(_session, transaction) -> None:
-        if transaction.nested:
-            nested_transactions.append(transaction)
-
-    event.listen(database.session, "after_transaction_create", capture_transaction)
-
-    try:
-        imported_app_id = MigrationImportService()._import_workflow_app(
-            account=object(),
-            workflow_data={"name": "main_chatflow"},
-            dsl_content="app:\n  mode: workflow\n",
-            app_id="source-app-id",
-            existing_app=None,
-            options=ImportOptions(id_strategy=IdStrategy.PRESERVE_ID),
-            session=database.session,
-        )
-    finally:
-        event.remove(database.session, "after_transaction_create", capture_transaction)
+    imported_app_id = MigrationImportService()._import_workflow_app(
+        account=object(),
+        workflow_data={"name": "main_chatflow"},
+        dsl_content="app:\n  mode: workflow\n",
+        app_id="source-app-id",
+        existing_app=existing_app,
+        options=ImportOptions(id_strategy=IdStrategy.PRESERVE_ID),
+        session=database.session,
+    )
 
     assert imported_app_id == "imported-app-id"
-    assert nested_transactions == []
 
 
 def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
