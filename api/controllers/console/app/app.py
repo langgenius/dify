@@ -112,7 +112,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported tag_ids type.")
 
-        items = [str(item).strip() for item in value if item and str(item).strip()]
+        items = [item.strip() for item in value if item and item.strip()]
         if not items:
             return None
 
@@ -130,7 +130,7 @@ class AppListBaseQuery(BaseModel):
         if not isinstance(value, list):
             raise ValueError("Unsupported creator_ids type.")
 
-        items = [str(item).strip() for item in value if item and str(item).strip()]
+        items = [item.strip() for item in value if item and item.strip()]
         if not items:
             return None
 
@@ -642,13 +642,13 @@ class AppListApi(Resource):
         )
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user_id,
             session=session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user_id,
                 session=session,
                 permissions=permissions,
@@ -713,14 +713,14 @@ class AppListApi(Resource):
         app = app_service.create_app(current_tenant_id, params, current_user, session=session)
         if dify_config.RBAC_ENABLED:
             enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                tenant_id=str(current_tenant_id),
+                tenant_id=current_tenant_id,
                 account_id=current_user.id,
                 app_id=str(app.id),
                 payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
             )
             initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [str(app.id)],
             session=session,
@@ -879,7 +879,7 @@ class AppApi(Resource):
             app_model.access_mode = app_setting.access_mode
 
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             app_id=str(app_model.id),
             session=session,
@@ -1017,7 +1017,7 @@ class AppCopyApi(Resource):
                 raise NotFound("App not found")
 
             permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
-                str(current_tenant_id),
+                current_tenant_id,
                 current_user.id,
                 [str(app.id)],
                 session=session,

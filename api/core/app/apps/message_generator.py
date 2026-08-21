@@ -10,7 +10,7 @@ from models.model import AppMode
 class MessageGenerator:
     @staticmethod
     def _make_channel_key(app_mode: AppMode, workflow_run_id: str):
-        return f"channel:{app_mode}:{str(workflow_run_id)}"
+        return f"channel:{app_mode}:{workflow_run_id}"
 
     @classmethod
     def get_response_topic(cls, app_mode: AppMode, workflow_run_id: str) -> Topic:

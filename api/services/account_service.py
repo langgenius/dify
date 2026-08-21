@@ -183,7 +183,7 @@ class AccountService:
                 and rbac_role.category == "global_system_default"
                 and rbac_role.role_tag == expected_tag
             ):
-                return str(rbac_role.id)
+                return rbac_role.id
 
         raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
 
@@ -2048,7 +2048,7 @@ class RegisterService:
             "account_id": account.id,
             "email": account.email,
             "workspace_id": tenant.id,
-            "role": str(role),
+            "role": role,
             "requires_setup": requires_setup,
         }
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
