@@ -379,11 +379,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

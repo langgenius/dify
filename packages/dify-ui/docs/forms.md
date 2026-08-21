@@ -28,8 +28,8 @@ Choose the label primitive by the control:
 - Text-like inputs, `Textarea`, input-based `Combobox` and `Autocomplete`, a single `Checkbox` or
   `Radio`, `Switch`, and `NumberField` use `FieldLabel`.
 - Trigger-based `Select` fields use `SelectLabel`.
-- `Slider` fields use `SliderLabel`; use per-thumb `aria-label` only when the thumbs need distinct
-  names.
+- `Slider` fields follow the [Base UI Slider anatomy] and use `SliderLabel`; only multi-thumb
+  sliders add per-thumb `aria-label` to distinguish the thumbs.
 - `SelectGroupLabel` and `AutocompleteGroupLabel` label option groups inside popup content. They
   are not field labels.
 
@@ -62,6 +62,7 @@ Keep form state, schemas, server validation, and reset behavior outside these pr
 their observable state through the public field and control props instead of replacing the
 semantic structure.
 
+[Base UI Slider anatomy]: https://base-ui.com/react/components/slider#anatomy
 [Base UI forms handbook]: https://base-ui.com/react/handbook/forms
 [`Button`]: ../src/button/README.md
 [`InputGroup`]: ../src/input-group/README.md
