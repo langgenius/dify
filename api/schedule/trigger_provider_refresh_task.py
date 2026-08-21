@@ -1,9 +1,8 @@
 import logging
-import math
 from collections.abc import Iterable, Sequence
 
 from celery import group
-from sqlalchemy import ColumnElement, and_, func, or_, select
+from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.engine.row import Row
 from sqlalchemy.orm import Session
 
@@ -57,27 +56,26 @@ def trigger_provider_refresh() -> None:
 
     with Session(db.engine, expire_on_commit=False) as session:
         filter: ColumnElement[bool] = _build_due_filter(now_ts=now)
-        total_due: int = int(session.scalar(statement=select(func.count()).where(filter)) or 0)
+        # Keep the list of due subscriptions stable for this publisher run.
+        # Refresh workers update the same rows, so OFFSET pagination over a
+        # changing due set can skip rows after an earlier page is processed.
+        subscription_rows: Sequence[Row[tuple[str, str]]] = session.execute(
+            select(TriggerSubscription.tenant_id, TriggerSubscription.id)
+            .where(filter)
+            .order_by(TriggerSubscription.updated_at.asc(), TriggerSubscription.id.asc())
+        ).all()
+        total_due = len(subscription_rows)
         logger.info("Trigger refresh scan start: due=%d", total_due)
         if total_due == 0:
             return
 
-        pages: int = math.ceil(total_due / batch_size)
+        pages = (total_due + batch_size - 1) // batch_size
         for page in range(pages):
-            offset: int = page * batch_size
-            subscription_rows: Sequence[Row[tuple[str, str]]] = session.execute(
-                select(TriggerSubscription.tenant_id, TriggerSubscription.id)
-                .where(filter)
-                .order_by(TriggerSubscription.updated_at.asc())
-                .offset(offset)
-                .limit(batch_size)
-            ).all()
-            if not subscription_rows:
-                logger.debug("Trigger refresh page %d/%d empty", page + 1, pages)
-                continue
+            offset = page * batch_size
+            page_rows = subscription_rows[offset : offset + batch_size]
 
             subscriptions: list[tuple[str, str]] = [
-                (str(tenant_id), str(subscription_id)) for tenant_id, subscription_id in subscription_rows
+                (str(tenant_id), str(subscription_id)) for tenant_id, subscription_id in page_rows
             ]
             lock_keys: list[str] = build_trigger_refresh_lock_keys(subscriptions)
             acquired: list[bool] = _acquire_locks(keys=lock_keys, ttl_seconds=lock_ttl)
