@@ -13,7 +13,13 @@ from core.app.apps.draft_variable_saver import (
     NoopDraftVariableSaver,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
+from core.app.file_access import (
+    DatabaseFileAccessController,
+    FileAccessScope,
+    bind_file_access_scope,
+    grant_upload_file_access,
+)
+from core.workflow.file_reference import resolve_file_record_id
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.enums import NodeType
@@ -126,6 +132,55 @@ class BaseAppGenerator:
             )
         )
 
+    @staticmethod
+    def _extract_mapping_file_id(mapping: Mapping[str, Any]) -> str | None:
+        """Resolve the canonical upload-file id carried by a file-mapping payload.
+
+        Mirrors the lookup order used by ``factories.file_factory.builders`` so
+        default-file inputs honour the same legacy-payload compat contract as
+        runtime-built files.
+        """
+        for key in ("upload_file_id", "reference", "related_id"):
+            raw_value = mapping.get(key)
+            if isinstance(raw_value, str) and raw_value:
+                resolved_value = resolve_file_record_id(raw_value)
+                if resolved_value:
+                    return resolved_value
+        return None
+
+    @classmethod
+    def _grant_input_default_file_access(
+        cls,
+        user_inputs: Mapping[str, Any],
+        entities: Mapping[str, "VariableEntity"],
+    ) -> None:
+        """Add upload-file ids referenced by file/file-list inputs to the active scope.
+
+        Form defaults are uploaded by the studio account, but a WebApp run
+        executes as the EndUser. Without an explicit grant the access controller
+        filters out files the EndUser does not own, raising
+        ``ValueError("Invalid upload file")`` before the workflow can read the
+        default. Pre-granting keeps the per-execution isolation guarantees
+        while letting the workbook path resolve its own defaults.
+        """
+        file_ids: list[str] = []
+        for key, value in user_inputs.items():
+            entity = entities.get(key)
+            if entity is None:
+                continue
+            if entity.type == VariableEntityType.FILE and isinstance(value, Mapping):
+                file_id = cls._extract_mapping_file_id(value)
+                if file_id:
+                    file_ids.append(file_id)
+            elif entity.type == VariableEntityType.FILE_LIST and isinstance(value, list):
+                for item in value:
+                    if isinstance(item, Mapping):
+                        file_id = cls._extract_mapping_file_id(item)
+                        if file_id:
+                            file_ids.append(file_id)
+        if file_ids:
+            grant_upload_file_access(file_ids)
+
     def _prepare_user_inputs(
         self,
         *,
@@ -143,6 +198,12 @@ class BaseAppGenerator:
         user_inputs = {k: self._sanitize_value(v) for k, v in user_inputs.items()}
         # Convert files in inputs to File
         entity_dictionary = {item.variable: item for item in variables}
+        # Grant the active access scope access to any upload file IDs referenced by
+        # file/file-list input defaults. Form-default files are uploaded by the
+        # account user, but EndUser (WebApp) runs require user ownership;
+        # without an explicit grant, the access controller would filter out the
+        # default file and raise `ValueError("Invalid upload file")`.
+        self._grant_input_default_file_access(user_inputs, entity_dictionary)
         # Convert single file to File
         files_inputs = {
             k: file_factory.build_from_mapping(
