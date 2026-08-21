@@ -100,7 +100,12 @@ The scripts resolve paths relative to their location, so you can run them from a
    uv run ruff check --fix ./   # Fix linting issues
    uv run ruff format ./        # Format code
    uv run pyrefly check         # Type checking
+   PYREFLY_CONFIG=pyrefly.pysa.toml uv run pyre analyze --verify-dsl  # Pysa security analysis
+   uv run pytest -q tests/unit_tests/security/test_pysa_models.py      # Pysa rule regression tests
    ```
+
+   See [security/pysa/README.md](security/pysa/README.md) for model
+   coverage, saved-result queries, trace interpretation, and finding triage.
 
 ## Generate TS stub
 
