@@ -12,7 +12,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverArrow,
-  PopoverContent,
   PopoverDescription,
   PopoverPopup,
   PopoverPortal,
@@ -136,7 +135,7 @@ const getActiveGuideIndexes = (
 
 type StepByStepTourMountProps = {
   className?: string
-  recoveryAnchorRef: RefObject<HTMLButtonElement | null>
+  recoveryAnchorRef?: RefObject<HTMLButtonElement | null>
 }
 
 export default function StepByStepTourMount({
@@ -433,7 +432,9 @@ export default function StepByStepTourMount({
     previousSkippedRef.current = skipped
   }, [skipped])
 
-  if (!visible && !skipRecoveryVisible) return null
+  const recoveryVisible = Boolean(recoveryAnchorRef) && skipRecoveryVisible
+
+  if (!visible && !recoveryVisible) return null
   const title = t(($) => $['stepByStepTour.title'])
   const taskCopy: Record<
     StepByStepTourTaskId,
@@ -505,7 +506,7 @@ export default function StepByStepTourMount({
         },
       })
       setChecklistExiting(false)
-      setSkipRecoveryVisible(true)
+      if (recoveryAnchorRef) setSkipRecoveryVisible(true)
     }, 160)
   }
 
@@ -763,37 +764,36 @@ export default function StepByStepTourMount({
             />
           )}
           {overlayVisible && (
-            <PopoverContent
-              placement="top-start"
-              sideOffset={0}
-              positionerProps={{
-                anchor: anchorRef,
-                collisionPadding: 8,
-                collisionAvoidance: {
+            <PopoverPortal>
+              <PopoverPositioner
+                placement="top-start"
+                sideOffset={0}
+                anchor={anchorRef}
+                collisionPadding={8}
+                collisionAvoidance={{
                   side: 'shift',
                   align: 'shift',
                   fallbackAxisSide: 'none',
-                },
-              }}
-              popupClassName="overflow-visible rounded-none border-0 bg-transparent p-0 shadow-none"
-              popupProps={{
-                initialFocus: checklistCloseButtonRef,
-                finalFocus: restoreTriggerRef,
-              }}
-            >
-              {floatingChecklist}
-            </PopoverContent>
+                }}
+              >
+                <PopoverPopup initialFocus={checklistCloseButtonRef} finalFocus={restoreTriggerRef}>
+                  {floatingChecklist}
+                </PopoverPopup>
+              </PopoverPositioner>
+            </PopoverPortal>
           )}
         </Popover>
       )}
-      <SkipRecoveryPrompt
-        open={skipRecoveryVisible}
-        anchorRef={recoveryAnchorRef}
-        label={t(($) => $['stepByStepTour.skipRecovery.label'])}
-        message={t(($) => $['stepByStepTour.skipRecovery.message'])}
-        dismissLabel={t(($) => $['stepByStepTour.skipRecovery.dismiss'])}
-        onOpenChange={setSkipRecoveryVisible}
-      />
+      {recoveryAnchorRef && (
+        <SkipRecoveryPrompt
+          open={recoveryVisible}
+          anchorRef={recoveryAnchorRef}
+          label={t(($) => $['stepByStepTour.skipRecovery.label'])}
+          message={t(($) => $['stepByStepTour.skipRecovery.message'])}
+          dismissLabel={t(($) => $['stepByStepTour.skipRecovery.dismiss'])}
+          onOpenChange={setSkipRecoveryVisible}
+        />
+      )}
     </div>
   )
 }
@@ -832,8 +832,7 @@ function SkipRecoveryPrompt({
         >
           <PopoverPopup
             initialFocus={dismissRef}
-            finalFocus={anchorRef}
-            className="w-65 max-w-[calc(100vw-12px)] overflow-visible rounded-2xl border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
+            className="w-65 max-w-[calc(100vw-12px)] rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
           >
             <div className="flex flex-col gap-1">
               <PopoverTitle className="sr-only">{label}</PopoverTitle>
@@ -846,7 +845,10 @@ function SkipRecoveryPrompt({
                   variant="primary"
                   size="medium"
                   className="w-20"
-                  onClick={() => onOpenChange(false)}
+                  onClick={() => {
+                    onOpenChange(false)
+                    anchorRef.current?.focus({ preventScroll: true })
+                  }}
                 >
                   {dismissLabel}
                 </Button>

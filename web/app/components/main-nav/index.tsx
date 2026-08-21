@@ -129,7 +129,7 @@ export function MainNav({ className }: MainNavProps) {
       </div>
       <div className="isolate w-60 shrink-0">
         <StepByStepTourMount
-          recoveryAnchorRef={helpMenuTriggerRef}
+          recoveryAnchorRef={systemFeatures.branding.enabled ? undefined : helpMenuTriggerRef}
           className="relative z-1 -mb-1 ml-2.5 h-8 w-45.75 overflow-visible"
         />
         <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 pr-1 pl-3 backdrop-blur-[2px]">

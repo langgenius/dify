@@ -59,7 +59,6 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
   return (
     <BasePopover.Popup
       className={cn(
-        'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
         'outline-hidden focus:outline-hidden focus-visible:outline-hidden',
         floatingPopupAnimationClassName,
         className,
@@ -102,7 +101,13 @@ function PopoverContent({
         className={className}
         {...positionerProps}
       >
-        <PopoverPopup className={popupClassName} {...popupProps}>
+        <PopoverPopup
+          className={cn(
+            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+            popupClassName,
+          )}
+          {...popupProps}
+        >
           {children}
         </PopoverPopup>
       </PopoverPositioner>
