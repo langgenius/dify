@@ -98,7 +98,7 @@ class _StreamsSubscription(Subscription):
         client: Redis | RedisCluster,
         key: str,
         *,
-        start_id: bytes | str | None = None,
+        start_id: bytes | str = "$",
     ):
         self._client = client
         self._key = key
@@ -117,14 +117,6 @@ class _StreamsSubscription(Subscription):
         self._closed: bool = False
         self._listener: threading.Thread | None = None
 
-    def _resolve_start_id(self) -> bytes | str:
-        entries = self._client.xrevrange(self._key, count=1)
-        if not entries:
-            return "0-0"
-
-        entry_id, _fields = entries[0]
-        return entry_id
-
     def _listen(self) -> None:
         """The `_listen` method handles the message retrieval loop. It requires a dedicated thread
         and is not intended for direct invocation.
@@ -135,10 +127,7 @@ class _StreamsSubscription(Subscription):
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
         # deadlock.
 
-        start_id = self._start_id
-        assert start_id is not None
-
-        last_id = start_id
+        last_id = self._start_id
         try:
             while True:
                 with self._lock:
@@ -180,11 +169,6 @@ class _StreamsSubscription(Subscription):
         """This method must be called with `_lock` held."""
         if self._listener is not None or self._closed:
             return
-
-        if self._start_id is None:
-            # Ordinary subscriptions fix their boundary on activation. Prepared
-            # subscriptions already carry the boundary selected by the subscriber.
-            self._start_id = self._resolve_start_id()
 
         self._listener = threading.Thread(
             target=self._listen,

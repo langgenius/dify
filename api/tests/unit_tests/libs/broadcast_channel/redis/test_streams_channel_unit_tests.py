@@ -262,6 +262,20 @@ class TestStreamsSubscription:
 
         assert received == [b"after-subscribe-1", b"after-subscribe-2"]
 
+    def test_subscribe_starts_xread_at_latest_id_without_resolving_boundary(self):
+        start_ids: list[Any] = []
+
+        class OneReadRedis:
+            def xread(self, streams: dict[str, Any], block: int | None = None, count: int | None = None):
+                start_ids.extend(streams.values())
+                subscription._closed = True
+                return []
+
+        subscription = _StreamsSubscription(OneReadRedis(), "stream:latest-boundary")
+        subscription._listen()
+
+        assert start_ids == ["$"]
+
     def test_prepare_subscription_fixes_boundary_without_starting_listener(
         self,
         streams_channel: StreamsBroadcastChannel,
@@ -332,20 +346,20 @@ class TestStreamsSubscription:
         with pytest.raises(RuntimeError, match="xrevrange failed"):
             subscriber.prepare_subscription()
 
-    def test_subscribe_receives_messages_published_right_after_entering(
+    def test_prepared_subscription_receives_messages_published_right_after_entering(
         self,
         streams_channel: StreamsBroadcastChannel,
     ):
         """Regression test for the `workflow_started`-drop race (dify#40948).
 
-        A background task dispatched right after `subscribe()`/`__enter__` returns can
-        publish events before the listener thread issues its first `xread`. Resolving the
-        read position synchronously before spawning the listener prevents that event from
-        being missed.
+        A prepared subscription fixes the delivery boundary before the background task can
+        publish, so listener-thread scheduling cannot cause the first event to be missed.
         """
         topic = streams_channel.topic("race-topic")
+        subscriber = topic.as_subscriber()
+        assert isinstance(subscriber, broadcast_channel.SupportsPreparedSubscription)
 
-        sub = topic.subscribe()
+        sub = subscriber.prepare_subscription()
         received: list[bytes] = []
         with sub:
             topic.publish(b"workflow_started")
@@ -368,6 +382,7 @@ class TestStreamsSubscription:
         sub = topic.subscribe()
         received: list[bytes] = []
         with sub:
+            assert sub.receive(timeout=0.05) is None
             topic.publish(b"fresh-event")
             for _ in range(5):
                 msg = sub.receive(timeout=0.1)
