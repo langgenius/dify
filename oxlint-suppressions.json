@@ -361,11 +361,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config/automatic/prompt-res.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config/automatic/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 1
