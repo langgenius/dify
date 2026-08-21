@@ -38,7 +38,12 @@ import {
   useCreateInlineAgentBinding,
   useWorkflowInlineAgentDetail,
 } from './hooks'
-import { getAgentV2DeclaredOutputs } from './output-variables'
+import {
+  AGENT_V2_RESERVED_OUTPUT_NAMES,
+  getAgentV2CustomDeclaredOutputs,
+  getAgentV2DeclaredOutputs,
+  normalizeAgentV2DeclaredOutputs,
+} from './output-variables'
 import { hasValidInlineAgentBinding } from './types'
 
 function FloatingOutputEditor({
@@ -82,6 +87,7 @@ function FloatingOutputEditor({
         key={`${editOutputRequestKey ?? 0}-${output.name}`}
         editingIndex={isExistingOutput ? outputIndex : undefined}
         existingOutputs={outputs}
+        reservedNames={AGENT_V2_RESERVED_OUTPUT_NAMES}
         state={{
           ...(isExistingOutput ? { outputIndex } : {}),
           draft: createDraft(output),
@@ -226,8 +232,15 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       const newInputs = produce(inputsRef.current, (draft) => {
         draft.agent_task = value
         if (removedPromptOutputNames.length) {
-          const currentDeclaredOutputs = getAgentV2DeclaredOutputs(draft)
-          if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+          const currentDeclaredOutputs = getAgentV2CustomDeclaredOutputs(
+            draft.agent_declared_outputs ?? [],
+          )
+          if (
+            removedPromptOutputNames.length === 1 &&
+            addedPromptOutputNames.length === 1 &&
+            !AGENT_V2_RESERVED_OUTPUT_NAMES.has(removedPromptOutputNames[0]!) &&
+            !AGENT_V2_RESERVED_OUTPUT_NAMES.has(addedPromptOutputNames[0]!)
+          ) {
             const oldName = removedPromptOutputNames[0]!
             const nextName = addedPromptOutputNames[0]!
             draft.agent_declared_outputs = currentDeclaredOutputs.map((output) =>
@@ -244,7 +257,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       inputsRef.current = newInputs
       promptOutputNamesRef.current = currentPromptOutputNames
       if (removedPromptOutputNames.length)
-        setLocalDeclaredOutputs(newInputs.agent_declared_outputs ?? [])
+        setLocalDeclaredOutputs(getAgentV2DeclaredOutputs(newInputs))
       setInputs(newInputs)
     },
     [setInputs],
@@ -525,7 +538,7 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
       setIsOutputVariablesCollapsed(false)
       const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
       let nextAgentTask = agentTask
-      let nextOutputs = outputs
+      let nextOutputs = normalizeAgentV2DeclaredOutputs(outputs)
       if (agentTask !== undefined) {
         const nextPromptOutputNames = extractAgentOutputNames(agentTask)
         const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(
@@ -535,11 +548,16 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           (name) => !promptOutputNamesRef.current.has(name),
         )
 
-        if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+        if (
+          removedPromptOutputNames.length === 1 &&
+          addedPromptOutputNames.length === 1 &&
+          !AGENT_V2_RESERVED_OUTPUT_NAMES.has(removedPromptOutputNames[0]!) &&
+          !AGENT_V2_RESERVED_OUTPUT_NAMES.has(addedPromptOutputNames[0]!)
+        ) {
           const oldName = removedPromptOutputNames[0]!
           const nextName = addedPromptOutputNames[0]!
           const oldOutputIndex = previousOutputs.findIndex((output) => output.name === oldName)
-          const nextOutput = outputs.find((output) => output.name === nextName)
+          const nextOutput = nextOutputs.find((output) => output.name === nextName)
           if (oldOutputIndex >= 0 && nextOutput) {
             nextOutputs = previousOutputs.map((output, index) =>
               index === oldOutputIndex ? nextOutput : output,
@@ -547,11 +565,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
           }
         }
       }
-      if (nextAgentTask === undefined && previousOutputs.length === outputs.length) {
+      if (nextAgentTask === undefined && previousOutputs.length === nextOutputs.length) {
         const renamedOutputs = previousOutputs
           .map((previousOutput, index) => ({
             oldName: previousOutput.name,
-            nextName: outputs[index]?.name,
+            nextName: nextOutputs[index]?.name,
           }))
           .filter(({ oldName, nextName }) => nextName && oldName !== nextName)
 
@@ -563,8 +581,9 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
         }
       }
 
+      const customOutputs = getAgentV2CustomDeclaredOutputs(nextOutputs)
       const newInputs = produce(inputsRef.current, (draft) => {
-        draft.agent_declared_outputs = nextOutputs
+        draft.agent_declared_outputs = customOutputs
         if (nextAgentTask !== undefined) draft.agent_task = nextAgentTask
       })
       inputsRef.current = newInputs

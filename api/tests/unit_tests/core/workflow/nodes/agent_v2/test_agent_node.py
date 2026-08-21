@@ -9,6 +9,7 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import (
+    DIFY_AGENT_OUTPUT_LAYER_ID,
     CancelRunRequest,
     CancelRunResponse,
     PydanticAIStreamRunEvent,
@@ -136,7 +137,7 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
                 {
                     "workflow_prompt": "Use the previous output.",
                     "previous_node_output_refs": [{"node_id": "previous-node", "output": "text"}],
-                    "declared_outputs": [{"name": "text", "type": "string"}],
+                    "declared_outputs": [],
                 }
             ),
         )
@@ -249,6 +250,24 @@ class FileOutputBackendClient(FakeAgentBackendRunClient):
                 created_at=_FIXED_TIME,
                 data=RunSucceededEventData(
                     output=self.output_payload,
+                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                ),
+            ),
+        )
+
+
+class PlainTextOutputBackendClient(FakeAgentBackendRunClient):
+    def _events(self, run_id: str):
+        from clients.agent_backend.fake_client import _FIXED_TIME
+
+        return (
+            RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
+            RunSucceededEvent(
+                id="2-0",
+                run_id=run_id,
+                created_at=_FIXED_TIME,
+                data=RunSucceededEventData(
+                    output="hello agent",
                     session_snapshot=CompositorSessionSnapshot(layers=[]),
                 ),
             ),
@@ -462,7 +481,7 @@ def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_
 
 
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
-    events = list(_node()._run())
+    events = list(_node(agent_backend_client=PlainTextOutputBackendClient())._run())
 
     assert len(events) == 1
     result = cast(StreamCompletedEvent, events[0]).node_run_result
@@ -474,6 +493,35 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert "credentials" not in layers["llm"]["config"]
+    assert DIFY_AGENT_OUTPUT_LAYER_ID not in layers
+    assert "output_type_check" not in agent_log
+
+
+def test_agent_node_structured_success_preserves_text_and_checks_only_custom_outputs():
+    events = list(
+        _node(
+            declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+            agent_backend_client=FileOutputBackendClient(
+                output_payload={"text": "hello agent", "summary": "Short summary"}
+            ),
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs == {"text": "hello agent", "summary": "Short summary"}
+    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    assert agent_log["output_type_check"] == {
+        "passed": True,
+        "results": [
+            {
+                "name": "summary",
+                "type": "string",
+                "status": "ready",
+                "reason": None,
+            }
+        ],
+    }
 
 
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
