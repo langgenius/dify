@@ -37,7 +37,6 @@ from core.db.session_factory import session_factory as default_session_factory
 from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from factories import file_factory
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot
 from models.agent_config_entities import (
     AgentConfigFileRefConfig,
@@ -1537,36 +1536,6 @@ class AgentConfigService:
             uri = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
 
         return ConfigDownloadRequest(filename=filename, mime_type=mime_type, size=size, download_uri=uri)
-
-    @staticmethod
-    def _resolve_download_url(
-        *, tenant_id: str, file_kind: Literal["upload_file", "tool_file"], file_id: str
-    ) -> str | None:
-        controller = DatabaseFileAccessController()
-        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-
-        runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
-        try:
-            if file_kind == "upload_file":
-                return runtime.resolve_upload_file_url(
-                    upload_file_id=file_id,
-                    for_external=True,
-                    as_attachment=True,
-                )
-            file = file_factory.build_from_mapping(
-                mapping={"transfer_method": "tool_file", "tool_file_id": file_id},
-                tenant_id=tenant_id,
-                access_controller=controller,
-            )
-            url = runtime.resolve_file_url(file=file, for_external=True)
-            if not url:
-                return None
-            parsed = urllib.parse.urlsplit(url)
-            query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
-            query.append(("as_attachment", "true"))
-            return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
-        except ValueError:
-            return None
 
 
 __all__ = [
