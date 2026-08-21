@@ -10,7 +10,6 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.engine.interfaces import DBAPICursor, ExecutionContext
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from enums import DeploymentEdition
 from models.account import (
     Account,
@@ -76,6 +75,10 @@ def _tenant(session: Session | None = None) -> Tenant:
 
 
 class TestAccountService:
+    @pytest.fixture(autouse=True)
+    def _account_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
     """
     Comprehensive unit tests for AccountService methods.
 
@@ -297,20 +300,23 @@ class TestAccountService:
             )
 
     def test_create_account_email_frozen(
-        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        unbound_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Test account creation with frozen email address."""
         # Setup mocks
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
-        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
-            with pytest.raises(AccountRegisterError):
-                AccountService.create_account(
-                    email="frozen@example.com",
-                    name="Test User",
-                    interface_language="en-US",
-                    session=unbound_session,
-                )
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+        with pytest.raises(AccountRegisterError):
+            AccountService.create_account(
+                email="frozen@example.com",
+                name="Test User",
+                interface_language="en-US",
+                session=unbound_session,
+            )
 
     def test_create_account_suspended_email_domain(
         self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
@@ -674,6 +680,10 @@ class TestAccountService:
 
 
 class TestTenantService:
+    @pytest.fixture(autouse=True)
+    def _tenant_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY, RBAC_ENABLED=False)
+
     """
     Comprehensive unit tests for TenantService methods.
 
@@ -912,7 +922,6 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
@@ -966,7 +975,6 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
@@ -1011,7 +1019,6 @@ class TestTenantService:
             service_session.commit()
 
             with (
-                patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
                 patch("services.enterprise.account_deletion_sync.sync_workspace_member_removal") as mock_sync,
             ):
                 mock_sync.return_value = True
@@ -1116,8 +1123,12 @@ class TestTenantService:
             assert persisted_target_join.role == TenantAccountRole.ADMIN
 
     def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
-        self, sqlite_session: Session, mock_external_service_dependencies: _MockDependencies
+        self,
+        sqlite_session: Session,
+        mock_external_service_dependencies: _MockDependencies,
+        config_overrides: Callable[..., None],
     ) -> None:
+        config_overrides(RBAC_ENABLED=True)
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
@@ -1130,7 +1141,6 @@ class TestTenantService:
         sqlite_session.flush()
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.TenantService.create_tenant", return_value=mock_tenant),
             patch(
                 "services.account_service.AccountService._resolve_legacy_role_id",
@@ -1266,8 +1276,11 @@ class TestTenantService:
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(tenant, mock_operator, mock_member, "remove", session=sqlite_session)
 
-    def test_rbac_member_can_remove_non_owner_member(self, sqlite_session: Session) -> None:
+    def test_rbac_member_can_remove_non_owner_member(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """Test RBAC workspace.member.manage allows removing a non-owner member."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
@@ -1277,7 +1290,6 @@ class TestTenantService:
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=False),
         ):
@@ -1285,8 +1297,11 @@ class TestTenantService:
                 mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
             )
 
-    def test_rbac_member_cannot_remove_without_permission(self, sqlite_session: Session) -> None:
+    def test_rbac_member_cannot_remove_without_permission(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """Test RBAC permission check rejects removal without workspace.member.manage."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
@@ -1296,7 +1311,6 @@ class TestTenantService:
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.role.manage"])
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
         ):
             with pytest.raises(NoPermissionError):
@@ -1304,8 +1318,11 @@ class TestTenantService:
                     mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
                 )
 
-    def test_rbac_member_cannot_remove_owner_member(self, sqlite_session: Session) -> None:
+    def test_rbac_member_cannot_remove_owner_member(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
         """Test RBAC permission check rejects removing an owner member."""
+        config_overrides(RBAC_ENABLED=True)
         mock_tenant = _tenant(sqlite_session)
         mock_tenant.id = "tenant-456"
         mock_operator = TestAccountAssociatedDataFactory.create_account_mock(account_id="operator-123")
@@ -1315,7 +1332,6 @@ class TestTenantService:
         mock_permissions.workspace = MagicMock(permission_keys=["workspace.member.manage"])
 
         with (
-            patch("services.account_service.dify_config.RBAC_ENABLED", True),
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
         ):
@@ -1351,6 +1367,10 @@ class TestTenantService:
 
 
 class TestRegisterService:
+    @pytest.fixture(autouse=True)
+    def _register_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+
     """
     Comprehensive unit tests for RegisterService methods.
 
@@ -1510,10 +1530,10 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Enterprise-only side effect should be invoked for the ENTERPRISE edition."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1555,10 +1575,8 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should not be invoked for the COMMUNITY edition."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY, raising=False)
 
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1589,12 +1607,12 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Default workspace join should still be attempted when personal workspace creation fails."""
         from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
@@ -1671,10 +1689,10 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Enterprise-only side effect should be invoked after successful register commit."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1705,10 +1723,8 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enterprise-only side effect should not be invoked for the COMMUNITY edition."""
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY, raising=False)
 
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
@@ -1738,12 +1754,12 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Default workspace join should run even when personal workspace creation raises."""
         from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
@@ -1778,12 +1794,12 @@ class TestRegisterService:
         self,
         sqlite_session: Session,
         mock_external_service_dependencies: _MockDependencies,
-        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
     ) -> None:
         """Default workspace join should run before propagating workspace-limit registration failure."""
         from services.errors.workspace import WorkspacesLimitExceededError
 
-        monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE, raising=False)
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies["feature_service"].is_workspace_creation_allowed.return_value = True
         mock_external_service_dependencies[
@@ -2883,6 +2899,10 @@ def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: 
 class TestIsEmailSendIpLimit:
     """The 10-minute first-strike window must actually take effect (#39477)."""
 
+    @pytest.fixture(autouse=True)
+    def _email_limit_config(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=60)
+
     def _mock_redis(self, *, minute_count: int, hour_count: int | None, frozen: bool = False) -> MagicMock:
         values = {
             "email_send_ip_limit_freeze:1.2.3.4": "1" if frozen else None,
@@ -2898,12 +2918,12 @@ class TestIsEmailSendIpLimit:
         with patch("services.account_service.redis_client", redis_client):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
-    def test_first_strike_sets_ten_minute_window(self) -> None:
+    def test_first_strike_sets_ten_minute_window(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
         redis_client = self._mock_redis(minute_count=999, hour_count=None)
         redis_client.set.return_value = True
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
@@ -2913,22 +2933,22 @@ class TestIsEmailSendIpLimit:
         redis_client.incr.assert_not_called()
         redis_client.expire.assert_not_called()
 
-    def test_first_strike_lost_claim_freezes_immediately(self) -> None:
+    def test_first_strike_lost_claim_freezes_immediately(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
         redis_client = self._mock_redis(minute_count=999, hour_count=None)
         redis_client.set.return_value = None  # another worker claimed the strike first
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
         redis_client.setex.assert_called_once_with("email_send_ip_limit_freeze:1.2.3.4", 60 * 60, 1)
 
-    def test_second_strike_inside_window_freezes_for_an_hour(self) -> None:
+    def test_second_strike_inside_window_freezes_for_an_hour(self, config_overrides: Callable[..., None]) -> None:
+        config_overrides(EMAIL_SEND_IP_LIMIT_PER_MINUTE=1)
         redis_client = self._mock_redis(minute_count=999, hour_count=1)
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 1),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is True
 
@@ -2938,6 +2958,5 @@ class TestIsEmailSendIpLimit:
         redis_client = self._mock_redis(minute_count=0, hour_count=None)
         with (
             patch("services.account_service.redis_client", redis_client),
-            patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 60),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is False
