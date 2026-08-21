@@ -165,7 +165,7 @@ def test_message_inputs_resolve_file_tenant_with_caller_session(sqlite_session: 
         inputs = message.inputs_with_session(session=sqlite_session)
 
     assert inputs["file"] == "tenant-1"
-    session.scalar.assert_called_once()
+    sqlite_session.scalar.assert_called_once()
 
 
 def test_file_url_bare_url_re_signed():
