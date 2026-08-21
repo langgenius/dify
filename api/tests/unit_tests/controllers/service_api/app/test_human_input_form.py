@@ -11,15 +11,53 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
 from werkzeug.exceptions import NotFound
 
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.service_api.app.human_input_form import WorkflowHumanInputFormApi
+from models.enums import EndUserType
 from models.human_input import RecipientType
+from models.model import App, AppMode, EndUser
+
+
+def _app() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Service API app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _end_user() -> EndUser:
+    return EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.SERVICE_API,
+        external_user_id="external-user-1",
+        name="Service API user",
+        session_id="session-1",
+    )
+
+
+def _configure_service(
+    monkeypatch: pytest.MonkeyPatch,
+    service_mock: Mock,
+    sqlite_engine: Engine,
+) -> None:
+    workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
+    monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=sqlite_engine))
 
 
 class TestWorkflowHumanInputFormApi:
-    def test_get_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         definition = SimpleNamespace(
             model_dump=lambda **_kwargs: {
                 "rendered_content": "Rendered form content",
@@ -40,13 +78,11 @@ class TestWorkflowHumanInputFormApi:
         service_mock.resolve_form_inputs.return_value = [
             SimpleNamespace(model_dump=lambda **_kwargs: {"output_variable_name": "name"})
         ]
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = _app()
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
             response = handler(api, app_model=app_model, form_token="token-1")
@@ -63,7 +99,9 @@ class TestWorkflowHumanInputFormApi:
         service_mock.resolve_form_inputs.assert_called_once_with(form)
         service_mock.ensure_form_active.assert_called_once_with(form)
 
-    def test_get_resolves_runtime_select_values(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_resolves_runtime_select_values(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    ) -> None:
         definition = SimpleNamespace(
             model_dump=lambda **_kwargs: {
                 "rendered_content": "Rendered form content",
@@ -93,13 +131,11 @@ class TestWorkflowHumanInputFormApi:
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
         service_mock.resolve_form_inputs.return_value = [resolved_input]
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = _app()
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
             response = handler(api, app_model=app_model, form_token="token-1")
@@ -108,7 +144,7 @@ class TestWorkflowHumanInputFormApi:
         assert payload["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
         service_mock.resolve_form_inputs.assert_called_once_with(form)
 
-    def test_get_form_not_in_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_form_not_in_app(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         form = SimpleNamespace(
             app_id="another-app",
             tenant_id="tenant-1",
@@ -116,13 +152,11 @@ class TestWorkflowHumanInputFormApi:
         )
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = _app()
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
             with pytest.raises(NotFound):
@@ -138,7 +172,11 @@ class TestWorkflowHumanInputFormApi:
         ],
     )
     def test_get_rejects_non_service_api_recipient_types(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        recipient_type: RecipientType,
     ) -> None:
         form = SimpleNamespace(
             app_id="app-1",
@@ -148,13 +186,11 @@ class TestWorkflowHumanInputFormApi:
         )
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+        app_model = _app()
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
             with pytest.raises(NotFound):
@@ -162,7 +198,7 @@ class TestWorkflowHumanInputFormApi:
 
         service_mock.ensure_form_active.assert_not_called()
 
-    def test_post_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_post_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> None:
         form = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -170,14 +206,12 @@ class TestWorkflowHumanInputFormApi:
         )
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        end_user = SimpleNamespace(id="end-user-1")
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/form/human_input/token-1",
@@ -196,7 +230,9 @@ class TestWorkflowHumanInputFormApi:
             submission_end_user_id="end-user-1",
         )
 
-    def test_post_accepts_select_file_and_file_list_inputs(self, app, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_post_accepts_select_file_and_file_list_inputs(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    ) -> None:
         form = SimpleNamespace(
             app_id="app-1",
             tenant_id="tenant-1",
@@ -204,14 +240,12 @@ class TestWorkflowHumanInputFormApi:
         )
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        end_user = SimpleNamespace(id="end-user-1")
+        app_model = _app()
+        end_user = _end_user()
         inputs = {
             "decision": "approve",
             "attachment": {
@@ -271,7 +305,11 @@ class TestWorkflowHumanInputFormApi:
         ],
     )
     def test_post_rejects_non_service_api_recipient_types(
-        self, app: Flask, monkeypatch: pytest.MonkeyPatch, recipient_type: RecipientType
+        self,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+        recipient_type: RecipientType,
     ) -> None:
         form = SimpleNamespace(
             app_id="app-1",
@@ -280,14 +318,12 @@ class TestWorkflowHumanInputFormApi:
         )
         service_mock = Mock()
         service_mock.get_form_by_token.return_value = form
-        workflow_module = sys.modules["controllers.service_api.app.human_input_form"]
-        monkeypatch.setattr(workflow_module, "HumanInputService", lambda _engine: service_mock)
-        monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+        _configure_service(monkeypatch, service_mock, sqlite_engine)
 
         api = WorkflowHumanInputFormApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
-        end_user = SimpleNamespace(id="end-user-1")
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/form/human_input/token-1",

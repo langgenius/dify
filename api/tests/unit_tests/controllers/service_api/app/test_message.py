@@ -17,7 +17,6 @@ Focus on:
 import uuid
 from collections.abc import Iterator
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -36,7 +35,7 @@ from controllers.service_api.app.message import (
     MessageListQuery,
     MessageSuggestedApi,
 )
-from models.enums import FeedbackRating
+from models.enums import EndUserType, FeedbackRating
 from models.model import App, AppMode, EndUser
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import (
@@ -45,6 +44,31 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+
+def _app(*, mode: AppMode = AppMode.CHAT) -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Service API app",
+        description="",
+        mode=mode,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
+
+
+def _end_user() -> EndUser:
+    return EndUser(
+        id="end-user-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.SERVICE_API,
+        external_user_id="external-user-1",
+        name="Service API user",
+        session_id="session-1",
+    )
 
 
 @pytest.fixture
@@ -273,8 +297,8 @@ class TestMessageService:
         mock_pagination.return_value = mock_result
 
         result = MessageService.pagination_by_first_id(
-            app_model=App(),
-            user=EndUser(),
+            app_model=_app(),
+            user=_end_user(),
             conversation_id=str(uuid.uuid4()),
             first_id=None,
             limit=20,
@@ -294,8 +318,8 @@ class TestMessageService:
 
         with pytest.raises(services.errors.conversation.ConversationNotExistsError):
             MessageService.pagination_by_first_id(
-                app_model=App(),
-                user=EndUser(),
+                app_model=_app(),
+                user=_end_user(),
                 conversation_id="invalid_id",
                 first_id=None,
                 limit=20,
@@ -309,8 +333,8 @@ class TestMessageService:
 
         with pytest.raises(FirstMessageNotExistsError):
             MessageService.pagination_by_first_id(
-                app_model=App(),
-                user=EndUser(),
+                app_model=_app(),
+                user=_end_user(),
                 conversation_id=str(uuid.uuid4()),
                 first_id="invalid_first_id",
                 limit=20,
@@ -323,9 +347,9 @@ class TestMessageService:
         mock_create_feedback.return_value = None
 
         MessageService.create_feedback(
-            app_model=App(),
+            app_model=_app(),
             message_id=str(uuid.uuid4()),
-            user=EndUser(),
+            user=_end_user(),
             rating=FeedbackRating.LIKE,
             content="Great response!",
             session=orm_session,
@@ -340,9 +364,9 @@ class TestMessageService:
 
         with pytest.raises(MessageNotExistsError):
             MessageService.create_feedback(
-                app_model=App(),
+                app_model=_app(),
                 message_id="invalid_message_id",
-                user=EndUser(),
+                user=_end_user(),
                 rating=FeedbackRating.LIKE,
                 content=None,
                 session=orm_session,
@@ -357,7 +381,7 @@ class TestMessageService:
         ]
         mock_get_feedbacks.return_value = mock_feedbacks
 
-        result = MessageService.get_all_messages_feedbacks(app_model=App(), page=1, limit=20, session=orm_session)
+        result = MessageService.get_all_messages_feedbacks(app_model=_app(), page=1, limit=20, session=orm_session)
 
         assert len(result) == 2
         assert result[0]["rating"] == "like"
@@ -369,8 +393,8 @@ class TestMessageService:
         mock_get_questions.return_value = mock_questions
 
         result = MessageService.get_suggested_questions_after_answer(
-            app_model=App(),
-            user=EndUser(),
+            app_model=_app(),
+            user=_end_user(),
             message_id=str(uuid.uuid4()),
             invoke_from=Mock(),
             session=orm_session,
@@ -386,8 +410,8 @@ class TestMessageService:
 
         with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=App(),
-                user=EndUser(),
+                app_model=_app(),
+                user=_end_user(),
                 message_id=str(uuid.uuid4()),
                 invoke_from=Mock(),
                 session=orm_session,
@@ -400,8 +424,8 @@ class TestMessageService:
 
         with pytest.raises(MessageNotExistsError):
             MessageService.get_suggested_questions_after_answer(
-                app_model=App(),
-                user=EndUser(),
+                app_model=_app(),
+                user=_end_user(),
                 message_id="invalid_message_id",
                 invoke_from=Mock(),
                 session=orm_session,
@@ -412,8 +436,8 @@ class TestMessageListApi:
     def test_not_chat_app(self, app: Flask) -> None:
         api = MessageListApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
-        end_user = SimpleNamespace()
+        app_model = _app(mode=AppMode.COMPLETION)
+        end_user = _end_user()
 
         with app.test_request_context("/messages?conversation_id=cid", method="GET"):
             with pytest.raises(NotChatAppError):
@@ -428,8 +452,8 @@ class TestMessageListApi:
 
         api = MessageListApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
@@ -447,8 +471,8 @@ class TestMessageListApi:
 
         api = MessageListApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
@@ -468,8 +492,8 @@ class TestMessageFeedbackApi:
 
         api = MessageFeedbackApi()
         handler = unwrap(api.post)
-        app_model = SimpleNamespace()
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context(
             "/messages/m1/feedbacks",
@@ -499,7 +523,7 @@ class TestAppGetFeedbacksApi:
 
         api = AppGetFeedbacksApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace()
+        app_model = _app()
 
         with app.test_request_context("/app/feedbacks?page=1&limit=20", method="GET"):
             response = handler(api, app_model=app_model)
@@ -511,8 +535,8 @@ class TestMessageSuggestedApi:
     def test_not_chat(self, app: Flask) -> None:
         api = MessageSuggestedApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
-        end_user = SimpleNamespace()
+        app_model = _app(mode=AppMode.COMPLETION)
+        end_user = _end_user()
 
         with app.test_request_context("/messages/m1/suggested", method="GET"):
             with pytest.raises(NotChatAppError):
@@ -527,8 +551,8 @@ class TestMessageSuggestedApi:
 
         api = MessageSuggestedApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context("/messages/m1/suggested", method="GET"):
             with pytest.raises(NotFound):
@@ -543,8 +567,8 @@ class TestMessageSuggestedApi:
 
         api = MessageSuggestedApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context("/messages/m1/suggested", method="GET"):
             with pytest.raises(BadRequest):
@@ -559,8 +583,8 @@ class TestMessageSuggestedApi:
 
         api = MessageSuggestedApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context("/messages/m1/suggested", method="GET"):
             with pytest.raises(InternalServerError):
@@ -575,8 +599,8 @@ class TestMessageSuggestedApi:
 
         api = MessageSuggestedApi()
         handler = unwrap(api.get)
-        app_model = SimpleNamespace(mode=AppMode.CHAT.value)
-        end_user = SimpleNamespace()
+        app_model = _app()
+        end_user = _end_user()
 
         with app.test_request_context("/messages/m1/suggested", method="GET"):
             response = handler(api, app_model=app_model, end_user=end_user, message_id="m1")
