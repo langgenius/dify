@@ -7531,6 +7531,17 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
 
+### [POST] /page-generate
+Generate a self-contained HTML page from a description (streamed as SSE)
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | HTML page streamed as text/event-stream |
+| 400 | Invalid request parameters |
+| 402 | Provider quota exceeded |
+
 ### [DELETE] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
 
@@ -9602,6 +9613,62 @@ Get website crawl status
 | 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
 | 400 | Invalid provider |  |
 | 404 | Crawl job not found |  |
+
+### [POST] /workflow-copilot
+Multi-turn workflow generation with persistent, compressed memory
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowCopilotPayload](#workflowcopilotpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Generated | **application/json**: [CopilotResponse](#copilotresponse)<br> |
+| 400 | Invalid request parameters |  |
+| 402 | Provider quota exceeded |  |
+
+### [GET] /workflow-copilot/conversations
+List the current account's copilot conversations for an app
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Conversations | **application/json**: [CopilotResponse](#copilotresponse)<br> |
+
+### [DELETE] /workflow-copilot/{conversation_id}
+Delete a copilot conversation and its messages
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Deleted |
+
+### [GET] /workflow-copilot/{conversation_id}/messages
+List messages of a copilot conversation for panel reload
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Messages | **application/json**: [CopilotResponse](#copilotresponse)<br> |
 
 ### [POST] /workflow-generate
 Generate a Dify workflow graph from natural language
@@ -16075,6 +16142,12 @@ Enum class for configurate method of provider model.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | name | string |  | No |
+
+#### CopilotResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CopilotResponse |  |  |  |
 
 #### CopyAppPayload
 
@@ -23123,6 +23196,20 @@ How a workflow node is bound to an Agent.
 | name | string |  | Yes |
 | value |  |  | Yes |
 | value_type | string |  | Yes |
+
+#### WorkflowCopilotPayload
+
+Body for ``POST /console/api/workflow-copilot``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string | Workflow app id the copilot is editing | Yes |
+| context_node_ids | [ string ] | Node ids the user pinned as focus context; resolved to full structure server-side | No |
+| conversation_id | string | Existing conversation id; null starts a new one | No |
+| current_graph | object | Live canvas graph to refine; omit for create | No |
+| message | string | User instruction for this turn | Yes |
+| mode | string, <br>**Default:** workflow | Target app mode: workflow \| advanced-chat | No |
+| model_config | [ModelConfig](#modelconfig) | Model configuration | Yes |
 
 #### WorkflowDailyRunsStatisticItem
 
