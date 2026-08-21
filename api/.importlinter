@@ -97,7 +97,10 @@ forbidden_modules =
 name = Account application services and contracts are framework and persistence neutral
 type = forbidden
 source_modules =
+    services.account_avatar_service
     services.account_errors
+    services.account_integration_service
+    services.account_password_service
     services.account_ports
     services.account_profile_service
     services.entities.account_entities

@@ -66,7 +66,6 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CannotOperateSelfError,
-    CurrentPasswordIncorrectError,
     EmailDomainSuspendedError,
     InvalidActionError,
     LinkAccountIntegrateError,
@@ -420,28 +419,6 @@ class AccountService:
 
         session.commit()
 
-        return account
-
-    @staticmethod
-    def update_account_password(account: Account, password: str, new_password: str, *, session: Session):
-        """update account password"""
-        if account.password and not compare_password(password, account.password, account.password_salt):
-            raise CurrentPasswordIncorrectError("Current password is incorrect.")
-
-        # may be raised
-        valid_password(new_password)
-
-        # generate password salt
-        salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
-
-        # encrypt password with salt
-        password_hashed = hash_password(new_password, salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        session.add(account)
-        session.commit()
         return account
 
     @staticmethod
