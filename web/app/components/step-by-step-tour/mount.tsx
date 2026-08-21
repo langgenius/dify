@@ -1,5 +1,6 @@
 'use client'
 
+import type { RefObject } from 'react'
 import type { StepByStepTourGuide } from './target-registry'
 import type {
   StepByStepTourGuideGroup,
@@ -8,7 +9,7 @@ import type {
 } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverArrow, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -125,9 +126,13 @@ const getActiveGuideIndexes = (
 
 type StepByStepTourMountProps = {
   className?: string
+  recoveryAnchorRef: RefObject<HTMLButtonElement | null>
 }
 
-export default function StepByStepTourMount({ className }: StepByStepTourMountProps) {
+export default function StepByStepTourMount({
+  className,
+  recoveryAnchorRef,
+}: StepByStepTourMountProps) {
   const router = useRouter()
   const pathname = usePathname()
   const docLink = useDocLink()
@@ -771,60 +776,81 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
           )}
         </Popover>
       )}
-      {skipRecoveryVisible && (
-        <SkipRecoveryPrompt
-          label={t(($) => $['stepByStepTour.skipRecovery.label'])}
-          message={t(($) => $['stepByStepTour.skipRecovery.message'])}
-          dismissLabel={t(($) => $['stepByStepTour.skipRecovery.dismiss'])}
-          onDismiss={() => setSkipRecoveryVisible(false)}
-        />
-      )}
+      <SkipRecoveryPrompt
+        open={skipRecoveryVisible}
+        anchorRef={recoveryAnchorRef}
+        label={t(($) => $['stepByStepTour.skipRecovery.label'])}
+        message={t(($) => $['stepByStepTour.skipRecovery.message'])}
+        dismissLabel={t(($) => $['stepByStepTour.skipRecovery.dismiss'])}
+        onOpenChange={setSkipRecoveryVisible}
+      />
     </div>
   )
 }
 
 function SkipRecoveryPrompt({
+  anchorRef,
   dismissLabel,
   label,
   message,
-  onDismiss,
+  onOpenChange,
+  open,
 }: {
+  anchorRef: RefObject<HTMLButtonElement | null>
   dismissLabel: string
   label: string
   message: string
-  onDismiss: () => void
+  onOpenChange: (open: boolean) => void
+  open: boolean
 }) {
   const dismissRef = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    dismissRef.current?.focus({ preventScroll: true })
-  }, [])
-
   return (
-    <section
-      aria-label={label}
-      className="fixed bottom-19 left-1.5 z-50 flex w-65 max-w-[calc(100vw-12px)] flex-col gap-1 rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
-    >
-      <p className="system-sm-regular text-text-secondary">{message}</p>
-      <div className="flex h-12 items-end justify-end pt-4">
-        <Button
-          ref={dismissRef}
-          variant="primary"
-          size="medium"
-          className="w-20"
-          onClick={onDismiss}
-        >
-          {dismissLabel}
-        </Button>
-      </div>
-      <span
-        aria-hidden
-        className="absolute top-full left-53.5 h-7 w-0.5 bg-state-accent-hover-alt"
-      />
-      <span
-        aria-hidden
-        className="absolute top-[calc(100%+22px)] left-52.25 size-3 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
-      />
-    </section>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverContent
+        placement="top-end"
+        sideOffset={28}
+        positionerProps={{
+          anchor: anchorRef,
+          arrowPadding: 8,
+          collisionPadding: 6,
+          collisionAvoidance: {
+            side: 'shift',
+            align: 'shift',
+            fallbackAxisSide: 'none',
+          },
+        }}
+        popupClassName="w-65 max-w-[calc(100vw-12px)] overflow-visible rounded-2xl border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
+        popupProps={{
+          initialFocus: dismissRef,
+          finalFocus: anchorRef,
+        }}
+      >
+        <section aria-label={label} className="flex flex-col gap-1">
+          <p className="system-sm-regular text-text-secondary">{message}</p>
+          <div className="flex h-12 items-end justify-end pt-4">
+            <Button
+              ref={dismissRef}
+              variant="primary"
+              size="medium"
+              className="w-20"
+              onClick={() => onOpenChange(false)}
+            >
+              {dismissLabel}
+            </Button>
+          </div>
+        </section>
+        <PopoverArrow className="pointer-events-none -bottom-7 h-7 w-3">
+          <span
+            aria-hidden
+            className="absolute top-0 left-1/2 h-7 w-0.5 -translate-x-1/2 bg-state-accent-hover-alt"
+          />
+          <span
+            aria-hidden
+            className="absolute top-5.5 left-1/2 size-3 -translate-x-1/2 rounded-full border-2 border-state-accent-hover bg-state-accent-solid shadow-xs"
+          />
+        </PopoverArrow>
+      </PopoverContent>
+    </Popover>
   )
 }

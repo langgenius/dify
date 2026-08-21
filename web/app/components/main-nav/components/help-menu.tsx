@@ -1,7 +1,7 @@
 'use client'
 
 import type { IconButtonProps } from '@langgenius/dify-ui/icon-button'
-import type { ReactElement } from 'react'
+import type { ReactElement, Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -56,6 +56,7 @@ import SupportMenu from './support-menu'
 type HelpMenuProps = {
   triggerIcon?: ReactElement
   triggerClassName?: string
+  triggerRef?: Ref<HTMLButtonElement>
   triggerSize?: IconButtonProps['size']
 }
 
@@ -87,7 +88,7 @@ const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
   />
 )
 
-const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps) => {
+const HelpMenu = ({ triggerIcon, triggerClassName, triggerRef, triggerSize }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -152,6 +153,7 @@ const HelpMenu = ({ triggerIcon, triggerClassName, triggerSize }: HelpMenuProps)
     <>
       <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
+          ref={triggerRef}
           data-learn-dify-help-target
           render={
             <IconButton

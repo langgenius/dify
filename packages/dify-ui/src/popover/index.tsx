@@ -8,6 +8,7 @@ import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 const Popover = BasePopover.Root
+const PopoverArrow = BasePopover.Arrow
 const PopoverTrigger = BasePopover.Trigger
 const PopoverClose = BasePopover.Close
 const PopoverTitle = BasePopover.Title
@@ -15,6 +16,7 @@ const PopoverDescription = BasePopover.Description
 const createPopoverHandle = BasePopover.createHandle
 
 type PopoverProps<Payload = unknown> = BasePopover.Root.Props<Payload>
+type PopoverArrowProps = BasePopover.Arrow.Props
 type PopoverHandle<Payload = unknown> = BasePopover.Handle<Payload>
 type PopoverTriggerProps<Payload = unknown> = BasePopover.Trigger.Props<Payload>
 type PopoverCloseProps = BasePopover.Close.Props
@@ -76,6 +78,7 @@ function PopoverContent({
 export {
   createPopoverHandle,
   Popover,
+  PopoverArrow,
   PopoverClose,
   PopoverContent,
   PopoverDescription,
@@ -84,6 +87,7 @@ export {
 }
 export type {
   Placement,
+  PopoverArrowProps,
   PopoverCloseProps,
   PopoverContentProps,
   PopoverDescriptionProps,
