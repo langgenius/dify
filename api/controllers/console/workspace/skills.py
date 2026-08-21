@@ -407,6 +407,7 @@ class WorkspaceSkillImportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_EDIT, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -502,6 +503,7 @@ class WorkspaceSkillDuplicateApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_EDIT, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -523,6 +525,7 @@ class WorkspaceSkillExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SKILL_VIEW, resource_required=False)
     @with_current_tenant_id
     @with_session(write=False)
     def get(self, session: Session, current_tenant_id: str, skill_id: str):
