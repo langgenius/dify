@@ -2,7 +2,8 @@
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -138,7 +139,17 @@ const CreateAppModal = ({
     <>
       <Dialog open={show} onOpenChange={(open) => !open && onHide()} disablePointerDismissal>
         <DialogContent backdropProps={{ forceRender: true }} className="px-8">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           {isEditModal && (
             <DialogTitle className="text-xl leading-7.5 font-semibold text-text-primary">
               {t(($) => $.editAppTitle, { ns: 'app' })}

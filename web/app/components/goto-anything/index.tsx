@@ -17,7 +17,7 @@ import {
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
@@ -587,10 +587,9 @@ function GotoAnythingDialog() {
                 hasQuery={!!searchQuery.trim()}
               />
             </Autocomplete>
-            <DialogCloseButton
-              className="sr-only"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
+            <DialogClose className="sr-only">
+              {t(($) => $['operation.close'], { ns: 'common' })}
+            </DialogClose>
           </DialogPopup>
         </DialogPortal>
       </Dialog>

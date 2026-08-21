@@ -170,11 +170,7 @@ export default function AccountSetting({
   ]
 
   return (
-    <MenuDialog
-      title={t(($) => $['settings.settings'], { ns: 'common' })}
-      closeButtonLabel={t(($) => $['operation.close'], { ns: 'common' })}
-      onClose={onCancelAction}
-    >
+    <MenuDialog title={t(($) => $['settings.settings'], { ns: 'common' })} onClose={onCancelAction}>
       <div className="flex h-screen w-full max-w-full pl-0 sm:pl-58">
         <div className="flex w-11 shrink-0 flex-col pr-6 pl-4 sm:w-56">
           <div className="mt-6 mb-8 flex h-9.5 items-center px-3 title-2xl-semi-bold whitespace-nowrap text-text-primary">

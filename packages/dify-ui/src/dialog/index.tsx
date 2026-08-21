@@ -3,7 +3,6 @@
 import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
 const Dialog = BaseDialog.Root
@@ -55,30 +54,6 @@ function DialogPopup({ className, ...props }: DialogPopupProps) {
   )
 }
 
-type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children' | 'className'> & {
-  className?: string
-}
-
-function DialogCloseButton({
-  className,
-  'aria-label': ariaLabel = 'Close',
-  ...props
-}: DialogCloseButtonProps) {
-  return (
-    <BaseDialog.Close
-      aria-label={ariaLabel}
-      {...props}
-      className={cn(
-        iconButtonVariants({ size: 'sm' }),
-        'absolute inset-e-6 top-6 z-10 rounded-2xl disabled:cursor-not-allowed disabled:opacity-50',
-        className,
-      )}
-    >
-      <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
-    </BaseDialog.Close>
-  )
-}
-
 type DialogContentProps = {
   children: React.ReactNode
   className?: string
@@ -112,7 +87,6 @@ export {
   Dialog,
   DialogBackdrop,
   DialogClose,
-  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogPopup,
@@ -124,7 +98,6 @@ export {
 
 export type {
   DialogBackdropProps,
-  DialogCloseButtonProps,
   DialogCloseProps,
   DialogContentProps,
   DialogDescriptionProps,

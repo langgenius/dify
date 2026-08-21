@@ -9,15 +9,17 @@ import {
   DialogViewport,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useTranslation } from 'react-i18next'
 
 type MenuDialogProps = {
   children: ReactNode
-  closeButtonLabel: string
   title: string
   onClose: () => void
 }
 
-const MenuDialog = ({ children, closeButtonLabel, title, onClose }: MenuDialogProps) => {
+const MenuDialog = ({ children, title, onClose }: MenuDialogProps) => {
+  const { t } = useTranslation()
+
   return (
     <Dialog
       open
@@ -33,7 +35,11 @@ const MenuDialog = ({ children, closeButtonLabel, title, onClose }: MenuDialogPr
             <div className="pointer-events-auto absolute top-6 right-6 z-10 flex shrink-0 flex-col items-center">
               <DialogClose
                 render={
-                  <IconButton variant="tertiary" size="xl" aria-label={closeButtonLabel}>
+                  <IconButton
+                    variant="tertiary"
+                    size="xl"
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  >
                     <span aria-hidden className="i-ri-close-line size-5" />
                   </IconButton>
                 }
