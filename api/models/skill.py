@@ -155,8 +155,40 @@ class AgentSkillBinding(DefaultFieldsMixin, Base):
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
 
 
+class AgentSkillBindingSnapshot(DefaultFieldsMixin, Base):
+    """Published Agent-to-workspace-Skill bindings for one Agent snapshot."""
+
+    __tablename__ = "agent_skill_binding_snapshots"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_skill_binding_snapshot_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_id",
+            "config_snapshot_id",
+            "skill_id",
+            name="agent_skill_binding_snapshot_skill_unique",
+        ),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_id",
+            "config_snapshot_id",
+            "priority",
+            name="agent_skill_binding_snapshot_priority_unique",
+        ),
+        Index("agent_skill_binding_snapshots_agent_snapshot_idx", "tenant_id", "agent_id", "config_snapshot_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    config_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    skill_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    priority: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+
+
 __all__ = [
     "AgentSkillBinding",
+    "AgentSkillBindingSnapshot",
     "Skill",
     "SkillDraftFile",
     "SkillFileKind",

@@ -77,6 +77,7 @@ from models.model import App, Tag, TagBinding
 from models.provider_ids import ModelProviderID
 from models.skill import (
     AgentSkillBinding,
+    AgentSkillBindingSnapshot,
     Skill,
     SkillDraftFile,
     SkillFileKind,
@@ -95,6 +96,7 @@ logger = logging.getLogger(__name__)
 _SKILL_MD = "SKILL.md"
 _MAX_SKILL_BYTES = 200 * 1024 * 1024
 _MAX_FILES_PER_SKILL = 5000
+_MAX_ZIP_COMPRESSION_RATIO = 1000
 _MAX_FILE_CHECK_ITEMS = 100
 _MAX_SKILLS_PER_WORKSPACE = 500
 _MAX_AGENT_SKILLS = 20
@@ -2247,22 +2249,31 @@ class SkillManagementService:
             payload=self._load_tool_file_bytes(tenant_id=tenant_id, file_id=tool_file_id),
         )
 
-    def list_runtime_agent_skills(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
-        """Return bound published workspace Skills for Agent runtime selection."""
+    def list_runtime_agent_skills(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        include_draft: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Return workspace Skills from the Agent draft or active published snapshot."""
         with self._session_scope() as session:
+            binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
+            conditions = [
+                binding_model.tenant_id == tenant_id,
+                binding_model.agent_id == agent_id,
+                Skill.tenant_id == tenant_id,
+                Agent.tenant_id == tenant_id,
+            ]
+            if not include_draft:
+                conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
             rows = list(
                 session.execute(
-                    select(AgentSkillBinding, Skill, SkillVersion)
-                    .join(Skill, Skill.id == AgentSkillBinding.skill_id)
+                    select(binding_model, Skill, SkillVersion)
+                    .join(Skill, Skill.id == binding_model.skill_id)
                     .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
-                    .join(Agent, Agent.id == AgentSkillBinding.agent_id)
-                    .where(
-                        AgentSkillBinding.tenant_id == tenant_id,
-                        AgentSkillBinding.agent_id == agent_id,
-                        Skill.tenant_id == tenant_id,
-                        Agent.tenant_id == tenant_id,
-                        Agent.active_config_is_published.is_(True),
-                    )
+                    .join(Agent, Agent.id == binding_model.agent_id)
+                    .where(*conditions)
                     .order_by(Skill.name)
                 )
             )
@@ -2282,22 +2293,32 @@ class SkillManagementService:
                 ]
             ]
 
-    def pull_runtime_agent_skill(self, *, tenant_id: str, agent_id: str, name: str) -> PublishedSkillArchive:
+    def pull_runtime_agent_skill(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        name: str,
+        include_draft: bool = False,
+    ) -> PublishedSkillArchive:
         """Pull one bound published workspace Skill by Skill name."""
         normalized_name = validate_skill_name(name)
         with self._session_scope() as session:
+            binding_model = AgentSkillBinding if include_draft else AgentSkillBindingSnapshot
+            conditions = [
+                binding_model.tenant_id == tenant_id,
+                binding_model.agent_id == agent_id,
+                Skill.tenant_id == tenant_id,
+                Agent.tenant_id == tenant_id,
+            ]
+            if not include_draft:
+                conditions.append(AgentSkillBindingSnapshot.config_snapshot_id == Agent.active_config_snapshot_id)
             rows = session.execute(
                 select(Skill, SkillVersion)
-                .join(AgentSkillBinding, AgentSkillBinding.skill_id == Skill.id)
+                .join(binding_model, binding_model.skill_id == Skill.id)
                 .join(SkillVersion, SkillVersion.id == Skill.latest_published_version_id)
-                .join(Agent, Agent.id == AgentSkillBinding.agent_id)
-                .where(
-                    AgentSkillBinding.tenant_id == tenant_id,
-                    AgentSkillBinding.agent_id == agent_id,
-                    Skill.tenant_id == tenant_id,
-                    Agent.tenant_id == tenant_id,
-                    Agent.active_config_is_published.is_(True),
-                )
+                .join(Agent, Agent.id == binding_model.agent_id)
+                .where(*conditions)
             )
             row = next(
                 (
@@ -2342,6 +2363,7 @@ class SkillManagementService:
                 file_id=version.archive_tool_file_id,
             )
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                cls._validate_archive_limits(archive)
                 content = archive.read(_SKILL_MD).decode("utf-8")
             frontmatter = cls._parse_frontmatter(content)
         except (OSError, UnicodeDecodeError, ValueError, KeyError, zipfile.BadZipFile, SkillManagementServiceError):
@@ -2369,6 +2391,7 @@ class SkillManagementService:
         """Keep the runtime archive metadata aligned with its published manifest."""
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                cls._validate_archive_limits(archive)
                 skill_md = archive.read(_SKILL_MD).decode("utf-8")
                 frontmatter_match = _FRONTMATTER_RE.match(skill_md)
                 if frontmatter_match is None:
@@ -2452,8 +2475,132 @@ class SkillManagementService:
                 )
             agent.active_config_is_published = False
             agent.updated_by = user_id
-            session.commit()
+            if self._session is None:
+                session.commit()
+            else:
+                session.flush()
             return {"agent_id": agent_id, "skill_ids": skill_ids}
+
+    def publish_agent_bindings(self, *, tenant_id: str, agent_id: str, snapshot_id: str, user_id: str) -> None:
+        """Persist the current draft bindings for an immutable Agent snapshot."""
+        with self._session_scope() as session:
+            draft_bindings = list(
+                session.scalars(
+                    select(AgentSkillBinding)
+                    .where(
+                        AgentSkillBinding.tenant_id == tenant_id,
+                        AgentSkillBinding.agent_id == agent_id,
+                    )
+                    .order_by(AgentSkillBinding.priority, AgentSkillBinding.created_at, AgentSkillBinding.id)
+                )
+            )
+            session.query(AgentSkillBindingSnapshot).filter(
+                AgentSkillBindingSnapshot.tenant_id == tenant_id,
+                AgentSkillBindingSnapshot.agent_id == agent_id,
+                AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
+            ).delete(synchronize_session=False)
+            for binding in draft_bindings:
+                session.add(
+                    AgentSkillBindingSnapshot(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        config_snapshot_id=snapshot_id,
+                        skill_id=binding.skill_id,
+                        priority=binding.priority,
+                        created_by=user_id,
+                    )
+                )
+            if self._session is None:
+                session.commit()
+            else:
+                session.flush()
+
+    def copy_agent_bindings(
+        self,
+        *,
+        tenant_id: str,
+        source_agent_id: str,
+        source_snapshot_id: str,
+        target_agent_id: str,
+        user_id: str,
+        target_snapshot_id: str | None = None,
+        source_include_draft: bool = False,
+    ) -> None:
+        """Copy an Agent binding set into another Agent's draft and optional snapshot."""
+        with self._session_scope() as session:
+            if source_include_draft:
+                source_bindings = list(
+                    session.scalars(
+                        select(AgentSkillBinding)
+                        .where(
+                            AgentSkillBinding.tenant_id == tenant_id,
+                            AgentSkillBinding.agent_id == source_agent_id,
+                        )
+                        .order_by(AgentSkillBinding.priority, AgentSkillBinding.created_at)
+                    )
+                )
+            else:
+                source_bindings = list(
+                    session.scalars(
+                        select(AgentSkillBindingSnapshot)
+                        .where(
+                            AgentSkillBindingSnapshot.tenant_id == tenant_id,
+                            AgentSkillBindingSnapshot.agent_id == source_agent_id,
+                            AgentSkillBindingSnapshot.config_snapshot_id == source_snapshot_id,
+                        )
+                        .order_by(AgentSkillBindingSnapshot.priority, AgentSkillBindingSnapshot.created_at)
+                    )
+                )
+                # Older installations may have published Agents without the
+                # binding snapshot table populated yet. Preserve their current
+                # binding set until the migration/backfill has run.
+                if not source_bindings:
+                    source_bindings = list(
+                        session.scalars(
+                            select(AgentSkillBinding)
+                            .where(
+                                AgentSkillBinding.tenant_id == tenant_id,
+                                AgentSkillBinding.agent_id == source_agent_id,
+                            )
+                            .order_by(AgentSkillBinding.priority, AgentSkillBinding.created_at)
+                        )
+                    )
+            session.query(AgentSkillBinding).filter(
+                AgentSkillBinding.tenant_id == tenant_id,
+                AgentSkillBinding.agent_id == target_agent_id,
+            ).delete(synchronize_session=False)
+            if target_snapshot_id is not None:
+                session.query(AgentSkillBindingSnapshot).filter(
+                    AgentSkillBindingSnapshot.tenant_id == tenant_id,
+                    AgentSkillBindingSnapshot.agent_id == target_agent_id,
+                    AgentSkillBindingSnapshot.config_snapshot_id == target_snapshot_id,
+                ).delete(synchronize_session=False)
+
+            for priority, binding in enumerate(source_bindings):
+                session.add(
+                    AgentSkillBinding(
+                        tenant_id=tenant_id,
+                        agent_id=target_agent_id,
+                        skill_id=binding.skill_id,
+                        priority=priority,
+                        created_by=user_id,
+                    )
+                )
+                if target_snapshot_id is not None:
+                    session.add(
+                        AgentSkillBindingSnapshot(
+                            tenant_id=tenant_id,
+                            agent_id=target_agent_id,
+                            config_snapshot_id=target_snapshot_id,
+                            skill_id=binding.skill_id,
+                            priority=priority,
+                            created_by=user_id,
+                        )
+                    )
+            if self._session is None:
+                session.commit()
+            else:
+                session.flush()
 
     @staticmethod
     def _check_agent_skill_name_conflicts(
@@ -3593,14 +3740,15 @@ class SkillManagementService:
     ) -> tuple[SkillDraftTreePayload, dict[str, Any], str]:
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-                raw_paths = [normalize_skill_file_path(info.filename.strip("/")) for info in archive.infolist()]
+                infos = self._validate_archive_limits(archive)
+                raw_paths = [normalize_skill_file_path(info.filename.strip("/")) for info in infos]
                 path_map = self._strip_single_root(raw_paths)
                 if _SKILL_MD not in set(path_map.values()):
                     raise SkillManagementServiceError("missing_skill_md", "Skill package must contain SKILL.md")
                 items: list[SkillDraftTreeItemPayload] = []
                 metadata: dict[str, Any] = {}
                 skill_md_content = ""
-                for info in archive.infolist():
+                for info in infos:
                     raw_path = normalize_skill_file_path(info.filename.strip("/"))
                     path = normalize_skill_file_path(path_map[raw_path])
                     if info.is_dir():
@@ -3648,8 +3796,9 @@ class SkillManagementService:
     def _version_files_from_archive_bytes(self, archive_bytes: bytes) -> list[dict[str, Any]]:
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                infos = self._validate_archive_limits(archive)
                 files: list[dict[str, Any]] = []
-                for info in sorted(archive.infolist(), key=lambda item: item.filename):
+                for info in sorted(infos, key=lambda item: item.filename):
                     if info.is_dir():
                         continue
                     path = normalize_skill_file_path(info.filename.strip("/"))
@@ -3678,7 +3827,8 @@ class SkillManagementService:
     def _file_content_from_archive_bytes(self, archive_bytes: bytes, *, path: str) -> SkillFileContent:
         try:
             with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-                for info in archive.infolist():
+                infos = self._validate_archive_limits(archive)
+                for info in infos:
                     if info.is_dir():
                         continue
                     archive_path = normalize_skill_file_path(info.filename.strip("/"))
@@ -3698,6 +3848,31 @@ class SkillManagementService:
         except zipfile.BadZipFile as exc:
             raise SkillManagementServiceError("invalid_skill_package", "skill package must be a valid zip") from exc
         raise SkillManagementServiceError("skill_file_not_found", "skill file was not found", status_code=404)
+
+    @staticmethod
+    def _validate_archive_limits(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
+        """Validate ZIP metadata before any member is decompressed or persisted."""
+        infos = archive.infolist()
+        if len(infos) > _MAX_FILES_PER_SKILL:
+            raise SkillManagementServiceError("too_many_files", "skill file count limit exceeded")
+
+        total_uncompressed = 0
+        for info in infos:
+            if info.file_size < 0 or info.compress_size < 0:
+                raise SkillManagementServiceError("invalid_skill_package", "skill package has invalid ZIP metadata")
+
+            total_uncompressed += info.file_size
+            if total_uncompressed > _MAX_SKILL_BYTES:
+                raise SkillManagementServiceError("skill_too_large", "skill exceeds 200MB limit")
+
+            if info.is_dir() or info.file_size == 0:
+                continue
+            if info.compress_size == 0 or info.file_size / info.compress_size > _MAX_ZIP_COMPRESSION_RATIO:
+                raise SkillManagementServiceError(
+                    "invalid_skill_package",
+                    "skill package compression ratio exceeds the allowed limit",
+                )
+        return infos
 
     def _draft_rows_from_archive_bytes(
         self,

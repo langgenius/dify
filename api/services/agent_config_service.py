@@ -282,6 +282,7 @@ class AgentConfigService:
                     for item in SkillManagementService().list_runtime_agent_skills(
                         tenant_id=tenant_id,
                         agent_id=agent_id,
+                        include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
                     )
                     if item["name"] == name
                 ),
@@ -361,6 +362,7 @@ class AgentConfigService:
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     name=name,
+                    include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
                 )
             except SkillManagementServiceError as skill_exc:
                 raise AgentConfigServiceError(
@@ -1260,6 +1262,7 @@ class AgentConfigService:
         for item in SkillManagementService().list_runtime_agent_skills(
             tenant_id=target.tenant_id,
             agent_id=target.agent_id,
+            include_draft=target.kind != AgentConfigVersionKind.SNAPSHOT,
         ):
             if item["name"] in seen_names:
                 continue
