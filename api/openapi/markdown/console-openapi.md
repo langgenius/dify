@@ -27,7 +27,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
 
-### [POST] /account/avatar
+### ~~[POST] /account/avatar~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -187,7 +192,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountIntegrateListResponse](#accountintegratelistresponse)<br> |
 
-### [POST] /account/interface-language
+### ~~[POST] /account/interface-language~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -200,7 +210,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/interface-theme
+### ~~[POST] /account/interface-theme~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -213,7 +228,12 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/name
+### ~~[POST] /account/name~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -246,7 +266,25 @@ Get account avatar url
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
-### [POST] /account/timezone
+### [PATCH] /account/profile
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AccountProfilePatchPayload](#accountprofilepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+
+### ~~[POST] /account/timezone~~
+
+***DEPRECATED***
+
+Deprecated. Use PATCH /account/profile instead.
+
 #### Request Body
 
 | Required | Schema |
@@ -972,85 +1010,6 @@ Stop a running Agent App chat message generation
 | 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
 | 403 | Insufficient permissions |  |
 
-### [GET] /agent/{agent_id}/drive/files
-List agent drive entries for an Agent App
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/files/download
-Time-limited external signed URL for one Agent App drive value
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/files/preview
-Truncated text preview of one Agent App drive value
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/skills
-List drive-backed skills for an Agent App
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
-
-### [GET] /agent/{agent_id}/drive/skills/{skill_path}/inspect
-Inspect one drive-backed skill for slash-menu hover/detail UI
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
-
 ### [POST] /agent/{agent_id}/features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
@@ -1095,43 +1054,6 @@ Create or update Agent App message feedback
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | Agent or message not found |  |
-
-### [DELETE] /agent/{agent_id}/files
-Delete one Agent App drive file by key
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. files/sample.pdf | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | File removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /agent/{agent_id}/files
-Commit an uploaded file into the Agent App drive under files/<name>
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
 #### Parameters
@@ -1321,60 +1243,6 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-
-### [POST] /agent/{agent_id}/skills/upload
-Upload + standardize a Skill into an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
-### [DELETE] /agent/{agent_id}/skills/{slug}
-Delete a standardized skill from an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Skill removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /agent/{agent_id}/skills/{slug}/infer-tools
-Infer CLI tool + ENV suggestions from a standardized Agent App skill
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
 #### Parameters
@@ -2192,132 +2060,6 @@ Run draft workflow for advanced chat application
 | ---- | ----------- | ------ |
 | 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
 
-### [GET] /apps/{app_id}/agent/drive/files
-List agent drive entries (read-only inspector; one endpoint for both tabs)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive entries | **application/json**: [AgentDriveListResponse](#agentdrivelistresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/files/download
-Time-limited external signed URL for one drive value (no streaming proxy)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Signed URL | **application/json**: [AgentDriveDownloadResponse](#agentdrivedownloadresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/files/preview
-Truncated text preview of one drive value (binary-safe; SKILL.md is the main case)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/skills
-List drive-backed skills for the bound agent
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
-
-### [GET] /apps/{app_id}/agent/drive/skills/{skill_path}/inspect
-Inspect one drive-backed skill for slash-menu hover/detail UI
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
-
-### [DELETE] /apps/{app_id}/agent/files
-Delete one drive file by key via drive commit-null semantics
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| key | query | Drive key, e.g. files/sample.pdf | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | File removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /apps/{app_id}/agent/files
-**ADD FILE: commit one uploaded file into the bound agent's drive**
-
-Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentDriveFilePayload](#agentdrivefilepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
-
 ### [GET] /apps/{app_id}/agent/logs
 **Get agent logs**
 
@@ -2337,68 +2079,6 @@ Get agent execution logs for an application
 | ---- | ----------- | ------ |
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
-
-### [POST] /apps/{app_id}/agent/skills/upload
-**Upload a Skill, validate it, and commit drive-backed skill files**
-
-Upload + standardize a Skill into the agent drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
-### [DELETE] /apps/{app_id}/agent/skills/{slug}
-Delete a standardized skill by removing its known drive keys via commit-null
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Skill removed | **application/json**: [AgentDriveDeleteResponse](#agentdrivedeleteresponse)<br> |
-
-### [POST] /apps/{app_id}/agent/skills/{slug}/infer-tools
-**Suggest CLI tools/env for a skill**
-
-Infer CLI tool + ENV suggestions from a standardized skill's SKILL.md (draft only, ENG-371)
-Saving still goes through composer validation.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-| slug | path | Skill slug (single path segment) | Yes | string |
-| node_id | query | Workflow node ID (workflow composer variant) | No | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}
 Enable or disable annotation reply for an app
@@ -6883,7 +6563,8 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RecommendedAppDetailNullableResponse](#recommendedappdetailnullableresponse)<br> |
+| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
+| 404 | Recommended app not found |  |
 
 ### [GET] /features
 **Get feature configuration for current tenant**
@@ -7723,6 +7404,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_id | query | Credential ID to reauthorize | No | string |
+| visibility | query | Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set). | No | string |
 | provider_id | path |  | Yes | string |
 
 #### Responses
@@ -7736,6 +7418,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| visibility | query | Visibility for the OAuth credential. Defaults to 'only_me'. | No | string, <br>**Available values:** "all_team_members", "only_me" |
 | provider | path |  | Yes | string |
 
 #### Responses
@@ -9448,6 +9131,24 @@ Reset a draft workflow variable to its default value (snippet scope)
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 | 400 | No draft workflow found |  |
 
+### [DELETE] /snippets/{snippet_id}/workflows/{workflow_id}
+**Delete a published snippet workflow version**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
+| workflow_id | path | Workflow ID | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Workflow deleted successfully |
+| 400 | Workflow is in use |
+| 404 | Workflow not found |
+
 ### [PATCH] /snippets/{snippet_id}/workflows/{workflow_id}
 **Update a published snippet workflow version's display metadata**
 
@@ -9563,7 +9264,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | No | string, <br>**Available values:** "", "app", "knowledge", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "snippet" |
 
 #### Responses
 
@@ -10228,6 +9929,7 @@ Export snippet configuration as DSL
 | ---- | ---------- | ----------- | -------- | ------ |
 | snippet_id | path | Snippet ID to export | Yes | string (uuid) |
 | include_secret | query | Whether to include secret variables | No | string, <br>**Default:** false |
+| workflow_id | query | Specific published workflow version to export | No | string |
 
 #### Responses
 
@@ -13127,6 +12829,16 @@ Model class for AI model.
 | password | string |  | No |
 | repeat_new_password | string |  | Yes |
 
+#### AccountProfilePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| interface_language | string |  | No |
+| interface_theme | string, <br>**Available values:** "dark", "light" | *Enum:* `"dark"`, `"light"` | No |
+| name | string |  | No |
+| timezone | string |  | No |
+
 #### AccountResponse
 
 | Name | Type | Description | Required |
@@ -13988,135 +13700,6 @@ Stable Agent Soul reference to one normalized skill archive.
 | debug_conversation_id | string |  | Yes |
 | debug_conversation_message_count | integer |  | No |
 
-#### AgentDriveDeleteFileByAgentQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| key | string | Drive key, e.g. files/sample.pdf | Yes |
-
-#### AgentDriveDeleteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| removed_keys | [ string ] |  | No |
-| result | string |  | Yes |
-
-#### AgentDriveDownloadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| url | string |  | Yes |
-
-#### AgentDriveFileCommitResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| file | [AgentDriveFileResponse](#agentdrivefileresponse) |  | Yes |
-
-#### AgentDriveFilePayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| upload_file_id | string | UploadFile UUID from POST /console/api/files/upload | Yes |
-
-#### AgentDriveFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| drive_key | string |  | Yes |
-| file_id | string |  | Yes |
-| mime_type | string |  | No |
-| name | string |  | Yes |
-| size | integer |  | No |
-
-#### AgentDriveItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | integer |  | No |
-| file_kind | string |  | Yes |
-| hash | string |  | No |
-| is_skill | boolean |  | No |
-| key | string |  | Yes |
-| mime_type | string |  | No |
-| size | integer |  | No |
-| skill_metadata | string |  | No |
-
-#### AgentDriveListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [AgentDriveItemResponse](#agentdriveitemresponse) ] |  | No |
-
-#### AgentDrivePreviewResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| binary | boolean |  | Yes |
-| key | string |  | Yes |
-| size | integer |  | No |
-| text | string |  | No |
-| truncated | boolean |  | Yes |
-
-#### AgentDriveSkillFileResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| available_in_drive | boolean |  | Yes |
-| drive_key | string |  | No |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| type | string |  | Yes |
-
-#### AgentDriveSkillInspectResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| archive_key | string |  | No |
-| created_at | integer |  | No |
-| description | string |  | Yes |
-| file_tree | [ object ] |  | No |
-| files | [ [AgentDriveSkillFileResponse](#agentdriveskillfileresponse) ] |  | No |
-| hash | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| size | integer |  | No |
-| skill_md | [AgentDriveSkillMarkdownResponse](#agentdriveskillmarkdownresponse) |  | Yes |
-| skill_md_key | string |  | Yes |
-| source | string |  | Yes |
-| warnings | [ string ] |  | No |
-
-#### AgentDriveSkillItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| archive_key | string |  | No |
-| created_at | integer |  | No |
-| description | string |  | Yes |
-| hash | string |  | No |
-| mime_type | string |  | No |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| size | integer |  | No |
-| skill_md_key | string |  | Yes |
-
-#### AgentDriveSkillListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| items | [ [AgentDriveSkillItemResponse](#agentdriveskillitemresponse) ] |  | No |
-
-#### AgentDriveSkillMarkdownResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| binary | boolean |  | Yes |
-| key | string |  | Yes |
-| size | integer |  | No |
-| text | string |  | No |
-| truncated | boolean |  | Yes |
-
 #### AgentEnvVariableConfig
 
 | Name | Type | Description | Required |
@@ -14140,7 +13723,6 @@ Stable Agent Soul reference to one normalized skill archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| drive_key | string |  | No |
 | file_id | string |  | No |
 | id | string |  | No |
 | name | string |  | No |
@@ -14497,13 +14079,6 @@ section may be empty, which is how callers express "no knowledge layer".
 | status | string |  | Yes |
 | total_tokens | integer |  | Yes |
 
-#### AgentLogQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| message_id | string | Message UUID | Yes |
-
 #### AgentLogResponse
 
 | Name | Type | Description | Required |
@@ -14761,28 +14336,6 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
-#### AgentSkillRefConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
-#### AgentSkillUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentUploadedSkillResponse](#agentuploadedskillresponse) |  | Yes |
-
 #### AgentSoulAppFeaturesConfig
 
 | Name | Type | Description | Required |
@@ -14806,7 +14359,6 @@ Visibility and lifecycle scope of an Agent record.
 | config_note | string |  | No |
 | config_skills | [ [AgentConfigSkillRefConfig](#agentconfigskillrefconfig) ] |  | No |
 | env | [AgentSoulEnvConfig](#agentsoulenvconfig) |  | No |
-| files | [AgentSoulFilesConfig](#agentsoulfilesconfig) |  | No |
 | human | [AgentSoulHumanConfig](#agentsoulhumanconfig) |  | No |
 | knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
 | memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
@@ -14863,13 +14415,6 @@ old Agent tool payloads can be read while new payloads stay explicit.
 | ---- | ---- | ----------- | -------- |
 | secret_refs | [ [AgentSecretRefConfig](#agentsecretrefconfig) ] |  | No |
 | variables | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
-
-#### AgentSoulFilesConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
 
 #### AgentSoulHumanConfig
 
@@ -15117,16 +14662,6 @@ Legacy Chat App model config used only for follow-up question generation.
 | tool_output | object |  | Yes |
 | tool_parameters | object |  | Yes |
 
-#### AgentUploadedSkillResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| archive_key | string |  | No |
-| description | string |  | Yes |
-| name | string |  | Yes |
-| path | string |  | Yes |
-| skill_md_key | string |  | Yes |
-
 #### AgentUserSatisfactionRateStatisticResponse
 
 | Name | Type | Description | Required |
@@ -15286,8 +14821,21 @@ Legacy Chat App model config used only for follow-up question generation.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | category | string |  | Yes |
-| credentials | object |  | Yes |
+| credentials | [ApiKeyAuthCredentialsPayload](#apikeyauthcredentialspayload) |  | Yes |
 | provider | string |  | Yes |
+
+#### ApiKeyAuthConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key | string |  | Yes |
+
+#### ApiKeyAuthCredentialsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auth_type | string |  | Yes |
+| config | [ApiKeyAuthConfigPayload](#apikeyauthconfigpayload) |  | Yes |
 
 #### ApiKeyAuthDataSourceItem
 
@@ -16142,17 +15690,6 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Child chunk text content. | Yes |
-
-#### CliToolSuggestion
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| command | string |  | No |
-| description | string |  | No |
-| env_suggestions | [ [EnvSuggestion](#envsuggestion) ] |  | No |
-| inferred_from | string |  | No |
-| install_commands | [ string ] |  | No |
-| name | string |  | Yes |
 
 #### CloudPlan
 
@@ -17205,6 +16742,7 @@ Model class for provider custom model configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_id | string | Credential ID to reauthorize | No |
+| visibility | string | Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set). | No |
 
 #### DatasourceOAuthCallbackQuery
 
@@ -17738,7 +17276,8 @@ Portable DSL reference that could not be restored in the target workspace.
 | email | string |  | Yes |
 | language | string |  | No |
 | timezone | string |  | No |
-| token | string |  | Yes |
+| token | string (uuid) |  | Yes |
+| turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
 
 #### EmailCodeSendPayload
 
@@ -17944,14 +17483,6 @@ declaration of an endpoint group
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | settings | object |  | Yes |
-
-#### EnvSuggestion
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| key | string |  | Yes |
-| reason | string |  | No |
-| secret_likely | boolean |  | No |
 
 #### EnvironmentVariableItemPayload
 
@@ -18688,11 +18219,9 @@ How Dify forwards the end-user's identity to an MCP server.
 
 #### IncludeSecretQuery
 
-Query parameter for including secret variables in export.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
+| include_secret | string, <br>**Default:** false | Whether to include secret values in the exported DSL | No |
 
 #### IndexingEstimate
 
@@ -21242,12 +20771,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
 
-#### RecommendedAppDetailNullableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| RecommendedAppDetailNullableResponse | [RecommendedAppDetailResponse](#recommendedappdetailresponse) |  |  |
-
 #### RecommendedAppDetailResponse
 
 | Name | Type | Description | Required |
@@ -21855,27 +21378,6 @@ Simple provider entity response.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
-#### SkillManifest
-
-Validated metadata extracted from a Skill package.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | Yes |
-| entry_path | string |  | Yes |
-| files | [ string ] |  | Yes |
-| hash | string |  | Yes |
-| name | string |  | Yes |
-| size | integer |  | Yes |
-
-#### SkillToolInferenceResult
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| cli_tools | [ [CliToolSuggestion](#clitoolsuggestion) ] |  | No |
-| inferable | boolean |  | Yes |
-| reason | string |  | No |
-
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
@@ -21917,6 +21419,15 @@ Payload for syncing snippet draft workflow.
 | graph | object |  | Yes |
 | hash | string |  | No |
 | input_fields | [ object ] |  | No |
+
+#### SnippetExportQuery
+
+Query parameters for exporting a snippet workflow as DSL.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_secret | string, <br>**Default:** false | Whether to include secret variables | No |
+| workflow_id | string | Specific published workflow version to export | No |
 
 #### SnippetImportPayload
 
@@ -22351,7 +21862,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "", "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `""`, `"app"`, `"knowledge"`, `"snippet"` | No |
+| type | string, <br>**Available values:** "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"snippet"` | Yes |
 
 #### TagListResponse
 
@@ -22579,6 +22090,12 @@ Tool label
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolLabelListResponse | array |  |  |
+
+#### ToolOAuthAuthorizationQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| visibility | string | Visibility for the OAuth credential. Defaults to 'only_me'. | No |
 
 #### ToolOAuthCustomClientPayload
 

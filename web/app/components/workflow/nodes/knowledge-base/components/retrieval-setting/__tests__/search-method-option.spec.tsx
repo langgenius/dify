@@ -162,8 +162,8 @@ describe('SearchMethodOption', () => {
 
     expect(screen.getByText('Weighted mode'))!.toBeInTheDocument()
     expect(screen.getByText('Rerank mode'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.semantic'))!.toBeInTheDocument()
-    expect(screen.getByText('dataset.weightedScore.keyword'))!.toBeInTheDocument()
+    expect(screen.getByTitle('dataset.weightedScore.semantic'))!.toBeVisible()
+    expect(screen.getByTitle('dataset.weightedScore.keyword'))!.toBeVisible()
     expect(screen.queryByText('common.modelProvider.rerankModel.key')).not.toBeInTheDocument()
     expect(
       screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),

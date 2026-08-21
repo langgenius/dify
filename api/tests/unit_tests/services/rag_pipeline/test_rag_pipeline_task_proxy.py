@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -5,6 +6,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from enums import CloudPlan
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 
@@ -146,7 +150,20 @@ def test_send_to_tenant_queue_sets_waiting_time_and_calls_delay(mocker: MockerFi
 
 
 def test_upload_invoke_entities_returns_file_id(mocker: MockerFixture, proxy) -> None:
-    upload_file = SimpleNamespace(id="uploaded-file-1")
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="rag-pipeline.json",
+        name="rag-pipeline.json",
+        size=1,
+        extension="json",
+        mime_type="application/json",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime(2025, 1, 1),
+        used=True,
+    )
+    upload_file.id = "uploaded-file-1"
     file_service_cls = mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
     file_service_cls.return_value.upload_text.return_value = upload_file
     mocker.patch("services.rag_pipeline.rag_pipeline_task_proxy.db", SimpleNamespace(engine="fake-engine"))

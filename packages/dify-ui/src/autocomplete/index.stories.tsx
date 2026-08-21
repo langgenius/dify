@@ -6,7 +6,6 @@ import {
   Autocomplete,
   AutocompleteClear,
   AutocompleteCollection,
-  AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
   AutocompleteGroupLabel,
@@ -15,6 +14,9 @@ import {
   AutocompleteItem,
   AutocompleteItemText,
   AutocompleteList,
+  AutocompletePopup,
+  AutocompletePortal,
+  AutocompletePositioner,
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
@@ -369,12 +371,16 @@ const BasicTagAutocomplete = ({ size = 'medium' }: { size?: 'small' | 'medium' |
       <AutocompleteClear size={size} />
       <AutocompleteTrigger size={size} />
     </AutocompleteInputGroup>
-    <AutocompleteContent>
-      <AutocompleteList<Suggestion>>
-        {(item) => <TagSuggestionItem key={item.value} item={item} />}
-      </AutocompleteList>
-      <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
-    </AutocompleteContent>
+    <AutocompletePortal>
+      <AutocompletePositioner>
+        <AutocompletePopup>
+          <AutocompleteList<Suggestion>>
+            {(item) => <TagSuggestionItem key={item.value} item={item} />}
+          </AutocompleteList>
+          <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
+        </AutocompletePopup>
+      </AutocompletePositioner>
+    </AutocompletePortal>
   </Autocomplete>
 )
 
@@ -511,15 +517,16 @@ const AsyncSearchDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent
-          portalProps={{ hidden: !status }}
-          popupProps={{ 'aria-busy': isPending || undefined }}
-        >
-          <AutocompleteStatus>{status}</AutocompleteStatus>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-        </AutocompleteContent>
+        <AutocompletePortal hidden={!status}>
+          <AutocompletePositioner>
+            <AutocompletePopup aria-busy={isPending || undefined}>
+              <AutocompleteStatus>{status}</AutocompleteStatus>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   )
@@ -642,29 +649,33 @@ const FuzzyMatchingDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => (
-              <AutocompleteItem key={item.value} value={item}>
-                {item.icon && (
-                  <span
-                    className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')}
-                    aria-hidden="true"
-                  />
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => (
+                  <AutocompleteItem key={item.value} value={item}>
+                    {item.icon && (
+                      <span
+                        className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="min-w-0 grow">
+                      <AutocompleteItemText className="block px-0">
+                        <FuzzyHighlight text={item.label} query={value} />
+                      </AutocompleteItemText>
+                      <span className="block truncate system-xs-regular text-text-tertiary">
+                        {item.description}
+                      </span>
+                    </div>
+                  </AutocompleteItem>
                 )}
-                <div className="min-w-0 grow">
-                  <AutocompleteItemText className="block px-0">
-                    <FuzzyHighlight text={item.label} query={value} />
-                  </AutocompleteItemText>
-                  <span className="block truncate system-xs-regular text-text-tertiary">
-                    {item.description}
-                  </span>
-                </div>
-              </AutocompleteItem>
-            )}
-          </AutocompleteList>
-          <AutocompleteEmpty>No workflow suggestion. Keep typing freely.</AutocompleteEmpty>
-        </AutocompleteContent>
+              </AutocompleteList>
+              <AutocompleteEmpty>No workflow suggestion. Keep typing freely.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   )
@@ -729,12 +740,16 @@ export const InlineAutocomplete: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} dense />}
-          </AutocompleteList>
-          <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} dense />}
+              </AutocompleteList>
+              <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -761,10 +776,14 @@ export const GroupedSuggestions: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent popupClassName="w-[420px]">
-          <GroupedSuggestionList />
-          <AutocompleteEmpty>No suggestion. Use the text as entered.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup className="w-[420px]">
+              <GroupedSuggestionList />
+              <AutocompleteEmpty>No suggestion. Use the text as entered.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -796,15 +815,19 @@ export const LimitResults: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent popupClassName="w-[420px]">
-          <AutocompleteStatus className="border-b border-divider-subtle">
-            <LimitedStatus total={workflowSuggestions.length} />
-          </AutocompleteStatus>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-          <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup className="w-[420px]">
+              <AutocompleteStatus className="border-b border-divider-subtle">
+                <LimitedStatus total={workflowSuggestions.length} />
+              </AutocompleteStatus>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+              <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -867,11 +890,15 @@ const VirtualizedLongSuggestionsDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent popupClassName="w-[440px] p-1">
-          <VirtualizedStatus />
-          <VirtualizedSuggestionList virtualizerRef={virtualizerRef} />
-          <AutocompleteEmpty>No suggestion. Free-form text is still valid.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup className="w-[440px] p-1">
+              <VirtualizedStatus />
+              <VirtualizedSuggestionList virtualizerRef={virtualizerRef} />
+              <AutocompleteEmpty>No suggestion. Free-form text is still valid.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   )
@@ -907,12 +934,18 @@ export const Empty: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <TagSuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-          <AutocompleteEmpty>No tag suggestion. The custom text remains valid.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <TagSuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+              <AutocompleteEmpty>
+                No tag suggestion. The custom text remains valid.
+              </AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -933,11 +966,15 @@ export const DisabledAndReadOnly: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <TagSuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <TagSuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
       <Autocomplete
         items={promptCompletions}
@@ -951,11 +988,15 @@ export const DisabledAndReadOnly: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),

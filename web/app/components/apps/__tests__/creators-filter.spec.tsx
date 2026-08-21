@@ -61,7 +61,9 @@ describe('CreatorsFilter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-    expect(screen.getByPlaceholderText('app.studio.filters.searchCreators')).toHaveValue('')
+    const searchInput = screen.getByPlaceholderText('app.studio.filters.searchCreators')
+    expect(searchInput).toHaveValue('')
+    expect(searchInput).toHaveFocus()
 
     fireEvent.click(screen.getByRole('button', { name: /Bob/ }))
 

@@ -87,13 +87,9 @@ catalog:
   '@lexical/selection': 0.47.0
   '@lexical/text': 0.47.0
   '@lexical/utils': 0.47.0
-  '@mdx-js/loader': 3.1.1
-  '@mdx-js/react': 3.1.1
-  '@mdx-js/rollup': 3.1.1
   '@mediabunny/mp3-encoder': 1.53.1
   '@monaco-editor/react': 4.7.0
   '@napi-rs/keyring': 1.3.0
-  '@next/mdx': 16.3.0
   '@orpc/client': 1.15.0
   '@orpc/contract': 1.15.0
   '@orpc/openapi-client': 1.15.0
@@ -116,7 +112,6 @@ catalog:
   '@t3-oss/env-core': 0.13.11
   '@t3-oss/env-nextjs': 0.13.11
   '@tailwindcss/postcss': 4.3.3
-  '@tailwindcss/typography': 0.5.20
   '@tailwindcss/vite': 4.3.3
   '@tanstack/eslint-plugin-query': 5.101.4
   '@tanstack/form-core': 1.33.5
@@ -175,7 +170,6 @@ catalog:
   eslint-plugin-better-tailwindcss: 4.7.0
   eslint-plugin-command: 3.5.3
   eslint-plugin-erasable-syntax-only: 0.4.2
-  eslint-plugin-hyoban: 0.14.1
   eslint-plugin-jsdoc: 63.3.3
   eslint-plugin-jsonc: 3.4.1
   eslint-plugin-markdown-preferences: 0.41.1

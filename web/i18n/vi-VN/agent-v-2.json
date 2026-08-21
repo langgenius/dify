@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "ví dụ: Trợ lý nghiên cứu",
   "roster.createSuccess": "Đã tạo tác nhân.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Agent này sẽ bị xóa khỏi danh sách Agent.",
+  "roster.deleteDialog.description": "Thao tác này sẽ xóa vĩnh viễn {{name}}. Ứng dụng web, quyền truy cập API và các quy trình làm việc sử dụng Agent này sẽ ngừng hoạt động ngay lập tức.",
   "roster.deleteDialog.title": "Xóa {{name}}?",
   "roster.deleteFailed": "Xóa tác nhân thất bại.",
   "roster.deleteSuccess": "Đã xóa tác nhân.",

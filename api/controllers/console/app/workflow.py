@@ -20,6 +20,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
 import services
+from configs import dify_config
+from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -53,6 +55,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
+from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
@@ -95,7 +98,6 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -1303,7 +1305,7 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            workflow, retirement_candidates = workflow_service.publish_workflow(
+            workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
                 account=current_user,
@@ -1320,16 +1322,6 @@ class PublishedWorkflowApi(Resource):
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
-            tenant_id=app_model.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=current_user.id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=app_model.tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
-        )
         return {
             "result": "success",
             "created_at": workflow_created_at,
@@ -1620,10 +1612,11 @@ class WorkflowByIdApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @with_current_user
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Workflow deleted successfully")
-    def delete(self, app_model: App, workflow_id: str):
+    def delete(self, current_user: Account, app_model: App, workflow_id: str):
         """
         Delete workflow
         """
@@ -1633,7 +1626,7 @@ class WorkflowByIdApi(Resource):
         # Create a session and manage the transaction
         with sessionmaker(db.engine).begin() as session:
             try:
-                workflow_service.delete_workflow(
+                retirement_candidates = workflow_service.delete_workflow(
                     session=session,
                     workflow_ref=workflow_ref,
                 )
@@ -1644,6 +1637,11 @@ class WorkflowByIdApi(Resource):
             except ValueError as e:
                 raise NotFound(str(e))
 
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
         return None, 204
 
 
@@ -1929,8 +1927,9 @@ class WorkflowOnlineUsersApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    def post(self, current_tenant_id: str, current_user: Account):
         args = WorkflowOnlineUsersPayload.model_validate(console_ns.payload or {})
 
         app_ids = args.app_ids
@@ -1940,8 +1939,20 @@ class WorkflowOnlineUsersApi(Resource):
         if not app_ids:
             return {"data": []}
 
+        access_filter = None
         workflow_service = WorkflowService()
-        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id, session=db.session())
+        with session_factory.create_session() as session:
+            if dify_config.RBAC_ENABLED:
+                access_filter = resolve_app_access_filter(current_tenant_id, current_user.id, session=session)
+            app_maintainers = workflow_service.get_tenant_app_maintainers(app_ids, current_tenant_id, session=session)
+
+        accessible_app_ids = set(app_maintainers)
+        if access_filter is not None:
+            accessible_app_ids = {
+                app_id
+                for app_id, maintainer in app_maintainers.items()
+                if access_filter.is_app_accessible(app_id, maintainer, current_user.id)
+            }
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
 
         users_json_by_app_id: dict[str, Any] = {}

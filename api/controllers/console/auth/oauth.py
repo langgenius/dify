@@ -12,6 +12,7 @@ from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
+from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -26,7 +27,14 @@ from libs.token import (
 from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
-from services.errors.account import AccountNotFoundError, AccountRegisterError, SeatsLimitExceededError
+from services.errors.account import (
+    AccountNotFoundError,
+    AccountRegisterError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
@@ -233,7 +241,13 @@ class OAuthCallback(Resource):
             return _redirect_with_console_session(account, target_url)
 
         try:
-            account, oauth_new_user = _generate_account(provider, user_info, timezone=timezone, language=language)
+            account, oauth_new_user = _generate_account(
+                provider,
+                user_info,
+                timezone=timezone,
+                language=language,
+                ip_address=extract_remote_ip(request),
+            )
         except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
         except (WorkSpaceNotFoundError, WorkSpaceNotAllowedCreateError):
@@ -243,8 +257,10 @@ class OAuthCallback(Resource):
             )
         except SeatsLimitExceededError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Licensed seats limit exceeded.")
-        except AccountRegisterError as e:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
+        except EmailDomainSuspendedRegistrationError:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={EmailDomainSuspendedError.description}")
+        except AccountRegisterError as exc:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={exc.description}")
 
         # Check account status
         if account.status == AccountStatus.BANNED:
@@ -285,6 +301,7 @@ def _generate_account(
     user_info: OAuthUserInfo,
     timezone: str | None = None,
     language: str | None = None,
+    ip_address: str | None = None,
 ) -> tuple[Account, bool]:
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
@@ -302,15 +319,12 @@ def _generate_account(
         normalized_email = user_info.email.lower()
         oauth_new_user = True
         if not FeatureService.get_system_features().is_allow_register:
-            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(
-                normalized_email
-            ):
-                raise AccountRegisterError(
-                    description=(
-                        "This email account has been deleted within the past "
-                        "30 days and is temporarily unavailable for new account registration"
-                    )
-                )
+            if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+                freeze_type = BillingService.get_email_freeze_type(normalized_email)
+                if freeze_type:
+                    if freeze_type == "email_domain_suspended":
+                        raise EmailDomainSuspendedRegistrationError()
+                    raise AccountRegisterError(description=AccountInFreezeError.description or "")
             raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         interface_language = _preferred_interface_language(language)
@@ -322,6 +336,7 @@ def _generate_account(
             provider=provider,
             language=interface_language,
             timezone=timezone,
+            ip_address=ip_address,
             session=db.session(),
         )
 

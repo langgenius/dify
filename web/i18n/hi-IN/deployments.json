@@ -22,7 +22,6 @@
   "deployTab.moreActions": "अधिक क्रियाएँ",
   "deployTab.redeploy": "पुनः डिप्लॉय करें",
   "deployTab.undeploy": "अनडिप्लॉय करें",
-  "deployTab.undeployConfirmWarning": "पुष्टि के बाद, यह एनवायरनमेंट अनडिप्लॉयिंग स्थिति में चला जाएगा और कार्रवाइयां अस्थायी रूप से अक्षम रहेंगी।",
   "health.ENVIRONMENT_STATUS_FAILED": "अनुपलब्ध",
   "list.emptyTitle": "अभी तक कोई डिप्लॉयमेंट नहीं",
   "overview.chip.latest": "नवीनतम",

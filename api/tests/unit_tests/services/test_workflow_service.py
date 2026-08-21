@@ -39,10 +39,22 @@ from graphon.variables import StringVariable
 from graphon.variables.input_entities import VariableEntityType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
+from models.agent import (
+    Agent,
+    AgentConfigSnapshot,
+    AgentKind,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import BuiltinToolProvider, WorkflowToolProvider
 from models.workflow import Workflow, WorkflowType
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from services.workflow_ref_service import WorkflowRef
@@ -219,6 +231,26 @@ class TestWorkflowService:
         """Create a WorkflowService whose repositories use the test SQLite engine."""
         return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
+    def test_get_tenant_app_maintainers_scopes_requested_apps(
+        self, workflow_service: WorkflowService, sqlite_session: Session
+    ) -> None:
+        sqlite_session.add_all(
+            [
+                TestWorkflowAssociatedDataFactory.create_app(
+                    app_id="app-1", tenant_id="tenant-1", maintainer="owner-1"
+                ),
+                TestWorkflowAssociatedDataFactory.create_app(app_id="app-2", tenant_id="tenant-1"),
+                TestWorkflowAssociatedDataFactory.create_app(
+                    app_id="app-3", tenant_id="tenant-2", maintainer="owner-2"
+                ),
+            ]
+        )
+        sqlite_session.commit()
+
+        assert workflow_service.get_tenant_app_maintainers(
+            ["app-1", "app-2", "app-3", "missing"], "tenant-1", session=sqlite_session
+        ) == {"app-1": "owner-1", "app-2": None}
+
     # ==================== Workflow Existence Tests ====================
     # These tests verify the service can check if a draft workflow exists
 
@@ -326,6 +358,24 @@ class TestWorkflowService:
 
         assert result is workflow
 
+    def test_get_published_workflow_by_id_can_lock_restore_source(self, workflow_service: WorkflowService):
+        app = TestWorkflowAssociatedDataFactory.create_app()
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
+        session = MagicMock(spec=Session)
+        session.scalar.return_value = workflow
+
+        result = workflow_service.get_published_workflow_by_id(
+            app,
+            workflow.id,
+            session=session,
+            for_update=True,
+        )
+
+        stmt = session.scalar.call_args.args[0]
+        sql = str(stmt.compile(dialect=postgresql.dialect()))
+        assert result is workflow
+        assert "FOR UPDATE" in sql
+
     def test_get_published_workflow_by_id_raises_error_for_draft(
         self, workflow_service: WorkflowService, sqlite_session: Session
     ):
@@ -419,7 +469,14 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
         features = {"file_upload": {"enabled": False}}
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with (
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+                return_value={"retired-agent"},
+            ),
+            patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+        ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=graph,
@@ -435,6 +492,11 @@ class TestWorkflowService:
         assert persisted_workflow is result
         assert result.graph_dict == graph
         assert result.features_dict == features
+        retire_unowned.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            agent_ids={"retired-agent"},
+            account_id=account.id,
+        )
 
     def test_sync_draft_workflow_updates_existing_draft(
         self, workflow_service: WorkflowService, sqlite_session: Session
@@ -759,7 +821,19 @@ class TestWorkflowService:
         sqlite_session.add_all([source_workflow, draft_workflow])
         sqlite_session.commit()
 
-        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with (
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+            patch.object(
+                workflow_service,
+                "get_published_workflow_by_id",
+                wraps=workflow_service.get_published_workflow_by_id,
+            ) as get_published_workflow_by_id,
+            patch(
+                "services.agent.workflow_publish_service.WorkflowAgentPublishService.restore_agent_node_bindings_to_draft",
+                return_value={"retired-agent"},
+            ),
+            patch("services.workflow_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+        ):
             result = workflow_service.restore_published_workflow_to_draft(
                 app_model=app,
                 workflow_id=source_workflow.id,
@@ -772,6 +846,138 @@ class TestWorkflowService:
         assert draft_workflow.serialized_features == json.dumps(legacy_features)
         sqlite_session.refresh(draft_workflow)
         assert draft_workflow.serialized_features == json.dumps(legacy_features)
+        get_published_workflow_by_id.assert_called_once_with(
+            app_model=app,
+            workflow_id=source_workflow.id,
+            session=sqlite_session,
+            for_update=True,
+        )
+        retire_unowned.assert_called_once_with(
+            tenant_id=app.tenant_id,
+            agent_ids={"retired-agent"},
+            account_id=account.id,
+        )
+
+    def test_restore_historical_inline_agent_after_current_pointer_moves_uses_real_clone(
+        self,
+        workflow_service: WorkflowService,
+        sqlite_session: Session,
+    ) -> None:
+        app = TestWorkflowAssociatedDataFactory.create_app(workflow_id=None)
+        account = TestWorkflowAssociatedDataFactory.create_account()
+        graph = {
+            "nodes": [
+                {
+                    "id": "agent-node",
+                    "data": {
+                        "type": "agent",
+                        "version": "2",
+                        "agent_node_kind": "dify_agent",
+                    },
+                }
+            ],
+            "edges": [],
+        }
+        historical = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="historical-workflow",
+            version="historical-version",
+            graph=graph,
+        )
+        current = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="current-workflow",
+            version="current-version",
+            graph=graph,
+        )
+        draft = TestWorkflowAssociatedDataFactory.create_workflow(
+            workflow_id="draft-workflow",
+            version=Workflow.VERSION_DRAFT,
+        )
+        source_agent = Agent(
+            id="historical-agent",
+            tenant_id=app.tenant_id,
+            name="Historical inline Agent",
+            description="",
+            role="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id=app.id,
+            workflow_id=historical.id,
+            workflow_node_id="agent-node",
+            active_config_snapshot_id="historical-snapshot",
+            active_config_has_model=False,
+            active_config_is_published=True,
+            status=AgentStatus.ACTIVE,
+            created_by=account.id,
+            updated_by=account.id,
+        )
+        source_snapshot = AgentConfigSnapshot(
+            id="historical-snapshot",
+            tenant_id=app.tenant_id,
+            agent_id=source_agent.id,
+            version=1,
+            config_snapshot=AgentSoulConfig(config_note="historical soul"),
+            created_by=account.id,
+        )
+        historical_binding = WorkflowAgentNodeBinding(
+            id="historical-binding",
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=historical.id,
+            workflow_version=historical.version,
+            node_id="agent-node",
+            binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+            agent_id=source_agent.id,
+            current_snapshot_id=source_snapshot.id,
+            node_job_config={},
+            created_by=account.id,
+        )
+        sqlite_session.add_all([app, historical, current, draft, source_agent, source_snapshot, historical_binding])
+        app.workflow_id = historical.id
+        sqlite_session.commit()
+
+        app.workflow_id = current.id
+        sqlite_session.commit()
+
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app.tenant_id,
+            agent_ids=[source_agent.id],
+            account_id=account.id,
+        )
+        sqlite_session.expire_all()
+        retained_agent = sqlite_session.get(Agent, source_agent.id)
+        assert retained_agent is not None
+        assert retained_agent.status is AgentStatus.ACTIVE
+
+        with patch("services.workflow_service.app_draft_workflow_was_synced"):
+            restored_draft = workflow_service.restore_published_workflow_to_draft(
+                app_model=app,
+                workflow_id=historical.id,
+                account=account,
+                session=sqlite_session,
+            )
+
+        restored_binding = sqlite_session.scalar(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.workflow_id == draft.id,
+                WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
+                WorkflowAgentNodeBinding.node_id == "agent-node",
+            )
+        )
+        assert restored_draft is draft
+        assert app.workflow_id == current.id
+        assert sqlite_session.get(Workflow, historical.id) is historical
+        assert sqlite_session.get(WorkflowAgentNodeBinding, historical_binding.id) is historical_binding
+        assert restored_binding is not None
+        assert restored_binding.agent_id not in (None, source_agent.id)
+        assert restored_binding.current_snapshot_id not in (None, source_snapshot.id)
+        restored_agent = sqlite_session.get(Agent, restored_binding.agent_id)
+        restored_snapshot = sqlite_session.get(AgentConfigSnapshot, restored_binding.current_snapshot_id)
+        assert restored_agent is not None
+        assert restored_agent.workflow_id == draft.id
+        assert restored_agent.workflow_node_id == "agent-node"
+        assert restored_snapshot is not None
+        assert restored_snapshot.config_snapshot_dict == source_snapshot.config_snapshot_dict
 
     # ==================== Workflow Validation Tests ====================
     # These tests verify graph structure and feature configuration validation
@@ -1068,7 +1274,7 @@ class TestWorkflowService:
             patch("services.workflow_service.app_published_workflow_was_updated"),
             patch("services.workflow_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
-            result, retirement_candidates = workflow_service.publish_workflow(
+            result = workflow_service.publish_workflow(
                 session=sqlite_session,
                 app_model=app,
                 account=account,
@@ -1081,7 +1287,6 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.marked_name == "Version 1"
         assert result.marked_comment == "Initial release"
-        assert retirement_candidates == set()
 
     def test_publish_workflow_numbers_versions_from_one(
         self, workflow_service: WorkflowService, sqlite_session: Session
@@ -1107,8 +1312,8 @@ class TestWorkflowService:
                 DeploymentEdition.COMMUNITY,
             ),
         ):
-            first, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
-            second, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            first = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            second = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
         assert first.version_number == 1
         assert second.version_number == 2
@@ -1137,12 +1342,12 @@ class TestWorkflowService:
                 DeploymentEdition.COMMUNITY,
             ),
         ):
-            published, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            published = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             sqlite_session.flush()
             sqlite_session.delete(published)
             sqlite_session.flush()
 
-            republished, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+            republished = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
 
         assert republished.version_number == 2
 
@@ -1176,7 +1381,7 @@ class TestWorkflowService:
                     DeploymentEdition.COMMUNITY,
                 ),
             ):
-                workflow, _ = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
+                workflow = workflow_service.publish_workflow(session=sqlite_session, app_model=app, account=account)
             published.append(workflow)
 
         assert [workflow.version_number for workflow in published] == [1, 1]
@@ -1467,14 +1672,76 @@ class TestWorkflowService:
         workflow = TestWorkflowAssociatedDataFactory.create_workflow(
             workflow_id=workflow_id, tenant_id=tenant_id, app_id=app_id, version="v1"
         )
-        sqlite_session.add(workflow)
+        inline_binding = WorkflowAgentNodeBinding(
+            id="inline-binding",
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_version="v1",
+            node_id="inline-node",
+            binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+            agent_id="inline-agent",
+            current_snapshot_id="snapshot-1",
+            node_job_config={},
+        )
+        roster_binding = WorkflowAgentNodeBinding(
+            id="roster-binding",
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow_id,
+            workflow_version="v1",
+            node_id="roster-node",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id="roster-agent",
+            current_snapshot_id="snapshot-2",
+            node_job_config={},
+        )
+        non_target_bindings = [
+            WorkflowAgentNodeBinding(
+                id=f"non-target-{key}",
+                tenant_id="other-tenant" if key == "tenant" else tenant_id,
+                app_id="other-app" if key == "app" else app_id,
+                workflow_id="other-workflow" if key == "workflow" else workflow_id,
+                workflow_version="other-version" if key == "version" else workflow.version,
+                node_id=f"{key}-node",
+                binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+                agent_id=f"{key}-inline-agent",
+                current_snapshot_id=f"{key}-snapshot",
+                node_job_config={},
+            )
+            for key in ("tenant", "app", "workflow", "version")
+        ]
+        sqlite_session.add_all([workflow, inline_binding, roster_binding, *non_target_bindings])
         sqlite_session.commit()
 
         result = workflow_service.delete_workflow(session=sqlite_session, workflow_ref=workflow_ref)
         sqlite_session.flush()
 
-        assert result is True
+        assert result == ["inline-agent"]
         assert sqlite_session.get(Workflow, workflow_id) is None
+        assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
+        assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
+        for binding in non_target_bindings:
+            assert sqlite_session.get(WorkflowAgentNodeBinding, binding.id) is binding
+
+    def test_delete_workflow_locks_source_until_caller_commits(self, workflow_service: WorkflowService):
+        workflow = TestWorkflowAssociatedDataFactory.create_workflow(version="v1")
+        workflow_ref = WorkflowRef(
+            tenant_id=workflow.tenant_id,
+            owner_id=workflow.app_id,
+            workflow_id=workflow.id,
+        )
+        session = MagicMock(spec=Session)
+        session.scalar.side_effect = [workflow, None, None]
+        session.scalars.return_value.all.return_value = []
+
+        result = workflow_service.delete_workflow(session=session, workflow_ref=workflow_ref)
+
+        stmt = session.scalar.call_args_list[0].args[0]
+        sql = str(stmt.compile(dialect=postgresql.dialect()))
+        assert result == []
+        assert "FOR UPDATE" in sql
+        session.delete.assert_called_once_with(workflow)
 
     def test_delete_workflow_with_ref_scopes_lookup_to_app(
         self, workflow_service: WorkflowService, sqlite_session: Session
@@ -2942,7 +3209,9 @@ class TestWorkflowServiceDraftExecution:
     def service(self, sqlite_engine: Engine) -> WorkflowService:
         return WorkflowService(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
 
-    def test_run_draft_workflow_node_should_execute_start_node_successfully(self, service: WorkflowService) -> None:
+    def test_run_draft_workflow_node_should_execute_start_node_successfully(
+        self, service: WorkflowService, sqlite_engine: Engine
+    ) -> None:
         # Arrange
         app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
         account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
@@ -2964,8 +3233,7 @@ class TestWorkflowServiceDraftExecution:
 
         # Mocking complex dependencies
         with (
-            patch("services.workflow_service.db"),
-            patch("services.workflow_service.Session"),
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.StartNodeData") as mock_start_data,
             patch(
@@ -3021,7 +3289,9 @@ class TestWorkflowServiceDraftExecution:
             mock_repo.save.assert_called_once()
             mock_saver_cls.return_value.save.assert_called_once()
 
-    def test_run_draft_workflow_node_should_execute_non_start_node_successfully(self, service: WorkflowService) -> None:
+    def test_run_draft_workflow_node_should_execute_non_start_node_successfully(
+        self, service: WorkflowService, sqlite_engine: Engine
+    ) -> None:
         # Arrange
         app = TestWorkflowAssociatedDataFactory.create_app(app_id="app-1", tenant_id="tenant-1")
         account = TestWorkflowAssociatedDataFactory.create_account(account_id="user-1")
@@ -3046,8 +3316,7 @@ class TestWorkflowServiceDraftExecution:
         )
 
         with (
-            patch("services.workflow_service.db"),
-            patch("services.workflow_service.Session"),
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
             patch("services.workflow_service.default_system_variables") as mock_default_system_variables,
@@ -3281,14 +3550,13 @@ class TestWorkflowServiceHumanInputOperations:
 
         assert result == []
 
-    def test_build_human_input_variable_pool(self, service: WorkflowService) -> None:
+    def test_build_human_input_variable_pool(self, service: WorkflowService, sqlite_engine: Engine) -> None:
         workflow = TestWorkflowAssociatedDataFactory.create_workflow()
         node_data = MagicMock()
         node_data.extract_variable_selector_to_variable_mapping.return_value = {}
 
         with (
-            patch("services.workflow_service.db"),
-            patch("services.workflow_service.Session"),
+            patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
             patch("services.workflow_service.DraftVarLoader"),

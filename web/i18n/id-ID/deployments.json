@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Aksi lainnya",
   "deployTab.redeploy": "Terapkan Ulang",
   "deployTab.undeploy": "Batalkan Penerapan",
-  "deployTab.undeployConfirmWarning": "Setelah dikonfirmasi, lingkungan ini akan masuk ke status pembatalan penerapan dan tindakan akan dinonaktifkan sementara.",
   "health.ENVIRONMENT_STATUS_FAILED": "Tidak tersedia",
   "list.emptyTitle": "Belum ada penerapan",
   "overview.chip.latest": "terbaru",

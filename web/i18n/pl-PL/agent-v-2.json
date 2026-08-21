@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "np. Asystent badawczy",
   "roster.createSuccess": "Agent utworzony.",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Ten Agent zostanie usunięty z listy Agent.",
+  "roster.deleteDialog.description": "Spowoduje to trwałe usunięcie {{name}}. Jego aplikacja webowa, dostęp do API oraz workflow, które go używają, natychmiast przestaną działać.",
   "roster.deleteDialog.title": "Usunąć {{name}}?",
   "roster.deleteFailed": "Nie udało się usunąć agenta.",
   "roster.deleteSuccess": "Agent usunięty.",
