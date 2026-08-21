@@ -1,4 +1,4 @@
-"""Regression test: if-else branch + human_input pause + downstream answer nodes.
+"""In-memory regression test: if-else branch + human_input pause + downstream answer nodes.
 
 Reproduces https://github.com/langgenius/dify/issues/38525 at the
 iter_dify_graph_engine_events layer: without a restored ResponseStreamFilter,
