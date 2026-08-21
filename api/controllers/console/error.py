@@ -113,9 +113,3 @@ class EducationActivateLimitError(BaseHTTPException):
     error_code = "education_activate_limit"
     description = "Rate limit exceeded"
     code = 429
-
-
-class ComplianceRateLimitError(BaseHTTPException):
-    error_code = "compliance_rate_limit"
-    description = "Rate limit exceeded for downloading compliance report."
-    code = 429

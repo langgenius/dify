@@ -28,6 +28,7 @@ from services.errors.billing import (
     BillingAccessDeniedError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    ComplianceRateLimitExceededError,
 )
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -223,9 +224,10 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(_BillingHTTPStatusError) as exc_info:
             BillingService._send_request("POST", "/test", json={"key": "value"})
         assert "Unable to send request to" in str(exc_info.value)
+        assert exc_info.value.status_code == status_code
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -265,10 +267,11 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        # POST checks status code before calling response.json(), so ValueError is raised
-        with pytest.raises(ValueError) as exc_info:
+        # POST checks status code before calling response.json().
+        with pytest.raises(_BillingHTTPStatusError) as exc_info:
             BillingService._send_request("POST", "/test", json={"key": "value"})
         assert "Unable to send request to" in str(exc_info.value)
+        assert exc_info.value.status_code == status_code
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -1068,7 +1071,7 @@ class TestBillingServiceRateLimitEnforcement:
         tenant_id = "tenant-456"
         ip = "192.168.1.1"
         device_info = "Mozilla/5.0"
-        expected_response = {"download_link": "https://example.com/download"}
+        expected_response = {"url": "https://example.com/download", "ignored": True}
 
         # Mock the rate limiter to return False (not limited)
         with (
@@ -1083,7 +1086,7 @@ class TestBillingServiceRateLimitEnforcement:
             result = BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
 
             # Assert
-            assert result == expected_response
+            assert result == {"url": "https://example.com/download"}
             mock_is_limited.assert_called_once_with(f"{account_id}:{tenant_id}")
             mock_send_request.assert_called_once_with(
                 "POST",
@@ -1108,19 +1111,59 @@ class TestBillingServiceRateLimitEnforcement:
         ip = "192.168.1.1"
         device_info = "Mozilla/5.0"
 
-        # Import the error class to properly catch it
-        from controllers.console.error import ComplianceRateLimitError
-
         # Mock the rate limiter to return True (rate limited)
         with patch.object(
             BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=True
         ) as mock_is_limited:
             # Act & Assert
-            with pytest.raises(ComplianceRateLimitError):
+            with pytest.raises(ComplianceRateLimitExceededError):
                 BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
 
             mock_is_limited.assert_called_once_with(f"{account_id}:{tenant_id}")
             mock_send_request.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("request_error", "error_type"),
+        [
+            (_BillingHTTPStatusError("request failed", httpx.codes.BAD_REQUEST), BillingUpstreamInvalidResponseError),
+            (_BillingHTTPStatusError("request failed", httpx.codes.REQUEST_TIMEOUT), BillingUpstreamUnavailableError),
+            (_BillingHTTPStatusError("request failed", httpx.codes.TOO_MANY_REQUESTS), BillingUpstreamUnavailableError),
+            (
+                _BillingHTTPStatusError("request failed", httpx.codes.INTERNAL_SERVER_ERROR),
+                BillingUpstreamUnavailableError,
+            ),
+            (httpx.RequestError("request failed"), BillingUpstreamUnavailableError),
+        ],
+    )
+    def test_compliance_download_maps_request_failure(
+        self, mock_send_request, request_error: Exception, error_type: type[Exception]
+    ) -> None:
+        with (
+            patch.object(BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=False),
+            patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as increment,
+        ):
+            mock_send_request.side_effect = request_error
+
+            with pytest.raises(error_type):
+                BillingService.get_compliance_download_link(
+                    "SOC2_Type_II", "account-1", "tenant-1", "127.0.0.1", "test"
+                )
+
+        increment.assert_not_called()
+
+    def test_compliance_download_rejects_invalid_response(self, mock_send_request) -> None:
+        with (
+            patch.object(BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=False),
+            patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as increment,
+        ):
+            mock_send_request.return_value = {}
+
+            with pytest.raises(BillingUpstreamInvalidResponseError):
+                BillingService.get_compliance_download_link(
+                    "SOC2_Type_II", "account-1", "tenant-1", "127.0.0.1", "test"
+                )
+
+        increment.assert_not_called()
 
     def test_education_verify_rate_limit_not_exceeded(self, mock_send_request):
         """Test education verification when rate limit is not exceeded."""
@@ -1923,7 +1966,7 @@ class TestBillingServiceIntegrationScenarios:
         assert updated_usage["used"] == 0
         assert updated_usage["remaining"] == 100
 
-    def test_compliance_download_multiple_requests_within_limit(self, mock_send_request):
+    def test_compliance_download_multiple_requests_within_limit(self):
         """Test multiple compliance downloads within rate limit."""
         # Arrange
         account_id = "account-compliance"
@@ -1938,13 +1981,14 @@ class TestBillingServiceIntegrationScenarios:
                 BillingService.compliance_download_rate_limiter, "is_rate_limited", side_effect=[False, False, False]
             ) as mock_is_limited,
             patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as mock_increment,
+            patch.object(BillingService, "_send_request") as send_request,
         ):
-            mock_send_request.return_value = {"download_link": "https://example.com/download"}
+            send_request.return_value = {"url": "https://example.com/download"}
 
             # Act - Make 3 requests
             for i in range(3):
                 result = BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
-                assert "download_link" in result
+                assert "url" in result
 
             # Assert - All 3 requests succeeded
             assert mock_is_limited.call_count == 3
