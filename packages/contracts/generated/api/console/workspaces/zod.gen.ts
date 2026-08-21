@@ -248,13 +248,31 @@ export const zParserPreferredProviderType = z.object({
 })
 
 /**
- * NetworkAccessPolicyPayload
+ * NetworkAccessGroupCreatePayload
  */
-export const zNetworkAccessPolicyPayload = z.object({
+export const zNetworkAccessGroupCreatePayload = z.object({
   allowed_cidrs: z.array(z.string()).max(100),
-  expected_version: z.int().gte(0),
+  description: z.string().max(500).optional().default(''),
   mode: z.enum(['disabled', 'enforce', 'shadow']),
-  scope: z.enum(['mcp', 'plugin_trigger', 'service_api', 'workflow_webhook']),
+  name: z.string().min(1).max(100),
+})
+
+/**
+ * NetworkAccessGroupDeleteResponse
+ */
+export const zNetworkAccessGroupDeleteResponse = z.object({
+  deleted: z.boolean(),
+})
+
+/**
+ * NetworkAccessGroupUpdatePayload
+ */
+export const zNetworkAccessGroupUpdatePayload = z.object({
+  allowed_cidrs: z.array(z.string()).max(100),
+  description: z.string().max(500).optional().default(''),
+  expected_version: z.int().gte(1),
+  mode: z.enum(['disabled', 'enforce', 'shadow']),
+  name: z.string().min(1).max(100),
 })
 
 /**
@@ -996,32 +1014,35 @@ export const zCredentialConfiguration = z.object({
 })
 
 /**
- * NetworkAccessPolicyResponse
+ * NetworkAccessGroupResponse
  */
-export const zNetworkAccessPolicyResponse = z.object({
-  allowed_cidrs: z.array(z.string()),
-  created_at: z.iso.datetime().nullish(),
+export const zNetworkAccessGroupResponse = z.object({
+  allowed_cidrs: z.array(z.string()).optional(),
+  created_at: z.iso.datetime(),
+  description: z.string().optional().default(''),
+  id: z.string(),
   mode: z.enum(['disabled', 'enforce', 'shadow']),
-  scope: z.enum(['mcp', 'plugin_trigger', 'service_api', 'workflow_webhook']),
-  updated_at: z.iso.datetime().nullish(),
+  name: z.string(),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
   updated_by_account_id: z.string().nullish(),
-  version: z.int().gte(0),
+  version: z.int().gte(1),
 })
 
 /**
- * NetworkAccessPolicyListResponse
+ * NetworkAccessGroupListResponse
  */
-export const zNetworkAccessPolicyListResponse = z.object({
+export const zNetworkAccessGroupListResponse = z.object({
   entitled: z.boolean(),
-  policies: z.array(zNetworkAccessPolicyResponse),
+  groups: z.array(zNetworkAccessGroupResponse),
   tenant_id: z.string(),
 })
 
 /**
- * NetworkAccessPolicyUpdateResponse
+ * NetworkAccessGroupMutationResponse
  */
-export const zNetworkAccessPolicyUpdateResponse = z.object({
-  policy: zNetworkAccessPolicyResponse,
+export const zNetworkAccessGroupMutationResponse = z.object({
+  group: zNetworkAccessGroupResponse,
 })
 
 /**
@@ -4141,16 +4162,53 @@ export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse = zAvailableModelListResponse
 
 /**
- * Workspace network access policies retrieved successfully
+ * Workspace network access groups retrieved successfully
  */
-export const zGetWorkspacesCurrentNetworkAccessPolicyResponse = zNetworkAccessPolicyListResponse
+export const zGetWorkspacesCurrentNetworkAccessGroupsResponse = zNetworkAccessGroupListResponse
 
-export const zPutWorkspacesCurrentNetworkAccessPolicyBody = zNetworkAccessPolicyPayload
+export const zPostWorkspacesCurrentNetworkAccessGroupsBody = zNetworkAccessGroupCreatePayload
 
 /**
- * Workspace network access policy updated successfully
+ * Workspace network access group created successfully
  */
-export const zPutWorkspacesCurrentNetworkAccessPolicyResponse = zNetworkAccessPolicyUpdateResponse
+export const zPostWorkspacesCurrentNetworkAccessGroupsResponse = zNetworkAccessGroupMutationResponse
+
+export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
+  group_id: z.uuid(),
+})
+
+export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdQuery = z.object({
+  expected_version: z.int().gte(1),
+})
+
+/**
+ * Workspace network access group deleted successfully
+ */
+export const zDeleteWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  zNetworkAccessGroupDeleteResponse
+
+export const zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
+  group_id: z.uuid(),
+})
+
+/**
+ * Workspace network access group retrieved successfully
+ */
+export const zGetWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  zNetworkAccessGroupMutationResponse
+
+export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdBody =
+  zNetworkAccessGroupUpdatePayload
+
+export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdPath = z.object({
+  group_id: z.uuid(),
+})
+
+/**
+ * Workspace network access group updated successfully
+ */
+export const zPutWorkspacesCurrentNetworkAccessGroupsByGroupIdResponse =
+  zNetworkAccessGroupMutationResponse
 
 /**
  * Success

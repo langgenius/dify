@@ -199,12 +199,13 @@ class DismissNotificationDict(TypedDict):
     success: bool
 
 
-class NetworkAccessPolicyUpstreamError(Exception):
-    """Failure returned by the SaaS network-access-policy control plane."""
+class NetworkAccessGroupUpstreamError(Exception):
+    """Failure returned by the SaaS network-access-group control plane."""
 
-    def __init__(self, status_code: int):
+    def __init__(self, status_code: int, reason: str | None = None):
         self.status_code = status_code
-        super().__init__(f"network access policy upstream returned HTTP {status_code}")
+        self.reason = reason
+        super().__init__(f"network access group upstream returned HTTP {status_code}")
 
 
 class BillingService:
@@ -427,32 +428,76 @@ class BillingService:
         return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
 
     @classmethod
-    def get_network_access_policies(cls, tenant_id: str, actor_account_id: str) -> dict[str, Any]:
-        """Fetch workspace network access policies from the SaaS control plane."""
+    def list_network_access_groups(cls, tenant_id: str, actor_account_id: str) -> dict[str, Any]:
+        """List the reusable network access groups owned by one workspace."""
 
-        return cls._send_network_access_policy_request(
+        return cls._send_network_access_group_request(
             "GET",
-            f"/tenants/{tenant_id}/network-access-policies",
+            f"/tenants/{tenant_id}/network-access-groups",
             params={"actor_account_id": actor_account_id},
         )
 
     @classmethod
-    def update_network_access_policy(
+    def create_network_access_group(
         cls,
         tenant_id: str,
-        scope: str,
         *,
+        name: str,
+        description: str,
+        mode: str,
+        allowed_cidrs: list[str],
+        actor_account_id: str,
+    ) -> dict[str, Any]:
+        """Create a reusable group; the Console BFF injects the authenticated actor."""
+
+        return cls._send_network_access_group_request(
+            "POST",
+            f"/tenants/{tenant_id}/network-access-groups",
+            payload_json={
+                "name": name,
+                "description": description,
+                "mode": mode,
+                "allowed_cidrs": allowed_cidrs,
+                "actor_account_id": actor_account_id,
+            },
+        )
+
+    @classmethod
+    def get_network_access_group(
+        cls,
+        tenant_id: str,
+        group_id: str,
+        actor_account_id: str,
+    ) -> dict[str, Any]:
+        """Fetch one reusable group scoped to its owning workspace."""
+
+        return cls._send_network_access_group_request(
+            "GET",
+            f"/tenants/{tenant_id}/network-access-groups/{group_id}",
+            params={"actor_account_id": actor_account_id},
+        )
+
+    @classmethod
+    def update_network_access_group(
+        cls,
+        tenant_id: str,
+        group_id: str,
+        *,
+        name: str,
+        description: str,
         mode: str,
         allowed_cidrs: list[str],
         expected_version: int,
         actor_account_id: str,
     ) -> dict[str, Any]:
-        """Replace one workspace policy; the authenticated account is injected by the Console BFF."""
+        """Replace a reusable group using optimistic concurrency control."""
 
-        return cls._send_network_access_policy_request(
+        return cls._send_network_access_group_request(
             "PUT",
-            f"/tenants/{tenant_id}/network-access-policies/{scope}",
+            f"/tenants/{tenant_id}/network-access-groups/{group_id}",
             payload_json={
+                "name": name,
+                "description": description,
                 "mode": mode,
                 "allowed_cidrs": allowed_cidrs,
                 "expected_version": expected_version,
@@ -461,36 +506,100 @@ class BillingService:
         )
 
     @classmethod
-    def _send_network_access_policy_request(
+    def delete_network_access_group(
         cls,
-        method: Literal["GET", "PUT"],
+        tenant_id: str,
+        group_id: str,
+        *,
+        expected_version: int,
+        actor_account_id: str,
+    ) -> dict[str, Any]:
+        """Delete an unbound reusable group using optimistic concurrency control."""
+
+        return cls._send_network_access_group_request(
+            "DELETE",
+            f"/tenants/{tenant_id}/network-access-groups/{group_id}",
+            params={
+                "expected_version": expected_version,
+                "actor_account_id": actor_account_id,
+            },
+        )
+
+    @classmethod
+    def get_app_network_access_group(
+        cls,
+        tenant_id: str,
+        app_id: str,
+        actor_account_id: str,
+    ) -> dict[str, Any]:
+        """Fetch the reusable group currently assigned to one tenant-scoped app."""
+
+        return cls._send_network_access_group_request(
+            "GET",
+            f"/tenants/{tenant_id}/apps/{app_id}/network-access-group",
+            params={"actor_account_id": actor_account_id},
+        )
+
+    @classmethod
+    def update_app_network_access_group(
+        cls,
+        tenant_id: str,
+        app_id: str,
+        *,
+        group_id: str | None,
+        expected_version: int,
+        actor_account_id: str,
+    ) -> dict[str, Any]:
+        """Assign or unassign one reusable group from a tenant-scoped app."""
+
+        return cls._send_network_access_group_request(
+            "PUT",
+            f"/tenants/{tenant_id}/apps/{app_id}/network-access-group",
+            payload_json={
+                "group_id": group_id,
+                "expected_version": expected_version,
+                "actor_account_id": actor_account_id,
+            },
+        )
+
+    @classmethod
+    def _send_network_access_group_request(
+        cls,
+        method: Literal["GET", "POST", "PUT", "DELETE"],
         endpoint: str,
         *,
         payload_json: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Call the SaaS policy API while preserving its status for the Console boundary."""
+        """Call the SaaS group API while preserving its status for the Console boundary."""
 
         try:
-            response = cls._send_network_access_policy_http_request(
+            response = cls._send_network_access_group_http_request(
                 method,
                 endpoint,
                 payload_json=payload_json,
                 params=params,
             )
         except httpx.RequestError as exc:
-            raise NetworkAccessPolicyUpstreamError(httpx.codes.SERVICE_UNAVAILABLE) from exc
+            raise NetworkAccessGroupUpstreamError(httpx.codes.SERVICE_UNAVAILABLE) from exc
 
-        if response.status_code != httpx.codes.OK:
-            raise NetworkAccessPolicyUpstreamError(response.status_code)
+        if response.status_code not in (httpx.codes.OK, httpx.codes.CREATED):
+            reason = None
+            try:
+                error_payload = response.json()
+                if isinstance(error_payload, dict) and isinstance(error_payload.get("reason"), str):
+                    reason = error_payload["reason"]
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+            raise NetworkAccessGroupUpstreamError(response.status_code, reason)
 
         try:
             payload = response.json()
         except (json.JSONDecodeError, TypeError, ValueError) as exc:
-            raise NetworkAccessPolicyUpstreamError(httpx.codes.BAD_GATEWAY) from exc
+            raise NetworkAccessGroupUpstreamError(httpx.codes.BAD_GATEWAY) from exc
 
         if not isinstance(payload, dict):
-            raise NetworkAccessPolicyUpstreamError(httpx.codes.BAD_GATEWAY)
+            raise NetworkAccessGroupUpstreamError(httpx.codes.BAD_GATEWAY)
         return payload
 
     @classmethod
@@ -500,9 +609,9 @@ class BillingService:
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_network_access_policy_http_request(
+    def _send_network_access_group_http_request(
         cls,
-        method: Literal["GET", "PUT"],
+        method: Literal["GET", "POST", "PUT", "DELETE"],
         endpoint: str,
         *,
         payload_json: dict[str, Any] | None = None,
