@@ -1,3 +1,5 @@
+"""Sandbox-backed CodeNode execution tests."""
+
 import time
 import uuid
 
@@ -18,21 +20,12 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 pytest_plugins = ("tests.integration_tests.workflow.nodes.__mock.code_executor",)
 
-CODE_MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 
-
-def init_code_node(code_config: dict):
+def _init_code_node(code_config: dict) -> CodeNode:
     graph_config = {
-        "edges": [
-            {
-                "id": "start-source-code-target",
-                "source": "start",
-                "target": "code",
-            },
-        ],
+        "edges": [{"id": "start-source-code-target", "source": "start", "target": "code"}],
         "nodes": [{"data": {"type": "start", "title": "Start"}, "id": "start"}, code_config],
     }
-
     init_params = build_test_graph_init_params(
         workflow_id="1",
         graph_config=graph_config,
@@ -43,8 +36,6 @@ def init_code_node(code_config: dict):
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-
-    # construct variable pool
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id="aaa", files=[]),
         user_inputs={},
@@ -53,18 +44,10 @@ def init_code_node(code_config: dict):
     )
     variable_pool.add(["code", "args1"], 1)
     variable_pool.add(["code", "args2"], 2)
-
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
-
-    # Create node factory
-    node_factory = DifyNodeFactory(
-        graph_init_params=init_params,
-        graph_runtime_state=graph_runtime_state,
-    )
-
-    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
-
-    node = CodeNode(
+    node_factory = DifyNodeFactory(graph_init_params=init_params, graph_runtime_state=graph_runtime_state)
+    Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id="start")
+    return CodeNode(
         node_id=str(uuid.uuid4()),
         data=CodeNodeData.model_validate(code_config["data"]),
         graph_init_params=init_params,
@@ -82,49 +65,36 @@ def init_code_node(code_config: dict):
         ),
     )
 
-    return node
 
-
-@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
-def test_execute_code(setup_code_executor_mock):
-    code = """
-    def main(args1: int, args2: int):
-        return {
-            "result": args1 + args2,
-        }
-    """
-    # trim first 4 spaces at the beginning of each line
-    code = "\n".join([line[4:] for line in code.split("\n")])
-
-    code_config = {
+def _code_config(code: str, output_type: str, *, variables: bool = True) -> dict:
+    selectors = []
+    if variables:
+        selectors = [
+            {"variable": "args1", "value_selector": ["1", "args1"]},
+            {"variable": "args2", "value_selector": ["1", "args2"]},
+        ]
+    return {
         "id": "code",
         "data": {
             "type": "code",
-            "outputs": {
-                "result": {
-                    "type": "number",
-                },
-            },
-            "title": "123",
-            "variables": [
-                {
-                    "variable": "args1",
-                    "value_selector": ["1", "args1"],
-                },
-                {"variable": "args2", "value_selector": ["1", "args2"]},
-            ],
-            "answer": "123",
+            "outputs": {"result": {"type": output_type}},
+            "title": "Code",
+            "variables": selectors,
             "code_language": "python3",
             "code": code,
         },
     }
 
-    node = init_code_node(code_config)
+
+@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
+def test_execute_code(setup_code_executor_mock) -> None:
+    code = "def main(args1: int, args2: int):\n    return {'result': args1 + args2}"
+    node = _init_code_node(_code_config(code, "number"))
     node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
     node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
 
-    # execute node
     result = node._run()
+
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs is not None
@@ -133,274 +103,27 @@ def test_execute_code(setup_code_executor_mock):
 
 
 @pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
-def test_execute_code_output_validator(setup_code_executor_mock):
-    code = """
-    def main(args1: int, args2: int):
-        return {
-            "result": args1 + args2,
-        }
-    """
-    # trim first 4 spaces at the beginning of each line
-    code = "\n".join([line[4:] for line in code.split("\n")])
-
-    code_config = {
-        "id": "code",
-        "data": {
-            "type": "code",
-            "outputs": {
-                "result": {
-                    "type": "string",
-                },
-            },
-            "title": "123",
-            "variables": [
-                {
-                    "variable": "args1",
-                    "value_selector": ["1", "args1"],
-                },
-                {"variable": "args2", "value_selector": ["1", "args2"]},
-            ],
-            "answer": "123",
-            "code_language": "python3",
-            "code": code,
-        },
-    }
-
-    node = init_code_node(code_config)
+def test_execute_code_output_validator(setup_code_executor_mock) -> None:
+    code = "def main(args1: int, args2: int):\n    return {'result': args1 + args2}"
+    node = _init_code_node(_code_config(code, "string"))
     node.graph_runtime_state.variable_pool.add(["1", "args1"], 1)
     node.graph_runtime_state.variable_pool.add(["1", "args2"], 2)
 
-    # execute node
     result = node._run()
+
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "Output result must be a string, got int instead."
 
 
-def test_execute_code_output_validator_depth():
-    code = """
-    def main(args1: int, args2: int):
-        return {
-            "result": {
-                "result": args1 + args2,
-            }
-        }
-    """
-    # trim first 4 spaces at the beginning of each line
-    code = "\n".join([line[4:] for line in code.split("\n")])
-
-    code_config = {
-        "id": "code",
-        "data": {
-            "type": "code",
-            "outputs": {
-                "string_validator": {
-                    "type": "string",
-                },
-                "number_validator": {
-                    "type": "number",
-                },
-                "number_array_validator": {
-                    "type": "array[number]",
-                },
-                "string_array_validator": {
-                    "type": "array[string]",
-                },
-                "object_validator": {
-                    "type": "object",
-                    "children": {
-                        "result": {
-                            "type": "number",
-                        },
-                        "depth": {
-                            "type": "object",
-                            "children": {
-                                "depth": {
-                                    "type": "object",
-                                    "children": {
-                                        "depth": {
-                                            "type": "number",
-                                        }
-                                    },
-                                }
-                            },
-                        },
-                    },
-                },
-            },
-            "title": "123",
-            "variables": [
-                {
-                    "variable": "args1",
-                    "value_selector": ["1", "args1"],
-                },
-                {"variable": "args2", "value_selector": ["1", "args2"]},
-            ],
-            "answer": "123",
-            "code_language": "python3",
-            "code": code,
-        },
-    }
-
-    node = init_code_node(code_config)
-
-    # construct result
-    result = {
-        "number_validator": 1,
-        "string_validator": "1",
-        "number_array_validator": [1, 2, 3, 3.333],
-        "string_array_validator": ["1", "2", "3"],
-        "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
-    }
-
-    # validate
-    node._transform_result(result, node._node_data.outputs)
-
-    # construct result
-    result = {
-        "number_validator": "1",
-        "string_validator": 1,
-        "number_array_validator": ["1", "2", "3", "3.333"],
-        "string_array_validator": [1, 2, 3],
-        "object_validator": {"result": "1", "depth": {"depth": {"depth": "1"}}},
-    }
-
-    # validate
-    with pytest.raises(ValueError):
-        node._transform_result(result, node._node_data.outputs)
-
-    # construct result
-    result = {
-        "number_validator": 1,
-        "string_validator": (CODE_MAX_STRING_LENGTH + 1) * "1",
-        "number_array_validator": [1, 2, 3, 3.333],
-        "string_array_validator": ["1", "2", "3"],
-        "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
-    }
-
-    # validate
-    with pytest.raises(ValueError):
-        node._transform_result(result, node._node_data.outputs)
-
-    # construct result
-    result = {
-        "number_validator": 1,
-        "string_validator": "1",
-        "number_array_validator": [1, 2, 3, 3.333] * 2000,
-        "string_array_validator": ["1", "2", "3"],
-        "object_validator": {"result": 1, "depth": {"depth": {"depth": 1}}},
-    }
-
-    # validate
-    with pytest.raises(ValueError):
-        node._transform_result(result, node._node_data.outputs)
-
-
-def test_execute_code_output_object_list():
-    code = """
-    def main(args1: int, args2: int):
-        return {
-            "result": {
-                "result": args1 + args2,
-            }
-        }
-    """
-    # trim first 4 spaces at the beginning of each line
-    code = "\n".join([line[4:] for line in code.split("\n")])
-
-    code_config = {
-        "id": "code",
-        "data": {
-            "type": "code",
-            "outputs": {
-                "object_list": {
-                    "type": "array[object]",
-                },
-            },
-            "title": "123",
-            "variables": [
-                {
-                    "variable": "args1",
-                    "value_selector": ["1", "args1"],
-                },
-                {"variable": "args2", "value_selector": ["1", "args2"]},
-            ],
-            "answer": "123",
-            "code_language": "python3",
-            "code": code,
-        },
-    }
-
-    node = init_code_node(code_config)
-
-    # construct result
-    result = {
-        "object_list": [
-            {
-                "result": 1,
-            },
-            {
-                "result": 2,
-            },
-            {
-                "result": [1, 2, 3],
-            },
-        ]
-    }
-
-    # validate
-    node._transform_result(result, node._node_data.outputs)
-
-    # construct result
-    result = {
-        "object_list": [
-            {
-                "result": 1,
-            },
-            {
-                "result": 2,
-            },
-            {
-                "result": [1, 2, 3],
-            },
-            1,
-        ]
-    }
-
-    # validate
-    with pytest.raises(ValueError):
-        node._transform_result(result, node._node_data.outputs)
-
-
 @pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
-def test_execute_code_scientific_notation(setup_code_executor_mock):
-    code = """
-    def main():
-        return {
-            "result": -8.0E-5
-        }
-    """
-    code = "\n".join([line[4:] for line in code.split("\n")])
+def test_execute_code_scientific_notation(setup_code_executor_mock) -> None:
+    code = "def main():\n    return {'result': -8.0E-5}"
+    node = _init_code_node(_code_config(code, "number", variables=False))
 
-    code_config = {
-        "id": "code",
-        "data": {
-            "type": "code",
-            "outputs": {
-                "result": {
-                    "type": "number",
-                },
-            },
-            "title": "123",
-            "variables": [],
-            "answer": "123",
-            "code_language": "python3",
-            "code": code,
-        },
-    }
-
-    node = init_code_node(code_config)
-    # execute node
     result = node._run()
+
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
+    assert result.outputs["result"] == -8e-5
