@@ -188,6 +188,10 @@ Distribuzione con un clic di Dify su Alibaba Cloud con [Alibaba Cloud Data Manag
 
 Distribuite Dify con un clic in AKS utilizzando [Azure DevOps Pipeline Helm Chart di @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Distribuzione con Sealos
+
+Distribuite Dify con un clic tramite [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
 ## Contribuire
 
 Se desiderate contribuire con codice, leggete la nostra [Guida ai Contributi](../../CONTRIBUTING.md). Allo stesso tempo, vi chiediamo di supportare Dify condividendolo sui social media e presentandolo a eventi e conferenze.
