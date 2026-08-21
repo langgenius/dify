@@ -133,7 +133,7 @@ export function SkillPublishBar({
           variant="primary"
           disabled={state === 'published'}
           aria-disabled={state === 'publishing'}
-          className="h-8 gap-1 rounded-lg px-3"
+          className="h-8 shrink-0 gap-1 rounded-lg px-3"
           onClick={canPublish ? onPublish : undefined}
         >
           {state === 'publishing' && (
