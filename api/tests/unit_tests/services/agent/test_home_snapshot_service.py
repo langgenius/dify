@@ -356,7 +356,11 @@ def test_build_apply_surfaces_a_non_dict_backend_detail(monkeypatch: pytest.Monk
     with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
         _apply_with_client_error(monkeypatch, error)
 
-    assert excinfo.value.data["message"] == "upstream exploded"
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_create_failed",
+        "message": "upstream exploded",
+        "status": 502,
+    }
 
 
 def test_build_apply_surfaces_a_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -365,7 +369,11 @@ def test_build_apply_surfaces_a_transport_failure(monkeypatch: pytest.MonkeyPatc
     with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
         _apply_with_client_error(monkeypatch, error)
 
-    assert excinfo.value.data["message"] == "read timed out after 45.0s"
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_create_failed",
+        "message": "read timed out after 45.0s",
+        "status": 502,
+    }
 
 
 def test_build_apply_still_maps_404_to_a_missing_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
