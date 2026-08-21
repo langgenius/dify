@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_agent.client import DifyAgentHTTPError, DifyAgentNotFoundError, DifyAgentTimeoutError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -15,7 +16,7 @@ from models.agent import (
     AgentWorkingResourceStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.errors import AgentBuildSandboxNotFoundError
+from services.agent.errors import AgentBuildSandboxNotFoundError, AgentHomeSnapshotCreateFailedError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceService
 
@@ -309,3 +310,66 @@ def test_home_snapshot_collection_final_delete_failure_propagates(
 
     assert exc_info.value is error
     delete.assert_called_once_with(snapshot_ref="snapshot-ref-1")
+
+
+def _apply_with_client_error(monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(app_id="app-1", backing_app_id=None)
+    binding = SimpleNamespace(
+        backend_binding_ref="binding-ref-1",
+        agent_id="agent-1",
+        base_home_snapshot_id="home-old",
+        agent_config_version_id="build-1",
+        agent_config_version_kind="build_draft",
+    )
+    client = MagicMock()
+    client.create_home_snapshot_from_binding_sync.side_effect = error
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+
+    AgentHomeSnapshotService.create_for_build_apply(session=session, build_draft=_build_draft())
+
+
+def test_build_apply_surfaces_the_backend_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentHTTPError(
+        status_code=502,
+        detail={
+            "code": "home_snapshot_create_failed",
+            "message": "413 snapshot_size_exceeded: stream exceeded 67108864 bytes",
+        },
+    )
+
+    with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_create_failed",
+        "message": "413 snapshot_size_exceeded: stream exceeded 67108864 bytes",
+        "status": 502,
+    }
+
+
+def test_build_apply_surfaces_a_non_dict_backend_detail(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentHTTPError(status_code=500, detail="upstream exploded")
+
+    with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data["message"] == "upstream exploded"
+
+
+def test_build_apply_surfaces_a_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentTimeoutError("read timed out after 45.0s")
+
+    with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data["message"] == "read timed out after 45.0s"
+
+
+def test_build_apply_still_maps_404_to_a_missing_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentNotFoundError(status_code=404, detail={"code": "binding_lost", "message": "gone"})
+
+    with pytest.raises(AgentBuildSandboxNotFoundError):
+        _apply_with_client_error(monkeypatch, error)

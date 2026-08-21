@@ -14,6 +14,7 @@ from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError, DifyAgen
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
+from clients.agent_backend.errors import backend_error_detail
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -136,13 +137,8 @@ def _handle(exc: Exception) -> tuple[dict[str, object], int]:
     if isinstance(exc, AgentSandboxInspectorError):
         return {"code": exc.code, "message": exc.message}, exc.status_code
     if isinstance(exc, DifyAgentHTTPError):
-        detail = exc.detail
-        if isinstance(detail, dict):
-            return {
-                "code": detail.get("code", "agent_backend_error"),
-                "message": detail.get("message", str(exc)),
-            }, exc.status_code
-        return {"code": "agent_backend_error", "message": str(detail)}, exc.status_code
+        code, message = backend_error_detail(exc)
+        return {"code": code, "message": message}, exc.status_code
     if isinstance(exc, DifyAgentTimeoutError | DifyAgentClientError):
         return {"code": "agent_backend_unreachable", "message": str(exc)}, 502
     raise exc

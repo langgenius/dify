@@ -10,7 +10,25 @@ from __future__ import annotations
 
 from typing import Any
 
+from dify_agent.client import DifyAgentHTTPError
 from dify_agent.protocol import RunFailureType
+
+
+def backend_error_detail(
+    exc: DifyAgentHTTPError,
+    *,
+    default_code: str = "agent_backend_error",
+) -> tuple[str, str]:
+    """Split an Agent backend HTTP error into the code and message the backend itself sent."""
+    detail = exc.detail
+    if isinstance(detail, dict):
+        code = detail.get("code")
+        message = detail.get("message")
+        return (
+            code if isinstance(code, str) and code else default_code,
+            message if isinstance(message, str) and message else str(exc),
+        )
+    return default_code, str(detail)
 
 
 class AgentBackendError(Exception):

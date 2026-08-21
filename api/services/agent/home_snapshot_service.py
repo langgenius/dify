@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from dify_agent.client import Client, DifyAgentNotFoundError
+from dify_agent.client import Client, DifyAgentClientError, DifyAgentHTTPError, DifyAgentNotFoundError
 from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.errors import backend_error_detail
 from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -21,7 +22,7 @@ from models.agent import (
     AgentWorkingResourceStatus,
     AgentWorkspaceOwnerType,
 )
-from services.agent.errors import AgentBuildSandboxNotFoundError
+from services.agent.errors import AgentBuildSandboxNotFoundError, AgentHomeSnapshotCreateFailedError
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 
@@ -90,6 +91,11 @@ class AgentHomeSnapshotService:
                 )
         except DifyAgentNotFoundError as exc:
             raise AgentBuildSandboxNotFoundError() from exc
+        except DifyAgentHTTPError as exc:
+            _, message = backend_error_detail(exc)
+            raise AgentHomeSnapshotCreateFailedError(message) from exc
+        except DifyAgentClientError as exc:
+            raise AgentHomeSnapshotCreateFailedError(str(exc)) from exc
 
         home_snapshot = AgentHomeSnapshot(
             id=home_snapshot_id,

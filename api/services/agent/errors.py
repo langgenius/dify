@@ -41,6 +41,12 @@ class AgentBuildSandboxNotFoundError(BaseHTTPException):
     code = 404
 
 
+class AgentHomeSnapshotCreateFailedError(BaseHTTPException):
+    error_code = "agent_home_snapshot_create_failed"
+    description = "Failed to capture the Agent Home Snapshot."
+    code = 502
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 
