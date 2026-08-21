@@ -1374,6 +1374,7 @@ dependencies = [
     { name = "httpx", extra = ["socks"] },
     { name = "httpx-sse" },
     { name = "json-repair" },
+    { name = "jsonschema" },
     { name = "opentelemetry-distro" },
     { name = "opentelemetry-instrumentation-celery" },
     { name = "opentelemetry-instrumentation-flask" },
@@ -1431,6 +1432,7 @@ dev = [
     { name = "types-greenlet" },
     { name = "types-html5lib" },
     { name = "types-jmespath" },
+    { name = "types-jsonschema" },
     { name = "types-markdown" },
     { name = "types-oauthlib" },
     { name = "types-objgraph" },
@@ -1664,6 +1666,7 @@ requires-dist = [
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
     { name = "json-repair", specifier = "==0.60.1" },
+    { name = "jsonschema", specifier = ">=4.23.0,<5.0.0" },
     { name = "opentelemetry-distro", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-celery", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-flask", specifier = "==0.65b0" },
@@ -1721,6 +1724,7 @@ dev = [
     { name = "types-greenlet", specifier = ">=3.5.0.20260428" },
     { name = "types-html5lib", specifier = ">=1.1.11" },
     { name = "types-jmespath", specifier = ">=1.1.0.20260408" },
+    { name = "types-jsonschema", specifier = ">=4.23.0" },
     { name = "types-markdown", specifier = ">=3.10.2" },
     { name = "types-oauthlib", specifier = ">=3.3.0" },
     { name = "types-objgraph", specifier = ">=3.6.0" },
@@ -6836,6 +6840,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/5e/33881ff525fbaa71cb6192d81fd4039607006ff48f85c40ef1e20d72d1d3/types_jmespath-1.1.0.20260408.tar.gz", hash = "sha256:42483cfc3d16bdd88c1150a7419d59ef59b8bdc4db3eec8ebf6971a0dad1a425", size = 10733, upload-time = "2026-04-08T04:29:22.923Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/f8/4c34097ce72dc8ea533db26a0162c53837398b26d4a0645ca3c7df74370b/types_jmespath-1.1.0.20260408-py3-none-any.whl", hash = "sha256:58a29fe039e5d3f9d0d42f1b067b9efa7c3e29c7e6df9c6830cbe5fa44ffb943", size = 11512, upload-time = "2026-04-08T04:29:22.133Z" },
+]
+
+[[package]]
+name = "types-jsonschema"
+version = "4.26.0.20260518"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "referencing" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/46/73b6a5d61a61015c4248030a8cb07e5bdddb4041430fae9e585a68692578/types_jsonschema-4.26.0.20260518.tar.gz", hash = "sha256:e1dd53dc97a64f5eccdd6fa9839666e09bb500a8ebba2db6fdaf1789faea81a6", size = 16638, upload-time = "2026-05-18T06:06:44.106Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/d5/134f8a147dcecda10db7f60cfc6af0578a25a5c53c87b3907a64385e0184/types_jsonschema-4.26.0.20260518-py3-none-any.whl", hash = "sha256:30b30a518c7fe335df85c919fcbcc631b69c03d4a4b5b632fa916bea03065307", size = 16072, upload-time = "2026-05-18T06:06:43.264Z" },
 ]
 
 [[package]]

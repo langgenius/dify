@@ -17,6 +17,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.errors import ToolParameterValidationError
 
 
 class Tool(ABC):
@@ -90,10 +91,15 @@ class Tool(ABC):
         result = deepcopy(tool_parameters)
         for parameter in self.entity.parameters or []:
             if parameter.name in tool_parameters:
-                if parameter.multiple:
-                    result[parameter.name] = parameter.init_frontend_parameter(result.get(parameter.name))
-                else:
-                    result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
+                try:
+                    if parameter.multiple:
+                        result[parameter.name] = parameter.init_frontend_parameter(result.get(parameter.name))
+                    else:
+                        result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
+                except ValueError as e:
+                    # Name the offending parameter: the caller (often an LLM) needs to know
+                    # which argument to correct, not just that some argument was malformed.
+                    raise ToolParameterValidationError(f"parameter '{parameter.name}': {e}") from e
 
         return result
 

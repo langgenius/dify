@@ -211,6 +211,128 @@ def test_get_db_provider_tool_builds_entity(database_session: Session):
     assert controller.provider_type == ToolProviderType.WORKFLOW
 
 
+def test_get_db_provider_tool_propagates_json_object_schema(database_session: Session):
+    """A json_object start variable must expose its nested schema to the model.
+
+    Without this the LLM only sees ``{"type": "object"}`` and has to guess the shape
+    from prose, which is how malformed payloads get produced in the first place.
+    """
+    json_schema = {
+        "type": "object",
+        "properties": {
+            "task_tickets": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"},
+                        "subagent_name": {"type": "string"},
+                        "task_ticket": {"type": "string"},
+                    },
+                    "required": ["task_id", "subagent_name", "task_ticket"],
+                },
+            }
+        },
+        "required": ["task_tickets"],
+        "additionalProperties": False,
+    }
+    db_provider, app, user, _ = _persist_provider_graph(
+        database_session,
+        parameter_configuration=json.dumps(
+            [
+                {
+                    "name": "subagent_tasks",
+                    "description": "Tasks to dispatch",
+                    "form": ToolParameter.ToolParameterForm.LLM.value,
+                }
+            ]
+        ),
+    )
+    controller = _controller(db_provider.id)
+    variables = [
+        VariableEntity(
+            variable="subagent_tasks",
+            label="Subagent tasks",
+            description="Tasks to dispatch",
+            type=VariableEntityType.JSON_OBJECT,
+            required=True,
+            json_schema=json_schema,
+        )
+    ]
+
+    with (
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowAppConfigManager.convert_features",
+            return_value=SimpleNamespace(file_upload=False),
+        ),
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
+            return_value=variables,
+        ),
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
+            return_value=[],
+        ),
+    ):
+        tool = controller._get_db_provider_tool(db_provider, app, session=database_session, user=user)
+
+    parameter = tool.entity.parameters[0]
+    assert parameter.type == ToolParameter.ToolParameterType.OBJECT
+    assert parameter.input_schema == json_schema
+
+    model_schema = tool.get_llm_parameters_json_schema()
+    subagent_tasks = cast(dict[str, Any], model_schema["properties"])["subagent_tasks"]
+    assert subagent_tasks["properties"]["task_tickets"]["type"] == "array"
+    assert subagent_tasks["required"] == ["task_tickets"]
+    assert subagent_tasks["description"] == "Tasks to dispatch"
+    assert model_schema["required"] == ["subagent_tasks"]
+
+
+def test_get_db_provider_tool_omits_input_schema_when_variable_has_none(database_session: Session):
+    db_provider, app, user, _ = _persist_provider_graph(
+        database_session,
+        parameter_configuration=json.dumps(
+            [
+                {
+                    "name": "payload",
+                    "description": "Payload",
+                    "form": ToolParameter.ToolParameterForm.LLM.value,
+                }
+            ]
+        ),
+    )
+    controller = _controller(db_provider.id)
+    variables = [
+        VariableEntity(
+            variable="payload",
+            label="Payload",
+            description="Payload",
+            type=VariableEntityType.JSON_OBJECT,
+            required=False,
+        )
+    ]
+
+    with (
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowAppConfigManager.convert_features",
+            return_value=SimpleNamespace(file_upload=False),
+        ),
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_variables",
+            return_value=variables,
+        ),
+        patch(
+            "core.tools.workflow_as_tool.provider.WorkflowToolConfigurationUtils.get_workflow_graph_output",
+            return_value=[],
+        ),
+    ):
+        tool = controller._get_db_provider_tool(db_provider, app, session=database_session, user=user)
+
+    assert tool.entity.parameters[0].input_schema is None
+    payload = cast(dict[str, Any], tool.get_llm_parameters_json_schema()["properties"])["payload"]
+    assert payload == {"type": "object", "description": "Payload"}
+
+
 def test_get_tool_returns_hit_or_none():
     controller = _controller()
     tool = _workflow_tool()
