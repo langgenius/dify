@@ -11,7 +11,7 @@ from models import Tenant
 
 
 class DummyQueueManager(AppQueueManager):
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         super().__init__(*args, **kwargs)
         self.published = []
 

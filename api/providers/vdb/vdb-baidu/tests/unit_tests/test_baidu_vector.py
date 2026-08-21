@@ -25,7 +25,7 @@ def _build_fake_pymochow_modules():
     pymochow_model_table = types.ModuleType("pymochow.model.table")
 
     class _SimpleObject:
-        def __init__(self, *args, **kwargs):
+        def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
             self.args = args
             for key, value in kwargs.items():
                 setattr(self, key, value)

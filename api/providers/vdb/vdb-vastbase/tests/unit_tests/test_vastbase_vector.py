@@ -18,7 +18,7 @@ def _build_fake_psycopg2_modules():
     psycopg2_pool = types.ModuleType("psycopg2.pool")
 
     class SimpleConnectionPool:
-        def __init__(self, *args, **kwargs):
+        def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
             self.args = args
             self.kwargs = kwargs
             self.getconn = MagicMock()
