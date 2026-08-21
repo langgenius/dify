@@ -16,7 +16,7 @@ from models.agent_config_entities import AgentSoulConfig
 
 _MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
-    / "migrations/versions/2026_08_20_0938-fbdfcf5f5a6e_clean_legacy_agent_soul_files.py"
+    / "migrations/versions/2026_08_21_0938-fbdfcf5f5a6e_clean_legacy_agent_soul_files.py"
 )
 
 
