@@ -1,5 +1,6 @@
 import base64
 import json
+from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
@@ -8,10 +9,143 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, UnprocessableEntity
 
 from controllers.console import wraps as console_wraps
-from controllers.console.billing.billing import PartnerTenants
-from enums import DeploymentEdition
+from controllers.console.billing.billing import Invoices, PartnerTenants, Subscription, SubscriptionQuery
+from controllers.console.billing.error import (
+    BillingAccessDeniedRequestError,
+    BillingOperationFailedError,
+    BillingUnavailableError,
+)
+from enums import CloudPlan, DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import DifySetup
+from services.errors.billing import (
+    BillingAccessDeniedError,
+    BillingUpstreamUnavailableError,
+)
+
+
+class TestBillingPortal:
+    @pytest.fixture
+    def app(self) -> Flask:
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        return app
+
+    @pytest.fixture
+    def account(self) -> Account:
+        account = Account(name="Billing Owner", email="owner@example.com")
+        account.id = "account-1"
+        account.role = TenantAccountRole.OWNER
+        return account
+
+    def test_get_subscription_uses_loaded_role_and_response_contract(self, app: Flask, account: Account) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
+
+        with (
+            app.test_request_context("/billing/subscription"),
+            patch(
+                "controllers.console.billing.billing.BillingService.ensure_tenant_owner_or_admin"
+            ) as ensure_tenant_owner_or_admin,
+            patch(
+                "controllers.console.billing.billing.BillingService.get_subscription",
+                return_value={"url": "https://billing.example.com/checkout", "ignored": True},
+            ) as get_subscription,
+        ):
+            result = method(resource, query, "tenant-1", account)
+
+        ensure_tenant_owner_or_admin.assert_called_once_with(TenantAccountRole.OWNER)
+        get_subscription.assert_called_once_with(
+            CloudPlan.PROFESSIONAL,
+            "month",
+            "owner@example.com",
+            "tenant-1",
+        )
+        assert result == {"url": "https://billing.example.com/checkout"}
+
+    def test_get_invoices_uses_loaded_role_and_response_contract(self, app: Flask, account: Account) -> None:
+        resource = Invoices()
+        method = unwrap(resource.get)
+
+        with (
+            app.test_request_context("/billing/invoices"),
+            patch(
+                "controllers.console.billing.billing.BillingService.ensure_tenant_owner_or_admin"
+            ) as ensure_tenant_owner_or_admin,
+            patch(
+                "controllers.console.billing.billing.BillingService.get_invoices",
+                return_value={"url": "https://billing.example.com/portal", "ignored": True},
+            ) as get_invoices,
+        ):
+            result = method(resource, "tenant-1", account)
+
+        ensure_tenant_owner_or_admin.assert_called_once_with(TenantAccountRole.OWNER)
+        get_invoices.assert_called_once_with("owner@example.com", "tenant-1")
+        assert result == {"url": "https://billing.example.com/portal"}
+
+    def test_get_subscription_translates_access_denied(self, app: Flask, account: Account) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
+
+        with (
+            app.test_request_context("/billing/subscription"),
+            patch(
+                "controllers.console.billing.billing.BillingService.ensure_tenant_owner_or_admin",
+                side_effect=BillingAccessDeniedError,
+            ),
+            patch("controllers.console.billing.billing.BillingService.get_subscription") as get_subscription,
+        ):
+            with pytest.raises(BillingAccessDeniedRequestError) as exc_info:
+                method(resource, query, "tenant-1", account)
+
+        assert exc_info.value.data == {
+            "code": "billing_access_denied",
+            "message": "Only workspace owners and admins can manage plans and payments.",
+            "status": 403,
+        }
+        get_subscription.assert_not_called()
+
+    def test_get_invoices_translates_unavailable_operation(self, app: Flask, account: Account) -> None:
+        resource = Invoices()
+        method = unwrap(resource.get)
+
+        with (
+            app.test_request_context("/billing/invoices"),
+            patch("controllers.console.billing.billing.BillingService.ensure_tenant_owner_or_admin"),
+            patch(
+                "controllers.console.billing.billing.BillingService.get_invoices",
+                side_effect=BillingUpstreamUnavailableError,
+            ),
+        ):
+            with pytest.raises(BillingUnavailableError) as exc_info:
+                method(resource, "tenant-1", account)
+
+        assert exc_info.value.data == {
+            "code": "billing_unavailable",
+            "message": "This operation is temporarily unavailable. Please try again later.",
+            "status": 503,
+        }
+
+    def test_get_subscription_rejects_malformed_response(self, app: Flask, account: Account) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
+
+        with (
+            app.test_request_context("/billing/subscription"),
+            patch("controllers.console.billing.billing.BillingService.ensure_tenant_owner_or_admin"),
+            patch("controllers.console.billing.billing.BillingService.get_subscription", return_value={}),
+        ):
+            with pytest.raises(BillingOperationFailedError) as exc_info:
+                method(resource, query, "tenant-1", account)
+
+        assert exc_info.value.data == {
+            "code": "billing_operation_failed",
+            "message": "We couldn't complete this request. Please try again. If the problem persists, contact support.",
+            "status": 502,
+        }
 
 
 @pytest.mark.parametrize(

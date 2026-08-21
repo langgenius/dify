@@ -8,6 +8,24 @@ export type BillingInvoiceResponse = {
   url: string
 }
 
+export type BillingAccessDeniedErrorResponse = {
+  code: 'billing_access_denied'
+  message: string
+  status: 403
+}
+
+export type BillingOperationFailedErrorResponse = {
+  code: 'billing_operation_failed'
+  message: string
+  status: 502
+}
+
+export type BillingUnavailableErrorResponse = {
+  code: 'billing_unavailable'
+  message: string
+  status: 503
+}
+
 export type PartnerTenantsPayload = {
   click_id: string
 }
@@ -20,12 +38,26 @@ export type BillingSubscriptionResponse = {
   url: string
 }
 
+export type BillingUnprocessableEntityErrorResponse = {
+  code: 'unprocessable_entity'
+  message: string
+  status: 422
+}
+
 export type GetBillingInvoicesData = {
   body?: never
   path?: never
   query?: never
   url: '/billing/invoices'
 }
+
+export type GetBillingInvoicesErrors = {
+  403: BillingAccessDeniedErrorResponse
+  502: BillingOperationFailedErrorResponse
+  503: BillingUnavailableErrorResponse
+}
+
+export type GetBillingInvoicesError = GetBillingInvoicesErrors[keyof GetBillingInvoicesErrors]
 
 export type GetBillingInvoicesResponses = {
   200: BillingInvoiceResponse
@@ -63,6 +95,16 @@ export type GetBillingSubscriptionData = {
   }
   url: '/billing/subscription'
 }
+
+export type GetBillingSubscriptionErrors = {
+  403: BillingAccessDeniedErrorResponse
+  422: BillingUnprocessableEntityErrorResponse
+  502: BillingOperationFailedErrorResponse
+  503: BillingUnavailableErrorResponse
+}
+
+export type GetBillingSubscriptionError =
+  GetBillingSubscriptionErrors[keyof GetBillingSubscriptionErrors]
 
 export type GetBillingSubscriptionResponses = {
   200: BillingSubscriptionResponse
