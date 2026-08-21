@@ -65,6 +65,7 @@ from dify_agent.protocol.schemas import (
     PydanticAIStreamRunEvent,
     RunComposition,
     RunFailedEvent,
+    RunFailedEventData,
     RunFailureType,
     RunLayerSpec,
     RunSucceededEvent,
@@ -252,6 +253,27 @@ def test_cancelled_runner_does_not_emit_late_failure(
 
         assert "run-cancelled" not in sink.statuses
         assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
+
+    asyncio.run(scenario())
+
+
+def test_runner_stops_when_terminal_transition_seals_events_before_starting() -> None:
+    async def scenario() -> None:
+        sink = InMemoryRunEventSink()
+        _ = await sink.finalize_run(
+            RunFailedEvent(run_id="run-sealed", data=RunFailedEventData(error="already finished"))
+        )
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-sealed",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            )
+            await runner.run()
+
+        assert [event.type for event in sink.events["run-sealed"]] == ["run_failed"]
 
     asyncio.run(scenario())
 

@@ -31,6 +31,7 @@ from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunEventSink,
     RunFinalizationResult,
+    RunSealedError,
     TerminalRunEvent,
     terminal_event_status_fields,
 )
@@ -79,6 +80,24 @@ local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[7])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("SET", KEYS[1], updated_record_json, "EX", ttl)
 return {1, ARGV[1], event_id}
+"""
+
+_APPEND_EVENT_SCRIPT = """
+local record_json = redis.call("GET", KEYS[1])
+if not record_json then
+    return {-1, ""}
+end
+
+local record = cjson.decode(record_json)
+if record.status ~= "running" then
+    return {0, tostring(record.status)}
+end
+
+local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[1])
+local ttl = tonumber(ARGV[2])
+redis.call("EXPIRE", KEYS[2], ttl)
+redis.call("EXPIRE", KEYS[1], ttl)
+return {1, event_id}
 """
 
 
@@ -192,19 +211,26 @@ class RedisRunStore(RunEventSink):
         return RunRecord.model_validate_json(value)
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Append a non-terminal event JSON payload with refreshed TTLs."""
-        events_key = run_events_key(self.prefix, event.run_id)
+        """Append a non-terminal event only while its run record is running."""
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        async with self.redis.pipeline(transaction=True) as pipeline:
-            _ = pipeline.xadd(
-                events_key,
-                {"payload": payload},
-            )
-            _ = pipeline.expire(events_key, self.run_retention_seconds)
-            _ = pipeline.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
-            results = cast(list[object], await pipeline.execute())
-        event_id = results[0]
-        return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+        raw_result = await cast(
+            Awaitable[object],
+            self.redis.eval(
+                _APPEND_EVENT_SCRIPT,
+                2,
+                run_record_key(self.prefix, event.run_id),
+                run_events_key(self.prefix, event.run_id),
+                payload,
+                str(self.run_retention_seconds),
+            ),
+        )
+        result = cast(list[object], raw_result)
+        applied = int(cast(int | bytes | str, result[0]))
+        if applied == -1:
+            raise RunNotFoundError(event.run_id)
+        if applied == 0:
+            raise RunSealedError(cast(RunStatus, _decode_redis_text(result[1])))
+        return _decode_redis_text(result[1])
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first success/failure event and update its run record."""

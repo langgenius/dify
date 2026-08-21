@@ -69,6 +69,7 @@ from dify_agent.runtime.compaction import build_compaction_capability
 from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
+    RunSealedError,
     emit_pydantic_ai_event,
     emit_run_failed,
     emit_run_started,
@@ -229,10 +230,15 @@ class AgentRunRunner:
         self._terminal_usage = None
         if self.is_cancelled():
             return
-        _ = await emit_run_started(self.sink, run_id=self.run_id)
+        try:
+            _ = await emit_run_started(self.sink, run_id=self.run_id)
+        except RunSealedError:
+            return
 
         try:
             outcome = await self._run_agent()
+        except RunSealedError:
+            return
         except Exception as exc:
             if self.is_cancelled():
                 return

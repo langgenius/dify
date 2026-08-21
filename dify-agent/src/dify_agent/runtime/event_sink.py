@@ -1,10 +1,11 @@
 """Event sink contracts used by the runner and storage adapters.
 
-Non-terminal events remain append-only. Successful and failed terminal events
-use ``finalize_run`` so the event and matching run status are committed as one
-compare-and-set transition. Cancellation has a dedicated intent-aware finalizer.
-Tests can use ``InMemoryRunEventSink`` without Redis; production storage
-implements the same contract with Redis streams in
+Non-terminal events remain append-only while a run is running, then are rejected
+once a terminal event wins. Terminal events use ``finalize_run`` so the event
+and matching run status are committed as one compare-and-set transition.
+Cancellation has a dedicated intent-aware finalizer. Tests can use
+``InMemoryRunEventSink`` without Redis; production storage implements the same
+contract with Redis streams in
 ``dify_agent.storage.redis_run_store``.
 """
 
@@ -47,11 +48,19 @@ class RunFinalizationResult:
     event_id: str | None = None
 
 
+class RunSealedError(RuntimeError):
+    """Raised when a non-terminal event loses to a terminal transition."""
+
+    def __init__(self, status: RunStatus) -> None:
+        super().__init__(f"run is sealed with status {status!r}")
+        self.status: RunStatus = status
+
+
 class RunEventSink(Protocol):
     """Boundary used by runtime code to publish observable run progress."""
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Persist a non-terminal event and return its cursor id."""
+        """Persist a non-terminal event or raise ``RunSealedError``."""
         ...
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
@@ -74,7 +83,10 @@ class InMemoryRunEventSink:
         self.error_types = {}
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Store a non-terminal event and assign a monotonic per-run cursor."""
+        """Store a non-terminal event while the run remains running."""
+        status = self.statuses.get(event.run_id, "running")
+        if status != "running":
+            raise RunSealedError(status)
         event_id = str(len(self.events[event.run_id]) + 1)
         stored = event.model_copy(update={"id": event_id})
         self.events[event.run_id].append(stored)
@@ -209,6 +221,7 @@ __all__ = [
     "NonTerminalRunEvent",
     "RunEventSink",
     "RunFinalizationResult",
+    "RunSealedError",
     "TerminalRunEvent",
     "emit_pydantic_ai_event",
     "emit_run_event",
