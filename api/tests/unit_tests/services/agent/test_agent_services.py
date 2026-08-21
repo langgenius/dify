@@ -37,7 +37,7 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, Conversation, IconType, Message
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow, WorkflowType
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -178,6 +178,12 @@ def _app(
     )
 
 
+def _account(*, account_id: str = "account-1") -> Account:
+    account = Account(name="Agent Tester", email=f"{account_id}@example.com")
+    account.id = account_id
+    return account
+
+
 def test_agent_soul_has_model():
     assert agent_soul_has_model(_agent_soul_with_model()) is True
     assert agent_soul_has_model(AgentSoulConfig()) is False
@@ -249,7 +255,7 @@ def test_peek_authz_app_id_returns_none_without_creating_a_backing_app(sqlite_se
 
 def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
 
     result = AgentComposerService.load_workflow_composer(
@@ -266,22 +272,22 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPa
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    binding = SimpleNamespace(
+    binding = WorkflowAgentNodeBinding(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         current_snapshot_id="version-1",
     )
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(
         AgentComposerService,
         "_get_agent_if_present",
-        lambda **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1"),
+        lambda **kwargs: _agent(),
     )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
-        lambda **kwargs: SimpleNamespace(id="version-1"),
+        lambda **kwargs: _snapshot(snapshot_id="version-1"),
     )
     monkeypatch.setattr(
         AgentComposerService,
@@ -298,20 +304,21 @@ def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.
 
 def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    binding = SimpleNamespace(
+    binding = WorkflowAgentNodeBinding(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         current_snapshot_id="binding-version",
     )
-    agent = SimpleNamespace(id="agent-1", scope=AgentScope.ROSTER, active_config_snapshot_id="active-version")
+    agent = _agent()
+    agent.active_config_snapshot_id = "active-version"
 
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: agent)
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
-        lambda **kwargs: SimpleNamespace(id=kwargs["version_id"]),
+        lambda **kwargs: _snapshot(snapshot_id=kwargs["version_id"]),
     )
     monkeypatch.setattr(
         AgentComposerService,
@@ -335,7 +342,7 @@ def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest
 
 def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    binding = SimpleNamespace(
+    binding = WorkflowAgentNodeBinding(
         agent_id="inline-agent-1",
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
         current_snapshot_id="inline-version-1",
@@ -343,7 +350,7 @@ def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest
         workflow_id="workflow-1",
         node_id="node-1",
     )
-    agent = SimpleNamespace(
+    agent = Agent(
         id="inline-agent-1",
         scope=AgentScope.WORKFLOW_ONLY,
         app_id="app-1",
@@ -352,13 +359,13 @@ def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest
         active_config_snapshot_id="inline-version-1",
     )
 
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: agent)
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
-        lambda **kwargs: SimpleNamespace(id=kwargs["version_id"]),
+        lambda **kwargs: _snapshot(snapshot_id=kwargs["version_id"]),
     )
     monkeypatch.setattr(
         AgentComposerService,
@@ -391,8 +398,8 @@ def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch
 
     monkeypatch.setattr(roster_service, "AgentRosterService", FakeRosterService)
 
-    binding = SimpleNamespace(binding_type=WorkflowAgentBindingType.INLINE_AGENT)
-    agent = SimpleNamespace(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY)
+    binding = WorkflowAgentNodeBinding(binding_type=WorkflowAgentBindingType.INLINE_AGENT)
+    agent = Agent(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY)
 
     debug_conversation_id = AgentComposerService._workflow_inline_debug_conversation_id(
         session=session,
@@ -424,8 +431,8 @@ def test_workflow_inline_debug_conversation_seed_skips_non_inline(
         AgentComposerService._workflow_inline_debug_conversation_id(
             session=session,
             tenant_id="tenant-1",
-            binding=SimpleNamespace(binding_type=WorkflowAgentBindingType.ROSTER_AGENT),
-            agent=SimpleNamespace(id="agent-1", scope=AgentScope.ROSTER),
+            binding=WorkflowAgentNodeBinding(binding_type=WorkflowAgentBindingType.ROSTER_AGENT),
+            agent=Agent(id="agent-1", scope=AgentScope.ROSTER),
             account_id="account-1",
         )
         is None
@@ -434,8 +441,8 @@ def test_workflow_inline_debug_conversation_seed_skips_non_inline(
         AgentComposerService._workflow_inline_debug_conversation_id(
             session=session,
             tenant_id="tenant-1",
-            binding=SimpleNamespace(binding_type=WorkflowAgentBindingType.INLINE_AGENT),
-            agent=SimpleNamespace(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY),
+            binding=WorkflowAgentNodeBinding(binding_type=WorkflowAgentBindingType.INLINE_AGENT),
+            agent=Agent(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY),
             account_id=None,
         )
         is None
@@ -446,7 +453,7 @@ def test_load_workflow_composer_rejects_preview_without_binding(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
 
     with pytest.raises(AgentVersionNotFoundError):
@@ -471,7 +478,7 @@ def test_load_workflow_composer_rejects_preview_without_binding(
 )
 def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, helper_name, sqlite_session: Session):
     session = sqlite_session
-    binding = SimpleNamespace(
+    binding = WorkflowAgentNodeBinding(
         agent_id="agent-1",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         current_snapshot_id="version-1",
@@ -480,17 +487,17 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
     serialize_calls = []
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
     monkeypatch.setattr(
         AgentComposerService,
         "_get_agent_if_present",
-        lambda **kwargs: SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1"),
+        lambda **kwargs: _agent(),
     )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
-        lambda **kwargs: SimpleNamespace(id="version-1"),
+        lambda **kwargs: _snapshot(snapshot_id="version-1"),
     )
 
     def serialize_workflow_state(**kwargs):
@@ -532,27 +539,27 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
 ) -> None:
     session = sqlite_session
     events: list[str] = []
-    old_binding = SimpleNamespace(
+    old_binding = WorkflowAgentNodeBinding(
         agent_id="old-inline-agent",
         binding_type=WorkflowAgentBindingType.INLINE_AGENT,
     )
-    new_binding = SimpleNamespace(
+    new_binding = WorkflowAgentNodeBinding(
         agent_id="new-agent",
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         current_snapshot_id="version-1",
     )
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **_kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **_kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **_kwargs: old_binding)
     monkeypatch.setattr(AgentComposerService, "_save_as_new_agent", lambda **_kwargs: new_binding)
     monkeypatch.setattr(
         AgentComposerService,
         "_get_agent_if_present",
-        lambda **_kwargs: SimpleNamespace(id="new-agent", active_config_snapshot_id="version-1"),
+        lambda **_kwargs: _agent(agent_id="new-agent"),
     )
     monkeypatch.setattr(
         AgentComposerService,
         "_get_version_if_present",
-        lambda **_kwargs: SimpleNamespace(id="version-1"),
+        lambda **_kwargs: _snapshot(snapshot_id="version-1"),
     )
     monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", lambda **_kwargs: {"state": "ok"})
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **_kwargs: None)
@@ -649,10 +656,10 @@ def test_publish_save_strategies_run_publish_validation(strategy: ComposerSaveSt
 
 def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    saved_draft = SimpleNamespace(
+    saved_draft = AgentConfigDraft(
         id="draft-1",
         home_snapshot_id="home-initial",
-        config_snapshot_dict={"prompt": {"system_prompt": "x"}},
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "x"}}),
     )
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
@@ -689,18 +696,11 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
 
 def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    agent = SimpleNamespace(
-        id="agent-1",
-        active_config_snapshot_id="version-1",
-        active_config_is_published=True,
-        updated_by="account-1",
-        created_by="account-1",
-        app_id="app-1",
-        backing_app_id="app-1",
-        scope=AgentScope.ROSTER,
-        status=AgentStatus.ACTIVE,
-    )
-    draft = SimpleNamespace(config_snapshot_dict={"prompt": {"system_prompt": "x"}})
+    agent = _agent(source=AgentSource.AGENT_APP, app_id="app-1")
+    agent.active_config_snapshot_id = "version-1"
+    agent.active_config_is_published = True
+    agent.backing_app_id = "app-1"
+    draft = AgentConfigDraft(config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "x"}}))
 
     monkeypatch.setattr(AgentComposerService, "_require_agent_app_agent", lambda **kwargs: agent)
     monkeypatch.setattr(AgentComposerService, "_get_or_create_agent_draft", lambda **kwargs: draft)
@@ -743,16 +743,14 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
     agent.updated_by = None
     session.add(agent)
     session.commit()
-    active_version = SimpleNamespace(
-        home_snapshot_id="home-initial", config_snapshot_dict=AgentSoulConfig().model_dump(mode="json")
-    )
+    active_version = AgentConfigSnapshot(home_snapshot_id="home-initial", config_snapshot=AgentSoulConfig())
     saved = {}
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(
         AgentComposerService,
         "_save_agent_draft",
-        lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1", home_snapshot_id="home-initial"),
+        lambda **kwargs: saved.update(kwargs) or AgentConfigDraft(id="draft-1", home_snapshot_id="home-initial"),
     )
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
     monkeypatch.setattr(
@@ -801,15 +799,13 @@ def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snaps
     )
     session.add_all([agent, revision])
     session.commit()
-    active_version = SimpleNamespace(
-        home_snapshot_id="home-initial", config_snapshot_dict=agent_soul.model_dump(mode="json")
-    )
+    active_version = AgentConfigSnapshot(home_snapshot_id="home-initial", config_snapshot=agent_soul)
 
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(
         AgentComposerService,
         "_save_agent_draft",
-        lambda **_kwargs: SimpleNamespace(id="draft-1", home_snapshot_id="home-initial"),
+        lambda **_kwargs: AgentConfigDraft(id="draft-1", home_snapshot_id="home-initial"),
     )
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
     monkeypatch.setattr(
@@ -914,7 +910,7 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
         home_snapshot_id=None,
         config_snapshot=_agent_soul_with_model(),
     )
-    version = SimpleNamespace(id="version-2")
+    version = _snapshot(snapshot_id="version-2")
     app = _app(mode=AppMode.AGENT)
     app.enable_site = False
     app.enable_api = False
@@ -1001,7 +997,7 @@ def test_repeated_publish_reuses_normal_draft_home_without_creating_resources(
     session.add_all([agent, draft, app])
     session.commit()
     published_homes: list[str] = []
-    versions = iter([SimpleNamespace(id="version-2"), SimpleNamespace(id="version-3")])
+    versions = iter([_snapshot(snapshot_id="version-2"), _snapshot(snapshot_id="version-3")])
     create_from_build = MagicMock()
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
     publish_visibility = iter([False, True])
@@ -1114,7 +1110,7 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(
     source_binding_id = "binding-1"
     build_draft.agent_workspace_binding_id = source_binding_id
     session.commit()
-    create_home = MagicMock(return_value=SimpleNamespace(id="home-build", snapshot_ref="backend-home-build"))
+    create_home = MagicMock(return_value=AgentHomeSnapshot(id="home-build", snapshot_ref="backend-home-build"))
     monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     retire_binding = MagicMock()
     enqueue_collection = MagicMock()
@@ -1196,7 +1192,7 @@ def test_force_build_draft_checkout_collects_retired_binding_after_commit(
         agent_workspace_binding_id="binding-1",
         config_snapshot=_agent_soul_with_model(),
     )
-    binding = SimpleNamespace(
+    binding = AgentWorkspaceBinding(
         agent_id=agent.id,
         base_home_snapshot_id="home-1",
         agent_config_version_id=build_draft.id,
@@ -1338,7 +1334,7 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(
         home_snapshot_id=None,
         config_snapshot=AgentSoulConfig(),
     )
-    source_binding = SimpleNamespace(
+    source_binding = AgentWorkspaceBinding(
         id="binding-1",
         backend_binding_ref="backend-binding-1",
         agent_id="agent-1",
@@ -1437,7 +1433,7 @@ def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
     preview_conversation = _conversation(conversation_id="conversation-preview", account_id="account-2")
     preview_conversation.agent_workspace_binding_id = "binding-preview"
     empty_preview_conversation = _conversation(conversation_id="conversation-preview-empty", account_id="account-3")
-    preview_binding = SimpleNamespace(
+    preview_binding = AgentWorkspaceBinding(
         id="binding-preview",
         agent_id=agent.id,
         base_home_snapshot_id="home-preview-old",
@@ -1460,7 +1456,7 @@ def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
     monkeypatch.setattr(
         AgentHomeSnapshotService,
         "create_for_build_apply",
-        MagicMock(return_value=SimpleNamespace(id="home-applied")),
+        MagicMock(return_value=AgentHomeSnapshot(id="home-applied")),
     )
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", MagicMock(return_value=normal_draft))
     monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", MagicMock(return_value=False))
@@ -1582,7 +1578,7 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
     )
     session.add_all([agent, build_draft])
     session.commit()
-    create_home = MagicMock(return_value=SimpleNamespace(id="home-new", snapshot_ref="backend-home-new"))
+    create_home = MagicMock(return_value=AgentHomeSnapshot(id="home-new", snapshot_ref="backend-home-new"))
     validate_knowledge = MagicMock()
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", validate_knowledge)
@@ -1698,7 +1694,7 @@ def test_build_apply_fails_when_locked_source_cannot_be_retired(
     monkeypatch.setattr(
         AgentHomeSnapshotService,
         "create_for_build_apply",
-        MagicMock(return_value=SimpleNamespace(id="home-new", snapshot_ref="backend-home-new")),
+        MagicMock(return_value=AgentHomeSnapshot(id="home-new", snapshot_ref="backend-home-new")),
     )
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", MagicMock(return_value=normal_draft))
     monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", lambda **_kwargs: False)
@@ -1826,7 +1822,7 @@ def test_build_apply_commit_failure_rolls_back_and_preserves_physical_home(
     monkeypatch.setattr(
         AgentHomeSnapshotService,
         "create_for_build_apply",
-        lambda **_kwargs: SimpleNamespace(id="home-new", snapshot_ref="backend-home-new"),
+        lambda **_kwargs: AgentHomeSnapshot(id="home-new", snapshot_ref="backend-home-new"),
     )
     monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete_home)
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: normal_draft)
@@ -1921,7 +1917,7 @@ def test_build_discard_retires_then_commits_before_enqueue(
         agent_workspace_binding_id="binding-1",
         config_snapshot=AgentSoulConfig(),
     )
-    binding = SimpleNamespace(
+    binding = AgentWorkspaceBinding(
         agent_id=agent.id,
         base_home_snapshot_id="home-1",
         agent_config_version_id=build_draft.id,
@@ -1969,7 +1965,7 @@ def test_build_discard_commit_failure_does_not_enqueue(
         agent_workspace_binding_id="binding-1",
         config_snapshot=AgentSoulConfig(),
     )
-    binding = SimpleNamespace(
+    binding = AgentWorkspaceBinding(
         agent_id=agent.id,
         base_home_snapshot_id="home-1",
         agent_config_version_id=build_draft.id,
@@ -2149,7 +2145,7 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
     )
     session.add_all([agent, build_draft, normal_draft, active_version])
     session.commit()
-    create_home = MagicMock(return_value=SimpleNamespace(id="home-build", snapshot_ref="backend-home-build"))
+    create_home = MagicMock(return_value=AgentHomeSnapshot(id="home-build", snapshot_ref="backend-home-build"))
     monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
     monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", MagicMock())
@@ -2355,8 +2351,8 @@ def test_serialize_workflow_state_includes_inline_debug_conversation_message_sta
 
 def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    workflow_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
-    roster_agent = SimpleNamespace(
+    workflow_agent = Agent(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
+    roster_agent = Agent(
         id="roster-agent-1",
         active_config_snapshot_id="roster-version-1",
         name="Roster",
@@ -2483,7 +2479,7 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
 
 def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
-    inline_agent = SimpleNamespace(
+    inline_agent = Agent(
         id="inline-agent-1",
         scope=AgentScope.WORKFLOW_ONLY,
         active_config_snapshot_id="inline-version-1",
@@ -2676,7 +2672,7 @@ def test_node_job_only_switches_roster_binding_to_inline_agent(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    created_agent = SimpleNamespace(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
+    created_agent = Agent(id="inline-agent-1", active_config_snapshot_id="inline-version-1")
     captured: dict[str, object] = {}
 
     def fake_create_workflow_only_agent(**kwargs):
@@ -2781,7 +2777,7 @@ def test_node_job_only_rejects_inline_binding_pointing_to_roster_agent(
         config_snapshot='{"prompt":{"system_prompt":"old"}}',
     )
     next_snapshot = AgentConfigSnapshot(id="inline-version-2", tenant_id="tenant-1", agent_id="agent-1", version=2)
-    roster_agent = SimpleNamespace(id="agent-1", scope=AgentScope.ROSTER)
+    roster_agent = Agent(id="agent-1", scope=AgentScope.ROSTER)
 
     monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: current_snapshot)
     monkeypatch.setattr(AgentComposerService, "_update_current_version", lambda **kwargs: next_snapshot)
@@ -2823,7 +2819,7 @@ def test_copy_workflow_composer_from_roster_creates_inline_agent_and_preserves_n
     sqlite_session: Session,
 ):
     session = sqlite_session
-    workflow = SimpleNamespace(id="workflow-1")
+    workflow = _workflow()
     node_job = WorkflowNodeJobConfig(workflow_prompt="keep this node task")
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
@@ -2924,7 +2920,7 @@ def test_copy_workflow_composer_from_roster_rejects_stale_source_snapshot(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(
         AgentComposerService,
         "_get_workflow_binding",
@@ -3006,7 +3002,7 @@ def test_copy_workflow_composer_from_roster_rejects_unpublished_source(
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id="roster-version-1",
     )
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: source_agent)
     require_version = MagicMock(side_effect=AssertionError("unpublished source must fail before loading snapshot"))
@@ -3058,7 +3054,7 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(
     )
     serialize_calls = []
     session = sqlite_session
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: inline_binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: inline_agent)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: inline_version)
@@ -3146,7 +3142,7 @@ def test_copy_workflow_composer_from_roster_rejects_invalid_source_binding(
         status=source_status,
         active_config_snapshot_id="version-1",
     )
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: _workflow())
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: source_agent)
 
@@ -3181,7 +3177,7 @@ def test_composer_create_agents_syncs_active_config_has_model(
     class FakeAppService:
         def create_app(self, tenant_id, params, account, *, session):
             created_apps.append((tenant_id, params, account))
-            return SimpleNamespace(id="app-agent-1")
+            return _app(app_id="app-agent-1")
 
     class FakeAgentRosterService:
         def __init__(self, session):
@@ -3189,7 +3185,7 @@ def test_composer_create_agents_syncs_active_config_has_model(
 
         def create_hidden_backing_app_for_workflow_agent(self, **kwargs):
             hidden_backing_apps.append(kwargs)
-            return SimpleNamespace(id="hidden-app-1")
+            return _app(app_id="hidden-app-1")
 
         def get_app_backing_agent(self, *, tenant_id, app_id):
             assert tenant_id == "tenant-1"
@@ -3198,18 +3194,18 @@ def test_composer_create_agents_syncs_active_config_has_model(
 
     monkeypatch.setattr(composer_service, "AppService", FakeAppService)
     monkeypatch.setattr(composer_service, "AgentRosterService", FakeAgentRosterService)
-    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: SimpleNamespace(id="account-1"))
+    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: _account())
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
-        lambda **kwargs: SimpleNamespace(
+        lambda **kwargs: AgentConfigSnapshot(
             id="empty-version-1",
             tenant_id="tenant-1",
             agent_id="roster-agent-1",
             home_snapshot_id=None,
         ),
     )
-    create_config_version = MagicMock(return_value=SimpleNamespace(id="version-with-model"))
+    create_config_version = MagicMock(return_value=_snapshot(snapshot_id="version-with-model"))
     monkeypatch.setattr(AgentComposerService, "_create_config_version", create_config_version)
 
     workflow_agent = AgentComposerService._create_workflow_only_agent(
@@ -3274,7 +3270,7 @@ def test_composer_create_roster_agent_maps_name_conflict_without_owning_rollback
             raise IntegrityError("insert apps", params, Exception("duplicate"))
 
     monkeypatch.setattr(composer_service, "AppService", FakeAppService)
-    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: SimpleNamespace(id="account-1"))
+    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: _account())
 
     with pytest.raises(AgentNameConflictError):
         AgentComposerService._create_roster_agent_for_composer(
@@ -3297,7 +3293,7 @@ def test_composer_create_roster_agent_raises_when_backing_agent_missing(
 
     class FakeAppService:
         def create_app(self, tenant_id, params, account, *, session):
-            return SimpleNamespace(id="app-agent-1")
+            return _app(app_id="app-agent-1")
 
     class FakeAgentRosterService:
         def __init__(self, session):
@@ -3308,7 +3304,7 @@ def test_composer_create_roster_agent_raises_when_backing_agent_missing(
 
     monkeypatch.setattr(composer_service, "AppService", FakeAppService)
     monkeypatch.setattr(composer_service, "AgentRosterService", FakeAgentRosterService)
-    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: SimpleNamespace(id="account-1"))
+    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: _account())
 
     with pytest.raises(AgentNotFoundError):
         AgentComposerService._create_roster_agent_for_composer(
@@ -3332,7 +3328,7 @@ def test_agent_app_draft_match_does_not_mark_create_version_as_published(
         source=AgentSource.AGENT_APP,
         active_config_snapshot_id="snapshot-1",
     )
-    snapshot = SimpleNamespace(config_snapshot_dict=agent_soul, home_snapshot_id="home-1")
+    snapshot = AgentConfigSnapshot(config_snapshot=agent_soul, home_snapshot_id="home-1")
     session = sqlite_session
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
 
@@ -3358,7 +3354,7 @@ def test_agent_app_draft_match_marks_publish_visible_revision_as_published(
         source=AgentSource.AGENT_APP,
         active_config_snapshot_id="snapshot-1",
     )
-    snapshot = SimpleNamespace(config_snapshot_dict=agent_soul, home_snapshot_id="home-1")
+    snapshot = AgentConfigSnapshot(config_snapshot=agent_soul, home_snapshot_id="home-1")
     session = sqlite_session
     session.add(
         AgentConfigRevision(
@@ -3481,7 +3477,7 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(
         AgentComposerService,
         "_require_agent",
-        lambda **kwargs: SimpleNamespace(updated_by=None, active_config_is_published=False),
+        lambda **kwargs: Agent(updated_by=None, active_config_is_published=False),
     )
     result = AgentComposerService._save_to_current_version(
         session=session,
@@ -4753,7 +4749,7 @@ class TestAgentAppBackingAgent:
         previous_conversation = _conversation(conversation_id="old-conversation")
         previous_conversation.app_id = "old-app"
         previous_conversation.agent_workspace_binding_id = "binding-1"
-        binding = SimpleNamespace(agent_id=agent.id)
+        binding = AgentWorkspaceBinding(agent_id=agent.id)
         session.add_all([agent, mapping, previous_conversation])
         session.commit()
         service = AgentRosterService(session)
@@ -4825,7 +4821,7 @@ class TestAgentAppBackingAgent:
         )
         session.add_all([agent, mapping, build_draft])
         session.commit()
-        get_active_binding = MagicMock(return_value=SimpleNamespace(agent_id=agent.id))
+        get_active_binding = MagicMock(return_value=AgentWorkspaceBinding(agent_id=agent.id))
         retire_binding = MagicMock(return_value="binding-1")
         enqueue_collection = MagicMock()
         monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
@@ -4888,7 +4884,7 @@ class TestAgentAppBackingAgent:
         monkeypatch.setattr(
             AgentWorkspaceService,
             "get_active_binding",
-            MagicMock(return_value=SimpleNamespace(agent_id=agent.id)),
+            MagicMock(return_value=AgentWorkspaceBinding(agent_id=agent.id)),
         )
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock(return_value="binding-1"))
         enqueue_collection = MagicMock()
@@ -4951,7 +4947,7 @@ class TestAgentAppBackingAgent:
 
         event.listen(session, "before_commit", fail_commit)
         event.listen(session, "after_rollback", rollback)
-        get_active_binding = MagicMock(return_value=SimpleNamespace(agent_id=agent.id))
+        get_active_binding = MagicMock(return_value=AgentWorkspaceBinding(agent_id=agent.id))
         monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
         retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "binding-1")
         monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
@@ -4979,7 +4975,8 @@ class TestAgentAppBackingAgent:
     def test_duplicate_agent_app_copies_app_config_and_active_soul(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
-        source_config = SimpleNamespace(
+        source_config = AppModelConfig(
+            app_id="source-app",
             opening_statement="hello",
             suggested_questions='["q1"]',
             suggested_questions_after_answer='{"enabled": true}',
@@ -5000,34 +4997,21 @@ class TestAgentAppBackingAgent:
             external_data_tools=None,
             file_upload='{"image": {"enabled": true}}',
         )
-        target_config = SimpleNamespace(**dict.fromkeys(AgentRosterService._APP_MODEL_CONFIG_COPY_FIELDS))
-        source_app = SimpleNamespace(
-            id="source-app",
-            tenant_id="tenant-1",
-            name="Iris",
-            description="source desc",
-            icon_type="emoji",
-            icon="robot",
-            icon_background="#fff",
-            api_rph=1,
-            api_rpm=2,
-            max_active_requests=3,
-            enable_site=False,
-            enable_api=True,
-            use_icon_as_answer_icon=True,
-            tracing="{}",
-            app_model_config=source_config,
-            app_model_config_with_session=lambda *, session: source_config,
+        target_config = AppModelConfig(
+            app_id="target-app", **dict.fromkeys(AgentRosterService._APP_MODEL_CONFIG_COPY_FIELDS)
         )
-        target_app = SimpleNamespace(
-            id="target-app",
-            app_model_config=target_config,
-            app_model_config_with_session=lambda *, session: target_config,
-            enable_site=False,
-            enable_api=False,
-            use_icon_as_answer_icon=False,
-            tracing=None,
-        )
+        source_app = _app(app_id="source-app", name="Iris")
+        source_app.description = "source desc"
+        source_app.icon = "robot"
+        source_app.api_rph = 1
+        source_app.api_rpm = 2
+        source_app.max_active_requests = 3
+        source_app.enable_api = True
+        source_app.use_icon_as_answer_icon = True
+        source_app.tracing = "{}"
+        source_app.app_model_config_id = source_config.id
+        target_app = _app(app_id="target-app")
+        target_app.app_model_config_id = target_config.id
         source_agent = Agent(
             id="source-agent",
             tenant_id="tenant-1",
@@ -5109,7 +5093,9 @@ class TestAgentAppBackingAgent:
             lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
         )
 
-        account = SimpleNamespace(id="account-1")
+        session.add_all([source_config, target_config, source_app, target_app])
+        session.commit()
+        account = _account()
         duplicated = service.duplicate_agent_app(
             tenant_id="tenant-1",
             agent_id="source-agent",
@@ -5143,24 +5129,17 @@ class TestAgentAppBackingAgent:
     def test_duplicate_agent_app_inherits_webapp_access_mode(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
-        source_app = SimpleNamespace(
-            id="source-app",
-            tenant_id="tenant-1",
-            name="Iris",
-            description="source desc",
-            icon_type=None,
-            icon="robot",
-            icon_background="#fff",
-            api_rph=1,
-            api_rpm=2,
-            max_active_requests=3,
-            enable_site=True,
-            enable_api=True,
-            use_icon_as_answer_icon=False,
-            tracing=None,
-        )
-        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
-        target_app = SimpleNamespace(id="target-app")
+        source_app = _app(app_id="source-app", name="Iris")
+        source_app.description = "source desc"
+        source_app.icon_type = None
+        source_app.icon = "robot"
+        source_app.api_rph = 1
+        source_app.api_rpm = 2
+        source_app.max_active_requests = 3
+        source_app.enable_site = True
+        source_app.enable_api = True
+        source_agent = Agent(id="source-agent", role="Analyst")
+        target_app = _app(app_id="target-app")
         session = sqlite_session
         service = AgentRosterService(session)
         monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
@@ -5198,7 +5177,7 @@ class TestAgentAppBackingAgent:
         duplicated = service.duplicate_agent_app(
             tenant_id="tenant-1",
             agent_id="source-agent",
-            account=SimpleNamespace(id="account-1"),
+            account=_account(),
             role="Custom Analyst",
         )
 
@@ -5209,24 +5188,16 @@ class TestAgentAppBackingAgent:
     def test_duplicate_agent_app_falls_back_to_public_access_mode(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
-        source_app = SimpleNamespace(
-            id="source-app",
-            tenant_id="tenant-1",
-            name="Iris",
-            description="source desc",
-            icon_type=IconType.EMOJI,
-            icon="robot",
-            icon_background="#fff",
-            api_rph=1,
-            api_rpm=2,
-            max_active_requests=3,
-            enable_site=True,
-            enable_api=True,
-            use_icon_as_answer_icon=False,
-            tracing=None,
-        )
-        source_agent = SimpleNamespace(id="source-agent", role="Analyst")
-        target_app = SimpleNamespace(id="target-app")
+        source_app = _app(app_id="source-app", name="Iris")
+        source_app.description = "source desc"
+        source_app.icon = "robot"
+        source_app.api_rph = 1
+        source_app.api_rpm = 2
+        source_app.max_active_requests = 3
+        source_app.enable_site = True
+        source_app.enable_api = True
+        source_agent = Agent(id="source-agent", role="Analyst")
+        target_app = _app(app_id="target-app")
         session = sqlite_session
         service = AgentRosterService(session)
         monkeypatch.setattr(service, "get_agent_app_model", lambda **_: source_app)
@@ -5261,7 +5232,7 @@ class TestAgentAppBackingAgent:
         service.duplicate_agent_app(
             tenant_id="tenant-1",
             agent_id="source-agent",
-            account=SimpleNamespace(id="account-1"),
+            account=_account(),
         )
 
         assert access_mode_updates == [("target-app", "public")]
@@ -6075,7 +6046,7 @@ class TestWorkflowAgentDraftBindingSync:
         )
         session.add(agent)
         session.commit()
-        clone = MagicMock(return_value=(SimpleNamespace(id="cloned-agent"), "cloned-snapshot"))
+        clone = MagicMock(return_value=(Agent(id="cloned-agent"), "cloned-snapshot"))
         monkeypatch.setattr(WorkflowAgentPublishService, "_clone_inline_graph_binding_for_node", clone)
 
         WorkflowAgentPublishService.sync_agent_bindings_for_draft(
@@ -6687,9 +6658,7 @@ def test_save_agent_composer_allows_incomplete_knowledge_draft(
     )
     session.add_all([agent, revision])
     session.commit()
-    active_version = SimpleNamespace(
-        home_snapshot_id="home-initial", config_snapshot_dict=AgentSoulConfig().model_dump(mode="json")
-    )
+    active_version = AgentConfigSnapshot(home_snapshot_id="home-initial", config_snapshot=AgentSoulConfig())
     saved = {}
     flushes = 0
 
@@ -6709,7 +6678,7 @@ def test_save_agent_composer_allows_incomplete_knowledge_draft(
     monkeypatch.setattr(
         AgentComposerService,
         "_save_agent_draft",
-        lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1", home_snapshot_id="home-initial"),
+        lambda **kwargs: saved.update(kwargs) or AgentConfigDraft(id="draft-1", home_snapshot_id="home-initial"),
     )
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
     monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **_kwargs: {"loaded": True})
@@ -6797,7 +6766,6 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
     session = sqlite_session
-    from types import SimpleNamespace
 
     def boom(cls, **kwargs):
         raise ValueError("no draft workflow")
@@ -6809,7 +6777,7 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
     )
 
     monkeypatch.setattr(
-        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: SimpleNamespace(id="wf-1"))
+        AgentComposerService, "_get_draft_workflow", classmethod(lambda cls, **kwargs: _workflow(workflow_id="wf-1"))
     )
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", classmethod(lambda cls, **kwargs: None))
     assert (
@@ -6820,7 +6788,7 @@ def test_resolve_workflow_node_agent_id_degrades_without_workflow_or_binding(
     monkeypatch.setattr(
         AgentComposerService,
         "_get_workflow_binding",
-        classmethod(lambda cls, **kwargs: SimpleNamespace(agent_id="agent-7")),
+        classmethod(lambda cls, **kwargs: WorkflowAgentNodeBinding(agent_id="agent-7")),
     )
     assert (
         AgentComposerService.resolve_workflow_node_agent_id(session=session, tenant_id="t", app_id="a", node_id="n")
