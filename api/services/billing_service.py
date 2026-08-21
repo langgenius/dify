@@ -14,6 +14,7 @@ from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountRole
+from services.billing_portal_service import BillingPortalLink
 from services.errors.billing import (
     BillingAccessDeniedError,
     BillingUpstreamInvalidResponseError,
@@ -45,10 +46,6 @@ class SubscriptionPlan(TypedDict):
 
     plan: str
     expiration_date: int
-
-
-class BillingPortalLink(TypedDict):
-    url: str
 
 
 _billing_portal_link_adapter = TypeAdapter(BillingPortalLink)

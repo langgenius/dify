@@ -23,11 +23,11 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from enums import CloudPlan
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-from services.billing_service import BillingService
 from services.errors.billing import BillingError
 
 
@@ -94,12 +94,12 @@ class Subscription(Resource):
     @model_validate(SubscriptionQuery)
     def get(self, req_data: SubscriptionQuery, current_tenant_id: str, current_user: Account):
         try:
-            BillingService.ensure_tenant_owner_or_admin(current_user.current_role)
-            data = BillingService.get_subscription(
-                req_data.plan,
-                req_data.interval,
-                current_user.email,
-                current_tenant_id,
+            data = application_services().billing_portal.get_subscription(
+                plan=req_data.plan,
+                interval=req_data.interval,
+                email=current_user.email,
+                workspace_id=current_tenant_id,
+                role=current_user.current_role,
             )
         except BillingError as error:
             raise to_billing_request_error(error) from error
@@ -128,8 +128,11 @@ class Invoices(Resource):
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
         try:
-            BillingService.ensure_tenant_owner_or_admin(current_user.current_role)
-            data = BillingService.get_invoices(current_user.email, current_tenant_id)
+            data = application_services().billing_portal.get_invoices(
+                email=current_user.email,
+                workspace_id=current_tenant_id,
+                role=current_user.current_role,
+            )
         except BillingError as error:
             raise to_billing_request_error(error) from error
         return dump_response(BillingInvoiceResponse, data)
@@ -159,4 +162,8 @@ class PartnerTenants(Resource):
         if not click_id or not decoded_partner_key or not current_user.id:
             raise BadRequest("Invalid partner information")
 
-        return BillingService.sync_partner_tenants_bindings(current_user.id, decoded_partner_key, click_id)
+        return application_services().partner_tenant_bindings.sync(
+            account_id=current_user.id,
+            partner_key=decoded_partner_key,
+            click_id=click_id,
+        )
