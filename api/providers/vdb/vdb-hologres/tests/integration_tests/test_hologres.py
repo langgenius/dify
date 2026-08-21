@@ -135,7 +135,7 @@ class HologresVectorTest(AbstractVectorTest):
             self.vector.delete()
 
 
-def test_hologres_vector(setup_mock_redis, setup_hologres_mock):
+def test_hologres_vector(setup_real_redis, setup_hologres_mock):
     """
     Test Hologres vector database implementation.
 

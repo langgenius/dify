@@ -31,5 +31,5 @@ class BaiduVectorTest(AbstractVectorTest):
         assert len(hits_by_full_text) == 0
 
 
-def test_baidu_vector(setup_mock_redis, setup_baiduvectordb_mock):
+def test_baidu_vector(setup_real_redis, setup_baiduvectordb_mock):
     BaiduVectorTest().run_all_tests()

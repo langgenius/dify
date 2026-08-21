@@ -1,142 +1,139 @@
 import os
-from collections import UserDict
+import re
 from typing import Any
-from unittest.mock import MagicMock
 
+import orjson
 import pytest
+import requests
 from _pytest.monkeypatch import MonkeyPatch
-from pymochow import MochowClient
-from pymochow.model.database import Database
-from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState
-from pymochow.model.schema import HNSWParams, VectorIndex
-from pymochow.model.table import Table
+from pymochow.model.enum import ServerErrCode
 
 
-class AttrDict(UserDict):
-    def __getattr__(self, item):
-        return self.get(item)
+class InMemoryMochowHTTP:
+    """Serve deterministic Mochow API responses at the requests boundary."""
 
+    def __init__(self) -> None:
+        self.databases = {"dify"}
+        self.tables: dict[str, dict[str, Any]] = {}
+        self.rows: dict[str, dict[str, dict[str, Any]]] = {}
 
-class MockBaiduVectorDBClass:
-    def mock_vector_db_client(
+    @staticmethod
+    def _response(url: str, payload: dict[str, Any], status_code: int = 200) -> requests.Response:
+        response = requests.Response()
+        response.status_code = status_code
+        response.url = url
+        response.headers["content-type"] = "application/json"
+        response._content = orjson.dumps(payload)
+        return response
+
+    @staticmethod
+    def _action(params: dict[Any, Any] | None) -> str:
+        if not params:
+            return ""
+        key = next(iter(params))
+        return key.decode() if isinstance(key, bytes) else str(key)
+
+    def request(
         self,
-        config=None,
-        adapter: Any | None = None,
-    ):
-        self.conn = MagicMock()
-        self._config = MagicMock()
+        method: str,
+        url: str | bytes,
+        *,
+        data: bytes | None = None,
+        params: dict[Any, Any] | None = None,
+        **_: Any,
+    ) -> requests.Response:
+        if isinstance(url, bytes):
+            url = url.decode()
+        body = orjson.loads(data) if data else {}
+        action = self._action(params)
+        resource = url.rstrip("/").rsplit("/", 1)[-1]
 
-    def list_databases(self, config=None) -> list[Database]:
-        return [
-            Database(
-                conn=self.conn,
-                database_name="dify",
-                config=self._config,
-            )
-        ]
+        if resource == "database":
+            if action == "list":
+                return self._response(url, {"code": 0, "msg": "Success", "databases": sorted(self.databases)})
+            if action == "create":
+                self.databases.add(body["database"])
+            return self._response(url, {"code": 0, "msg": "Success"})
 
-    def create_database(self, database_name: str, config=None) -> Database:
-        return Database(conn=self.conn, database_name=database_name, config=config)
-
-    def list_table(self, config=None) -> list[Table]:
-        return []
-
-    def drop_table(self, table_name: str, config=None):
-        return {"code": 0, "msg": "Success"}
-
-    def create_table(
-        self,
-        table_name: str,
-        replication: int,
-        partition: int,
-        schema,
-        enable_dynamic_field=False,
-        description: str = "",
-        config=None,
-    ) -> Table:
-        return Table(self, table_name, replication, partition, schema, enable_dynamic_field, description, config)
-
-    def describe_table(self, table_name: str, config=None) -> Table:
-        return Table(
-            self,
-            table_name,
-            3,
-            1,
-            None,
-            enable_dynamic_field=False,
-            description="table for dify",
-            config=config,
-            state=TableState.NORMAL,
-        )
-
-    def upsert(self, rows, config=None):
-        return {"code": 0, "msg": "operation success", "affectedCount": 1}
-
-    def rebuild_index(self, index_name: str, config=None):
-        return {"code": 0, "msg": "Success"}
-
-    def describe_index(self, index_name: str, config=None):
-        return VectorIndex(
-            index_name=index_name,
-            index_type=IndexType.HNSW,
-            field="vector",
-            metric_type=MetricType.L2,
-            params=HNSWParams(m=16, efconstruction=200),
-            auto_build=False,
-            state=IndexState.NORMAL,
-        )
-
-    def query(
-        self,
-        primary_key,
-        partition_key=None,
-        projections=None,
-        retrieve_vector=False,
-        read_consistency=ReadConsistency.EVENTUAL,
-        config=None,
-    ):
-        return AttrDict(
-            {
-                "row": {
-                    "id": primary_key.get("id"),
-                    "vector": [0.23432432, 0.8923744, 0.89238432],
-                    "page_content": "text",
-                    "metadata": {"doc_id": "doc_id_001"},
-                },
-                "code": 0,
-                "msg": "Success",
-            }
-        )
-
-    def delete(self, primary_key=None, partition_key=None, filter=None, config=None):
-        return {"code": 0, "msg": "Success"}
-
-    def search(
-        self,
-        anns,
-        partition_key=None,
-        projections=None,
-        retrieve_vector=False,
-        read_consistency=ReadConsistency.EVENTUAL,
-        config=None,
-    ):
-        return AttrDict(
-            {
-                "rows": [
+        if resource == "table":
+            table_name = body.get("table") or self._param(params, "table")
+            if method == "DELETE":
+                if table_name not in self.tables:
+                    return self._not_found(url)
+                self.tables.pop(table_name, None)
+                self.rows.pop(table_name, None)
+                return self._response(url, {"code": 0, "msg": "Success"})
+            if action == "create":
+                self.tables[table_name] = body
+                self.rows[table_name] = {}
+                return self._response(url, {"code": 0, "msg": "Success"})
+            if action == "desc":
+                table = self.tables.get(table_name)
+                if table is None:
+                    return self._not_found(url)
+                return self._response(
+                    url,
                     {
-                        "row": {
-                            "id": "doc_id_001",
-                            "vector": [0.23432432, 0.8923744, 0.89238432],
-                            "page_content": "text",
-                            "metadata": {"doc_id": "doc_id_001"},
+                        "code": 0,
+                        "msg": "Success",
+                        "table": {
+                            **table,
+                            "description": table.get("description", "Table for Dify"),
+                            "createTime": "2026-01-01T00:00:00Z",
+                            "state": "NORMAL",
+                            "aliases": [],
                         },
-                        "distance": 0.1,
-                        "score": 0.5,
-                    }
-                ],
-                "code": 0,
-                "msg": "Success",
-            }
+                    },
+                )
+
+        if resource == "index":
+            if action == "desc":
+                table = self.tables[body["table"]]
+                index = next(item for item in table["schema"]["indexes"] if item["indexName"] == body["indexName"])
+                return self._response(url, {"code": 0, "msg": "Success", "index": {**index, "state": "NORMAL"}})
+            return self._response(url, {"code": 0, "msg": "Success"})
+
+        if resource == "row":
+            table_name = body["table"]
+            table_rows = self.rows.setdefault(table_name, {})
+            if action == "upsert":
+                for row in body["rows"]:
+                    table_rows[row["id"]] = row
+                return self._response(
+                    url,
+                    {"code": 0, "msg": "Success", "affectedCount": len(body["rows"])},
+                )
+            if action == "query":
+                primary_key = body["primaryKey"]["id"]
+                return self._response(
+                    url,
+                    {"code": 0, "msg": "Success", "row": table_rows.get(primary_key, {})},
+                )
+            if action == "search":
+                if "anns" not in body:
+                    return self._response(url, {"code": 0, "msg": "Success", "rows": []})
+                rows = [{"row": row, "distance": 0.1, "score": 0.9} for row in table_rows.values()]
+                return self._response(url, {"code": 0, "msg": "Success", "rows": rows})
+            if action == "delete":
+                for doc_id in re.findall(r"'([^']+)'", body.get("filter", "")):
+                    table_rows.pop(doc_id, None)
+                return self._response(url, {"code": 0, "msg": "Success"})
+
+        raise AssertionError(f"Unhandled Mochow request: {method} {url} action={action} body={body}")
+
+    @staticmethod
+    def _param(params: dict[Any, Any] | None, name: str) -> Any:
+        for key, value in (params or {}).items():
+            normalized_key = key.decode() if isinstance(key, bytes) else str(key)
+            if normalized_key == name:
+                return value.decode() if isinstance(value, bytes) else value
+        return None
+
+    def _not_found(self, url: str) -> requests.Response:
+        return self._response(
+            url,
+            {"code": ServerErrCode.TABLE_NOT_EXIST.value, "msg": "Table not exist"},
+            status_code=404,
         )
 
 
@@ -144,23 +141,15 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
 @pytest.fixture
-def setup_baiduvectordb_mock(request, monkeypatch: MonkeyPatch):
+def setup_baiduvectordb_mock(monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(MochowClient, "__init__", MockBaiduVectorDBClass.mock_vector_db_client)
-        monkeypatch.setattr(MochowClient, "list_databases", MockBaiduVectorDBClass.list_databases)
-        monkeypatch.setattr(MochowClient, "create_database", MockBaiduVectorDBClass.create_database)
-        monkeypatch.setattr(Database, "table", MockBaiduVectorDBClass.describe_table)
-        monkeypatch.setattr(Database, "list_table", MockBaiduVectorDBClass.list_table)
-        monkeypatch.setattr(Database, "create_table", MockBaiduVectorDBClass.create_table)
-        monkeypatch.setattr(Database, "drop_table", MockBaiduVectorDBClass.drop_table)
-        monkeypatch.setattr(Database, "describe_table", MockBaiduVectorDBClass.describe_table)
-        monkeypatch.setattr(Table, "rebuild_index", MockBaiduVectorDBClass.rebuild_index)
-        monkeypatch.setattr(Table, "describe_index", MockBaiduVectorDBClass.describe_index)
-        monkeypatch.setattr(Table, "delete", MockBaiduVectorDBClass.delete)
-        monkeypatch.setattr(Table, "query", MockBaiduVectorDBClass.query)
-        monkeypatch.setattr(Table, "search", MockBaiduVectorDBClass.search)
+        transport = InMemoryMochowHTTP()
 
-    yield
+        def post(session, url, **kwargs):
+            return transport.request("POST", url, **kwargs)
 
-    if MOCK:
-        monkeypatch.undo()
+        def delete(session, url, **kwargs):
+            return transport.request("DELETE", url, **kwargs)
+
+        monkeypatch.setattr(requests.Session, "post", post)
+        monkeypatch.setattr(requests.Session, "delete", delete)

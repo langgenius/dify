@@ -102,7 +102,7 @@ class TableStoreVectorTest(AbstractVectorTest):
         return super().run_all_tests()
 
 
-def test_tablestore_vector(setup_mock_redis):
+def test_tablestore_vector(setup_real_redis):
     TableStoreVectorTest().run_all_tests()
     TableStoreVectorTest(normalize_full_text_score=True).run_all_tests()
     TableStoreVectorTest(normalize_full_text_score=False).run_all_tests()
