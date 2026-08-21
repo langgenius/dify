@@ -170,7 +170,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                     />
                     <PopoverContent
                       placement="bottom"
-                      popupClassName="flex w-[320px] items-center self-stretch px-3 py-2"
+                      className="flex w-[320px] items-center self-stretch px-3 py-2"
                     >
                       <div className="p-1">
                         <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">

@@ -94,7 +94,7 @@ const PluginVersionPicker: FC<Props> = ({
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
+        className="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
       >
         <div className="px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
           {t(($) => $['detailPanel.switchVersion'], { ns: 'plugin' })}

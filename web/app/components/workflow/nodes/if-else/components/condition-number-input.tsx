@@ -108,7 +108,7 @@ const ConditionNumberInput = ({
             <PopoverContent
               placement="bottom-start"
               sideOffset={2}
-              popupClassName="border-none bg-transparent shadow-none"
+              className="border-none bg-transparent shadow-none"
             >
               <div
                 className={cn(

@@ -97,7 +97,7 @@ export function Infotip({
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
-        popupClassName={cn(
+        className={cn(
           'max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
           popupClassName,
         )}

@@ -28,7 +28,7 @@ describe('PopoverContent', () => {
         const screen = await renderWithSafeViewport(
           <Popover>
             <PopoverTrigger>Open</PopoverTrigger>
-            <PopoverContent popupClassName="duration-[30s]">
+            <PopoverContent className="duration-[30s]">
               <PopoverTitle>Popover content</PopoverTitle>
               <button type="button">Focusable content</button>
             </PopoverContent>

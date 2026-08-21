@@ -90,7 +90,7 @@ const Item = ({
           </PopoverTrigger>
           <PopoverContent
             placement="top-end"
-            popupClassName="px-3 py-2 system-xs-regular text-text-tertiary"
+            className="px-3 py-2 system-xs-regular text-text-tertiary"
           >
             {disabledTip}
           </PopoverContent>
