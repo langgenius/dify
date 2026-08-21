@@ -41,8 +41,6 @@ class AgentBackendConfig(BaseSettings):
         description=(
             "Client timeout for Agent backend calls that may carry a Home Snapshot transfer: "
             "snapshot capture and delete, and Execution Binding creation that restores one. "
-            "Must stay above the dify-agent adapter's DIFY_AGENT_ENTERPRISE_SANDBOX_SNAPSHOT_TIMEOUT "
-            "so the lower layer's structured error wins the race instead of an opaque client timeout."
         ),
         default=45.0,
     )
