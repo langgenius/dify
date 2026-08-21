@@ -1,9 +1,13 @@
-from types import SimpleNamespace
+from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 from uuid import uuid4
 
 import pytest
+from pytest_mock import MockerFixture
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from core.rag.datasource import retrieval_service as retrieval_service_module
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -13,7 +17,11 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from models.dataset import Dataset
+from extensions.storage.storage_type import StorageType
+from models.dataset import ChildChunk, Dataset, DocumentSegment, DocumentSegmentSummary, SegmentAttachmentBinding
+from models.dataset import Document as DatasetDocument
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus, SummaryStatus
+from models.model import UploadFile
 
 
 def create_mock_document(
@@ -93,42 +101,74 @@ class _ImmediateExecutor:
         return future
 
 
-class _FakeExecuteScalarResult:
-    def __init__(self, data: list) -> None:
-        self._data = data
-
-    def all(self) -> list:
-        return self._data
-
-
-class _FakeExecuteResult:
-    def __init__(self, data: list) -> None:
-        self._data = data
-
-    def scalars(self) -> _FakeExecuteScalarResult:
-        return _FakeExecuteScalarResult(self._data)
+def _dataset(*, dataset_id: str = "dataset-id", tenant_id: str = "tenant-id") -> Dataset:
+    return Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name="Dataset",
+        description="",
+        created_by="user-id",
+        is_multimodal=False,
+        chunk_structure=IndexStructureType.PARENT_CHILD_INDEX,
+    )
 
 
-class _FakeScalarsResult:
-    def __init__(self, data: list) -> None:
-        self._data = data
+def _dataset_document(*, document_id: str, doc_form: str) -> DatasetDocument:
+    return DatasetDocument(
+        id=document_id,
+        tenant_id="tenant-id",
+        dataset_id="dataset-id",
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch",
+        name=document_id,
+        created_from=DocumentCreatedFrom.API,
+        created_by="user-id",
+        doc_form=doc_form,
+    )
 
-    def all(self) -> list:
-        return self._data
+
+def _segment(*, segment_id: str, document_id: str, index_node_id: str) -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id="tenant-id",
+        dataset_id="dataset-id",
+        document_id=document_id,
+        position=1,
+        content=f"content-{segment_id}",
+        word_count=1,
+        tokens=1,
+        created_by="user-id",
+        index_node_id=index_node_id,
+        status=SegmentStatus.COMPLETED,
+    )
+    segment.id = segment_id
+    return segment
 
 
-class _FakeSession:
-    def __init__(self, execute_payloads: list[list], scalars_payloads: list[list]) -> None:
-        self._execute_payloads = list(execute_payloads)
-        self._scalars_payloads = list(scalars_payloads)
-
-    def execute(self, stmt):
-        data = self._execute_payloads.pop(0) if self._execute_payloads else []
-        return _FakeExecuteResult(data)
-
-    def scalars(self, stmt):
-        data = self._scalars_payloads.pop(0) if self._scalars_payloads else []
-        return _FakeScalarsResult(data)
+def _upload_file(
+    *,
+    file_id: str,
+    tenant_id: str = "tenant-id",
+    name: str | None = None,
+    extension: str = "png",
+    mime_type: str | None = None,
+    size: int = 42,
+) -> UploadFile:
+    upload = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key=f"files/{file_id}",
+        name=name or file_id,
+        size=size,
+        extension=extension,
+        mime_type=mime_type or f"image/{extension}",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-id",
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    upload.id = file_id
+    return upload
 
 
 class _SimpleRetrievalChildChunk:
@@ -158,13 +198,7 @@ class _SimpleRetrievalSegment:
 class TestRetrievalServiceInternals:
     @pytest.fixture
     def internal_dataset(self) -> Dataset:
-        dataset = Dataset(
-            id="dataset-id",
-            tenant_id="tenant-id",
-            is_multimodal=False,
-            chunk_structure=IndexStructureType.PARENT_CHILD_INDEX,
-        )
-        return dataset
+        return _dataset()
 
     @pytest.fixture
     def internal_flask_app(self):
@@ -174,15 +208,11 @@ class TestRetrievalServiceInternals:
         return app
 
     @pytest.fixture
-    def vector_session(self, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-        session = MagicMock()
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        session_class = MagicMock(return_value=session_context)
-        session.context = session_context
-        monkeypatch.setattr(retrieval_service_module, "Session", session_class)
-        monkeypatch.setattr(retrieval_service_module, "db", SimpleNamespace(engine=Mock()))
-        return session
+    def vector_engine(self, mocker: MockerFixture, sqlite_engine: Engine) -> Engine:
+        mocker.patch.object(
+            type(retrieval_service_module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine
+        )
+        return sqlite_engine
 
     def test_retrieve_with_attachment_ids_only(self, monkeypatch: pytest.MonkeyPatch, internal_dataset):
         with (
@@ -229,15 +259,15 @@ class TestRetrievalServiceInternals:
 
     @patch("core.rag.datasource.retrieval_service.ExternalDatasetService.fetch_external_knowledge_retrieval")
     @patch("core.rag.datasource.retrieval_service.MetadataFilteringCondition.model_validate")
-    def test_external_retrieve_with_metadata_conditions(self, mock_validate, mock_fetch):
+    def test_external_retrieve_with_metadata_conditions(self, mock_validate, mock_fetch, sqlite_session: Session):
         mock_validate.return_value = "validated-condition"
         expected_documents = [create_mock_document("external-doc", "external-1", 0.8, provider="external")]
         mock_fetch.return_value = expected_documents
-        session = MagicMock()
-        session.scalar.return_value = SimpleNamespace(tenant_id="tenant-1")
+        sqlite_session.add(_dataset(dataset_id="dataset-1", tenant_id="tenant-1"))
+        sqlite_session.commit()
 
         results = RetrievalService.external_retrieve(
-            session=session,
+            session=sqlite_session,
             dataset_id="dataset-1",
             query="test query",
             external_retrieval_model={"top_k": 3},
@@ -252,61 +282,54 @@ class TestRetrievalServiceInternals:
             query="test query",
             external_retrieval_parameters={"top_k": 3},
             metadata_condition="validated-condition",
-            session=session,
+            session=sqlite_session,
         )
 
-    def test_external_retrieve_returns_empty_when_dataset_not_found(self):
-        session = MagicMock()
-        session.scalar.return_value = None
-
-        results = RetrievalService.external_retrieve(session=session, dataset_id="missing", query="q")
+    def test_external_retrieve_returns_empty_when_dataset_not_found(self, sqlite_session: Session):
+        results = RetrievalService.external_retrieve(session=sqlite_session, dataset_id="missing", query="q")
 
         assert results == []
 
-    @patch("core.rag.datasource.retrieval_service.Session")
-    def test_get_dataset_queries_by_id(self, mock_session_class):
-        expected_dataset = Dataset()
-        mock_session = Mock()
-        mock_session.scalar.return_value = expected_dataset
-        mock_session_class.return_value.__enter__.return_value = mock_session
+    def test_get_dataset_queries_by_id(self, mocker: MockerFixture, sqlite_session: Session, sqlite_engine: Engine):
+        expected_dataset = _dataset(dataset_id="dataset-123")
+        sqlite_session.add(expected_dataset)
+        sqlite_session.commit()
+        mocker.patch.object(
+            type(retrieval_service_module.db), "engine", new_callable=PropertyMock, return_value=sqlite_engine
+        )
 
-        with patch.object(retrieval_service_module, "db", SimpleNamespace(engine=Mock())):
-            result = RetrievalService._get_dataset("dataset-123")
+        result = RetrievalService._get_dataset("dataset-123")
 
-        assert result == expected_dataset
-        mock_session.scalar.assert_called_once()
+        assert result is not None
+        assert result.id == expected_dataset.id
+        assert result.tenant_id == expected_dataset.tenant_id
 
     @patch("core.rag.datasource.retrieval_service.Keyword")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_keyword_search_success(self, mock_get_dataset, mock_keyword_class, internal_dataset, internal_flask_app):
+    def test_keyword_search_success(
+        self, mock_get_dataset, mock_keyword_class, internal_dataset, internal_flask_app, vector_engine
+    ):
         mock_get_dataset.return_value = internal_dataset
         keyword_instance = Mock()
         keyword_instance.search.return_value = [create_mock_document("keyword-content", "kw-1", 0.91)]
         mock_keyword_class.return_value = keyword_instance
         all_documents: list[Document] = []
         exceptions: list[str] = []
-        session = MagicMock()
-        engine = Mock()
-
-        with (
-            patch.object(retrieval_service_module, "db", SimpleNamespace(engine=engine)),
-            patch("core.rag.datasource.retrieval_service.Session") as session_class,
-        ):
-            session_class.return_value.__enter__.return_value = session
-            RetrievalService.keyword_search(
-                flask_app=internal_flask_app,
-                dataset_id=internal_dataset.id,
-                query='query "with quotes"',
-                top_k=5,
-                all_documents=all_documents,
-                exceptions=exceptions,
-            )
+        RetrievalService.keyword_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query='query "with quotes"',
+            top_k=5,
+            all_documents=all_documents,
+            exceptions=exceptions,
+        )
 
         assert len(all_documents) == 1
         assert exceptions == []
         keyword_instance.search.assert_called_once()
-        assert keyword_instance.search.call_args.kwargs["session"] is session
-        session_class.assert_called_once_with(engine)
+        used_session = keyword_instance.search.call_args.kwargs["session"]
+        assert isinstance(used_session, Session)
+        assert used_session.bind is vector_engine
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_keyword_search_appends_exception_when_dataset_missing(self, mock_get_dataset, internal_flask_app):
@@ -329,7 +352,7 @@ class TestRetrievalServiceInternals:
     @patch("core.rag.datasource.retrieval_service.Keyword")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_keyword_search_appends_exception_when_search_fails(
-        self, mock_get_dataset, mock_keyword_class, internal_dataset, internal_flask_app
+        self, mock_get_dataset, mock_keyword_class, internal_dataset, internal_flask_app, vector_engine
     ):
         mock_get_dataset.return_value = internal_dataset
         keyword_instance = Mock()
@@ -337,30 +360,25 @@ class TestRetrievalServiceInternals:
         mock_keyword_class.return_value = keyword_instance
         all_documents: list[Document] = []
         exceptions: list[str] = []
-        session = MagicMock()
-
-        with (
-            patch.object(retrieval_service_module, "db", SimpleNamespace(engine=Mock())),
-            patch("core.rag.datasource.retrieval_service.Session") as session_class,
-        ):
-            session_class.return_value.__enter__.return_value = session
-            RetrievalService.keyword_search(
-                flask_app=internal_flask_app,
-                dataset_id=internal_dataset.id,
-                query="query",
-                top_k=2,
-                all_documents=all_documents,
-                exceptions=exceptions,
-            )
+        RetrievalService.keyword_search(
+            flask_app=internal_flask_app,
+            dataset_id=internal_dataset.id,
+            query="query",
+            top_k=2,
+            all_documents=all_documents,
+            exceptions=exceptions,
+        )
 
         assert all_documents == []
         assert exceptions == ["keyword failed"]
-        assert keyword_instance.search.call_args.kwargs["session"] is session
+        used_session = keyword_instance.search.call_args.kwargs["session"]
+        assert isinstance(used_session, Session)
+        assert used_session.bind is vector_engine
 
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_embedding_search_text_without_reranking(
-        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_session
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
     ):
         internal_dataset.is_multimodal = False
         mock_get_dataset.return_value = internal_dataset
@@ -386,13 +404,15 @@ class TestRetrievalServiceInternals:
 
         assert len(all_documents) == 1
         assert exceptions == []
-        mock_vector_class.assert_called_once_with(dataset=internal_dataset, session=vector_session)
+        used_session = mock_vector_class.call_args.kwargs["session"]
+        assert isinstance(used_session, Session)
+        assert used_session.bind is vector_engine
         vector_instance.search_by_vector.assert_called_once()
 
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_embedding_search_image_non_multimodal_returns_early(
-        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_session
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
     ):
         internal_dataset.is_multimodal = False
         mock_get_dataset.return_value = internal_dataset
@@ -430,7 +450,7 @@ class TestRetrievalServiceInternals:
         mock_model_manager_class,
         internal_dataset,
         internal_flask_app,
-        vector_session,
+        vector_engine,
     ):
         internal_dataset.is_multimodal = True
         mock_get_dataset.return_value = internal_dataset
@@ -440,7 +460,6 @@ class TestRetrievalServiceInternals:
         vector_instance = Mock()
 
         def search_by_file(**_kwargs):
-            assert vector_session.context.__exit__.call_count == 0
             return original_docs
 
         vector_instance.search_by_file.side_effect = search_by_file
@@ -491,7 +510,7 @@ class TestRetrievalServiceInternals:
         mock_model_manager_class,
         internal_dataset,
         internal_flask_app,
-        vector_session,
+        vector_engine,
     ):
         internal_dataset.is_multimodal = True
         mock_get_dataset.return_value = internal_dataset
@@ -543,7 +562,7 @@ class TestRetrievalServiceInternals:
         mock_processor_class,
         internal_dataset,
         internal_flask_app,
-        vector_session,
+        vector_engine,
     ):
         internal_dataset.is_multimodal = False
         mock_get_dataset.return_value = internal_dataset
@@ -584,7 +603,7 @@ class TestRetrievalServiceInternals:
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_embedding_search_appends_exception_when_vector_fails(
-        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_session
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
     ):
         mock_get_dataset.return_value = internal_dataset
         vector_instance = Mock()
@@ -612,7 +631,7 @@ class TestRetrievalServiceInternals:
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_full_text_index_search_without_reranking(
-        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_session
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
     ):
         mock_get_dataset.return_value = internal_dataset
         vector_instance = Mock()
@@ -647,7 +666,7 @@ class TestRetrievalServiceInternals:
         mock_processor_class,
         internal_dataset,
         internal_flask_app,
-        vector_session,
+        vector_engine,
     ):
         mock_get_dataset.return_value = internal_dataset
         original_docs = [create_mock_document("fulltext", "ft-1", 0.68)]
@@ -707,7 +726,7 @@ class TestRetrievalServiceInternals:
     @patch("core.rag.datasource.retrieval_service.Vector")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_full_text_index_search_appends_exception_when_search_fails(
-        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_session
+        self, mock_get_dataset, mock_vector_class, internal_dataset, internal_flask_app, vector_engine
     ):
         mock_get_dataset.return_value = internal_dataset
         vector_instance = Mock()
@@ -731,27 +750,21 @@ class TestRetrievalServiceInternals:
         assert all_documents == []
         assert exceptions == ["fulltext failed"]
 
-    def test_format_retrieval_documents_with_empty_input_returns_empty_list(self):
-        assert RetrievalService.format_retrieval_documents(MagicMock(), []) == []
+    def test_format_retrieval_documents_with_empty_input_returns_empty_list(self, unbound_session: Session):
+        assert RetrievalService.format_retrieval_documents(unbound_session, []) == []
 
-    def test_format_retrieval_documents_without_document_id_returns_empty_list(self):
+    def test_format_retrieval_documents_without_document_id_returns_empty_list(self, unbound_session: Session):
         documents = [Document(page_content="content", metadata={"doc_id": "doc-1", "score": 0.4}, provider="dify")]
 
-        assert RetrievalService.format_retrieval_documents(MagicMock(), documents) == []
+        assert RetrievalService.format_retrieval_documents(unbound_session, documents) == []
 
     def test_format_retrieval_documents_with_parent_child_summary_and_attachments(
-        self, monkeypatch: pytest.MonkeyPatch
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
     ):
-        dataset_doc_parent = SimpleNamespace(
-            id="doc-parent",
-            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
-            dataset_id="dataset-id",
-        )
-        dataset_doc_text = SimpleNamespace(id="doc-text", doc_form="paragraph", dataset_id="dataset-id")
-        dataset_doc_parent_summary = SimpleNamespace(
-            id="doc-parent-summary",
-            doc_form=IndexStructureType.PARENT_CHILD_INDEX,
-            dataset_id="dataset-id",
+        dataset_doc_parent = _dataset_document(document_id="doc-parent", doc_form=IndexStructureType.PARENT_CHILD_INDEX)
+        dataset_doc_text = _dataset_document(document_id="doc-text", doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        dataset_doc_parent_summary = _dataset_document(
+            document_id="doc-parent-summary", doc_form=IndexStructureType.PARENT_CHILD_INDEX
         )
 
         monkeypatch.setattr(retrieval_service_module, "RetrievalChildChunk", _SimpleRetrievalChildChunk)
@@ -834,37 +847,55 @@ class TestRetrievalServiceInternals:
             ),
         ]
 
-        child_chunk = SimpleNamespace(
-            id="child-chunk-1",
+        child_chunk = ChildChunk(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="doc-parent",
             segment_id="segment-parent",
-            index_node_id="child-node-1",
-            content="child details",
             position=2,
+            content="child details",
+            word_count=2,
+            created_by="user-id",
+            index_node_id="child-node-1",
         )
-        segment_parent = SimpleNamespace(id="segment-parent", document_id="doc-parent", index_node_id="parent-node")
-        segment_text = SimpleNamespace(id="segment-text", document_id="doc-text", index_node_id="index-node-1")
-        segment_summary = SimpleNamespace(id="segment-summary", document_id="doc-text", index_node_id="summary-node")
-        segment_parent_summary = SimpleNamespace(
-            id="segment-parent-summary",
+        child_chunk.id = "child-chunk-1"
+        segment_parent = _segment(segment_id="segment-parent", document_id="doc-parent", index_node_id="parent-node")
+        segment_text = _segment(segment_id="segment-text", document_id="doc-text", index_node_id="index-node-1")
+        segment_summary = _segment(segment_id="segment-summary", document_id="doc-text", index_node_id="summary-node")
+        segment_parent_summary = _segment(
+            segment_id="segment-parent-summary",
             document_id="doc-parent-summary",
             index_node_id="summary-parent-node",
         )
-
-        fake_session = _FakeSession(
-            execute_payloads=[
-                [child_chunk],
-                [segment_text],
-                [segment_parent, segment_text],
-                [segment_summary, segment_parent_summary],
-            ],
-            scalars_payloads=[
-                [dataset_doc_parent, dataset_doc_text, dataset_doc_parent_summary],
-                [
-                    SimpleNamespace(chunk_id="segment-summary", summary_content="summary for text"),
-                    SimpleNamespace(chunk_id="segment-parent-summary", summary_content="summary for parent"),
-                ],
-            ],
+        text_summary = DocumentSegmentSummary(
+            dataset_id="dataset-id",
+            document_id="doc-text",
+            chunk_id="segment-summary",
+            summary_content="summary for text",
+            status=SummaryStatus.COMPLETED,
         )
+        parent_summary = DocumentSegmentSummary(
+            dataset_id="dataset-id",
+            document_id="doc-parent-summary",
+            chunk_id="segment-parent-summary",
+            summary_content="summary for parent",
+            status=SummaryStatus.COMPLETED,
+        )
+        sqlite_session.add_all(
+            [
+                dataset_doc_parent,
+                dataset_doc_text,
+                dataset_doc_parent_summary,
+                child_chunk,
+                segment_parent,
+                segment_text,
+                segment_summary,
+                segment_parent_summary,
+                text_summary,
+                parent_summary,
+            ]
+        )
+        sqlite_session.commit()
         monkeypatch.setattr(
             RetrievalService,
             "get_segment_attachment_infos",
@@ -896,7 +927,7 @@ class TestRetrievalServiceInternals:
             ],
         )
 
-        result = RetrievalService.format_retrieval_documents(fake_session, input_documents)
+        result = RetrievalService.format_retrieval_documents(sqlite_session, input_documents)
 
         assert len(result) == 4
         result_by_segment_id = {item.segment.id: item for item in result}
@@ -910,16 +941,17 @@ class TestRetrievalServiceInternals:
         assert result_by_segment_id["segment-parent-summary"].summary == "summary for parent"
         assert result_by_segment_id["segment-parent-summary"].child_chunks == []
 
-    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(self):
-        session = MagicMock()
-        session.scalars.side_effect = RuntimeError("db error")
-
+    def test_format_retrieval_documents_rolls_back_and_raises_when_db_fails(
+        self, mocker: MockerFixture, sqlite_session: Session
+    ):
         documents = [Document(page_content="content", metadata={"document_id": "doc-1"}, provider="dify")]
+        sqlite_session.connection().invalidate()
+        rollback = mocker.spy(sqlite_session, "rollback")
 
-        with pytest.raises(RuntimeError, match="db error"):
-            RetrievalService.format_retrieval_documents(session, documents)
+        with pytest.raises(SQLAlchemyError):
+            RetrievalService.format_retrieval_documents(sqlite_session, documents)
 
-        session.rollback.assert_called_once()
+        rollback.assert_called_once()
 
     def test_retrieve_internal_returns_early_without_query_or_attachment(self, internal_dataset, internal_flask_app):
         all_documents: list[Document] = []
@@ -991,7 +1023,7 @@ class TestRetrievalServiceInternals:
                 )
 
     def test_retrieve_internal_hybrid_weighted_attachment_flow(
-        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app, vector_session
+        self, monkeypatch: pytest.MonkeyPatch, internal_dataset, internal_flask_app, vector_engine
     ):
         executor = _ImmediateExecutor()
         monkeypatch.setattr(retrieval_service_module, "ThreadPoolExecutor", lambda *args, **kwargs: executor)
@@ -1069,19 +1101,19 @@ class TestRetrievalServiceInternals:
         processor_instance.invoke.assert_called_once()
 
     @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
-    def test_get_segment_attachment_info_success(self, mock_sign):
-        upload_file = SimpleNamespace(
-            id="upload-1",
-            name="file-name",
-            extension="png",
-            mime_type="image/png",
-            size=42,
+    def test_get_segment_attachment_info_success(self, mock_sign, sqlite_session: Session):
+        upload_file = _upload_file(file_id="upload-1", name="file-name")
+        binding = SegmentAttachmentBinding(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-1",
+            segment_id="segment-1",
+            attachment_id="upload-1",
         )
-        binding = SimpleNamespace(segment_id="segment-1", attachment_id="upload-1")
-        session = Mock()
-        session.scalar.side_effect = [upload_file, binding]
+        sqlite_session.add_all([upload_file, binding])
+        sqlite_session.commit()
 
-        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", session)
+        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", sqlite_session)
 
         assert result == {
             "attachment_info": {
@@ -1096,84 +1128,79 @@ class TestRetrievalServiceInternals:
         }
         mock_sign.assert_called_once_with("upload-1", "png")
 
-    def test_get_segment_attachment_info_returns_none_when_binding_missing(self):
-        upload_file = SimpleNamespace(
-            id="upload-1",
-            name="file-name",
-            extension="png",
-            mime_type="image/png",
-            size=42,
+    def test_get_segment_attachment_info_returns_none_when_binding_missing(self, sqlite_session: Session):
+        sqlite_session.add(_upload_file(file_id="upload-1", name="file-name"))
+        sqlite_session.commit()
+
+        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", sqlite_session)
+
+        assert result is None
+
+    @pytest.mark.parametrize(
+        ("upload_tenant_id", "binding_tenant_id", "binding_dataset_id"),
+        [
+            pytest.param("other-tenant", "other-tenant", "dataset-id", id="foreign-upload"),
+            pytest.param("tenant-id", "other-tenant", "dataset-id", id="foreign-binding-tenant"),
+            pytest.param("tenant-id", "tenant-id", "other-dataset", id="foreign-binding-dataset"),
+        ],
+    )
+    def test_get_segment_attachment_info_rejects_foreign_owner_chain(
+        self,
+        sqlite_session: Session,
+        upload_tenant_id: str,
+        binding_tenant_id: str,
+        binding_dataset_id: str,
+    ):
+        upload_file = _upload_file(file_id="upload-1", tenant_id=upload_tenant_id)
+        binding = SegmentAttachmentBinding(
+            tenant_id=binding_tenant_id,
+            dataset_id=binding_dataset_id,
+            document_id="document-1",
+            segment_id="segment-1",
+            attachment_id="upload-1",
         )
-        session = Mock()
-        session.scalar.side_effect = [upload_file, None]
+        sqlite_session.add_all([upload_file, binding])
+        sqlite_session.commit()
 
-        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", session)
-
-        assert result is None
-
-    def test_get_segment_attachment_info_returns_none_when_upload_file_missing(self):
-        session = Mock()
-        session.scalar.return_value = None
-
-        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", session)
+        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", sqlite_session)
 
         assert result is None
 
-    def test_get_segment_attachment_infos_returns_empty_when_upload_files_missing(self):
-        scalars_result = Mock()
-        scalars_result.all.return_value = []
-        session = Mock()
-        session.scalars.return_value = scalars_result
+    def test_get_segment_attachment_info_returns_none_when_upload_file_missing(self, sqlite_session: Session):
+        result = RetrievalService.get_segment_attachment_info("dataset-id", "tenant-id", "upload-1", sqlite_session)
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1"], session)
+        assert result is None
+
+    def test_get_segment_attachment_infos_returns_empty_when_upload_files_missing(self, sqlite_session: Session):
+        result = RetrievalService.get_segment_attachment_infos(["upload-1"], sqlite_session)
 
         assert result == []
 
-    def test_get_segment_attachment_infos_returns_empty_when_bindings_missing(self):
-        upload_file = SimpleNamespace(
-            id="upload-1",
-            name="file-name",
-            extension="png",
-            mime_type="image/png",
-            size=42,
-        )
-        upload_scalars = Mock()
-        upload_scalars.all.return_value = [upload_file]
-        binding_scalars = Mock()
-        binding_scalars.all.return_value = []
-        session = Mock()
-        session.scalars.side_effect = [upload_scalars, binding_scalars]
+    def test_get_segment_attachment_infos_returns_empty_when_bindings_missing(self, sqlite_session: Session):
+        sqlite_session.add(_upload_file(file_id="upload-1", name="file-name"))
+        sqlite_session.commit()
 
-        result = RetrievalService.get_segment_attachment_infos(["upload-1"], session)
+        result = RetrievalService.get_segment_attachment_infos(["upload-1"], sqlite_session)
 
         assert result == []
 
     @patch("core.rag.datasource.retrieval_service.sign_upload_file_preview_url", return_value="signed://file")
-    def test_get_segment_attachment_infos_success(self, mock_sign):
-        upload_file_1 = SimpleNamespace(
-            id="upload-1",
-            name="file-1",
-            extension="png",
-            mime_type="image/png",
-            size=42,
+    def test_get_segment_attachment_infos_success(self, mock_sign, sqlite_session: Session):
+        upload_file_1 = _upload_file(file_id="upload-1", name="file-1")
+        upload_file_2 = _upload_file(
+            file_id="upload-2", name="file-2", extension="jpg", mime_type="image/jpeg", size=99
         )
-        upload_file_2 = SimpleNamespace(
-            id="upload-2",
-            name="file-2",
-            extension="jpg",
-            mime_type="image/jpeg",
-            size=99,
+        binding = SegmentAttachmentBinding(
+            tenant_id="tenant-id",
+            dataset_id="dataset-id",
+            document_id="document-1",
+            segment_id="segment-1",
+            attachment_id="upload-1",
         )
-        binding = SimpleNamespace(attachment_id="upload-1", segment_id="segment-1")
+        sqlite_session.add_all([upload_file_1, upload_file_2, binding])
+        sqlite_session.commit()
 
-        upload_scalars = Mock()
-        upload_scalars.all.return_value = [upload_file_1, upload_file_2]
-        binding_scalars = Mock()
-        binding_scalars.all.return_value = [binding]
-        session = Mock()
-        session.scalars.side_effect = [upload_scalars, binding_scalars]
-
-        result = RetrievalService.get_segment_attachment_infos(["upload-1", "upload-2"], session)
+        result = RetrievalService.get_segment_attachment_infos(["upload-1", "upload-2"], sqlite_session)
 
         assert result == [
             {

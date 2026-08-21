@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import Engine, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -25,15 +25,12 @@ class RetrievalDatabase:
 
 
 @pytest.fixture
-def retrieval_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> RetrievalDatabase:
+def retrieval_database(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> RetrievalDatabase:
     """Bind every retrieval-owned session to a disposable SQLite database."""
-    Dataset.metadata.create_all(
-        sqlite_engine,
-        tables=[Dataset.__table__, DatasetDocument.__table__, DocumentSegment.__table__, RateLimitLog.__table__],
-    )
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(retrieval_module.session_factory, "create_session", session_maker)
-    return RetrievalDatabase(session_maker=session_maker)
+    monkeypatch.setattr(retrieval_module.session_factory, "create_session", sqlite_session_factory)
+    return RetrievalDatabase(session_maker=sqlite_session_factory)
 
 
 def _persist_dataset(
