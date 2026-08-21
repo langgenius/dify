@@ -2025,9 +2025,7 @@ class MessageFile(TypeBase):
     )
     created_by_role: Mapped[CreatorUserRole] = mapped_column(EnumText(CreatorUserRole, length=255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     belongs_to: Mapped[MessageFileBelongsTo | None] = mapped_column(
         EnumText(MessageFileBelongsTo, length=255), nullable=True, default=None
     )
