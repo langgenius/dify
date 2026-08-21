@@ -98,19 +98,19 @@ and must bound the streams in their own logic** (count bytes while reading a
 save stream and abort at their cap; bound what they send to restore).
 
 Each operation carries a total I/O deadline set by `SHELLCTL_SNAPSHOT_TIMEOUT`,
-a Go duration string (`600s`, `10m`, `15m30s`), default `600s`. It bounds how
-long a stalled peer — connection open, nobody reading — can hold the
-single-operation gate; a peer that closes the connection releases it
-immediately. Unset or empty uses the default; an unparseable or non-positive
-value fails startup rather than falling back to it.
+a Go duration string (`10m`, `15m30s`). It bounds how long a stalled peer —
+connection open, nobody reading — can hold the single-operation gate; a peer
+that closes the connection releases it immediately. Unset or empty uses the
+built-in default; an unparseable or non-positive value fails startup rather
+than falling back to it.
 
-- `POST /v1/snapshot/save` — no parameters. Streams the Home as
-  `application/octet-stream` (chunked). The top-level `workspace` directory is
-  **always** excluded — Workspace content is not part of a Home Snapshot, and
-  no configuration can put it into one. `SHELLCTL_HOME_SNAPSHOT_EXCLUDES`
-  (comma-separated single path segments, default empty) excludes further
-  top-level entries on top of that. An empty Home is not a special case:
-  it streams an ordinary archive with no entries. Success is signaled by
+- `POST /v1/snapshot/save` — optional JSON body `{"excludes": [...]}`, gitignore
+  syntax, matched at any depth; a malformed body is refused with
+  `400 invalid_request`. `workspace` and the runtime's state directory
+  (`.local/share/shellctl`) are **always** excluded and no pattern can
+  re-include them; an excluded directory is not descended into. Streams the
+  Home as `application/octet-stream` (chunked). An empty Home is not a special
+  case: it streams an ordinary archive with no entries. Success is signaled by
   trailers `X-Snapshot-Status: ok`,
   `X-Snapshot-Sha256`, `X-Snapshot-Bytes`; a cleanly terminated stream WITHOUT
   the `ok` trailer, or an aborted connection, is a failure.
