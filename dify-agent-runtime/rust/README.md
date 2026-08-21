@@ -4,6 +4,11 @@ This directory contains the Rust implementation of the Dify shell runtime.
 It keeps the Go runtime's HTTP contract and artifact layout so it can be
 introduced without changing the Python agent sandbox.
 
+Both job modes from the current contract are supported: `pty` remains the
+default and merges terminal output, while `stdio` captures stdout and stderr
+separately and rejects interactive input. Existing state databases are
+migrated in place with legacy jobs assigned to `pty`.
+
 ## Binaries
 
 - `shellctl` — HTTP server for tmux-backed jobs.

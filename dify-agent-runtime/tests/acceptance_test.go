@@ -626,6 +626,7 @@ func TestRunValidationErrorContract(t *testing.T) {
 		code    string
 	}{
 		{name: "empty-script", payload: map[string]any{"script": ""}, status: 400, code: "invalid_request"},
+		{name: "invalid-mode", payload: map[string]any{"script": "true", "mode": "stdout"}, status: 422, code: "validation_error"},
 		{name: "empty-env-name", payload: map[string]any{"script": "true", "env": map[string]string{"": "x"}}, status: 422, code: "validation_error"},
 		{name: "equals-in-env-name", payload: map[string]any{"script": "true", "env": map[string]string{"A=B": "x"}}, status: 422, code: "validation_error"},
 		{name: "nul-in-env-value", payload: map[string]any{"script": "true", "env": map[string]string{"A": "x\x00y"}}, status: 422, code: "validation_error"},

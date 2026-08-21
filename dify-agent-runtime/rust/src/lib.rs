@@ -20,9 +20,12 @@ use std::{
     collections::{HashMap, HashSet},
     env,
     ffi::{OsStr, OsString},
-    fs::{self, File},
+    fs::{self, File, OpenOptions},
     io::{self, Read, Write},
-    os::unix::process::CommandExt,
+    os::unix::{
+        fs::{OpenOptionsExt, PermissionsExt},
+        process::CommandExt,
+    },
     path::{Path as FsPath, PathBuf},
     process::{Command, Stdio},
     sync::{Arc, Mutex},
@@ -159,11 +162,47 @@ impl TryFrom<&str> for Status {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum JobMode {
+    Pty,
+    Stdio,
+}
+
+impl JobMode {
+    fn parse(raw: Option<&str>) -> Result<Self, RuntimeError> {
+        match raw.unwrap_or("") {
+            "" | "pty" => Ok(Self::Pty),
+            "stdio" => Ok(Self::Stdio),
+            value => Err(RuntimeError::new(
+                422,
+                "validation_error",
+                format!("invalid job mode {value:?}"),
+            )),
+        }
+    }
+
+    fn from_db(raw: &str) -> Result<Self, RuntimeError> {
+        match raw {
+            "pty" => Ok(Self::Pty),
+            "stdio" => Ok(Self::Stdio),
+            value => Err(RuntimeError::internal(format!("unknown job mode: {value}"))),
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Pty => "pty",
+            Self::Stdio => "stdio",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct Job {
     id: String,
     script_path: String,
     output_path: String,
+    mode: JobMode,
     cwd: String,
     cols: i32,
     rows: i32,
@@ -240,6 +279,7 @@ pub struct RunJobRequest {
     pub cwd: Option<String>,
     pub env: Option<HashMap<String, String>>,
     pub terminal: Option<TerminalSize>,
+    pub mode: Option<String>,
     pub timeout: Option<f64>,
     pub output_limit: Option<usize>,
     pub idle_flush_seconds: Option<f64>,
@@ -337,10 +377,34 @@ fn pane_target(id: &str) -> String {
     format!("{}:0.0", session_name(id))
 }
 
+const LATEST_SCHEMA_VERSION: i64 = 1;
+
 fn db_open(path: &FsPath, busy_timeout_ms: u64) -> Result<Connection, RuntimeError> {
-    let conn = db_connect(path, busy_timeout_ms, true)?;
-    conn.execute_batch("CREATE TABLE IF NOT EXISTS jobs (job_id TEXT PRIMARY KEY, script_path TEXT NOT NULL, output_path TEXT NOT NULL, cwd TEXT NOT NULL, terminal_cols INTEGER NOT NULL DEFAULT 200, terminal_rows INTEGER NOT NULL DEFAULT 50, status TEXT NOT NULL DEFAULT 'created', session_name TEXT NOT NULL, pane_target TEXT NOT NULL, exit_code INTEGER, reason TEXT, message TEXT, created_at TEXT NOT NULL, started_at TEXT, ended_at TEXT, updated_at TEXT NOT NULL);")
-        .map_err(|e| RuntimeError::internal(format!("init sqlite schema: {e}")))?;
+    let mut conn = db_connect(path, busy_timeout_ms, true)?;
+    let version: i64 = conn
+        .query_row("PRAGMA user_version", [], |row| row.get(0))
+        .map_err(|e| RuntimeError::internal(format!("read sqlite schema version: {e}")))?;
+    if version > LATEST_SCHEMA_VERSION {
+        return Err(RuntimeError::internal(format!(
+            "database schema version {version} is newer than supported version {LATEST_SCHEMA_VERSION}"
+        )));
+    }
+    if version == 0 {
+        let tx = conn
+            .transaction()
+            .map_err(|e| RuntimeError::internal(format!("begin sqlite schema migration: {e}")))?;
+        tx.execute_batch("CREATE TABLE IF NOT EXISTS jobs (job_id TEXT PRIMARY KEY, script_path TEXT NOT NULL, output_path TEXT NOT NULL, cwd TEXT NOT NULL, terminal_cols INTEGER NOT NULL DEFAULT 200, terminal_rows INTEGER NOT NULL DEFAULT 50, status TEXT NOT NULL DEFAULT 'created', session_name TEXT NOT NULL, pane_target TEXT NOT NULL, exit_code INTEGER, reason TEXT, message TEXT, created_at TEXT NOT NULL, started_at TEXT, ended_at TEXT, updated_at TEXT NOT NULL);")
+            .map_err(|e| RuntimeError::internal(format!("init sqlite schema: {e}")))?;
+        tx.execute(
+            "ALTER TABLE jobs ADD COLUMN mode TEXT NOT NULL DEFAULT 'pty'",
+            [],
+        )
+        .map_err(|e| RuntimeError::internal(format!("migrate sqlite schema to v1: {e}")))?;
+        tx.pragma_update(None, "user_version", LATEST_SCHEMA_VERSION)
+            .map_err(|e| RuntimeError::internal(format!("record sqlite schema version: {e}")))?;
+        tx.commit()
+            .map_err(|e| RuntimeError::internal(format!("commit sqlite schema migration: {e}")))?;
+    }
     Ok(conn)
 }
 
@@ -363,9 +427,10 @@ fn db_connect(
 }
 
 fn read_job(conn: &Connection, id: &str) -> Result<Job, RuntimeError> {
-    conn.query_row("SELECT job_id,script_path,output_path,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,exit_code,reason,message,created_at,started_at,ended_at,updated_at FROM jobs WHERE job_id=?1", [id], |r| {
-        let status: String = r.get(6)?;
-        Ok(Job { id: r.get(0)?, script_path: r.get(1)?, output_path: r.get(2)?, cwd: r.get(3)?, cols: r.get(4)?, rows: r.get(5)?, status: Status::try_from(status.as_str()).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?, session_name: r.get(7)?, pane_target: r.get(8)?, exit_code: r.get(9)?, _reason: r.get(10)?, _message: r.get(11)?, created_at: r.get(12)?, started_at: r.get(13)?, ended_at: r.get(14)?, _updated_at: r.get(15)? })
+    conn.query_row("SELECT job_id,script_path,output_path,mode,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,exit_code,reason,message,created_at,started_at,ended_at,updated_at FROM jobs WHERE job_id=?1", [id], |r| {
+        let mode: String = r.get(3)?;
+        let status: String = r.get(7)?;
+        Ok(Job { id: r.get(0)?, script_path: r.get(1)?, output_path: r.get(2)?, mode: JobMode::from_db(&mode).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?, cwd: r.get(4)?, cols: r.get(5)?, rows: r.get(6)?, status: Status::try_from(status.as_str()).map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?, session_name: r.get(8)?, pane_target: r.get(9)?, exit_code: r.get(10)?, _reason: r.get(11)?, _message: r.get(12)?, created_at: r.get(13)?, started_at: r.get(14)?, ended_at: r.get(15)?, _updated_at: r.get(16)? })
     }).optional().map_err(|e| RuntimeError::internal(format!("query job: {e}")))?.ok_or_else(RuntimeError::not_found)
 }
 
@@ -678,8 +743,16 @@ impl Runtime {
         Ok(Some(out.trim() == "1"))
     }
     fn live_view(&self, id: &str) -> Result<JobStatusView, RuntimeError> {
-        let (session, pipe) = (self.session_exists(id)?, None);
-        let pipe = if session { self.pipe_active(id)? } else { pipe };
+        let initial_job = {
+            let conn = self.db.lock().unwrap();
+            read_job(&conn, id)?
+        };
+        let session = self.session_exists(id)?;
+        let pipe = if session && initial_job.mode == JobMode::Pty {
+            self.pipe_active(id)?
+        } else {
+            None
+        };
         let pipe_failed = self
             .config
             .jobs_dir()
@@ -689,7 +762,8 @@ impl Runtime {
         let mut conn = self.db.lock().unwrap();
         let mut job = read_job(&conn, id)?;
         if !job.status.terminal()
-            && let Some((code, ended_at)) = drained_exit_metadata(&self.config.jobs_dir().join(id))
+            && let Some((code, ended_at)) =
+                completed_exit_metadata(&job, &self.config.jobs_dir().join(id))
         {
             let _ = db_record_runner_exit(&conn, id, code, &ended_at);
             job = read_job(&conn, id)?;
@@ -710,6 +784,7 @@ impl Runtime {
         Json(HealthResponse { status: "ok" })
     }
     pub fn run_job(&self, req: RunJobRequest) -> Result<JobResult, RuntimeError> {
+        let mode = JobMode::parse(req.mode.as_deref())?;
         let cwd = req
             .cwd
             .map(PathBuf::from)
@@ -771,6 +846,7 @@ impl Runtime {
             id: id.clone(),
             script_path: format!("jobs/{id}/script"),
             output_path: format!("jobs/{id}/output.log"),
+            mode,
             cwd: cwd.display().to_string(),
             cols,
             rows,
@@ -786,7 +862,7 @@ impl Runtime {
             _updated_at: created,
         };
         let conn = self.db.lock().unwrap();
-        conn.execute("INSERT INTO jobs (job_id,script_path,output_path,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?10)", params![job.id,job.script_path,job.output_path,job.cwd,job.cols,job.rows,job.status.as_str(),job.session_name,job.pane_target,job.created_at]).map_err(|e| RuntimeError::internal(format!("insert job: {e}")))?;
+        conn.execute("INSERT INTO jobs (job_id,script_path,output_path,mode,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,created_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?11)", params![job.id,job.script_path,job.output_path,job.mode.as_str(),job.cwd,job.cols,job.rows,job.status.as_str(),job.session_name,job.pane_target,job.created_at]).map_err(|e| RuntimeError::internal(format!("insert job: {e}")))?;
         transition(
             &conn,
             &id,
@@ -797,7 +873,7 @@ impl Runtime {
             None,
         )?;
         drop(conn);
-        let start = self.start_tmux_job(&id, &dir, &cwd, cols, rows);
+        let start = self.start_tmux_job(&id, &dir, &cwd, cols, rows, mode);
         self.starting.lock().unwrap().remove(&id);
         if let Err(e) = start {
             let conn = self.db.lock().unwrap();
@@ -833,6 +909,7 @@ impl Runtime {
         cwd: &FsPath,
         cols: i32,
         rows: i32,
+        mode: JobMode,
     ) -> Result<(), RuntimeError> {
         // The dedicated server is initialized once with exit-empty disabled,
         // matching the current Go runtime and avoiding per-job bootstrap.
@@ -858,15 +935,16 @@ impl Runtime {
         let session = session_name(id);
         let pane = pane_target(id);
         let runner_command = format!(
-            "{} {} {} {}",
+            "{} {} {} {} {}",
             shell_quote(&runner),
             shell_quote(&d),
             shell_quote(id),
-            shell_quote(&c)
+            shell_quote(&c),
+            shell_quote(mode.as_str()),
         );
         let cols = cols.to_string();
         let rows = rows.to_string();
-        let tmux_args = [
+        let mut tmux_args = vec![
             "-f",
             "/dev/null",
             "new-session",
@@ -878,13 +956,10 @@ impl Runtime {
             "-y",
             &rows,
             &runner_command,
-            ";",
-            "pipe-pane",
-            "-o",
-            "-t",
-            &pane,
-            &pipe,
         ];
+        if mode == JobMode::Pty {
+            tmux_args.extend([";", "pipe-pane", "-o", "-t", &pane, &pipe]);
+        }
         let started = self.tmux(&tmux_args)?;
         if started.0 != 0 {
             return Err(RuntimeError::new(
@@ -892,6 +967,21 @@ impl Runtime {
                 "tmux_new_session_failed",
                 started.2.trim(),
             ));
+        }
+        if mode == JobMode::Stdio {
+            fs::write(dir.join("start-gate"), [])
+                .map_err(|e| RuntimeError::internal(format!("open start gate: {e}")))?;
+            let conn = self.db.lock().unwrap();
+            transition(
+                &conn,
+                id,
+                Status::Running,
+                &[Status::Starting],
+                None,
+                None,
+                None,
+            )?;
+            return Ok(());
         }
         let deadline = Instant::now() + self.config.pipe_ready_timeout;
         while Instant::now() < deadline {
@@ -954,7 +1044,8 @@ impl Runtime {
                 let w = read_window(&path, req.offset, limit)?;
                 return Ok(self.result(&view, &job, w));
             }
-            if let Some((code, ended_at)) = drained_exit_metadata(&self.config.jobs_dir().join(id))
+            if let Some((code, ended_at)) =
+                completed_exit_metadata(&job, &self.config.jobs_dir().join(id))
             {
                 let conn = self.db.lock().unwrap();
                 let _ = db_record_runner_exit(&conn, id, code, &ended_at);
@@ -1023,6 +1114,17 @@ impl Runtime {
                 409,
                 "job_not_running",
                 format!("Job {id} is already terminal"),
+            ));
+        }
+        let job = {
+            let conn = self.db.lock().unwrap();
+            read_job(&conn, id)?
+        };
+        if job.mode == JobMode::Stdio {
+            return Err(RuntimeError::new(
+                409,
+                "input_unsupported",
+                "stdio jobs do not support input",
             ));
         }
         let file = self.config.runtime_dir.join(format!("input-{id}"));
@@ -1130,12 +1232,16 @@ impl Runtime {
         let ids = self.list_nonterminal_ids()?;
         for id in ids {
             let dir = self.config.jobs_dir().join(&id);
-            if let Some((code, ended_at)) = drained_exit_metadata(&dir) {
+            let job = {
+                let conn = self.db.lock().unwrap();
+                read_job(&conn, &id)?
+            };
+            if let Some((code, ended_at)) = completed_exit_metadata(&job, &dir) {
                 let conn = self.db.lock().unwrap();
                 let _ = db_record_runner_exit(&conn, &id, code, &ended_at);
                 drop(conn);
                 self.kill_session(&id);
-            } else if dir.join(".pipe-failed").exists() {
+            } else if job.mode == JobMode::Pty && dir.join(".pipe-failed").exists() {
                 let conn = self.db.lock().unwrap();
                 let _ = transition(
                     &conn,
@@ -1255,13 +1361,13 @@ fn materialize(
 fn file_size(p: &FsPath) -> usize {
     fs::metadata(p).map(|m| m.len() as usize).unwrap_or(0)
 }
-fn drained_exit_metadata(dir: &FsPath) -> Option<(i32, String)> {
-    exit_metadata(dir, ".pipe-drained")
-}
-fn exit_metadata(dir: &FsPath, marker: &str) -> Option<(i32, String)> {
-    if !dir.join(marker).exists() {
+fn completed_exit_metadata(job: &Job, dir: &FsPath) -> Option<(i32, String)> {
+    if job.mode == JobMode::Pty && !dir.join(".pipe-drained").exists() {
         return None;
     }
+    exit_metadata(dir)
+}
+fn exit_metadata(dir: &FsPath) -> Option<(i32, String)> {
     let code = fs::read_to_string(dir.join("runner-exit-code"))
         .ok()?
         .trim()
@@ -1582,9 +1688,16 @@ pub fn run_runner(args: &[String]) -> i32 {
         return child_mode(&args[1..]);
     }
     if args.len() < 3 {
-        eprintln!("usage: shellctl-runner <job_dir> <job_id> <cwd>");
+        eprintln!("usage: shellctl-runner <job_dir> <job_id> <cwd> [pty|stdio]");
         return 125;
     }
+    let mode = match JobMode::parse(args.get(3).map(String::as_str)) {
+        Ok(mode) => mode,
+        Err(error) => {
+            eprintln!("shellctl-runner: {error}");
+            return 125;
+        }
+    };
     let dir = FsPath::new(&args[0]);
     while !dir.join("start-gate").exists() {
         // The server opens this only after the output pipe is ready. A short
@@ -1628,25 +1741,88 @@ pub fn run_runner(args: &[String]) -> i32 {
     if !home.is_empty() {
         let _ = fs::create_dir_all(&home);
     }
-    let tmp = FsPath::new(&args[2]).join(".tmp");
-    let _ = fs::create_dir_all(&tmp);
     for key in ["TMPDIR", "TMP", "TEMP"] {
-        child_env
-            .entry(key.into())
-            .or_insert_with(|| tmp.display().to_string().into());
+        child_env.insert(key.into(), args[2].clone().into());
     }
     cmd.args(child_args)
         .current_dir(&args[2])
         .env_clear()
-        .envs(child_env)
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit());
-    let status = cmd.status();
-    let code = status.ok().and_then(|s| s.code()).unwrap_or(125);
+        .envs(child_env);
+    let code = if mode == JobMode::Stdio {
+        run_stdio(&mut cmd, dir)
+    } else {
+        cmd.stdin(Stdio::inherit())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit());
+        cmd.status().ok().and_then(|s| s.code()).unwrap_or(125)
+    };
     let _ = atomic_write(&dir.join("runner-exit-code"), &code.to_string());
     let _ = atomic_write(&dir.join("runner-ended-at"), &timestamp());
     code
+}
+
+fn open_capture_file(path: &FsPath) -> io::Result<File> {
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .write(true)
+        .mode(0o600)
+        .open(path)?;
+    file.set_permissions(fs::Permissions::from_mode(0o600))?;
+    Ok(file)
+}
+
+fn run_stdio(cmd: &mut Command, dir: &FsPath) -> i32 {
+    let output = match open_capture_file(&dir.join("output.log")) {
+        Ok(file) => file,
+        Err(error) => {
+            eprintln!("shellctl-runner: open stdout capture: {error}");
+            return 125;
+        }
+    };
+    let stderr = match open_capture_file(&dir.join("stderr.log")) {
+        Ok(file) => file,
+        Err(error) => {
+            eprintln!("shellctl-runner: open stderr capture: {error}");
+            return 125;
+        }
+    };
+    cmd.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let mut child = match cmd.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            eprintln!("shellctl-runner: start child: {error}");
+            return 125;
+        }
+    };
+    let Some(mut child_stdout) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return 125;
+    };
+    let Some(mut child_stderr) = child.stderr.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return 125;
+    };
+    let stdout_drain = thread::spawn(move || {
+        let mut output = output;
+        io::copy(&mut child_stdout, &mut output).and_then(|_| output.flush())
+    });
+    let stderr_drain = thread::spawn(move || {
+        let mut stderr = stderr;
+        io::copy(&mut child_stderr, &mut stderr).and_then(|_| stderr.flush())
+    });
+    let status = child.wait();
+    let stdout_result = stdout_drain.join();
+    let stderr_result = stderr_drain.join();
+    if !matches!(stdout_result, Ok(Ok(()))) || !matches!(stderr_result, Ok(Ok(()))) {
+        eprintln!("shellctl-runner: failed to drain captured stdio");
+        return 125;
+    }
+    status.ok().and_then(|status| status.code()).unwrap_or(125)
 }
 fn child_mode(args: &[String]) -> i32 {
     let mut i = 0;
@@ -1786,6 +1962,7 @@ pub async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::os::unix::fs::PermissionsExt;
     use std::sync::Barrier;
 
     struct TestDir {
@@ -1819,6 +1996,7 @@ mod tests {
             id: id.into(),
             script_path: format!("jobs/{id}/script"),
             output_path: format!("jobs/{id}/output.log"),
+            mode: JobMode::Pty,
             cwd: "/tmp".into(),
             cols: 80,
             rows: 24,
@@ -1837,11 +2015,12 @@ mod tests {
 
     fn insert_test_job(conn: &Connection, job: &Job) {
         conn.execute(
-            "INSERT INTO jobs (job_id,script_path,output_path,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,exit_code,created_at,started_at,ended_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+            "INSERT INTO jobs (job_id,script_path,output_path,mode,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,exit_code,created_at,started_at,ended_at,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
             params![
                 &job.id,
                 &job.script_path,
                 &job.output_path,
+                job.mode.as_str(),
                 &job.cwd,
                 job.cols,
                 job.rows,
@@ -1954,6 +2133,146 @@ mod tests {
         let error = Status::try_from("corrupt").unwrap_err();
         assert_eq!(error.status, 500);
         assert_eq!(error.code, "internal_error");
+    }
+
+    #[test]
+    fn job_mode_defaults_to_pty_and_rejects_unknown_values() {
+        assert_eq!(JobMode::parse(None).unwrap(), JobMode::Pty);
+        assert_eq!(JobMode::parse(Some("")).unwrap(), JobMode::Pty);
+        assert_eq!(JobMode::parse(Some("pty")).unwrap(), JobMode::Pty);
+        assert_eq!(JobMode::parse(Some("stdio")).unwrap(), JobMode::Stdio);
+        assert_eq!(JobMode::from_db("pty").unwrap(), JobMode::Pty);
+        assert_eq!(JobMode::from_db("stdio").unwrap(), JobMode::Stdio);
+
+        let request_error = JobMode::parse(Some("stdout")).unwrap_err();
+        assert_eq!(request_error.status, 422);
+        assert_eq!(request_error.code, "validation_error");
+        let database_error = JobMode::from_db("corrupt").unwrap_err();
+        assert_eq!(database_error.status, 500);
+        assert_eq!(database_error.code, "internal_error");
+    }
+
+    #[test]
+    fn database_migrates_legacy_jobs_to_pty_and_is_idempotent() {
+        let dir = TestDir::new("db-migrate-v1");
+        let path = dir.path().join("shellctl.db");
+        let legacy = db_connect(&path, 5000, true).unwrap();
+        legacy
+            .execute_batch(
+                "CREATE TABLE jobs (job_id TEXT PRIMARY KEY, script_path TEXT NOT NULL, output_path TEXT NOT NULL, cwd TEXT NOT NULL, terminal_cols INTEGER NOT NULL DEFAULT 200, terminal_rows INTEGER NOT NULL DEFAULT 50, status TEXT NOT NULL DEFAULT 'created', session_name TEXT NOT NULL, pane_target TEXT NOT NULL, exit_code INTEGER, reason TEXT, message TEXT, created_at TEXT NOT NULL, started_at TEXT, ended_at TEXT, updated_at TEXT NOT NULL);",
+            )
+            .unwrap();
+        legacy.execute("INSERT INTO jobs (job_id,script_path,output_path,cwd,terminal_cols,terminal_rows,status,session_name,pane_target,created_at,updated_at) VALUES ('legacy','jobs/legacy/script','jobs/legacy/output.log','/workspace',80,24,'created','shellctl-legacy','shellctl-legacy:0.0','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')", []).unwrap();
+        drop(legacy);
+
+        let migrated = db_open(&path, 5000).unwrap();
+        let version: i64 = migrated
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, LATEST_SCHEMA_VERSION);
+        assert_eq!(read_job(&migrated, "legacy").unwrap().mode, JobMode::Pty);
+        drop(migrated);
+
+        let reopened = db_open(&path, 5000).unwrap();
+        assert_eq!(read_job(&reopened, "legacy").unwrap().mode, JobMode::Pty);
+    }
+
+    #[test]
+    fn database_rejects_a_newer_schema_without_creating_jobs() {
+        let dir = TestDir::new("db-future-version");
+        let path = dir.path().join("shellctl.db");
+        let future = db_connect(&path, 5000, true).unwrap();
+        future
+            .pragma_update(None, "user_version", LATEST_SCHEMA_VERSION + 1)
+            .unwrap();
+        drop(future);
+
+        let error = db_open(&path, 5000).unwrap_err();
+        assert_eq!(error.status, 500);
+        assert!(error.message.contains("newer than supported"));
+        let inspection = db_connect(&path, 5000, false).unwrap();
+        let tables: i64 = inspection
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='jobs'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(tables, 0);
+    }
+
+    #[test]
+    fn stdio_capture_keeps_streams_separate_and_private() {
+        let dir = TestDir::new("stdio-capture");
+        let mut command = Command::new("sh");
+        command
+            .arg("-c")
+            .arg("printf stdout-marker; printf stderr-marker >&2");
+
+        assert_eq!(run_stdio(&mut command, dir.path()), 0);
+        assert_eq!(
+            fs::read(dir.path().join("output.log")).unwrap(),
+            b"stdout-marker"
+        );
+        assert_eq!(
+            fs::read(dir.path().join("stderr.log")).unwrap(),
+            b"stderr-marker"
+        );
+        assert_eq!(
+            fs::metadata(dir.path().join("output.log"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        assert_eq!(
+            fs::metadata(dir.path().join("stderr.log"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+
+    #[test]
+    fn stdio_capture_drains_descendants_that_retain_output_pipes() {
+        let dir = TestDir::new("stdio-descendant-drain");
+        let mut command = Command::new("sh");
+        command
+            .arg("-c")
+            .arg("(sleep 0.05; printf tail)& printf head");
+
+        assert_eq!(run_stdio(&mut command, dir.path()), 0);
+        assert_eq!(
+            fs::read(dir.path().join("output.log")).unwrap(),
+            b"headtail"
+        );
+        assert!(fs::read(dir.path().join("stderr.log")).unwrap().is_empty());
+    }
+
+    #[test]
+    fn completion_waits_for_pty_drain_but_not_stdio_capture() {
+        let dir = TestDir::new("mode-completion");
+        fs::write(dir.path().join("runner-exit-code"), "7").unwrap();
+        fs::write(dir.path().join("runner-ended-at"), "2026-01-01T00:00:01Z").unwrap();
+
+        let pty = test_job("pty", Status::Running, None);
+        assert_eq!(completed_exit_metadata(&pty, dir.path()), None);
+
+        let mut stdio = test_job("stdio", Status::Running, None);
+        stdio.mode = JobMode::Stdio;
+        assert_eq!(
+            completed_exit_metadata(&stdio, dir.path()),
+            Some((7, "2026-01-01T00:00:01Z".into()))
+        );
+
+        fs::write(dir.path().join(".pipe-drained"), "").unwrap();
+        assert_eq!(
+            completed_exit_metadata(&pty, dir.path()),
+            Some((7, "2026-01-01T00:00:01Z".into()))
+        );
     }
 
     #[test]
@@ -2206,18 +2525,19 @@ mod tests {
     #[test]
     fn exit_metadata_requires_a_complete_atomic_marker_set() {
         let dir = TestDir::new("exit-metadata");
-        assert!(drained_exit_metadata(dir.path()).is_none());
+        let pty = test_job("metadata", Status::Running, None);
+        assert!(completed_exit_metadata(&pty, dir.path()).is_none());
 
         fs::write(dir.path().join(".pipe-drained"), []).unwrap();
-        assert!(drained_exit_metadata(dir.path()).is_none());
+        assert!(completed_exit_metadata(&pty, dir.path()).is_none());
 
         fs::write(dir.path().join("runner-exit-code"), "not-an-int\n").unwrap();
         fs::write(dir.path().join("runner-ended-at"), "2026-01-01T00:00:00Z\n").unwrap();
-        assert!(drained_exit_metadata(dir.path()).is_none());
+        assert!(completed_exit_metadata(&pty, dir.path()).is_none());
 
         fs::write(dir.path().join("runner-exit-code"), "17\n").unwrap();
         assert_eq!(
-            drained_exit_metadata(dir.path()),
+            completed_exit_metadata(&pty, dir.path()),
             Some((17, "2026-01-01T00:00:00Z".into()))
         );
     }
