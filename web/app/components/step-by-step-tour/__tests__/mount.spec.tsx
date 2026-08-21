@@ -622,6 +622,20 @@ describe('StepByStepTourMount', () => {
     expect(screen.getByRole('button', { name: 'Open help menu' })).toHaveFocus()
   })
 
+  it('returns keyboard focus to Help after dismissing the recovery hint with Escape', async () => {
+    renderStepByStepTourMount()
+
+    await user.click(await screen.findByRole('button', { name: 'Skip tour' }))
+    await screen.findByRole('dialog', { name: 'Step-by-step Tour recovery tip' })
+
+    await user.keyboard('{Escape}')
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open help menu' })).toHaveFocus()
+  })
+
   it('restores the checklist after Skip fails and allows retry', async () => {
     const deferred = createDeferred<StepByStepTourStateResponse>()
     mockStepByStepTour.patchState.mockImplementationOnce(() => deferred.promise)

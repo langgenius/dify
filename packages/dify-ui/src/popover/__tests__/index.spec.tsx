@@ -45,6 +45,7 @@ describe('PopoverContent', () => {
         await userEvent.keyboard('{Escape}')
 
         await expect.element(trigger).toHaveFocus()
+        expect(trigger.element().matches(':focus-visible')).toBe(true)
       } finally {
         animationSettings.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
       }

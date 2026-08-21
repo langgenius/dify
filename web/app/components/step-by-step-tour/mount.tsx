@@ -815,18 +815,16 @@ function SkipRecoveryPrompt({
   open: boolean
 }) {
   const dismissRef = useRef<HTMLButtonElement>(null)
+  const shouldRestoreFocusRef = useRef(false)
 
   return (
     <Popover
       open={open}
       onOpenChange={(nextOpen, eventDetails) => {
-        onOpenChange(nextOpen)
-        if (
+        shouldRestoreFocusRef.current =
           !nextOpen &&
           (eventDetails.reason === 'close-press' || eventDetails.reason === 'escape-key')
-        ) {
-          anchorRef.current?.focus({ preventScroll: true })
-        }
+        onOpenChange(nextOpen)
       }}
     >
       <PopoverPortal>
@@ -844,6 +842,11 @@ function SkipRecoveryPrompt({
         >
           <PopoverPopup
             initialFocus={dismissRef}
+            finalFocus={() => {
+              const shouldRestoreFocus = shouldRestoreFocusRef.current
+              shouldRestoreFocusRef.current = false
+              return shouldRestoreFocus ? anchorRef.current : false
+            }}
             className="w-65 max-w-[calc(100vw-12px)] rounded-2xl border-[0.5px] border-state-accent-hover-alt bg-state-accent-hover p-4 shadow-[0_20px_24px_-4px_var(--color-shadow-shadow-5),0_8px_8px_-4px_var(--color-shadow-shadow-1)] backdrop-blur-[10px]"
           >
             <div className="flex flex-col gap-1">
