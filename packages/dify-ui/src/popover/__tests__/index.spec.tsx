@@ -52,24 +52,18 @@ describe('PopoverContent', () => {
     })
   })
 
-  describe('Placement', () => {
-    it('should use bottom placement and default offsets when placement props are not provided', async () => {
+  describe('Surface', () => {
+    it('should provide the default popover surface', async () => {
       const screen = await renderWithSafeViewport(
         <Popover open>
           <PopoverTrigger>Open</PopoverTrigger>
-          <PopoverContent positionerProps={{ id: 'default-positioner' }}>
+          <PopoverContent>
             <PopoverTitle>Default popover</PopoverTitle>
             <span>Default content</span>
           </PopoverContent>
         </Popover>,
       )
 
-      await expect
-        .element(document.getElementById('default-positioner')!)
-        .toHaveAttribute('data-side', 'bottom')
-      await expect
-        .element(document.getElementById('default-positioner')!)
-        .toHaveAttribute('data-align', 'center')
       const popup = screen.getByRole('dialog', { name: 'default popover' })
       await expect.element(popup).toHaveTextContent('Default content')
       const popupStyle = getComputedStyle(popup.element())
@@ -78,70 +72,32 @@ describe('PopoverContent', () => {
       expect(popupStyle.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
       expect(popupStyle.boxShadow).not.toBe('none')
     })
-
-    it('should apply parsed custom placement and custom offsets when placement props are provided', async () => {
-      const screen = await renderWithSafeViewport(
-        <Popover open>
-          <PopoverTrigger>Open</PopoverTrigger>
-          <PopoverContent
-            placement="top-end"
-            sideOffset={14}
-            alignOffset={6}
-            positionerProps={{ id: 'custom-positioner' }}
-          >
-            <PopoverTitle>Custom popover</PopoverTitle>
-            <span>Custom placement content</span>
-          </PopoverContent>
-        </Popover>,
-      )
-
-      await expect
-        .element(document.getElementById('custom-positioner')!)
-        .toHaveAttribute('data-side', 'top')
-      await expect
-        .element(document.getElementById('custom-positioner')!)
-        .toHaveAttribute('data-align', 'end')
-      await expect
-        .element(screen.getByRole('dialog', { name: 'custom popover' }))
-        .toHaveTextContent('Custom placement content')
-    })
-  })
-
-  describe('Passthrough props', () => {
-    it('should forward positionerProps and popupProps when passthrough props are provided', async () => {
-      const onPopupClick = vi.fn()
-
-      const screen = await render(
-        <Popover open>
-          <PopoverTrigger>Open</PopoverTrigger>
-          <PopoverContent
-            positionerProps={{
-              id: 'popover-positioner-id',
-            }}
-            popupProps={{
-              id: 'popover-popup-id',
-              onClick: onPopupClick,
-            }}
-          >
-            <PopoverTitle>Popover content</PopoverTitle>
-            <span>Popover body</span>
-          </PopoverContent>
-        </Popover>,
-      )
-
-      const popup = screen.getByRole('dialog', { name: 'popover content' })
-      await popup.click()
-
-      await expect
-        .element(document.getElementById('popover-positioner-id')!)
-        .toHaveAttribute('id', 'popover-positioner-id')
-      await expect.element(popup).toHaveAttribute('id', 'popover-popup-id')
-      expect(onPopupClick).toHaveBeenCalledTimes(1)
-    })
   })
 })
 
 describe('Popover anatomy', () => {
+  it('should use the default positioner placement', async () => {
+    const screen = await renderWithSafeViewport(
+      <Popover open>
+        <PopoverTrigger>Open</PopoverTrigger>
+        <PopoverPortal>
+          <PopoverPositioner data-testid="default-positioner">
+            <PopoverPopup>
+              <PopoverTitle>Default anatomy popover</PopoverTitle>
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>,
+    )
+
+    await expect
+      .element(screen.getByTestId('default-positioner'))
+      .toHaveAttribute('data-side', 'bottom')
+    await expect
+      .element(screen.getByTestId('default-positioner'))
+      .toHaveAttribute('data-align', 'center')
+  })
+
   it('should compose the portal, positioner, and popup directly', async () => {
     const screen = await renderWithSafeViewport(
       <Popover open>
