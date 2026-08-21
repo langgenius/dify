@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+from collections.abc import Callable
 from inspect import unwrap
 from unittest.mock import MagicMock
 
@@ -43,8 +44,8 @@ from services.knowledge_fs_proxy import (
 
 
 @pytest.fixture(autouse=True)
-def enable_knowledge_fs(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", True)
+def enable_knowledge_fs(config_overrides: Callable[..., None]) -> None:
+    config_overrides(KNOWLEDGE_FS_ENABLED=True)
 
 
 def _upstream(
@@ -142,9 +143,9 @@ def test_proxy_options_does_not_require_an_authenticated_account(app: Flask) -> 
 
 def test_proxy_options_is_hidden_when_knowledge_fs_is_disabled(
     app: Flask,
-    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
+    config_overrides(KNOWLEDGE_FS_ENABLED=False)
 
     with app.test_request_context(
         "/console/api/knowledge-fs/knowledge-spaces",
@@ -180,8 +181,8 @@ def test_proxy_options_hides_unregistered_operations(
     assert response.status_code == 404
 
 
-def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
+def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, config_overrides: Callable[..., None]) -> None:
+    config_overrides(KNOWLEDGE_FS_ENABLED=False)
 
     with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="GET"):
         with pytest.raises(NotFound):
@@ -198,10 +199,11 @@ def test_proxy_is_hidden_when_knowledge_fs_is_disabled(app: Flask, monkeypatch: 
 def test_proxy_routes_are_hidden_before_downstream_work_when_disabled(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
     route,
     method: KnowledgeFSMethod,
 ) -> None:
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_ENABLED", False)
+    config_overrides(KNOWLEDGE_FS_ENABLED=False)
     proxy_request = MagicMock()
     proxy_non_get = MagicMock()
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy_request)
@@ -284,8 +286,9 @@ def test_generic_routes_delegate_to_the_authorized_service_use_case(
 def test_read_post_applies_knowledge_rate_limit_once(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    monkeypatch.setattr("controllers.common.wraps.dify_config.RBAC_ENABLED", False)
+    config_overrides(RBAC_ENABLED=False)
     account = MagicMock(id="account-1", is_dataset_editor=True)
 
     def current_workspace() -> tuple[MagicMock, str]:
@@ -459,7 +462,12 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
 def test_generic_write_forwards_through_the_authorized_production_path(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
+    config_overrides(
+        KNOWLEDGE_FS_BASE_URL="http://knowledge-fs.test",
+        KNOWLEDGE_FS_JWT_SECRET=SecretStr("production-secret-with-at-least-32-bytes"),
+    )
     account = MagicMock(id="account-1", is_dataset_editor=True)
 
     def current_workspace() -> tuple[MagicMock, str]:
@@ -472,16 +480,6 @@ def test_generic_write_forwards_through_the_authorized_production_path(
     monkeypatch.setattr(
         "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
         MagicMock(return_value=MagicMock(enabled=False)),
-    )
-    monkeypatch.setattr(
-        "services.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_BASE_URL",
-        "http://knowledge-fs.test",
-        raising=False,
-    )
-    monkeypatch.setattr(
-        "services.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_JWT_SECRET",
-        SecretStr("production-secret-with-at-least-32-bytes"),
-        raising=False,
     )
     upstream_request = MagicMock(
         return_value=httpx.Response(

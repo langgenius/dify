@@ -1,7 +1,7 @@
 import base64
 import hashlib
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
@@ -10,7 +10,6 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
-from configs import dify_config
 from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
@@ -169,12 +168,12 @@ class TestFileService:
             assert result.name.endswith(".txt")
             assert db_session.get(UploadFile, result.id) is not None
 
-    def test_upload_file_blocked_extension(self, file_service):
-        with patch.object(dify_config, "inner_UPLOAD_FILE_EXTENSION_BLACKLIST", "exe"):
-            with pytest.raises(BlockedFileExtensionError):
-                file_service.upload_file(
-                    filename="test.exe", content=b"", mimetype="application/octet-stream", user=MagicMock()
-                )
+    def test_upload_file_blocked_extension(self, file_service, config_overrides: Callable[..., None]):
+        config_overrides(inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe")
+        with pytest.raises(BlockedFileExtensionError):
+            file_service.upload_file(
+                filename="test.exe", content=b"", mimetype="application/octet-stream", user=MagicMock()
+            )
 
     def test_upload_file_unsupported_type_for_datasets(self, file_service):
         with pytest.raises(UnsupportedFileTypeError):
@@ -182,12 +181,12 @@ class TestFileService:
                 filename="test.jpg", content=b"", mimetype="image/jpeg", user=MagicMock(), source="datasets"
             )
 
-    def test_upload_file_too_large(self, file_service):
+    def test_upload_file_too_large(self, file_service, config_overrides: Callable[..., None]):
         # 16MB file for an image with 15MB limit
         content = b"a" * (16 * 1024 * 1024)
-        with patch.object(dify_config, "UPLOAD_IMAGE_FILE_SIZE_LIMIT", 15):
-            with pytest.raises(FileTooLargeError):
-                file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=MagicMock())
+        config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=15)
+        with pytest.raises(FileTooLargeError):
+            file_service.upload_file(filename="test.jpg", content=content, mimetype="image/jpeg", user=MagicMock())
 
     def test_upload_file_end_user(self, file_service: FileService, db_session: Session):
         user = EndUser(
@@ -204,54 +203,54 @@ class TestFileService:
             assert result.created_by_role == CreatorUserRole.END_USER
             assert db_session.get(UploadFile, result.id) is not None
 
-    def test_is_file_size_within_limit(self):
-        with (
-            patch.object(dify_config, "UPLOAD_IMAGE_FILE_SIZE_LIMIT", 10),
-            patch.object(dify_config, "UPLOAD_VIDEO_FILE_SIZE_LIMIT", 20),
-            patch.object(dify_config, "UPLOAD_AUDIO_FILE_SIZE_LIMIT", 30),
-            patch.object(dify_config, "UPLOAD_FILE_SIZE_LIMIT", 5),
-        ):
-            # Image
-            assert FileService.is_file_size_within_limit(extension="jpg", file_size=10 * 1024 * 1024) is True
-            assert FileService.is_file_size_within_limit(extension="png", file_size=11 * 1024 * 1024) is False
+    def test_is_file_size_within_limit(self, config_overrides: Callable[..., None]):
+        config_overrides(
+            UPLOAD_IMAGE_FILE_SIZE_LIMIT=10,
+            UPLOAD_VIDEO_FILE_SIZE_LIMIT=20,
+            UPLOAD_AUDIO_FILE_SIZE_LIMIT=30,
+            UPLOAD_FILE_SIZE_LIMIT=5,
+        )
+        # Image
+        assert FileService.is_file_size_within_limit(extension="jpg", file_size=10 * 1024 * 1024) is True
+        assert FileService.is_file_size_within_limit(extension="png", file_size=11 * 1024 * 1024) is False
 
-            # Video
-            assert FileService.is_file_size_within_limit(extension="mp4", file_size=20 * 1024 * 1024) is True
-            assert FileService.is_file_size_within_limit(extension="avi", file_size=21 * 1024 * 1024) is False
+        # Video
+        assert FileService.is_file_size_within_limit(extension="mp4", file_size=20 * 1024 * 1024) is True
+        assert FileService.is_file_size_within_limit(extension="avi", file_size=21 * 1024 * 1024) is False
 
-            # Audio
-            assert FileService.is_file_size_within_limit(extension="mp3", file_size=30 * 1024 * 1024) is True
-            assert FileService.is_file_size_within_limit(extension="wav", file_size=31 * 1024 * 1024) is False
+        # Audio
+        assert FileService.is_file_size_within_limit(extension="mp3", file_size=30 * 1024 * 1024) is True
+        assert FileService.is_file_size_within_limit(extension="wav", file_size=31 * 1024 * 1024) is False
 
-            # Default
-            assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
-            assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
-            assert (
-                FileService.is_file_size_within_limit(
-                    extension="pdf",
-                    file_size=6 * 1024 * 1024,
-                    default_file_size_limit=7,
-                )
-                is True
+        # Default
+        assert FileService.is_file_size_within_limit(extension="txt", file_size=5 * 1024 * 1024) is True
+        assert FileService.is_file_size_within_limit(extension="pdf", file_size=6 * 1024 * 1024) is False
+        assert (
+            FileService.is_file_size_within_limit(
+                extension="pdf",
+                file_size=6 * 1024 * 1024,
+                default_file_size_limit=7,
             )
-            assert (
-                FileService.is_file_size_within_limit(
-                    extension="pdf",
-                    file_size=8 * 1024 * 1024,
-                    default_file_size_limit=7,
-                )
-                is False
+            is True
+        )
+        assert (
+            FileService.is_file_size_within_limit(
+                extension="pdf",
+                file_size=8 * 1024 * 1024,
+                default_file_size_limit=7,
             )
+            is False
+        )
 
-            # Media-specific limits are not affected by the knowledge document override.
-            assert (
-                FileService.is_file_size_within_limit(
-                    extension="jpg",
-                    file_size=11 * 1024 * 1024,
-                    default_file_size_limit=100,
-                )
-                is False
+        # Media-specific limits are not affected by the knowledge document override.
+        assert (
+            FileService.is_file_size_within_limit(
+                extension="jpg",
+                file_size=11 * 1024 * 1024,
+                default_file_size_limit=100,
             )
+            is False
+        )
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")
@@ -270,7 +269,10 @@ class TestFileService:
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
 
-    def test_get_file_presigned_url_success(self, file_service: FileService, db_session: Session):
+    def test_get_file_presigned_url_success(
+        self, file_service: FileService, db_session: Session, config_overrides: Callable[..., None]
+    ):
+        config_overrides(FILES_ACCESS_TIMEOUT=300)
         self._persist_upload_file(
             db_session,
             extension="png",
@@ -279,7 +281,6 @@ class TestFileService:
         )
 
         with (
-            patch.object(dify_config, "FILES_ACCESS_TIMEOUT", 300),
             patch("services.file_service.storage") as mock_storage,
         ):
             mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
@@ -297,12 +298,11 @@ class TestFileService:
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
 
-    def test_get_icon_url_uses_direct_storage_url_for_cloud_s3(self, file_service: FileService):
-        with (
-            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
-            patch.object(file_service, "get_file_presigned_url", return_value="direct-url") as get_presigned_url,
-        ):
+    def test_get_icon_url_uses_direct_storage_url_for_cloud_s3(
+        self, file_service: FileService, config_overrides: Callable[..., None]
+    ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, STORAGE_TYPE=StorageType.S3)
+        with patch.object(file_service, "get_file_presigned_url", return_value="direct-url") as get_presigned_url:
             result = file_service.get_icon_url("file_id", "tenant_id")
 
         assert result == "direct-url"
@@ -320,12 +320,10 @@ class TestFileService:
         file_service: FileService,
         deployment_edition: DeploymentEdition,
         storage_type: StorageType,
+        config_overrides: Callable[..., None],
     ):
-        with (
-            patch.object(dify_config, "DEPLOYMENT_EDITION", deployment_edition),
-            patch.object(dify_config, "STORAGE_TYPE", storage_type),
-            patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url,
-        ):
+        config_overrides(DEPLOYMENT_EDITION=deployment_edition, STORAGE_TYPE=storage_type)
+        with patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url:
             result = file_service.get_icon_url("file_id", "tenant_id")
 
         assert result == "preview-url"
