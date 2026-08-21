@@ -94,7 +94,7 @@ class PassportResource(Resource):
                     tenant_id=app_model.tenant_id,
                     app_id=app_model.id,
                     type=EndUserType.BROWSER,
-                    is_anonymous=True,
+                    _is_anonymous=True,
                     session_id=user_id,
                 )
                 db.session.add(end_user)
@@ -104,7 +104,7 @@ class PassportResource(Resource):
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type=EndUserType.BROWSER,
-                is_anonymous=True,
+                _is_anonymous=True,
                 session_id=generate_session_id(),
             )
             db.session.add(end_user)
@@ -188,7 +188,7 @@ def exchange_token_for_existing_web_user(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=EndUserType.BROWSER,
-            is_anonymous=True,
+            _is_anonymous=True,
             session_id=session_id,
         )
         db.session.add(end_user)
@@ -227,7 +227,7 @@ def _exchange_for_public_app_token(app_model, site, token_decoded):
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=EndUserType.BROWSER,
-            is_anonymous=True,
+            _is_anonymous=True,
             session_id=generate_session_id(),
         )
 

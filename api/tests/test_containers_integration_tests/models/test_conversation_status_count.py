@@ -6,13 +6,14 @@ test_site_generate_code, replacing db.session.scalars mocks with real PostgreSQL
 """
 
 from collections.abc import Generator
+from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
 
 from graphon.enums import WorkflowExecutionStatus
-from models.enums import ConversationFromSource, InvokeFrom
+from models.enums import ConversationFromSource, ConversationStatus, InvokeFrom
 from models.model import App, AppMode, Conversation, Message, Site
 from models.workflow import Workflow, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 
@@ -49,11 +50,11 @@ class TestConversationStatusCount:
             mode=app.mode,
             name=f"Conversation {uuid4()}",
             summary="",
-            inputs={},
+            _inputs={},
             introduction="",
             system_instruction="",
             system_instruction_tokens=0,
-            status="normal",
+            status=ConversationStatus.NORMAL,
             invoke_from=InvokeFrom.WEB_APP,
             from_source=ConversationFromSource.API,
             dialogue_count=0,
@@ -109,10 +110,10 @@ class TestConversationStatusCount:
             model_provider="openai",
             model_id="gpt-4",
             message_tokens=10,
-            message_unit_price=0,
+            message_unit_price=Decimal(0),
             answer_tokens=10,
-            answer_unit_price=0,
-            total_price=0,
+            answer_unit_price=Decimal(0),
+            total_price=Decimal(0),
             currency="USD",
             from_source=ConversationFromSource.API,
             invoke_from=InvokeFrom.WEB_APP,

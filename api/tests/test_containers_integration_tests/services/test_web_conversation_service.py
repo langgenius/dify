@@ -111,7 +111,7 @@ class TestWebConversationService:
             session_id=fake.uuid4(),
             app_id=app.id,
             type=EndUserType.BROWSER,
-            is_anonymous=False,
+            _is_anonymous=False,
             tenant_id=app.tenant_id,
         )
 
@@ -141,7 +141,7 @@ class TestWebConversationService:
             mode="chat",
             name=fake.sentence(nb_words=3),
             summary=fake.text(max_nb_chars=100),
-            inputs={},
+            _inputs={},
             introduction=fake.text(max_nb_chars=200),
             system_instruction=fake.text(max_nb_chars=300),
             system_instruction_tokens=50,

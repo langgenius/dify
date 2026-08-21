@@ -74,7 +74,7 @@ def tenant_and_app(flask_req_ctx):
 
 
 def _make_message(app_id: str, conversation_id: str, created_at: datetime.datetime) -> Message:
-    return Message(
+    message = Message(
         app_id=app_id,
         conversation_id=conversation_id,
         query="test",
@@ -87,8 +87,9 @@ def _make_message(app_id: str, conversation_id: str, created_at: datetime.dateti
         from_source="console",
         currency="USD",
         _inputs={},
-        created_at=created_at,
     )
+    message.created_at = created_at
+    return message
 
 
 class TestMessagesCleanServiceIntegration:

@@ -1366,14 +1366,12 @@ class TestDatasetApiKeyApi:
             type="dataset",
             token="ds-abc",
             last_used_at=None,
-            created_at=None,
         )
         mock_key_2 = ApiToken(
             id="key-2",
             type="dataset",
             token="ds-def",
             last_used_at=None,
-            created_at=None,
         )
         session = MagicMock()
         session.scalars.return_value.all.return_value = [mock_key_1, mock_key_2]

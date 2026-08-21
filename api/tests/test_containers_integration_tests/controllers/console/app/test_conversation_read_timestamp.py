@@ -24,13 +24,13 @@ def test_get_conversation_mark_read_keeps_updated_at_unchanged(
     conversation = Conversation(
         app_id=app.id,
         name="read timestamp test",
-        inputs={},
+        _inputs={},
         status="normal",
         mode=AppMode.CHAT,
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=account.id,
-        updated_at=original_updated_at,
     )
+    conversation.updated_at = original_updated_at
     db_session_with_containers.add(conversation)
     db_session_with_containers.commit()
 

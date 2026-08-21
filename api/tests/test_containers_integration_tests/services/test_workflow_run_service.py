@@ -163,7 +163,7 @@ class TestWorkflowRunService:
         conversation = Conversation(
             app_id=app.id,
             name=fake.sentence(),
-            inputs={},
+            _inputs={},
             status="normal",
             mode="chat",
             from_source=ConversationFromSource.CONSOLE,
@@ -689,7 +689,7 @@ class TestWorkflowRunService:
             tenant_id=app.tenant_id,
             app_id=app.id,
             type=EndUserType.BROWSER,
-            is_anonymous=False,
+            _is_anonymous=False,
             session_id=str(uuid.uuid4()),
             external_user_id=str(uuid.uuid4()),
             name=fake.name(),
