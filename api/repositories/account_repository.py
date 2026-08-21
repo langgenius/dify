@@ -2,12 +2,16 @@
 
 from typing import override
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account
+from models.account import Account, AccountStatus, InvitationCode, InvitationCodeStatus
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountCredentials,
+    AccountInitialization,
+    AccountInitializationResult,
+    AccountInitializationStatus,
     AccountPasswordDigest,
     AccountProfileChanges,
     AccountSnapshot,
@@ -64,6 +68,49 @@ class SQLAlchemyAccountRepository(AccountRepository):
             account.password_salt = password.password_salt
             session.flush()
             return self._to_snapshot(account)
+
+    @override
+    def initialize(
+        self,
+        account_id: str,
+        initialization: AccountInitialization,
+        *,
+        invitation_code: str | None,
+        workspace_id: str | None,
+    ) -> AccountInitializationResult:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                return AccountInitializationResult(status=AccountInitializationStatus.ACCOUNT_NOT_FOUND)
+            if account.status == AccountStatus.ACTIVE:
+                return AccountInitializationResult(status=AccountInitializationStatus.ALREADY_INITIALIZED)
+
+            if invitation_code is not None:
+                invitation = session.scalar(
+                    select(InvitationCode)
+                    .where(
+                        InvitationCode.code == invitation_code,
+                        InvitationCode.status == InvitationCodeStatus.UNUSED,
+                    )
+                    .limit(1)
+                )
+                if invitation is None or workspace_id is None:
+                    return AccountInitializationResult(status=AccountInitializationStatus.INVALID_INVITATION)
+                invitation.status = InvitationCodeStatus.USED
+                invitation.used_at = initialization.initialized_at
+                invitation.used_by_tenant_id = workspace_id
+                invitation.used_by_account_id = account_id
+
+            account.interface_language = initialization.interface_language
+            account.interface_theme = initialization.interface_theme
+            account.timezone = initialization.timezone
+            account.status = AccountStatus.ACTIVE
+            account.initialized_at = initialization.initialized_at
+            session.flush()
+            return AccountInitializationResult(
+                status=AccountInitializationStatus.INITIALIZED,
+                account=self._to_snapshot(account),
+            )
 
     @staticmethod
     def _to_snapshot(account: Account) -> AccountSnapshot:

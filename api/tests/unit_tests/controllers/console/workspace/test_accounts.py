@@ -13,6 +13,7 @@ from werkzeug.exceptions import NotFound, UnprocessableEntity
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailAlreadyInUseError,
+    EmailCodeAccountDeletionRateLimitExceededError,
     EmailCodeError,
 )
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
@@ -39,15 +40,19 @@ from controllers.console.workspace.error import (
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
     InvalidAccountPasswordRequestError,
+    MissingInvitationCodeRequestError,
 )
-from enums import DeploymentEdition
 from machinery.context import RequestContext
-from models import Account, InvitationCode, Tenant, TenantAccountJoin
-from models.account import AccountStatus, InvitationCodeStatus, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin
+from models.account import AccountStatus, TenantAccountRole
 from services.account_errors import (
+    AccountAlreadyInitializedError,
+    AccountDeletionRateLimitError,
     AvatarFileNotFoundError,
     CurrentAccountPasswordIncorrectError,
+    InvalidAccountDeletionVerificationError,
     InvalidAccountPasswordError,
+    MissingInvitationCodeError,
 )
 from services.entities.account_entities import AccountIntegrationStatus, AccountProfileChanges
 
@@ -87,22 +92,16 @@ def persist_account_with_tenant(
 
 
 class TestAccountInitApi:
-    @pytest.mark.parametrize(
-        "sqlite_session",
-        [(Account, Tenant, TenantAccountJoin, InvitationCode)],
-        indirect=True,
-    )
-    def test_init_success(self, app: Flask, sqlite_session: Session):
+    def test_init_success(self, app: Flask):
         api = AccountInitApi()
         method = inspect.unwrap(api.post)
-
-        account, tenant = persist_account_with_tenant(
-            sqlite_session,
-            status=AccountStatus.UNINITIALIZED,
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
         )
-        invitation_code = InvitationCode(batch="batch-1", code="code123")
-        sqlite_session.add(invitation_code)
-        sqlite_session.commit()
+        initialization = MagicMock()
         payload = {
             "interface_language": "en-US",
             "timezone": "UTC",
@@ -111,34 +110,73 @@ class TestAccountInitApi:
 
         with (
             app.test_request_context("/account/init", json=payload),
-            patch("controllers.console.workspace.account.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.workspace.account.db.session", sqlite_session),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
+            ),
         ):
-            resp = method(api, account)
+            resp = method(api, request_context)
 
         assert resp["result"] == "success"
-        sqlite_session.expire_all()
-        persisted_account = sqlite_session.get(Account, account.id)
-        persisted_invitation = sqlite_session.get(InvitationCode, invitation_code.id)
-        assert persisted_account is not None
-        assert persisted_account.status == AccountStatus.ACTIVE
-        assert persisted_account.interface_language == "en-US"
-        assert persisted_account.timezone == "UTC"
-        assert persisted_account.initialized_at is not None
-        assert persisted_invitation is not None
-        assert persisted_invitation.status == InvitationCodeStatus.USED
-        assert persisted_invitation.used_by_account_id == account.id
-        assert persisted_invitation.used_by_tenant_id == tenant.id
+        initialization.initialize.assert_called_once_with(
+            request_context,
+            interface_language="en-US",
+            timezone="UTC",
+            invitation_code="code123",
+        )
 
     def test_init_already_initialized(self, app: Flask):
         api = AccountInitApi()
         method = inspect.unwrap(api.post)
 
-        account = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        initialization = MagicMock()
+        initialization.initialize.side_effect = AccountAlreadyInitializedError
+        payload = {"interface_language": "en-US", "timezone": "UTC"}
 
-        with app.test_request_context("/account/init"):
+        with (
+            app.test_request_context("/account/init", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
+            ),
+        ):
             with pytest.raises(AccountAlreadyInitedError):
-                method(api, account)
+                method(api, request_context)
+
+    def test_init_missing_invitation_code_is_mapped(self, app: Flask):
+        api = AccountInitApi()
+        method = inspect.unwrap(api.post)
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        initialization = MagicMock()
+        initialization.initialize.side_effect = MissingInvitationCodeError("invitation_code is required")
+        payload = {"interface_language": "en-US", "timezone": "UTC"}
+
+        with (
+            app.test_request_context("/account/init", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(initialization=initialization)),
+            ),
+        ):
+            with pytest.raises(MissingInvitationCodeRequestError) as exc_info:
+                method(api, request_context)
+
+        assert exc_info.value.data == {
+            "code": "missing_invitation_code",
+            "message": "Invitation code is required.",
+            "status": 400,
+        }
 
 
 class TestAccountProfileApi:
@@ -523,39 +561,97 @@ class TestAccountDeleteApi:
     def test_delete_verify_success(self, app: Flask):
         api = AccountDeleteVerifyApi()
         method = inspect.unwrap(api.get)
-        user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        deletion = MagicMock()
+        deletion.issue_verification.return_value = "token"
 
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.account.AccountService.generate_account_deletion_verification_code",
-                return_value=("token", "1234"),
-            ),
-            patch(
-                "controllers.console.workspace.account.AccountService.send_account_deletion_verification_email",
-                return_value=None,
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(deletion=deletion)),
             ),
         ):
-            result = method(api, user)
+            result = method(api, request_context)
 
         assert result["result"] == "success"
+        assert result["data"] == "token"
+        deletion.issue_verification.assert_called_once_with(request_context)
 
     def test_delete_invalid_code(self, app: Flask):
         api = AccountDeleteApi()
         method = inspect.unwrap(api.post)
 
         payload = {"token": "t", "code": "x"}
-        user = make_account()
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        deletion = MagicMock()
+        deletion.request_deletion.side_effect = InvalidAccountDeletionVerificationError
 
         with (
             app.test_request_context("/", json=payload),
             patch(
-                "controllers.console.workspace.account.AccountService.verify_account_deletion_code",
-                return_value=False,
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(deletion=deletion)),
             ),
         ):
             with pytest.raises(InvalidAccountDeletionCodeError):
-                method(api, user)
+                method(api, request_context)
+
+    def test_delete_verify_maps_rate_limit(self, app: Flask):
+        api = AccountDeleteVerifyApi()
+        method = inspect.unwrap(api.get)
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        deletion = MagicMock()
+        deletion.issue_verification.side_effect = AccountDeletionRateLimitError(1)
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(deletion=deletion)),
+            ),
+            pytest.raises(EmailCodeAccountDeletionRateLimitExceededError),
+        ):
+            method(api, request_context)
+
+    def test_delete_success(self, app: Flask):
+        api = AccountDeleteApi()
+        method = inspect.unwrap(api.post)
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+        deletion = MagicMock()
+        payload = {"token": "token", "code": "123456"}
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(deletion=deletion)),
+            ),
+        ):
+            result = method(api, request_context)
+
+        assert result["result"] == "success"
+        deletion.request_deletion.assert_called_once_with(request_context, token="token", code="123456")
 
 
 class TestChangeEmailApis:

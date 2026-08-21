@@ -129,6 +129,19 @@ class TestAccountInitialization:
 class TestCurrentContextInjection:
     """Test request context injection decorators."""
 
+    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
+        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+
+        with Flask(__name__).app_context():
+            body, status = handler(ActiveWorkspaceRequiredError())
+
+        assert status == 500
+        assert body == {
+            "code": "active_workspace_required",
+            "message": "Internal Server Error",
+            "status": 500,
+        }
+
     def test_console_account_admission_injects_request_context(self):
         current_user = make_account()
 
@@ -266,18 +279,32 @@ class TestCurrentContextInjection:
         with pytest.raises(AdmissionConfigurationError, match="configured together"):
             flask_admission.console_account_admission(rbac_resource_scope=RBACResourceScope.WORKSPACE)
 
-    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
-        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+    def test_console_account_admission_can_admit_uninitialized_accounts(self):
+        current_user = make_account()
 
-        with Flask(__name__).app_context():
-            body, status = handler(ActiveWorkspaceRequiredError())
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.account_initialization_required",
+                side_effect=lambda view: view,
+            ) as account_initialization_required,
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
+            ),
+        ):
 
-        assert status == 500
-        assert body == {
-            "code": "active_workspace_required",
-            "message": "Internal Server Error",
-            "status": 500,
-        }
+            class Handler:
+                @flask_admission.console_account_admission(require_initialized=False)
+                def post(self, request_context: RequestContext):
+                    return request_context
+
+            with Flask(__name__).test_request_context():
+                result = Handler().post()
+
+        assert result.account_id == current_user.id
+        account_initialization_required.assert_not_called()
 
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:
