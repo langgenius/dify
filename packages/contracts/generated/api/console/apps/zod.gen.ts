@@ -347,6 +347,14 @@ export const zAppNamePayload = z.object({
 })
 
 /**
+ * AppNetworkAccessGroupUpdatePayload
+ */
+export const zAppNetworkAccessGroupUpdatePayload = z.object({
+  expected_version: z.int().gte(0),
+  group_id: z.uuid().nullable(),
+})
+
+/**
  * RedirectUrlResponse
  */
 export const zRedirectUrlResponse = z.object({
@@ -1324,6 +1332,37 @@ export const zMessageFile = z.object({
   type: z.string(),
   upload_file_id: z.string().nullish(),
   url: z.string().nullish(),
+})
+
+/**
+ * AppNetworkAccessGroupBindingResponse
+ */
+export const zAppNetworkAccessGroupBindingResponse = z.object({
+  app_id: z.string(),
+  created_at: z.iso.datetime(),
+  group_id: z.string().nullish(),
+  id: z.string(),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  updated_by_account_id: z.string().nullish(),
+  version: z.int().gte(1),
+})
+
+/**
+ * AppNetworkAccessGroupResponse
+ */
+export const zAppNetworkAccessGroupResponse = z.object({
+  app_id: z.string(),
+  binding: zAppNetworkAccessGroupBindingResponse.nullable(),
+  entitled: z.boolean(),
+  tenant_id: z.string(),
+})
+
+/**
+ * AppNetworkAccessGroupMutationResponse
+ */
+export const zAppNetworkAccessGroupMutationResponse = z.object({
+  binding: zAppNetworkAccessGroupBindingResponse,
 })
 
 /**
@@ -5144,6 +5183,26 @@ export const zPostAppsByAppIdNamePath = z.object({
  * Name availability checked
  */
 export const zPostAppsByAppIdNameResponse = zAppDetail
+
+export const zGetAppsByAppIdNetworkAccessGroupPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App network access group binding retrieved successfully
+ */
+export const zGetAppsByAppIdNetworkAccessGroupResponse = zAppNetworkAccessGroupResponse
+
+export const zPutAppsByAppIdNetworkAccessGroupBody = zAppNetworkAccessGroupUpdatePayload
+
+export const zPutAppsByAppIdNetworkAccessGroupPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * App network access group binding updated successfully
+ */
+export const zPutAppsByAppIdNetworkAccessGroupResponse = zAppNetworkAccessGroupMutationResponse
 
 export const zPostAppsByAppIdPublishToCreatorsPlatformPath = z.object({
   app_id: z.uuid(),
