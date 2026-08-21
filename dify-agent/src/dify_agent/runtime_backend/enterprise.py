@@ -185,12 +185,16 @@ class EnterpriseExecutionBindingBackend:
 
             data_plane = await self._create_data_plane(sandbox_id)
             result = await run_shellctl_control_command(
-                ShellctlCommands(client=data_plane.client),
+                ShellctlCommands(
+                    client=data_plane.client,
+                    home_dir=self.layout.home_dir,
+                    workspace_dir=self.layout.workspace_dir,
+                ),
                 "\n".join(
                     [
                         "set -eu",
+                        "exec 2>&1",
                         f"mkdir -p {shlex.quote(self.layout.home_dir)}",
-                        f"mkdir -p {shlex.quote(self.layout.workspace_dir)}",
                         f"find {shlex.quote(self.layout.workspace_dir)} -mindepth 1 -maxdepth 1 -exec rm -rf -- {{}} +",
                         f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
                     ]

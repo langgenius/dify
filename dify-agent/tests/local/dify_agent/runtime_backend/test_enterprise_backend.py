@@ -355,8 +355,8 @@ async def test_enterprise_default_binding_creates_gateway_sandbox_and_layout(
             payload = cast(dict[str, object], json.loads(request.content))
             script = payload["script"]
             assert isinstance(script, str)
+            assert payload["cwd"] == "/workspace"
             assert "mkdir -p /home/dify" in script
-            assert "mkdir -p /workspace" in script
             assert "find /workspace -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +" in script
             return _job_response()
         return httpx.Response(200, json={"job_id": "job-1"})
