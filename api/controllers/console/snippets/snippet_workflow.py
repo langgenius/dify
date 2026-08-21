@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import (
@@ -43,7 +44,7 @@ from controllers.console.wraps import (
 )
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from extensions.ext_redis import redis_client
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
@@ -57,6 +58,7 @@ from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
+from models.workflow import Workflow
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -69,7 +71,7 @@ logger = logging.getLogger(__name__)
 
 
 def _snippet_session_maker() -> sessionmaker[Session]:
-    return sessionmaker(bind=db.engine, expire_on_commit=False)
+    return session_factory.get_session_maker()
 
 
 def _snippet_service() -> SnippetService:
@@ -89,6 +91,29 @@ class SnippetWorkflowPaginationResponse(BaseModel):
     page: int
     limit: int
     has_more: bool
+
+
+class _SnippetWorkflowResponseSource:
+    """Expose workflow response properties through the controller-owned session."""
+
+    def __init__(self, workflow: Workflow, *, session: Session) -> None:
+        self._workflow = workflow
+        self._session = session
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._workflow, name)  # guard-ignore: no-new-getattr -- delegates mapped workflow fields
+
+    @property
+    def created_by_account(self) -> Account | None:
+        return self._workflow.get_created_by_account(session=self._session)
+
+    @property
+    def updated_by_account(self) -> Account | None:
+        return self._workflow.get_updated_by_account(session=self._session)
+
+    @property
+    def tool_published(self) -> bool:
+        return self._workflow.get_tool_published(session=self._session)
 
 
 register_schema_models(
@@ -168,9 +193,10 @@ class SnippetDraftWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_snippet
     @edit_permission_required
-    def get(self, snippet: CustomizedSnippet):
+    def get(self, session: Session, snippet: CustomizedSnippet):
         """Get draft workflow for snippet."""
         snippet_service = _snippet_service()
         workflow = snippet_service.get_draft_workflow(snippet=snippet)
@@ -179,9 +205,11 @@ class SnippetDraftWorkflowApi(Resource):
             raise DraftWorkflowNotExist()
 
         workflow.conversation_variables = []
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(
+            _SnippetWorkflowResponseSource(workflow, session=session), from_attributes=True
+        ).model_dump(mode="json")
         response["graph"] = WorkflowAgentPublishService.project_draft_bindings_to_graph(
-            session=db.session(),
+            session=session,
             draft_workflow=workflow,
         )
         response["input_fields"] = snippet.input_fields_list
@@ -261,9 +289,10 @@ class SnippetPublishedWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_snippet
     @edit_permission_required
-    def get(self, snippet: CustomizedSnippet):
+    def get(self, session: Session, snippet: CustomizedSnippet):
         """Get published workflow for snippet."""
         if not snippet.is_published:
             return None
@@ -274,7 +303,9 @@ class SnippetPublishedWorkflowApi(Resource):
         if not workflow:
             return None
 
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(
+            _SnippetWorkflowResponseSource(workflow, session=session), from_attributes=True
+        ).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -286,27 +317,29 @@ class SnippetPublishedWorkflowApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
+    @with_session
     @get_snippet
     @edit_permission_required
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
-    def post(self, current_user: Account, snippet: CustomizedSnippet):
+    def post(self, session: Session, current_user: Account, snippet: CustomizedSnippet):
         """Publish snippet workflow."""
         snippet_service = _snippet_service()
 
-        with Session(db.engine) as session:
-            snippet = session.merge(snippet)
-            try:
-                workflow = snippet_service.publish_workflow(
-                    session=session,
-                    snippet=snippet,
-                    account=current_user,
-                )
-                workflow_created_at = TimestampField().format(workflow.created_at)
-                session.commit()
-            except ValueError as e:
-                return {"message": str(e)}, 400
+        snippet = session.merge(snippet)
+        try:
+            workflow = snippet_service.publish_workflow(
+                session=session,
+                snippet=snippet,
+                account=current_user,
+            )
+            workflow_created_at = TimestampField().format(workflow.created_at)
+        except ValueError as e:
+            # This domain validation remains a 400 response, so it cannot escape to
+            # the request-session decorator that normally owns rollback-on-error.
+            session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- translated validation response
+            return {"message": str(e)}, 400
 
         return {
             "result": "success",
@@ -347,27 +380,32 @@ class SnippetPublishedAllWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_snippet
     @edit_permission_required
     @rbac_permission_required(
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @model_validate(SnippetWorkflowListQuery)
-    def get(self, req_data: SnippetWorkflowListQuery, snippet: CustomizedSnippet):
+    def get(
+        self,
+        req_data: SnippetWorkflowListQuery,
+        session: Session,
+        snippet: CustomizedSnippet,
+    ):
         """Get all published workflow versions for snippet."""
 
         snippet_service = _snippet_service()
-        with Session(db.engine) as session:
-            workflows, has_more = snippet_service.get_all_published_workflows(
-                session=session,
-                snippet=snippet,
-                page=req_data.page,
-                limit=req_data.limit,
-            )
+        workflows, has_more = snippet_service.get_all_published_workflows(
+            session=session,
+            snippet=snippet,
+            page=req_data.page,
+            limit=req_data.limit,
+        )
 
         response = SnippetWorkflowPaginationResponse.model_validate(
             {
-                "items": workflows,
+                "items": [_SnippetWorkflowResponseSource(workflow, session=session) for workflow in workflows],
                 "page": req_data.page,
                 "limit": req_data.limit,
                 "has_more": has_more,
@@ -433,6 +471,7 @@ class SnippetWorkflowByIdApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
+    @with_session
     @get_snippet
     @edit_permission_required
     @rbac_permission_required(
@@ -442,6 +481,7 @@ class SnippetWorkflowByIdApi(Resource):
     def patch(
         self,
         req_data: WorkflowUpdatePayload,
+        session: Session,
         current_user: Account,
         snippet: CustomizedSnippet,
         workflow_id: str,
@@ -453,18 +493,19 @@ class SnippetWorkflowByIdApi(Resource):
             return {"message": "No valid fields to update"}, 400
 
         snippet_service = _snippet_service()
-        with _snippet_session_maker().begin() as session:
-            workflow = snippet_service.update_workflow(
-                session=session,
-                snippet=snippet,
-                workflow_id=workflow_id,
-                account=current_user,
-                data=update_data,
-            )
-            if not workflow:
-                raise NotFound("Workflow not found")
+        workflow = snippet_service.update_workflow(
+            session=session,
+            snippet=snippet,
+            workflow_id=workflow_id,
+            account=current_user,
+            data=update_data,
+        )
+        if not workflow:
+            raise NotFound("Workflow not found")
 
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = SnippetWorkflowResponse.model_validate(
+            _SnippetWorkflowResponseSource(workflow, session=session), from_attributes=True
+        ).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list
         return response
 
