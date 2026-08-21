@@ -764,3 +764,32 @@ def test_graphon_remote_file_fetcher_adapts_fetcher_responses(monkeypatch, metho
     assert result is graphon_response
     make_request.assert_called_once_with(method_name.upper(), url=url, max_retries=2, timeout=3)
     adapter.assert_called_once_with(response)
+
+
+@pytest.mark.parametrize("sign", ["é", "🙂", "Ы"])
+def test_verify_signed_file_url_rejects_non_ascii_sign(sign: str, monkeypatch: pytest.MonkeyPatch):
+    """A non-ASCII sign is a rejected signature, not a TypeError.
+
+    ``sign`` comes from the URL query, so it can hold any characters.
+    ``hmac.compare_digest`` refuses ``str`` carrying non-ASCII characters, so the
+    comparison has to run on bytes.
+    """
+    monkeypatch.setattr(remote_fetcher.dify_config, "SECRET_KEY", "unit-secret")
+    monkeypatch.setattr(remote_fetcher.dify_config, "FILES_ACCESS_TIMEOUT", 300)
+    monkeypatch.setattr(remote_fetcher.time, "time", lambda: 1700000000)
+
+    signed_file_url = remote_fetcher._SignedFileUrl(
+        file_id="file-id",
+        preview_kind="file",
+        record_kind="tool",
+    )
+
+    assert (
+        remote_fetcher._verify_signed_file_url(
+            signed_file_url=signed_file_url,
+            timestamp="1700000000",
+            nonce="nonce",
+            sign=sign,
+        )
+        is False
+    )

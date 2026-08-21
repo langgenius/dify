@@ -150,7 +150,7 @@ class DifyWorkflowFileRuntime(WorkflowFileRuntimeProtocol):
     ) -> bool:
         payload = f"{preview_kind}-preview|{file_id}|{timestamp}|{nonce}"
         recalculated = hmac.new(self._secret_key(), payload.encode(), hashlib.sha256).digest()
-        if sign != base64.urlsafe_b64encode(recalculated).decode():
+        if not hmac.compare_digest(sign.encode(), base64.urlsafe_b64encode(recalculated)):
             return False
         return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
