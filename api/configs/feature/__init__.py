@@ -898,6 +898,14 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
+    WORKFLOW_AGENT_V2_CONTEXT_VALUE_MAX_LENGTH: PositiveInt = Field(
+        description=(
+            "Maximum number of characters for a previous node output value included "
+            "in an Agent node's workflow context before it is truncated"
+        ),
+        default=400_000,
+    )
+
     MAX_VARIABLE_SIZE: PositiveInt = Field(
         description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
         default=200 * 1024,
