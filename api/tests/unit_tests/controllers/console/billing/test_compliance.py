@@ -5,7 +5,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.billing.compliance import ComplianceApi, ComplianceDownloadQuery
-from controllers.console.error import ComplianceRateLimitError
+from controllers.console.billing.error import ComplianceRateLimitError
 from models import Account
 from services.errors.billing import ComplianceRateLimitExceededError
 

@@ -1,6 +1,5 @@
 from typing import Literal
 
-from controllers.console.error import ComplianceRateLimitError
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 from services.errors.billing import (
@@ -46,6 +45,12 @@ class BillingAccessDeniedRequestError(BaseHTTPException):
     error_code = "billing_access_denied"
     description = "Only workspace owners and admins can manage plans and payments."
     code = 403
+
+
+class ComplianceRateLimitError(BaseHTTPException):
+    error_code = "compliance_rate_limit"
+    description = "Rate limit exceeded for downloading compliance report."
+    code = 429
 
 
 class BillingOperationFailedError(BaseHTTPException):
