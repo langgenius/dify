@@ -69,15 +69,18 @@ class WorkflowAgentOutputAdapter:
         usage = self._usage_from_metadata(metadata)
         metadata_tenant_id = metadata.get("tenant_id")
         resolved_tenant_id = tenant_id or (metadata_tenant_id if isinstance(metadata_tenant_id, str) else None)
+        outputs = self._normalize_outputs(
+            event.output,
+            declared_outputs=declared_outputs,
+            tenant_id=resolved_tenant_id,
+        )
+        if event.usage is not None:
+            outputs["usage"] = dict(event.usage)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs=self._normalize_outputs(
-                event.output,
-                declared_outputs=declared_outputs,
-                tenant_id=resolved_tenant_id,
-            ),
+            outputs=outputs,
             metadata=self._build_node_metadata(metadata=metadata, usage=usage),
             llm_usage=usage or LLMUsage.empty_usage(),
         )

@@ -20,6 +20,12 @@ export const defaultAgentV2DeclaredOutputs: DeclaredOutputConfig[] = [
     },
   },
   {
+    name: 'usage',
+    type: 'object',
+    required: false,
+    description: 'LLM usage reported by the agent run.',
+  },
+  {
     name: 'json',
     type: 'object',
     required: false,

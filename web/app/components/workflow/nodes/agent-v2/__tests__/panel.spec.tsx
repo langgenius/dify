@@ -446,12 +446,12 @@ describe('agent/panel', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
-    expect(screen.queryByText('usage')).not.toBeInTheDocument()
+    expect(screen.getByText('usage')).toBeInTheDocument()
     expect(screen.getByText('files')).toBeInTheDocument()
     expect(screen.getByText('array[file]')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
     expect(screen.getByText('json')).toBeInTheDocument()
-    expect(screen.getByText('object')).toBeInTheDocument()
+    expect(screen.getAllByText('object')).toHaveLength(2)
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     ).toBeInTheDocument()

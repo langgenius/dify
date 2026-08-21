@@ -104,15 +104,12 @@ describe('variable utils', () => {
             vars: [
               { variable: 'text', type: VarType.string },
               { variable: 'files', type: VarType.arrayFile },
+              { variable: 'usage', type: VarType.object },
               { variable: 'json', type: VarType.object },
             ],
           }),
         ]),
       )
-      expect(availableVars.find((item) => item.nodeId === 'node-1')?.vars).not.toContainEqual({
-        variable: 'usage',
-        type: VarType.object,
-      })
     })
 
     it('uses Agent v2 declared outputs from graph data', () => {
