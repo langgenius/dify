@@ -68,8 +68,7 @@ const CredentialSelector = ({
       </PopoverTrigger>
       <PopoverContent
         sideOffset={0}
-        popupClassName="border-ccomponents-panel-border rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0"
-        popupProps={{ style: { width: 'var(--anchor-width, auto)' } }}
+        popupClassName="w-(--anchor-width) rounded-xl border-[0.5px] border-ccomponents-panel-border bg-components-panel-bg-blur p-0"
       >
         <div className="max-h-80 overflow-y-auto p-1">
           {credentials.map((credential) => (

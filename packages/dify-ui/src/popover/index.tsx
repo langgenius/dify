@@ -75,7 +75,6 @@ type PopoverContentProps = {
   alignOffset?: number
   className?: string
   popupClassName?: string
-  popupProps?: Omit<PopoverPopupProps, 'children' | 'className'>
 }
 
 function PopoverContent({
@@ -85,7 +84,6 @@ function PopoverContent({
   alignOffset = 0,
   className,
   popupClassName,
-  popupProps,
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
@@ -100,7 +98,6 @@ function PopoverContent({
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             popupClassName,
           )}
-          {...popupProps}
         >
           {children}
         </PopoverPopup>
