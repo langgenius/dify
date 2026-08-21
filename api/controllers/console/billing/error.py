@@ -1,11 +1,13 @@
 from typing import Literal
 
+from controllers.console.error import ComplianceRateLimitError
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 from services.errors.billing import (
     BillingError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
+    ComplianceRateLimitExceededError,
 )
 
 
@@ -13,6 +15,12 @@ class BillingUnprocessableEntityErrorResponse(ResponseModel):
     code: Literal["unprocessable_entity"]
     message: str
     status: Literal[422]
+
+
+class ComplianceRateLimitErrorResponse(ResponseModel):
+    code: Literal["compliance_rate_limit"]
+    message: str
+    status: Literal[429]
 
 
 class BillingOperationFailedErrorResponse(ResponseModel):
@@ -40,6 +48,8 @@ class BillingUnavailableError(BaseHTTPException):
 
 
 def to_billing_request_error(error: BillingError) -> BaseHTTPException:
+    if isinstance(error, ComplianceRateLimitExceededError):
+        return ComplianceRateLimitError()
     if isinstance(error, BillingUpstreamInvalidResponseError):
         return BillingOperationFailedError()
     if isinstance(error, BillingUpstreamUnavailableError):
