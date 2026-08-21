@@ -1,7 +1,16 @@
 import type * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { Popover, PopoverContent, PopoverTrigger } from '..'
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+  PopoverTrigger,
+} from '..'
 
 const renderWithSafeViewport = (ui: React.ReactNode) =>
   render(<div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>{ui}</div>)
@@ -131,5 +140,33 @@ describe('PopoverContent', () => {
       await expect.element(popup).toHaveAttribute('id', 'popover-popup-id')
       expect(onPopupClick).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+describe('Popover anatomy', () => {
+  it('should compose the portal, positioner, and popup directly', async () => {
+    const screen = await renderWithSafeViewport(
+      <Popover open>
+        <PopoverTrigger aria-label="popover trigger">Open</PopoverTrigger>
+        <PopoverPortal>
+          <PopoverPositioner placement="top-end" data-testid="anatomy-positioner">
+            <PopoverPopup>
+              <PopoverTitle>Anatomy popover</PopoverTitle>
+              <PopoverDescription>Anatomy content</PopoverDescription>
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>,
+    )
+
+    await expect
+      .element(screen.getByTestId('anatomy-positioner'))
+      .toHaveAttribute('data-side', 'top')
+    await expect
+      .element(screen.getByTestId('anatomy-positioner'))
+      .toHaveAttribute('data-align', 'end')
+    await expect
+      .element(screen.getByRole('dialog', { name: 'Anatomy popover' }))
+      .toHaveTextContent('Anatomy content')
   })
 })

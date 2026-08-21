@@ -599,13 +599,13 @@ describe('StepByStepTourMount', () => {
       expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
     expect(
-      screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.'),
     ).toBeInTheDocument()
     expect(screen.getByTestId('step-by-step-tour-clip-boundary')).not.toContainElement(
-      screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     )
     await expectStepByStepTourPatch({ action: 'skip' })
 
@@ -617,7 +617,7 @@ describe('StepByStepTourMount', () => {
     await user.click(dismissButton)
 
     expect(
-      screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open help menu' })).toHaveFocus()
   })
@@ -632,7 +632,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(1)
       expect(
-        screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).toBeInTheDocument()
     })
     deferred.reject(new Error('patch failed'))
@@ -640,7 +640,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
     })
     expect(mockTrackEvent).not.toHaveBeenCalledWith(
@@ -653,7 +653,7 @@ describe('StepByStepTourMount', () => {
     await waitFor(() => {
       expect(mockStepByStepTour.patchState).toHaveBeenCalledTimes(2)
       expect(
-        screen.getByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.getByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).toBeInTheDocument()
     })
   })
@@ -1514,7 +1514,7 @@ describe('StepByStepTourMount', () => {
       expect(localStorage.getItem(STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY)).toBe('expanded')
       expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeInTheDocument()
       expect(
-        screen.queryByRole('region', { name: 'Step-by-step Tour recovery tip' }),
+        screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
       ).not.toBeInTheDocument()
       expect(mockTrackEvent).toHaveBeenCalledWith('step_tour', {
         action: 'guide_skipped',
