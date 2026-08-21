@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.client import DifyAgentHTTPError, DifyAgentNotFoundError, DifyAgentTimeoutError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -12,8 +13,15 @@ from models.agent import (
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
     AgentHomeSnapshot,
+    AgentScope,
+    AgentSource,
+    AgentStatus,
     AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.errors import (
@@ -53,15 +61,59 @@ def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: 
     assert client._timeout == 45.0
 
 
-def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup() -> None:
-    session = MagicMock()
+def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup(unbound_session: Session) -> None:
     validate_home_snapshot_binding(
-        session=session,
+        session=unbound_session,
         agent=Agent(id="agent-1"),
         home_snapshot_id=None,
     )
 
-    session.scalar.assert_not_called()
+
+def _persist_build_binding(
+    session: Session,
+    *,
+    app_id: str,
+    backing_app_id: str | None,
+    base_home_snapshot_id: str | None = "home-old",
+) -> None:
+    runtime_app_id = backing_app_id or app_id
+    session.add_all(
+        [
+            Agent(
+                id="agent-1",
+                tenant_id="tenant-1",
+                name="Builder",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.AGENT_APP,
+                status=AgentStatus.ACTIVE,
+                app_id=app_id,
+                backing_app_id=backing_app_id,
+            ),
+            AgentWorkspace(
+                id="workspace-1",
+                tenant_id="tenant-1",
+                app_id=runtime_app_id,
+                owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                owner_id="build-1",
+                owner_scope_key="root",
+                backend_workspace_ref="workspace-ref-1",
+                status=AgentWorkingResourceStatus.ACTIVE,
+            ),
+            AgentWorkspaceBinding(
+                id="binding-1",
+                tenant_id="tenant-1",
+                app_id=runtime_app_id,
+                workspace_id="workspace-1",
+                agent_id="agent-1",
+                base_home_snapshot_id=base_home_snapshot_id,
+                agent_config_version_id="build-1",
+                agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                backend_binding_ref="binding-ref-1",
+                status=AgentWorkingResourceStatus.ACTIVE,
+            ),
+        ]
+    )
+    session.commit()
 
 
 @pytest.mark.parametrize(
@@ -73,72 +125,55 @@ def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_look
 )
 def test_build_apply_checkpoints_exact_active_binding(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
     app_id: str,
     backing_app_id: str | None,
     expected_runtime_app_id: str,
 ) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(app_id=app_id, backing_app_id=backing_app_id)
-    binding = SimpleNamespace(
-        backend_binding_ref="binding-ref-1",
-        agent_id="agent-1",
-        base_home_snapshot_id="home-old",
-        agent_config_version_id="build-1",
-        agent_config_version_kind="build_draft",
-    )
-    get_binding = MagicMock(return_value=binding)
+    _persist_build_binding(sqlite_session, app_id=app_id, backing_app_id=backing_app_id)
     client = _client(snapshot_ref="snapshot-ref-2")
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
-    validate_generation = MagicMock()
-    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
 
     snapshot = AgentHomeSnapshotService.create_for_build_apply(
-        session=session,
+        session=sqlite_session,
         build_draft=_build_draft(),
     )
+    sqlite_session.flush()
 
-    assert get_binding.call_args.kwargs["binding_id"] == "binding-1"
-    assert get_binding.call_args.kwargs["expected_owner_scope"].app_id == expected_runtime_app_id
+    stored = sqlite_session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == snapshot.id))
+    assert stored is snapshot
     request = client.create_home_snapshot_from_binding_sync.call_args.args[0]
+    assert request.tenant_id == "tenant-1"
+    assert request.agent_id == "agent-1"
     assert request.backend_binding_ref == "binding-ref-1"
     assert snapshot.snapshot_ref == "snapshot-ref-2"
-    assert validate_generation.call_args.kwargs["base_home_snapshot_id"] == "home-old"
+    workspace = sqlite_session.get(AgentWorkspace, "workspace-1")
+    assert workspace is not None
+    assert workspace.app_id == expected_runtime_app_id
 
 
-def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.MonkeyPatch) -> None:
-    session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(app_id="app-1", backing_app_id=None)
-    binding = SimpleNamespace(
-        backend_binding_ref="binding-ref-1",
-        agent_id="agent-1",
-        base_home_snapshot_id=None,
-        agent_config_version_id="build-1",
-        agent_config_version_kind="build_draft",
-    )
+def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
+    _persist_build_binding(sqlite_session, app_id="app-1", backing_app_id=None, base_home_snapshot_id=None)
     client = _client(snapshot_ref="snapshot-ref-2")
-    validate_generation = MagicMock()
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
-    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
 
     snapshot = AgentHomeSnapshotService.create_for_build_apply(
-        session=session,
+        session=sqlite_session,
         build_draft=_build_draft(home_snapshot_id=None),
     )
+    sqlite_session.flush()
 
     assert snapshot.snapshot_ref == "snapshot-ref-2"
-    assert validate_generation.call_args.kwargs["base_home_snapshot_id"] is None
+    assert sqlite_session.get(AgentHomeSnapshot, snapshot.id) is snapshot
 
 
-def test_build_apply_fails_fast_without_source_binding() -> None:
-    session = MagicMock()
+def test_build_apply_fails_fast_without_source_binding(unbound_session: Session) -> None:
     build_draft = _build_draft()
     build_draft.agent_workspace_binding_id = None
 
     with pytest.raises(AgentBuildSandboxNotFoundError):
         AgentHomeSnapshotService.create_for_build_apply(
-            session=session,
+            session=unbound_session,
             build_draft=build_draft,
         )
 
