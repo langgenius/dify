@@ -7,7 +7,10 @@ import type {
   SkillFileResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { BuilderChatMessage, SkillBuilderAttachment, SkillBuilderModel } from './shared'
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  FormValue,
+  Model,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -23,6 +26,7 @@ import {
   useDefaultModel,
   useModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { sendSkillAssistMessage, uploadSkillFile } from '../client'
 import { SkillBuilderGridTexture } from './builder-grid-texture'
@@ -78,8 +82,10 @@ function BuilderModelSelector({
   selectedModel: SkillBuilderModel | undefined
   onSelect: (model: SkillBuilderModel) => void
 }) {
+  const { t } = useTranslation()
+
   return (
-    <div className="w-fit max-w-full min-w-0">
+    <div className="flex w-fit max-w-full min-w-0 items-center gap-px">
       {isLoading ? (
         <div className="h-6 w-20 rounded-md bg-state-base-hover" />
       ) : (
@@ -98,6 +104,42 @@ function BuilderModelSelector({
               ...selectedModel,
               provider,
               model,
+            })
+          }}
+        />
+      )}
+      {!isLoading && (
+        <ModelParameterModal
+          isAdvancedMode
+          hideDebugWithMultipleModel
+          modelId={selectedModel?.model ?? ''}
+          provider={selectedModel?.provider ?? ''}
+          completionParams={(selectedModel?.model_settings ?? { temperature: 0.7 }) as FormValue}
+          modelList={modelList}
+          modelSelectorPopupClassName="h-[480px]! max-h-[480px]! w-80! max-w-80!"
+          showModelMeta={false}
+          placement="bottom-start"
+          trigger={
+            <button
+              type="button"
+              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
+              className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+            >
+              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+            </button>
+          }
+          setModel={({ modelId, provider }) => {
+            onSelect({
+              ...selectedModel,
+              provider,
+              model: modelId,
+            })
+          }}
+          onCompletionParamsChange={(modelSettings) => {
+            if (!selectedModel) return
+            onSelect({
+              ...selectedModel,
+              model_settings: modelSettings,
             })
           }}
         />
@@ -314,6 +356,7 @@ export function SkillBuilderPanel({
         return {
           provider: provider.provider,
           model: model.model,
+          model_settings: { temperature: 0.7 },
         }
       }
     }
@@ -324,6 +367,7 @@ export function SkillBuilderPanel({
     ? {
         provider: defaultTextGenerationModel.provider.provider,
         model: defaultTextGenerationModel.model,
+        model_settings: { temperature: 0.7 },
       }
     : undefined
   const [selectedModel, setSelectedModel] = useState<SkillBuilderModel | undefined>()

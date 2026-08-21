@@ -115,10 +115,24 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
     data: mocks.textGenerationModelList,
     isLoading: false,
   }),
+  useTextGenerationCurrentProviderAndModelAndModelList: () => ({
+    currentProvider: mocks.textGenerationModelList[0],
+    currentModel: mocks.textGenerationModelList[0]?.models[0],
+    activeTextGenerationModelList: mocks.textGenerationModelList,
+  }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   ModelSelector: () => <button type="button">model-settings</button>,
+  SplitModelSelector: () => <button type="button">model-settings</button>,
+}))
+
+vi.mock('@/service/use-common', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/use-common')>()),
+  useModelParameterRules: () => ({
+    data: { data: [] },
+    isLoading: false,
+  }),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({

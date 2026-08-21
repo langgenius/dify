@@ -21,6 +21,7 @@ import re
 import zipfile
 from base64 import b64encode
 from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -32,7 +33,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import object_session
+from sqlalchemy.orm import Session, object_session
 from yaml.error import MarkedYAMLError
 
 from configs import dify_config
@@ -552,11 +553,33 @@ class SkillManagementService:
     does not create a published version.
     """
 
-    def __init__(self, *, tool_file_manager: ToolFileManager | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        tool_file_manager: ToolFileManager | None = None,
+        session: Session | None = None,
+    ) -> None:
         self._tool_files = tool_file_manager or ToolFileManager()
+        self._session = session
+
+    @contextmanager
+    def _session_scope(self, session: Session | None = None) -> Generator[Session, None, None]:
+        """Reuse a caller-owned transaction when one is available.
+
+        The fallback keeps direct service consumers working while callers are
+        migrated to the controller/session injection convention.
+        """
+        if session is not None:
+            yield session
+            return
+        if self._session is not None:
+            yield self._session
+            return
+        with session_factory.create_session() as managed_session:
+            yield managed_session
 
     def create_skill(self, *, tenant_id: str, user_id: str, payload: SkillCreatePayload) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
             skill_name = payload.name or self._generate_untitled_skill_name(session, tenant_id=tenant_id)
             display_name = payload.display_name or (_UNTITLED_DISPLAY_NAME if payload.name is None else skill_name)
@@ -653,7 +676,7 @@ class SkillManagementService:
         payload: SkillDraftFileCheckPayload,
     ) -> dict[str, Any]:
         """Validate candidate draft file uploads without persisting files."""
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             existing_files = list(
                 session.scalars(
@@ -687,7 +710,7 @@ class SkillManagementService:
         limit: int = 20,
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             stmt = select(Skill).where(Skill.tenant_id == tenant_id).order_by(Skill.updated_at.desc())
             if keyword:
                 like = f"%{keyword.strip()}%"
@@ -750,7 +773,7 @@ class SkillManagementService:
 
     def list_tags(self, *, tenant_id: str) -> dict[str, Any]:
         """Return distinct Skill tags in a tenant with usage counts for filter controls."""
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             rows = session.execute(
                 select(Tag.name, func.count(TagBinding.id).label("binding_count"))
                 .outerjoin(
@@ -767,7 +790,7 @@ class SkillManagementService:
             return {"data": [{"tag": tag, "count": count} for tag, count in rows]}
 
     def get_skill(self, *, tenant_id: str, skill_id: str) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             files = list(
                 session.scalars(
@@ -805,7 +828,7 @@ class SkillManagementService:
         material and never persists its response. Callers remain responsible
         for applying any suggested content through the draft file APIs.
         """
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             files = list(
                 session.scalars(
@@ -841,7 +864,9 @@ class SkillManagementService:
                             content=f"<skill_draft>\n{context}\n</skill_draft>\n\nUser request:\n{message}"
                         ),
                     ],
-                    model_parameters={"temperature": 0.2},
+                    # Keep the fallback within the minimum accepted range of
+                    # providers that enforce a non-zero temperature floor.
+                    model_parameters={"temperature": 0.7},
                     stream=True,
                 )
                 for chunk in response:
@@ -1001,7 +1026,7 @@ class SkillManagementService:
         model_payload: SkillAssistModelPayload | None,
         target_path: str | None,
     ) -> Generator[str, None, SkillAssistActionResult]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             files = list(
                 session.scalars(
@@ -1381,7 +1406,7 @@ class SkillManagementService:
                     "the workspace has no default reasoning model configured",
                     status_code=400,
                 ) from exc
-            return model_instance, {"temperature": 0.2}
+            return model_instance, {"temperature": 0.7}
 
         try:
             model_instance = model_manager.get_model_instance(
@@ -1396,7 +1421,7 @@ class SkillManagementService:
                 str(exc),
                 status_code=400,
             ) from exc
-        model_parameters = {"temperature": 0.2, **(model_payload.model_settings or {})}
+        model_parameters = {"temperature": 0.7, **(model_payload.model_settings or {})}
         return model_instance, model_parameters
 
     @staticmethod
@@ -1472,7 +1497,7 @@ class SkillManagementService:
         query inlines bounded text attachments and leaves binary files as
         metadata so the runtime does not need direct storage access.
         """
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             files = list(
                 session.scalars(
@@ -1643,7 +1668,7 @@ class SkillManagementService:
         skill_id: str,
         payload: SkillMetadataPayload,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             if payload.display_name is not None:
@@ -1676,7 +1701,7 @@ class SkillManagementService:
         skill_id: str,
         payload: SkillDraftTreePayload,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             files = self._build_draft_rows_from_tree(skill=skill, payload=payload, strict_frontmatter=False)
@@ -1710,7 +1735,7 @@ class SkillManagementService:
         payload: SkillDraftFileOperationPayload,
     ) -> dict[str, Any]:
         """Apply one draft file operation while preserving full-tree validation invariants."""
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             existing_files = list(
                 session.scalars(
@@ -1785,7 +1810,7 @@ class SkillManagementService:
         skill_id: str,
         payload: SkillPublishPayload,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             draft_files = list(session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id)))
             skill_md = next((file for file in draft_files if file.path == _SKILL_MD), None)
@@ -1822,7 +1847,7 @@ class SkillManagementService:
             mimetype="application/zip",
             filename=f"{skill_name}.zip",
         )
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             skill.name = skill_name
             skill.display_name = skill_display_name
@@ -1848,7 +1873,7 @@ class SkillManagementService:
             return self._serialize_version(version, latest_version_id=skill.latest_published_version_id)
 
     def list_versions(self, *, tenant_id: str, skill_id: str) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             versions = list(
                 session.scalars(
@@ -1873,7 +1898,7 @@ class SkillManagementService:
             }
 
     def get_version(self, *, tenant_id: str, skill_id: str, version_id: str) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=version_id)
             version_payload = self._serialize_version(
@@ -1922,14 +1947,14 @@ class SkillManagementService:
         """Resolve one draft or versioned Skill file as bytes for preview/download."""
         normalized_path = normalize_skill_file_path(path)
         if version_id:
-            with session_factory.create_session() as session:
+            with self._session_scope() as session:
                 skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
                 version = self._require_version(session, skill_id=skill.id, version_id=version_id)
                 archive_tool_file_id = version.archive_tool_file_id
             archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=archive_tool_file_id)
             return self._file_content_from_archive_bytes(archive_bytes, path=normalized_path)
 
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             file = session.scalar(
                 select(SkillDraftFile).where(
@@ -1968,7 +1993,7 @@ class SkillManagementService:
         version_id: str,
         payload: SkillVersionUpdatePayload,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=version_id)
             version.version_name = self._version_name_from_payload(payload.version_name)
@@ -1985,7 +2010,7 @@ class SkillManagementService:
             )
 
     def delete_version(self, *, tenant_id: str, user_id: str, skill_id: str, version_id: str) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=version_id)
             was_latest = skill.latest_published_version_id == version.id
@@ -2012,7 +2037,7 @@ class SkillManagementService:
 
     def duplicate_skill(self, *, tenant_id: str, user_id: str, skill_id: str) -> dict[str, Any]:
         """Create a draft-only copy, preferring the latest published snapshot when present."""
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             source = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
             new_name = self._next_copy_name(session, tenant_id=tenant_id, source_name=source.name)
@@ -2045,18 +2070,34 @@ class SkillManagementService:
 
         if latest_version_id is not None:
             archive = self._load_version_archive(tenant_id=tenant_id, version_id=latest_version_id)
-            with session_factory.create_session() as session:
+            with self._session_scope() as session:
                 duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
+                duplicate_identity = (
+                    duplicate.name,
+                    duplicate.display_name,
+                    duplicate.description,
+                    duplicate.name_manually_edited,
+                )
                 files = self._draft_rows_from_archive_bytes(
                     tenant_id=tenant_id,
                     user_id=user_id,
                     skill=duplicate,
                     archive_bytes=archive,
                 )
+                # Parsing the published SKILL.md synchronizes metadata onto the
+                # supplied ORM object. A duplicate must retain its new identity,
+                # otherwise the reused request session autoflushes the source
+                # name and violates the tenant/name unique constraint.
+                (
+                    duplicate.name,
+                    duplicate.display_name,
+                    duplicate.description,
+                    duplicate.name_manually_edited,
+                ) = duplicate_identity
         else:
             files = copied_draft_files
 
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             duplicate = self._require_skill(session, tenant_id=tenant_id, skill_id=duplicate_id)
             if latest_version_id is not None:
                 for file in files:
@@ -2097,7 +2138,7 @@ class SkillManagementService:
         name = validate_skill_name(str(metadata.get("name") or ""))
         description = self._require_frontmatter_description(metadata, content=skill_md_content)
         display_name = self._display_name_from_frontmatter(metadata=metadata, name=name)
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             self._enforce_workspace_skill_limit(session, tenant_id=tenant_id)
             skill = Skill(
                 tenant_id=tenant_id,
@@ -2126,7 +2167,7 @@ class SkillManagementService:
             }
 
     def delete_skill(self, *, tenant_id: str, skill_id: str, confirmation_name: str | None = None) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             reference_count = self._reference_counts(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(
                 skill.id, 0
@@ -2160,13 +2201,13 @@ class SkillManagementService:
         skill_id: str,
         payload: SkillRestorePayload,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=payload.version_id)
             archive_file_id = version.archive_tool_file_id
 
         archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=archive_file_id)
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             draft_files = self._draft_rows_from_archive_bytes(
                 tenant_id=tenant_id,
@@ -2187,7 +2228,7 @@ class SkillManagementService:
         return self.get_skill(tenant_id=tenant_id, skill_id=skill_id)
 
     def pull_published_archive(self, *, tenant_id: str, skill_id: str) -> PublishedSkillArchive:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             if skill.latest_published_version_id is None:
                 raise SkillManagementServiceError("skill_not_published", "skill is not published", status_code=404)
@@ -2208,7 +2249,7 @@ class SkillManagementService:
 
     def list_runtime_agent_skills(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
         """Return bound published workspace Skills for Agent runtime selection."""
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             rows = list(
                 session.execute(
                     select(AgentSkillBinding, Skill, SkillVersion)
@@ -2244,7 +2285,7 @@ class SkillManagementService:
     def pull_runtime_agent_skill(self, *, tenant_id: str, agent_id: str, name: str) -> PublishedSkillArchive:
         """Pull one bound published workspace Skill by Skill name."""
         normalized_name = validate_skill_name(name)
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             rows = session.execute(
                 select(Skill, SkillVersion)
                 .join(AgentSkillBinding, AgentSkillBinding.skill_id == Skill.id)
@@ -2375,7 +2416,7 @@ class SkillManagementService:
             raise SkillManagementServiceError("too_many_agent_skills", "agent skill binding limit exceeded")
         if len(set(skill_ids)) != len(skill_ids):
             raise SkillManagementServiceError("duplicate_skill_binding", "skill binding list contains duplicates")
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             agent = session.scalar(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
             if agent is None:
                 raise SkillManagementServiceError("agent_not_found", "agent not found", status_code=404)
@@ -2480,7 +2521,7 @@ class SkillManagementService:
         tenant_id: str,
         agent_id: str,
     ) -> dict[str, Any]:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             rows = list(
                 session.execute(
                     select(AgentSkillBinding, Skill, SkillVersion)
@@ -2514,7 +2555,7 @@ class SkillManagementService:
 
     def list_skill_references(self, *, tenant_id: str, skill_id: str) -> dict[str, Any]:
         """Return direct Skill consumers for the editor Referenced by panel."""
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             binding_rows = list(
                 session.execute(
@@ -3776,7 +3817,7 @@ class SkillManagementService:
         return [item for item in items if item.path != path and not item.path.startswith(prefix)]
 
     def _load_version_archive(self, *, tenant_id: str, version_id: str) -> bytes:
-        with session_factory.create_session() as session:
+        with self._session_scope() as session:
             version = session.get(SkillVersion, version_id)
             if version is None:
                 raise SkillManagementServiceError("skill_version_not_found", "skill version not found", status_code=404)
