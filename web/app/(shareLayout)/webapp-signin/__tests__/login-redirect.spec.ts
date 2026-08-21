@@ -11,6 +11,7 @@ describe('resolveWebAppLoginRedirect', () => {
 
       expect(result).toEqual({
         appCode: 'share-app',
+        address: { kind: 'default', code: 'share-app' },
         target: { kind: 'internal', href: '/chatbot/share-app?foo=bar#answer' },
       })
     })
@@ -22,6 +23,19 @@ describe('resolveWebAppLoginRedirect', () => {
 
       expect(result?.target.href).toBe(redirectUrl)
       expect(result?.appCode).toBe('share-app')
+    })
+
+    it('should resolve an environment workflow redirect', () => {
+      const result = resolveWebAppLoginRedirect(
+        '/env/workflow/workflow-app',
+        'https://self-hosted.example.com',
+      )
+
+      expect(result).toEqual({
+        appCode: 'workflow-app',
+        address: { kind: 'environment', code: 'workflow-app' },
+        target: { kind: 'internal', href: '/env/workflow/workflow-app' },
+      })
     })
   })
 
@@ -35,6 +49,7 @@ describe('resolveWebAppLoginRedirect', () => {
 
       expect(result).toEqual({
         appCode: 'share-app',
+        address: { kind: 'default', code: 'share-app' },
         target: {
           kind: 'absolute',
           href: 'http://self-hosted.example.com:8080/chatbot/share-app',

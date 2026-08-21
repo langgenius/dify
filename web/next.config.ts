@@ -1,10 +1,8 @@
 import type { NextConfig } from '@/next'
-import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
 const isDev = process.env.NODE_ENV === 'development'
-const withMDX = createMDX()
 const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
@@ -25,8 +23,6 @@ const nextConfig: NextConfig = {
     useTypeScriptCli: false,
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
-  // Configure pageExtensions to include md and mdx
-  pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
@@ -36,7 +32,13 @@ const nextConfig: NextConfig = {
       {
         source: '/explore/apps',
         destination: '/',
-        permanent: false,
+        permanent: true,
+      },
+      {
+        // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
+        source: '/education-apply',
+        destination: '/education/apply',
+        permanent: true,
       },
     ]
   },
@@ -46,4 +48,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withMDX(nextConfig)
+export default nextConfig

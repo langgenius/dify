@@ -27,6 +27,9 @@ const mockExportWorkflowAppDsl = vi.fn()
 const mockWorkflowExportState = { isExporting: false }
 const mockDeleteApp = vi.fn()
 const mockFetchAppDetail = vi.fn()
+const mockMarkAppDeletionStarted = vi.fn()
+const mockMarkAppDeletionSucceeded = vi.fn()
+const mockMarkAppDeletionFailed = vi.fn()
 const mockGetSocket = vi.fn()
 const mockOnAppMetaUpdate = vi.fn()
 const mockSetQueryData = vi.fn()
@@ -97,6 +100,12 @@ vi.mock('@/service/apps', () => ({
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
+vi.mock('@/service/app-deletion', () => ({
+  markAppDeletionStarted: (...args: unknown[]) => mockMarkAppDeletionStarted(...args),
+  markAppDeletionSucceeded: (...args: unknown[]) => mockMarkAppDeletionSucceeded(...args),
+  markAppDeletionFailed: (...args: unknown[]) => mockMarkAppDeletionFailed(...args),
+}))
+
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
@@ -136,39 +145,12 @@ describe('useAppInfoActions', () => {
     it('should return initial state correctly', () => {
       const { result } = renderHook(() => useAppInfoActions({}))
       expect(result.current.appDetail).toEqual(mockAppDetail)
-      expect(result.current.panelOpen).toBe(false)
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
   })
 
-  describe('Panel management', () => {
-    it('should toggle panelOpen', () => {
-      const { result } = renderHook(() => useAppInfoActions({}))
-
-      act(() => {
-        result.current.setPanelOpen(true)
-      })
-
-      expect(result.current.panelOpen).toBe(true)
-    })
-
-    it('should close panel and call onDetailExpand', () => {
-      const onDetailExpand = vi.fn()
-      const { result } = renderHook(() => useAppInfoActions({ onDetailExpand }))
-
-      act(() => {
-        result.current.setPanelOpen(true)
-      })
-
-      act(() => {
-        result.current.closePanel()
-      })
-
-      expect(result.current.panelOpen).toBe(false)
-      expect(onDetailExpand).toHaveBeenCalledWith(false)
-    })
-
+  describe('App-scoped state', () => {
     it('should reset app-scoped state when resetKey changes', () => {
       const { result, rerender } = renderHook(({ resetKey }) => useAppInfoActions({ resetKey }), {
         initialProps: { resetKey: 'app-1' },
@@ -176,34 +158,26 @@ describe('useAppInfoActions', () => {
 
       act(() => {
         result.current.openModal('delete')
-        result.current.setPanelOpen(true)
       })
 
-      expect(result.current.panelOpen).toBe(true)
       expect(result.current.activeModal).toBe('delete')
 
       rerender({ resetKey: 'app-2' })
 
-      expect(result.current.panelOpen).toBe(false)
       expect(result.current.activeModal).toBeNull()
       expect(result.current.secretEnvList).toEqual([])
     })
   })
 
   describe('Modal management', () => {
-    it('should open modal and close panel', () => {
+    it('should open modal', () => {
       const { result } = renderHook(() => useAppInfoActions({}))
-
-      act(() => {
-        result.current.setPanelOpen(true)
-      })
 
       act(() => {
         result.current.openModal('edit')
       })
 
       expect(result.current.activeModal).toBe('edit')
-      expect(result.current.panelOpen).toBe(false)
     })
 
     it('should close modal', () => {
@@ -534,6 +508,9 @@ describe('useAppInfoActions', () => {
       })
 
       expect(mockDeleteApp).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionSucceeded).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionFailed).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.appDeleted' })
       expect(mockInvalidateQueries).toHaveBeenCalledTimes(3)
       expect(mockReplace).toHaveBeenCalledWith('/apps')
@@ -561,6 +538,9 @@ describe('useAppInfoActions', () => {
         await result.current.onConfirmDelete()
       })
 
+      expect(mockMarkAppDeletionStarted).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionFailed).toHaveBeenCalledWith('app-1')
+      expect(mockMarkAppDeletionSucceeded).not.toHaveBeenCalled()
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
         message: expect.stringContaining('app.appDeleteFailed'),

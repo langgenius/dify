@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,18 +14,25 @@ from controllers.web.error import (
 )
 from controllers.web.workflow import WorkflowRunApi, WorkflowTaskStopApi
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
 
 
-def _workflow_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="workflow")
+def _workflow_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _chat_app() -> App:
+    return App(id="app-1", tenant_id="tenant-1", mode=AppMode.CHAT)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------

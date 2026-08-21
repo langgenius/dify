@@ -125,6 +125,14 @@ export type AccountPasswordPayload = {
   repeat_new_password: string
 }
 
+export type AccountProfilePatchPayload = {
+  avatar?: string
+  interface_language?: string
+  interface_theme?: 'dark' | 'light'
+  name?: string
+  timezone?: string
+}
+
 export type AccountTimezonePayload = {
   timezone: string
 }
@@ -431,6 +439,20 @@ export type GetAccountProfileResponses = {
 }
 
 export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]
+
+export type PatchAccountProfileData = {
+  body: AccountProfilePatchPayload
+  path?: never
+  query?: never
+  url: '/account/profile'
+}
+
+export type PatchAccountProfileResponses = {
+  200: AccountResponse
+}
+
+export type PatchAccountProfileResponse =
+  PatchAccountProfileResponses[keyof PatchAccountProfileResponses]
 
 export type PostAccountTimezoneData = {
   body: AccountTimezonePayload

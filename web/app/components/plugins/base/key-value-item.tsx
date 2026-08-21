@@ -1,11 +1,10 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CopyCheck } from '../../base/icons/src/vender/line/files'
 
 type Props = Readonly<{
   label: string
@@ -67,21 +66,19 @@ function KeyValueItem({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Button
-                variant="ghost"
-                aria-label={copyButtonLabel}
-                className="size-6 p-0"
-                onClick={handleCopy}
-              >
+              <IconButton aria-label={copyButtonLabel} onClick={handleCopy}>
                 {isCopied ? (
-                  <CopyCheck aria-hidden className="size-3.5 shrink-0 text-text-tertiary" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-files-copy-check size-3.5 shrink-0 text-text-tertiary"
+                  />
                 ) : (
                   <span
                     aria-hidden
                     className="i-ri-clipboard-line size-3.5 shrink-0 text-text-tertiary"
                   />
                 )}
-              </Button>
+              </IconButton>
             }
           />
           <TooltipContent placement="top">{tooltipLabel}</TooltipContent>

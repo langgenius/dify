@@ -196,7 +196,7 @@ def test_patch_union_schema_markdown_fills_converter_blank_schema_types(tmp_path
     assert "| allowed_file_types | [ [FileType](#filetype) ] |  | No |" in patched
 
 
-def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_path):
+def test_patch_union_schema_markdown_fills_regular_schema_union_property(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "service-openapi.json"
     spec_path.write_text(
@@ -282,7 +282,7 @@ def test_patch_union_schema_markdown_fills_array_item_union_property(tmp_path: P
     ) in patched
 
 
-def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path):
+def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path: Path):
     module = _load_generate_swagger_markdown_docs_module()
     spec_path = tmp_path / "console-openapi.json"
     spec_path.write_text("{}", encoding="utf-8")

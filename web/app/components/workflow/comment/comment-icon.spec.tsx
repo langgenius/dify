@@ -1,7 +1,9 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentIcon } from './comment-icon'
 
 type Position = { x: number; y: number }
@@ -18,6 +20,14 @@ const mockConsoleState = vi.hoisted(() => ({
 const mockFlowToScreenPosition = vi.fn((position: Position) => position)
 const mockScreenToFlowPosition = vi.fn((position: Position) => position)
 
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper({
+      ...mockConsoleState.userProfile,
+      id: mockUserId,
+    }),
+  })
+
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
     flowToScreenPosition: mockFlowToScreenPosition,
@@ -29,17 +39,6 @@ vi.mock('reactflow', () => ({
     zoom: 1,
   }),
 }))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    ...mockConsoleState,
-    userProfile: {
-      ...mockConsoleState.userProfile,
-      id: mockUserId,
-    },
-  }))
-})
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (

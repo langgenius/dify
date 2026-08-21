@@ -1,15 +1,16 @@
 import type { EmailConfig } from '../../types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBugLine } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { userProfileEmailAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 
@@ -33,7 +34,10 @@ const EmailConfigureModal = ({
   availableNodes = [],
 }: EmailConfigureModalProps) => {
   const { t } = useTranslation()
-  const email = useAtomValue(userProfileEmailAtom)
+  const { data: email } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const [recipients, setRecipients] = useState(
     config?.recipients || { whole_workspace: false, items: [] },
   )
@@ -89,7 +93,17 @@ const EmailConfigureModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-64px)]! w-180!">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="space-y-1 pr-8">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], { ns: 'workflow' })}

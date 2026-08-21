@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { IChatItem } from '../../type'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

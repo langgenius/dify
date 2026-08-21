@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import ToolDateRangePicker from '../tool-date-range-picker'
 
 vi.mock('react-i18next', async () => {

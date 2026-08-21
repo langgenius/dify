@@ -1,3 +1,4 @@
+import type { EmailCodeLoginPayload } from '@dify/contracts/api/console/email-code-login/types.gen'
 import type {
   PostWorkspacesInfoData,
   PostWorkspacesInfoResponse,
@@ -5,7 +6,6 @@ import type {
 import type {
   DefaultModelResponse,
   Model,
-  ModelItem,
   ModelParameterRule,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -153,10 +153,6 @@ export const activateMember = ({
   return post<LoginResponse>(url, { body })
 }
 
-export const fetchModelProviderModelList = (url: string): Promise<{ data: ModelItem[] }> => {
-  return get<{ data: ModelItem[] }>(url)
-}
-
 export const fetchModelList = (url: string): Promise<{ data: Model[] }> => {
   return get<{ data: Model[] }>(url)
 }
@@ -228,16 +224,18 @@ export const uploadRemoteFileInfo = (
 export const sendEMailLoginCode = (
   email: string,
   language = 'en-US',
+  turnstileToken?: string,
 ): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+  post<CommonResponse & { data: string }>('/email-code-login', {
+    body: {
+      email,
+      language,
+      ...(turnstileToken === undefined ? {} : { turnstile_token: turnstileToken }),
+    },
+  })
 
-export const emailLoginWithCode = (data: {
-  email: string
-  code: string
-  token: string
-  language: string
-  timezone?: string
-}): Promise<LoginResponse> => post<LoginResponse>('/email-code-login/validity', { body: data })
+export const emailLoginWithCode = (data: EmailCodeLoginPayload): Promise<LoginResponse> =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (
   email: string,

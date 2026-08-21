@@ -22,7 +22,7 @@ Then('I should see the Agent v2 Web app access URL', async function (this: DifyW
   const webAppCard = getWebAppCard(this)
 
   await expect(webAppCard.getByRole('heading', { name: 'Web app' })).toBeVisible()
-  await expect(webAppCard.getByText('Access URL')).toBeVisible()
+  await expect(webAppCard.getByText('Web App URL')).toBeVisible()
   await expect(webAppCard.getByLabel('Copy access URL')).toBeEnabled()
   await expect(webAppCard.getByRole('link', { name: 'Launch' })).toBeVisible()
 })

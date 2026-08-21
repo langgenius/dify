@@ -14,7 +14,7 @@ from services.setup_service import (
 )
 
 from .error import AlreadySetupError, NotInitValidateError
-from .init_validate import get_init_validate_status
+from .init_validate import is_init_validated
 from .wraps import mark_setup_completed, only_edition_self_hosted
 
 
@@ -73,7 +73,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
     """Initialize system setup with admin account.
 
     NOTE: This endpoint is unauthenticated by design for first-time bootstrap.
-    Access is restricted by deployment mode (`SELF_HOSTED`), one-time setup guards,
+    Access is restricted to self-hosted editions (`COMMUNITY` and `ENTERPRISE`), one-time setup guards,
     and init-password validation rather than user session authentication.
     """
     try:
@@ -85,7 +85,7 @@ def setup_system(payload: SetupRequestPayload) -> SetupResponse:
                 ip_address=extract_remote_ip(request),
                 language=payload.language,
             ),
-            initialization_validated=get_init_validate_status(),
+            initialization_validated=is_init_validated(),
         )
     except SetupAlreadyCompletedError:
         raise AlreadySetupError() from None

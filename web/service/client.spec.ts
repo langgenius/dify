@@ -4,7 +4,7 @@ import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/t
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 const loadGetBaseURL = async (isClientValue: boolean) => {
@@ -631,6 +631,32 @@ describe('consoleQuery education defaults', () => {
     )
 
     expect(invalidateQueries).not.toHaveBeenCalled()
+  })
+})
+
+describe('consoleQuery account profile mutation defaults', () => {
+  it('should invalidate the account profile after a timezone update', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    await consoleQuery.account.timezone.post.mutationOptions().onSuccess?.(
+      {
+        id: 'user-1',
+        name: 'Test User',
+        email: 'test@example.com',
+        avatar_url: null,
+        is_password_set: true,
+        timezone: 'Pacific/Midway',
+      },
+      { body: { timezone: 'Pacific/Midway' } },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.account.profile.get.key(),
+    })
   })
 })
 
@@ -1399,11 +1425,36 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(queryClient.getQueryData(composerQueryKey)).toEqual(savedComposerState)
   })
 
-  it('should invalidate invite option lists after deleting an agent', async () => {
+  it('should clear deleted agent queries and invalidate invite option lists', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const deletedAgent = createAgent()
+    const otherAgent = createAgent({ id: 'agent-2' })
+    const deletedAgentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
+      input: {
+        params: {
+          agent_id: deletedAgent.id,
+        },
+      },
+    })
+    const deletedAgentComposerQueryKey = consoleQuery.agent.byAgentId.composer.get.queryKey({
+      input: {
+        params: {
+          agent_id: deletedAgent.id,
+        },
+      },
+    })
+    const otherAgentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({
+      input: {
+        params: {
+          agent_id: otherAgent.id,
+        },
+      },
+    })
+    queryClient.setQueryData(deletedAgentDetailQueryKey, deletedAgent)
+    queryClient.setQueryData(deletedAgentComposerQueryKey, createComposerState())
+    queryClient.setQueryData(otherAgentDetailQueryKey, otherAgent)
 
     const mutationOptions = consoleQuery.agent.byAgentId.delete.mutationOptions()
     await mutationOptions.onSuccess?.(
@@ -1420,6 +1471,9 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
     })
+    expect(queryClient.getQueryData(deletedAgentDetailQueryKey)).toBeUndefined()
+    expect(queryClient.getQueryData(deletedAgentComposerQueryKey)).toBeUndefined()
+    expect(queryClient.getQueryData(otherAgentDetailQueryKey)).toEqual(otherAgent)
   })
 })
 
@@ -1466,6 +1520,142 @@ describe('consoleQuery Web app access mutation defaults', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.apps.recent.get.key(),
     })
+  })
+})
+
+// Scenario: legacy App Deploy mutations share cache behavior through oRPC defaults.
+describe('consoleQuery App Deploy mutation defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should invalidate the environment key list and API summary after creating or deleting a key', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const params = {
+      app_id: 'app-1',
+      environment_id: 'staging',
+    }
+    const listQuery =
+      consoleQuery.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+        input: { params },
+      })
+    const apiQuery = consoleQuery.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions(
+      {
+        input: { params },
+      },
+    )
+
+    const createOptions =
+      consoleQuery.enterprise.appDeploy.accessService.createEnvironmentApiKey.mutationOptions()
+    await createOptions.onSuccess?.(
+      {
+        created_at: 1,
+        id: 'key-1',
+        token: 'secret',
+        type: 'api',
+      },
+      { params },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: listQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: apiQuery.queryKey })
+
+    invalidateQueries.mockClear()
+    const deleteOptions =
+      consoleQuery.enterprise.appDeploy.accessService.deleteEnvironmentApiKey.mutationOptions()
+    await deleteOptions.onSuccess?.(
+      {},
+      {
+        params: {
+          ...params,
+          api_key_id: 'key-1',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: listQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: apiQuery.queryKey })
+  })
+
+  it('should keep deploy and undeploy cache invalidation aligned', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const params = {
+      app_id: 'app-1',
+      environment_id: 'staging',
+      workflow_id: 'workflow-1',
+    }
+    const appEnvironmentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      })
+    const deploymentsQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      })
+    const deploymentQuery =
+      consoleQuery.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+            environment_id: params.environment_id,
+          },
+        },
+      })
+    const response = {
+      operation: {
+        id: 'operation-1',
+        status: 'DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS' as const,
+        type: 'DEPLOYMENT_OPERATION_TYPE_DEPLOY' as const,
+      },
+    }
+
+    const deployOptions =
+      consoleQuery.enterprise.appDeploy.deploymentService.deployWorkflow.mutationOptions()
+    await deployOptions.onSuccess?.(
+      response,
+      { body: {}, params },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentsQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentQuery.queryKey })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({ queryKey: appEnvironmentsQuery.queryKey })
+
+    invalidateQueries.mockClear()
+    const undeployOptions =
+      consoleQuery.enterprise.appDeploy.deploymentService.undeployWorkflow.mutationOptions()
+    await undeployOptions.onSuccess?.(
+      {
+        operation: {
+          ...response.operation,
+          type: 'DEPLOYMENT_OPERATION_TYPE_UNDEPLOY',
+        },
+      },
+      { params },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentsQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: deploymentQuery.queryKey })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: appEnvironmentsQuery.queryKey })
   })
 })
 

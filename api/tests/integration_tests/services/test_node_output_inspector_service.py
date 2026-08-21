@@ -133,7 +133,12 @@ def seeded_run(
         "nodes": [
             {
                 "id": "agent-node-1",
-                "data": {"type": "agent", "version": "2", "title": "My Agent"},
+                "data": {
+                    "type": "agent",
+                    "version": "2",
+                    "agent_node_kind": "dify_agent",
+                    "title": "My Agent",
+                },
             },
             {
                 "id": "tool-node-1",
@@ -328,7 +333,14 @@ def test_snapshot_404s_for_published_run_per_decision_d1(flask_req_ctx, fake_app
 def test_snapshot_surfaces_type_check_failure_from_metadata(flask_req_ctx, fake_app_model):
     """Per-output ``TYPE_CHECK_FAILED`` derived from the metadata blob the
     Stage 4 §5 stack records on the execution row."""
-    graph = {"nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2"}}]}
+    graph = {
+        "nodes": [
+            {
+                "id": "agent-1",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            }
+        ]
+    }
     workflow_run = _make_workflow_run(app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph)
     execution = _make_execution(
         app_id=fake_app_model.id,
@@ -375,7 +387,14 @@ def test_snapshot_surfaces_type_check_failure_from_metadata(flask_req_ctx, fake_
 def test_snapshot_surfaces_output_check_failure_from_metadata(flask_req_ctx, fake_app_model):
     """When ``output_type_check.passed`` but ``output_check.passed=False``, the
     output is flagged ``OUTPUT_CHECK_FAILED``."""
-    graph = {"nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2"}}]}
+    graph = {
+        "nodes": [
+            {
+                "id": "agent-1",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            }
+        ]
+    }
     workflow_run = _make_workflow_run(app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph)
     execution = _make_execution(
         app_id=fake_app_model.id,
@@ -470,7 +489,14 @@ def test_keeps_latest_execution_per_node_by_index(flask_req_ctx, fake_app_model)
     """Multiple executions for the same node_id → service keeps the highest
     ``index`` (matches the agent_v2 retry pattern that re-emits node
     executions)."""
-    graph = {"nodes": [{"id": "agent-1", "data": {"type": "agent", "version": "2"}}]}
+    graph = {
+        "nodes": [
+            {
+                "id": "agent-1",
+                "data": {"type": "agent", "version": "2", "agent_node_kind": "dify_agent"},
+            }
+        ]
+    }
     workflow_run = _make_workflow_run(app_id=fake_app_model.id, tenant_id=fake_app_model.tenant_id, graph=graph)
     older = _make_execution(
         app_id=fake_app_model.id,

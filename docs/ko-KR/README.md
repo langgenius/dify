@@ -178,6 +178,10 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)을 사용하여 Dify를 AKS에 원클릭으로 배포
 
+#### Sealos를 사용한 배포
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/)를 사용하여 Dify를 원클릭으로 배포할 수 있습니다
+
 ## 기여
 
 코드에 기여하고 싶은 분들은 [기여 가이드](./CONTRIBUTING.md)를 참조하세요.

@@ -1,4 +1,4 @@
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   EnvironmentVariable,
@@ -9,7 +9,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { cloneDeep } from 'es-toolkit/object'
 import { isEqual } from 'es-toolkit/predicate'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -166,7 +166,7 @@ const useEnvPanelActions = ({
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
-  activeTextGenerationModelList: Model[]
+  activeTextGenerationModelList: ModelSelectorProvider[]
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(
     async (syncWorkflowDraft = false) => {
@@ -452,7 +452,9 @@ const EnvPanel = () => {
   const committedEnvListRef = useRef(envList)
   const latestEnvListRef = useRef(envList)
   const pendingSaveEnvIdsRef = useRef(new Map<string, number>())
-  latestEnvListRef.current = envList
+  useLayoutEffect(() => {
+    latestEnvListRef.current = envList
+  }, [envList])
 
   useEffect(() => {
     if (pendingSaveEnvIdsRef.current.size === 0) committedEnvListRef.current = envList
@@ -800,7 +802,7 @@ const EnvPanel = () => {
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowEnvPanel(false)}
           >
-            {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons */}
+            {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
             <RiCloseLine className="size-4 text-text-tertiary" />
           </button>
         </div>

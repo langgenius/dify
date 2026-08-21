@@ -130,7 +130,10 @@ export function AppSelector({
           <button
             {...props}
             type="button"
-            className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+            className={cn(
+              'block w-full rounded-lg border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              props.className,
+            )}
           >
             <AppTrigger open={state.open} appDetail={currentAppInfo} />
           </button>

@@ -13,6 +13,15 @@ import services.message_service as service_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Account, AccountStatus
+from models.agent import (
+    AgentConfigDraft,
+    AgentConfigDraftType,
+    AgentConfigSnapshot,
+    AgentConfigVersionKind,
+    AgentDebugConversation,
+    AgentWorkspaceBinding,
+)
+from models.agent_config_entities import AgentSoulConfig
 from models.enums import (
     ConversationFromSource,
     EndUserType,
@@ -29,6 +38,7 @@ from models.model import (
     Message,
     MessageFeedback,
 )
+from models.workflow import Workflow, WorkflowType
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -38,7 +48,17 @@ from services.errors.message import (
 )
 from services.message_service import MessageService, attach_message_extra_contents
 
-SQLITE_MODELS = (Conversation, Message, MessageFeedback, AppModelConfig, AppAnnotationSetting)
+SQLITE_MODELS = (
+    Conversation,
+    Message,
+    MessageFeedback,
+    AppModelConfig,
+    AppAnnotationSetting,
+    AgentConfigDraft,
+    AgentConfigSnapshot,
+    AgentDebugConversation,
+    AgentWorkspaceBinding,
+)
 pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
     pytest.mark.parametrize("sqlite_session", [SQLITE_MODELS], indirect=True),
@@ -91,6 +111,19 @@ class MessageServiceTestDataFactory:
         account = Account(name="Admin", email="admin@example.com", status=AccountStatus.ACTIVE)
         account.id = user_id
         return account
+
+    @staticmethod
+    def create_workflow(*, features: dict[str, object] | None = None) -> Workflow:
+        return Workflow(
+            id="workflow-123",
+            tenant_id="tenant-123",
+            app_id="app-123",
+            type=WorkflowType.CHAT,
+            version="1",
+            graph="{}",
+            _features=json.dumps(features or {}),
+            created_by="account-123",
+        )
 
     @staticmethod
     def create_conversation(
@@ -673,12 +706,27 @@ class TestMessageServiceFeedback:
 
 class TestMessageServiceSuggestedQuestions:
     @staticmethod
+    def _agent_soul(
+        *,
+        enabled: bool = True,
+        prompt: str | None = None,
+        model: dict[str, object] | None = None,
+    ) -> AgentSoulConfig:
+        suggested_questions: dict[str, object] = {"enabled": enabled}
+        if prompt is not None:
+            suggested_questions["prompt"] = prompt
+        if model is not None:
+            suggested_questions["model"] = model
+        return AgentSoulConfig.model_validate(
+            {"app_features": {"suggested_questions_after_answer": suggested_questions}}
+        )
+
+    @staticmethod
     def _chat_boundaries(
         monkeypatch: pytest.MonkeyPatch,
         conversation: Conversation,
     ) -> tuple[MagicMock, MagicMock, MagicMock]:
-        message = MagicMock()
-        message.conversation_id = conversation.id
+        message = MessageServiceTestDataFactory.create_message(message_id="msg-123", conversation_id=conversation.id)
         monkeypatch.setattr(service_module.MessageService, "get_message", MagicMock(return_value=message))
         monkeypatch.setattr(
             service_module.ConversationService, "get_conversation", MagicMock(return_value=conversation)
@@ -712,8 +760,7 @@ class TestMessageServiceSuggestedQuestions:
     ) -> None:
         conversation = factory.create_conversation()
         _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
-        workflow = MagicMock()
-        workflow.features_dict = {"suggested_questions_after_answer": {"enabled": True}}
+        workflow = factory.create_workflow(features={"suggested_questions_after_answer": {"enabled": True}})
         workflow_service = MagicMock()
         workflow_service.return_value.get_published_workflow.return_value = workflow
         monkeypatch.setattr(service_module, "WorkflowService", workflow_service)
@@ -731,6 +778,236 @@ class TestMessageServiceSuggestedQuestions:
 
         assert result == ["Q1?"]
         llm_generator.generate_suggested_questions_after_answer.assert_called_once()
+
+    @pytest.mark.parametrize("draft_type", [AgentConfigDraftType.DRAFT, AgentConfigDraftType.DEBUG_BUILD])
+    def test_agent_debug_uses_matching_draft(
+        self,
+        draft_type: AgentConfigDraftType,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        account = factory.create_account()
+        draft = AgentConfigDraft(
+            tenant_id="tenant-123",
+            agent_id="agent-123",
+            draft_type=draft_type,
+            account_id=account.id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None,
+            draft_owner_key=account.id if draft_type == AgentConfigDraftType.DEBUG_BUILD else "",
+            base_snapshot_id=None,
+            home_snapshot_id=None,
+            agent_workspace_binding_id=None,
+            config_snapshot=self._agent_soul(
+                prompt=f"{draft_type.value} prompt",
+                model={
+                    "provider": "openai",
+                    "name": "gpt-4o-mini",
+                    "mode": "chat",
+                    "completion_params": {"temperature": 0.1},
+                },
+            ),
+            created_by=account.id,
+            updated_by=account.id,
+        )
+        draft.id = "draft-123"
+        mapping = AgentDebugConversation(
+            tenant_id="tenant-123",
+            agent_id="agent-123",
+            app_id="app-123",
+            account_id=account.id,
+            draft_type=draft_type,
+            conversation_id=conversation.id,
+        )
+        mapping.id = "mapping-123"
+        app_model_config = AppModelConfig(
+            app_id="app-123",
+            suggested_questions_after_answer=json.dumps({"enabled": False}),
+        )
+        app_model_config.id = "config-123"
+        _persist(sqlite_session, draft, mapping, app_model_config)
+        roster_service = MagicMock()
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+        app = factory.create_app(mode=AppMode.AGENT)
+        app.app_model_config_id = app_model_config.id
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=app,
+            user=account,
+            message_id="msg-123",
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=sqlite_session,
+        )
+
+        assert result == ["Q1?"]
+        roster_service.assert_not_called()
+        llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            tenant_id="tenant-123",
+            histories="histories",
+            instruction_prompt=f"{draft_type.value} prompt",
+            model_config={
+                "provider": "openai",
+                "name": "gpt-4o-mini",
+                "mode": "chat",
+                "completion_params": {"temperature": 0.1},
+            },
+        )
+
+    def test_agent_published_conversation_uses_bound_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        conversation.agent_workspace_binding_id = "binding-123"
+        _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        snapshot = AgentConfigSnapshot(
+            tenant_id="tenant-123",
+            agent_id="agent-123",
+            version=1,
+            config_snapshot=self._agent_soul(prompt="bound snapshot prompt"),
+            home_snapshot_id=None,
+            summary=None,
+            version_note=None,
+            created_by="account-123",
+        )
+        snapshot.id = "snapshot-123"
+        binding = AgentWorkspaceBinding(
+            tenant_id="tenant-123",
+            app_id="app-123",
+            workspace_id="workspace-123",
+            agent_id="agent-123",
+            base_home_snapshot_id=None,
+            agent_config_version_id=snapshot.id,
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+            backend_binding_ref="backend-binding-123",
+            session_snapshot=None,
+            retired_at=None,
+            pending_form_id=None,
+            pending_tool_call_id=None,
+        )
+        binding.id = "binding-123"
+        _persist(sqlite_session, snapshot, binding)
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = self._agent_soul(
+            prompt="current published prompt"
+        )
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=factory.create_app(mode=AppMode.AGENT),
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == ["Q1?"]
+        roster_service.assert_not_called()
+        llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            tenant_id="tenant-123",
+            histories="histories",
+            instruction_prompt="bound snapshot prompt",
+            model_config=None,
+        )
+
+    def test_agent_without_binding_uses_published_soul(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = self._agent_soul(
+            prompt="published prompt"
+        )
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=factory.create_app(mode=AppMode.AGENT),
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == ["Q1?"]
+        roster_service.return_value.get_published_agent_soul_for_app.assert_called_once_with(
+            tenant_id="tenant-123",
+            app_id="app-123",
+        )
+        llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            tenant_id="tenant-123",
+            histories="histories",
+            instruction_prompt="published prompt",
+            model_config=None,
+        )
+
+    def test_historical_agent_without_soul_uses_current_app_model_config(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        _, _, llm_generator = self._chat_boundaries(monkeypatch, conversation)
+        app_model_config = AppModelConfig(
+            app_id="app-123",
+            suggested_questions_after_answer=json.dumps({"enabled": True, "prompt": "legacy prompt"}),
+        )
+        app_model_config.id = "config-123"
+        _persist(sqlite_session, app_model_config)
+        app = factory.create_app(mode=AppMode.AGENT)
+        app.app_model_config_id = app_model_config.id
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = None
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        result = MessageService.get_suggested_questions_after_answer(
+            app_model=app,
+            user=factory.create_end_user(),
+            message_id="msg-123",
+            invoke_from=InvokeFrom.SERVICE_API,
+            session=sqlite_session,
+        )
+
+        assert result == ["Q1?"]
+        llm_generator.generate_suggested_questions_after_answer.assert_called_once_with(
+            tenant_id="tenant-123",
+            histories="histories",
+            instruction_prompt="legacy prompt",
+            model_config=None,
+        )
+
+    def test_agent_disabled_raises_disabled_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory: MessageServiceTestDataFactory,
+        sqlite_session: Session,
+    ) -> None:
+        conversation = factory.create_conversation()
+        conversation.mode = AppMode.AGENT
+        self._chat_boundaries(monkeypatch, conversation)
+        roster_service = MagicMock()
+        roster_service.return_value.get_published_agent_soul_for_app.return_value = self._agent_soul(enabled=False)
+        monkeypatch.setattr("services.agent.roster_service.AgentRosterService", roster_service)
+
+        with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError):
+            MessageService.get_suggested_questions_after_answer(
+                app_model=factory.create_app(mode=AppMode.AGENT),
+                user=factory.create_end_user(),
+                message_id="msg-123",
+                invoke_from=InvokeFrom.SERVICE_API,
+                session=sqlite_session,
+            )
 
     @pytest.mark.parametrize(
         ("config", "expected_prompt", "expected_model"),
@@ -838,7 +1115,7 @@ class TestMessageServiceSuggestedQuestions:
     ) -> None:
         conversation = factory.create_conversation()
         self._chat_boundaries(monkeypatch, conversation)
-        workflow = MagicMock()
+        workflow = factory.create_workflow()
         workflow_service = MagicMock()
         workflow_service.return_value.get_published_workflow.return_value = workflow
         monkeypatch.setattr(service_module, "WorkflowService", workflow_service)
