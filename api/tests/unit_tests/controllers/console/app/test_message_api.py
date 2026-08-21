@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from flask import Flask
@@ -153,6 +154,25 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
 
     assert result is response_source
     response_source_factory.assert_called_once_with(message, session=session)
+
+
+def test_message_detail_rejects_message_from_soft_deleted_conversation(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    message_id = "550e8400-e29b-41d4-a716-446655440000"
+    message = _persist_message(sqlite_session, message_id=message_id)
+    conversation = sqlite_session.get(Conversation, message.conversation_id)
+    assert conversation is not None
+    conversation.is_deleted = True
+    sqlite_session.flush()
+    monkeypatch.setattr(message_module, "attach_message_extra_contents", lambda _messages: None)
+    monkeypatch.setattr(message_module, "dump_response", lambda _model, value: value)
+
+    api = message_module.MessageApi()
+    method = unwrap(api.get)
+    with app.test_request_context():
+        with pytest.raises(NotFound):
+            method(api, sqlite_session, SimpleNamespace(id="app-1"), UUID(message_id))
 
 
 def test_chat_message_list_rejects_soft_deleted_conversation(app: Flask, sqlite_session: Session) -> None:
