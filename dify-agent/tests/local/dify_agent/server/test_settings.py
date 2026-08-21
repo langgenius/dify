@@ -79,6 +79,31 @@ def test_server_settings_rejects_non_positive_run_timeout() -> None:
         _ = ServerSettings(run_timeout_seconds=0)
 
 
+def test_server_settings_reads_binding_file_download_command_timeout_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS", "123.5")
+
+    settings = ServerSettings()
+
+    assert settings.binding_file_download_command_timeout_seconds == 123.5
+
+
+def test_server_settings_defaults_binding_file_download_command_timeout_to_210_seconds(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert ServerSettings().binding_file_download_command_timeout_seconds == 210.0
+
+
+def test_server_settings_rejects_non_positive_binding_file_download_command_timeout() -> None:
+    with pytest.raises(ValidationError, match="greater than 0"):
+        _ = ServerSettings(binding_file_download_command_timeout_seconds=0)
+
+
 def test_server_settings_defaults_shellctl_auth_token_to_none(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

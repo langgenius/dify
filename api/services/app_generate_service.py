@@ -41,13 +41,14 @@ if TYPE_CHECKING:
 
 class AppGenerateService:
     @staticmethod
-    def _build_streaming_task_on_subscribe(start_task: Callable[[], None]) -> Callable[[], None]:
+    def _build_streaming_task_on_subscribe(
+        start_task: Callable[[], None],
+    ) -> Callable[[], None]:
         """
-        Build a subscription callback that coordinates when the background task starts.
+        Build a subscription callback that starts the background task on first subscribe.
 
-        - streams transport: start immediately (events are durable; late subscribers can replay).
-        - pubsub/sharded transport: start on first subscribe, with a short fallback timer so the task
-          still runs if the client never connects.
+        Pub/Sub transports also use a short fallback timer so the task still runs if the
+        client never connects. Streams rely on their prepared delivery boundary instead.
         """
         started = False
         lock = threading.Lock()
@@ -65,18 +66,13 @@ class AppGenerateService:
                 started = True
                 return True
 
-        channel_type = dify_config.PUBSUB_REDIS_CHANNEL_TYPE
-        if channel_type == "streams":
-            # With Redis Streams, we can safely start right away; consumers can read past events.
-            _try_start()
+        if dify_config.PUBSUB_REDIS_CHANNEL_TYPE == "streams":
 
-            # Keep return type Callable[[], None] consistent while allowing an extra (no-op) call.
             def _on_subscribe_streams() -> None:
                 _try_start()
 
             return _on_subscribe_streams
 
-        # Pub/Sub modes (at-most-once): subscribe-gated start with a tiny fallback.
         timer = threading.Timer(SSE_TASK_START_FALLBACK_MS / 1000.0, _try_start)
         timer.daemon = True
         timer.start()
