@@ -40,6 +40,13 @@ class TagBindingDeletePayload(BaseModel):
 
 
 class TagService:
+
+    @staticmethod
+    def get_tag_type(tag_id: str, tenant_id: str, session: Session) -> TagType:
+        tag_type = session.scalar(
+            select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == tenant_id).limit(1))
+        return tag_type
+
     @staticmethod
     def get_tags(tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None, *, session: Session):
         stmt = (
