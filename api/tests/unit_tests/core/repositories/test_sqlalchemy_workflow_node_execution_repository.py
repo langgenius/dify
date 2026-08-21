@@ -153,6 +153,54 @@ def test_init_requires_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
 
+def test_get_db_models_by_workflow_run_filters_by_explicit_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An explicit tenant_id wins over the acting user's own tenant when scoping the query."""
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = []
+
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=_session_factory(session),
+        user=_mock_account(tenant_id="acting-user-tenant"),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        tenant_id="record-owner-tenant",
+    )
+
+    repo.get_db_models_by_workflow_run("run")
+
+    stmt = session.scalars.call_args[0][0]
+    sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
+    assert "record-owner-tenant" in sql
+    assert "acting-user-tenant" not in sql
+
+
+def test_init_falls_back_to_user_tenant_when_not_supplied(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+
+    session = MagicMock()
+    session.scalars.return_value.all.return_value = []
+
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=_session_factory(session),
+        user=_mock_account(tenant_id="acting-user-tenant"),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+
+    repo.get_db_models_by_workflow_run("run")
+
+    stmt = session.scalars.call_args[0][0]
+    assert "acting-user-tenant" in str(stmt.compile(compile_kwargs={"literal_binds": True}))
+
+
 def test_create_truncator_uses_config(monkeypatch: pytest.MonkeyPatch) -> None:
     created: dict[str, Any] = {}
 

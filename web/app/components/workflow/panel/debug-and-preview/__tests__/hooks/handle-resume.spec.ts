@@ -262,6 +262,27 @@ describe('useChat – handleResume', () => {
       const answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('succeeded')
     })
+
+    it('should store workflow finished error on resume workflow process', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onWorkflowStarted({
+          workflow_run_id: 'wfr-2',
+          task_id: 'task-2',
+        })
+      })
+
+      act(() => {
+        capturedResumeOptions.onWorkflowFinished({
+          data: { status: 'failed', error: 'Invalid upload file' },
+        })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
+    })
   })
 
   describe('onData', () => {

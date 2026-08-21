@@ -17,7 +17,7 @@ from dify_graph.repositories.workflow_node_execution_repository import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
-from libs.helper import extract_tenant_id
+from libs.helper import resolve_tenant_id
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 from tasks.workflow_node_execution_tasks import (
@@ -57,6 +57,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+        tenant_id: str | None = None,
     ):
         """
         Initialize the repository with Celery task configuration and context information.
@@ -66,6 +67,8 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
+            tenant_id: Tenant that owns the node executions; defaults to the user's own tenant.
+                Callers acting on another tenant's records must pass this explicitly.
         """
         # Store session factory for fallback operations
         if isinstance(session_factory, Engine):
@@ -77,11 +80,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
             )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
-        if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id
+        self._tenant_id = resolve_tenant_id(tenant_id, user)
 
         # Store app context
         self._app_id = app_id

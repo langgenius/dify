@@ -76,6 +76,7 @@ class DifyCoreRepositoryFactory:
         user: Union[Account, EndUser],
         app_id: str,
         triggered_from: WorkflowNodeExecutionTriggeredFrom,
+        tenant_id: str | None = None,
     ) -> WorkflowNodeExecutionRepository:
         """
         Create a WorkflowNodeExecutionRepository instance based on configuration.
@@ -85,6 +86,8 @@ class DifyCoreRepositoryFactory:
             user: Account or EndUser object
             app_id: Application ID
             triggered_from: Source of the execution trigger
+            tenant_id: Tenant that owns the node executions; defaults to the user's own tenant.
+                Callers acting on another tenant's records must pass this explicitly.
 
         Returns:
             Configured WorkflowNodeExecutionRepository instance
@@ -101,6 +104,7 @@ class DifyCoreRepositoryFactory:
                 user=user,
                 app_id=app_id,
                 triggered_from=triggered_from,
+                tenant_id=tenant_id,
             )
         except (ImportError, Exception) as e:
             raise RepositoryImportError(

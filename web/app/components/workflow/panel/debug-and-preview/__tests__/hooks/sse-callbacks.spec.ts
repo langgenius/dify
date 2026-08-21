@@ -478,6 +478,19 @@ describe('useChat – handleSend SSE callbacks', () => {
       const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
       expect(answer!.workflowProcess!.status).toBe('succeeded')
     })
+
+    it('should store workflow finished error on workflow process', () => {
+      const { result } = setupAndSend()
+      startWorkflow()
+
+      act(() => {
+        capturedCallbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const answer = result.current.chatList.find(item => item.isAnswer && !item.isOpeningStatement)
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
+    })
   })
 
   describe('onIterationStart / onIterationFinish', () => {

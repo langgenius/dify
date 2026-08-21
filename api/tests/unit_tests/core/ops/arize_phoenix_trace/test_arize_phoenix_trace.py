@@ -256,10 +256,15 @@ def test_workflow_trace_full(mock_db, mock_repo_factory, mock_sessionmaker, trac
 
     repo.get_by_workflow_run.return_value = [node1]
 
-    with patch.object(trace_instance, "get_service_account_with_tenant"):
+    service_account = MagicMock(current_tenant_id="creator-active-tenant")
+    with patch.object(trace_instance, "get_service_account_with_tenant", return_value=service_account):
         trace_instance.workflow_trace(info)
 
     assert trace_instance.tracer.start_span.call_count >= 2
+
+    # Node executions must be read from the run's tenant, not the creator's active workspace.
+    kwargs = mock_repo_factory.create_workflow_node_execution_repository.call_args.kwargs
+    assert kwargs["tenant_id"] == "t1"
 
 
 @patch("core.ops.arize_phoenix_trace.arize_phoenix_trace.db")

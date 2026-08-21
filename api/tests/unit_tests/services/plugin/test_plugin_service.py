@@ -239,6 +239,59 @@ class TestUpgradePluginWithMarketplace:
         mock_download.assert_called_once_with("new-uid")
         installer.upload_pkg.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "scope",
+        [
+            PluginInstallationScope.NONE,
+            PluginInstallationScope.OFFICIAL_ONLY,
+            PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS,
+        ],
+    )
+    @patch("services.plugin.plugin_service.download_plugin_pkg")
+    @patch("services.plugin.plugin_service.marketplace")
+    @patch("services.plugin.plugin_service.FeatureService")
+    @patch("services.plugin.plugin_service.PluginInstaller")
+    @patch("services.plugin.plugin_service.dify_config")
+    def test_rejects_cached_pkg_outside_scope(
+        self, mock_config, mock_installer_cls, mock_fs, mock_marketplace, mock_download, scope
+    ):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_system_features.return_value = make_features(scope=scope)
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        decode_resp = MagicMock()
+        decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Community
+        installer.decode_plugin_from_identifier.return_value = decode_resp
+
+        with pytest.raises(PluginInstallationForbiddenError):
+            PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        installer.upgrade_plugin.assert_not_called()
+        mock_marketplace.record_install_plugin_event.assert_not_called()
+        # the rejection must not fall through to the download branch and cache the pkg again
+        mock_download.assert_not_called()
+        installer.upload_pkg.assert_not_called()
+
+    @patch("services.plugin.plugin_service.marketplace")
+    @patch("services.plugin.plugin_service.FeatureService")
+    @patch("services.plugin.plugin_service.PluginInstaller")
+    @patch("services.plugin.plugin_service.dify_config")
+    def test_allows_cached_official_pkg_under_official_only(
+        self, mock_config, mock_installer_cls, mock_fs, mock_marketplace
+    ):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        decode_resp = MagicMock()
+        decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Langgenius
+        installer.decode_plugin_from_identifier.return_value = decode_resp
+
+        PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+
+        mock_marketplace.record_install_plugin_event.assert_called_once_with("new-uid")
+        installer.upgrade_plugin.assert_called_once()
+
 
 class TestUpgradePluginWithGithub:
     @patch("services.plugin.plugin_service.FeatureService")
@@ -318,6 +371,27 @@ class TestInstallFromMarketplacePkg:
         installer.install_from_identifiers.assert_called_once()
         call_args = installer.install_from_identifiers.call_args[0]
         assert call_args[1] == ["uid-1"]  # uses original uid
+
+    @patch("services.plugin.plugin_service.download_plugin_pkg")
+    @patch("services.plugin.plugin_service.FeatureService")
+    @patch("services.plugin.plugin_service.PluginInstaller")
+    @patch("services.plugin.plugin_service.dify_config")
+    def test_rejects_cached_pkg_outside_scope(self, mock_config, mock_installer_cls, mock_fs, mock_download):
+        mock_config.MARKETPLACE_ENABLED = True
+        mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
+        installer = mock_installer_cls.return_value
+        installer.fetch_plugin_manifest.return_value = MagicMock()
+        decode_resp = MagicMock()
+        decode_resp.verification.authorized_category = PluginVerification.AuthorizedCategory.Community
+        installer.decode_plugin_from_identifier.return_value = decode_resp
+
+        with pytest.raises(PluginInstallationForbiddenError):
+            PluginService.install_from_marketplace_pkg("t1", ["uid-1"])
+
+        installer.install_from_identifiers.assert_not_called()
+        # the rejection must not fall through to the download branch and cache the pkg again
+        mock_download.assert_not_called()
+        installer.upload_pkg.assert_not_called()
 
 
 class TestUninstall:

@@ -25,7 +25,7 @@ from dify_graph.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier
-from libs.helper import extract_tenant_id
+from libs.helper import resolve_tenant_id
 from models import (
     Account,
     CreatorUserRole,
@@ -111,6 +111,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
+        tenant_id: str | None = None,
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -120,6 +121,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             user: Account or EndUser object containing tenant_id, user ID, and role information
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
+            tenant_id: Tenant that owns the node executions; defaults to the user's own tenant.
+                Callers acting on another tenant's records must pass this explicitly.
         """
         logger.debug(
             "LogstoreWorkflowNodeExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
@@ -127,11 +130,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # Initialize LogStore client
         self.logstore_client = AliyunLogStore()
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
-        if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
-        self._tenant_id = tenant_id
+        self._tenant_id = resolve_tenant_id(tenant_id, user)
 
         # Store app context
         self._app_id = app_id
@@ -144,7 +143,9 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # Initialize SQL repository for dual-write support
-        self.sql_repository = SQLAlchemyWorkflowNodeExecutionRepository(session_factory, user, app_id, triggered_from)
+        self.sql_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory, user, app_id, triggered_from, tenant_id=self._tenant_id
+        )
 
         # Control flag for dual-write (write to both LogStore and SQL database)
         # Set to True to enable dual-write for safe migration, False to use LogStore only

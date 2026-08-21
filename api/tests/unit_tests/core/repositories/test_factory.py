@@ -157,8 +157,28 @@ class TestRepositoryFactory:
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
+                tenant_id=None,
             )
             assert result is mock_repository_instance
+
+    @patch("core.repositories.factory.dify_config", autospec=True)
+    def test_create_workflow_node_execution_repository_forwards_tenant_id(self, mock_config):
+        """An explicit tenant_id reaches the configured repository implementation."""
+        mock_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY = "unittest.mock.MagicMock"
+
+        mock_repository_class = MagicMock()
+        mock_repository_class.return_value = MagicMock(spec=WorkflowNodeExecutionRepository)
+
+        with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
+            DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                session_factory=MagicMock(spec=sessionmaker),
+                user=MagicMock(spec=EndUser),
+                app_id="test-app-id",
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                tenant_id="record-owner-tenant",
+            )
+
+        assert mock_repository_class.call_args[1]["tenant_id"] == "record-owner-tenant"
 
     @patch("core.repositories.factory.dify_config", autospec=True)
     def test_create_workflow_node_execution_repository_import_error(self, mock_config):
