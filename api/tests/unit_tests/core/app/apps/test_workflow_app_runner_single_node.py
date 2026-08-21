@@ -13,6 +13,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
+from graphon.variables.types import SegmentType
 from models.workflow import Workflow, WorkflowKind
 
 
@@ -178,6 +180,14 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_config.app_id = "app"
     app_config.tenant_id = "tenant"
     app_config.workflow_id = "workflow"
+    app_config.variables = [
+        VariableEntity(
+            variable="machines",
+            label="Machines",
+            type=VariableEntityType.MULTI_SELECT,
+            options=["A", "B", "C"],
+        )
+    ]
 
     app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
     app_generate_entity.app_config = app_config
@@ -239,4 +249,5 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     add_inputs.assert_called_once()
     assert add_inputs.call_args.kwargs["node_id"] == "root-node"
     assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
+    assert add_inputs.call_args.kwargs["input_types"] == {"machines": SegmentType.ARRAY_STRING}
     assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)

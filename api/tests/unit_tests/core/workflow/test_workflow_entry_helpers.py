@@ -18,6 +18,7 @@ from graphon.graph_events import GraphRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.runtime import VariablePool
+from graphon.variables.types import SegmentType
 from graphon.variables.variables import StringVariable
 
 
@@ -376,6 +377,77 @@ class TestWorkflowEntrySingleStepRun:
             user_inputs={"question": "hello"},
             variable_pool=sentinel.variable_pool,
             tenant_id="tenant-id",
+        )
+
+    def test_single_step_run_declares_multi_select_input_type_for_start_node(self):
+        class FakeStartNode:
+            id = "node-id"
+            title = "Start"
+            node_type = BuiltinNodeTypes.START
+
+            @staticmethod
+            def version():
+                return "1"
+
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(**_kwargs):
+                return {}
+
+        start_config = {
+            "id": "node-id",
+            "data": BaseNodeData(
+                type=BuiltinNodeTypes.START,
+                variables=[
+                    {
+                        "variable": "machines",
+                        "label": "Machines",
+                        "type": "multi-select",
+                        "required": False,
+                        "options": ["A", "B", "C"],
+                    }
+                ],
+            ),
+        }
+
+        with (
+            patch.object(workflow_entry, "DifyGraphInitContext", return_value=sentinel.graph_init_context),
+            patch.object(workflow_entry, "GraphRuntimeState", return_value=sentinel.graph_runtime_state),
+            patch.object(workflow_entry, "build_dify_run_context", return_value={"_dify": "context"}),
+            patch.object(workflow_entry, "resolve_workflow_node_class", return_value=FakeStartNode),
+            patch.object(workflow_entry.DifyNodeFactory, "from_graph_init_context") as dify_node_factory,
+            patch.object(workflow_entry, "add_node_inputs_to_pool") as add_node_inputs,
+            patch.object(workflow_entry, "load_into_variable_pool"),
+            patch.object(workflow_entry.WorkflowEntry, "mapping_user_inputs_to_variable_pool"),
+            patch.object(
+                workflow_entry.WorkflowEntry,
+                "_run_node_with_layers",
+                return_value=iter(["event"]),
+            ),
+        ):
+            dify_node_factory.return_value.create_node.return_value = FakeStartNode()
+            workflow = SimpleNamespace(
+                tenant_id="tenant-id",
+                app_id="app-id",
+                id="workflow-id",
+                graph_dict={"nodes": [], "edges": []},
+                get_node_config_by_id=lambda _node_id: start_config,
+            )
+
+            node, generator = workflow_entry.WorkflowEntry.single_step_run(
+                workflow=workflow,
+                node_id="node-id",
+                user_id="user-id",
+                user_inputs={"machines": []},
+                variable_pool=sentinel.variable_pool,
+            )
+
+        assert node.id == "node-id"
+        assert list(generator) == ["event"]
+        add_node_inputs.assert_called_once_with(
+            sentinel.variable_pool,
+            node_id="node-id",
+            inputs={"machines": []},
+            input_types={"machines": SegmentType.ARRAY_STRING},
         )
 
     def test_skips_user_input_mapping_for_datasource_nodes(self):
