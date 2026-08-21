@@ -3483,9 +3483,7 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(
         AgentComposerService,
         "_require_agent",
-        lambda **kwargs: SimpleNamespace(
-            id="agent-1", updated_by=None, active_config_is_published=False
-        ),
+        lambda **kwargs: SimpleNamespace(id="agent-1", updated_by=None, active_config_is_published=False),
     )
     result = AgentComposerService._save_to_current_version(
         session=session,
