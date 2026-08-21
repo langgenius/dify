@@ -40,9 +40,9 @@ def test_task_module_import_does_not_initialize_application(
 
     task_module = importlib.import_module(module_name)
     task_name = module_name.rsplit(".", maxsplit=1)[-1]
-    task = getattr(task_module, task_name)
+    task = vars(task_module)[task_name]
 
     assert "app" not in sys.modules
     assert tuple(logging.root.handlers) == root_handlers
     assert ext_redis.redis_client._client is redis_backing_client
-    assert getattr(task, "queue", None) == queue
+    assert task.queue == queue

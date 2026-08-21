@@ -25,9 +25,9 @@ def _create_celery_redis() -> Redis:
         db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
         ssl=dify_config.BROKER_USE_SSL,
         ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS if dify_config.BROKER_USE_SSL else None,
-        ssl_cert_reqs=getattr(dify_config, "REDIS_SSL_CERT_REQS", None) if dify_config.BROKER_USE_SSL else None,
-        ssl_certfile=getattr(dify_config, "REDIS_SSL_CERTFILE", None) if dify_config.BROKER_USE_SSL else None,
-        ssl_keyfile=getattr(dify_config, "REDIS_SSL_KEYFILE", None) if dify_config.BROKER_USE_SSL else None,
+        ssl_cert_reqs=dify_config.REDIS_SSL_CERT_REQS if dify_config.BROKER_USE_SSL else None,
+        ssl_certfile=dify_config.REDIS_SSL_CERTFILE if dify_config.BROKER_USE_SSL else None,
+        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE if dify_config.BROKER_USE_SSL else None,
         # Add conservative socket timeouts and health checks to avoid long-lived half-open sockets
         socket_timeout=5,
         socket_connect_timeout=5,
