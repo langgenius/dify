@@ -12,6 +12,10 @@ vi.mock('@/features/new-rag/storage', () => ({
   useSetNewKnowledgeGuideDismissed: () => guideStorageMock.setDismissed,
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
+}))
+
 describe('KnowledgeViewSwitcher', () => {
   beforeEach(() => {
     vi.clearAllMocks()

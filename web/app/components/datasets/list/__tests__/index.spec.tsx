@@ -14,6 +14,7 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import List from '../index'
 
 const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const knowledgeFsUpgradeMutationMock = vi.hoisted(() => vi.fn())
 const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
 const useInfiniteQueryMock = vi.hoisted(() =>
   vi.fn(() => ({
@@ -58,6 +59,33 @@ vi.mock('@/service/client', async (importOriginal) => {
           ...original.consoleQuery.knowledgeFs.spaces,
           get: {
             infiniteOptions: knowledgeFsInfiniteOptionsMock,
+          },
+        },
+      },
+      datasets: {
+        ...original.consoleQuery.datasets,
+        knowledgeFsUpgradeJobs: {
+          get: {
+            queryOptions: () => ({
+              initialData: { data: [] },
+              queryKey: ['console', 'datasets', 'knowledge-fs-upgrade-jobs', 'get'],
+              queryFn: async () => ({ data: [] }),
+            }),
+          },
+        },
+        byDatasetId: {
+          ...original.consoleQuery.datasets.byDatasetId,
+          knowledgeFsUpgrades: {
+            get: {
+              queryOptions: () => ({
+                initialData: { can_retry: false, can_upgrade: false, job: null },
+                queryKey: ['console', 'datasets', 'by-dataset-id', 'knowledge-fs-upgrades', 'get'],
+                queryFn: async () => ({ can_retry: false, can_upgrade: false, job: null }),
+              }),
+            },
+            post: {
+              mutationOptions: () => ({ mutationFn: knowledgeFsUpgradeMutationMock }),
+            },
           },
         },
       },
