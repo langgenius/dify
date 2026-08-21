@@ -4063,6 +4063,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportPath = z.ob
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportQuery = z.object({
   include_secret: z.string().optional().default('false'),
+  workflow_id: z.string().optional(),
 })
 
 /**

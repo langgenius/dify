@@ -3,10 +3,11 @@ from typing import cast
 
 import sqlalchemy as sa
 from flask_login import current_user
+from flask_sqlalchemy.session import Session as FlaskSession
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound
 
 from models.dataset import Dataset
@@ -40,6 +41,11 @@ class TagBindingDeletePayload(BaseModel):
 
 
 class TagService:
+    @staticmethod
+    def get_tag_type(tag_id: str, tenant_id: str, session: Session | scoped_session[FlaskSession]) -> TagType | None:
+        tag_type = session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == tenant_id).limit(1))
+        return tag_type
+
     @staticmethod
     def get_tags(tag_type: _TagTypeLike, current_tenant_id: str, keyword: str | None = None, *, session: Session):
         stmt = (

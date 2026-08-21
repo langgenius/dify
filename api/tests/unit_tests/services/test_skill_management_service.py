@@ -2688,6 +2688,23 @@ def test_import_skill_package_rejects_archive_larger_than_upload_skill_limit(mon
     assert exc_info.value.code == "archive_too_large"
 
 
+def test_import_skill_package_rejects_zip_bomb_before_reading_members() -> None:
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("payload.bin", b"\x00" * (8 * 1024 * 1024))
+
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+
+    with pytest.raises(SkillManagementServiceError) as exc_info:
+        service._draft_payload_from_zip(
+            tenant_id=TENANT,
+            user_id=USER,
+            archive_bytes=package.getvalue(),
+        )
+
+    assert exc_info.value.code == "invalid_skill_package"
+
+
 def test_publish_and_export_include_binary_tool_files() -> None:
     captured: dict[str, bytes] = {}
 
@@ -3003,6 +3020,16 @@ def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load()
     with session_factory.create_session() as session:
         agent = session.get(Agent, AGENT)
         assert agent is not None
+        snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(),
+            created_by=USER,
+        )
+        session.add(snapshot)
+        session.flush()
+        agent.active_config_snapshot_id = snapshot.id
         agent.active_config_is_published = True
         session.commit()
 
@@ -3018,7 +3045,16 @@ def test_agent_skill_binding_changes_require_agent_publish_before_runtime_load()
         agent = session.get(Agent, AGENT)
         assert agent is not None
         agent.active_config_is_published = True
+        snapshot_id = agent.active_config_snapshot_id
+        assert snapshot_id is not None
         session.commit()
+
+    service.publish_agent_bindings(
+        tenant_id=TENANT,
+        agent_id=AGENT,
+        snapshot_id=snapshot_id,
+        user_id=USER,
+    )
 
     assert service.list_runtime_agent_skills(tenant_id=TENANT, agent_id=AGENT)[0]["name"] == "finance-sop"
 

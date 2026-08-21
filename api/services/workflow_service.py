@@ -80,6 +80,7 @@ from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now
 from models import Account
+from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -93,7 +94,6 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True)
@@ -280,14 +280,21 @@ class WorkflowService:
             .with_for_update()
         )
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str, *, session: Session) -> Workflow | None:
-        """
-        fetch published workflow by workflow_id
+    def get_published_workflow_by_id(
+        self,
+        app_model: App,
+        workflow_id: str,
+        *,
+        session: Session,
+        for_update: bool = False,
+    ) -> Workflow | None:
+        """Fetch a published workflow by ID in the caller's transaction.
 
-        Reuses the caller's active session so workflow reads stay in the same
-        transaction as the surrounding request or task.
+        With ``for_update=True``, the source version stays locked until that
+        transaction ends. Restore uses the lock while copying Agent bindings so
+        a concurrent delete cannot release the same owner.
         """
-        workflow = session.scalar(
+        stmt = (
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -296,6 +303,9 @@ class WorkflowService:
             )
             .limit(1)
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+        workflow = session.scalar(stmt)
         if not workflow:
             return None
         if workflow.version == Workflow.VERSION_DRAFT:
@@ -328,15 +338,17 @@ class WorkflowService:
 
         return workflow
 
-    def get_accessible_app_ids(self, app_ids: Sequence[str], tenant_id: str, *, session: Session) -> set[str]:
-        """
-        Return app IDs that belong to the given tenant.
-        """
+    def get_tenant_app_maintainers(
+        self, app_ids: Sequence[str], tenant_id: str, *, session: Session
+    ) -> dict[str, str | None]:
+        """Return requested normal apps and their maintainers within a tenant."""
         if not app_ids:
-            return set()
+            return {}
 
-        stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
-        return {str(app_id) for app_id in session.scalars(stmt).all()}
+        stmt = select(App.id, App.maintainer).where(
+            App.id.in_(app_ids), App.tenant_id == tenant_id, App.status == "normal"
+        )
+        return {str(app_id): maintainer for app_id, maintainer in session.execute(stmt)}
 
     def get_all_published_workflow(
         self,
@@ -491,15 +503,10 @@ class WorkflowService:
         # commit db session changes
         if commit:
             session.commit()
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=app_model.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
-            )
-            enqueue_agent_resource_collection(
-                tenant_id=app_model.tenant_id,
-                binding_ids=binding_ids,
-                home_snapshot_ids=home_snapshot_ids,
             )
 
         # trigger app workflow events
@@ -624,7 +631,10 @@ class WorkflowService:
         published workflow so the normal draft sync flow stays stateless.
         """
         source_workflow = self.get_published_workflow_by_id(
-            app_model=app_model, workflow_id=workflow_id, session=session
+            app_model=app_model,
+            workflow_id=workflow_id,
+            session=session,
+            for_update=True,
         )
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
@@ -656,15 +666,10 @@ class WorkflowService:
         )
 
         session.commit()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
             agent_ids=retirement_candidates,
             account_id=account.id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=app_model.tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
         )
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
 
@@ -678,7 +683,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> tuple[Workflow, set[str]]:
+    ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -743,7 +748,7 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        retirement_candidates = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
@@ -753,7 +758,7 @@ class WorkflowService:
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
-        return workflow, retirement_candidates
+        return workflow
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """
@@ -1888,21 +1893,29 @@ class WorkflowService:
 
         return workflow
 
-    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> bool:
-        """
-        Delete a workflow
+    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> list[str]:
+        """Stage a published Workflow and its binding owners for deletion.
+
+        The exact owner key is tenant, App, Workflow, and Workflow version. The
+        Workflow row lock serializes source-version reads and restoration with
+        deletion. The caller must commit successfully before retiring the
+        returned, sorted and deduplicated inline Agent candidates.
 
         :param session: SQLAlchemy database session
         :param workflow_ref: Owner-bound workflow reference
-        :return: True if successful
+        :return: Inline Agent IDs whose owner binding is staged for deletion
         :raises: ValueError if workflow not found
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        stmt = select(Workflow).where(
-            Workflow.id == workflow_ref.workflow_id,
-            Workflow.tenant_id == workflow_ref.tenant_id,
-            Workflow.app_id == workflow_ref.owner_id,
+        stmt = (
+            select(Workflow)
+            .where(
+                Workflow.id == workflow_ref.workflow_id,
+                Workflow.tenant_id == workflow_ref.tenant_id,
+                Workflow.app_id == workflow_ref.owner_id,
+            )
+            .with_for_update()
         )
         workflow = session.scalar(stmt)
 
@@ -1934,8 +1947,25 @@ class WorkflowService:
             # Cannot delete a workflow that's published as a tool
             raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
 
+        bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == workflow.version,
+            )
+        ).all()
+        retirement_candidates = sorted(
+            {
+                binding.agent_id
+                for binding in bindings
+                if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+            }
+        )
+        for binding in bindings:
+            session.delete(binding)
         session.delete(workflow)
-        return True
+        return retirement_candidates
 
 
 def _setup_variable_pool(

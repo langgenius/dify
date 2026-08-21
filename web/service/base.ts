@@ -80,19 +80,29 @@ export type IOnError = (msg: string, code?: string) => void
 const reportStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
-  onNotifyError: IOnError,
+  onNotifyError?: IOnError,
 ) => {
   let errorMessage = 'Server Error'
+  let errorCode: string | undefined
   try {
     const data: unknown = await response.json()
     if (typeof data === 'object' && data !== null && 'message' in data) {
       const message = data.message
       if (typeof message === 'string' && message) errorMessage = message
     }
+    if (typeof data === 'object' && data !== null && 'code' in data) {
+      const code = data.code
+      if (typeof code === 'string' && code) errorCode = code
+    }
   } catch {}
 
-  onError?.(errorMessage)
-  onNotifyError(errorMessage)
+  if (errorCode) {
+    onError?.(errorMessage, errorCode)
+    onNotifyError?.(errorMessage, errorCode)
+  } else {
+    onError?.(errorMessage)
+    onNotifyError?.(errorMessage)
+  }
 }
 
 type UnhandledEventError = {
@@ -651,16 +661,10 @@ export const ssePost = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) {
-            void reportStreamResponseError(res, onError, onNotifyError)
-          } else if (!silent) {
-            res.json().then((data) => {
-              toast.error(data.message || 'Server Error')
-            })
-            onError?.('Server Error')
-          } else {
-            onError?.('Server Error')
-          }
+          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          else if (!silent)
+            void reportStreamResponseError(res, onError, (message) => toast.error(message))
+          else void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -820,16 +824,10 @@ export const sseGet = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) {
-            void reportStreamResponseError(res, onError, onNotifyError)
-          } else if (!silent) {
-            res.json().then((data) => {
-              toast.error(data.message || 'Server Error')
-            })
-            onError?.('Server Error')
-          } else {
-            onError?.('Server Error')
-          }
+          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
+          else if (!silent)
+            void reportStreamResponseError(res, onError, (message) => toast.error(message))
+          else void reportStreamResponseError(res, onError)
         }
         return
       }

@@ -3,7 +3,6 @@ from uuid import UUID
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
-from sqlalchemy import select
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -27,7 +26,6 @@ from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.enums import TagType
-from models.model import Tag
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -122,7 +120,7 @@ def _enforce_snippet_tag_rbac_by_tag_id(tag_id: str) -> None:
         return
 
     _, current_tenant_id = current_account_with_tenant()
-    tag_type = db.session.scalar(select(Tag.type).where(Tag.id == tag_id, Tag.tenant_id == current_tenant_id).limit(1))
+    tag_type = TagService.get_tag_type(tag_id=tag_id, tenant_id=current_tenant_id, session=db.session)
     _enforce_snippet_tag_rbac_if_needed(tag_type)
 
 

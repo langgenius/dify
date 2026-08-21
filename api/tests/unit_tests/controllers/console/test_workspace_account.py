@@ -8,6 +8,7 @@ import pytest
 from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
+from controllers.console.error import EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
     ChangeEmailCheckApi,
@@ -441,10 +442,29 @@ class TestChangeEmailValidity:
 
 
 class TestChangeEmailReset:
+    @patch(
+        "controllers.console.workspace.account.AccountService.get_account_freeze_type",
+        return_value="email_domain_suspended",
+    )
+    def test_should_reject_suspended_email_domain(self, mock_get_freeze_type, app: Flask):
+        current_user = _build_account("old@example.com", "email-reset-account")
+
+        with app.test_request_context(
+            "/account/change-email/reset",
+            method="POST",
+            json={"new_email": "new@suspended.example", "token": "token-123"},
+        ):
+            api = ChangeEmailResetApi()
+            method = inspect.unwrap(api.post)
+            with pytest.raises(EmailDomainSuspendedError):
+                method(api, current_user)
+
+        mock_get_freeze_type.assert_called_once_with("new@suspended.example")
+
     @patch("controllers.console.workspace.account.AccountService.send_change_email_completed_notify_email")
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     @pytest.mark.parametrize(
         "sqlite_session",
         [(Account, Tenant, TenantAccountJoin, AccountIntegrate)],
@@ -506,7 +526,7 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     def test_should_reject_reset_when_token_phase_is_not_new_verified(
         self,
         mock_is_freeze: MagicMock,
@@ -549,7 +569,7 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     def test_should_reject_reset_when_token_email_differs_from_payload_new_email(
         self,
         mock_is_freeze: MagicMock,
@@ -592,7 +612,7 @@ class TestChangeEmailReset:
     @patch("controllers.console.workspace.account.AccountService.revoke_change_email_token")
     @patch("controllers.console.workspace.account.AccountService.get_change_email_data")
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     def test_should_reject_reset_when_token_account_id_does_not_match_current_user(
         self,
         mock_is_freeze: MagicMock,
@@ -735,7 +755,7 @@ class TestAccountDeletionFeedback:
 
 
 class TestCheckEmailUnique:
-    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.workspace.account.AccountService.get_account_freeze_type")
     @pytest.mark.parametrize(
         "sqlite_session",
         [(Account, Tenant, TenantAccountJoin)],

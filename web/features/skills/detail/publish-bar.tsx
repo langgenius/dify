@@ -100,23 +100,21 @@ export function SkillPublishBar({
   return (
     <div
       data-testid="skill-publish-bar"
-      className="pointer-events-auto relative flex min-h-12 max-w-[calc(100%-2rem)] items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+      className="pointer-events-auto relative flex min-h-12 max-w-full items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
     >
       {children}
       <div
         role="status"
         aria-label={`${currentState.statusLabel}. ${metaLabel}`}
-        className="flex shrink-0 items-center gap-1 px-2 system-xs-regular text-text-tertiary"
+        className="flex min-w-0 flex-1 items-center gap-1 px-2 system-xs-regular text-text-tertiary"
       >
         <span className="flex size-4 shrink-0 items-center justify-center">
           <StatusDot size="small" status={currentState.dotStatus} />
         </span>
-        <span className="flex shrink-0 items-center gap-x-1 leading-4 whitespace-nowrap">
-          <span className="shrink-0">{currentState.statusLabel}</span>
-          <span aria-hidden className="shrink-0">
-            ·
-          </span>
-          <span className="shrink-0">{metaLabel}</span>
+        <span className="min-w-0 truncate leading-4">
+          <span>{currentState.statusLabel}</span>
+          <span aria-hidden> · </span>
+          <span>{metaLabel}</span>
         </span>
       </div>
       <button
@@ -133,7 +131,7 @@ export function SkillPublishBar({
           variant="primary"
           disabled={state === 'published'}
           aria-disabled={state === 'publishing'}
-          className="h-8 gap-1 rounded-lg px-3"
+          className="h-8 shrink-0 gap-1 rounded-lg px-3"
           onClick={canPublish ? onPublish : undefined}
         >
           {state === 'publishing' && (

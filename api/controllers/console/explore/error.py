@@ -31,6 +31,12 @@ class AppAccessDeniedError(BaseHTTPException):
     code = 403
 
 
+class RecommendedAppNotFoundError(BaseHTTPException):
+    error_code = "recommended_app_not_found"
+    description = "Recommended app not found."
+    code = 404
+
+
 class TrialAppNotAllowed(BaseHTTPException):
     """*403* `Trial App Not Allowed`
 
@@ -51,3 +57,9 @@ class TrialAppLimitExceeded(BaseHTTPException):
     error_code = "trial_app_limit_exceeded"
     code = 403
     description = "The user has exceeded the trial app limit."
+
+
+class TrialAppFeatureDisabledError(BaseHTTPException):
+    error_code = "trial_app_feature_disabled"
+    code = 403
+    description = "Trial app feature is not enabled."

@@ -82,6 +82,7 @@ class ServerSettings(BaseSettings):
         description="Maximum Agent Stub upload size in MiB",
         validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
     )
+    binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""

@@ -37,7 +37,6 @@ from core.db.session_factory import session_factory as default_session_factory
 from core.tools.signature import bind_file_uri, sign_tool_file_uri
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from factories import file_factory
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot
 from models.agent_config_entities import (
     AgentConfigFileRefConfig,
@@ -283,6 +282,7 @@ class AgentConfigService:
                     for item in SkillManagementService().list_runtime_agent_skills(
                         tenant_id=tenant_id,
                         agent_id=agent_id,
+                        include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
                     )
                     if item["name"] == name
                 ),
@@ -310,45 +310,6 @@ class AgentConfigService:
             missing_code="config_file_not_found",
             missing_message="config file payload is missing",
         )
-
-    def pull_skill(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
-        name: str,
-        user_id: str | None = None,
-    ) -> ConfigDownload:
-        target = self.resolve_target(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            config_version_id=config_version_id,
-            config_version_kind=config_version_kind,
-            user_id=user_id,
-        )
-        try:
-            skill = self._require_skill(target.agent_soul, name=name)
-            file_id = self._available_skill_file_id(skill)
-            payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
-            return ConfigDownload(
-                filename=f"{skill.name}.zip",
-                mime_type=mime_type or "application/zip",
-                payload=payload,
-            )
-        except AgentConfigServiceError as exc:
-            if exc.code != "config_skill_not_found":
-                raise
-        try:
-            result = SkillManagementService().pull_runtime_agent_skill(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                name=name,
-            )
-            return ConfigDownload(filename=result.filename, mime_type=result.mime_type, payload=result.payload)
-        except SkillManagementServiceError as exc:
-            raise AgentConfigServiceError("config_skill_not_found", "config skill not found", status_code=404) from exc
 
     def download_skill_url(
         self,
@@ -401,6 +362,7 @@ class AgentConfigService:
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     name=name,
+                    include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
                 )
             except SkillManagementServiceError as skill_exc:
                 raise AgentConfigServiceError(
@@ -1300,6 +1262,7 @@ class AgentConfigService:
         for item in SkillManagementService().list_runtime_agent_skills(
             tenant_id=target.tenant_id,
             agent_id=target.agent_id,
+            include_draft=target.kind != AgentConfigVersionKind.SNAPSHOT,
         ):
             if item["name"] in seen_names:
                 continue
@@ -1576,36 +1539,6 @@ class AgentConfigService:
             uri = urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
 
         return ConfigDownloadRequest(filename=filename, mime_type=mime_type, size=size, download_uri=uri)
-
-    @staticmethod
-    def _resolve_download_url(
-        *, tenant_id: str, file_kind: Literal["upload_file", "tool_file"], file_id: str
-    ) -> str | None:
-        controller = DatabaseFileAccessController()
-        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
-
-        runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
-        try:
-            if file_kind == "upload_file":
-                return runtime.resolve_upload_file_url(
-                    upload_file_id=file_id,
-                    for_external=True,
-                    as_attachment=True,
-                )
-            file = file_factory.build_from_mapping(
-                mapping={"transfer_method": "tool_file", "tool_file_id": file_id},
-                tenant_id=tenant_id,
-                access_controller=controller,
-            )
-            url = runtime.resolve_file_url(file=file, for_external=True)
-            if not url:
-                return None
-            parsed = urllib.parse.urlsplit(url)
-            query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
-            query.append(("as_attachment", "true"))
-            return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
-        except ValueError:
-            return None
 
 
 __all__ = [
