@@ -72,6 +72,30 @@ describe('useModalState', () => {
     expect(result.current.fullScreen).toBe(false)
   })
 
+  it('should not close a newly opened segment when an earlier save finishes', () => {
+    const { result } = renderModalState()
+
+    act(() => {
+      result.current.onClickCard({ id: 'seg-1' } as unknown as SegmentDetailModel)
+      result.current.onClickCard({ id: 'seg-2' } as unknown as SegmentDetailModel)
+      result.current.onCloseSegmentDetailIfCurrent('seg-1')
+    })
+
+    expect(result.current.currSegment.showModal).toBe(true)
+    expect(result.current.currSegment.segInfo?.id).toBe('seg-2')
+  })
+
+  it('should close the segment when the UI callback supplies a click event', () => {
+    const { result } = renderModalState()
+
+    act(() => {
+      result.current.onClickCard({ id: 'seg-1' } as unknown as SegmentDetailModel)
+      Reflect.apply(result.current.onCloseSegmentDetail, undefined, [{ type: 'click' }])
+    })
+
+    expect(result.current.currSegment.showModal).toBe(false)
+  })
+
   it('should open child segment detail on slice click', () => {
     const { result } = renderModalState()
     const childDetail = { id: 'child-1', segment_id: 'seg-1' } as unknown as ChildChunkDetail
