@@ -16,6 +16,7 @@ from core.mcp.auth.auth_flow import (
     _create_secure_redis_state,
     _parse_token_response,
     _retrieve_redis_state,
+    _select_effective_grant_type,
     auth,
     build_oauth_authorization_server_metadata_discovery_urls,
     build_protected_resource_metadata_discovery_urls,
@@ -596,11 +597,12 @@ class TestAuthOrchestration:
         """Test auth flow for new client registration."""
         # Setup
         mock_discover.return_value = (
-            OAuthMetadata(
-                authorization_endpoint="https://auth.example.com/authorize",
-                token_endpoint="https://auth.example.com/token",
-                response_types_supported=["code"],
-                grant_types_supported=["authorization_code"],
+            OAuthMetadata.model_validate(
+                {
+                    "authorization_endpoint": "https://auth.example.com/authorize",
+                    "token_endpoint": "https://auth.example.com/token",
+                    "response_types_supported": ["code"],
+                }
             ),
             None,
             None,
@@ -930,6 +932,51 @@ class TestAuthOrchestration:
         assert get_effective_scope(None, None, asm, "client") == "openid profile"
         # 4. Client configured
         assert get_effective_scope(None, None, None, "client") == "client"
+
+    def test_select_effective_grant_type_defaults_omitted_metadata_to_authorization_code(self) -> None:
+        metadata = OAuthMetadata.model_validate(
+            {
+                "authorization_endpoint": "https://auth.example.com/auth",
+                "token_endpoint": "https://auth.example.com/token",
+                "response_types_supported": ["code"],
+            }
+        )
+
+        assert _select_effective_grant_type(metadata) == "authorization_code"
+
+    @pytest.mark.parametrize(
+        ("grant_types_supported", "expected"),
+        [
+            (["authorization_code"], "authorization_code"),
+            (["client_credentials"], "client_credentials"),
+            (["client_credentials", "authorization_code"], "authorization_code"),
+        ],
+    )
+    def test_select_effective_grant_type_uses_explicit_supported_flow(
+        self, grant_types_supported: list[str], expected: str
+    ) -> None:
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/auth",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            grant_types_supported=grant_types_supported,
+        )
+
+        assert _select_effective_grant_type(metadata) == expected
+
+    @pytest.mark.parametrize("grant_types_supported", [list[str](), ["implicit"], ["Authorization_Code"], None])
+    def test_select_effective_grant_type_rejects_invalid_or_unsupported_explicit_metadata(
+        self, grant_types_supported: list[str] | None
+    ) -> None:
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/auth",
+            token_endpoint="https://auth.example.com/token",
+            response_types_supported=["code"],
+            grant_types_supported=grant_types_supported,
+        )
+
+        with pytest.raises(ValueError, match="does not advertise a supported grant type"):
+            _select_effective_grant_type(metadata)
 
     @patch("core.mcp.auth.auth_flow.redis_client")
     def test_redis_state_management(self, mock_redis):
@@ -1316,6 +1363,40 @@ class TestAuthOrchestration:
             mock_cc.side_effect = ValueError("CC Failed")
             with pytest.raises(ValueError, match="Client credentials flow failed"):
                 auth(provider)
+
+    @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
+    def test_auth_defaults_to_authorization_code_when_metadata_omits_grant_types(self, mock_discover: Mock) -> None:
+        provider = Mock(spec=MCPProviderEntity)
+        provider.decrypt_server_url.return_value = "https://api"
+        provider.id = "p1"
+        provider.tenant_id = "t1"
+        provider.redirect_url = "https://console/api/mcp/oauth/callback"
+        provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="c1")
+        provider.retrieve_tokens.return_value = None
+        provider.decrypt_credentials.return_value = {"scope": "read"}
+
+        asm = OAuthMetadata.model_validate(
+            {
+                "authorization_endpoint": "https://auth/auth",
+                "token_endpoint": "https://auth/token",
+                "response_types_supported": ["code"],
+            }
+        )
+        mock_discover.return_value = (asm, None, None)
+
+        with (
+            patch("core.mcp.auth.auth_flow._create_secure_redis_state", return_value="state-key"),
+            patch("core.mcp.auth.auth_flow.generate_pkce_challenge", return_value=("verifier", "challenge")),
+            patch("core.mcp.auth.auth_flow.client_credentials_flow") as mock_client_credentials,
+        ):
+            result = auth(provider)
+
+        authorization_url = result.response["authorization_url"]
+        assert authorization_url.startswith("https://auth/auth?")
+        assert "client_id=c1" in authorization_url
+        assert "state=state-key" in authorization_url
+        assert result.actions[0].action_type == AuthActionType.SAVE_CODE_VERIFIER
+        mock_client_credentials.assert_not_called()
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     def test_auth_orchestration_authorization_code(self, mock_discover):
