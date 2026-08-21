@@ -84,6 +84,7 @@ const Form: FC<FormProps> = React.memo(
             type={type === 'secret' ? 'password' : 'text'}
             autoComplete="off"
             inputMode={variable === 'endpoint' ? 'url' : undefined}
+            placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
             spellCheck={variable === 'endpoint' || type === 'secret' ? false : undefined}
             id={variable}
             name={variable}
