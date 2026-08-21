@@ -4,6 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
 
+from jsonschema import Draft7Validator
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import set_committed_value
 
@@ -217,9 +218,10 @@ class BaseAppGenerator:
             if value is None:
                 return None
 
-        # Treat empty placeholders for optional file inputs as unset
+        # Treat empty placeholders for optional file and json inputs as unset
         if (
-            variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
+            variable_entity.type
+            in {VariableEntityType.FILE, VariableEntityType.FILE_LIST, VariableEntityType.JSON_OBJECT}
             and not variable_entity.required
         ):
             # Treat empty string (frontend default) as unset
@@ -297,12 +299,49 @@ class BaseAppGenerator:
                         elif value == 0:
                             value = False
             case VariableEntityType.JSON_OBJECT:
-                if value and not isinstance(value, dict):
+                # NOTE: the emptiness guard used to be `if value and ...`, which let falsy
+                # non-dicts (`{}`, `[]`, `""`, `0`) through unchecked.
+                if not isinstance(value, dict):
                     raise ValueError(f"{variable_entity.variable} in input form must be a dict")
+                self._validate_json_schema(variable_entity=variable_entity, value=value)
             case _:
                 raise AssertionError("this statement should be unreachable.")
 
         return value
+
+    def _validate_json_schema(self, *, variable_entity: "VariableEntity", value: Mapping[str, Any]):
+        """Enforce the json_schema declared on a json_object variable.
+
+        The schema is otherwise only checked for well-formedness when the workflow is
+        edited, never against actual inputs. Letting a non-conforming payload through
+        pushes the failure into whichever downstream node dereferences the missing key,
+        which reports it as a missing variable rather than as bad input.
+        """
+        schema = variable_entity.json_schema
+        if not schema:
+            return
+
+        try:
+            # `iter_errors` yields input violations; anything *raised* here is a defect in
+            # the schema itself (unknown type, unresolvable $ref, malformed keyword). Those
+            # must fail open: the schema passed the editor's checks when the workflow was
+            # saved, so refusing to run now would break published workflows over a bad
+            # annotation rather than over bad input.
+            errors = sorted(Draft7Validator(schema).iter_errors(value), key=lambda error: list(error.absolute_path))
+        except Exception:
+            logger.warning(
+                "Skipping json_schema validation for %r: the declared schema cannot be applied",
+                variable_entity.variable,
+                exc_info=True,
+            )
+            return
+
+        if not errors:
+            return
+
+        error = errors[0]
+        location = "".join(f"[{part!r}]" for part in error.absolute_path)
+        raise ValueError(f"{variable_entity.variable}{location} in input form is invalid: {error.message}")
 
     def _sanitize_value(self, value: Any):
         if isinstance(value, str):

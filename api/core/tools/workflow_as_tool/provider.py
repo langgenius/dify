@@ -135,6 +135,11 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
                         for option in variable.options
                     ]
 
+                # Expose the declared nested schema to the model, mirroring how the same
+                # start variable is published over MCP. Without it the model only sees a
+                # bare `{"type": "object"}` and has to infer the shape from the description.
+                input_schema = variable.json_schema if variable.type == VariableEntityType.JSON_OBJECT else None
+
                 workflow_tool_parameters.append(
                     ToolParameter(
                         name=parameter.name,
@@ -147,6 +152,7 @@ class WorkflowToolProviderController(ToolProviderController[ToolProviderEntity, 
                         default=variable.default,
                         options=options,
                         placeholder=I18nObject(en_US="", zh_Hans=""),
+                        input_schema=input_schema,
                     )
                 )
             elif features.file_upload:

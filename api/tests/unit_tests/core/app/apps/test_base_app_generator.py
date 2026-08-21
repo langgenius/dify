@@ -430,6 +430,130 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
     assert result is None
 
 
+_SUBAGENT_TASKS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "task_tickets": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string"},
+                    "subagent_name": {"type": "string"},
+                    "task_ticket": {"type": "string"},
+                },
+                "required": ["task_id", "subagent_name", "task_ticket"],
+            },
+        }
+    },
+    "required": ["task_tickets"],
+}
+
+
+def _subagent_tasks_variable(*, required: bool = True, json_schema=_SUBAGENT_TASKS_SCHEMA) -> VariableEntity:
+    return VariableEntity(
+        variable="subagent_tasks",
+        label="subagent_tasks",
+        type=VariableEntityType.JSON_OBJECT,
+        required=required,
+        json_schema=json_schema,
+    )
+
+
+def test_validate_inputs_json_object_accepts_conforming_payload():
+    base_app_generator = BaseAppGenerator()
+    payload = {"task_tickets": [{"task_id": "t1", "subagent_name": "a", "task_ticket": "x"}]}
+
+    result = base_app_generator._validate_inputs(variable_entity=_subagent_tasks_variable(), value=payload)
+
+    assert result == payload
+
+
+def test_validate_inputs_json_object_rejects_payload_missing_required_key():
+    """An empty object must not reach the graph: downstream nodes report a misleading
+    'variable not found' instead of the real cause."""
+    base_app_generator = BaseAppGenerator()
+
+    with pytest.raises(ValueError, match="task_tickets"):
+        base_app_generator._validate_inputs(variable_entity=_subagent_tasks_variable(), value={})
+
+
+def test_validate_inputs_json_object_rejects_payload_violating_nested_schema():
+    base_app_generator = BaseAppGenerator()
+    payload = {"task_tickets": [{"task_id": "t1"}]}
+
+    with pytest.raises(ValueError, match="subagent_tasks"):
+        base_app_generator._validate_inputs(variable_entity=_subagent_tasks_variable(), value=payload)
+
+
+def test_validate_inputs_json_object_rejects_non_dict_even_when_falsy():
+    base_app_generator = BaseAppGenerator()
+    variable = _subagent_tasks_variable(required=False, json_schema=None)
+
+    with pytest.raises(ValueError, match="must be a dict"):
+        base_app_generator._validate_inputs(variable_entity=variable, value=[])
+
+
+def test_validate_inputs_optional_json_object_treats_empty_string_as_unset():
+    """The run form submits "" for a blank optional field; that is 'unset', not a bad dict."""
+    base_app_generator = BaseAppGenerator()
+    variable = _subagent_tasks_variable(required=False, json_schema=None)
+
+    assert base_app_generator._validate_inputs(variable_entity=variable, value="") is None
+
+
+@pytest.mark.parametrize(
+    "broken_schema",
+    [
+        # Accepted by Draft7Validator.check_schema at save time or predating it, but
+        # unusable at validation time. Each raises a *different* exception type from
+        # jsonschema (UnknownType / AttributeError / referencing error).
+        {"type": "not-a-type"},
+        {"properties": 5},
+        {"type": "object", "properties": {"a": {"$ref": "http://example.invalid/schema.json"}}},
+    ],
+)
+def test_validate_inputs_json_object_fails_open_on_unusable_schema(broken_schema, caplog):
+    """A defective schema annotation must not take down a published workflow."""
+    base_app_generator = BaseAppGenerator()
+    variable = _subagent_tasks_variable(required=False, json_schema=None)
+    # Bypass VariableEntity's save-time schema check to simulate persisted bad data.
+    object.__setattr__(variable, "json_schema", broken_schema)
+
+    with caplog.at_level(logging.WARNING):
+        result = base_app_generator._validate_inputs(variable_entity=variable, value={"a": 1})
+
+    assert result == {"a": 1}
+    assert "cannot be applied" in caplog.text
+
+
+def test_validate_inputs_json_object_reports_the_first_error_by_location():
+    base_app_generator = BaseAppGenerator()
+    variable = _subagent_tasks_variable(required=False, json_schema=None)
+    object.__setattr__(
+        variable,
+        "json_schema",
+        {
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+            "required": ["a", "b"],
+        },
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        base_app_generator._validate_inputs(variable_entity=variable, value={})
+
+    # Deterministic message regardless of jsonschema's internal iteration order.
+    assert "subagent_tasks in input form is invalid" in str(excinfo.value)
+
+
+def test_validate_inputs_json_object_without_schema_is_unconstrained():
+    base_app_generator = BaseAppGenerator()
+    variable = _subagent_tasks_variable(required=False, json_schema=None)
+
+    assert base_app_generator._validate_inputs(variable_entity=variable, value={}) == {}
+
+
 class TestBaseAppGeneratorExtras:
     def test_wrap_stream_joins_worker_after_stream_exhaustion(self):
         base_app_generator = BaseAppGenerator()
