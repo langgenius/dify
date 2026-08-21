@@ -1,10 +1,12 @@
+from datetime import datetime
+
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, AccountIntegrate
+from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
-from services.entities.account_entities import AccountPasswordDigest, AccountProfileChanges
+from services.entities.account_entities import AccountInitialization, AccountPasswordDigest, AccountProfileChanges
 
 
 def _persist_account(session: Session) -> Account:
@@ -115,3 +117,75 @@ def test_account_integration_repository_lists_integrations(
 
     assert len(integrations) == 1
     assert integrations[0].provider == "github"
+
+
+def test_account_repository_initializes_account_and_consumes_invitation_atomically(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = _persist_account(sqlite_session)
+    account.status = AccountStatus.UNINITIALIZED
+    invitation = InvitationCode(batch="batch-1", code="invite-1")
+    sqlite_session.add_all([account, invitation])
+    sqlite_session.commit()
+    initialized_at = datetime(2026, 8, 10, 12, 0)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.initialize(
+        "account-1",
+        AccountInitialization(
+            interface_language="zh-Hans",
+            interface_theme="light",
+            timezone="Asia/Shanghai",
+            initialized_at=initialized_at,
+        ),
+        invitation_code="invite-1",
+        workspace_id="workspace-1",
+    )
+
+    assert result.account is not None
+    assert result.account.status == "active"
+    sqlite_session.expire_all()
+    persisted_account = sqlite_session.get(Account, "account-1")
+    persisted_invitation = sqlite_session.get(InvitationCode, invitation.id)
+    assert persisted_account is not None
+    assert persisted_account.status == AccountStatus.ACTIVE
+    assert persisted_account.interface_language == "zh-Hans"
+    assert persisted_account.timezone == "Asia/Shanghai"
+    assert persisted_account.initialized_at == initialized_at
+    assert persisted_invitation is not None
+    assert persisted_invitation.status == InvitationCodeStatus.USED
+    assert persisted_invitation.used_by_account_id == "account-1"
+    assert persisted_invitation.used_by_tenant_id == "workspace-1"
+
+
+def test_account_repository_updates_email_and_removes_integrations_atomically(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    integration = AccountIntegrate(
+        account_id="account-1",
+        provider="google",
+        open_id="google-user",
+        encrypted_token="encrypted-token",
+    )
+    sqlite_session.add(integration)
+    sqlite_session.commit()
+    integration_id = integration.id
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    assert repository.email_exists("new@example.com") is False
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="new@example.com",
+    )
+
+    assert result.account is not None
+    assert result.account.email == "new@example.com"
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Account, "account-1")
+    assert persisted is not None
+    assert persisted.email == "new@example.com"
+    assert sqlite_session.get(AccountIntegrate, integration_id) is None

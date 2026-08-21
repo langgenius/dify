@@ -437,7 +437,7 @@ class TestOAuthCallback:
 
         Context:
         - AccountStatus.CLOSED is defined in the enum but never used in production
-        - The close_account() method exists but is never called
+        - No production service path sets accounts to CLOSED
         - Account deletion uses external service instead of status change
         - All authentication services (OAuth, password, email) don't check CLOSED status
 
