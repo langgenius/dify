@@ -45,6 +45,7 @@ from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
 from services.entities.feature_entities import LicenseStatus
+from tests.unit_tests.config_override import config_overrides_context
 
 
 @pytest.fixture(autouse=True)
@@ -229,7 +230,7 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),
@@ -255,7 +256,7 @@ class TestCurrentContextInjection:
             patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
             patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
-            patch("controllers.console.flask_admission.dify_config.RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch(
                 "controllers.console.flask_admission.current_account_with_tenant",
                 return_value=AccountWithTenant(account=current_user, tenant_id="tenant-123"),

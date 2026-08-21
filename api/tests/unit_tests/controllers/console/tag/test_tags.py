@@ -31,6 +31,7 @@ from services.tag_application_service import (
     TagSummary,
     UpdateTagInput,
 )
+from tests.unit_tests.config_override import config_overrides_context
 
 
 def unwrap(func):
@@ -126,7 +127,7 @@ class TestTagListApi:
 
         with (
             app.test_request_context("/", json={"name": "Tag", "type": "knowledge"}),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(dataset_operator, "tenant-1")),
         ):
             result, status = unwrap(TagListApi().post)(
@@ -147,7 +148,7 @@ class TestTagListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
             patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
         ):
@@ -170,7 +171,7 @@ class TestTagListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
         ):
             with pytest.raises(Forbidden):
@@ -188,7 +189,7 @@ class TestTagListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             with pytest.raises(ValueError, match="Tag name already exists") as exc_info:
@@ -209,7 +210,7 @@ class TestTagListApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             with pytest.raises(TagApplicationError, match="unexpected"):
@@ -230,7 +231,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
             patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
         ):
@@ -257,7 +258,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
         ):
             with pytest.raises(Forbidden):
@@ -276,7 +277,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             with pytest.raises(NotFound, match="Tag not found") as exc_info:
@@ -297,7 +298,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(dataset_operator, "tenant-1")),
         ):
             with pytest.raises(Forbidden):
@@ -310,7 +311,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             result, status = unwrap(TagUpdateDeleteApi().delete)(TagUpdateDeleteApi(), request_context, "tag-1")
@@ -326,7 +327,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
             patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
         ):
@@ -344,7 +345,7 @@ class TestTagUpdateDeleteApi:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", True),
+            config_overrides_context(RBAC_ENABLED=True),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
             patch.object(module, "enforce_rbac_access") as enforce_rbac_access,
         ):
@@ -367,7 +368,7 @@ class TestTagBindings:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             result, status = unwrap(TagBindingCollectionApi().post)(TagBindingCollectionApi(), payload, request_context)
@@ -387,7 +388,7 @@ class TestTagBindings:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             with pytest.raises(NotFound, match="App not found") as exc_info:
@@ -402,7 +403,7 @@ class TestTagBindings:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
         ):
             with pytest.raises(Forbidden):
@@ -420,7 +421,7 @@ class TestTagBindings:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             result, status = unwrap(TagBindingRemoveApi().post)(TagBindingRemoveApi(), payload, request_context)
@@ -440,7 +441,7 @@ class TestTagBindings:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(owner, "tenant-1")),
         ):
             with pytest.raises(NotFound, match="Dataset not found") as exc_info:
@@ -455,7 +456,7 @@ class TestTagBindings:
 
         with (
             app.test_request_context("/"),
-            patch.object(module.dify_config, "RBAC_ENABLED", False),
+            config_overrides_context(RBAC_ENABLED=False),
             patch.object(module, "current_account_with_tenant", return_value=(readonly, "tenant-1")),
         ):
             with pytest.raises(Forbidden):

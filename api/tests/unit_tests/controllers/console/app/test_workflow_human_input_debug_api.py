@@ -15,6 +15,7 @@ from libs import login as login_lib
 from models import App, Tenant
 from models.account import Account, AccountStatus, TenantAccountRole
 from models.model import AppMode, IconType
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_account() -> Account:
@@ -47,14 +48,17 @@ def _make_app(mode: AppMode) -> App:
 
 def _patch_console_guards(monkeypatch: pytest.MonkeyPatch, account: Account, app_model: App) -> None:
     # Skip setup and auth guardrails
-    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-    monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
+        LOGIN_DISABLED=True,
+        INIT_PASSWORD="",
+    )
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(app_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
-    monkeypatch.setattr(console_wraps.dify_config, "INIT_PASSWORD", "")
 
     # Avoid hitting the database when resolving the app model
     monkeypatch.setattr(app_wraps, "_load_app_model_from_scoped_session", lambda _app_id: app_model)

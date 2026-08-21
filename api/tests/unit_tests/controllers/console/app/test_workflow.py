@@ -22,6 +22,7 @@ from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
 from graphon.variables.variables import RAGPipelineVariable
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_workflow(**overrides):
@@ -855,7 +856,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     access_filter = SimpleNamespace(is_app_accessible=lambda app_id, _maintainer, _account_id: app_id == app_id_1)
     resolve_access = Mock(return_value=access_filter)
     monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
-    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
     short_session = Mock()
     monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(short_session))
@@ -945,7 +946,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         "WorkflowService",
         lambda: SimpleNamespace(get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)),
     )
-    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
     monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
     first_pipeline = Mock()

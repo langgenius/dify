@@ -23,6 +23,7 @@ from models.account import AccountStatus
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
 from models.model import AppMode
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_jsonify_form_definition() -> None:
@@ -208,7 +209,7 @@ def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypa
         lambda: (current_user, "tenant-1"),
     )
     monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr("libs.login.dify_config.LOGIN_DISABLED", True)
+    apply_config_overrides(monkeypatch, LOGIN_DISABLED=True)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
