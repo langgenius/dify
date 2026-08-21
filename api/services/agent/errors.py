@@ -47,6 +47,12 @@ class AgentHomeSnapshotCreateFailedError(BaseHTTPException):
     code = 502
 
 
+class AgentHomeSnapshotTooLargeError(BaseHTTPException):
+    error_code = "agent_home_snapshot_too_large"
+    description = "The Agent Home Snapshot exceeds the configured size limit."
+    code = 413
+
+
 class AgentSoulLockedError(BadRequest):
     description = "Agent Soul is locked for this workflow node."
 

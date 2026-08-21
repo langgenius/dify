@@ -16,6 +16,7 @@ from dify_agent.runtime_backend import (
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateError,
     HomeSnapshotCreateSpec,
+    HomeSnapshotTooLargeError,
     RuntimeLease,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
@@ -570,7 +571,7 @@ async def test_enterprise_snapshot_create_rejects_a_foreign_lease() -> None:
 
 
 @pytest.mark.anyio
-async def test_enterprise_snapshot_create_maps_gateway_failures(
+async def test_enterprise_snapshot_create_maps_the_size_limit_to_too_large(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
@@ -590,7 +591,36 @@ async def test_enterprise_snapshot_create_maps_gateway_failures(
     lease = await bindings.acquire("sandbox-1")
     snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
 
-    with pytest.raises(HomeSnapshotCreateError, match="snapshot_size_exceeded"):
+    with pytest.raises(HomeSnapshotTooLargeError, match="exceeds the configured limit"):
+        _ = await snapshots.create_from_runtime(
+            spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+            source=lease,
+        )
+    await bindings.release(lease)
+
+
+@pytest.mark.anyio
+async def test_enterprise_snapshot_create_maps_other_gateway_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/home-snapshots"):
+            return httpx.Response(
+                500,
+                json={
+                    "code": 500,
+                    "reason": "snapshot_save_failed",
+                    "message": "home snapshot save failed: object store unavailable",
+                },
+            )
+        return _job_response()
+
+    _ = _mock_http(monkeypatch, handler)
+    bindings = EnterpriseExecutionBindingBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+    lease = await bindings.acquire("sandbox-1")
+    snapshots = EnterpriseHomeSnapshotBackend(gateway_endpoint="http://gateway.example", auth_token="secret")
+
+    with pytest.raises(HomeSnapshotCreateError, match="snapshot_save_failed"):
         _ = await snapshots.create_from_runtime(
             spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
             source=lease,

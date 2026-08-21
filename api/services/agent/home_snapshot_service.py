@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from http import HTTPStatus
 
 from dify_agent.client import Client, DifyAgentClientError, DifyAgentHTTPError, DifyAgentNotFoundError
 from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest
@@ -24,7 +25,11 @@ from models.agent import (
     AgentWorkingResourceStatus,
     AgentWorkspaceOwnerType,
 )
-from services.agent.errors import AgentBuildSandboxNotFoundError, AgentHomeSnapshotCreateFailedError
+from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
+)
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 logger = logging.getLogger(__name__)
@@ -100,6 +105,8 @@ class AgentHomeSnapshotService:
                 logger.exception("Unreadable Home Snapshot response for agent %s", build_draft.agent_id)
                 raise AgentHomeSnapshotCreateFailedError() from exc
             _, message = backend_error_detail(exc)
+            if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
+                raise AgentHomeSnapshotTooLargeError(message) from exc
             raise AgentHomeSnapshotCreateFailedError(message) from exc
         except DifyAgentClientError as exc:
             raise AgentHomeSnapshotCreateFailedError(str(exc)) from exc

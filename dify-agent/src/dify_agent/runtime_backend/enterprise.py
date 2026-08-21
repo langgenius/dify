@@ -11,6 +11,7 @@ routed through the Gateway's shellctl proxy.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from http import HTTPStatus
 import logging
 import shlex
 from typing import cast
@@ -26,6 +27,7 @@ from dify_agent.runtime_backend.errors import (
     BindingDestroyError,
     BindingLostError,
     HomeSnapshotCreateError,
+    HomeSnapshotTooLargeError,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
@@ -66,6 +68,7 @@ class _GatewayStatusError(RuntimeError):
                 self.reason = reason
             if isinstance(message, str) and message:
                 detail = message
+        self.detail = detail
         super().__init__(f"{self.status_code} {self.reason or 'gateway_error'}: {detail}")
 
 
@@ -125,7 +128,11 @@ class EnterpriseHomeSnapshotBackend:
                     "homeSnapshotId": spec.home_snapshot_id,
                 },
             )
-        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
+        except _GatewayStatusError as exc:
+            if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
+                raise HomeSnapshotTooLargeError(exc.detail) from exc
+            raise HomeSnapshotCreateError(str(exc)) from exc
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
             raise HomeSnapshotCreateError(str(exc)) from exc
         snapshot_ref = payload.get("snapshotRef") if isinstance(payload, dict) else None
         if not isinstance(snapshot_ref, str) or not snapshot_ref:

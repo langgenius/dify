@@ -16,7 +16,11 @@ from models.agent import (
     AgentWorkingResourceStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.errors import AgentBuildSandboxNotFoundError, AgentHomeSnapshotCreateFailedError
+from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
+)
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceService
 
@@ -336,7 +340,7 @@ def test_build_apply_surfaces_the_backend_message(monkeypatch: pytest.MonkeyPatc
         status_code=502,
         detail={
             "code": "home_snapshot_create_failed",
-            "message": "413 snapshot_size_exceeded: stream exceeded 67108864 bytes",
+            "message": "500 snapshot_save_failed: object store unavailable",
         },
     )
 
@@ -345,8 +349,27 @@ def test_build_apply_surfaces_the_backend_message(monkeypatch: pytest.MonkeyPatc
 
     assert excinfo.value.data == {
         "code": "agent_home_snapshot_create_failed",
-        "message": "413 snapshot_size_exceeded: stream exceeded 67108864 bytes",
+        "message": "500 snapshot_save_failed: object store unavailable",
         "status": 502,
+    }
+
+
+def test_build_apply_maps_a_too_large_snapshot_to_413(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentHTTPError(
+        status_code=413,
+        detail={
+            "code": "home_snapshot_too_large",
+            "message": "home snapshot exceeds the configured limit of 67108864 bytes",
+        },
+    )
+
+    with pytest.raises(AgentHomeSnapshotTooLargeError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_too_large",
+        "message": "home snapshot exceeds the configured limit of 67108864 bytes",
+        "status": 413,
     }
 
 
