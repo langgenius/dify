@@ -8,10 +8,21 @@ classes.
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import Any
 
 from dify_agent.client import DifyAgentHTTPError
 from dify_agent.protocol import RunFailureType
+
+
+def backend_reported_failure(exc: DifyAgentHTTPError) -> bool:
+    """Whether the backend itself reported the failure.
+
+    ``DifyAgentValidationError`` is a ``DifyAgentHTTPError`` that the client also
+    raises when a *successful* response fails DTO validation. Those carry a 2xx
+    status and a Pydantic error list, not a backend-authored error envelope.
+    """
+    return exc.status_code >= HTTPStatus.BAD_REQUEST
 
 
 def backend_error_detail(
