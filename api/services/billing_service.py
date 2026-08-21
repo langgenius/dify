@@ -445,17 +445,6 @@ class BillingService:
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _request_billing_api(
-        cls,
-        method: Literal["GET", "POST", "DELETE", "PUT"],
-        url: str,
-        json=None,
-        params=None,
-    ) -> httpx.Response:
-        headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
-        return _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
-
-    @classmethod
     def _send_request(
         cls,
         method: Literal["GET", "POST", "DELETE", "PUT"],
@@ -464,8 +453,9 @@ class BillingService:
         params=None,
         base_url: str | None = None,
     ):
+        headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
         url = f"{base_url or cls.base_url}{endpoint}"
-        response = cls._request_billing_api(method, url, json=json, params=params)
+        response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise _BillingHTTPStatusError(
                 "Unable to retrieve billing information. Please try again later or contact support.",
@@ -479,7 +469,10 @@ class BillingService:
             if response.status_code != httpx.codes.OK:
                 raise ValueError("Invalid arguments.")
         if method == "POST" and response.status_code != httpx.codes.OK:
-            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
+            raise _BillingHTTPStatusError(
+                f"Unable to send request to {url}. Please try again later or contact support.",
+                response.status_code,
+            )
         if method == "DELETE" and response.status_code != httpx.codes.OK:
             logger.error("billing_service: DELETE response: %s %s", response.status_code, response.text)
             raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
@@ -605,16 +598,14 @@ class BillingService:
             "device_info": device_info,
         }
         try:
-            url = f"{cls.base_url}/compliance/download"
-            response = cls._request_billing_api("POST", url, json=payload)
-            if response.status_code != httpx.codes.OK:
-                status_error = _BillingHTTPStatusError("Compliance download request failed", response.status_code)
-                if response.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                    response.status_code >= 500
-                ):
-                    raise BillingUpstreamUnavailableError from status_error
-                raise BillingUpstreamInvalidResponseError from status_error
-            result = _compliance_download_link_adapter.validate_python(response.json())
+            response = cls._send_request("POST", "/compliance/download", json=payload)
+            result = _compliance_download_link_adapter.validate_python(response)
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
         except httpx.RequestError as error:
             raise BillingUpstreamUnavailableError from error
         except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
