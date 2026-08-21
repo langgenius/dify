@@ -6,6 +6,7 @@ import pytest
 from dify_agent.client import Client
 
 from clients.agent_backend.factory import create_agent_backend_client, create_agent_backend_run_client
+from clients.agent_backend.fake_client import FakeAgentBackendRunClient
 from configs import dify_config
 from services import agent_app_sandbox_service
 from services.agent import home_snapshot_service, workspace_service
@@ -49,6 +50,15 @@ def test_create_agent_backend_run_client_forwards_stream_read_timeout(create_cli
         api_token="secret-token",
         stream_timeout=17.5,
     )
+
+
+@pytest.mark.parametrize("base_url", [None, ""])
+def test_create_agent_backend_run_client_falls_back_to_fake_when_base_url_missing(
+    base_url: str | None,
+) -> None:
+    client = create_agent_backend_run_client(base_url=base_url)
+
+    assert isinstance(client, FakeAgentBackendRunClient)
 
 
 @pytest.mark.parametrize(
