@@ -608,6 +608,45 @@ describe('useEmbeddedChatbot', () => {
       expect(result.current.clearChatList).toBe(true)
     })
 
+    // Regression for #38573: handleNewConversation must include handleChangeConversation
+    // in its useCallback deps so the reset button always invokes the freshest
+    // handleConversationIdInfoChange. Without the dep, the reset click captures a
+    // stale closure over the original handleChangeConversation identity.
+    it('handleNewConversation tracks handleChangeConversation identity', async () => {
+      const { result, rerender } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
+
+      const firstHandleNewConversation = result.current.handleNewConversation
+      const firstHandleChangeConversation = result.current.handleChangeConversation
+      expect(typeof firstHandleNewConversation).toBe('function')
+      expect(typeof firstHandleChangeConversation).toBe('function')
+
+      // No-prop rerender: useCallback must short-circuit and preserve identity
+      // because no dependency reference changed.
+      await act(async () => {
+        rerender()
+      })
+
+      expect(result.current.handleNewConversation).toBe(firstHandleNewConversation)
+      expect(result.current.handleChangeConversation).toBe(firstHandleChangeConversation)
+
+      // Flip the resolved userId via the store mock so handleChangeConversation's
+      // identity is invalidated. With the fix, handleNewConversation regenerates
+      // alongside it; without the fix, handleNewConversation would still reference
+      // the stale closure.
+      mockStoreState.embeddedUserId = 'embedded-user-2'
+
+      await act(async () => {
+        rerender()
+      })
+
+      await waitFor(() => {
+        expect(result.current.handleChangeConversation).not.toBe(firstHandleChangeConversation)
+      })
+      expect(result.current.handleNewConversation).not.toBe(firstHandleNewConversation)
+    })
+
     it('handleChangeConversation updates current conversation and refetches chat list', async () => {
       mockStoreState.embeddedConversationId = null
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
