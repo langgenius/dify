@@ -148,7 +148,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=self.test_user_id,
             created_at=naive_utc_now(),
         )
@@ -493,7 +493,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             type="workflow",
             version="draft",
             graph='{"nodes": [], "edges": []}',
-            features='{"file_upload": {"enabled": false}}',
+            _features='{"file_upload": {"enabled": false}}',
             created_by=different_user_id,
             created_at=naive_utc_now(),
         )

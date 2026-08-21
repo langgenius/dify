@@ -48,10 +48,10 @@ def test_workflow_features():
         type="",
         version="",
         graph="",
-        features=json.dumps(OLD_VERSION_WORKFLOW_FEATURES),
+        _features=json.dumps(OLD_VERSION_WORKFLOW_FEATURES),
         created_by="",
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
     )
 
     assert workflow.features_dict == NEW_VERSION_WORKFLOW_FEATURES

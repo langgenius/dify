@@ -459,13 +459,13 @@ class WorkflowService:
             workflow = Workflow(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
-                type=WorkflowType.from_app_mode(app_model.mode).value,
+                type=WorkflowType.from_app_mode(app_model.mode),
                 version=Workflow.VERSION_DRAFT,
                 graph=json.dumps(graph),
-                features=json.dumps(features),
+                _features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=initial_environment_variables,
-                conversation_variables=conversation_variables,
+                _environment_variables=initial_environment_variables,
+                _conversation_variables=conversation_variables,
             )
             session.add(workflow)
         # update draft workflow if found

@@ -157,11 +157,11 @@ def _persist_node_execution(
         error="",
         elapsed_time=0.1,
         execution_metadata=json.dumps({"agent_log": agent_log}),
-        created_at=datetime(2026, 1, 1),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=str(uuid4()),
         finished_at=datetime(2026, 1, 1),
     )
+    execution.created_at = datetime(2026, 1, 1)
     database.add(execution)
     database.commit()
     return execution

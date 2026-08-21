@@ -70,7 +70,7 @@ def _workflow_run(
     nodes: list[dict[str, Any]] | None = None,
     graph: str | None = None,
 ) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id=run_id,
         workflow_id=workflow_id,
         tenant_id=tenant_id,
@@ -88,9 +88,10 @@ def _workflow_run(
         total_steps=0,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
-        created_at=datetime(2024, 1, 1, tzinfo=UTC),
         finished_at=None,
     )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def _execution(
@@ -109,7 +110,7 @@ def _execution(
     workflow_id: str = "workflow-1",
     workflow_run_id: str = "run-1",
 ) -> WorkflowNodeExecutionModel:
-    return WorkflowNodeExecutionModel(
+    execution = WorkflowNodeExecutionModel(
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_id,
@@ -128,11 +129,12 @@ def _execution(
         elapsed_time=0,
         execution_metadata=json.dumps(execution_metadata) if execution_metadata is not None else None,
         index=index,
-        created_at=created_at or datetime.now(UTC),
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by="account-1",
         finished_at=finished_at,
     )
+    execution.created_at = created_at or datetime.now(UTC)
+    return execution
 
 
 def _agent_v2_node(*, node_id: str = "agent-node-1", title: str = "My Agent") -> dict[str, Any]:

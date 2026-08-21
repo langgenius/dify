@@ -50,8 +50,8 @@ def _persist_run(
         status=status,
         created_by_role=CreatorUserRole.ACCOUNT,
         created_by=str(uuid4()),
-        created_at=datetime(2024, 1, 1, 12, 0, 0),
     )
+    workflow_run.created_at = datetime(2024, 1, 1, 12, 0, 0)
     session.add(workflow_run)
     if paused:
         session.add(

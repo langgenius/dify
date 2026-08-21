@@ -70,7 +70,7 @@ def _make_workflow_run(
     created_at: datetime | None = None,
     finished_at: datetime | None = None,
 ) -> WorkflowRun:
-    return WorkflowRun(
+    workflow_run = WorkflowRun(
         id=run_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -88,10 +88,11 @@ def _make_workflow_run(
         total_steps=1,
         created_by_role=CreatorUserRole.END_USER,
         created_by="end-user-1",
-        created_at=created_at or datetime(2026, 1, 1, tzinfo=UTC),
         finished_at=finished_at or datetime(2026, 1, 1, tzinfo=UTC),
         exceptions_count=0,
     )
+    workflow_run.created_at = created_at or datetime(2026, 1, 1, tzinfo=UTC)
+    return workflow_run
 
 
 def _make_workflow_app_log(

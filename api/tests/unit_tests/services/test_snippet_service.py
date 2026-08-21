@@ -48,11 +48,11 @@ def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: d
         kind=WorkflowKind.SNIPPET.value,
         version=version,
         graph=json.dumps(graph),
-        features=json.dumps(features),
+        _features=json.dumps(features),
         created_by="account-1",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
 
 

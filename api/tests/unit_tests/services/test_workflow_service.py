@@ -131,11 +131,11 @@ class TestWorkflowAssociatedDataFactory:
             type=workflow_type,
             version=version,
             graph=json.dumps(graph or {"nodes": [], "edges": []}),
-            features=json.dumps(features or {}),
+            _features=json.dumps(features or {}),
             created_by="user-123",
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         for key, value in kwargs.items():
             setattr(workflow, key, value)
@@ -799,11 +799,11 @@ class TestWorkflowService:
             type=WorkflowType.WORKFLOW,
             version="2026-03-19T00:00:00",
             graph=json.dumps(TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()),
-            features=json.dumps(legacy_features),
+            _features=json.dumps(legacy_features),
             created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         draft_workflow = Workflow(
             id="draft-workflow-id",
@@ -812,11 +812,11 @@ class TestWorkflowService:
             type=WorkflowType.WORKFLOW,
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps({"nodes": [], "edges": []}),
-            features=json.dumps({}),
+            _features=json.dumps({}),
             created_by=account.id,
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         sqlite_session.add_all([source_workflow, draft_workflow])
         sqlite_session.commit()

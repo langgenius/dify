@@ -177,11 +177,11 @@ def _persist_app_and_workflow(session_factory: sessionmaker[Session]) -> None:
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="workflow-owner",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     with session_factory.begin() as session:
         session.add_all([app, workflow])
@@ -208,11 +208,11 @@ def _persist_resumption_models(
         type=WorkflowType.CHAT,
         version=Workflow.VERSION_DRAFT,
         graph="{}",
-        features="{}",
+        _features="{}",
         created_by="workflow-owner",
-        environment_variables=[],
-        conversation_variables=[],
-        rag_pipeline_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
+        _rag_pipeline_variables=[],
     )
     workflow_run = WorkflowRun(
         id=workflow_run_id,

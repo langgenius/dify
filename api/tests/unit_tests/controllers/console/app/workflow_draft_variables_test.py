@@ -31,15 +31,15 @@ class TestWorkflowDraftVariableFields:
         # Create mock objects with relationships pre-loaded
         mock_variable = WorkflowDraftVariable(
             file_id="test-file-id",
-            variable_file=WorkflowDraftVariableFile(
-                size=100000,
-                length=50,
-                value_type=SegmentType.OBJECT,
-                upload_file_id="test-upload-file-id",
-                tenant_id=str(uuid.uuid4()),
-                app_id=str(uuid.uuid4()),
-                user_id=str(uuid.uuid4()),
-            ),
+        )
+        mock_variable.variable_file = WorkflowDraftVariableFile(
+            size=100000,
+            length=50,
+            value_type=SegmentType.OBJECT,
+            upload_file_id="test-upload-file-id",
+            tenant_id=str(uuid.uuid4()),
+            app_id=str(uuid.uuid4()),
+            user_id=str(uuid.uuid4()),
         )
 
         # Mock the file helpers

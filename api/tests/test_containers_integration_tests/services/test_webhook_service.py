@@ -108,10 +108,10 @@ def test_data(
         app_id=app.id,
         type="workflow",
         graph=json.dumps(workflow_data),
-        features=json.dumps({}),
+        _features=json.dumps({}),
         created_by=account.id,
-        environment_variables=[],
-        conversation_variables=[],
+        _environment_variables=[],
+        _conversation_variables=[],
         version="1.0",
     )
     db_session_with_containers.add(workflow)
