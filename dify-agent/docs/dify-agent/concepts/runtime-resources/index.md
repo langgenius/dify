@@ -187,12 +187,20 @@ directly from the runtime to Dify's existing ToolFile endpoint. Dify Agent
 returns only the canonical ToolFile reference and releases the lease before
 Dify API signs a browser URL.
 
+The default Binding-download deadline chain leaves each caller time to receive
+and normalize the lower layer's result: the sandbox CLI upload is 180 seconds,
+`DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` is 210 seconds,
+Dify API's `AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS` is 240 seconds,
+and `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` is 3600 seconds.
+
 `RuntimeLayout.home_dir` and `RuntimeLayout.workspace_dir` are canonical paths
 inside the backend execution namespace. They are not host paths, product ids,
 or request configuration. Shell commands start in `workspace_dir`, and `HOME`
-is forced to `home_dir`. On Local, sibling materialized Homes may exist in the
-same shellctl namespace, while path isolation restricts the active lease to its
-own Home plus the shared Workspace.
+is forced to `home_dir`. The standard temp variables `TMPDIR`, `TMP`, and `TEMP`
+also point directly to `workspace_dir`, so the Workspace is both the command
+`cwd` and temp space. On Local, sibling materialized Homes may exist in the same
+shellctl namespace, while path isolation restricts the active lease to its own
+Home plus the shared Workspace.
 
 ## Backend support
 

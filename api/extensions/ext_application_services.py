@@ -21,7 +21,10 @@ from repositories.app_definition_query_repository import AppDefinitionQueryRepos
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
+from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
@@ -47,12 +50,17 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
-from services.recommended_app_query_compat import LegacyRecommendedAppCatalogGateway
+from services.recommended_app_catalog_gateway import (
+    BuiltinRecommendedAppCatalogGateway,
+    RecommendedAppCatalogRouter,
+    RemoteRecommendedAppCatalogGateway,
+)
 from services.recommended_app_query_service import RecommendedAppQueryService
-from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.tag_application_service import TagApplicationService
+from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.webapp_access_query_service import (
     WebAppAccessQueryService,
@@ -103,8 +111,10 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
     recommended_app_queries: RecommendedAppQueryService
+    trial_app_usage: TrialAppUsageRecorder
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    tags: TagApplicationService
 
 
 def build_application_services(
@@ -118,6 +128,15 @@ def build_application_services(
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
+    trial_app_enabled = FeatureService.is_trial_app_enabled()
+    database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
+    builtin_catalog = BuiltinRecommendedAppCatalogGateway()
+    remote_catalog = RemoteRecommendedAppCatalogGateway()
+    recommended_app_catalog = RecommendedAppCatalogRouter(
+        remote=remote_catalog,
+        database=database_catalog,
+        builtin=builtin_catalog,
+    )
     return ApplicationServices(
         accounts=AccountServices(
             profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
@@ -178,10 +197,11 @@ def build_application_services(
             expected_password=initialization_password,
         ),
         recommended_app_queries=RecommendedAppQueryService(
-            catalog=LegacyRecommendedAppCatalogGateway(session_factory=database_client),
+            catalog=recommended_app_catalog,
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
-            is_trial_enabled=RecommendedAppService.is_trial_app_enabled,
+            trial_enabled=trial_app_enabled,
         ),
+        trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
                 client=database_client,
@@ -193,6 +213,9 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        tags=TagApplicationService(
+            tags=TagRepository(session_factory=database_client),
         ),
     )
 

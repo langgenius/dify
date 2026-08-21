@@ -57,3 +57,9 @@ class TrialAppLimitExceeded(BaseHTTPException):
     error_code = "trial_app_limit_exceeded"
     code = 403
     description = "The user has exceeded the trial app limit."
+
+
+class TrialAppFeatureDisabledError(BaseHTTPException):
+    error_code = "trial_app_feature_disabled"
+    code = 403
+    description = "Trial app feature is not enabled."
