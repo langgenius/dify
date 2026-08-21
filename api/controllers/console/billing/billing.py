@@ -7,6 +7,13 @@ from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.billing.error import (
+    BillingAccessDeniedErrorResponse,
+    BillingOperationFailedErrorResponse,
+    BillingUnavailableErrorResponse,
+    BillingUnprocessableEntityErrorResponse,
+    to_billing_request_error,
+)
 from controllers.console.wraps import (
     account_initialization_required,
     model_validate,
@@ -16,11 +23,12 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from enums import CloudPlan
-from extensions.ext_database import db
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
-from services.billing_service import BillingService
+from services.errors.billing import BillingError
 
 
 class SubscriptionQuery(BaseModel):
@@ -45,13 +53,38 @@ class BillingSubscriptionResponse(ResponseModel):
 
 
 register_schema_models(console_ns, SubscriptionQuery, PartnerTenantsPayload)
-register_response_schema_models(console_ns, BillingResponse, BillingInvoiceResponse, BillingSubscriptionResponse)
+register_response_schema_models(
+    console_ns,
+    BillingAccessDeniedErrorResponse,
+    BillingOperationFailedErrorResponse,
+    BillingUnprocessableEntityErrorResponse,
+    BillingUnavailableErrorResponse,
+    BillingResponse,
+    BillingInvoiceResponse,
+    BillingSubscriptionResponse,
+)
 
 
 @console_ns.route("/billing/subscription")
 class Subscription(Resource):
     @console_ns.doc(params=query_params_from_model(SubscriptionQuery))
     @console_ns.response(200, "Success", console_ns.models[BillingSubscriptionResponse.__name__])
+    @console_ns.response(403, "Billing access denied", console_ns.models[BillingAccessDeniedErrorResponse.__name__])
+    @console_ns.response(
+        422,
+        "Invalid subscription query",
+        console_ns.models[BillingUnprocessableEntityErrorResponse.__name__],
+    )
+    @console_ns.response(
+        502,
+        "Billing operation failed",
+        console_ns.models[BillingOperationFailedErrorResponse.__name__],
+    )
+    @console_ns.response(
+        503,
+        "Billing unavailable",
+        console_ns.models[BillingUnavailableErrorResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -60,13 +93,33 @@ class Subscription(Resource):
     @with_current_tenant_id
     @model_validate(SubscriptionQuery)
     def get(self, req_data: SubscriptionQuery, current_tenant_id: str, current_user: Account):
-        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
-        return BillingService.get_subscription(req_data.plan, req_data.interval, current_user.email, current_tenant_id)
+        try:
+            data = application_services().billing_portal.get_subscription(
+                plan=req_data.plan,
+                interval=req_data.interval,
+                email=current_user.email,
+                workspace_id=current_tenant_id,
+                role=current_user.current_role,
+            )
+        except BillingError as error:
+            raise to_billing_request_error(error) from error
+        return dump_response(BillingSubscriptionResponse, data)
 
 
 @console_ns.route("/billing/invoices")
 class Invoices(Resource):
     @console_ns.response(200, "Success", console_ns.models[BillingInvoiceResponse.__name__])
+    @console_ns.response(403, "Billing access denied", console_ns.models[BillingAccessDeniedErrorResponse.__name__])
+    @console_ns.response(
+        502,
+        "Billing operation failed",
+        console_ns.models[BillingOperationFailedErrorResponse.__name__],
+    )
+    @console_ns.response(
+        503,
+        "Billing unavailable",
+        console_ns.models[BillingUnavailableErrorResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -74,8 +127,15 @@ class Invoices(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account):
-        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
-        return BillingService.get_invoices(current_user.email, current_tenant_id)
+        try:
+            data = application_services().billing_portal.get_invoices(
+                email=current_user.email,
+                workspace_id=current_tenant_id,
+                role=current_user.current_role,
+            )
+        except BillingError as error:
+            raise to_billing_request_error(error) from error
+        return dump_response(BillingInvoiceResponse, data)
 
 
 @console_ns.route("/billing/partners/<string:partner_key>/tenants")
@@ -102,4 +162,8 @@ class PartnerTenants(Resource):
         if not click_id or not decoded_partner_key or not current_user.id:
             raise BadRequest("Invalid partner information")
 
-        return BillingService.sync_partner_tenants_bindings(current_user.id, decoded_partner_key, click_id)
+        return application_services().partner_tenant_bindings.sync(
+            account_id=current_user.id,
+            partner_key=decoded_partner_key,
+            click_id=click_id,
+        )

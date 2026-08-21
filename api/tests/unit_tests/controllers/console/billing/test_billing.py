@@ -1,6 +1,9 @@
 import base64
 import json
-from unittest.mock import patch
+from collections.abc import Iterator
+from inspect import unwrap
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -8,10 +11,152 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, UnprocessableEntity
 
 from controllers.console import wraps as console_wraps
-from controllers.console.billing.billing import PartnerTenants
-from enums import DeploymentEdition
+from controllers.console.billing.billing import Invoices, PartnerTenants, Subscription, SubscriptionQuery
+from controllers.console.billing.error import (
+    BillingAccessDeniedRequestError,
+    BillingOperationFailedError,
+    BillingUnavailableError,
+)
+from enums import CloudPlan, DeploymentEdition
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import DifySetup
+from services.errors.billing import (
+    BillingAccessDeniedError,
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+)
+
+
+class TestBillingPortal:
+    @pytest.fixture
+    def app(self) -> Flask:
+        app = Flask(__name__)
+        app.config["TESTING"] = True
+        return app
+
+    @pytest.fixture
+    def account(self) -> Account:
+        account = Account(name="Billing Owner", email="owner@example.com")
+        account.id = "account-1"
+        account.role = TenantAccountRole.OWNER
+        return account
+
+    @pytest.fixture
+    def billing_portal(self) -> MagicMock:
+        return MagicMock()
+
+    @pytest.fixture(autouse=True)
+    def mock_application_services(self, billing_portal: MagicMock) -> Iterator[None]:
+        with patch(
+            "controllers.console.billing.billing.application_services",
+            return_value=SimpleNamespace(billing_portal=billing_portal),
+        ):
+            yield
+
+    def test_get_subscription_uses_loaded_role_and_response_contract(
+        self,
+        app: Flask,
+        account: Account,
+        billing_portal: MagicMock,
+    ) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
+        billing_portal.get_subscription.return_value = {"url": "https://billing.example.com/checkout"}
+
+        with app.test_request_context("/billing/subscription"):
+            result = method(resource, query, "tenant-1", account)
+
+        billing_portal.get_subscription.assert_called_once_with(
+            plan=CloudPlan.PROFESSIONAL,
+            interval="month",
+            email="owner@example.com",
+            workspace_id="tenant-1",
+            role="owner",
+        )
+        assert result == {"url": "https://billing.example.com/checkout"}
+
+    def test_get_invoices_uses_loaded_role_and_response_contract(
+        self,
+        app: Flask,
+        account: Account,
+        billing_portal: MagicMock,
+    ) -> None:
+        resource = Invoices()
+        method = unwrap(resource.get)
+        billing_portal.get_invoices.return_value = {"url": "https://billing.example.com/portal"}
+
+        with app.test_request_context("/billing/invoices"):
+            result = method(resource, "tenant-1", account)
+
+        billing_portal.get_invoices.assert_called_once_with(
+            email="owner@example.com",
+            workspace_id="tenant-1",
+            role="owner",
+        )
+        assert result == {"url": "https://billing.example.com/portal"}
+
+    def test_get_subscription_translates_access_denied(
+        self,
+        app: Flask,
+        account: Account,
+        billing_portal: MagicMock,
+    ) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
+        billing_portal.get_subscription.side_effect = BillingAccessDeniedError
+
+        with app.test_request_context("/billing/subscription"):
+            with pytest.raises(BillingAccessDeniedRequestError) as exc_info:
+                method(resource, query, "tenant-1", account)
+
+        assert exc_info.value.data == {
+            "code": "billing_access_denied",
+            "message": "Only workspace owners and admins can manage plans and payments.",
+            "status": 403,
+        }
+
+    def test_get_invoices_translates_unavailable_operation(
+        self,
+        app: Flask,
+        account: Account,
+        billing_portal: MagicMock,
+    ) -> None:
+        resource = Invoices()
+        method = unwrap(resource.get)
+        billing_portal.get_invoices.side_effect = BillingUpstreamUnavailableError
+
+        with app.test_request_context("/billing/invoices"):
+            with pytest.raises(BillingUnavailableError) as exc_info:
+                method(resource, "tenant-1", account)
+
+        assert exc_info.value.data == {
+            "code": "billing_unavailable",
+            "message": "This operation is temporarily unavailable. Please try again later.",
+            "status": 503,
+        }
+
+    def test_get_subscription_translates_invalid_upstream_response(
+        self,
+        app: Flask,
+        account: Account,
+        billing_portal: MagicMock,
+    ) -> None:
+        resource = Subscription()
+        method = unwrap(resource.get)
+        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
+        billing_portal.get_subscription.side_effect = BillingUpstreamInvalidResponseError
+
+        with app.test_request_context("/billing/subscription"):
+            with pytest.raises(BillingOperationFailedError) as exc_info:
+                method(resource, query, "tenant-1", account)
+
+        assert exc_info.value.data == {
+            "code": "billing_operation_failed",
+            "message": "We couldn't complete this request. Please try again. If the problem persists, contact support.",
+            "status": 502,
+        }
 
 
 @pytest.mark.parametrize(
@@ -55,10 +200,13 @@ class TestPartnerTenants:
         return account
 
     @pytest.fixture
-    def mock_billing_service(self):
-        """Mock BillingService."""
-        with patch("controllers.console.billing.billing.BillingService") as mock_service:
-            yield mock_service
+    def partner_tenant_bindings(self):
+        service = MagicMock()
+        with patch(
+            "controllers.console.billing.billing.application_services",
+            return_value=SimpleNamespace(partner_tenant_bindings=service),
+        ):
+            yield service
 
     @pytest.fixture
     def mock_decorators(self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -74,14 +222,14 @@ class TestPartnerTenants:
             yield mock_csrf
         console_wraps._is_setup_completed.reset_success()
 
-    def test_put_success(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
+    def test_put_success(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test successful partner tenants bindings sync."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
         click_id = "click-id-789"
         expected_response = {"result": "success", "data": {"synced": True}}
 
-        mock_billing_service.sync_partner_tenants_bindings.return_value = expected_response
+        partner_tenant_bindings.sync.return_value = expected_response
 
         with app.test_request_context(
             method="PUT",
@@ -100,11 +248,13 @@ class TestPartnerTenants:
 
         # Assert
         assert result == expected_response
-        mock_billing_service.sync_partner_tenants_bindings.assert_called_once_with(
-            mock_account.id, "partner-key-123", click_id
+        partner_tenant_bindings.sync.assert_called_once_with(
+            account_id=mock_account.id,
+            partner_key="partner-key-123",
+            click_id=click_id,
         )
 
-    def test_put_invalid_partner_key_base64(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
+    def test_put_invalid_partner_key_base64(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test that invalid base64 partner_key raises BadRequest."""
         # Arrange
         invalid_partner_key = "invalid-base64-!@#$"
@@ -129,7 +279,7 @@ class TestPartnerTenants:
                     resource.put(invalid_partner_key)
                 assert "Invalid partner_key" in str(exc_info.value)
 
-    def test_put_missing_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
+    def test_put_missing_click_id(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test that missing click_id raises UnprocessableEntity (422)."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -154,7 +304,7 @@ class TestPartnerTenants:
                     resource.put(partner_key_encoded)
 
     def test_put_billing_service_json_decode_error(
-        self, app: Flask, mock_account, mock_billing_service, mock_decorators
+        self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators
     ):
         """Test handling of billing service JSON decode error.
 
@@ -174,7 +324,7 @@ class TestPartnerTenants:
         # Simulate JSON decode error when billing service returns invalid JSON
         # This happens when billing service returns non-200 with empty/invalid response body
         json_decode_error = json.JSONDecodeError("Expecting value", "", 0)
-        mock_billing_service.sync_partner_tenants_bindings.side_effect = json_decode_error
+        partner_tenant_bindings.sync.side_effect = json_decode_error
 
         with app.test_request_context(
             method="PUT",
@@ -201,7 +351,7 @@ class TestPartnerTenants:
                 assert isinstance(exc_info.value, json.JSONDecodeError)
                 assert "Expecting value" in str(exc_info.value)
 
-    def test_put_empty_click_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_click_id(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test that empty click_id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")
@@ -226,7 +376,9 @@ class TestPartnerTenants:
                     resource.put(partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
 
-    def test_put_empty_partner_key_after_decode(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_partner_key_after_decode(
+        self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators
+    ):
         """Test that empty partner_key after decode raises BadRequest."""
         # Arrange
         # Base64 encode an empty string
@@ -252,7 +404,7 @@ class TestPartnerTenants:
                     resource.put(empty_partner_key_encoded)
                 assert "Invalid partner information" in str(exc_info.value)
 
-    def test_put_empty_user_id(self, app: Flask, mock_account, mock_billing_service, mock_decorators):
+    def test_put_empty_user_id(self, app: Flask, mock_account, partner_tenant_bindings, mock_decorators):
         """Test that empty user id raises BadRequest."""
         # Arrange
         partner_key_encoded = base64.b64encode(b"partner-key-123").decode("utf-8")

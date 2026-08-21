@@ -73,6 +73,8 @@ from services.auth.data_source_api_key_auth_gateways import (
     TenantApiKeyAuthCredentialEncryptor,
 )
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.billing_portal_service import BillingPortalService
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -81,6 +83,7 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
+from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.recommended_app_catalog_gateway import (
     BuiltinRecommendedAppCatalogGateway,
     RecommendedAppCatalogRouter,
@@ -141,6 +144,7 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    billing_portal: BillingPortalService
     data_source_api_key_auth: DataSourceApiKeyAuthService
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
@@ -149,6 +153,7 @@ class ApplicationServices:
     setup: SetupService
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
+    partner_tenant_bindings: PartnerTenantBindingService
     recommended_app_queries: RecommendedAppQueryService
     trial_app_usage: TrialAppUsageRecorder
     workspace_queries: WorkspaceQueryService
@@ -258,6 +263,10 @@ def build_application_services(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
         ),
+        billing_portal=BillingPortalService(
+            get_subscription=BillingService.get_subscription,
+            get_invoices=BillingService.get_invoices,
+        ),
         data_source_api_key_auth=DataSourceApiKeyAuthService(
             bindings=data_source_api_key_auth_bindings,
             validator=ProviderApiKeyAuthCredentialValidator(),
@@ -295,6 +304,9 @@ def build_application_services(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
+        ),
+        partner_tenant_bindings=PartnerTenantBindingService(
+            sync_bindings=BillingService.sync_partner_tenants_bindings,
         ),
         recommended_app_queries=RecommendedAppQueryService(
             catalog=recommended_app_catalog,

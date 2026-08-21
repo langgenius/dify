@@ -9,8 +9,7 @@ This test module covers all aspects of the billing service including:
 - Cache management for billing data
 - Partner integration features
 
-Network, billing-provider, and cache boundaries are mocked; database authorization
-paths use isolated in-memory SQLite sessions with persisted membership rows.
+Network, billing-provider, and cache boundaries are mocked.
 Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
@@ -20,15 +19,18 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from services.billing_service import BillingService
+from models import Account, Tenant, TenantAccountRole
+from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.errors.billing import (
+    BillingAccessDeniedError,
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+)
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
-OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
@@ -38,43 +40,6 @@ def _account(*, account_id: str = ACCOUNT_ID, email: str = "user@example.com", t
     account = Account(name="Test User", email=email)
     account.id = account_id
     account._current_tenant = tenant
-    return account
-
-
-def _persist_membership(
-    sqlite_session: Session,
-    *,
-    role: TenantAccountRole | None,
-    add_other_tenant_membership: bool = False,
-) -> Account:
-    account = _account()
-    tenant = account.current_tenant
-    assert tenant is not None
-    sqlite_session.add_all([tenant, account])
-    if role is not None:
-        sqlite_session.add(
-            TenantAccountJoin(
-                tenant_id=TENANT_ID,
-                account_id=ACCOUNT_ID,
-                current=True,
-                role=role,
-            )
-        )
-    if add_other_tenant_membership:
-        other_tenant = Tenant(name="Other Tenant")
-        other_tenant.id = OTHER_TENANT_ID
-        sqlite_session.add_all(
-            [
-                other_tenant,
-                TenantAccountJoin(
-                    tenant_id=OTHER_TENANT_ID,
-                    account_id=ACCOUNT_ID,
-                    current=False,
-                    role=TenantAccountRole.OWNER,
-                ),
-            ]
-        )
-    sqlite_session.commit()
     return account
 
 
@@ -146,15 +111,16 @@ class TestBillingServiceSendRequest:
         "status_code", [httpx.codes.NOT_FOUND, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.BAD_REQUEST]
     )
     def test_get_request_non_200_status_code(self, mock_httpx_request, mock_billing_config, status_code):
-        """Test GET request with non-200 status code raises ValueError."""
+        """Test GET request preserves the upstream status for its public caller."""
         # Arrange
         mock_response = MagicMock()
         mock_response.status_code = status_code
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(_BillingHTTPStatusError) as exc_info:
             BillingService._send_request("GET", "/test")
+        assert exc_info.value.status_code == status_code
         assert "Unable to retrieve billing information" in str(exc_info.value)
 
     def test_put_request_success(self, mock_httpx_request, mock_billing_config):
@@ -361,6 +327,85 @@ class TestBillingServiceSendRequest:
 
         # Should retry multiple times (wait=2, stop_before_delay=10 means ~5 attempts)
         assert mock_httpx_request.call_count > 1
+
+
+class TestBillingServicePortalRequest:
+    def test_sends_get_request(self) -> None:
+        params = {"tenant_id": "tenant-1"}
+        with patch.object(
+            BillingService,
+            "_send_request",
+            return_value={"url": "https://example.com", "ignored": True},
+        ) as send_request:
+            result = BillingService._send_billing_portal_request("/test", params=params)
+
+        assert result == {"url": "https://example.com"}
+        send_request.assert_called_once_with("GET", "/test", params=params)
+
+    def test_invalid_response_shape_is_invalid_upstream_response(self) -> None:
+        with patch.object(BillingService, "_send_request", return_value={}):
+            with pytest.raises(BillingUpstreamInvalidResponseError):
+                BillingService._send_billing_portal_request("/test", params={})
+
+    @pytest.mark.parametrize(
+        "status_code",
+        [httpx.codes.BAD_REQUEST, httpx.codes.UNAUTHORIZED, httpx.codes.NOT_FOUND],
+    )
+    def test_terminal_http_response_is_invalid_upstream_response(self, status_code: int) -> None:
+        with patch.object(
+            BillingService,
+            "_send_request",
+            side_effect=_BillingHTTPStatusError("request failed", status_code),
+        ):
+            with pytest.raises(BillingUpstreamInvalidResponseError):
+                BillingService._send_billing_portal_request("/test", params={})
+
+    @pytest.mark.parametrize(
+        "status_code",
+        [httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS, httpx.codes.INTERNAL_SERVER_ERROR],
+    )
+    def test_retryable_http_response_is_unavailable(self, status_code: int) -> None:
+        with patch.object(
+            BillingService,
+            "_send_request",
+            side_effect=_BillingHTTPStatusError("request failed", status_code),
+        ):
+            with pytest.raises(BillingUpstreamUnavailableError):
+                BillingService._send_billing_portal_request("/test", params={})
+
+    def test_transport_failure_is_unavailable(self) -> None:
+        with patch.object(
+            BillingService,
+            "_send_request",
+            side_effect=httpx.RequestError("network error"),
+        ):
+            with pytest.raises(BillingUpstreamUnavailableError):
+                BillingService._send_billing_portal_request("/test", params={})
+
+    @pytest.mark.parametrize(
+        "decode_error",
+        [
+            json.JSONDecodeError("Expecting value", "", 0),
+            UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+        ],
+    )
+    def test_invalid_payload_is_invalid_upstream_response(self, decode_error: Exception) -> None:
+        with patch.object(BillingService, "_send_request", side_effect=decode_error):
+            with pytest.raises(BillingUpstreamInvalidResponseError):
+                BillingService._send_billing_portal_request("/test", params={})
+
+    def test_unknown_error_is_not_reclassified(self) -> None:
+        with patch.object(BillingService, "_send_request", side_effect=RuntimeError("programming error")):
+            with pytest.raises(RuntimeError, match="programming error"):
+                BillingService._send_billing_portal_request("/test", params={})
+
+    def test_unknown_value_error_is_not_exposed_as_invalid_request(self) -> None:
+        original_error = ValueError("programming error")
+        with patch.object(BillingService, "_send_request", side_effect=original_error):
+            with pytest.raises(RuntimeError, match="Unexpected billing service value error") as exc_info:
+                BillingService._send_billing_portal_request("/test", params={})
+
+        assert exc_info.value.__cause__ is original_error
 
 
 class TestBillingServiceSubscriptionInfo:
@@ -587,23 +632,22 @@ class TestBillingServiceSubscriptionInfo:
         assert result["limit"] == 100
         assert result["subscription_plan"] == CloudPlan.PROFESSIONAL
 
-    def test_get_subscription_payment_link(self, mock_send_request):
+    def test_get_subscription_payment_link(self):
         """Test subscription payment link generation."""
         # Arrange
         plan = "professional"
-        interval = "monthly"
+        interval = "month"
         email = "user@example.com"
         tenant_id = "tenant-123"
-        expected_response = {"payment_link": "https://payment.example.com/checkout"}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_subscription(plan, interval, email, tenant_id)
+        expected_response = {"url": "https://payment.example.com/checkout"}
+        with patch.object(
+            BillingService, "_send_billing_portal_request", return_value=expected_response
+        ) as send_request:
+            result = BillingService.get_subscription(plan, interval, email, tenant_id)
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET",
+        send_request.assert_called_once_with(
             "/subscription/payment-link",
             params={"plan": plan, "interval": interval, "prefilled_email": email, "tenant_id": tenant_id},
         )
@@ -634,22 +678,20 @@ class TestBillingServiceSubscriptionInfo:
             },
         )
 
-    def test_get_invoices(self, mock_send_request):
+    def test_get_invoices(self):
         """Test invoice retrieval."""
         # Arrange
         email = "user@example.com"
         tenant_id = "tenant-123"
-        expected_response = {"invoices": [{"id": "inv-1", "amount": 100}]}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_invoices(email, tenant_id)
+        expected_response = {"url": "https://payment.example.com/invoices"}
+        with patch.object(
+            BillingService, "_send_billing_portal_request", return_value=expected_response
+        ) as send_request:
+            result = BillingService.get_invoices(email, tenant_id)
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET", "/invoices", params={"prefilled_email": email, "tenant_id": tenant_id}
-        )
+        send_request.assert_called_once_with("/invoices", params={"prefilled_email": email, "tenant_id": tenant_id})
 
 
 class TestBillingServiceUsageCalculation:
@@ -1348,49 +1390,21 @@ class TestBillingServiceAccountManagement:
             "POST", "/account/delete-feedback", json={"email": email, "feedback": feedback}
         )
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_owner(self, sqlite_session: Session):
-        """Test tenant owner/admin check for owner role."""
-        # Arrange
-        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.OWNER)
+    @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN])
+    def test_ensure_tenant_owner_or_admin_accepts_privileged_roles(self, role: TenantAccountRole) -> None:
+        BillingService.ensure_tenant_owner_or_admin(role)
 
-        # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
+    @pytest.mark.parametrize(
+        "role",
+        [TenantAccountRole.EDITOR, TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR],
+    )
+    def test_ensure_tenant_owner_or_admin_rejects_non_privileged_roles(self, role: TenantAccountRole) -> None:
+        with pytest.raises(BillingAccessDeniedError):
+            BillingService.ensure_tenant_owner_or_admin(role)
 
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_admin(self, sqlite_session: Session):
-        """Test tenant owner/admin check for admin role."""
-        # Arrange
-        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.ADMIN)
-
-        # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
-
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_normal_user_raises_error(self, sqlite_session: Session):
-        """Test tenant owner/admin check raises error for normal user."""
-        # Arrange
-        current_user = _persist_membership(sqlite_session, role=TenantAccountRole.NORMAL)
-
-        # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
-        assert "Only team owner or team admin can perform this action" in str(exc_info.value)
-
-    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
-    def test_is_tenant_owner_or_admin_no_join_raises_error(self, sqlite_session: Session):
-        """Test tenant owner/admin check raises error when join not found."""
-        # Arrange
-        current_user = _persist_membership(
-            sqlite_session,
-            role=None,
-            add_other_tenant_membership=True,
-        )
-
-        # Act & Assert
-        with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user, session=sqlite_session)
-        assert "Tenant account join not found" in str(exc_info.value)
+    def test_ensure_tenant_owner_or_admin_rejects_missing_membership(self) -> None:
+        with pytest.raises(BillingAccessDeniedError):
+            BillingService.ensure_tenant_owner_or_admin(None)
 
 
 class TestBillingServiceCacheManagement:
@@ -1540,8 +1554,8 @@ class TestBillingServiceEdgeCases:
         """Test subscription payment link with empty optional parameters."""
         # Arrange
         plan = "professional"
-        interval = "yearly"
-        expected_response = {"payment_link": "https://payment.example.com/checkout"}
+        interval = "year"
+        expected_response = {"url": "https://payment.example.com/checkout"}
         mock_send_request.return_value = expected_response
 
         # Act - empty email and tenant_id
@@ -1558,7 +1572,7 @@ class TestBillingServiceEdgeCases:
     def test_get_invoices_with_empty_params(self, mock_send_request):
         """Test invoice retrieval with empty parameters."""
         # Arrange
-        expected_response = {"invoices": []}
+        expected_response = {"url": "https://payment.example.com/invoices"}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1566,7 +1580,6 @@ class TestBillingServiceEdgeCases:
 
         # Assert
         assert result == expected_response
-        assert result["invoices"] == []
 
     def test_refund_with_invalid_history_id_format(self, mock_send_request):
         """Test refund with various history ID formats."""
@@ -1871,9 +1884,9 @@ class TestBillingServiceIntegrationScenarios:
         assert current_info["subscription"]["plan"] == "sandbox"
 
         # Step 2: Get payment link for upgrade
-        mock_send_request.return_value = {"payment_link": "https://payment.example.com/upgrade"}
-        payment_link = BillingService.get_subscription("professional", "monthly", "user@example.com", tenant_id)
-        assert "payment_link" in payment_link
+        mock_send_request.return_value = {"url": "https://payment.example.com/upgrade"}
+        payment_link = BillingService.get_subscription("professional", "month", "user@example.com", tenant_id)
+        assert "url" in payment_link
 
         # Step 3: Verify new rate limits after upgrade
         mock_send_request.return_value = {"limit": 100, "subscription_plan": CloudPlan.PROFESSIONAL}

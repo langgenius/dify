@@ -20,7 +20,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -33,6 +32,7 @@ from services.entities.model_provider_entities import (
     ModelProviderSummaryResponse,
     ProviderResponse,
 )
+from services.errors.billing import BillingAccessDeniedError
 from services.model_provider_service import ModelProviderService
 from services.workspace_service import WorkspaceService
 
@@ -403,6 +403,7 @@ class PreferredProviderTypeUpdateApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
 class ModelProviderPaymentCheckoutUrlApi(Resource):
+    @console_ns.doc(deprecated=True)
     @console_ns.response(
         200,
         "Model provider checkout URL retrieved successfully",
@@ -416,7 +417,12 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
+        if current_user.current_role is None:
+            raise ValueError("Tenant account join not found")
+        try:
+            BillingService.ensure_tenant_owner_or_admin(current_user.current_role)
+        except BillingAccessDeniedError as error:
+            raise ValueError("Only team owner or team admin can perform this action") from error
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,

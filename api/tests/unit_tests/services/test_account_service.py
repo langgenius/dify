@@ -447,6 +447,7 @@ class TestAccountService:
 
             assert result is account
             assert result.current_tenant_id == tenant.id
+            assert result.current_role == TenantAccountRole.NORMAL
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session) -> None:
