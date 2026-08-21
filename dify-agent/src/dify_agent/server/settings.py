@@ -56,6 +56,10 @@ class ServerSettings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN", "DIFY_AGENT_SHELLCTL_AUTH_TOKEN"),
     )
+    local_sandbox_rust_endpoint: str | None = None
+    local_sandbox_rust_auth_token: str | None = None
+    local_sandbox_rust_canary_percent: int = Field(default=0, ge=0, le=100)
+    local_sandbox_preflight_timeout_seconds: float = Field(default=1.0, gt=0, le=30)
     local_sandbox_materialized_home_root: str = DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT
     local_sandbox_workspace_root: str = DEFAULT_LOCAL_WORKSPACE_ROOT
     local_sandbox_home_snapshot_root: str = DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT
@@ -201,6 +205,10 @@ class ServerSettings(BaseSettings):
                 runtime_backend=self.runtime_backend,
                 local_sandbox_endpoint=self.local_sandbox_endpoint,
                 local_sandbox_auth_token=self.local_sandbox_auth_token,
+                local_sandbox_rust_endpoint=self.local_sandbox_rust_endpoint,
+                local_sandbox_rust_auth_token=self.local_sandbox_rust_auth_token,
+                local_sandbox_rust_canary_percent=self.local_sandbox_rust_canary_percent,
+                local_sandbox_preflight_timeout_seconds=self.local_sandbox_preflight_timeout_seconds,
                 local_sandbox_materialized_home_root=self.local_sandbox_materialized_home_root,
                 local_sandbox_workspace_root=self.local_sandbox_workspace_root,
                 local_sandbox_home_snapshot_root=self.local_sandbox_home_snapshot_root,

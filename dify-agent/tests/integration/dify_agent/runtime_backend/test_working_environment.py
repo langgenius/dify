@@ -10,6 +10,7 @@ import uuid
 import pytest
 
 from dify_agent.runtime_backend import (
+    BindingLostError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
@@ -21,6 +22,7 @@ from dify_agent.runtime_backend.e2b import (
     E2BSDKControlPlane,
 )
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
+from dify_agent.runtime_backend.profile import RuntimeBackendSettings, create_runtime_backend_profile
 from dify_agent.runtime.command_runner import execute_complete_with_commands
 
 pytestmark = pytest.mark.integration
@@ -34,6 +36,7 @@ async def _run(lease, script: str, *, cwd: str) -> str:
         env={"HOME": lease.layout.home_dir},
         timeout=30.0,
         max_output_bytes=4096,
+        mode="stdio",
     )
     assert result.exit_code == 0
     assert result.output_complete
@@ -107,6 +110,163 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
                         binding_ref=allocation.binding_ref,
                         workspace_ref=allocation.workspace_ref if index == len(allocations) - 1 else None,
                         destroy_workspace=index == len(allocations) - 1,
+                    )
+                )
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        if cleanup_errors and not primary_error:
+            raise cleanup_errors[0]
+
+
+@pytest.mark.anyio
+async def test_local_rust_canary_is_sticky_and_state_isolated_from_go() -> None:
+    go_endpoint = _required_env("DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT", "real Go shellctl")
+    rust_endpoint = _required_env("DIFY_AGENT_TEST_RUST_SHELLCTL_ENDPOINT", "real Rust shellctl")
+    go_token = os.environ.get("DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN", "")
+    rust_token = os.environ.get("DIFY_AGENT_TEST_RUST_SHELLCTL_AUTH_TOKEN", go_token)
+    marker = uuid.uuid4().hex
+    profile = create_runtime_backend_profile(
+        RuntimeBackendSettings(
+            runtime_backend="local",
+            local_sandbox_endpoint=go_endpoint,
+            local_sandbox_auth_token=go_token,
+            local_sandbox_rust_endpoint=rust_endpoint,
+            local_sandbox_rust_auth_token=rust_token,
+            local_sandbox_rust_canary_percent=100,
+            local_sandbox_preflight_timeout_seconds=1.0,
+        )
+    )
+    direct_go = LocalExecutionBindingBackend(endpoint=go_endpoint, auth_token=go_token)
+    allocations = []
+    active_leases = []
+    snapshot_ref: str | None = None
+    try:
+        first = await profile.execution_bindings.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="rust-canary-agent",
+                binding_id=f"rust-canary-{marker}",
+                workspace_id=f"rust-canary-{marker}",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+        allocations.append(first)
+        assert first.binding_ref.startswith("rust+")
+        assert first.workspace_ref.startswith("rust+")
+
+        first_lease = await profile.execution_bindings.acquire(first.binding_ref)
+        active_leases.append(first_lease)
+        await _run(first_lease, "printf rust-home > .runtime-owner", cwd=first_lease.layout.home_dir)
+        snapshot_ref = await profile.home_snapshots.create_from_runtime(
+            spec=HomeSnapshotCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="rust-canary-agent",
+                home_snapshot_id=f"rust-canary-{marker}",
+            ),
+            source=first_lease,
+        )
+        assert snapshot_ref.startswith("rust+")
+        await profile.execution_bindings.release(first_lease)
+        active_leases.remove(first_lease)
+
+        with pytest.raises(BindingLostError):
+            await direct_go.acquire(first.binding_ref.removeprefix("rust+"))
+
+        restored = await profile.execution_bindings.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="rust-canary-agent",
+                binding_id=f"rust-restored-{marker}",
+                workspace_id=f"rust-restored-{marker}",
+                existing_workspace_ref=None,
+                home_snapshot_ref=snapshot_ref,
+            )
+        )
+        allocations.append(restored)
+        assert restored.binding_ref.startswith("rust+")
+        restored_lease = await profile.execution_bindings.acquire(restored.binding_ref)
+        active_leases.append(restored_lease)
+        assert await _run(restored_lease, "cat .runtime-owner", cwd=restored_lease.layout.home_dir) == "rust-home"
+        await profile.execution_bindings.release(restored_lease)
+        active_leases.remove(restored_lease)
+    finally:
+        primary_error = sys.exc_info()[0] is not None
+        cleanup_errors: list[BaseException] = []
+        for lease in active_leases:
+            try:
+                await profile.execution_bindings.release(lease)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        for allocation in allocations:
+            try:
+                await profile.execution_bindings.destroy_binding(
+                    ExecutionBindingDestroySpec(
+                        binding_ref=allocation.binding_ref,
+                        workspace_ref=allocation.workspace_ref,
+                        destroy_workspace=True,
+                    )
+                )
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        if snapshot_ref is not None:
+            try:
+                await profile.home_snapshots.delete(snapshot_ref)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        if cleanup_errors and not primary_error:
+            raise cleanup_errors[0]
+
+
+@pytest.mark.anyio
+async def test_local_unavailable_rust_preflight_falls_back_to_real_go() -> None:
+    go_endpoint = _required_env("DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT", "real Go shellctl")
+    go_token = os.environ.get("DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN", "")
+    marker = uuid.uuid4().hex
+    profile = create_runtime_backend_profile(
+        RuntimeBackendSettings(
+            runtime_backend="local",
+            local_sandbox_endpoint=go_endpoint,
+            local_sandbox_auth_token=go_token,
+            local_sandbox_rust_endpoint="http://127.0.0.1:1",
+            local_sandbox_rust_canary_percent=100,
+            local_sandbox_preflight_timeout_seconds=0.1,
+        )
+    )
+    allocation = None
+    lease = None
+    try:
+        allocation = await profile.execution_bindings.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="integration-tenant",
+                agent_id="fallback-agent",
+                binding_id=f"go-fallback-{marker}",
+                workspace_id=f"go-fallback-{marker}",
+                existing_workspace_ref=None,
+                home_snapshot_ref=None,
+            )
+        )
+        assert not allocation.binding_ref.startswith("rust+")
+        assert not allocation.workspace_ref.startswith("rust+")
+        lease = await profile.execution_bindings.acquire(allocation.binding_ref)
+        assert await _run(lease, "printf go-fallback", cwd=lease.layout.workspace_dir) == "go-fallback"
+        await profile.execution_bindings.release(lease)
+        lease = None
+    finally:
+        primary_error = sys.exc_info()[0] is not None
+        cleanup_errors: list[BaseException] = []
+        if lease is not None:
+            try:
+                await profile.execution_bindings.release(lease)
+            except BaseException as exc:
+                cleanup_errors.append(exc)
+        if allocation is not None:
+            try:
+                await profile.execution_bindings.destroy_binding(
+                    ExecutionBindingDestroySpec(
+                        binding_ref=allocation.binding_ref,
+                        workspace_ref=allocation.workspace_ref,
+                        destroy_workspace=True,
                     )
                 )
             except BaseException as exc:

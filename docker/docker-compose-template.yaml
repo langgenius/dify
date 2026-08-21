@@ -675,6 +675,10 @@ services:
       DIFY_AGENT_RUNTIME_BACKEND: ${DIFY_AGENT_RUNTIME_BACKEND:-local}
       DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT: ${DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT:-${DIFY_AGENT_SHELLCTL_ENTRYPOINT:-http://local_sandbox:5004}}
       DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
+      DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT: ${DIFY_AGENT_LOCAL_SANDBOX_RUST_ENDPOINT:-}
+      DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN:-${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}}
+      DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT: ${DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT:-0}
+      DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS: ${DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS:-1}
       DIFY_AGENT_E2B_API_KEY: ${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
       DIFY_AGENT_E2B_TEMPLATE: ${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
       # RuntimeLease active limit; its default matches the independently configurable Agent run deadline.
@@ -1307,11 +1311,11 @@ networks:
   ssrf_proxy_network:
     driver: bridge
     internal: true
-  # Internal network shared only by agent_ssrf_proxy and local_sandbox.
+  # Internal network shared only by agent_ssrf_proxy and local shell runtimes.
   local_sandbox_proxy_network:
     driver: bridge
     internal: true
-  # shellctl control channel (agent_backend -> local_sandbox:5004).
+  # shellctl control channel (agent_backend -> local_sandbox[:rust]:5004).
   # sandbox can access agent backend through this network, this is
   # a known limitation.
   #
