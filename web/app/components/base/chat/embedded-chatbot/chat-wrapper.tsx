@@ -11,6 +11,7 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import AppIcon from '@/app/components/base/app-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
+import { isInputValueEmpty } from '@/app/components/base/chat/input-form-utils'
 import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -121,7 +122,7 @@ const ChatWrapper = () => {
 
         if (fileIsUploading) return
 
-        if (!inputsFormValue?.[variable]) hasEmptyInput = label as string
+        if (isInputValueEmpty(type, inputsFormValue?.[variable])) hasEmptyInput = label as string
 
         if (
           (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&

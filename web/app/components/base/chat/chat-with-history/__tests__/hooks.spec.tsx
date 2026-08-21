@@ -5,6 +5,7 @@ import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { InputVarType } from '@/app/components/workflow/types'
 import {
   AppSourceType,
   delConversation,
@@ -904,6 +905,33 @@ describe('useChatWithHistory', () => {
       })
     })
 
+    it('should return multi-select form item without a default', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          {
+            'multi-select': {
+              variable: 'multi_var',
+              label: 'Multi Select',
+              required: false,
+              options: ['a', 'b'],
+            },
+          },
+        ],
+      } as unknown as ChatConfig
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        const form = result!.current.inputsForms[0]
+        expect(form.type).toBe(InputVarType.multiSelect)
+        expect(form.options).toEqual(['a', 'b'])
+        expect(form.default).toBeUndefined()
+      })
+      expect(result!.current.newConversationInputs.multi_var).toEqual([])
+    })
+
     it('should return file-list form item', async () => {
       // Arrange
       mockStoreState.appParams = {
@@ -1556,6 +1584,38 @@ describe('useChatWithHistory', () => {
 
       // Assert: callback not called because required field is empty
       expect(callback).not.toHaveBeenCalled()
+    })
+
+    it('should reject an empty required multi-select and accept selected values', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          {
+            'multi-select': {
+              variable: 'choices',
+              label: 'Choices',
+              required: true,
+              options: ['A', 'B'],
+            },
+          },
+        ],
+      } as unknown as ChatConfig
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({ data: [] })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+      const callback = vi.fn()
+
+      act(() => {
+        result!.current.handleNewConversationInputsChange({ choices: [] })
+        result!.current.handleStartChat(callback)
+      })
+      expect(callback).not.toHaveBeenCalled()
+
+      act(() => {
+        result!.current.handleNewConversationInputsChange({ choices: ['A'] })
+        result!.current.handleStartChat(callback)
+      })
+      expect(callback).toHaveBeenCalledTimes(1)
     })
   })
 

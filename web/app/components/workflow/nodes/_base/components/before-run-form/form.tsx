@@ -14,7 +14,7 @@ export type Props = Readonly<{
   className?: string
   label?: string
   inputs: InputVar[]
-  values: Record<string, string>
+  values: Record<string, unknown>
   onChange: (newValues: Record<string, any>) => void
 }>
 

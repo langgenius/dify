@@ -384,6 +384,42 @@ describe('ChatWrapper', () => {
     expect(container).not.toBeInTheDocument()
   })
 
+  it('should treat empty required multi-select arrays as incomplete', () => {
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      inputsForms: [
+        { variable: 'choices', label: 'Choices', type: InputVarType.multiSelect, required: true },
+      ],
+      newConversationInputs: { choices: [] },
+      newConversationInputsRef: {
+        current: { choices: [] },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      currentConversationId: '',
+    })
+
+    const { unmount } = render(<ChatWrapper />)
+    const chatInput = screen.getAllByRole('textbox').at(-1)!
+    expect(getChatInputDisabledSurface(chatInput)).toBeInTheDocument()
+
+    unmount()
+    vi.mocked(useChatWithHistoryContext).mockReturnValue({
+      ...defaultContextValue,
+      inputsForms: [
+        { variable: 'choices', label: 'Choices', type: InputVarType.multiSelect, required: true },
+      ],
+      newConversationInputs: { choices: ['A', 'C'] },
+      newConversationInputsRef: {
+        current: { choices: ['A', 'C'] },
+      } as ChatWithHistoryContextValue['newConversationInputsRef'],
+      currentConversationId: '',
+    })
+
+    render(<ChatWrapper />)
+    expect(
+      getChatInputDisabledSurface(screen.getAllByRole('textbox').at(-1)!),
+    ).not.toBeInTheDocument()
+  })
+
   it('should disable input when file is uploading', () => {
     vi.mocked(useChatWithHistoryContext).mockReturnValue({
       ...defaultContextValue,

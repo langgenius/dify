@@ -45,7 +45,8 @@ const isMissingRequiredInput = (
 ) => {
   if (value === undefined || value === null) return true
 
-  if (variable.type === 'file-list') return !Array.isArray(value) || value.length === 0
+  if (variable.type === 'file-list' || variable.type === 'multi-select')
+    return !Array.isArray(value) || value.length === 0
 
   if (['string', 'paragraph', 'number', 'json_object', 'select'].includes(variable.type))
     return typeof value !== 'string' ? false : value.trim() === ''

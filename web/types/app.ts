@@ -69,7 +69,7 @@ export const AppModeEnum = {
 /**
  * Variable type
  */
-type VariableType = 'string' | 'number' | 'select'
+type VariableType = 'string' | 'number' | 'select' | 'multi-select'
 
 /**
  * Prompt variable parameter
@@ -105,6 +105,8 @@ type SelectTypeFormItem = {
   hide?: boolean
 }
 
+type MultiSelectTypeFormItem = Omit<SelectTypeFormItem, 'default'>
+
 type NumberTypeFormItem = Omit<TextTypeFormItem, 'default' | 'max_length'> & {
   default?: string | number
   max_length?: number
@@ -139,6 +141,9 @@ export type UserInputFormItem =
     }
   | {
       select: SelectTypeFormItem
+    }
+  | {
+      'multi-select': MultiSelectTypeFormItem
     }
   | {
       paragraph: TextTypeFormItem

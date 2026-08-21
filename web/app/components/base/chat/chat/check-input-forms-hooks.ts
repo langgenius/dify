@@ -4,6 +4,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
+import { isInputValueEmpty } from '../input-form-utils'
 
 export const useCheckInputsForms = () => {
   const { t } = useTranslation()
@@ -18,7 +19,7 @@ export const useCheckInputsForms = () => {
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!inputs[variable]) hasEmptyInput = label as string
+          if (isInputValueEmpty(type, inputs[variable])) hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
             inputs[variable]

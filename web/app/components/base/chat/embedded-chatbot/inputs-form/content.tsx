@@ -15,6 +15,7 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { MultiSelectField } from '@/app/components/workflow/nodes/_base/components/form-input-item.sections'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useEmbeddedChatbotContext } from '../context'
@@ -124,6 +125,30 @@ const InputsFormContent = ({ showTip }: Props) => {
                 ))}
               </SelectContent>
             </Select>
+          )}
+          {form.type === InputVarType.multiSelect && (
+            <MultiSelectField
+              disabled={false}
+              items={(form.options || []).map((option: string) => ({
+                name: option,
+                value: option,
+              }))}
+              onChange={(value) => handleFormChange(form.variable, value)}
+              placeholder={form.label}
+              selectedLabel={(Array.isArray(inputsFormValue?.[form.variable])
+                ? inputsFormValue[form.variable].filter(
+                    (item: unknown): item is string => typeof item === 'string',
+                  )
+                : []
+              ).join(', ')}
+              value={
+                Array.isArray(inputsFormValue?.[form.variable])
+                  ? inputsFormValue[form.variable].filter(
+                      (item: unknown): item is string => typeof item === 'string',
+                    )
+                  : []
+              }
+            />
           )}
           {form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper

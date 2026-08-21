@@ -26,6 +26,7 @@ import TextGenerationImageUploader from '@/app/components/base/image-uploader/te
 import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { MultiSelectField } from '@/app/components/workflow/nodes/_base/components/form-input-item.sections'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
@@ -65,6 +66,7 @@ const RunOnce: FC<IRunOnceProps> = ({
       if (item.type === 'string' || item.type === 'paragraph') newInputs[item.key] = ''
       else if (item.type === 'number') newInputs[item.key] = ''
       else if (item.type === 'checkbox') newInputs[item.key] = false
+      else if (item.type === 'multi-select') newInputs[item.key] = []
       else newInputs[item.key] = undefined
     })
     onInputsChange(newInputs)
@@ -102,6 +104,7 @@ const RunOnce: FC<IRunOnceProps> = ({
         newInputs[item.key] = item.default || ''
       else if (item.type === 'number') newInputs[item.key] = item.default ?? ''
       else if (item.type === 'checkbox') newInputs[item.key] = item.default || false
+      else if (item.type === 'multi-select') newInputs[item.key] = []
       else if (item.type === 'file') newInputs[item.key] = undefined
       else if (item.type === 'file-list') newInputs[item.key] = []
       else newInputs[item.key] = undefined
@@ -128,6 +131,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     typeof inputValue === 'string' && inputValue !== '' ? inputValue : null
                   const defaultSelectValue =
                     typeof item.default === 'string' && item.default !== '' ? item.default : null
+                  const multiSelectValue = Array.isArray(inputValue)
+                    ? inputValue.filter((value): value is string => typeof value === 'string')
+                    : []
 
                   return (
                     <div className="mt-4 w-full" key={item.key}>
@@ -164,6 +170,21 @@ const RunOnce: FC<IRunOnceProps> = ({
                               ))}
                             </SelectContent>
                           </Select>
+                        )}
+                        {item.type === 'multi-select' && (
+                          <MultiSelectField
+                            disabled={false}
+                            items={(item.options || []).map((option) => ({
+                              name: option,
+                              value: option,
+                            }))}
+                            onChange={(value) =>
+                              handleInputsChange({ ...inputsRef.current, [item.key]: value })
+                            }
+                            placeholder={item.name}
+                            selectedLabel={multiSelectValue.join(', ')}
+                            value={multiSelectValue}
+                          />
                         )}
                         {item.type === 'string' && (
                           <Input

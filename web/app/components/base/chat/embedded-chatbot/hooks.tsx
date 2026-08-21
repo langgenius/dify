@@ -23,6 +23,7 @@ import {
 import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
+import { isInputValueEmpty } from '../input-form-utils'
 import {
   buildChatItemTree,
   getProcessedInputsFromUrlParams,
@@ -198,6 +199,12 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
             type: 'checkbox',
           }
         }
+        if (item['multi-select']) {
+          return {
+            ...item['multi-select'],
+            type: InputVarType.multiSelect,
+          }
+        }
         if (item.select) {
           const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
           return {
@@ -252,7 +259,8 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   useEffect(() => {
     const conversationInputs: Record<string, InputValueTypes> = {}
     inputsForms.forEach((item) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] =
+        item.type === InputVarType.multiSelect ? [] : item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -327,7 +335,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          if (isInputValueEmpty(type, newConversationInputsRef.current[variable]) && !silent)
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -388,13 +396,19 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     currentChatInstanceRef.current.handleStop()
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
+    const inputs = await getProcessedInputsFromUrlParams()
+    inputsForms.forEach((item) => {
+      if (item.type === InputVarType.multiSelect && !Array.isArray(inputs[item.variable]))
+        inputs[item.variable] = []
+    })
+    handleNewConversationInputsChange(inputs)
     setClearChatList(true)
   }, [
     isTryApp,
     setShowNewConversationItemInList,
     handleNewConversationInputsChange,
     setClearChatList,
+    inputsForms,
   ])
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {

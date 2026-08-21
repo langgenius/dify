@@ -66,6 +66,16 @@ describe('chat/chat/utils.ts', () => {
       expect(result).toEqual({ test: null })
     })
 
+    it('forwards multi-select values as native string arrays', () => {
+      const selected = ['A', 'C']
+      const inputs = { choices: selected }
+      const inputsForm = [{ variable: 'choices', type: InputVarType.multiSelect as string }]
+
+      const result = getProcessedInputs(inputs, inputsForm as InputForm[])
+
+      expect(result.choices).toBe(selected)
+    })
+
     it('processes singleFile using transfer_method logic', () => {
       const inputs = {
         file1: { transfer_method: 'local_file', url: '1' },
