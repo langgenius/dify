@@ -152,10 +152,8 @@ Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স 
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 নতুন! YAML ফাইলসমূহ (Dify v1.6.0 সমর্থিত) তৈরি করেছেন @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
 
 #### টেরাফর্ম ব্যবহার করে ডিপ্লয়
 
@@ -163,19 +161,12 @@ Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স 
 
 ##### অ্যাজুর গ্লোবাল
 
-- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
 ##### গুগল ক্লাউড
-
-- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### AWS CDK ব্যবহার করে ডিপ্লয়
 
 [CDK](https://aws.amazon.com/cdk/) দিয়ে AWS-এ Dify ডিপ্লয় করুন
 
-##### AWS
-
-- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud ব্যবহার করে ডিপ্লয়
@@ -185,10 +176,6 @@ Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স 
 #### Alibaba Cloud Data Management ব্যবহার করে ডিপ্লয়
 
 [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### AKS-এ ডিপ্লয় করার জন্য Azure Devops Pipeline ব্যবহার
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) ব্যবহার করে Dify কে AKS-এ এক ক্লিকে ডিপ্লয় করুন
 
 #### Sealos ব্যবহার করে ডিপ্লয়
 

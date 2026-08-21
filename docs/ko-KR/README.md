@@ -140,30 +140,13 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Terraform을 사용한 배포
-
-[terraform](https://www.terraform.io/)을 사용하여 단 한 번의 클릭으로 Dify를 클라우드 플랫폼에 배포하십시오
-
-##### Azure Global
-
-- [nikawang의 Azure Terraform](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [sotazum의 Google Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### AWS CDK를 사용한 배포
 
 [CDK](https://aws.amazon.com/cdk/)를 사용하여 AWS에 Dify 배포
 
-##### AWS
-
-- [KevinZhao의 AWS CDK (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [tmokmss의 AWS CDK (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
@@ -173,10 +156,6 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 #### Alibaba Cloud Data Management
 
 [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)를 통해 원클릭으로 Dify를 Alibaba Cloud에 배포할 수 있습니다
-
-#### AKS에 배포하기 위해 Azure Devops Pipeline 사용
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)을 사용하여 Dify를 AKS에 원클릭으로 배포
 
 #### Sealos를 사용한 배포
 

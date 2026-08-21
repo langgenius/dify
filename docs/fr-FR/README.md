@@ -146,30 +146,13 @@ Si vous souhaitez configurer une configuration haute disponibilité, la communau
 
 - [Helm Chart par @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart par @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart par @magicsong](https://github.com/magicsong/ai-charts)
 - [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [Fichier YAML par @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 NOUVEAU ! Fichiers YAML (compatible avec Dify v1.6.0) par @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Utilisation de Terraform pour le déploiement
-
-Déployez Dify sur une plateforme cloud en un clic en utilisant [terraform](https://www.terraform.io/)
-
-##### Azure Global
-
-- [Azure Terraform par @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform par @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### Utilisation d'AWS CDK pour le déploiement
 
 Déployez Dify sur AWS en utilisant [CDK](https://aws.amazon.com/cdk/)
 
-##### AWS
-
-- [AWS CDK par @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK par @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
@@ -179,10 +162,6 @@ Déployez Dify sur AWS en utilisant [CDK](https://aws.amazon.com/cdk/)
 #### Alibaba Cloud Data Management
 
 Déployez Dify en un clic sur Alibaba Cloud avec [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### Utilisation d'Azure Devops Pipeline pour déployer sur AKS
-
-Déployez Dify sur AKS en un clic en utilisant [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
 #### Déploiement avec Sealos
 

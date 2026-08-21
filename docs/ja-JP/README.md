@@ -147,30 +147,13 @@ Grafanaにダッシュボードをインポートし、DifyのPostgreSQLデー�
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 新着！YAML ファイル（Dify v1.6.0 対応）by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Terraformを使用したデプロイ
-
-[terraform](https://www.terraform.io/) を使用して、ワンクリックでDifyをクラウドプラットフォームにデプロイします
-
-##### Azure Global
-
-- [@nikawangによるAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [@sotazumによるGoogle Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### AWS CDK を使用したデプロイ
 
 [CDK](https://aws.amazon.com/cdk/) を使用して、DifyをAWSにデプロイします
 
-##### AWS
-
-- [@KevinZhaoによるAWS CDK (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [@tmokmssによるAWS CDK (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
@@ -180,10 +163,6 @@ Grafanaにダッシュボードをインポートし、DifyのPostgreSQLデー�
 #### Alibaba Cloud Data Management
 
 [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) を利用して、DifyをAlibaba Cloudへワンクリックでデプロイできます
-
-#### AKSへのデプロイにAzure Devops Pipelineを使用
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)を使用してDifyをAKSにワンクリックでデプロイ
 
 #### Sealosを使用したデプロイ
 

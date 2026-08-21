@@ -143,27 +143,11 @@ Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có 
 - [Helm Chart bởi @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Tệp YAML bởi @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [Tệp YAML bởi @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 MỚI! Tệp YAML (Hỗ trợ Dify v1.6.0) bởi @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Sử dụng Terraform để Triển khai
-
-Triển khai Dify lên nền tảng đám mây với một cú nhấp chuột bằng cách sử dụng [terraform](https://www.terraform.io/)
-
-##### Azure Global
-
-- [Azure Terraform bởi @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform bởi @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### Sử dụng AWS CDK để Triển khai
 
 Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
 
-##### AWS
-
-- [AWS CDK bởi @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK bởi @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud
@@ -173,10 +157,6 @@ Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
 #### Alibaba Cloud Data Management
 
 Triển khai Dify lên Alibaba Cloud chỉ với một cú nhấp chuột bằng [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
-
-#### Sử dụng Azure Devops Pipeline để Triển khai lên AKS
-
-Triển khai Dify lên AKS chỉ với một cú nhấp chuột bằng [Azure Devops Pipeline Helm Chart bởi @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
 #### Triển khai với Sealos
 

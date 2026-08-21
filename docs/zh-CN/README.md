@@ -149,33 +149,14 @@ docker compose up -d
 
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
-
 - [YAML 文件 by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-
-- [🚀 NEW! YAML 文件 (支持 Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### 使用 Terraform 部署
-
-使用 [terraform](https://www.terraform.io/) 一键将 Dify 部署到云平台
-
-##### Azure Global
-
-- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### 使用 AWS CDK 部署
 
 使用 [CDK](https://aws.amazon.com/cdk/) 将 Dify 部署到 AWS
 
-##### AWS
-
-- [AWS CDK by @KevinZhao (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK by @tmokmss (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### 使用 阿里云计算巢 部署
@@ -185,10 +166,6 @@ docker compose up -d
 #### 使用 阿里云数据管理DMS 部署
 
 使用 [阿里云数据管理DMS](https://help.aliyun.com/zh/dms/dify-in-invitational-preview) 将 Dify 一键部署到 阿里云
-
-#### 使用 Azure Devops Pipeline 部署到AKS
-
-使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 将 Dify 一键部署到 AKS
 
 #### 使用 Sealos 部署
 

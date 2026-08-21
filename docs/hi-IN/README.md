@@ -157,30 +157,13 @@ Grafana में Dify के PostgreSQL डेटाबेस को डेट�
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 - [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 NEW! YAML files (Supports Dify v1.6.0) by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### डिप्लॉयमेंट के लिए Terraform का उपयोग
-
-[terraform](https://www.terraform.io/) का उपयोग करके एक क्लिक में Dify को क्लाउड प्लेटफ़ॉर्म पर डिप्लॉय करें।
-
-##### Azure Global
-
-- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 #### डिप्लॉयमेंट के लिए AWS CDK का उपयोग
 
 [CDK](https://aws.amazon.com/cdk/) का उपयोग करके Dify को AWS पर डिप्लॉय करें।
 
-##### AWS
-
-- [AWS CDK by @KevinZhao (EKS आधारित)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 - [AWS CDK by @tmokmss (ECS आधारित)](https://github.com/aws-samples/dify-self-hosted-on-aws)
 
 #### Alibaba Cloud Computing Nest का उपयोग
@@ -190,10 +173,6 @@ Grafana में Dify के PostgreSQL डेटाबेस को डेट�
 #### Alibaba Cloud Data Management का उपयोग
 
 [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) के साथ एक क्लिक में Dify को Alibaba Cloud पर डिप्लॉय करें।
-
-#### Azure Devops Pipeline के साथ AKS पर डिप्लॉय करें
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) के साथ एक क्लिक में Dify को AKS पर डिप्लॉय करें।
 
 #### Sealos के साथ डिप्लॉय करें
 
