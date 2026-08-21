@@ -13,13 +13,15 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 from pydantic import ValidationError
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import MultiDict
 
 from configs import dify_config
-from models.model import App, AppMode, IconType
+from models.account import Account
+from models.enums import CustomizeTokenStrategy, TagType
+from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagBinding
 from models.workflow import Workflow, WorkflowType
+from services.app_service import RecentAppListItem
 
 # kombu references MethodView as a global when importing celery/kombu pools.
 if not hasattr(builtins, "MethodView"):
@@ -180,25 +182,111 @@ def _ts(hour: int = 12) -> datetime:
     return datetime(2024, 1, 1, hour, 0, 0)
 
 
-def _dummy_model_config():
-    return SimpleNamespace(
-        model_dict={"provider": "openai", "name": "gpt-4o"},
-        pre_prompt="hello",
-        created_by="config-author",
-        created_at=_ts(9),
-        updated_by="config-editor",
-        updated_at=_ts(10),
+TENANT_ID = "00000000-0000-0000-0000-000000000001"
+APP_ID = "00000000-0000-0000-0000-000000000101"
+ACCOUNT_ID = "00000000-0000-0000-0000-000000000201"
+CONFIG_ID = "00000000-0000-0000-0000-000000000301"
+WORKFLOW_ID = "00000000-0000-0000-0000-000000000401"
+SITE_ID = "00000000-0000-0000-0000-000000000501"
+TAG_ID = "00000000-0000-0000-0000-000000000601"
+
+
+def _account(*, account_id: str = ACCOUNT_ID) -> Account:
+    account = Account(name="Creator", email=f"{account_id}@example.com")
+    account.id = account_id
+    return account
+
+
+def _app(
+    *,
+    app_id: str = APP_ID,
+    tenant_id: str = TENANT_ID,
+    name: str = "My App",
+    description: str = "Summary",
+    mode: AppMode = AppMode.CHAT,
+    icon_type: IconType | None = IconType.IMAGE,
+    icon: str | None = "icon-key",
+    created_at: datetime | None = None,
+) -> App:
+    timestamp = created_at or _ts()
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name=name,
+        description=description,
+        mode=mode,
+        icon_type=icon_type,
+        icon=icon,
+        icon_background="#fff",
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+        created_at=timestamp,
+        updated_at=timestamp,
     )
 
 
-def _dummy_workflow():
-    return SimpleNamespace(
-        id="wf-1",
-        created_by="workflow-author",
+def _workflow(*, app_id: str = APP_ID, tenant_id: str = TENANT_ID) -> Workflow:
+    return Workflow(
+        id=WORKFLOW_ID,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        type=WorkflowType.CHAT,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features=json.dumps({}),
+        created_by=ACCOUNT_ID,
         created_at=_ts(8),
-        updated_by="workflow-editor",
+        updated_by=ACCOUNT_ID,
         updated_at=_ts(9),
+        environment_variables=[],
+        conversation_variables=[],
     )
+
+
+def _persist_response_graph(session: Session) -> App:
+    app = _app(description="Description")
+    app.created_by = ACCOUNT_ID
+    app.app_model_config_id = CONFIG_ID
+    app.workflow_id = WORKFLOW_ID
+    app.access_mode = "private"
+    app.create_user_name = "Creator"
+    app.has_draft_trigger = True
+    app.permission_keys = ["app.acl.view_layout"]
+
+    model_config = AppModelConfig(
+        app_id=APP_ID,
+        model=json.dumps({"provider": "openai", "name": "gpt-4o"}),
+        pre_prompt="hello",
+        created_by=ACCOUNT_ID,
+        updated_by=ACCOUNT_ID,
+    )
+    model_config.id = CONFIG_ID
+    model_config.created_at = _ts(9)
+    model_config.updated_at = _ts(10)
+
+    site = Site(
+        id=SITE_ID,
+        app_id=APP_ID,
+        code="site-code",
+        title="Public Site",
+        icon_type=IconType.IMAGE,
+        icon="site-icon",
+        icon_background="#fff",
+        description="Site description",
+        default_language="en-US",
+        input_placeholder="Ask anything",
+        customize_token_strategy=CustomizeTokenStrategy.NOT_ALLOW,
+        created_at=_ts(14),
+        updated_at=_ts(14),
+    )
+    tag = Tag(tenant_id=TENANT_ID, type=TagType.APP, name="Utilities", created_by=ACCOUNT_ID)
+    tag.id = TAG_ID
+    binding = TagBinding(tenant_id=TENANT_ID, tag_id=TAG_ID, target_id=APP_ID, created_by=ACCOUNT_ID)
+
+    session.add_all([_account(), app, model_config, _workflow(), site, tag, binding])
+    session.commit()
+    return app
 
 
 def test_app_list_query_reads_repeated_tag_ids(app_module):
@@ -336,175 +424,128 @@ def test_create_app_endpoint_rejects_agent_mode(app_module):
         app_module.CreateAppPayload.model_validate({"name": "Iris", "mode": "agent", "description": "Agent app"})
 
 
-def test_app_partial_serialization_uses_aliases(app_models):
+def test_app_partial_serialization_uses_aliases(app_models, sqlite_session: Session):
     AppPartial = app_models.AppPartial
-    created_at = _ts()
-    app_obj = SimpleNamespace(
-        id="app-1",
-        name="My App",
-        desc_or_prompt="Prompt snippet",
-        mode_compatible_with_agent="chat",
-        icon_type="image",
-        icon="icon-key",
-        icon_background="#fff",
-        app_model_config=_dummy_model_config(),
-        workflow=_dummy_workflow(),
-        created_by="creator",
-        created_at=created_at,
-        updated_by="editor",
-        updated_at=created_at,
-        tags=[SimpleNamespace(id="tag-1", name="Utilities", type="app")],
-        access_mode="private",
-        create_user_name="Creator",
-        author_name="Author",
-        has_draft_trigger=True,
-        permission_keys=["app.acl.view_layout"],
-        role="Should stay agent-only",
-    )
+    app_obj = _persist_response_graph(sqlite_session)
+    app_obj.description = "Prompt snippet"
 
-    serialized = AppPartial.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
+    serialized = AppPartial.model_validate(
+        app_obj,
+        from_attributes=True,
+        context={"session": sqlite_session},
+    ).model_dump(mode="json")
 
     assert serialized["description"] == "Prompt snippet"
     assert serialized["mode"] == "chat"
     assert serialized["icon_url"] == "signed:icon-key"
-    assert serialized["created_at"] == int(created_at.timestamp())
-    assert serialized["updated_at"] == int(created_at.timestamp())
+    assert serialized["created_at"] == int(app_obj.created_at.timestamp())
+    assert serialized["updated_at"] == int(app_obj.updated_at.timestamp())
     assert serialized["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
-    assert serialized["workflow"]["id"] == "wf-1"
+    assert serialized["workflow"]["id"] == WORKFLOW_ID
     assert serialized["tags"][0]["name"] == "Utilities"
     assert serialized["permission_keys"] == ["app.acl.view_layout"]
     assert "role" not in serialized
 
 
-def test_app_detail_with_site_includes_nested_serialization(app_models):
+def test_app_detail_with_site_includes_nested_serialization(
+    app: Flask,
+    app_models,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+):
     AppDetailWithSite = app_models.AppDetailWithSite
-    timestamp = _ts(14)
-    site = SimpleNamespace(
-        code="site-code",
-        title="Public Site",
-        icon_type="image",
-        icon="site-icon",
-        input_placeholder="Ask anything",
-        created_at=timestamp,
-        updated_at=timestamp,
-    )
-    app_obj = SimpleNamespace(
-        id="app-2",
-        name="Detailed App",
-        description="Desc",
-        mode_compatible_with_agent="advanced-chat",
-        icon_type="image",
-        icon="detail-icon",
-        icon_background="#123456",
-        enable_site=True,
-        enable_api=True,
-        app_model_config={
-            "opening_statement": "hi",
-            "model": {"provider": "openai", "name": "gpt-4o"},
-            "retriever_resource": {"enabled": True},
-        },
-        workflow=_dummy_workflow(),
-        tracing={"enabled": True},
-        use_icon_as_answer_icon=True,
-        created_by="creator",
-        created_at=timestamp,
-        updated_by="editor",
-        updated_at=timestamp,
-        access_mode="public",
-        tags=[SimpleNamespace(id="tag-2", name="Prod", type="app")],
-        permission_keys=["app.acl.view_layout", "app.acl.edit"],
-        api_base_url="https://api.example.com/v1",
-        max_active_requests=5,
-        deleted_tools=[{"type": "api", "tool_name": "search", "provider_id": "prov"}],
-        site=site,
-        bound_agent_id="agent-1",
-        role="Should stay agent-only",
-    )
+    app_obj = _persist_response_graph(sqlite_session)
+    app_obj.name = "Detailed App"
+    app_obj.description = "Desc"
+    app_obj.mode = AppMode.ADVANCED_CHAT
+    app_obj.icon = "detail-icon"
+    app_obj.icon_background = "#123456"
+    app_obj.use_icon_as_answer_icon = True
+    app_obj.max_active_requests = 5
+    app_obj.access_mode = "public"
+    app_obj.permission_keys = ["app.acl.view_layout", "app.acl.edit"]
+    model_config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+    assert model_config is not None
+    model_config.opening_statement = "hi"
+    model_config.retriever_resource = json.dumps({"enabled": True})
+    monkeypatch.setattr("services.app_service.load_annotation_reply_config", lambda _session, _app_id: {})
 
-    serialized = AppDetailWithSite.model_validate(app_obj, from_attributes=True).model_dump(mode="json")
+    with app.test_request_context("/"):
+        serialized = AppDetailWithSite.model_validate(
+            app_obj,
+            from_attributes=True,
+            context={"session": sqlite_session},
+        ).model_dump(mode="json")
 
     assert serialized["icon_url"] == "signed:detail-icon"
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
-    assert serialized["deleted_tools"][0]["tool_name"] == "search"
+    assert serialized["deleted_tools"] == []
     assert serialized["site"]["icon_url"] == "signed:site-icon"
     assert serialized["site"]["input_placeholder"] == "Ask anything"
-    assert serialized["site"]["created_at"] == int(timestamp.timestamp())
+    assert serialized["site"]["created_at"] == int(_ts(14).timestamp())
     assert serialized["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-    assert serialized["bound_agent_id"] == "agent-1"
+    assert serialized["bound_agent_id"] is None
     assert "role" not in serialized
 
 
 def test_app_response_view_uses_the_caller_session_for_query_backed_fields(
-    app_module, monkeypatch, unbound_session: Session
+    app_module, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ):
-    app_obj = MagicMock()
-    app_model_config = SimpleNamespace(app_id="app-1")
-    app_obj.desc_or_prompt_with_session.return_value = "Description"
-    app_obj.site_with_session.return_value = SimpleNamespace(id="site-1")
-    app_obj.app_model_config_with_session.return_value = app_model_config
-    app_obj.workflow_with_session.return_value = SimpleNamespace(id="workflow-1")
-    app_obj.bound_agent_id_with_session.return_value = "agent-1"
-    app_obj.mode_compatible_with_agent_with_session.return_value = "agent"
-    app_obj.deleted_tools_with_session.return_value = []
-    app_obj.tags_with_session.return_value = []
-    app_obj.author_name_with_session.return_value = "Author"
+    app_obj = _persist_response_graph(sqlite_session)
+    decoy_tenant_id = "00000000-0000-0000-0000-000000000002"
+    decoy_tag = Tag(tenant_id=decoy_tenant_id, type=TagType.APP, name="Decoy", created_by=ACCOUNT_ID)
+    decoy_tag.id = "00000000-0000-0000-0000-000000000602"
+    sqlite_session.add_all(
+        [
+            decoy_tag,
+            TagBinding(
+                tenant_id=decoy_tenant_id,
+                tag_id=decoy_tag.id,
+                target_id=APP_ID,
+                created_by=ACCOUNT_ID,
+            ),
+        ]
+    )
+    sqlite_session.commit()
     load_annotation_reply = MagicMock(return_value={"enabled": False})
     monkeypatch.setattr("services.app_service.load_annotation_reply_config", load_annotation_reply)
 
-    view = app_module.AppResponseView(app_obj, session=unbound_session)
+    view = app_module.AppResponseView(app_obj, session=sqlite_session)
     site = view.site
     workflow = view.workflow
     model_config = view.app_model_config
 
     assert view.desc_or_prompt == "Description"
     assert site is not None
-    assert site.id == "site-1"
+    assert site.id == SITE_ID
     assert workflow is not None
-    assert workflow.id == "workflow-1"
-    assert view.bound_agent_id == "agent-1"
-    assert view.mode_compatible_with_agent == "agent"
+    assert workflow.id == WORKFLOW_ID
+    assert view.bound_agent_id is None
+    assert view.mode_compatible_with_agent == "chat"
     assert view.deleted_tools == []
-    assert view.tags == []
-    assert view.author_name == "Author"
+    assert [tag.name for tag in view.tags] == ["Utilities"]
+    assert view.author_name == "Creator"
     assert model_config is not None
     assert model_config.annotation_reply_dict == {"enabled": False}
-    for method in (
-        app_obj.desc_or_prompt_with_session,
-        app_obj.site_with_session,
-        app_obj.app_model_config_with_session,
-        app_obj.workflow_with_session,
-        app_obj.bound_agent_id_with_session,
-        app_obj.mode_compatible_with_agent_with_session,
-        app_obj.deleted_tools_with_session,
-        app_obj.tags_with_session,
-        app_obj.author_name_with_session,
-    ):
-        method.assert_called_once_with(session=unbound_session)
-    load_annotation_reply.assert_called_once_with(unbound_session, "app-1")
+    load_annotation_reply.assert_called_once_with(sqlite_session, APP_ID)
 
 
-def test_app_pagination_aliases_per_page_and_has_next(app_models):
+def test_app_pagination_aliases_per_page_and_has_next(app_models, sqlite_session: Session):
     AppPagination = app_models.AppPagination
-    item_one = SimpleNamespace(
-        id="app-10",
+    item_one = _app(
+        app_id="00000000-0000-0000-0000-000000000110",
         name="Paginated One",
-        desc_or_prompt="Summary",
-        mode_compatible_with_agent="chat",
-        icon_type="image",
         icon="first-icon",
         created_at=_ts(15),
-        updated_at=_ts(15),
-        permission_keys=["app.acl.edit"],
     )
-    item_two = SimpleNamespace(
-        id="app-11",
+    item_one.permission_keys = ["app.acl.edit"]
+    item_two = _app(
+        app_id="00000000-0000-0000-0000-000000000111",
         name="Paginated Two",
-        desc_or_prompt="Summary",
-        mode_compatible_with_agent="agent-chat",
-        icon_type="emoji",
+        mode=AppMode.AGENT_CHAT,
+        icon_type=IconType.EMOJI,
         icon="🙂",
         created_at=_ts(16),
-        updated_at=_ts(16),
     )
     pagination = SimpleNamespace(
         page=2,
@@ -514,7 +555,11 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models):
         items=[item_one, item_two],
     )
 
-    serialized = AppPagination.model_validate(pagination, from_attributes=True).model_dump(mode="json")
+    serialized = AppPagination.model_validate(
+        pagination,
+        from_attributes=True,
+        context={"session": sqlite_session},
+    ).model_dump(mode="json")
 
     assert serialized["page"] == 2
     assert serialized["limit"] == 10
@@ -529,16 +574,14 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     app_module: ModuleType,
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-    unbound_session: Session,
 ) -> None:
     api = app_module.AppListApi()
     method = _unwrap(api.get)
-    app_item = SimpleNamespace(
-        id="app-1",
+    app_item = _app(
+        app_id="app-1",
+        tenant_id="tenant-1",
         name="Workflow App",
-        desc_or_prompt="Summary",
-        mode="workflow",
-        mode_compatible_with_agent="workflow",
+        mode=AppMode.WORKFLOW,
     )
     app_pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_item])
     workflow = Workflow(
@@ -583,8 +626,6 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         "get",
         get_permissions,
     )
-    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=unbound_session))
-
     with app.test_request_context("/console/api/apps?page=1&limit=20", method="GET"):
         response, status = method("tenant-1", "user-1", sqlite_session)
 
@@ -594,19 +635,17 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     assert response["data"][0]["permission_keys"] == ["app.acl.edit"]
 
 
-def test_app_create_api_attaches_permission_keys(app, app_module, unbound_session: Session):
+def test_app_create_api_attaches_permission_keys(app, app_module, sqlite_session: Session):
     method = app_module.AppListApi.post
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
 
-    app_obj = SimpleNamespace(
-        id="app-new",
+    app_obj = _app(
+        app_id="app-new",
+        tenant_id="tenant-1",
         name="Created App",
         description="Summary",
-        mode_compatible_with_agent="advanced-chat",
-        enable_site=True,
-        enable_api=True,
-        permission_keys=[],
+        mode=AppMode.ADVANCED_CHAT,
     )
 
     with app.test_request_context("/apps", method="POST", json={}):
@@ -647,9 +686,9 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
                     description="Summary",
                     mode="advanced-chat",
                 ),
-                unbound_session,
+                sqlite_session,
                 "tenant-1",
-                SimpleNamespace(id="acct-1"),
+                _account(account_id="acct-1"),
             )
 
     assert status == 201
@@ -663,15 +702,11 @@ def test_app_list_api_attaches_permission_keys(app, app_module, sqlite_session: 
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
 
-    app_obj = SimpleNamespace(
-        id="app-1",
+    app_obj = _app(
+        app_id="app-1",
+        tenant_id="tenant-1",
         name="List App",
-        desc_or_prompt="Summary",
-        mode_compatible_with_agent="chat",
-        mode="chat",
         created_at=_ts(15),
-        updated_at=_ts(15),
-        permission_keys=[],
     )
     pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_obj])
     get_paginate_apps = MagicMock(return_value=pagination)
@@ -724,10 +759,10 @@ def test_recent_app_list_api_returns_only_home_card_fields(app, app_module, unbo
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
 
-    recent_app = SimpleNamespace(
+    recent_app = RecentAppListItem(
         id="app-1",
         name="Recent App",
-        icon_type="emoji",
+        icon_type=IconType.EMOJI,
         icon="🚀",
         icon_background="#FFFFFF",
         mode="chat",
@@ -973,19 +1008,16 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
     assert params.is_created_by_me is None
 
 
-def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, unbound_session: Session):
+def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, sqlite_session: Session):
     method = app_module.AppApi.get
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
 
-    app_obj = SimpleNamespace(
-        id="app-1",
+    app_obj = _app(
+        app_id="app-1",
+        tenant_id="tenant-1",
         name="Detail App",
         description="Summary",
-        mode_compatible_with_agent="chat",
-        enable_site=True,
-        enable_api=True,
-        permission_keys=[],
     )
 
     with app.test_request_context("/apps/app-1"):
@@ -1023,14 +1055,14 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
 
             resp = method(
                 app_module.AppApi(),
-                unbound_session,
+                sqlite_session,
                 "tenant-1",
-                SimpleNamespace(id="acct-1"),
+                _account(account_id="acct-1"),
                 app_model=app_obj,
             )
 
-    get_app.assert_called_once_with(app_obj, session=unbound_session)
-    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=unbound_session)
+    get_app.assert_called_once_with(app_obj, session=sqlite_session)
+    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=sqlite_session)
     assert resp["permission_keys"] == [
         "app.acl.view_layout",
         "app.acl.edit",
@@ -1039,7 +1071,7 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
     ]
 
 
-def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: Session, sqlite_engine: Engine):
+def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: Session):
     method = app_module.AppCopyApi.post
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
@@ -1077,7 +1109,6 @@ def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: 
                 "get_system_features",
                 lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             )
-            monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=sqlite_engine))
             monkeypatch.setattr(
                 app_module.enterprise_rbac_service.RBACService.AppPermissions,
                 "batch_get",
@@ -1087,9 +1118,10 @@ def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: 
             resp, status = method(
                 app_module.AppCopyApi(),
                 app_module.CopyAppPayload(),
+                sqlite_session,
                 "tenant-1",
-                SimpleNamespace(id="acct-1"),
-                app_model=SimpleNamespace(id="app-original"),
+                _account(account_id="acct-1"),
+                app_model=_app(app_id="app-original", tenant_id="tenant-1"),
             )
 
     assert status == 201
