@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from inspect import unwrap
+from collections.abc import Callable, Iterator
+from inspect import getclosurevars, unwrap
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 
 from controllers.console import console_ns
+from controllers.console.datasets.rag_pipeline import rag_pipeline_import as module
 from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     IncludeSecretQuery,
     RagPipelineExportApi,
@@ -17,8 +19,11 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_import import (
     RagPipelineImportCheckDependenciesApi,
     RagPipelineImportConfirmApi,
     RagPipelineImportPayload,
+    _require_dataset_dsl_access,
 )
 from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
+from core.rbac import RBACResourceScope
+from models import Tenant
 from models.account import Account
 from models.dataset import Pipeline
 from models.engine import db
@@ -30,6 +35,22 @@ def _account() -> Account:
     account = Account(name="RAG Import Tester", email="rag-import@example.com")
     account.id = "account-1"
     return account
+
+
+def _account_with_tenant(tenant_id: str = "tenant-1") -> Account:
+    account = _account()
+    tenant = Tenant(name="Tenant")
+    tenant.id = tenant_id
+    account._current_tenant = tenant
+    return account
+
+
+def _has_rbac_scene(decorator: Callable[..., object]) -> bool:
+    return "scene" in getclosurevars(decorator).nonlocals
+
+
+def _rbac_gate(method: Callable[..., object]) -> Callable[..., object]:
+    return cast(Callable[..., object], unwrap(method, stop=_has_rbac_scene))
 
 
 @pytest.fixture
@@ -55,7 +76,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = _account()
+        user = _account_with_tenant()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.COMPLETED,
@@ -89,12 +110,56 @@ class TestRagPipelineImportApi:
             "error": "",
         }
 
+    def test_post_uses_import_export_dsl_workspace_permission(self) -> None:
+        gate = _rbac_gate(RagPipelineImportApi().post)
+        permissions = getclosurevars(gate).nonlocals
+
+        assert permissions["resource_type"] == module.RBACResourceScope.DATASET
+        assert permissions["scene"] == module.RBACPermission.DATASET_IMPORT_EXPORT_DSL
+        assert permissions["resource_required"] is False
+
+    def test_post_update_requires_target_dataset_dsl_access(self, app: Flask) -> None:
+        api = RagPipelineImportApi()
+        method = unwrap(api.post)
+
+        user = _account_with_tenant()
+        result = RagPipelineImportInfo(
+            id="import-1",
+            status=ImportStatus.COMPLETED,
+            pipeline_id="pipeline-1",
+            dataset_id="dataset-1",
+            current_dsl_version="0.1.0",
+            imported_dsl_version="0.1.0",
+        )
+
+        service = MagicMock()
+        service.get_pipeline_dataset_id.return_value = "dataset-1"
+        service.import_rag_pipeline.return_value = result
+
+        with (
+            app.test_request_context("/", json=self._payload()),
+            patch.object(type(console_ns), "payload", self._payload()),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
+                return_value=service,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_import._require_dataset_dsl_access"
+            ) as require_access,
+        ):
+            response, status = method(api, RagPipelineImportPayload(mode="create", pipeline_id="pipeline-1"), user)
+
+        assert status == 200
+        assert response["pipeline_id"] == "pipeline-1"
+        service.get_pipeline_dataset_id.assert_called_once_with(pipeline_id="pipeline-1", account=user)
+        require_access.assert_called_once_with(account=user, dataset_id="dataset-1")
+
     def test_post_failed_400(self, app: Flask) -> None:
         api = RagPipelineImportApi()
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = _account()
+        user = _account_with_tenant()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.FAILED,
@@ -127,7 +192,7 @@ class TestRagPipelineImportApi:
         method = unwrap(api.post)
 
         payload = self._payload()
-        user = _account()
+        user = _account_with_tenant()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.PENDING,
@@ -161,7 +226,7 @@ class TestRagPipelineImportConfirmApi:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
-        user = _account()
+        user = _account_with_tenant()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.COMPLETED,
@@ -172,6 +237,7 @@ class TestRagPipelineImportConfirmApi:
         )
 
         service = MagicMock()
+        service.get_pending_pipeline_id.return_value = None
         service.confirm_import.return_value = result
 
         with (
@@ -187,11 +253,48 @@ class TestRagPipelineImportConfirmApi:
         assert response["status"] == "completed"
         assert response["pipeline_id"] == "pipeline-1"
 
+    def test_confirm_update_requires_target_dataset_dsl_access(self, app: Flask) -> None:
+        api = RagPipelineImportConfirmApi()
+        method = unwrap(api.post)
+
+        user = _account_with_tenant()
+        result = RagPipelineImportInfo(
+            id="import-1",
+            status=ImportStatus.COMPLETED,
+            pipeline_id="pipeline-1",
+            dataset_id="dataset-1",
+            current_dsl_version="0.1.0",
+            imported_dsl_version="0.1.0",
+        )
+
+        service = MagicMock()
+        service.get_pending_pipeline_id.return_value = "pipeline-1"
+        service.get_pipeline_dataset_id.return_value = "dataset-1"
+        service.confirm_import.return_value = result
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_import.RagPipelineDslService",
+                return_value=service,
+            ),
+            patch(
+                "controllers.console.datasets.rag_pipeline.rag_pipeline_import._require_dataset_dsl_access"
+            ) as require_access,
+        ):
+            response, status = method(api, user, "import-1")
+
+        assert status == 200
+        assert response["pipeline_id"] == "pipeline-1"
+        service.get_pending_pipeline_id.assert_called_once_with(import_id="import-1", account=user)
+        service.get_pipeline_dataset_id.assert_called_once_with(pipeline_id="pipeline-1", account=user)
+        require_access.assert_called_once_with(account=user, dataset_id="dataset-1")
+
     def test_confirm_failed(self, app: Flask) -> None:
         api = RagPipelineImportConfirmApi()
         method = unwrap(api.post)
 
-        user = _account()
+        user = _account_with_tenant()
         result = RagPipelineImportInfo(
             id="import-1",
             status=ImportStatus.FAILED,
@@ -201,6 +304,7 @@ class TestRagPipelineImportConfirmApi:
         )
 
         service = MagicMock()
+        service.get_pending_pipeline_id.return_value = None
         service.confirm_import.return_value = result
 
         with (
@@ -239,6 +343,14 @@ class TestRagPipelineImportCheckDependenciesApi:
 
         assert status == 200
         assert response == {"leaked_dependencies": []}
+
+    def test_get_uses_dataset_readonly_permission(self) -> None:
+        gate = _rbac_gate(RagPipelineImportCheckDependenciesApi().get)
+        permissions = getclosurevars(gate).nonlocals
+
+        assert permissions["resource_type"] == module.RBACResourceScope.DATASET
+        assert permissions["scene"] == module.RBACPermission.DATASET_READONLY
+        assert permissions["resource_required"] is True
 
     def test_get_serializes_leaked_dependencies(self, app: Flask) -> None:
         api = RagPipelineImportCheckDependenciesApi()
@@ -281,6 +393,14 @@ class TestRagPipelineImportCheckDependenciesApi:
 
 
 class TestRagPipelineExportApi:
+    def test_get_uses_import_export_dsl_resource_permission(self) -> None:
+        gate = _rbac_gate(RagPipelineExportApi().get)
+        permissions = getclosurevars(gate).nonlocals
+
+        assert permissions["resource_type"] == module.RBACResourceScope.DATASET
+        assert permissions["scene"] == module.RBACPermission.DATASET_IMPORT_EXPORT_DSL
+        assert permissions["resource_required"] is True
+
     def test_get_with_include_secret(self, app: Flask) -> None:
         api = RagPipelineExportApi()
         method = unwrap(api.get)
@@ -300,3 +420,19 @@ class TestRagPipelineExportApi:
 
         assert status == 200
         assert response == {"data": "yaml: data"}
+
+
+class TestRequireDatasetDslAccess:
+    def test_enforces_rbac_with_dataset_id(self) -> None:
+        account = _account_with_tenant()
+
+        with patch("controllers.console.datasets.rag_pipeline.rag_pipeline_import.enforce_rbac_access") as enforce:
+            _require_dataset_dsl_access(account=account, dataset_id="dataset-1")
+
+        enforce.assert_called_once_with(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            resource_type=RBACResourceScope.DATASET,
+            scene=module.RBACPermission.DATASET_IMPORT_EXPORT_DSL,
+            path_args={"dataset_id": "dataset-1"},
+        )

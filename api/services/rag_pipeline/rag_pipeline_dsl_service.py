@@ -508,6 +508,43 @@ class RagPipelineDslService:
                 error=str(e),
             )
 
+    def get_pending_pipeline_id(self, *, import_id: str, account: Account) -> str | None:
+        """
+        Return the target pipeline id for an accessible pending import, if any.
+        """
+        if not account.current_tenant_id:
+            raise ValueError("Tenant id is required")
+
+        pending_data = redis_client.get(f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}")
+        if not pending_data or not isinstance(pending_data, str | bytes):
+            return None
+
+        try:
+            pending_import = RagPipelinePendingData.model_validate_json(pending_data)
+        except Exception:
+            return None
+
+        if not pending_import.is_accessible_by(
+            tenant_id=account.current_tenant_id,
+            account_id=account.id,
+        ):
+            return None
+        return pending_import.pipeline_id
+
+    def get_pipeline_dataset_id(self, *, pipeline_id: str, account: Account) -> str | None:
+        """
+        Return the dataset id bound to a pipeline in the caller's current tenant.
+        """
+        if not account.current_tenant_id:
+            raise ValueError("Tenant id is required")
+
+        return self._session.scalar(
+            select(Dataset.id).where(
+                Dataset.pipeline_id == pipeline_id,
+                Dataset.tenant_id == account.current_tenant_id,
+            )
+        )
+
     def check_dependencies(
         self,
         *,

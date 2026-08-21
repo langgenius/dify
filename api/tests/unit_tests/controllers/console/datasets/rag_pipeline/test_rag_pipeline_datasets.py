@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from inspect import unwrap
+from inspect import getclosurevars, unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,6 +17,7 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_datasets import (
     CreateRagPipelineDatasetApi,
     RagPipelineDatasetImportPayload,
 )
+from controllers.console.wraps import RBACPermission, RBACResourceScope
 from models.account import Account, TenantAccountRole
 from services.entities.dsl_entities import ImportStatus
 
@@ -30,6 +31,17 @@ def _account(*, editor: bool) -> Account:
 class TestCreateRagPipelineDatasetApi:
     def _valid_payload(self) -> dict[str, str]:
         return {"yaml_content": "name: test"}
+
+    def test_post_requires_dataset_create_management_permission(self) -> None:
+        route = CreateRagPipelineDatasetApi.post
+        legacy_gate = unwrap(route, stop=lambda decorator: "edit_permission_required" in decorator.__code__.co_qualname)
+        rbac_gate = unwrap(route, stop=lambda decorator: "scene" in getclosurevars(decorator).nonlocals)
+
+        assert "edit_permission_required" in legacy_gate.__code__.co_qualname
+        permissions = getclosurevars(rbac_gate).nonlocals
+        assert permissions["resource_type"] == RBACResourceScope.DATASET
+        assert permissions["scene"] == RBACPermission.DATASET_CREATE_AND_MANAGEMENT
+        assert permissions["resource_required"] is False
 
     def test_post_success(self, app: Flask) -> None:
         api = CreateRagPipelineDatasetApi()

@@ -1,6 +1,7 @@
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.common.fields import SimpleDataResponse
 from controllers.common.schema import (
@@ -9,6 +10,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
@@ -71,6 +73,20 @@ register_response_schema_models(
 )
 
 
+def _require_dataset_dsl_access(*, account: Account, dataset_id: str) -> None:
+    tenant_id = account.current_tenant_id
+    if tenant_id is None:
+        raise ValueError("Current tenant is not set")
+
+    enforce_rbac_access(
+        tenant_id=tenant_id,
+        account_id=account.id,
+        resource_type=RBACResourceScope.DATASET,
+        scene=RBACPermission.DATASET_IMPORT_EXPORT_DSL,
+        path_args={"dataset_id": dataset_id},
+    )
+
+
 @console_ns.route("/rag/pipelines/imports")
 class RagPipelineImportApi(Resource):
     @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
@@ -82,7 +98,7 @@ class RagPipelineImportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+        RBACResourceScope.DATASET, RBACPermission.DATASET_IMPORT_EXPORT_DSL, resource_required=False
     )
     @with_current_user
     @model_validate(RagPipelineImportPayload)
@@ -96,6 +112,14 @@ class RagPipelineImportApi(Resource):
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
             account = current_user
+            if req_data.pipeline_id:
+                dataset_id = import_service.get_pipeline_dataset_id(
+                    pipeline_id=req_data.pipeline_id,
+                    account=account,
+                )
+                if not dataset_id:
+                    raise NotFound("Dataset not found for pipeline")
+                _require_dataset_dsl_access(account=account, dataset_id=dataset_id)
             result = import_service.import_rag_pipeline(
                 account=account,
                 import_mode=req_data.mode,
@@ -129,13 +153,22 @@ class RagPipelineImportConfirmApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(
-        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+        RBACResourceScope.DATASET, RBACPermission.DATASET_IMPORT_EXPORT_DSL, resource_required=False
     )
     @with_current_user
     def post(self, current_user: Account, import_id: str) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
             account = current_user
+            pipeline_id = import_service.get_pending_pipeline_id(import_id=import_id, account=account)
+            if pipeline_id:
+                dataset_id = import_service.get_pipeline_dataset_id(
+                    pipeline_id=pipeline_id,
+                    account=account,
+                )
+                if not dataset_id:
+                    raise NotFound("Dataset not found for pipeline")
+                _require_dataset_dsl_access(account=account, dataset_id=dataset_id)
             result = import_service.confirm_import(import_id=import_id, account=account)
             if result.status == ImportStatus.FAILED:
                 session.rollback()
