@@ -17,7 +17,7 @@ import logging
 import os
 import time
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, cast, override
 
 from sqlalchemy.orm import sessionmaker
@@ -26,6 +26,7 @@ from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value, escape_sql_string
 from graphon.enums import WorkflowExecutionStatus
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
@@ -104,28 +105,30 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.error = data.get("error_message") or data.get("error")
 
     # Handle datetime fields
+    # Every branch must yield naive UTC, matching what the database path stores.
+    # Mixing naive local time and aware values here breaks the elapsed_time subtraction below.
     started_at = data.get("started_at") or data.get("created_at")
     if started_at:
         match started_at:
             case str():
-                model.created_at = datetime.fromisoformat(started_at)
+                model.created_at = ensure_naive_utc(datetime.fromisoformat(started_at))
             case int() | float():
-                model.created_at = datetime.fromtimestamp(started_at)
+                model.created_at = datetime.fromtimestamp(started_at, tz=UTC).replace(tzinfo=None)
             case _:
-                model.created_at = started_at
+                model.created_at = ensure_naive_utc(started_at)
     else:
         # Provide default created_at if missing
-        model.created_at = datetime.now()
+        model.created_at = naive_utc_now()
 
     finished_at = data.get("finished_at")
     if finished_at:
         match finished_at:
             case str():
-                model.finished_at = datetime.fromisoformat(finished_at)
+                model.finished_at = ensure_naive_utc(datetime.fromisoformat(finished_at))
             case int() | float():
-                model.finished_at = datetime.fromtimestamp(finished_at)
+                model.finished_at = datetime.fromtimestamp(finished_at, tz=UTC).replace(tzinfo=None)
             case _:
-                model.finished_at = finished_at
+                model.finished_at = ensure_naive_utc(finished_at)
 
     # Compute elapsed_time from started_at and finished_at
     # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity

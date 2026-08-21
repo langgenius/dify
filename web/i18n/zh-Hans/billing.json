@@ -131,7 +131,6 @@
   "plansCommon.supportItems.workflow": "工作流",
   "plansCommon.talkToSales": "联系销售",
   "plansCommon.taxTip": "所有订阅价格（按月/按年）均不含适用税费（如增值税、销售税）。",
-  "plansCommon.taxTipSecond": "如果您所在地区无适用税费要求，结账时将不会显示税费，且在整个订阅周期内您都无需支付任何额外费用。",
   "plansCommon.teamMember_one": "{{count,number}} 名团队成员",
   "plansCommon.teamMember_other": "{{count,number}} 名团队成员",
   "plansCommon.teamWorkspace": "{{count,number}} 个团队空间",

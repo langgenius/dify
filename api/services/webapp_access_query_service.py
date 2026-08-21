@@ -5,6 +5,8 @@ from typing import Protocol
 
 from enums import WebAppAccessMode
 
+_PERMISSION_CHECK_MODES = frozenset({WebAppAccessMode.PRIVATE, WebAppAccessMode.PRIVATE_ALL})
+
 
 class WebAppAccessQuery(Protocol):
     def find_app_id_by_code(self, app_code: str) -> str | None: ...
@@ -29,10 +31,12 @@ class WebAppAccessQueryService:
         access: WebAppAccessQuery,
         webapp_auth_enabled: bool,
         access_mode_for_app: Callable[[str], WebAppAccessMode],
+        is_user_allowed_for_app: Callable[[str, str], bool],
     ) -> None:
         self._access = access
         self._webapp_auth_enabled = webapp_auth_enabled
         self._access_mode_for_app = access_mode_for_app
+        self._is_user_allowed_for_app = is_user_allowed_for_app
 
     def get_access_mode(self, *, app_id: str | None, app_code: str | None) -> WebAppAccessMode:
         if not self._webapp_auth_enabled:
@@ -47,3 +51,12 @@ class WebAppAccessQueryService:
             raise WebAppAccessReferenceRequiredError("appId or appCode must be provided")
 
         return self._access_mode_for_app(app_id)
+
+    def requires_permission_check(self, app_id: str) -> bool:
+        return self._access_mode_for_app(app_id) in _PERMISSION_CHECK_MODES
+
+    def is_user_allowed(self, *, user_id: str, app_id: str) -> bool:
+        if not self._webapp_auth_enabled:
+            return True
+
+        return self._is_user_allowed_for_app(user_id, app_id)

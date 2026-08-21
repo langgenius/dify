@@ -156,7 +156,7 @@ class EnterpriseExecutionBindingBackend:
     proxy_timeout: float = 60.0
     snapshot_timeout: float = 35.0
     layout: RuntimeLayout = field(
-        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
@@ -190,8 +190,8 @@ class EnterpriseExecutionBindingBackend:
                     [
                         "set -eu",
                         f"mkdir -p {shlex.quote(self.layout.home_dir)}",
-                        f"rm -rf -- {shlex.quote(self.layout.workspace_dir)}",
                         f"mkdir -p {shlex.quote(self.layout.workspace_dir)}",
+                        f"find {shlex.quote(self.layout.workspace_dir)} -mindepth 1 -maxdepth 1 -exec rm -rf -- {{}} +",
                         f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
                     ]
                 ),

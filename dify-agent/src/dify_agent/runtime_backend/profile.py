@@ -20,9 +20,9 @@ from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, Local
 from dify_agent.runtime_backend.protocols import RuntimeBackendProfile
 
 DEFAULT_E2B_TEMPLATE = "difys-default-team/dify-agent-local-sandbox"
-DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT = "/home/dify/.dify-agent-materialized-homes"
-DEFAULT_LOCAL_WORKSPACE_ROOT = "/home/dify/.dify-agent-workspaces"
-DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT = "/home/dify/.dify-agent-home-snapshots"
+DEFAULT_LOCAL_MATERIALIZED_HOME_ROOT = "/home/dify"
+DEFAULT_LOCAL_WORKSPACE_ROOT = "/workspace"
+DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT = "/home/dify/.snapshots"
 
 
 class RuntimeBackendSettings(BaseSettings):

@@ -7,7 +7,7 @@ from typing import Any, Literal, NotRequired, TypedDict, cast, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, Field
-from sqlalchemy import ColumnElement, select
+from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -36,6 +36,8 @@ from models.agent import (
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
 )
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.workflow import Workflow
@@ -286,6 +288,13 @@ class AppService:
         session: Session,
     ) -> App | None:
         return session.get(App, app_id)
+
+    @staticmethod
+    def get_normal_app_by_id(
+        app_id: str,
+        session: Session,
+    ) -> App | None:
+        return session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
 
     @staticmethod
     def get_visible_app_by_id(
@@ -741,7 +750,7 @@ class AppService:
         role: NotRequired[str | None]
 
     @staticmethod
-    def _get_backing_agent_for_update(app: App, *, session: Session) -> Agent | None:
+    def _get_backing_agent(app: App, *, session: Session) -> Agent | None:
         if app.mode != AppMode.AGENT:
             return None
         return session.scalar(
@@ -784,7 +793,7 @@ class AppService:
         Role omission is intentional: ``role=None`` preserves the backing
         Agent's current role, while ``role=""`` explicitly clears it.
         """
-        agent = self._get_backing_agent_for_update(app, session=session)
+        agent = self._get_backing_agent(app, session=session)
         if agent is None:
             return
 
@@ -988,21 +997,49 @@ class AppService:
         return app
 
     def delete_app(self, app: App, *, session: Session) -> None:
-        """
-        Delete app
-        :param app: App instance
+        """Delete an App and commit the passed session.
+
+        The transaction releases all of a Workflow App's binding owners across
+        draft and published versions, archives a backing Roster Agent, retires
+        its resources, and deletes the App. Deleting a Roster Agent's backing
+        App does not remove bindings owned by external Workflows.
+
+        After commit, the main App cleanup is published first, followed by
+        workflow-only Agent retirement and the Roster resource collector. Any
+        publication failure propagates.
         """
         app_was_deleted.send(app)
 
-        backing_agent = self._get_backing_agent_for_update(app, session=session)
-        workflow_agent_ids = session.scalars(
-            select(Agent.id).where(
-                Agent.tenant_id == app.tenant_id,
-                Agent.app_id == app.id,
-                Agent.scope == AgentScope.WORKFLOW_ONLY,
-                Agent.status == AgentStatus.ACTIVE,
+        backing_agent = self._get_backing_agent(app, session=session)
+        workflow_agent_ids = set(
+            session.scalars(
+                select(Agent.id).where(
+                    Agent.tenant_id == app.tenant_id,
+                    Agent.app_id == app.id,
+                    Agent.scope == AgentScope.WORKFLOW_ONLY,
+                    Agent.status == AgentStatus.ACTIVE,
+                )
+            ).all()
+        )
+        if app.mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
+            workflow_agent_ids.update(
+                agent_id
+                for agent_id in session.scalars(
+                    select(WorkflowAgentNodeBinding.agent_id).where(
+                        WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
+                        WorkflowAgentNodeBinding.app_id == app.id,
+                        WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.INLINE_AGENT,
+                        WorkflowAgentNodeBinding.agent_id.is_not(None),
+                    )
+                ).all()
+                if agent_id
             )
-        ).all()
+            session.execute(
+                delete(WorkflowAgentNodeBinding).where(
+                    WorkflowAgentNodeBinding.tenant_id == app.tenant_id,
+                    WorkflowAgentNodeBinding.app_id == app.id,
+                )
+            )
         account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
@@ -1019,17 +1056,16 @@ class AppService:
                 select(AgentWorkspaceBinding).where(
                     AgentWorkspaceBinding.tenant_id == app.tenant_id,
                     AgentWorkspaceBinding.agent_id == backing_agent.id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 )
             ).all()
             for binding in bindings:
-                binding_id = AgentWorkspaceService.retire_binding(
-                    session=session,
-                    tenant_id=app.tenant_id,
-                    binding_id=binding.id,
-                )
-                if binding_id is not None:
-                    retired_binding_ids.append(binding_id)
+                if binding.status == AgentWorkingResourceStatus.ACTIVE:
+                    AgentWorkspaceService.retire_binding(
+                        session=session,
+                        tenant_id=app.tenant_id,
+                        binding_id=binding.id,
+                    )
+                retired_binding_ids.append(binding.id)
             retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
                 session=session,
                 tenant_id=app.tenant_id,
@@ -1044,7 +1080,16 @@ class AppService:
         session.delete(app)
         session.commit()
 
-        workflow_binding_ids, workflow_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        try:
+            remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
+        except Exception:
+            logger.exception(
+                "Failed to enqueue App cleanup",
+                extra={"tenant_id": app.tenant_id, "app_id": app.id},
+            )
+            raise
+
+        WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app.tenant_id,
             agent_ids=workflow_agent_ids,
             account_id=account_id,
@@ -1052,8 +1097,9 @@ class AppService:
         enqueue_agent_resource_collection(
             tenant_id=app.tenant_id,
             workspace_ids=retired_workspace_ids,
-            binding_ids=[*retired_binding_ids, *workflow_binding_ids],
-            home_snapshot_ids=[*retired_snapshot_ids, *workflow_snapshot_ids],
+            binding_ids=retired_binding_ids,
+            home_snapshot_ids=retired_snapshot_ids,
+            purge_agent_ids=[backing_agent.id] if backing_agent is not None else [],
         )
 
         # clean up web app settings
@@ -1062,9 +1108,6 @@ class AppService:
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             BillingService.clean_billing_info_cache(app.tenant_id)
-
-        # Trigger asynchronous deletion of app and related data
-        remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
     @staticmethod
     def get_app_code_by_id(app_id: str, *, session: Session) -> str:

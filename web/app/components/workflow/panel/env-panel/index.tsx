@@ -802,7 +802,7 @@ const EnvPanel = () => {
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowEnvPanel(false)}
           >
-            {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons */}
+            {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
             <RiCloseLine className="size-4 text-text-tertiary" />
           </button>
         </div>

@@ -1,5 +1,5 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { userEvent } from 'vitest/browser'
 import { createToast, createToastManager, toast, ToastHost } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement

@@ -47,6 +47,11 @@ class AgentBackendConfig(BaseSettings):
         default=45.0,
     )
 
+    AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS: PositiveFloat = Field(
+        description="Client timeout for converting a Binding file to a ToolFile through the Agent backend.",
+        default=240,
+    )
+
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
             "Inject the Home, Workspace, Sandbox, and Shell runtime layers into Agent runs. "
