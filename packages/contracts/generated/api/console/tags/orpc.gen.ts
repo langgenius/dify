@@ -50,7 +50,7 @@ export const get = oc
     path: '/tags',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetTagsQuery }))
+  .input(z.object({ query: zGetTagsQuery.optional() }))
   .output(zGetTagsResponse)
 
 export const post = oc
