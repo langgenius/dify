@@ -189,12 +189,10 @@ describe('Pricing Modal Flow', () => {
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
 
-    it('should show tax tip in footer for cloud category', () => {
+    it('should show the tax exclusion notice in the footer for cloud category', () => {
       render(<Pricing onCancel={onCancel} />)
 
-      // Use exact match to avoid matching taxTipSecond
       expect(screen.getByText('billing.plansCommon.taxTip')).toBeInTheDocument()
-      expect(screen.getByText('billing.plansCommon.taxTipSecond')).toBeInTheDocument()
     })
   })
 

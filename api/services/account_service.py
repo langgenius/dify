@@ -66,7 +66,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CannotOperateSelfError,
-    CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     InvalidActionError,
     LinkAccountIntegrateError,
     MemberNotInTenantError,
@@ -422,28 +422,6 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_password(account: Account, password: str, new_password: str, *, session: Session):
-        """update account password"""
-        if account.password and not compare_password(password, account.password, account.password_salt):
-            raise CurrentPasswordIncorrectError("Current password is incorrect.")
-
-        # may be raised
-        valid_password(new_password)
-
-        # generate password salt
-        salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
-
-        # encrypt password with salt
-        password_hashed = hash_password(new_password, salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        session.add(account)
-        session.commit()
-        return account
-
-    @staticmethod
     def create_account(
         email: str,
         name: str,
@@ -470,6 +448,9 @@ class AccountService:
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
+            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1070,6 +1051,9 @@ class AccountService:
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
+            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1088,9 +1072,13 @@ class AccountService:
 
     @classmethod
     def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
-            return True
-        return False
+        return cls.get_account_freeze_type(email) is not None
+
+    @classmethod
+    def get_account_freeze_type(cls, email: str):
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+        return BillingService.get_email_freeze_type(email)
 
     @staticmethod
     @redis_fallback(default_return=None)

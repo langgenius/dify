@@ -61,6 +61,7 @@ from models import Account
 from models.dataset import Pipeline
 from models.model import EndUser
 from models.workflow import Workflow
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.dataset_service import DatasetService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
@@ -770,8 +771,9 @@ class RagPipelineByIdApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    @with_current_user
     @get_rag_pipeline
-    def delete(self, pipeline: Pipeline, workflow_id: str):
+    def delete(self, current_user: Account, pipeline: Pipeline, workflow_id: str):
         """
         Delete a published workflow version that is not currently active on the pipeline.
         """
@@ -783,7 +785,7 @@ class RagPipelineByIdApi(Resource):
 
         with sessionmaker(db.engine).begin() as session:
             try:
-                workflow_service.delete_workflow(
+                retirement_candidates = workflow_service.delete_workflow(
                     session=session,
                     workflow_ref=workflow_ref,
                 )
@@ -794,6 +796,11 @@ class RagPipelineByIdApi(Resource):
             except ValueError as e:
                 raise NotFound(str(e))
 
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=pipeline.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
         return None, 204
 
 

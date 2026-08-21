@@ -3,7 +3,14 @@ import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -27,9 +34,15 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
   const maximumIterationsLabel = t(($) => $['agent.setting.maximumIterations.name'], {
     ns: 'appDebug',
   })
+  const sliderValue = Number.isFinite(tempPayload.max_iteration)
+    ? tempPayload.max_iteration
+    : maxIterationsMin
 
   const handleSave = () => {
-    onSave(tempPayload)
+    onSave({
+      ...tempPayload,
+      max_iteration: sliderValue,
+    })
   }
 
   return (
@@ -84,15 +97,22 @@ export function AgentSetting({ isChatModel, payload, isFunctionCall, onCancel, o
                 className="mr-3 w-39"
                 min={maxIterationsMin}
                 max={MAX_ITERATIONS_NUM}
-                value={tempPayload.max_iteration}
+                value={sliderValue}
                 onValueChange={(value) => {
                   setTempPayload({
                     ...tempPayload,
                     max_iteration: value,
                   })
                 }}
-                aria-label={maximumIterationsLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{maximumIterationsLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
 
               <input
                 aria-label={maximumIterationsLabel}

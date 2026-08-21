@@ -17,7 +17,6 @@ from services.errors.account import (
     AccountLoginError,
     AccountPasswordError,
     AccountRegisterError,
-    CurrentPasswordIncorrectError,
     SeatsLimitExceededError,
     TenantNotFoundError,
 )
@@ -301,96 +300,6 @@ class TestAccountService:
         authenticated_account = AccountService.authenticate(email, password, session=db_session_with_containers)
         assert authenticated_account.status == AccountStatus.ACTIVE
         assert authenticated_account.initialized_at is not None
-
-    def test_update_account_password_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test successful password update.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        old_password = generate_valid_password(fake)
-        new_password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=old_password,
-            session=db_session_with_containers,
-        )
-
-        # Update password
-        updated_account = AccountService.update_account_password(
-            account, old_password, new_password, session=db_session_with_containers
-        )
-
-        # Verify new password works
-        authenticated_account = AccountService.authenticate(email, new_password, session=db_session_with_containers)
-        assert authenticated_account.id == account.id
-
-    def test_update_account_password_wrong_current_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test password update with wrong current password.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        old_password = generate_valid_password(fake)
-        wrong_password = generate_valid_password(fake)
-        new_password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=old_password,
-            session=db_session_with_containers,
-        )
-
-        with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(
-                account, wrong_password, new_password, session=db_session_with_containers
-            )
-
-    def test_update_account_password_invalid_new_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test password update with invalid new password format.
-        """
-        fake = Faker()
-        email = fake.email()
-        name = fake.name()
-        old_password = generate_valid_password(fake)
-        # Setup mocks
-        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
-        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
-
-        # Create account
-        account = AccountService.create_account(
-            email=email,
-            name=name,
-            interface_language="en-US",
-            password=old_password,
-            session=db_session_with_containers,
-        )
-
-        # Test with too short password (assuming minimum length validation)
-        with pytest.raises(ValueError):  # Password validation error
-            AccountService.update_account_password(account, old_password, "123", session=db_session_with_containers)
 
     def test_create_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """

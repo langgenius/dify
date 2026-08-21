@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "مثلاً دستیار پژوهش",
   "roster.createSuccess": "عامل ایجاد شد.",
   "roster.dateTimeFormat": "YYYY/MM/DD HH:mm:ss",
-  "roster.deleteDialog.description": "این Agent از فهرست Agent حذف خواهد شد.",
+  "roster.deleteDialog.description": "این کار {{name}} را برای همیشه حذف می‌کند. برنامه وب آن، دسترسی به API و گردش‌های کاری که از آن استفاده می‌کنند، بلافاصله از کار می‌افتند.",
   "roster.deleteDialog.title": "حذف {{name}}؟",
   "roster.deleteFailed": "حذف عامل ناموفق بود.",
   "roster.deleteSuccess": "عامل حذف شد.",

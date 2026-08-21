@@ -85,6 +85,11 @@ vi.mock('@/context/permission-state', () => ({
   workspacePermissionKeysAtom: permissionStateMock.workspacePermissionKeysAtom,
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
+  useLocale: () => 'en-US',
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     knowledgeFs: {
@@ -139,6 +144,17 @@ describe('NewKnowledgeList', () => {
     })
     expect(options?.getNextPageParam({ items: [], nextCursor: 'next-page' })).toBe('next-page')
     expect(options?.getNextPageParam({ items: [] })).toBeUndefined()
+  })
+
+  it('links the guide through the shared documentation URL', () => {
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use-dify/knowledge/readme',
+    )
   })
 
   it('links real knowledge spaces to the new detail shell', () => {

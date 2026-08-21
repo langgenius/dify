@@ -20,6 +20,7 @@ from constants import (
     VIDEO_EXTENSIONS,
 )
 from core.rag.extractor.extract_processor import ExtractProcessor
+from enums import DeploymentEdition
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from graphon.file import helpers as file_helpers
@@ -178,6 +179,13 @@ class FileService:
             expires_in=dify_config.FILES_ACCESS_TIMEOUT,
             content_type=content_type,
         )
+
+    def get_icon_url(self, file_id: str, tenant_id: str) -> str:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+            StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+        ):
+            return self.get_file_presigned_url(file_id=file_id, tenant_id=tenant_id)
+        return file_helpers.get_signed_file_url(upload_file_id=file_id)
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:

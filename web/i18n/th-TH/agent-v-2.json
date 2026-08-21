@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "เช่น ผู้ช่วยวิจัย",
   "roster.createSuccess": "สร้างตัวแทนแล้ว",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Agent นี้จะถูกลบออกจากรายการ Agent",
+  "roster.deleteDialog.description": "การดำเนินการนี้จะลบ {{name}} อย่างถาวร เว็บแอปและการเข้าถึง API ของ Agent นี้ รวมถึงเวิร์กโฟลว์ที่ใช้ Agent นี้ จะหยุดทำงานทันที",
   "roster.deleteDialog.title": "ลบ {{name}} หรือไม่",
   "roster.deleteFailed": "ลบตัวแทนไม่สำเร็จ",
   "roster.deleteSuccess": "ลบตัวแทนแล้ว",
