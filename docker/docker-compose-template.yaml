@@ -716,9 +716,18 @@ services:
         "-c",
         "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
       ]
+    env_file:
+      - path: ./envs/core-services/shared.env
+        required: false
+      - path: ./envs/infrastructure/ssrf-proxy.env
+        required: false
+      - ./.env
     environment:
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      SSRF_PROXY_CONNECT_TIMEOUT: ${SSRF_PROXY_CONNECT_TIMEOUT:-${HTTP_REQUEST_MAX_CONNECT_TIMEOUT:-30}}
+      SSRF_PROXY_REQUEST_TIMEOUT: ${SSRF_PROXY_REQUEST_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}
+      SSRF_PROXY_READ_TIMEOUT: ${SSRF_PROXY_READ_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}
     networks:
       # Needs to reach api and agent_backend as forward-proxy destinations.
       - default
@@ -742,12 +751,21 @@ services:
         "-c",
         "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
       ]
+    env_file:
+      - path: ./envs/core-services/shared.env
+        required: false
+      - path: ./envs/infrastructure/ssrf-proxy.env
+        required: false
+      - ./.env
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
       SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
       SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
+      SSRF_PROXY_CONNECT_TIMEOUT: ${SSRF_PROXY_CONNECT_TIMEOUT:-${HTTP_REQUEST_MAX_CONNECT_TIMEOUT:-30}}
+      SSRF_PROXY_REQUEST_TIMEOUT: ${SSRF_PROXY_REQUEST_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}
+      SSRF_PROXY_READ_TIMEOUT: ${SSRF_PROXY_READ_TIMEOUT:-${HTTP_REQUEST_MAX_READ_TIMEOUT:-600}}
     networks:
       - ssrf_proxy_network
       - default
