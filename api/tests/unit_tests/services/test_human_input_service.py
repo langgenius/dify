@@ -39,6 +39,7 @@ from services.human_input_service import (
     HumanInputService,
     InvalidFormDataError,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def _make_app(mode: AppMode) -> App:
@@ -126,7 +127,7 @@ def test_ensure_form_active_respects_global_timeout(
         created_at=naive_utc_now() - timedelta(hours=2),
         expiration_time=naive_utc_now() + timedelta(hours=2),
     )
-    monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 3600)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=3600)
 
     with pytest.raises(FormExpiredError):
         service.ensure_form_active(Form(expired_record))
@@ -700,7 +701,7 @@ def test_is_globally_expired_zero_timeout(
 ) -> None:
     service = HumanInputService(unbound_session_factory)
 
-    monkeypatch.setattr(human_input_service_module.dify_config, "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS", 0)
+    apply_config_overrides(monkeypatch, HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS=0)
     assert service._is_globally_expired(Form(sample_form_record)) is False
 
 

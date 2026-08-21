@@ -103,7 +103,10 @@ def _persist_agent_app(session: Session, *, app_name: str = "Old", agent_name: s
 
 
 class TestCreateAppTransactionBoundary:
-    def test_commits_database_state_before_external_side_effects(self, sqlite_session: Session) -> None:
+    def test_commits_database_state_before_external_side_effects(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
         phase_events: list[str] = []
         event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
@@ -121,7 +124,6 @@ class TestCreateAppTransactionBoundary:
                 "services.app_service.FeatureService.get_system_features",
                 return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             ),
-            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 account.current_tenant_id,
@@ -163,7 +165,10 @@ class TestCreateAppTransactionBoundary:
         assert sqlite_session.scalars(select(AppModelConfig)).all() == []
         assert sqlite_session.get(Agent, existing_agent.id) is existing_agent
 
-    def test_falls_back_when_default_model_schema_is_unavailable(self, sqlite_session: Session) -> None:
+    def test_falls_back_when_default_model_schema_is_unavailable(
+        self, sqlite_session: Session, config_overrides: Callable[..., None]
+    ) -> None:
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
@@ -184,7 +189,6 @@ class TestCreateAppTransactionBoundary:
                 "services.app_service.FeatureService.get_system_features",
                 return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
             ),
-            patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
             app = AppService().create_app(
                 account.current_tenant_id,
