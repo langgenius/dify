@@ -63,7 +63,6 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
             ("controllers.console.wraps.is_admin_or_owner_required", _noop),
             ("controllers.console.wraps.enterprise_license_required", _noop),
         ]
-        monkeypatch.setenv("DIFY_SETUP_READY", "true")
         with ExitStack() as stack:
             for target, value in patch_targets:
                 stack.enter_context(patch(target, value))

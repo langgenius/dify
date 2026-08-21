@@ -495,7 +495,6 @@ class TestAgentAppConfigLayer:
             "execution_context": "execution_context",
             "runtime": "runtime",
         }
-        assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
     def test_config_layer_for_build_draft_marks_config_writable(self):
         builder = AgentAppRuntimeRequestBuilder(

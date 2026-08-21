@@ -587,17 +587,20 @@ class TestDatasetDocumentSegmentBatchImportApi:
             used=False,
         )
         user = MagicMock(id="u1")
+        dataset = MagicMock(id="ds-1", tenant_id="tenant-1")
         session = MagicMock()
         session.scalar.return_value = upload_file
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=MagicMock()
-            ),
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ) as get_dataset_for_tenant,
             patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=MagicMock()
-            ),
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=MagicMock(),
+            ) as get_document_by_ref,
             patch("controllers.console.datasets.datasets_segments.redis_client.setnx", return_value=True),
             patch(
                 "controllers.console.datasets.datasets_segments.batch_create_segment_to_index_task.delay",
@@ -609,6 +612,11 @@ class TestDatasetDocumentSegmentBatchImportApi:
             )
         assert status == 200
         assert response["job_status"] == "waiting"
+        get_dataset_for_tenant.assert_called_once_with("ds-1", "tenant-1", session=session)
+        document_ref = get_document_by_ref.call_args.args[0]
+        assert document_ref.dataset.tenant_id == "tenant-1"
+        assert document_ref.dataset.dataset_id == "ds-1"
+        assert document_ref.document_id == "doc-1"
 
     def test_post_dataset_not_found(self, app: Flask):
         api = DatasetDocumentSegmentBatchImportApi()
@@ -620,7 +628,10 @@ class TestDatasetDocumentSegmentBatchImportApi:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=None),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=None,
+            ),
         ):
             with pytest.raises(NotFound):
                 method(
@@ -644,9 +655,13 @@ class TestDatasetDocumentSegmentBatchImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=MagicMock(),
             ),
-            patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=None),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=None,
+            ),
         ):
             with pytest.raises(NotFound):
                 method(
@@ -670,10 +685,12 @@ class TestDatasetDocumentSegmentBatchImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=MagicMock(),
             ),
         ):
             with pytest.raises(NotFound):
@@ -694,10 +711,12 @@ class TestDatasetDocumentSegmentBatchImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=MagicMock(),
             ),
         ):
             with pytest.raises(ValueError):
@@ -718,10 +737,12 @@ class TestDatasetDocumentSegmentBatchImportApi:
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
             patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=MagicMock(),
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=MagicMock()
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=MagicMock(),
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.redis_client.setnx", side_effect=Exception("redis down")
@@ -1155,8 +1176,14 @@ class TestSegmentOperationCases:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=dataset),
-            patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=None),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=None,
+            ),
         ):
             with pytest.raises(NotFound):
                 method(
@@ -1183,8 +1210,14 @@ class TestSegmentOperationCases:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=dataset),
-            patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=document,
+            ),
         ):
             with pytest.raises(NotFound):
                 method(
@@ -1217,11 +1250,13 @@ class TestSegmentOperationCases:
         with (
             app.test_request_context("/", json=payload),
             patch.object(type(console_ns), "payload", payload),
-            patch("controllers.console.datasets.datasets_segments.DatasetService.get_dataset", return_value=dataset),
-            patch("controllers.console.datasets.datasets_segments.DocumentService.get_document", return_value=document),
             patch(
-                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
-                return_value=None,
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset_for_tenant",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetRefService.get_document_by_ref",
+                return_value=document,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.batch_create_segment_to_index_task.delay",

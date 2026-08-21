@@ -152,6 +152,25 @@ func TestHealthzHandler(t *testing.T) {
 	}
 }
 
+func TestRunJobRejectsInvalidModeBeforeCallingService(t *testing.T) {
+	handler := handleRunJob(nil)
+	req := httptest.NewRequest("POST", "/v1/jobs/run", strings.NewReader(`{"script":"true","mode":"stdout"}`))
+	w := httptest.NewRecorder()
+
+	handler(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d", w.Code)
+	}
+	var result ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Error.Code != "validation_error" {
+		t.Errorf("expected validation_error, got %q", result.Error.Code)
+	}
+}
+
 func TestServerErrorFormat(t *testing.T) {
 	err := NewServerError(422, "validation_error", "bad input")
 	expected := "[422] validation_error: bad input"

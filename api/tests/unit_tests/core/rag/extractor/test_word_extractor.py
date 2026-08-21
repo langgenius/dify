@@ -253,10 +253,10 @@ def test_extract_images_from_docx_uses_internal_files_url():
         dify_config.INTERNAL_FILES_URL = original_internal_files_url
 
 
-def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch):
+def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
     # Mock db and storage to avoid issues during image extraction (even if no images are present)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
-    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
+    db_stub = SimpleNamespace(session=unbound_session)
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
     monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
@@ -298,10 +298,10 @@ def test_extract_hyperlinks(monkeypatch: pytest.MonkeyPatch):
             os.remove(tmp_path)
 
 
-def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch):
+def test_extract_legacy_hyperlinks(monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
     # Mock db and storage
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda k, d: None))
-    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda o: None, commit=lambda: None))
+    db_stub = SimpleNamespace(session=unbound_session)
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
     monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
@@ -442,7 +442,7 @@ def test_close_closes_awaitable_close_result():
     extractor.temp_file.close.assert_called_once()
 
 
-def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch):
+def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     class FakeTargetRef:
         def __contains__(self, item):
             return item == "image"
@@ -473,7 +473,7 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
         return SimpleNamespace(status_code=200, headers={"Content-Type": "application/unknown"}, content=b"x")
 
     monkeypatch.setattr(we, "remote_fetcher", SimpleNamespace(make_request=fake_make_request))
-    db_stub = SimpleNamespace(session=SimpleNamespace(add=lambda obj: None, commit=MagicMock()))
+    db_stub = SimpleNamespace(session=sqlite_session)
     monkeypatch.setattr(we, "db", db_stub)
     monkeypatch.setattr(we, "storage", SimpleNamespace(save=lambda key, data: None))
     monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
@@ -482,11 +482,13 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     extractor.tenant_id = "tenant"
     extractor.user_id = "user"
     extractor._session = None
+    transaction_events: list[str] = []
+    event.listen(sqlite_session, "after_commit", lambda _session: transaction_events.append("commit"))
 
     result = extractor._extract_images_from_docx(doc)
 
     assert result == {}
-    db_stub.session.commit.assert_called_once()
+    assert transaction_events == ["commit"]
 
 
 def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):

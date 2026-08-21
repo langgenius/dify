@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "de ex. Asistent de cercetare",
   "roster.createSuccess": "Agent creat.",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Acest Agent va fi eliminat din lista Agent.",
+  "roster.deleteDialog.description": "Această acțiune șterge definitiv {{name}}. Aplicația web și accesul la API ale Agentului, precum și workflow-urile care îl folosesc, vor înceta imediat să funcționeze.",
   "roster.deleteDialog.title": "Ștergeți {{name}}?",
   "roster.deleteFailed": "Ștergerea agentului a eșuat.",
   "roster.deleteSuccess": "Agent șters.",

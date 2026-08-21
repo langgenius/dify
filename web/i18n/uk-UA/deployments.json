@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Більше дій",
   "deployTab.redeploy": "Перерозгорнути",
   "deployTab.undeploy": "Скасувати розгортання",
-  "deployTab.undeployConfirmWarning": "Після підтвердження це середовище перейде у стан скасування розгортання, а дії буде тимчасово вимкнено.",
   "health.ENVIRONMENT_STATUS_FAILED": "Недоступно",
   "list.emptyTitle": "Поки що немає розгортань",
   "overview.chip.latest": "останній",

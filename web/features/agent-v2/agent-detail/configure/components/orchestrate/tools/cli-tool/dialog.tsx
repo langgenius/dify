@@ -13,11 +13,13 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { EnvVariablesTable } from '../../advanced/env'
 
 type CliToolFormValues = {
@@ -52,6 +54,7 @@ export function CliToolDialog({
 }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const docLink = useDocLink()
   const [installCommand, setInstallCommand] = useState(tool?.installCommand ?? '')
   const [toolName, setToolName] = useState(tool?.name ?? '')
   const [envVariables, setEnvVariables] = useState<EnvVariable[]>(() =>
@@ -187,7 +190,7 @@ export function CliToolDialog({
               <FieldDescription>
                 {t(($) => $['agentDetail.configure.tools.cliDialog.installCommand.description'])}
               </FieldDescription>
-              <FieldControl
+              <Input
                 autoComplete="off"
                 onValueChange={setInstallCommand}
                 placeholder={t(
@@ -200,7 +203,7 @@ export function CliToolDialog({
               <FieldLabel>
                 {t(($) => $['agentDetail.configure.tools.cliDialog.name.label'])}
               </FieldLabel>
-              <FieldControl
+              <Input
                 autoComplete="off"
                 onValueChange={setToolName}
                 placeholder={t(($) => $['agentDetail.configure.tools.cliDialog.name.placeholder'])}
@@ -235,7 +238,7 @@ export function CliToolDialog({
           </div>
           <div className="flex items-center gap-3 py-8">
             <a
-              href="https://docs.dify.ai/"
+              href={docLink()}
               target="_blank"
               rel="noreferrer"
               className="inline-flex min-w-0 flex-1 items-center gap-1 system-xs-regular text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
