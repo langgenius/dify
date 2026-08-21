@@ -1,7 +1,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
@@ -26,6 +26,7 @@ type ScriptProps = {
 }
 
 type TurnstileOptions = {
+  action: string
   callback: (token: string) => void
 }
 
@@ -36,6 +37,7 @@ const turnstileMocks = vi.hoisted(() => ({
   scriptProps: undefined as ScriptProps | undefined,
   siteKey: '',
 }))
+const turnstileWidgets = new Map<string, HTMLElement>()
 
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
@@ -100,6 +102,14 @@ function createQueryClient() {
   return queryClient
 }
 
+function createDeferred<T>() {
+  let resolve: (value: T) => void = () => {}
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 function installTurnstileApi() {
   Object.defineProperty(window, 'turnstile', {
     configurable: true,
@@ -128,6 +138,9 @@ const accountProfile: GetAccountProfileResponse = {
 describe('CheckCode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(emailLoginWithCode).mockReset().mockResolvedValue({ result: 'success' })
+    vi.mocked(sendEMailLoginCode).mockReset()
+    turnstileWidgets.clear()
     navigationMocks.searchParams = new URLSearchParams({
       email: 'user@example.com',
       redirect_url: '/apps',
@@ -142,17 +155,20 @@ describe('CheckCode', () => {
         const verifyButton = document.createElement('button')
         verifyButton.type = 'button'
         verifyButton.dataset.widgetId = widgetId
-        verifyButton.textContent = 'verify-turnstile'
-        verifyButton.addEventListener('click', () => options.callback('fresh-turnstile-token'))
+        verifyButton.textContent = `verify-turnstile-${options.action}`
+        verifyButton.addEventListener('click', () =>
+          options.callback(`${options.action}-token-${turnstileMocks.render.mock.calls.length}`),
+        )
         container.appendChild(verifyButton)
+        turnstileWidgets.set(widgetId, verifyButton)
         return widgetId
       },
     )
     turnstileMocks.remove.mockImplementation((widgetId: string) => {
-      document.querySelector(`[data-widget-id="${widgetId}"]`)?.remove()
+      turnstileWidgets.get(widgetId)?.remove()
+      turnstileWidgets.delete(widgetId)
     })
     installTurnstileApi()
-    vi.mocked(emailLoginWithCode).mockResolvedValue({ result: 'success' })
   })
 
   afterEach(() => {
@@ -191,7 +207,192 @@ describe('CheckCode', () => {
     expect(navigationMocks.back).toHaveBeenCalledOnce()
   })
 
-  it('uses a fresh Turnstile token for each Cloud resend', async () => {
+  it('rejects verification codes that are not exactly six digits', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('login.checkCode.verificationCode'), {
+      target: { value: '1234567' },
+    })
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    expect(emailLoginWithCode).not.toHaveBeenCalled()
+  })
+
+  it('keeps Community verification independent of Turnstile', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    vi.mocked(emailLoginWithCode).mockResolvedValue({
+      code: 'invalid_code',
+      data: '',
+      message: 'Invalid code',
+      result: 'fail',
+    })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+
+    expect(emailLoginWithCode).toHaveBeenCalledWith({
+      code: '123456',
+      email: 'user@example.com',
+      language: expect.any(String),
+      timezone: 'Asia/Singapore',
+      token: 'email-login-token',
+    })
+    expect(turnstileMocks.render).not.toHaveBeenCalled()
+  })
+
+  it('does not resend while verification is in progress', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const verificationRequest = createDeferred<Awaited<ReturnType<typeof emailLoginWithCode>>>()
+    vi.mocked(emailLoginWithCode).mockReturnValue(verificationRequest.promise)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'login.checkCode.verify' }))
+    await waitFor(() => {
+      expect(emailLoginWithCode).toHaveBeenCalledOnce()
+    })
+
+    const resendButton = screen.getByRole('button', { name: 'resend-code' })
+    expect(resendButton).toBeDisabled()
+    resendButton.removeAttribute('disabled')
+    fireEvent.click(resendButton)
+    expect(sendEMailLoginCode).not.toHaveBeenCalled()
+
+    act(() => {
+      verificationRequest.resolve({
+        code: 'invalid_code',
+        data: '',
+        message: 'Invalid code',
+        result: 'fail',
+      })
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
+    })
+  })
+
+  it('does not verify while resend is in progress', async () => {
+    const user = userEvent.setup()
+    const queryClient = createQueryClient()
+    const resendRequest = createDeferred<Awaited<ReturnType<typeof sendEMailLoginCode>>>()
+    vi.mocked(sendEMailLoginCode).mockReturnValue(resendRequest.promise)
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    await user.type(screen.getByLabelText('login.checkCode.verificationCode'), '123456')
+    await user.click(screen.getByRole('button', { name: 'resend-code' }))
+    await waitFor(() => {
+      expect(sendEMailLoginCode).toHaveBeenCalledOnce()
+    })
+
+    const verifyButton = screen.getByRole('button', { name: 'login.checkCode.verify' })
+    expect(verifyButton).toBeDisabled()
+    const form = verifyButton.closest('form')
+    if (!form) throw new Error('Verification form is missing')
+    fireEvent.submit(form)
+    expect(emailLoginWithCode).not.toHaveBeenCalled()
+
+    act(() => {
+      resendRequest.resolve({ data: '', result: 'fail' })
+    })
+    await waitFor(() => {
+      expect(verifyButton).toBeEnabled()
+    })
+  })
+
+  it('requires a fresh verify-action Turnstile token after every Cloud login attempt', async () => {
+    const user = userEvent.setup()
+    turnstileMocks.deploymentEdition = 'CLOUD'
+    turnstileMocks.siteKey = 'cloud-site-key'
+    const queryClient = createQueryClient()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(emailLoginWithCode)
+      .mockRejectedValueOnce(new Error('invalid verification code'))
+      .mockResolvedValueOnce({
+        code: 'invalid_code',
+        data: '',
+        message: 'Invalid code',
+        result: 'fail',
+      })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <CheckCode />
+      </QueryClientProvider>,
+    )
+
+    const codeInput = screen.getByLabelText('login.checkCode.verificationCode')
+    const verifyButton = screen.getByRole('button', { name: 'login.checkCode.verify' })
+    expect(verifyButton).toBeDisabled()
+
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code_verify' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    )
+    expect(verifyButton).toBeEnabled()
+
+    await user.type(codeInput, '123456')
+    await user.click(verifyButton)
+
+    await waitFor(() => {
+      expect(emailLoginWithCode).toHaveBeenCalledWith(
+        expect.objectContaining({
+          turnstile_token: 'signin_code_verify-token-1',
+        }),
+      )
+    })
+    expect(codeInput).toHaveValue('123456')
+    await waitFor(() => {
+      expect(verifyButton).toBeDisabled()
+      expect(turnstileMocks.remove).toHaveBeenCalledWith('widget-1')
+      expect(turnstileMocks.render).toHaveBeenCalledTimes(2)
+    })
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code_verify' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    )
+    await user.click(verifyButton)
+
+    await waitFor(() => {
+      expect(emailLoginWithCode).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          turnstile_token: 'signin_code_verify-token-2',
+        }),
+      )
+    })
+    expect(codeInput).toHaveValue('123456')
+  })
+
+  it('keeps the Cloud resend challenge separate from the verify challenge', async () => {
     const user = userEvent.setup()
     turnstileMocks.deploymentEdition = 'CLOUD'
     turnstileMocks.siteKey = 'cloud-site-key'
@@ -206,26 +407,44 @@ describe('CheckCode', () => {
 
     const resendButton = screen.getByRole('button', { name: 'resend-code' })
     expect(resendButton).toBeEnabled()
-    expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+    act(() => {
+      turnstileMocks.scriptProps?.onReady?.()
+    })
+    await user.click(
+      await screen.findByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    )
+    expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeEnabled()
 
     await user.click(resendButton)
 
     expect(resendButton).toBeDisabled()
-    act(() => {
-      turnstileMocks.scriptProps?.onReady?.()
-    })
-    await user.click(await screen.findByRole('button', { name: 'verify-turnstile' }))
+    expect(screen.getByRole('button', { name: 'login.checkCode.verify' })).toBeDisabled()
+    expect(turnstileMocks.remove).toHaveBeenCalledWith('widget-1')
+    expect(
+      screen.queryByRole('button', { name: 'verify-turnstile-signin_code_verify' }),
+    ).not.toBeInTheDocument()
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code' }),
+    )
+    await user.click(await screen.findByRole('button', { name: 'verify-turnstile-signin_code' }))
 
     await waitFor(() => {
       expect(sendEMailLoginCode).toHaveBeenCalledWith(
         'user@example.com',
         expect.any(String),
-        'fresh-turnstile-token',
+        'signin_code-token-2',
       )
     })
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'verify-turnstile-signin_code' }),
+      ).not.toBeInTheDocument()
     })
+    expect(turnstileMocks.render).toHaveBeenLastCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ action: 'signin_code_verify' }),
+    )
   })
 
   it('keeps Turnstile script-error recovery available during a Cloud resend', async () => {
@@ -265,13 +484,13 @@ describe('CheckCode', () => {
     act(() => {
       turnstileMocks.scriptProps?.onReady?.()
     })
-    await user.click(await screen.findByRole('button', { name: 'verify-turnstile' }))
+    await user.click(await screen.findByRole('button', { name: 'verify-turnstile-signin_code' }))
 
     await waitFor(() => {
       expect(sendEMailLoginCode).toHaveBeenCalledWith(
         'user@example.com',
         expect.any(String),
-        'fresh-turnstile-token',
+        'signin_code-token-1',
       )
     })
   })
@@ -288,7 +507,7 @@ describe('CheckCode', () => {
       </QueryClientProvider>,
     )
 
-    expect(screen.queryByRole('button', { name: 'verify-turnstile' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /verify-turnstile-/ })).not.toBeInTheDocument()
     const resendButton = screen.getByRole('button', { name: 'resend-code' })
     expect(resendButton).toBeEnabled()
     await user.click(resendButton)

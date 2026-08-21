@@ -150,7 +150,7 @@ class TestCompletionEndpoints:
                 CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
                 session,
                 _make_account(),
-                app_model=MagicMock(id=APP_ID),
+                app_model=_make_app(),
             )
 
         assert resp == {"result": {"text": "ok"}}
@@ -179,7 +179,7 @@ class TestCompletionEndpoints:
                 CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
                 session,
                 _make_account(),
-                app_model=MagicMock(id=APP_ID),
+                app_model=_make_app(),
             )
 
     def test_completion_api_provider_not_initialized(
@@ -204,7 +204,7 @@ class TestCompletionEndpoints:
                 CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
                 session,
                 _make_account(),
-                app_model=MagicMock(id=APP_ID),
+                app_model=_make_app(),
             )
 
     def test_completion_api_quota_exceeded(
@@ -229,7 +229,7 @@ class TestCompletionEndpoints:
                 CompletionMessagePayload(inputs={}, model_config={}, query="hi"),
                 session,
                 _make_account(),
-                app_model=MagicMock(id=APP_ID),
+                app_model=_make_app(),
             )
 
 
@@ -345,7 +345,7 @@ class TestOpsTraceEndpoints:
         )
 
         with app.test_request_context("/?tracing_provider=langfuse"):
-            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), MagicMock(id="app-1"))
+            result = method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
 
         assert result == {"has_not_configured": True}
 
@@ -367,7 +367,7 @@ class TestOpsTraceEndpoints:
                 method(
                     api,
                     TraceConfigPayload(tracing_provider="langfuse", tracing_config={"api_key": "k"}),
-                    MagicMock(id="app-1"),
+                    _make_app(),
                 )
 
     def test_trace_app_config_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -382,7 +382,7 @@ class TestOpsTraceEndpoints:
 
         with app.test_request_context("/?tracing_provider=langfuse"):
             with pytest.raises(BadRequest):
-                method(api, TraceProviderQuery(tracing_provider="langfuse"), MagicMock(id="app-1"))
+                method(api, TraceProviderQuery(tracing_provider="langfuse"), _make_app())
 
 
 class TestSiteEndpoints:

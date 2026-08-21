@@ -19,6 +19,12 @@ class CurrentPasswordIncorrectError(BaseHTTPException):
     code = 400
 
 
+class InvalidAccountPasswordRequestError(BaseHTTPException):
+    error_code = "invalid_account_password"
+    description = "The password does not satisfy the account password policy."
+    code = 400
+
+
 class InvalidInvitationCodeError(BaseHTTPException):
     error_code = "invalid_invitation_code"
     description = "Invalid invitation code."

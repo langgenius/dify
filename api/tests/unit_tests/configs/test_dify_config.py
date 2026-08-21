@@ -121,11 +121,19 @@ def test_turnstile_config_is_parsed() -> None:
     config = _make_config(
         TURNSTILE_SECRET_KEY=" test-secret ",
         TURNSTILE_ALLOWED_HOSTNAMES="dify.dev, Login.Example.COM. ",
+        TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED="true",
     )
 
     assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
     assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
     assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
+    assert config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED is True
+
+
+def test_email_code_login_attempt_budget_is_parsed() -> None:
+    config = _make_config(EMAIL_CODE_LOGIN_MAX_ATTEMPTS="7")
+
+    assert config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS == 7
 
 
 def test_plugin_remote_install_port_rejects_host_port_spec() -> None:

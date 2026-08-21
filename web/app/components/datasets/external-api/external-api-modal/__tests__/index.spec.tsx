@@ -1,5 +1,6 @@
 import type { CreateExternalAPIReq } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import mocked service
 import { createExternalAPI } from '@/service/datasets'
@@ -168,6 +169,7 @@ describe('AddExternalAPIModal', () => {
       vi.mocked(createExternalAPI).mockResolvedValue(mockResponse)
       const onSave = vi.fn()
       const onCancel = vi.fn()
+      const user = userEvent.setup()
 
       render(<AddExternalAPIModal {...defaultProps} onSave={onSave} onCancel={onCancel} />)
 
@@ -179,8 +181,7 @@ describe('AddExternalAPIModal', () => {
       fireEvent.change(endpointInput, { target: { value: 'https://test.com' } })
       fireEvent.change(apiKeyInput, { target: { value: 'key12345' } })
 
-      const saveButton = screen.getByText('dataset.externalAPIForm.save').closest('button')!
-      fireEvent.click(saveButton)
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIForm.save' }))
 
       await waitFor(() => {
         expect(createExternalAPI).toHaveBeenCalledWith({

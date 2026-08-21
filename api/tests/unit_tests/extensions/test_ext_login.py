@@ -4,6 +4,7 @@ from unittest import mock
 
 import pytest
 from flask import Flask, Response, request
+from sqlalchemy.orm import Session
 
 from constants import COOKIE_NAME_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
@@ -87,19 +88,22 @@ def test_on_user_logged_in_logs_unsupported_user_type(caplog: pytest.LogCaptureF
     assert "Failed to set logging identity context" in caplog.text
 
 
-def test_admin_api_key_header_takes_precedence_over_console_cookie(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admin_api_key_header_takes_precedence_over_console_cookie(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     app = Flask(__name__)
-    session = mock.Mock(spec=ext_login.Session)
     tenant = ext_login.Tenant(name="Test Tenant")
-    tenant_account_join = ext_login.TenantAccountJoin(
-        tenant_id="tenant-id",
-        account_id="account-id",
-        role=TenantAccountRole.NORMAL,
-    )
+    tenant.id = "workspace-id"
     account = ext_login.Account(name="Test Account", email="test@example.com")
-    session.execute.return_value.one_or_none.return_value = (tenant, tenant_account_join)
-    session.scalar.side_effect = [account, tenant_account_join]
-    session.scalars.return_value.one.return_value = tenant
+    sqlite_session.add_all([tenant, account])
+    sqlite_session.flush()
+    tenant_account_join = ext_login.TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        role=TenantAccountRole.OWNER,
+    )
+    sqlite_session.add(tenant_account_join)
+    sqlite_session.commit()
     monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY_ENABLE", True)
     monkeypatch.setattr(ext_login.dify_config, "ADMIN_API_KEY", "admin-key")
     monkeypatch.setattr(ext_login.dify_config, "CONSOLE_WEB_URL", "http://console.example.com")
@@ -114,7 +118,7 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(monkeypatch: 
             "X-WORKSPACE-ID": "workspace-id",
         },
     ):
-        result = ext_login._load_user_from_request(request, session)
+        result = ext_login._load_user_from_request(request, sqlite_session)
 
     assert result is account
     assert account.current_tenant is tenant

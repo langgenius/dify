@@ -11,7 +11,7 @@ import { getDatasetMap } from '@/env'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import {
   getSystemFeaturesQueryClient,
-  systemFeaturesServerQueryOptions,
+  prefetchSystemFeatures,
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
@@ -31,19 +31,8 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const ensureSystemFeatures = async () => {
-  const queryClient = getSystemFeaturesQueryClient()
-  const queryOptions = systemFeaturesServerQueryOptions()
-  const queryState = queryClient.getQueryState(queryOptions.queryKey)
-
-  if (!queryState || queryState.status === 'pending') await queryClient.prefetchQuery(queryOptions)
-
-  return { queryClient, queryOptions }
-}
-
 export async function generateMetadata(): Promise<Metadata> {
-  const { queryClient, queryOptions } = await ensureSystemFeatures()
-  const systemFeatures = queryClient.getQueryData(queryOptions.queryKey)
+  const systemFeatures = await prefetchSystemFeatures()
   const applicationTitle = getApplicationTitle(systemFeatures?.branding)
 
   return {
@@ -56,12 +45,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
-  const [locale, requestHeaders, { queryClient }] = await Promise.all([
+  const [locale, requestHeaders] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    ensureSystemFeatures(),
+    prefetchSystemFeatures(),
   ])
-  const dehydratedState = dehydrate(queryClient)
+  const dehydratedState = dehydrate(getSystemFeaturesQueryClient())
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const themeProviderProps: Omit<ThemeProviderProps, 'children'> = {
     attribute: 'data-theme',

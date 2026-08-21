@@ -1,9 +1,9 @@
-from types import SimpleNamespace
 from unittest.mock import patch
 
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeSummary
 from graphon.model_runtime.entities.message_entities import UserPromptMessage
+from models.account import Tenant
 
 
 def test_system_model_helpers_forward_user_id():
@@ -36,7 +36,8 @@ def test_system_model_helpers_forward_user_id():
 
 
 def test_invoke_summary_uses_same_user_scope_for_token_helpers():
-    tenant = SimpleNamespace(id="tenant-1")
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-1"
     payload = RequestInvokeSummary(text="short", instruction="keep it concise")
 
     with (

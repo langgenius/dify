@@ -24,7 +24,6 @@ from models import (
     PinnedConversation,
     SavedMessage,
 )
-from models.agent import AgentDriveFile, AgentDriveFileKind
 from models.human_input import HumanInputDelivery, HumanInputFormRecipient
 from models.tools import ToolConversationVariables, ToolFile
 
@@ -49,9 +48,7 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
     """Physically remove a soft-deleted conversation and its owned resources.
 
     The storage object is deleted before its ``ToolFile`` row so a failed attempt
-    retains the durable ``file_key`` needed by the next retry. ToolFiles promoted
-    to Agent Drive are detached from the conversation, and their Drive references
-    take over lifecycle ownership.
+    retains the durable ``file_key`` needed by the next retry.
     """
 
     with session_factory.create_session() as session:
@@ -68,25 +65,7 @@ def _cleanup_conversation_related_data(conversation_id: str) -> bool:
                 .with_for_update()
             )
         )
-        tool_file_ids = [tool_file.id for tool_file in tool_files]
-        drive_files = list(
-            session.scalars(
-                select(AgentDriveFile)
-                .where(
-                    AgentDriveFile.file_kind == AgentDriveFileKind.TOOL_FILE,
-                    AgentDriveFile.file_id.in_(tool_file_ids),
-                )
-                .order_by(AgentDriveFile.id)
-                .with_for_update()
-            )
-        )
-        drive_tool_file_ids = {drive_file.file_id for drive_file in drive_files}
-        for drive_file in drive_files:
-            drive_file.value_owned_by_drive = True
         for tool_file in tool_files:
-            if tool_file.id in drive_tool_file_ids:
-                tool_file.conversation_id = None
-                continue
             _delete_storage_object(tool_file.file_key)
             session.delete(tool_file)
 

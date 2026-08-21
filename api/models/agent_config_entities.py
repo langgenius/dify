@@ -150,33 +150,6 @@ class AgentFileRefConfig(AgentFlexibleConfig):
     transfer_method: str | None = Field(default=None, max_length=64)
     url: str | None = None
     remote_url: str | None = None
-    # Drive key once the file is committed to the agent drive ("files/<name>",
-    # ENG-625). Files without it are plain upload references and stay invisible
-    # to the runtime drive manifest.
-    drive_key: str | None = Field(default=None, max_length=512)
-
-
-class AgentSkillRefConfig(AgentFlexibleConfig):
-    id: str | None = Field(default=None, max_length=255)
-    name: str | None = Field(default=None, max_length=255)
-    description: str | None = None
-    file_id: str | None = Field(default=None, max_length=255)
-    path: str | None = None
-    # Standardization outputs (ENG-594) — previously riding along via
-    # ``extra="allow"``, promoted to the explicit schema because the runtime
-    # drive manifest (ENG-623) keys off them.
-    skill_md_key: str | None = Field(default=None, max_length=512)
-    skill_md_file_id: str | None = Field(default=None, max_length=255)
-    full_archive_key: str | None = Field(default=None, max_length=512)
-    full_archive_file_id: str | None = Field(default=None, max_length=255)
-    # Zip member path listing from standardization (ENG-371): lets infer-tools
-    # show the model strong signals like ``scripts/*.sh`` without unpacking.
-    manifest_files: list[str] | None = None
-
-
-class AgentSoulFilesConfig(BaseModel):
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
 
 
 def validate_config_name(name: str) -> str:
@@ -820,7 +793,6 @@ class AgentSoulConfig(BaseModel):
     config_skills: list[AgentConfigSkillRefConfig] = Field(default_factory=list)
     config_files: list[AgentConfigFileRefConfig] = Field(default_factory=list)
     config_note: str = ""
-    files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None

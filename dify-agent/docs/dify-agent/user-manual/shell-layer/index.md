@@ -28,7 +28,6 @@ RunLayerSpec(
 
 | Config field | Meaning |
 | --- | --- |
-| `agent_stub_drive_ref` | Optional Drive ref used by shell-visible Agent Stub commands. |
 | `cli_tools` | CLI bootstrap declarations with install commands and scoped environment metadata. |
 | `env` | Normal environment variables exported to Shell commands. |
 | `secret_refs` | Names of secret environment variables supplied by the backend environment. |
@@ -258,7 +257,9 @@ The resource part serializes as:
 backend execution namespace. They are not host filesystem paths and are not
 sent in the run request. Shell commands start in `workspace_dir`, while `HOME`
 is forced to `home_dir`; `~` therefore resolves to the current Binding's
-materialized Home.
+materialized Home. The runner also sets `TMPDIR`, `TMP`, and `TEMP` directly to
+`workspace_dir`, making the active Workspace both the default `cwd` and the
+temporary working space.
 
 Workspace content persists with the Workspace until Dify API retires and
 collects it. Releasing a RuntimeLease ends only the current operation. Dify API can later

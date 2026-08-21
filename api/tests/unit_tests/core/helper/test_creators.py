@@ -85,10 +85,11 @@ class TestUploadDSL:
 
 
 class TestGetRedirectUrl:
-    @patch("core.helper.creators.dify_config")
-    def test_without_oauth_client_id(self, mock_config):
-        mock_config.CREATORS_PLATFORM_API_URL = "https://creators.example.com"
-        mock_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID = ""
+    def test_without_oauth_client_id(self, config_overrides):
+        config_overrides(
+            CREATORS_PLATFORM_API_URL="https://creators.example.com",
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="",
+        )
 
         from core.helper.creators import get_redirect_url
 
@@ -98,10 +99,11 @@ class TestGetRedirectUrl:
         assert "oauth_code" not in url
         assert url.startswith("https://creators.example.com")
 
-    @patch("core.helper.creators.dify_config")
-    def test_with_oauth_client_id(self, mock_config):
-        mock_config.CREATORS_PLATFORM_API_URL = "https://creators.example.com"
-        mock_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID = "client-xyz"
+    def test_with_oauth_client_id(self, config_overrides):
+        config_overrides(
+            CREATORS_PLATFORM_API_URL="https://creators.example.com",
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="client-xyz",
+        )
 
         with patch(
             "services.oauth_server.OAuthServerService.sign_oauth_authorization_code",
@@ -115,10 +117,11 @@ class TestGetRedirectUrl:
             assert "dsl_claim_code=claim-abc" in url
             assert "oauth_code=oauth-code-123" in url
 
-    @patch("core.helper.creators.dify_config")
-    def test_strips_trailing_slash(self, mock_config):
-        mock_config.CREATORS_PLATFORM_API_URL = "https://creators.example.com/"
-        mock_config.CREATORS_PLATFORM_OAUTH_CLIENT_ID = ""
+    def test_strips_trailing_slash(self, config_overrides):
+        config_overrides(
+            CREATORS_PLATFORM_API_URL="https://creators.example.com/",
+            CREATORS_PLATFORM_OAUTH_CLIENT_ID="",
+        )
 
         from core.helper.creators import get_redirect_url
 

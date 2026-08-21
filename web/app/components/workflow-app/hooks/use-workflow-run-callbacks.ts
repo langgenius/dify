@@ -1,4 +1,4 @@
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { IOtherOptions } from '@/service/base'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { sseGet } from '@/service/base'
