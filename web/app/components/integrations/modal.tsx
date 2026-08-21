@@ -28,11 +28,7 @@ export default function IntegrationsSettingModal({
   }, [])
 
   return (
-    <MenuDialog
-      title={t(($) => $['settings.integrations'], { ns: 'common' })}
-      closeButtonLabel={t(($) => $['operation.close'], { ns: 'common' })}
-      onClose={onCancel}
-    >
+    <MenuDialog title={t(($) => $['settings.integrations'], { ns: 'common' })} onClose={onCancel}>
       <div className="mx-auto flex h-dvh w-[min(1440px,calc(100vw-48px))] shrink-0 py-6">
         <div className="relative flex min-h-0 w-full shrink-0 overflow-hidden rounded-2xl border border-divider-subtle bg-components-panel-bg shadow-2xl">
           <IntegrationsPage
