@@ -6,6 +6,12 @@ from collections.abc import Iterator
 import pytest
 from flask import Flask
 
+
+@pytest.fixture(autouse=True)
+def _swagger_config(config_overrides) -> None:
+    config_overrides(SWAGGER_UI_ENABLED=True)
+
+
 USER_PROPERTY_SCHEMA = {
     "description": (
         "User identifier, unique within the application. This identifier scopes data access; resources created with "
@@ -154,13 +160,10 @@ def test_uuid_path_format_is_derived_from_route_converter():
     }
 
 
-def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_openapi_json_endpoints_render():
     from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -190,11 +193,8 @@ def test_openapi_json_endpoints_render(monkeypatch: pytest.MonkeyPatch):
     assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
 
 
-def test_service_document_file_routes_document_multipart_form_data(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_document_file_routes_document_multipart_form_data():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -236,11 +236,8 @@ def test_service_document_file_routes_document_multipart_form_data(monkeypatch: 
         assert update_operation["requestBody"]["required"] is False
 
 
-def test_service_openapi_merges_public_api_reference_descriptions(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_merges_public_api_reference_descriptions():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -261,11 +258,8 @@ def test_service_openapi_merges_public_api_reference_descriptions(monkeypatch: p
     assert _parameters_by_name(rename_operation)["c_id"]["description"] == "Conversation ID."
 
 
-def test_service_document_list_documents_query_params_render(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_document_list_documents_query_params_render():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -280,11 +274,8 @@ def test_service_document_list_documents_query_params_render(monkeypatch: pytest
         assert params[name]["in"] == "query"
 
 
-def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_decorator_user_contracts():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -330,11 +321,8 @@ def test_service_openapi_documents_decorator_user_contracts(monkeypatch: pytest.
     assert events_params["user"]["required"] is True
 
 
-def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_app_multipart_contracts():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -365,11 +353,8 @@ def test_service_openapi_documents_app_multipart_contracts(monkeypatch: pytest.M
     assert pipeline_schema["required"] == ["file"]
 
 
-def test_service_openapi_documents_non_json_response_media_types(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_non_json_response_media_types():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -409,11 +394,8 @@ def test_service_openapi_documents_non_json_response_media_types(monkeypatch: py
     }
 
 
-def test_service_openapi_documents_uuid_params_and_deprecated_routes(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_uuid_params_and_deprecated_routes():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -441,11 +423,8 @@ def test_service_openapi_documents_uuid_params_and_deprecated_routes(monkeypatch
     assert paths["/datasets/{dataset_id}/documents/{document_id}/update_by_text"]["post"]["deprecated"] is True
 
 
-def test_service_openapi_documents_path_action_enums(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_path_action_enums():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -465,11 +444,8 @@ def test_service_openapi_documents_path_action_enums(monkeypatch: pytest.MonkeyP
     assert metadata_params["action"]["schema"]["enum"] == ["enable", "disable"]
 
 
-def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_conditional_payload_schemas():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -497,11 +473,8 @@ def test_service_openapi_documents_conditional_payload_schemas(monkeypatch: pyte
     assert without_text_branch["properties"]["text"]["type"] == "null"
 
 
-def test_service_openapi_does_not_encode_docs_coverage_boundaries(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_does_not_encode_docs_coverage_boundaries():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -525,11 +498,8 @@ def test_service_openapi_does_not_encode_docs_coverage_boundaries(monkeypatch: p
     assert paths["/datasets/{dataset_id}/documents/{document_id}/update-by-file"]["post"]["deprecated"] is True
 
 
-def test_service_openapi_documents_auth_and_compatibility_payloads(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_service_openapi_documents_auth_and_compatibility_payloads():
     from controllers.service_api import bp as service_api_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -556,11 +526,8 @@ def test_service_openapi_documents_auth_and_compatibility_payloads(monkeypatch: 
     assert tag_ids_schema["required"] == ["tag_ids", "target_id"]
 
 
-def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_console_account_avatar_query_param_renders_as_query():
     from controllers.console import bp as console_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -576,11 +543,8 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
-def test_console_account_profile_patch_and_deprecated_aliases(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_console_account_profile_patch_and_deprecated_aliases():
     from controllers.console import bp as console_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -610,11 +574,8 @@ def test_console_account_profile_patch_and_deprecated_aliases(monkeypatch: pytes
     assert paths["/account/avatar"]["get"].get("deprecated") is not True
 
 
-def test_console_agent_debug_conversation_refresh_has_no_body(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_console_agent_debug_conversation_refresh_has_no_body():
     from controllers.console import bp as console_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True
@@ -627,11 +588,8 @@ def test_console_agent_debug_conversation_refresh_has_no_body(monkeypatch: pytes
     assert "AgentDebugConversationRefreshPayload" not in payload["components"]["schemas"]
 
 
-def test_console_member_invite_documents_bad_request_response(monkeypatch: pytest.MonkeyPatch):
-    from configs import dify_config
+def test_console_member_invite_documents_bad_request_response():
     from controllers.console import bp as console_bp
-
-    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
 
     app = Flask(__name__)
     app.config["TESTING"] = True

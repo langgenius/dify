@@ -108,9 +108,10 @@ Installed CLI:
 
 Filesystem spaces:
 
-- `$HOME` is the system space.
-- The current working directory (`cwd`) is the temporary working space. Relative paths resolve from here.
-- Store temporary files under `<cwd>/.tmp` (normally `./.tmp`). Do not use `/tmp`.
+- `$HOME` is the system space for reusable tools and state.
+- The current working directory (`cwd`) is the active Workspace and temporary working space.
+- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.
+- Do not use `/tmp`.
 
 shell_run script rules:
 
@@ -460,6 +461,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             ),
             timeout=timeout,
             max_output_bytes=max_output_bytes,
+            mode="stdio",
         )
 
     async def run_remote_script(
@@ -488,6 +490,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             env=self._build_shell_command_env(include_agent_stub_env=False),
             timeout=DEFAULT_TIMEOUT_SECONDS,
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
+            mode="stdio",
         )
 
     def _require_resource(self) -> RuntimeLease:
