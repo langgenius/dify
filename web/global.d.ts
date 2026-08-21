@@ -19,5 +19,9 @@ declare global {
   interface Window {
     gtag?: Gtag
     dataLayer?: unknown[]
+    MonacoEnvironment?: {
+      getWorkerUrl?: (workerId: string, label: string) => string
+      getWorker?: (workerId: string, label: string) => Worker
+    }
   }
 }
