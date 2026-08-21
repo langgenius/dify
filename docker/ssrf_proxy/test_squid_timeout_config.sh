@@ -2,7 +2,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENTRYPOINT="$ROOT_DIR/docker-entrypoint.sh"
 TEMPLATE="$ROOT_DIR/squid-common.conf.template"
 
 expand_env() {
