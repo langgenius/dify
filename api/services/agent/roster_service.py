@@ -44,7 +44,7 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentW
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
-from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
@@ -1107,7 +1107,7 @@ class AgentRosterService:
             account_id=account.id,
         )
         self._session.commit()
-        if FeatureService.get_system_features().webapp_auth.enabled:
+        if SystemFeatureService.is_webapp_auth_enabled():
             try:
                 original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app.id)
                 access_mode = original_settings.access_mode

@@ -529,7 +529,7 @@ class TestAccountGeneration:
         ],
     )
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
-    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.SystemFeatureService")
     @patch("controllers.console.auth.oauth.RegisterService")
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -548,7 +548,7 @@ class TestAccountGeneration:
         should_create,
     ):
         mock_get_account.return_value = mock_account if existing_account else None
-        mock_feature_service.get_system_features.return_value.is_allow_register = allow_register
+        mock_feature_service.is_registration_allowed.return_value = allow_register
         mock_register_service.register.return_value = mock_account
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
@@ -585,7 +585,7 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     @patch("controllers.console.auth.oauth.BillingService.get_email_freeze_type")
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
-    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.SystemFeatureService")
     def test_should_reject_registration_for_frozen_email(
         self,
         mock_feature_service,
@@ -596,7 +596,7 @@ class TestAccountGeneration:
         app: Flask,
         user_info: OAuthUserInfo,
     ):
-        mock_feature_service.get_system_features.return_value.is_allow_register = False
+        mock_feature_service.is_registration_allowed.return_value = False
         mock_get_freeze_type.return_value = freeze_type
 
         with app.test_request_context("/"):
@@ -606,7 +606,7 @@ class TestAccountGeneration:
         mock_get_freeze_type.assert_called_once_with("test@example.com")
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
-    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.SystemFeatureService")
     @patch("controllers.console.auth.oauth.RegisterService")
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -620,7 +620,7 @@ class TestAccountGeneration:
         app: Flask,
     ):
         user_info = OAuthUserInfo(id="123", name="Test User", email="Upper@Example.com")
-        mock_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_feature_service.is_registration_allowed.return_value = True
         mock_register_service.register.return_value = MagicMock()
 
         with app.test_request_context(headers={"Accept-Language": "en-US"}):
@@ -639,7 +639,7 @@ class TestAccountGeneration:
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
-    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.SystemFeatureService")
     @patch("controllers.console.auth.oauth.RegisterService")
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -653,7 +653,7 @@ class TestAccountGeneration:
         app: Flask,
         user_info: OAuthUserInfo,
     ):
-        mock_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_feature_service.is_registration_allowed.return_value = True
         mock_register_service.register.return_value = MagicMock()
 
         with app.test_request_context(headers={"Accept-Language": "zh-Hans,zh;q=0.9"}):
@@ -672,7 +672,7 @@ class TestAccountGeneration:
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
-    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.SystemFeatureService")
     @patch("controllers.console.auth.oauth.RegisterService")
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
@@ -686,7 +686,7 @@ class TestAccountGeneration:
         app: Flask,
         user_info: OAuthUserInfo,
     ):
-        mock_feature_service.get_system_features.return_value.is_allow_register = True
+        mock_feature_service.is_registration_allowed.return_value = True
         mock_register_service.register.return_value = MagicMock()
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
@@ -706,7 +706,7 @@ class TestAccountGeneration:
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
     @patch("controllers.console.auth.oauth.TenantService")
-    @patch("controllers.console.auth.oauth.FeatureService")
+    @patch("controllers.console.auth.oauth.SystemFeatureService")
     @patch("controllers.console.auth.oauth.AccountService")
     def test_should_create_workspace_for_account_without_tenant(
         self,

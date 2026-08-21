@@ -118,8 +118,8 @@ class TestCreateAppTransactionBoundary:
                 side_effect=lambda *_args: phase_events.append("external"),
             ),
             patch(
-                "services.app_service.FeatureService.get_system_features",
-                return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
             ),
             patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
@@ -181,8 +181,8 @@ class TestCreateAppTransactionBoundary:
             patch("services.app_service.app_was_created.send"),
             patch("services.app_service.enterprise_rbac_service.try_sync_creator_access_policy_member_bindings"),
             patch(
-                "services.app_service.FeatureService.get_system_features",
-                return_value=SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+                "services.app_service.SystemFeatureService.is_webapp_auth_enabled",
+                return_value=False,
             ),
             patch("services.app_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
         ):
@@ -675,7 +675,7 @@ class TestAgentAppType:
             patch("services.app_service.app_was_deleted.send"),
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
-            patch("services.app_service.FeatureService"),
+            patch("services.app_service.SystemFeatureService"),
             patch(
                 "services.app_service.remove_app_and_related_data_task.delay",
                 side_effect=lambda **_kwargs: events.append("enqueue-app-cleanup"),
@@ -826,7 +826,7 @@ class TestAgentAppType:
         with (
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_deleted.send"),
-            patch("services.app_service.FeatureService"),
+            patch("services.app_service.SystemFeatureService"),
             patch("services.app_service.BillingService"),
             patch("services.app_service.EnterpriseService"),
             patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=[]),

@@ -1,17 +1,19 @@
+"""Tests for SystemFeatureService hosted trial models."""
+
 import pytest
 
 from enums import HostedTrialProvider
-from services import feature_service as feature_service_module
-from services.feature_service import FeatureService
+from services import system_feature_service as feature_service_module
+from services.system_feature_service import SystemFeatureService
 
 
-def test_get_system_features_excludes_trial_models():
-    result = FeatureService.get_system_features().model_dump()
+def test_get_system_features_excludes_trial_models() -> None:
+    result = SystemFeatureService.get_public_system_features().model_dump()
 
     assert "trial_models" not in result
 
 
-def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypatch: pytest.MonkeyPatch):
+def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypatch: pytest.MonkeyPatch) -> None:
     for provider in HostedTrialProvider:
         monkeypatch.setattr(
             feature_service_module.dify_config,
@@ -33,6 +35,6 @@ def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypat
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_GEMINI_PAID_ENABLED", False, raising=False)
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_GEMINI_TRIAL_ENABLED", True, raising=False)
 
-    result = FeatureService.get_trial_models()
+    result = SystemFeatureService.get_trial_models()
 
     assert result == [HostedTrialProvider.OPENAI.value]

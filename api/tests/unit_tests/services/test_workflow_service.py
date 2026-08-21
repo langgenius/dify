@@ -1439,8 +1439,8 @@ class TestWorkflowService:
 
         with (
             patch(
-                "services.feature_service.FeatureService.get_system_features",
-                return_value=SimpleNamespace(plugin_manager=SimpleNamespace(enabled=False)),
+                "services.system_feature_service.SystemFeatureService.is_plugin_manager_enabled",
+                return_value=False,
             ),
             pytest.raises(ValueError, match=error),
         ):

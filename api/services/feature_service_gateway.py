@@ -1,4 +1,4 @@
-"""Feature-query gateway backed by the existing FeatureService."""
+"""Feature-query gateway combining workspace and deployment feature providers."""
 
 from typing import override
 
@@ -10,10 +10,11 @@ from services.entities.feature_entities import (
 )
 from services.feature_query_service import FeatureQueryGateway
 from services.feature_service import FeatureService
+from services.system_feature_service import SystemFeatureService
 
 
 class FeatureServiceGateway(FeatureQueryGateway):
-    """Read dynamic feature resources through FeatureService."""
+    """Read workspace features from FeatureService and deployment features from SystemFeatureService."""
 
     @override
     def get_workspace_features(self, workspace_id: str) -> FeatureModel:
@@ -25,8 +26,8 @@ class FeatureServiceGateway(FeatureQueryGateway):
 
     @override
     def get_public_system_features(self) -> SystemFeatureModel:
-        return FeatureService.get_system_features()
+        return SystemFeatureService.get_public_system_features()
 
     @override
     def get_license(self) -> LicenseModel:
-        return FeatureService.get_license()
+        return SystemFeatureService.get_license()

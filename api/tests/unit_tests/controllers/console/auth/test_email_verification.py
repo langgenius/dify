@@ -142,7 +142,7 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_registration_allowed")
     @patch("controllers.console.auth.login.AccountService.send_email_code_login_email")
     def test_send_email_code_new_user_registration_allowed(
         self, mock_send_email, mock_get_features, mock_get_user, mock_is_ip_limit, mock_db, app
@@ -157,7 +157,7 @@ class TestEmailCodeLoginSendEmailApi:
         # Arrange
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = None
-        mock_get_features.return_value.is_allow_register = True
+        mock_get_features.return_value = True
         mock_send_email.return_value = "email_token_123"
 
         # Act
@@ -174,7 +174,7 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    @patch("controllers.console.auth.login.FeatureService.get_system_features")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_registration_allowed")
     def test_send_email_code_new_user_registration_disabled(
         self, mock_get_features, mock_get_user, mock_is_ip_limit, mock_db, app
     ):
@@ -188,7 +188,7 @@ class TestEmailCodeLoginSendEmailApi:
         # Arrange
         mock_is_ip_limit.return_value = False
         mock_get_user.return_value = None
-        mock_get_features.return_value.is_allow_register = False
+        mock_get_features.return_value = False
 
         # Act & Assert
         with app.test_request_context("/email-code-login", method="POST", json={"email": "newuser@example.com"}):
@@ -746,7 +746,7 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_email_code_login_creates_workspace_for_user_without_tenant(
         self,
         mock_is_workspace_creation_allowed,
@@ -786,8 +786,8 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.get_license")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.get_license")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_email_code_login_workspace_limit_exceeded(
         self,
         mock_is_workspace_creation_allowed,
@@ -828,7 +828,7 @@ class TestEmailCodeLoginApi:
     @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
-    @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
+    @patch("controllers.console.auth.login.SystemFeatureService.is_workspace_creation_allowed")
     def test_email_code_login_workspace_creation_not_allowed(
         self,
         mock_is_workspace_creation_allowed,

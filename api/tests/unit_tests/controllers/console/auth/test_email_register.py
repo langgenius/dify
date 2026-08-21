@@ -51,7 +51,10 @@ class TestEmailRegisterSendEmailApi:
         with (
             patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_registration_allowed",
+                return_value=feature_flags.is_allow_register,
+            ),
         ):
             with app.test_request_context(
                 "/email-register/send-email",
@@ -95,7 +98,10 @@ class TestEmailRegisterSendEmailApi:
         with (
             patch("controllers.console.auth.email_register.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_registration_allowed",
+                return_value=feature_flags.is_allow_register,
+            ),
         ):
             with app.test_request_context(
                 "/email-register/send-email",
@@ -138,7 +144,10 @@ class TestEmailRegisterCheckApi:
         )
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_registration_allowed",
+                return_value=feature_flags.is_allow_register,
+            ),
         ):
             with app.test_request_context(
                 "/email-register/validity",
@@ -212,7 +221,10 @@ class TestEmailRegisterResetApi:
         )
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_registration_allowed",
+                return_value=feature_flags.is_allow_register,
+            ),
         ):
             with app.test_request_context(
                 "/email-register",
@@ -265,7 +277,10 @@ class TestEmailRegisterResetApi:
         )
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_registration_allowed",
+                return_value=feature_flags.is_allow_register,
+            ),
         ):
             with app.test_request_context(
                 "/email-register",
@@ -323,7 +338,10 @@ class TestEmailRegisterResetApi:
         )
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
-            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
+            patch(
+                "controllers.console.wraps.SystemFeatureService.is_registration_allowed",
+                return_value=feature_flags.is_allow_register,
+            ),
         ):
             with app.test_request_context(
                 "/email-register",

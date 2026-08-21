@@ -48,7 +48,7 @@ class FeatureQueryService:
     def get_app_dsl_version(self) -> str:
         return self._app_dsl_version
 
-    def get_system_features(self) -> SystemFeatureModel:
+    def get_public_system_features(self) -> SystemFeatureModel:
         return self._features.get_public_system_features()
 
     def get_license(self) -> LicenseModel:
