@@ -4,11 +4,13 @@ from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import MagicMock
+from uuid import UUID
 
 import pytest
 from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from controllers.console.app import message as message_module
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -16,7 +18,9 @@ from models.enums import ConversationFromSource
 from models.model import AppMode, Conversation, Message
 
 
-def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1") -> Message:
+def _persist_conversation(
+    session: Session, *, app_id: str = "app-1", conversation_id: str = "conversation-1"
+) -> Conversation:
     conversation = Conversation(
         app_id=app_id,
         app_model_config_id=None,
@@ -35,7 +39,16 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         from_end_user_id=None,
         from_account_id="account-1",
     )
-    conversation.id = "conversation-1"
+    conversation.id = conversation_id
+    session.add(conversation)
+    session.flush()
+    return conversation
+
+
+def _persist_message(
+    session: Session, *, message_id: str, app_id: str = "app-1", conversation_id: str = "conversation-1"
+) -> Message:
+    conversation = _persist_conversation(session, app_id=app_id, conversation_id=conversation_id)
     message = Message(
         app_id=app_id,
         conversation_id=conversation.id,
@@ -59,7 +72,7 @@ def _persist_message(session: Session, *, message_id: str, app_id: str = "app-1"
         app_mode=AppMode.CHAT,
     )
     message.id = message_id
-    session.add_all([conversation, message])
+    session.add(message)
     session.flush()
     return message
 
@@ -141,6 +154,43 @@ def test_get_message_detail_uses_injected_session(monkeypatch: pytest.MonkeyPatc
 
     assert result is response_source
     response_source_factory.assert_called_once_with(message, session=session)
+
+
+def test_message_detail_rejects_message_from_soft_deleted_conversation(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    message_id = "550e8400-e29b-41d4-a716-446655440000"
+    message = _persist_message(sqlite_session, message_id=message_id)
+    conversation = sqlite_session.get(Conversation, message.conversation_id)
+    assert conversation is not None
+    conversation.is_deleted = True
+    sqlite_session.flush()
+    monkeypatch.setattr(message_module, "attach_message_extra_contents", lambda _messages: None)
+    monkeypatch.setattr(message_module, "dump_response", lambda _model, value: value)
+
+    api = message_module.MessageApi()
+    method = unwrap(api.get)
+    with app.test_request_context():
+        with pytest.raises(NotFound):
+            method(api, sqlite_session, SimpleNamespace(id="app-1"), UUID(message_id))
+
+
+def test_chat_message_list_rejects_soft_deleted_conversation(app: Flask, sqlite_session: Session) -> None:
+    conversation_id = "550e8400-e29b-41d4-a716-446655440000"
+    conversation = _persist_conversation(sqlite_session, conversation_id=conversation_id)
+    conversation.is_deleted = True
+    sqlite_session.flush()
+
+    api = message_module.ChatMessageListApi()
+    method = unwrap(api.get)
+    with app.test_request_context(query_string={"conversation_id": conversation_id}):
+        with pytest.raises(NotFound):
+            method(
+                api,
+                sqlite_session,
+                SimpleNamespace(id="account-1"),
+                SimpleNamespace(id="app-1", mode=AppMode.CHAT),
+            )
 
 
 def test_message_response_source_uses_caller_session_for_nested_fields(unbound_session: Session) -> None:

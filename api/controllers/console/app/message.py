@@ -402,7 +402,11 @@ def _list_chat_messages(*, session: Session, app_model: App, current_user: Accou
     else:
         conversation = session.scalar(
             select(Conversation)
-            .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
+            .where(
+                Conversation.id == args.conversation_id,
+                Conversation.app_id == app_model.id,
+                Conversation.is_deleted.is_(False),
+            )
             .limit(1)
         )
 
@@ -540,7 +544,14 @@ def _get_message_detail(*, session: Session, app_model: App, message_id: UUID):
     message_id_str = str(message_id)
 
     message = session.scalar(
-        select(Message).where(Message.id == message_id_str, Message.app_id == app_model.id).limit(1)
+        select(Message)
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .where(
+            Message.id == message_id_str,
+            Message.app_id == app_model.id,
+            Conversation.is_deleted.is_(False),
+        )
+        .limit(1)
     )
 
     if not message:

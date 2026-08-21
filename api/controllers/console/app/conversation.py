@@ -395,7 +395,13 @@ class ChatConversationDetailApi(Resource):
 
 def _get_conversation(session: Session, current_user: Account, app_model, conversation_id):
     conversation = session.scalar(
-        sa.select(Conversation).where(Conversation.id == conversation_id, Conversation.app_id == app_model.id).limit(1)
+        sa.select(Conversation)
+        .where(
+            Conversation.id == conversation_id,
+            Conversation.app_id == app_model.id,
+            Conversation.is_deleted.is_(False),
+        )
+        .limit(1)
     )
 
     if not conversation:
