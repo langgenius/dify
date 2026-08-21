@@ -128,6 +128,8 @@ class TestGenerateSuccess:
                 "upload_file_id": "upload-file-1",
             }
         ]
+        file_obj = mocker.MagicMock()
+        build_from_mappings = mocker.patch(f"{MODULE}.file_factory.build_from_mappings", return_value=[file_obj])
 
         result = generator.generate(
             app_model=app_model,
@@ -152,6 +154,10 @@ class TestGenerateSuccess:
         )
         session.get.assert_called_once_with(AppModelConfig, "config-1")
         assert generate_entity.call_args.kwargs["prompt_file_mappings"] == file_mappings
+        # #40874: uploads must reach the entity as File objects so the chat
+        # pipeline persists MessageFile records for the conversation history.
+        assert build_from_mappings.call_args.kwargs["mappings"] == file_mappings
+        assert generate_entity.call_args.kwargs["files"] == [file_obj]
         assert "agent_runtime_exit_intent" not in generate_entity.call_args.kwargs
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
