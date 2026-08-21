@@ -332,11 +332,20 @@ class TestBillingServiceSendRequest:
 class TestBillingServicePortalRequest:
     def test_sends_get_request(self) -> None:
         params = {"tenant_id": "tenant-1"}
-        with patch.object(BillingService, "_send_request", return_value={"url": "https://example.com"}) as send_request:
+        with patch.object(
+            BillingService,
+            "_send_request",
+            return_value={"url": "https://example.com", "ignored": True},
+        ) as send_request:
             result = BillingService._send_billing_portal_request("/test", params=params)
 
         assert result == {"url": "https://example.com"}
         send_request.assert_called_once_with("GET", "/test", params=params)
+
+    def test_invalid_response_shape_is_invalid_upstream_response(self) -> None:
+        with patch.object(BillingService, "_send_request", return_value={}):
+            with pytest.raises(BillingUpstreamInvalidResponseError):
+                BillingService._send_billing_portal_request("/test", params={})
 
     @pytest.mark.parametrize(
         "status_code",

@@ -20,6 +20,7 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.model import DifySetup
 from services.errors.billing import (
     BillingAccessDeniedError,
+    BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
 
@@ -50,7 +51,7 @@ class TestBillingPortal:
             ) as ensure_tenant_owner_or_admin,
             patch(
                 "controllers.console.billing.billing.BillingService.get_subscription",
-                return_value={"url": "https://billing.example.com/checkout", "ignored": True},
+                return_value={"url": "https://billing.example.com/checkout"},
             ) as get_subscription,
         ):
             result = method(resource, query, "tenant-1", account)
@@ -75,7 +76,7 @@ class TestBillingPortal:
             ) as ensure_tenant_owner_or_admin,
             patch(
                 "controllers.console.billing.billing.BillingService.get_invoices",
-                return_value={"url": "https://billing.example.com/portal", "ignored": True},
+                return_value={"url": "https://billing.example.com/portal"},
             ) as get_invoices,
         ):
             result = method(resource, "tenant-1", account)
@@ -128,7 +129,7 @@ class TestBillingPortal:
             "status": 503,
         }
 
-    def test_get_subscription_rejects_malformed_response(self, app: Flask, account: Account) -> None:
+    def test_get_subscription_translates_invalid_upstream_response(self, app: Flask, account: Account) -> None:
         resource = Subscription()
         method = unwrap(resource.get)
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
@@ -136,7 +137,10 @@ class TestBillingPortal:
         with (
             app.test_request_context("/billing/subscription"),
             patch("controllers.console.billing.billing.BillingService.ensure_tenant_owner_or_admin"),
-            patch("controllers.console.billing.billing.BillingService.get_subscription", return_value={}),
+            patch(
+                "controllers.console.billing.billing.BillingService.get_subscription",
+                side_effect=BillingUpstreamInvalidResponseError,
+            ),
         ):
             with pytest.raises(BillingOperationFailedError) as exc_info:
                 method(resource, query, "tenant-1", account)

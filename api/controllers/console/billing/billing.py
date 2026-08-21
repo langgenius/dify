@@ -12,7 +12,6 @@ from controllers.console.billing.error import (
     BillingOperationFailedErrorResponse,
     BillingUnavailableErrorResponse,
     BillingUnprocessableEntityErrorResponse,
-    dump_billing_response,
     to_billing_request_error,
 )
 from controllers.console.wraps import (
@@ -25,6 +24,7 @@ from controllers.console.wraps import (
 )
 from enums import CloudPlan
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
@@ -103,7 +103,7 @@ class Subscription(Resource):
             )
         except BillingError as error:
             raise to_billing_request_error(error) from error
-        return dump_billing_response(BillingSubscriptionResponse, data)
+        return dump_response(BillingSubscriptionResponse, data)
 
 
 @console_ns.route("/billing/invoices")
@@ -132,7 +132,7 @@ class Invoices(Resource):
             data = BillingService.get_invoices(current_user.email, current_tenant_id)
         except BillingError as error:
             raise to_billing_request_error(error) from error
-        return dump_billing_response(BillingInvoiceResponse, data)
+        return dump_response(BillingInvoiceResponse, data)
 
 
 @console_ns.route("/billing/partners/<string:partner_key>/tenants")

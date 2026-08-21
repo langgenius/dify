@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from typing import Literal, NotRequired, TypedDict
 
 import httpx
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
@@ -45,6 +45,13 @@ class SubscriptionPlan(TypedDict):
 
     plan: str
     expiration_date: int
+
+
+class BillingPortalLink(TypedDict):
+    url: str
+
+
+_billing_portal_link_adapter = TypeAdapter(BillingPortalLink)
 
 
 class QuotaReserveResult(TypedDict):
@@ -360,7 +367,9 @@ class BillingService:
         }
 
     @classmethod
-    def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):
+    def get_subscription(
+        cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
+    ) -> BillingPortalLink:
         params = {"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id}
         return cls._send_billing_portal_request("/subscription/payment-link", params=params)
 
@@ -375,7 +384,7 @@ class BillingService:
         return cls._send_request("GET", "/model-provider/payment-link", params=params)
 
     @classmethod
-    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = ""):
+    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
         params = {"prefilled_email": prefilled_email, "tenant_id": tenant_id}
         return cls._send_billing_portal_request("/invoices", params=params)
 
@@ -469,9 +478,10 @@ class BillingService:
         endpoint: str,
         *,
         params: dict[str, str],
-    ):
+    ) -> BillingPortalLink:
         try:
-            return cls._send_request("GET", endpoint, params=params)
+            response = cls._send_request("GET", endpoint, params=params)
+            return _billing_portal_link_adapter.validate_python(response)
         except _BillingHTTPStatusError as error:
             if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
                 error.status_code >= 500
@@ -480,7 +490,7 @@ class BillingService:
             raise BillingUpstreamInvalidResponseError from error
         except httpx.RequestError as error:
             raise BillingUpstreamUnavailableError from error
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
             raise BillingUpstreamInvalidResponseError from error
         except ValueError as error:
             raise RuntimeError("Unexpected billing service value error") from error

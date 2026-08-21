@@ -1,11 +1,7 @@
-from typing import Any, Literal
-
-from pydantic import BaseModel, ValidationError
-from pydantic_core import PydanticSerializationError
+from typing import Literal
 
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
-from libs.helper import dump_response
 from services.errors.billing import (
     BillingAccessDeniedError,
     BillingError,
@@ -64,12 +60,3 @@ def to_billing_request_error(error: BillingError) -> BaseHTTPException:
     if isinstance(error, BillingUpstreamUnavailableError):
         return BillingUnavailableError()
     raise TypeError(f"Unsupported billing error: {type(error).__name__}")
-
-
-def dump_billing_response(model: type[BaseModel], data: Any) -> dict[str, Any]:
-    try:
-        return dump_response(model, data)
-    except (PydanticSerializationError, ValidationError) as error:
-        raise BillingOperationFailedError() from error
-    except ValueError as error:
-        raise RuntimeError("Unexpected billing response value error") from error
