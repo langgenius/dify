@@ -2,13 +2,15 @@
 
 from typing import override
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.account import Account, AccountStatus, InvitationCode, InvitationCodeStatus
+from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
 from services.account_ports import AccountRepository
 from services.entities.account_entities import (
     AccountCredentials,
+    AccountEmailResetResult,
+    AccountEmailResetStatus,
     AccountInitialization,
     AccountInitializationResult,
     AccountInitializationStatus,
@@ -109,6 +111,36 @@ class SQLAlchemyAccountRepository(AccountRepository):
             session.flush()
             return AccountInitializationResult(
                 status=AccountInitializationStatus.INITIALIZED,
+                account=self._to_snapshot(account),
+            )
+
+    @override
+    def email_exists(self, email: str) -> bool:
+        with self._session_factory() as session:
+            return session.scalar(select(Account.id).where(Account.email == email).limit(1)) is not None
+
+    @override
+    def reset_email(
+        self,
+        account_id: str,
+        *,
+        expected_old_email: str,
+        new_email: str,
+    ) -> AccountEmailResetResult:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                return AccountEmailResetResult(status=AccountEmailResetStatus.ACCOUNT_NOT_FOUND)
+            if account.email.lower() != expected_old_email.lower():
+                return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_CHANGED)
+            if session.scalar(select(Account.id).where(Account.email == new_email).limit(1)) is not None:
+                return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
+
+            account.email = new_email
+            session.execute(delete(AccountIntegrate).where(AccountIntegrate.account_id == account_id))
+            session.flush()
+            return AccountEmailResetResult(
+                status=AccountEmailResetStatus.UPDATED,
                 account=self._to_snapshot(account),
             )
 

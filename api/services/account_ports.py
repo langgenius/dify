@@ -6,6 +6,7 @@ from typing import Protocol
 from services.entities.account_entities import (
     AccountCredentials,
     AccountDeletionChallenge,
+    AccountEmailResetResult,
     AccountInitialization,
     AccountInitializationResult,
     AccountIntegrationSnapshot,
@@ -32,6 +33,10 @@ class AccountRepository(Protocol):
         invitation_code: str | None,
         workspace_id: str | None,
     ) -> AccountInitializationResult: ...
+
+    def email_exists(self, email: str) -> bool: ...
+
+    def reset_email(self, account_id: str, *, expected_old_email: str, new_email: str) -> AccountEmailResetResult: ...
 
 
 class AccountIntegrationRepository(Protocol):

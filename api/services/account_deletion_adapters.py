@@ -2,8 +2,7 @@
 
 import secrets
 from collections.abc import Sequence
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast, override
+from typing import override
 
 from libs.helper import RateLimiter, TokenManager
 from services.account_errors import AccountDeletionRateLimitError
@@ -18,22 +17,14 @@ from services.entities.account_entities import AccountDeletionChallenge
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 
-if TYPE_CHECKING:
-    from models.account import Account
-
-
-@dataclass(frozen=True, slots=True)
-class _TokenAccount:
-    id: str
-    email: str
-
 
 class TokenManagerAccountDeletionVerificationGateway(AccountDeletionVerificationGateway):
     @override
     def create(self, *, account_id: str, email: str) -> AccountDeletionChallenge:
         code = "".join(str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6))
         token = TokenManager.generate_token(
-            account=cast("Account", _TokenAccount(id=account_id, email=email)),
+            account_id=account_id,
+            email=email,
             token_type="account_deletion",
             additional_data={"code": code},
         )

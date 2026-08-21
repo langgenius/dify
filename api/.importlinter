@@ -98,6 +98,8 @@ name = Account application services and contracts are framework and persistence 
 type = forbidden
 source_modules =
     services.account_avatar_service
+    services.account_change_email_ports
+    services.account_change_email_service
     services.account_deletion_service
     services.account_errors
     services.account_initialization_service

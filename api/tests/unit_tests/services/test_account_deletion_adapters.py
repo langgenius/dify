@@ -35,9 +35,8 @@ def test_verification_gateway_creates_six_digit_account_bound_challenge() -> Non
 
     assert challenge.token == "token"
     assert challenge.code == "123456"
-    token_account = generate_token.call_args.kwargs["account"]
-    assert token_account.id == "account-1"
-    assert token_account.email == "account@example.com"
+    assert generate_token.call_args.kwargs["account_id"] == "account-1"
+    assert generate_token.call_args.kwargs["email"] == "account@example.com"
     assert generate_token.call_args.kwargs["additional_data"] == {"code": "123456"}
 
 
