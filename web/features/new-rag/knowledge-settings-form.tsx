@@ -297,6 +297,10 @@ export function KnowledgeSettingsForm({
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const deleteCancelRef = useRef<HTMLButtonElement>(null)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const historyGuardArmedRef = useRef(false)
+  const historyGuardReleaseRef = useRef(false)
+  const browserBackPendingRef = useRef(false)
+  const allowNavigationRef = useRef(false)
   const pendingExternalAccessRef = useRef<ExternalAccessDraft>({
     apiEnabled: initialApiEnabled,
     workflowEnabled: initialWorkflowEnabled,
@@ -806,6 +810,50 @@ export function KnowledgeSettingsForm({
     requestSave()
   }
 
+  const armHistoryGuard = useCallback(() => {
+    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
+    historyGuardArmedRef.current = true
+  }, [])
+
+  useEffect(() => {
+    if (isDirty) {
+      if (
+        !historyGuardArmedRef.current &&
+        !browserBackPendingRef.current &&
+        !allowNavigationRef.current
+      )
+        armHistoryGuard()
+      return
+    }
+    if (!historyGuardArmedRef.current) return
+    historyGuardReleaseRef.current = true
+    historyGuardArmedRef.current = false
+    globalThis.history.back()
+  }, [armHistoryGuard, isDirty])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (historyGuardReleaseRef.current) {
+        historyGuardReleaseRef.current = false
+        return
+      }
+      if (allowNavigationRef.current) {
+        const destination = pendingNavigationRef.current
+        pendingNavigationRef.current = undefined
+        if (destination) router.push(destination)
+        return
+      }
+      if (!historyGuardArmedRef.current) return
+
+      historyGuardArmedRef.current = false
+      browserBackPendingRef.current = true
+      setDiscardDialogOpen(true)
+    }
+
+    globalThis.addEventListener('popstate', handlePopState)
+    return () => globalThis.removeEventListener('popstate', handlePopState)
+  }, [router])
+
   useEffect(() => {
     if (!isDirty) return
 
@@ -858,9 +906,29 @@ export function KnowledgeSettingsForm({
 
   const confirmDiscardAndNavigate = () => {
     const destination = pendingNavigationRef.current
-    pendingNavigationRef.current = undefined
     setDiscardDialogOpen(false)
+    allowNavigationRef.current = true
+    if (browserBackPendingRef.current) {
+      browserBackPendingRef.current = false
+      pendingNavigationRef.current = undefined
+      globalThis.history.back()
+      return
+    }
+    if (destination && historyGuardArmedRef.current) {
+      historyGuardArmedRef.current = false
+      globalThis.history.back()
+      return
+    }
+    pendingNavigationRef.current = undefined
     if (destination) router.push(destination)
+  }
+
+  const closeDiscardDialog = () => {
+    setDiscardDialogOpen(false)
+    pendingNavigationRef.current = undefined
+    if (!browserBackPendingRef.current) return
+    browserBackPendingRef.current = false
+    if (isDirty) armHistoryGuard()
   }
 
   const deleteKnowledge = async () => {
@@ -1462,8 +1530,8 @@ export function KnowledgeSettingsForm({
       <AlertDialog
         open={discardDialogOpen}
         onOpenChange={(open) => {
-          setDiscardDialogOpen(open)
-          if (!open) pendingNavigationRef.current = undefined
+          if (open) setDiscardDialogOpen(true)
+          else closeDiscardDialog()
         }}
       >
         <AlertDialogContent>

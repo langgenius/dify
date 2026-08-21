@@ -19,6 +19,13 @@ const routerMock = vi.hoisted(() => ({
   push: vi.fn(),
   replace: vi.fn(),
 }))
+const knowledgeSpacePermissionState = vi.hoisted(() => ({
+  keys: ['knowledge_space_document_write'],
+}))
+vi.mock('../knowledge-space-context', () => ({
+  useKnowledgeSpacePermission: (permission: string) =>
+    knowledgeSpacePermissionState.keys.includes(permission),
+}))
 const openMock = vi.hoisted(() => vi.fn())
 
 const connectFirecrawlButtonName = 'dataset.newKnowledge.connectProvider:{"provider":"Firecrawl"}'
@@ -548,6 +555,7 @@ const connection = (
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    knowledgeSpacePermissionState.keys = ['knowledge_space_document_write']
     vi.stubGlobal('open', openMock)
     globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
@@ -576,6 +584,17 @@ describe('AddSourcePage', () => {
   afterEach(() => {
     globalThis.sessionStorage.clear()
     vi.unstubAllGlobals()
+  })
+
+  it('redirects a direct route visit without document-write permission', async () => {
+    knowledgeSpacePermissionState.keys = []
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+    )
+    expect(screen.queryByText('dataset.newKnowledge.addSourceTitle')).not.toBeInTheDocument()
   })
 
   it('loads the provider catalog and every scoped connection cursor page', () => {

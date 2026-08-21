@@ -23,7 +23,6 @@ const apiMock = vi.hoisted(() => ({
   streamCapability: vi.fn(),
   streamQuery: vi.fn(),
   streamResearchEvents: vi.fn(),
-  documentReferences: {} as Record<string, { id: string; revision: number; title: string }>,
   evidence: undefined as Record<string, unknown> | undefined,
   evidenceError: false,
   evidenceFetchNextPageError: false,
@@ -64,6 +63,13 @@ const apiMock = vi.hoisted(() => ({
     revision: 1,
   } as KnowledgeFsSettingsResponse,
 }))
+const knowledgeSpacePermissionState = vi.hoisted(() => ({
+  keys: ['knowledge_space_edit'],
+}))
+vi.mock('../knowledge-space-context', () => ({
+  useKnowledgeSpacePermission: (permission: string) =>
+    knowledgeSpacePermissionState.keys.includes(permission),
+}))
 
 vi.mock('../services/knowledge-query-events', () => ({
   streamKnowledgeQuery: apiMock.streamQuery,
@@ -97,11 +103,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
           isError: apiMock.researchDetailError,
           isPending: apiMock.researchDetailPending,
           refetch: apiMock.refetchResearchDetail,
-        }
-      if (resource === 'retrieval-document-references')
-        return {
-          data: apiMock.documentReferences,
-          isPending: false,
         }
       if (resource === 'settings')
         return {
@@ -266,6 +267,7 @@ function renderPage({ searchParams = '' }: { searchParams?: string } = {}) {
 describe('RetrievalTestPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    knowledgeSpacePermissionState.keys = ['knowledge_space_edit']
     apiMock.planResearch.mockResolvedValue({
       budget: { budget_usd: 1, exceeds_budget: false },
       estimates: {},
@@ -334,7 +336,6 @@ describe('RetrievalTestPage', () => {
     apiMock.queryAdmission.mockResolvedValue({})
     apiMock.createBadCase.mockResolvedValue({ id: 'bad-case-1' })
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
-    apiMock.documentReferences = {}
     apiMock.evidence = undefined
     apiMock.getTraceEvidence.mockResolvedValue({ data: [] })
     apiMock.matchEvidence.mockResolvedValue({ candidates: [], evidence: '', matched: false })
@@ -1235,9 +1236,17 @@ describe('RetrievalTestPage', () => {
     ]
     apiMock.evidenceHasNextPage = true
 
+    const user = userEvent.setup()
     renderPage({ searchParams: '?trace=trace-1' })
 
-    await waitFor(() => expect(apiMock.fetchNextEvidence).toHaveBeenCalledOnce())
+    expect(apiMock.fetchNextEvidence).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.retrievalTest\.showAllChunks/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(apiMock.fetchNextEvidence).toHaveBeenCalledOnce()
   })
 
   it('keeps partial trace evidence visible and retries a failed next page', async () => {
@@ -1302,9 +1311,17 @@ describe('RetrievalTestPage', () => {
     ]
     apiMock.partialsHasNextPage = true
 
+    const user = userEvent.setup()
     renderPage({ searchParams: '?research=research-completed' })
 
-    await waitFor(() => expect(apiMock.fetchNextPartials).toHaveBeenCalledOnce())
+    expect(apiMock.fetchNextPartials).not.toHaveBeenCalled()
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.retrievalTest\.showAllChunks/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(apiMock.fetchNextPartials).toHaveBeenCalledOnce()
   })
 
   it('keeps a partial research answer visible and retries a failed next page', async () => {
@@ -1511,6 +1528,38 @@ describe('RetrievalTestPage', () => {
     ).toHaveAttribute('href', '/datasets/new/space-1/quality')
   })
 
+  it('hides quality mutations from viewers of retrieval traces', async () => {
+    knowledgeSpacePermissionState.keys = []
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-viewer',
+        mode: 'fast',
+        profile: {},
+        query: 'View this result without changing quality data',
+        scores: {},
+        stages: [],
+      },
+    ]
+
+    renderPage({ searchParams: '?trace=trace-viewer' })
+
+    expect(
+      await screen.findAllByText('View this result without changing quality data'),
+    ).not.toHaveLength(0)
+    expect(
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.makeBadCase',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.retrievalTest.keepGoldenQuestion',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('lets the user select retrieved evidence before keeping a golden question', async () => {
     apiMock.traces = [
       {
@@ -1677,6 +1726,9 @@ describe('RetrievalTestPage', () => {
           kind: 'resource',
           metadata: {
             documentId: 'asset-1',
+            documentName: 'refund-policy.txt',
+            documentRevision: 2,
+            logicalDocumentId: 'document-1',
             revision: '2',
             score: 0.0005295,
             text: 'Refunds are available within 30 days.',
@@ -1687,9 +1739,6 @@ describe('RetrievalTestPage', () => {
           targetId: 'chunk-1',
         },
       ],
-    }
-    apiMock.documentReferences = {
-      'asset-1': { id: 'document-1', revision: 2, title: 'refund-policy.txt' },
     }
     const user = userEvent.setup()
     renderPage()

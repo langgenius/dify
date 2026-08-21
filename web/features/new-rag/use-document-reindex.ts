@@ -3,12 +3,9 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken } from '@tanstack/query-core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { refreshWorkspacePermissionKeysAfterMutationDenialAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/client'
-import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { responseStatus } from './document-detail-model'
 import { documentTaskIsActive, useDocumentTaskStatus } from './use-document-task-status'
 
@@ -63,6 +60,7 @@ export function useDocumentReindex({
   documentQueryKey,
   enabled,
   knowledgeSpaceId,
+  refreshWritePermission,
   revisionsQueryKey,
 }: {
   beforeReindex: () => Promise<boolean>
@@ -72,14 +70,12 @@ export function useDocumentReindex({
   documentQueryKey: readonly unknown[]
   enabled: boolean
   knowledgeSpaceId: string
+  refreshWritePermission: () => Promise<boolean>
   revisionsQueryKey: readonly unknown[]
 }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
   const storageKey = submittedReindexStorageKey(knowledgeSpaceId, documentId)
-  const refreshWorkspacePermissionKeysAfterMutationDenial = useSetAtom(
-    refreshWorkspacePermissionKeysAfterMutationDenialAtom,
-  )
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
   const [documentMissing, setDocumentMissing] = useState(false)
   const [cancelReindexBusy, setCancelReindexBusy] = useState(false)
@@ -147,13 +143,7 @@ export function useDocumentReindex({
     permissionRecoveryPendingRef.current = true
     setPermissionRecoveryBusy(true)
     try {
-      const result = await refreshWorkspacePermissionKeysAfterMutationDenial()
-      const refreshedPermissionKeys = result.data?.dataset?.default_permission_keys
-      if (
-        !result.error &&
-        refreshedPermissionKeys &&
-        hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
-      ) {
+      if (await refreshWritePermission()) {
         setWritePermissionRevoked(false)
         setPermissionRecoveryNeeded(false)
         return true

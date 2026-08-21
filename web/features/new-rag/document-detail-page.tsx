@@ -2,15 +2,12 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { createParser, parseAsString, useQueryStates } from 'nuqs'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
-import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { DocumentDetailHeader } from './document-detail-header'
@@ -22,6 +19,7 @@ import {
   logicalDocumentListFromApi,
 } from './document-models'
 import { DocumentRevisionContent } from './document-revision-content'
+import { useKnowledgeSpace } from './knowledge-space-context'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { newKnowledgeDocumentsPath } from './routes'
 import { createTaskProgressStore } from './task-progress-store'
@@ -71,7 +69,7 @@ export function DocumentDetailPage({
 }) {
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
+  const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
   const [documentLocation, setDocumentLocation] = useQueryStates({
     chunk: documentChunkParser,
     revision: documentRevisionParser,
@@ -152,6 +150,12 @@ export function DocumentDetailPage({
     [documentId, knowledgeSpaceId],
   )
   const revisionsQuery = useInfiniteQuery(revisionsQueryOptions)
+  const {
+    fetchNextPage: fetchNextRevisionPage,
+    hasNextPage: hasNextRevisionPage,
+    isFetchNextPageError: isFetchNextRevisionPageError,
+    isFetchingNextPage: isFetchingNextRevisionPage,
+  } = revisionsQuery
   const revisions = useMemo(
     () =>
       revisionsQuery.data?.pages.flatMap((page) => documentRevisionListFromApi(page).items) ?? [],
@@ -163,9 +167,31 @@ export function DocumentDetailPage({
       byRevision.set(documentQuery.data.active.revision, documentQuery.data.active)
     return [...byRevision.values()].sort((left, right) => right.revision - left.revision)
   }, [documentQuery.data?.active, revisions])
-  const effectiveRevision = documentQuery.data
+  const requestedRevision = documentQuery.data
     ? (selectedRevision ?? initialDocumentRevision(documentQuery.data, availableRevisions))
     : undefined
+  const activeRevision = availableRevisions.find(
+    (revision) => revision.revision === requestedRevision,
+  )
+  const effectiveRevision = activeRevision?.revision
+  useEffect(() => {
+    if (
+      selectedRevision === null ||
+      activeRevision ||
+      !hasNextRevisionPage ||
+      isFetchingNextRevisionPage ||
+      isFetchNextRevisionPageError
+    )
+      return
+    void fetchNextRevisionPage()
+  }, [
+    activeRevision,
+    fetchNextRevisionPage,
+    hasNextRevisionPage,
+    isFetchNextRevisionPageError,
+    isFetchingNextRevisionPage,
+    selectedRevision,
+  ])
   const chunksQueryKey =
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.revisions.byRevision.chunks.get.key()
   const documentActiveRevision =
@@ -206,9 +232,13 @@ export function DocumentDetailPage({
     enabled:
       Boolean(documentQuery.data) && documentErrorStatus !== 403 && documentErrorStatus !== 404,
     knowledgeSpaceId,
+    refreshWritePermission: async () =>
+      Boolean(
+        (await refetchKnowledgeSpace())?.permission_keys.includes('knowledge_space_document_write'),
+      ),
     revisionsQueryKey: revisionsQueryOptions.queryKey,
   })
-  const hasEditPermission = hasPermission(permissionKeys, DatasetACLPermission.Edit)
+  const hasEditPermission = space.permission_keys.includes('knowledge_space_document_write')
   const canEdit = hasEditPermission && !writePermissionRevoked
   const reindexInProgress = submissionPending || taskIsActive
   const canCancelReindex =
@@ -229,9 +259,6 @@ export function DocumentDetailPage({
   )
   const hasUnresolvedTaskDocuments = tasks.some(
     (task) => task.documentId && !taskDocumentIds.has(task.documentId),
-  )
-  const activeRevision = availableRevisions.find(
-    (revision) => revision.revision === effectiveRevision,
   )
   const backPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const locale = i18n.resolvedLanguage ?? i18n.language
@@ -261,6 +288,38 @@ export function DocumentDetailPage({
       />
     )
   }
+
+  if (
+    selectedRevision !== null &&
+    !activeRevision &&
+    (revisionsQuery.isPending || isFetchingNextRevisionPage || hasNextRevisionPage)
+  )
+    return (
+      <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
+        <Loading />
+        <span className="sr-only">{tCommon(($) => $.loading)}</span>
+      </div>
+    )
+
+  if (selectedRevision !== null && !activeRevision && revisionsQuery.error)
+    return (
+      <ErrorState
+        description={t(($) => $['newKnowledge.documentRevisionsLoadError'])}
+        onRetry={() => {
+          if (isFetchNextRevisionPageError) void fetchNextRevisionPage()
+          else void revisionsQuery.refetch()
+        }}
+        title={t(($) => $['newKnowledge.documentLoadErrorTitle'])}
+      />
+    )
+
+  if (selectedRevision !== null && !activeRevision)
+    return (
+      <ErrorState
+        description={t(($) => $['newKnowledge.documentNotFoundDescription'])}
+        title={t(($) => $['newKnowledge.documentNotFoundTitle'])}
+      />
+    )
 
   const document = documentQuery.data
   return (

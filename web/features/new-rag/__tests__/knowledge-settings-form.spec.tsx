@@ -1490,6 +1490,30 @@ describe('KnowledgeSettingsForm', () => {
     destination.remove()
   })
 
+  it('asks before browser back navigation while the form has unsaved changes', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(globalThis.history, 'back').mockImplementation(() => {})
+    try {
+      renderForm()
+      const nameInput = screen.getByRole('textbox', { name: 'datasetSettings.form.name' })
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Unsaved camera specs')
+
+      act(() => globalThis.dispatchEvent(new PopStateEvent('popstate')))
+
+      const dialog = await screen.findByRole('alertdialog')
+      expect(historyBack).not.toHaveBeenCalled()
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: 'dataset.newKnowledge.discardDraftConfirm',
+        }),
+      )
+      expect(historyBack).toHaveBeenCalledOnce()
+    } finally {
+      historyBack.mockRestore()
+    }
+  })
+
   it('protects unsaved changes from browser unload', async () => {
     const user = userEvent.setup()
     renderForm()

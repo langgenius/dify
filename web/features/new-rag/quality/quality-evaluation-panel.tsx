@@ -387,7 +387,13 @@ function EvidenceDetailCard({ evidence }: { evidence: KnowledgeFsQualityReplayEv
   )
 }
 
-export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+export function QualityEvaluationPanel({
+  canEdit,
+  knowledgeSpaceId,
+}: {
+  canEdit: boolean
+  knowledgeSpaceId: string
+}) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -458,10 +464,12 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
             {t(($) => $['newKnowledge.qualityPage.evaluation.description'])}
           </p>
         </div>
-        <Button variant="primary" className="gap-1" onClick={() => setDialogOpen(true)}>
-          <span aria-hidden className="i-ri-play-circle-line size-4" />
-          {t(($) => $['newKnowledge.qualityPage.evaluation.run'])}
-        </Button>
+        {canEdit && (
+          <Button variant="primary" className="gap-1" onClick={() => setDialogOpen(true)}>
+            <span aria-hidden className="i-ri-play-circle-line size-4" />
+            {t(($) => $['newKnowledge.qualityPage.evaluation.run'])}
+          </Button>
+        )}
       </div>
 
       {listQuery.isLoading ? (
@@ -538,7 +546,7 @@ export function QualityEvaluationPanel({ knowledgeSpaceId }: { knowledgeSpaceId:
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={canEdit && dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="w-130! max-w-[calc(100vw-2rem)]! overflow-hidden! p-0!">
           <div className="relative border-b border-divider-subtle px-6 pt-6 pb-5">
             <DialogTitle className="pr-10 title-xl-semi-bold text-text-primary">

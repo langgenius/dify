@@ -36,6 +36,7 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { RetrievalModeSegmentedControl } from './components/retrieval-mode-segmented-control'
+import { useKnowledgeSpacePermission } from './knowledge-space-context'
 import { GoldenQuestionDialog } from './quality/golden-question-dialog'
 import {
   extractRetrievalEvidence,
@@ -470,29 +471,24 @@ async function queryFailure(error: unknown) {
 function EvidenceCard({
   citationTargetId,
   citationTargeted,
-  documentReference,
   evidence,
   index,
   knowledgeSpaceId,
 }: {
   citationTargetId?: string
   citationTargeted?: boolean
-  documentReference?: {
-    id: string
-    revision: number
-    title: string
-  }
   evidence: RetrievalEvidence
   index: number
   knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
-  const openHref = documentReference
-    ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentReference.id, {
-        chunkId: evidence.chunkId,
-        revision: documentReference.revision,
-      })
-    : undefined
+  const openHref =
+    evidence.documentId && evidence.documentRevision
+      ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, evidence.documentId, {
+          chunkId: evidence.chunkId,
+          revision: evidence.documentRevision,
+        })
+      : undefined
 
   return (
     <article
@@ -539,7 +535,7 @@ function EvidenceCard({
           className="i-ri-file-pdf-2-fill size-4 shrink-0 text-util-colors-red-red-500"
         />
         <span className="min-w-0 truncate system-sm-regular text-text-secondary">
-          {documentReference?.title ?? evidence.documentName ?? evidence.title}
+          {evidence.documentName ?? evidence.title}
         </span>
         {evidence.revision && (
           <span className="shrink-0 rounded-xs bg-divider-subtle px-1.25 py-px system-xs-regular text-text-tertiary">
@@ -1108,6 +1104,7 @@ function RecordButton({
 export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
+  const canEditQuality = useKnowledgeSpacePermission('knowledge_space_edit')
   const {
     configureModelSetup,
     ensureModelReady,
@@ -1363,44 +1360,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     void refetchResearchPartials()
   }, [refetchResearchPartials, selectedResearchTask])
 
-  const {
-    fetchNextPage: fetchNextTraceEvidencePage,
-    hasNextPage: hasNextTraceEvidencePage,
-    isFetchNextPageError: traceEvidencePageFailed,
-    isFetchingNextPage: isFetchingNextTraceEvidencePage,
-  } = traceEvidenceQuery
-  useEffect(() => {
-    if (!hasNextTraceEvidencePage || isFetchingNextTraceEvidencePage || traceEvidencePageFailed)
-      return
-    void fetchNextTraceEvidencePage()
-  }, [
-    fetchNextTraceEvidencePage,
-    hasNextTraceEvidencePage,
-    isFetchingNextTraceEvidencePage,
-    traceEvidencePageFailed,
-  ])
-
-  const {
-    fetchNextPage: fetchNextResearchPartialsPage,
-    hasNextPage: hasNextResearchPartialsPage,
-    isFetchNextPageError: researchPartialsPageFailed,
-    isFetchingNextPage: isFetchingNextResearchPartialsPage,
-  } = researchPartialsQuery
-  useEffect(() => {
-    if (
-      !hasNextResearchPartialsPage ||
-      isFetchingNextResearchPartialsPage ||
-      researchPartialsPageFailed
-    )
-      return
-    void fetchNextResearchPartialsPage()
-  }, [
-    fetchNextResearchPartialsPage,
-    hasNextResearchPartialsPage,
-    isFetchingNextResearchPartialsPage,
-    researchPartialsPageFailed,
-  ])
-
   const selectedResearchTaskId = selectedResearchTask?.id
   useEffect(() => {
     if (!selectedResearchTaskId) return
@@ -1492,38 +1451,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         : historicalEvidence
   const currentEvidenceDocumentCount = new Set(
     currentEvidence
-      .map((evidence) => evidence.documentId ?? evidence.documentName)
+      .map((evidence) => evidence.documentId ?? evidence.documentAssetId ?? evidence.documentName)
       .filter((document): document is string => Boolean(document)),
   ).size
-  const evidenceDocumentReferencesQuery = useQuery({
-    queryKey: ['retrieval-document-references', knowledgeSpaceId],
-    enabled: currentEvidence.some((evidence) => evidence.documentId),
-    queryFn: async () => {
-      const references: Record<string, { id: string; revision: number; title: string }> = {}
-      const visitedCursors = new Set<string>()
-      let cursor: string | undefined
-      do {
-        const response =
-          await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get({
-            params: { control_space_id: knowledgeSpaceId },
-            ...(cursor ? { query: { cursor } } : {}),
-          })
-        response.data.forEach((document) => {
-          if (document.active)
-            references[document.active.document_asset_id] = {
-              id: document.id,
-              revision: document.active.revision,
-              title: document.title,
-            }
-        })
-        const nextCursor = response.next_cursor ?? undefined
-        if (!nextCursor || visitedCursors.has(nextCursor)) break
-        visitedCursors.add(nextCursor)
-        cursor = nextCursor
-      } while (cursor)
-      return references
-    },
-  })
   const resultKey = selected ? `${selected.kind}:${selected.id}` : undefined
   const selectedQuery =
     selected?.kind === 'local'
@@ -1576,6 +1506,9 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   }
   const selectedHasNoResults = selected?.kind === 'local' && localRun?.status === 'no-results'
   const initialEvidenceCount = selectedMode === 'research' ? 5 : 3
+  const hasMoreEvidencePages = Boolean(
+    traceEvidenceQuery.hasNextPage || (selectedResearchTask && researchPartialsQuery.hasNextPage),
+  )
   const visibleEvidence = showAll ? currentEvidence : currentEvidence.slice(0, initialEvidenceCount)
   const selectedCitationIndex =
     selectedCitation && selectedCitation.taskId === selectedResearchTaskId
@@ -1759,20 +1692,12 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       const traceId = extractTraceId(eventData)
       const evidence = extractRetrievalEvidence(eventData)
       if (traceId && evidence.length === 0) {
-        const visitedCursors = new Set<string>()
-        let cursor: string | undefined
-        do {
-          const traceEvidence =
-            await consoleClient.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get({
-              params: { control_space_id: knowledgeSpaceId, trace_id: traceId },
-              query: { ...(cursor ? { cursor } : {}), limit: 100 },
-            })
-          evidence.push(...extractRetrievalEvidence(traceEvidence.data))
-          const nextCursor = traceEvidence.next_cursor ?? undefined
-          if (!nextCursor || visitedCursors.has(nextCursor)) break
-          visitedCursors.add(nextCursor)
-          cursor = nextCursor
-        } while (cursor)
+        const traceEvidence =
+          await consoleClient.knowledgeFs.spaces.byControlSpaceId.traces.byTraceId.evidence.get({
+            params: { control_space_id: knowledgeSpaceId, trace_id: traceId },
+            query: { limit: 100 },
+          })
+        evidence.push(...extractRetrievalEvidence(traceEvidence.data))
       }
       const endedAt = Date.now()
       setLocalRun((current) =>
@@ -2152,11 +2077,6 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                             selectedResearchTask ? `research-evidence-${index + 1}` : undefined
                           }
                           citationTargeted={selectedCitationIndex === index}
-                          documentReference={
-                            evidence.documentId
-                              ? evidenceDocumentReferencesQuery.data?.[evidence.documentId]
-                              : undefined
-                          }
                           evidence={evidence}
                           index={index}
                           knowledgeSpaceId={knowledgeSpaceId}
@@ -2176,22 +2096,48 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                 )}
               </div>
 
-              {!showAll && currentEvidence.length > initialEvidenceCount && (
+              {!showAll &&
+                (currentEvidence.length > initialEvidenceCount || hasMoreEvidencePages) && (
+                  <div className="shrink-0 pl-1">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      onClick={() => setShowAll(true)}
+                    >
+                      {t(($) => $['newKnowledge.retrievalTest.showAllChunks'], {
+                        count: currentEvidence.length,
+                      })}
+                      <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
+                    </button>
+                  </div>
+                )}
+
+              {showAll && traceEvidenceQuery.hasNextPage && (
                 <div className="shrink-0 pl-1">
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                    onClick={() => setShowAll(true)}
+                  <Button
+                    loading={traceEvidenceQuery.isFetchingNextPage}
+                    disabled={traceEvidenceQuery.isFetchingNextPage}
+                    onClick={() => void traceEvidenceQuery.fetchNextPage()}
                   >
-                    {t(($) => $['newKnowledge.retrievalTest.showAllChunks'], {
-                      count: currentEvidence.length,
-                    })}
-                    <span aria-hidden className="i-ri-arrow-down-s-line size-3.5" />
-                  </button>
+                    {t(($) => $['newKnowledge.loadMore'])}
+                  </Button>
                 </div>
               )}
 
-              {!selectedIsLoading &&
+              {showAll && selectedResearchTask && researchPartialsQuery.hasNextPage && (
+                <div className="shrink-0 pl-1">
+                  <Button
+                    loading={researchPartialsQuery.isFetchingNextPage}
+                    disabled={researchPartialsQuery.isFetchingNextPage}
+                    onClick={() => void researchPartialsQuery.fetchNextPage()}
+                  >
+                    {t(($) => $['newKnowledge.loadMore'])}
+                  </Button>
+                </div>
+              )}
+
+              {canEditQuality &&
+                !selectedIsLoading &&
                 !selectedFailed &&
                 !selectedDataError &&
                 !researchTaskIsActive(selectedResearchTask) &&
@@ -2210,7 +2156,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
           )}
         </section>
       </div>
-      {goldenPromotion && (
+      {canEditQuality && goldenPromotion && (
         <GoldenQuestionDialog
           key={goldenPromotion.resultKey}
           evidenceOptions={goldenPromotion.evidenceOptions}

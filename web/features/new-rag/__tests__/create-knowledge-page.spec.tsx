@@ -756,14 +756,18 @@ describe('CreateKnowledgePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps create disabled until the knowledge name is provided', async () => {
+  it('lets form validation explain a missing knowledge name', async () => {
     const user = userEvent.setup()
     renderPage()
 
     const createButton = screen.getByRole('button', {
       name: 'dataset.newKnowledge.createTitle',
     })
-    expect(createButton).toBeDisabled()
+    expect(createButton).toBeEnabled()
+    await user.click(createButton)
+
+    expect(screen.getByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
+    expect(serviceMock.create).not.toHaveBeenCalled()
 
     await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), 'Handbook')
     expect(createButton).toBeEnabled()
@@ -797,7 +801,11 @@ describe('CreateKnowledgePage', () => {
     expect(nameInput).toHaveValue(invalidName)
     expect(nameInput).toHaveAttribute('aria-invalid', 'true')
     expect(nameInput).toHaveAccessibleDescription('datasetCreation.stepOne.modal.nameLengthInvalid')
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    const createButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.createTitle',
+    })
+    expect(createButton).toBeEnabled()
+    await user.click(createButton)
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 

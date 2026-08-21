@@ -26,6 +26,13 @@ const routerMock = vi.hoisted(() => ({
 const navigationMock = vi.hoisted(() => ({
   tab: undefined as string | undefined,
 }))
+const knowledgeSpacePermissionState = vi.hoisted(() => ({
+  keys: ['knowledge_space_edit'],
+}))
+vi.mock('../knowledge-space-context', () => ({
+  useKnowledgeSpacePermission: (permission: string) =>
+    knowledgeSpacePermissionState.keys.includes(permission),
+}))
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
@@ -135,6 +142,7 @@ function renderPage() {
 describe('QualityPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    knowledgeSpacePermissionState.keys = ['knowledge_space_edit']
     navigationMock.tab = undefined
     serviceMock.getGolden.mockResolvedValue({
       data: [
@@ -202,6 +210,46 @@ describe('QualityPage', () => {
       screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.evaluationTab' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('tabpanel')).toBeInTheDocument()
+  })
+
+  it('keeps quality mutations hidden for viewers while preserving trace access', async () => {
+    const user = userEvent.setup()
+    knowledgeSpacePermissionState.keys = []
+    const rendered = renderPage()
+
+    await screen.findByText('What is the refund policy?')
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.qualityPage.addGolden' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.qualityPage.importCsv' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    ).not.toBeInTheDocument()
+
+    rendered.unmount()
+    navigationMock.tab = 'bad-cases'
+    renderPage()
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    expect(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.openTrace',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.qualityPage.replay' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.qualityPage.ignore' }),
+    ).not.toBeInTheDocument()
   })
 
   it('uses tab primitive relationships and keeps route state in sync', async () => {

@@ -38,22 +38,20 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { hasPermission } from '@/utils/permission'
 import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
 import { knowledgeFsTaskFailureMessageKey } from './knowledge-fs-task-error'
+import { useKnowledgeSpacePermission } from './knowledge-space-context'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH, newKnowledgeAddSourcePath } from './routes'
 import { sourceFilterParser, sourceSearchParser, sourceSortParser } from './source-list-query-state'
 import {
@@ -75,8 +73,7 @@ import { SourceProviderIcon } from './source-setup-fields'
 import { SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
-const PAGE_SIZE = 50
-const MAX_AUTO_FILTER_PAGES = 4
+const PAGE_SIZE = 200
 const AWAIT_INITIAL_SOURCE_POLL_INTERVAL = 2000
 const SOURCE_POLL_INTERVAL = 3000
 const INITIAL_SOURCE_POLL_TIMEOUT = 10 * 60 * 1000
@@ -1034,7 +1031,6 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const {
     configureModelSetup,
     ensureModelReady,
@@ -1048,7 +1044,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       'ready',
     [ensureModelReady],
   )
-  const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
+  const canManageSources = useKnowledgeSpacePermission('knowledge_space_document_write')
   const [filter, setFilter] = useQueryState('status', sourceFilterParser)
   const [search, setSearch] = useQueryState('query', sourceSearchParser)
   const [sort, setSort] = useQueryState('sort', sourceSortParser)
@@ -1120,7 +1116,6 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         ),
     [currentSources],
   )
-  const loadedPageCount = sourcesQuery.data?.pages.length ?? 0
   const filteredSources = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     const nextSources = (sources ?? []).filter((source) => {
@@ -1135,8 +1130,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
   }, [filter, search, sort, sources])
   const localTransformActive = filter !== 'all' || Boolean(search.trim()) || Boolean(sort)
-  const canAutoCompleteFilteredResults =
-    localTransformActive && loadedPageCount < MAX_AUTO_FILTER_PAGES
+  const canAutoCompleteFilteredResults = localTransformActive
   const latestSourcePage = sourcesQuery.data?.pages.at(-1)
   const needsVisibleSource =
     latestSourcePage !== undefined &&

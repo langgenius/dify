@@ -16,6 +16,17 @@ import copy from 'copy-to-clipboard'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../document-detail-page'
 
+const knowledgeSpacePermissionState = vi.hoisted(() => ({
+  keys: ['knowledge_space_document_write'],
+  refetch: vi.fn(),
+}))
+vi.mock('../knowledge-space-context', () => ({
+  useKnowledgeSpace: () => ({
+    refetch: knowledgeSpacePermissionState.refetch,
+    space: { permission_keys: knowledgeSpacePermissionState.keys },
+  }),
+}))
+
 const multimodalAssetGet = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/base', async (importOriginal) => ({
@@ -694,6 +705,10 @@ const missingReindexResult = (): BulkDocumentReindexResult => ({
 describe('DocumentDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    knowledgeSpacePermissionState.keys = ['knowledge_space_document_write']
+    knowledgeSpacePermissionState.refetch.mockResolvedValue({
+      permission_keys: ['knowledge_space_document_write'],
+    })
     globalThis.sessionStorage.clear()
     permissionState.keys = ['dataset.acl.edit']
     documentQuery.data = logicalDocument()
@@ -1999,6 +2014,42 @@ describe('DocumentDetailPage', () => {
     })
   })
 
+  it('resolves an exact URL revision from later revision pages before rendering content', async () => {
+    revisionsQuery.data = {
+      pages: [{ items: [activeRevision({ revision: 3 })], nextCursor: 'older' }],
+    }
+    revisionsQuery.hasNextPage = true
+
+    const rendered = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+      { searchParams: '?revision=2' },
+    )
+
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    await waitFor(() => expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce())
+    expect(chunksOptions).not.toHaveBeenCalled()
+
+    revisionsQuery.data = {
+      pages: [
+        { items: [activeRevision({ revision: 3 })], nextCursor: 'older' },
+        { items: [activeRevision({ revision: 2, state: 'superseded' })] },
+      ],
+    }
+    revisionsQuery.hasNextPage = false
+    rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await waitFor(() =>
+      expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
+        params: {
+          control_space_id: 'space-1',
+          document_id: 'document-1',
+          revision: 2,
+        },
+        query: {},
+      }),
+    )
+  })
+
   it('finds a document task on later cursor pages and ignores stale revision tasks', async () => {
     tasksQuery.data = {
       pages: [{ items: [task({ documentId: 'another-document', id: 'another-task' })] }],
@@ -2291,6 +2342,7 @@ describe('DocumentDetailPage', () => {
     await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled())
 
     permissionState.keys = ['dataset.acl.readonly']
+    knowledgeSpacePermissionState.keys = []
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const readonlyReindexButton = screen.getByRole('button', {
       name: 'dataset.newKnowledge.cancelDocumentReindex',
@@ -2697,14 +2749,9 @@ describe('DocumentDetailPage', () => {
 
   it('locks local writes during a 403 refresh and restores editor access afterward', async () => {
     const user = userEvent.setup()
-    let finishPermissionRefresh:
-      | ((value: { data: { dataset: { default_permission_keys: string[] } }; error: null }) => void)
-      | undefined
-    permissionState.refresh.mockReturnValueOnce(
-      new Promise<{
-        data: { dataset: { default_permission_keys: string[] } }
-        error: null
-      }>((resolve) => {
+    let finishPermissionRefresh: ((value: { permission_keys: string[] }) => void) | undefined
+    knowledgeSpacePermissionState.refetch.mockReturnValueOnce(
+      new Promise<{ permission_keys: string[] }>((resolve) => {
         finishPermissionRefresh = resolve
       }),
     )
@@ -2714,49 +2761,45 @@ describe('DocumentDetailPage', () => {
     const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
     await user.click(button)
 
-    await waitFor(() => expect(permissionState.refresh).toHaveBeenCalledOnce())
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
     expect(button).toHaveAttribute('data-disabled')
     finishPermissionRefresh?.({
-      data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
-      error: null,
+      permission_keys: ['knowledge_space_document_write'],
     })
     await waitFor(() => expect(button).not.toHaveAttribute('data-disabled'))
   })
 
   it('keeps the local write lock when permission refresh resolves with an error', async () => {
     const user = userEvent.setup()
-    permissionState.refresh.mockResolvedValueOnce({
-      data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
-      error: new Error('permission refresh failed'),
-    })
+    knowledgeSpacePermissionState.refetch.mockRejectedValueOnce(
+      new Error('permission refresh failed'),
+    )
     reindexMutation.mutateAsync.mockRejectedValueOnce({ status: 403 })
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
     await user.click(button)
 
-    await waitFor(() => expect(permissionState.refresh).toHaveBeenCalledOnce())
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledOnce())
     expect(button).toHaveAttribute('data-disabled')
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent('dataset.newKnowledge.documentPermissionRestricted')
     const retryButton = within(alert).getByRole('button', { name: 'common.operation.retry' })
     await waitFor(() => expect(retryButton).toHaveFocus())
 
-    permissionState.refresh.mockResolvedValueOnce({
-      data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
-      error: new Error('permission refresh still failing'),
-    })
+    knowledgeSpacePermissionState.refetch.mockRejectedValueOnce(
+      new Error('permission refresh still failing'),
+    )
     await user.click(retryButton)
-    await waitFor(() => expect(permissionState.refresh).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledTimes(2))
     expect(retryButton).toHaveFocus()
     expect(alert).toBeInTheDocument()
 
-    permissionState.refresh.mockResolvedValueOnce({
-      data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
-      error: null,
+    knowledgeSpacePermissionState.refetch.mockResolvedValueOnce({
+      permission_keys: ['knowledge_space_document_write'],
     })
     await user.click(retryButton)
-    await waitFor(() => expect(permissionState.refresh).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(knowledgeSpacePermissionState.refetch).toHaveBeenCalledTimes(3))
     await waitFor(() => expect(button).not.toHaveAttribute('data-disabled'))
     expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
   })

@@ -18,6 +18,7 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { KnowledgeFsApiAccessDialog } from './components/knowledge-fs-api-access-dialog'
 import { KnowledgeSpaceIcon } from './components/knowledge-space-icon'
+import { KnowledgeSpaceProvider } from './knowledge-space-provider'
 import {
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
@@ -413,7 +414,12 @@ export function KnowledgeSpaceShell({
           </div>
         </aside>
         <section className="@container/knowledge-content mx-1 flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg bg-components-panel-bg shadow-xs">
-          {children}
+          <KnowledgeSpaceProvider
+            space={knowledgeSpaceQuery.data}
+            refetch={async () => (await knowledgeSpaceQuery.refetch()).data}
+          >
+            {children}
+          </KnowledgeSpaceProvider>
         </section>
       </div>
       <KnowledgeFsApiAccessDialog

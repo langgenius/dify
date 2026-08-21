@@ -13,17 +13,14 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { debounce, parseAsString, parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
   datasetDefaultPermissionKeysAtom,
-  refreshWorkspacePermissionKeysAfterMutationDenialAtom,
-  retryWorkspacePermissionKeysAtom,
   workspacePermissionKeysErrorAtom,
-  workspacePermissionKeysFetchingAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
@@ -70,6 +67,7 @@ import {
   stageKnowledgeFsDocument,
   uploadKnowledgeFsDocuments,
 } from './knowledge-fs-upload'
+import { useKnowledgeSpace } from './knowledge-space-context'
 import { ProcessingTasksDrawer } from './processing-tasks-drawer'
 import { createRequestId } from './request-id'
 import { newKnowledgeDocumentDetailPath } from './routes'
@@ -256,24 +254,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
+  const { refetch: refetchKnowledgeSpace, space } = useKnowledgeSpace()
   const datasetDefaultPermissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const workspacePermissionKeysLoading = useAtomValue(workspacePermissionKeysLoadingAtom)
-  const workspacePermissionKeysFetching = useAtomValue(workspacePermissionKeysFetchingAtom)
   const workspacePermissionKeysError = useAtomValue(workspacePermissionKeysErrorAtom)
   const uploadAvailable = useAtomValue(knowledgeFsUploadEnabledAtom)
-  const retryWorkspacePermissionKeys = useSetAtom(retryWorkspacePermissionKeysAtom)
-  const refreshWorkspacePermissionKeysAfterMutationDenial = useSetAtom(
-    refreshWorkspacePermissionKeysAfterMutationDenialAtom,
-  )
-  const canEdit = hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
+  const canEdit = space.permission_keys.includes('knowledge_space_document_write')
   const hasDocumentDownloadPermission = hasPermission(
     datasetDefaultPermissionKeys,
     DatasetACLPermission.DocumentDownload,
   )
-  const permissionPending = workspacePermissionKeysLoading
-  const permissionQueryError = Boolean(workspacePermissionKeysError)
-  const hasWorkspaceWritePermission = canEdit && !permissionPending && !permissionQueryError
-  const canDownload = hasDocumentDownloadPermission && !permissionPending && !permissionQueryError
+  const permissionPending = false
+  const permissionQueryError = false
+  const hasWorkspaceWritePermission = canEdit
+  const canDownload =
+    hasDocumentDownloadPermission &&
+    !workspacePermissionKeysLoading &&
+    !workspacePermissionKeysError
   const documentPermissionAlertRef = useRef<HTMLDivElement>(null)
   const writePermissionFocusRecoveryRequestedRef = useRef(false)
   const writePermissionFocusOriginRef = useRef<HTMLElement | null>(null)
@@ -305,9 +302,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const fileDragDepthRef = useRef(0)
   const [tasksOpen, setTasksOpen] = useState(false)
   const [writePermissionRevoked, setWritePermissionRevoked] = useState(false)
+  const [workspacePermissionKeysFetching, setWorkspacePermissionKeysFetching] = useState(false)
   const [writePermissionRecoveryGeneration, setWritePermissionRecoveryGeneration] = useState<
     number | undefined
   >()
+  const previousCanEditRef = useRef(canEdit)
+  useEffect(() => {
+    const permissionRestored = !previousCanEditRef.current && canEdit
+    previousCanEditRef.current = canEdit
+    if (!writePermissionRevoked || !permissionRestored) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- An authoritative permission transition retires the local mutation lock.
+    setWritePermissionRevoked(false)
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The recovery generation belongs to the retired mutation lock.
+    setWritePermissionRecoveryGeneration(undefined)
+  }, [canEdit, writePermissionRevoked])
   const writePermissionDenialGenerationRef = useRef(0)
   const writePermissionRecoveryFetchSeenRef = useRef(false)
   const [blockingDependencyRetries, setBlockingDependencyRetries] = useState({
@@ -596,7 +604,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const {
     fetchNextPage: fetchNextTaskPage,
     hasNextPage: hasNextTaskPage,
-    isFetchNextPageError: isFetchNextTaskPageError,
     isFetchingNextPage: isFetchingNextTaskPage,
     refetch: refetchTasksQuery,
   } = tasksQuery
@@ -609,9 +616,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   } = sourcesQuery
   const canAutoFetchDocumentPage = Boolean(
     hasNextDocumentPage && (documentsQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
-  )
-  const canAutoFetchTaskPage = Boolean(
-    hasNextTaskPage && (tasksQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
   )
   const documents = useMemo(
     () =>
@@ -677,9 +681,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
   const hasRelevantNextSourcePage = Boolean(hasNextSourcePage && unresolvedDocumentSourceIds.size)
   const isFetchingNextResultsPage = Boolean(
-    isFetchingNextDocumentPage ||
-    (hasNextTaskPage && isFetchingNextTaskPage) ||
-    (hasRelevantNextSourcePage && isFetchingNextSourcePage),
+    isFetchingNextDocumentPage || (hasRelevantNextSourcePage && isFetchingNextSourcePage),
   )
   const canAutoFetchSourcePage = Boolean(
     hasRelevantNextSourcePage && (sourcesQuery.data?.pages.length ?? 0) < MAX_AUTO_CURSOR_PAGES,
@@ -809,7 +811,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [documentStatuses, documents, t, taskByDocument],
   )
   const filterActive = filter !== 'all' || Boolean(search.trim())
-  const statusFilterActive = filter !== 'all'
   const availableDocumentIds = useMemo(
     () =>
       new Set(
@@ -878,8 +879,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       (hasNextDocumentPage ||
         documentsQuery.isFetchingNextPage ||
         documentsQuery.isFetchNextPageError)) ||
-    (statusFilterActive &&
-      (hasNextTaskPage || tasksQuery.isFetchingNextPage || tasksQuery.isFetchNextPageError)) ||
     (filterActive &&
       unresolvedDocumentSourceIds.size > 0 &&
       (hasNextSourcePage || sourcesQuery.isFetchingNextPage || sourcesQuery.isFetchNextPageError)),
@@ -893,13 +892,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const dependencyQueryBlockingError = taskQueryBlockingError || sourceQueryBlockingError
   const dependencyQueryWarning = Boolean(
     (tasksQuery.error && tasksQuery.data) ||
-    tasksQuery.isFetchNextPageError ||
     (sourcesQuery.error && sourcesQuery.data) ||
     sourcesQuery.isFetchNextPageError,
   )
-  const taskResultsIncomplete = Boolean(
-    !tasksQuery.data || tasksQuery.isPending || tasksQuery.isFetchingNextPage,
-  )
+  const taskResultsIncomplete = Boolean(!tasksQuery.data || tasksQuery.isPending)
   const sourceResultsIncomplete = Boolean(
     !sourcesQuery.data ||
     sourcesQuery.isPending ||
@@ -912,9 +908,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const sourceQueryWarning = Boolean(
     (sourcesQuery.error && sourcesQuery.data) || sourcesQuery.isFetchNextPageError,
   )
-  const taskQueryWarning = Boolean(
-    (tasksQuery.error && tasksQuery.data) || tasksQuery.isFetchNextPageError,
-  )
+  const taskQueryWarning = Boolean(tasksQuery.error && tasksQuery.data)
   const documentQueryWarning = Boolean(documentsQuery.error && documentsQuery.data)
   const dependencyRetryFetching = Boolean(
     (taskQueryWarning && tasksQuery.isFetching) || (sourceQueryWarning && sourcesQuery.isFetching),
@@ -1226,22 +1220,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   useEffect(() => {
     if (
       !permissionDenied &&
-      canAutoFetchTaskPage &&
-      !isFetchingNextTaskPage &&
-      !isFetchNextTaskPageError
-    )
-      void fetchNextTaskPage()
-  }, [
-    canAutoFetchTaskPage,
-    fetchNextTaskPage,
-    isFetchNextTaskPageError,
-    isFetchingNextTaskPage,
-    permissionDenied,
-  ])
-
-  useEffect(() => {
-    if (
-      !permissionDenied &&
       canAutoFetchSourcePage &&
       !isFetchingNextSourcePage &&
       !isFetchNextSourcePageError
@@ -1304,27 +1282,23 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const refreshWorkspacePermissions = useCallback(
     async (releaseWriteLockOnSuccess: boolean) => {
       const denialGeneration = writePermissionDenialGenerationRef.current
-      const result = await (releaseWriteLockOnSuccess && writePermissionRevoked
-        ? refreshWorkspacePermissionKeysAfterMutationDenial()
-        : retryWorkspacePermissionKeys())
-      const refreshedPermissionKeys = result.data?.dataset?.default_permission_keys
-      if (
-        releaseWriteLockOnSuccess &&
-        writePermissionDenialGenerationRef.current === denialGeneration &&
-        !result.error &&
-        refreshedPermissionKeys &&
-        hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
-      ) {
-        writePermissionRecoveryFetchSeenRef.current = false
-        setWritePermissionRevoked(false)
-        setWritePermissionRecoveryGeneration(undefined)
+      setWorkspacePermissionKeysFetching(true)
+      try {
+        const refreshedSpace = await refetchKnowledgeSpace()
+        if (
+          releaseWriteLockOnSuccess &&
+          writePermissionDenialGenerationRef.current === denialGeneration &&
+          refreshedSpace?.permission_keys.includes('knowledge_space_document_write')
+        ) {
+          writePermissionRecoveryFetchSeenRef.current = false
+          setWritePermissionRevoked(false)
+          setWritePermissionRecoveryGeneration(undefined)
+        }
+      } finally {
+        setWorkspacePermissionKeysFetching(false)
       }
     },
-    [
-      refreshWorkspacePermissionKeysAfterMutationDenial,
-      retryWorkspacePermissionKeys,
-      writePermissionRevoked,
-    ],
+    [refetchKnowledgeSpace],
   )
 
   const handleWritePermissionDenied = useCallback(() => {
@@ -1333,22 +1307,20 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     writePermissionRecoveryFetchSeenRef.current = false
     setWritePermissionRecoveryGeneration(undefined)
     setWritePermissionRevoked(true)
-    void refreshWorkspacePermissionKeysAfterMutationDenial().then((result) => {
-      const refreshedPermissionKeys = result.data?.dataset?.default_permission_keys
-      if (writePermissionDenialGenerationRef.current !== denialGeneration) return
-      if (
-        !result.error &&
-        refreshedPermissionKeys &&
-        hasPermission(refreshedPermissionKeys, DatasetACLPermission.Edit)
-      ) {
-        writePermissionRecoveryFetchSeenRef.current = false
-        setWritePermissionRevoked(false)
-        setWritePermissionRecoveryGeneration(undefined)
-        return
-      }
-      setWritePermissionRecoveryGeneration(denialGeneration)
-    })
-  }, [refreshWorkspacePermissionKeysAfterMutationDenial])
+    setWorkspacePermissionKeysFetching(true)
+    void refetchKnowledgeSpace()
+      .then((refreshedSpace) => {
+        if (writePermissionDenialGenerationRef.current !== denialGeneration) return
+        if (refreshedSpace?.permission_keys.includes('knowledge_space_document_write')) {
+          writePermissionRecoveryFetchSeenRef.current = false
+          setWritePermissionRevoked(false)
+          setWritePermissionRecoveryGeneration(undefined)
+          return
+        }
+        setWritePermissionRecoveryGeneration(denialGeneration)
+      })
+      .finally(() => setWorkspacePermissionKeysFetching(false))
+  }, [refetchKnowledgeSpace])
 
   const reconcileTerminalTask = useCallback(
     async function reconcileTerminalTaskRequest(
@@ -2538,8 +2510,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         sources: current.sources || sourceQueryBlockingError,
         tasks: current.tasks || taskQueryBlockingError,
       }))
-    if (tasksQuery.isFetchNextPageError) void tasksQuery.fetchNextPage()
-    else if (tasksQuery.error || taskQueryBlockingError) void tasksQuery.refetch()
+    if (tasksQuery.error || taskQueryBlockingError) void tasksQuery.refetch()
     if (sourcesQuery.isFetchNextPageError) void sourcesQuery.fetchNextPage()
     else if (sourcesQuery.error || sourceQueryBlockingError) void sourcesQuery.refetch()
   }
@@ -2547,7 +2518,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const loadMoreResults = () => {
     const requests: Promise<unknown>[] = []
     if (hasNextDocumentPage && !isFetchingNextDocumentPage) requests.push(fetchNextDocumentPage())
-    if (hasNextTaskPage && !isFetchingNextTaskPage) requests.push(fetchNextTaskPage())
     if (hasRelevantNextSourcePage && !isFetchingNextSourcePage) requests.push(fetchNextSourcePage())
     void Promise.allSettled(requests)
   }
@@ -2909,9 +2879,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             getDocumentHref={(documentId) =>
               newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId)
             }
-            hasNextPage={Boolean(
-              hasNextDocumentPage || hasNextTaskPage || hasRelevantNextSourcePage,
-            )}
+            hasNextPage={Boolean(hasNextDocumentPage || hasRelevantNextSourcePage)}
             hasSelectableDocuments={Boolean(selectableFilteredDocuments.length)}
             hasTaskError={hasTaskError}
             isFetchNextPageError={documentsQuery.isFetchNextPageError}

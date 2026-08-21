@@ -12,7 +12,12 @@ vi.mock('../components/knowledge-model-readiness-banner', () => ({
 const toastInfoMock = vi.hoisted(() => vi.fn())
 const toastErrorMock = vi.hoisted(() => vi.fn())
 const permissionState = vi.hoisted(() => ({
+  knowledgeSpacePermissionKeys: ['knowledge_space_document_write'],
   workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
+}))
+vi.mock('../knowledge-space-context', () => ({
+  useKnowledgeSpacePermission: (permission: string) =>
+    permissionState.knowledgeSpacePermissionKeys.includes(permission),
 }))
 const sourceApiResponse = vi.hoisted(() => (source: Source) => ({
   sync_workflow: source.syncWorkflow
@@ -308,6 +313,7 @@ describe('SourcesPage', () => {
     invalidateQueriesMock.mockResolvedValue(undefined)
     clientMock.syncSource.mockResolvedValue(workflow())
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
+    permissionState.knowledgeSpacePermissionKeys = ['knowledge_space_document_write']
     settingsState.configurationState = 'active'
     settingsState.refetch.mockImplementation(async () => ({
       data: {
@@ -342,11 +348,11 @@ describe('SourcesPage', () => {
     if (!options) throw new Error('Expected source infinite query options')
     expect(options.input(null)).toEqual({
       params: { control_space_id: 'space-1' },
-      query: { limit: 50 },
+      query: { limit: 200 },
     })
     expect(options.input('next')).toEqual({
       params: { control_space_id: 'space-1' },
-      query: { cursor: 'next', limit: 50 },
+      query: { cursor: 'next', limit: 200 },
     })
     expect(options.getNextPageParam({ next_cursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
@@ -520,6 +526,7 @@ describe('SourcesPage', () => {
 
   it('keeps empty-state shortcuts inert without add-source permission', () => {
     permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
+    permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = { pages: [{ items: [] }] }
 
     const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -1030,6 +1037,7 @@ describe('SourcesPage', () => {
   it('opens an Amazon S3 source in the AWS console for read-only users', async () => {
     const user = userEvent.setup()
     permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
+    permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = {
       pages: [
         {
@@ -1058,9 +1066,10 @@ describe('SourcesPage', () => {
     )
   })
 
-  it('uses dataset.external.connect for every source mutation action', async () => {
+  it('uses knowledge-space document-write permission for every source mutation action', async () => {
     const user = userEvent.setup()
     permissionState.workspacePermissionKeys = ['dataset.external.connect']
+    permissionState.knowledgeSpacePermissionKeys = ['knowledge_space_document_write']
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -1082,9 +1091,10 @@ describe('SourcesPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('hides source mutations without dataset.external.connect', async () => {
+  it('hides source mutations without knowledge-space document-write permission', async () => {
     const user = userEvent.setup()
     permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.create_and_management']
+    permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -2055,7 +2065,7 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
   })
 
-  it('caps automatic filtered pagination and offers explicit continuation', async () => {
+  it('continues automatic filtered pagination beyond the former page cap', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = {
       pages: Array.from({ length: 4 }, (_, index) => ({
@@ -2071,10 +2081,10 @@ describe('SourcesPage', () => {
       'later page',
     )
 
-    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+    ).not.toBeInTheDocument()
   })
 
   it('stops automatic filtered pagination after a cursor error', async () => {
@@ -2265,6 +2275,7 @@ describe('SourcesPage', () => {
   it('keeps read-only source viewing while hiding mutation and add-source actions', async () => {
     const user = userEvent.setup()
     permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
+    permissionState.knowledgeSpacePermissionKeys = []
     sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)

@@ -132,7 +132,6 @@ export function CreateKnowledgePage() {
   const normalizedDescription = description.trim()
   const nameLengthInvalid = Array.from(normalizedName).length > NAME_MAX_LENGTH
   const descriptionLengthInvalid = Array.from(normalizedDescription).length > DESCRIPTION_MAX_LENGTH
-  const nameSubmissionBlocked = !normalizedName || nameLengthInvalid || descriptionLengthInvalid
   const uploadSubmissionBlocked =
     startMode === 'upload' &&
     (!uploadAvailable ||
@@ -671,7 +670,7 @@ export function CreateKnowledgePage() {
                     variant="primary"
                     loading={submissionPending}
                     disabled={
-                      nameSubmissionBlocked || uploadSubmissionBlocked || sourceSubmissionBlocked
+                      submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked
                     }
                   >
                     {t(($) => $['newKnowledge.createTitle'])}

@@ -142,6 +142,23 @@ const permissionStateMock = vi.hoisted(() => ({
   retryAtom: Symbol('retryWorkspacePermissionKeysAtom'),
   refreshAfterDenial: vi.fn(),
   refreshAfterDenialAtom: Symbol('refreshWorkspacePermissionKeysAfterMutationDenialAtom'),
+  spaceKeys: ['knowledge_space_document_write'],
+}))
+vi.mock('../knowledge-space-context', () => ({
+  useKnowledgeSpace: () => ({
+    refetch: async () => {
+      const result = await permissionStateMock.refreshAfterDenial()
+      const legacyKeys = result?.data?.dataset?.default_permission_keys
+      return {
+        permission_keys: legacyKeys
+          ? legacyKeys.includes('dataset.acl.edit')
+            ? ['knowledge_space_document_write']
+            : []
+          : permissionStateMock.spaceKeys,
+      }
+    },
+    space: { permission_keys: permissionStateMock.spaceKeys },
+  }),
 }))
 const systemFeaturesStateMock = vi.hoisted(() => ({
   atom: Symbol('knowledgeFsUploadEnabledAtom'),
@@ -767,6 +784,7 @@ describe('DocumentsPage', () => {
     sourcesQuery.isPending = false
     sourcesQuery.refetch.mockResolvedValue({ error: null })
     permissionStateMock.datasetKeys = ['dataset.acl.edit', 'dataset.acl.document_download']
+    permissionStateMock.spaceKeys = ['knowledge_space_document_write']
     permissionStateMock.error = null
     permissionStateMock.fetching = false
     permissionStateMock.loading = false
@@ -1627,6 +1645,7 @@ describe('DocumentsPage', () => {
 
   it('consumes an upload URL request without opening the form for a read-only user', async () => {
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
+    permissionStateMock.spaceKeys = []
     const { onUrlUpdate } = render(<DocumentsPage knowledgeSpaceId="space-1" />, {
       searchParams: '?upload=1',
     })
@@ -1854,6 +1873,7 @@ describe('DocumentsPage', () => {
 
   it('removes the empty-state drop affordance when uploads are unavailable', () => {
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
+    permissionStateMock.spaceKeys = []
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
@@ -1894,6 +1914,7 @@ describe('DocumentsPage', () => {
   it('keeps every write action unavailable for read-only users', async () => {
     const user = userEvent.setup()
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
+    permissionStateMock.spaceKeys = []
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
@@ -1929,54 +1950,26 @@ describe('DocumentsPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps permission lookup failures distinct from read-only access and retries them', async () => {
-    const user = userEvent.setup()
+  it('does not confuse legacy download-permission failures with KnowledgeFS write access', () => {
     permissionStateMock.error = new Error('permission service unavailable')
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent('dataset.newKnowledge.permissionLoadFailed')
-    expect(
-      screen.queryByText('dataset.newKnowledge.documentPermissionRestricted'),
-    ).not.toBeInTheDocument()
     const addDocument = screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })
-    expect(addDocument).toBeDisabled()
-    expect(addDocument).toHaveAccessibleDescription('dataset.newKnowledge.permissionLoadFailed')
-    await user.click(
-      screen.getByRole('button', {
-        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
-      }),
-    )
-    expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.permissionLoadFailed',
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
-      }),
-    )
-    expect(permissionStateMock.retry).toHaveBeenCalledOnce()
+    expect(addDocument).toBeEnabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('explains pending permission checks inside the task drawer', async () => {
+  it('does not block task actions while legacy download permission is loading', async () => {
     const user = userEvent.setup()
     permissionStateMock.loading = true
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [task()] }] }
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    const pendingPermission = screen.getByText('dataset.newKnowledge.permission · common.loading')
-    expect(pendingPermission).toHaveTextContent('dataset.newKnowledge.permission · common.loading')
-    expect(pendingPermission).toHaveAttribute('role', 'status')
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
-    ).toHaveAttribute('aria-describedby', 'documents-permission-pending')
-    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
-      'aria-describedby',
-      'documents-permission-pending',
-    )
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
     await user.click(
       screen.getByRole('button', {
         name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
@@ -1984,13 +1977,8 @@ describe('DocumentsPage', () => {
     )
 
     expect(
-      within(screen.getByRole('dialog')).getByText(
-        'dataset.newKnowledge.permission · common.loading',
-      ),
+      screen.getByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
-    ).not.toBeInTheDocument()
   })
 
   it('stages one or multiple files before uploading them through the Dify API contract', async () => {
@@ -2596,17 +2584,14 @@ describe('DocumentsPage', () => {
     ).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('keeps permission retries busy while permission keys are refetching', () => {
+  it('does not expose a KnowledgeFS permission retry for legacy download refreshes', () => {
     permissionStateMock.error = new Error('permission refresh failed')
     permissionStateMock.fetching = true
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(
-      screen.getByRole('button', {
-        name: 'common.operation.retry · dataset.newKnowledge.permissionLoadFailed',
-      }),
-    ).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
   })
 
   it('does not disable a failed dependency retry for an unrelated background refresh', () => {
@@ -3140,7 +3125,7 @@ describe('DocumentsPage', () => {
       'aria-disabled',
       'true',
     )
-    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
@@ -3165,7 +3150,7 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('keeps document state pending while the next task cursor page is loading', () => {
+  it('keeps document state actionable while an older task page is loading', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
     tasksQuery.hasNextPage = true
@@ -3175,11 +3160,10 @@ describe('DocumentsPage', () => {
 
     const documentRow = screen.getByRole('row', { name: /sso-enterprise\.pdf/ })
     expect(
-      within(documentRow).queryByText('dataset.newKnowledge.documentStatus.ready'),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
+      within(documentRow).getByText('dataset.newKnowledge.documentStatus.ready'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
-      'true',
     )
   })
 
@@ -7235,7 +7219,7 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('table').parentElement).toHaveFocus()
   })
 
-  it('eagerly exhausts task and source cursor pages for accurate labels', () => {
+  it('loads unresolved source labels without exhausting task history', () => {
     documentsQuery.data = {
       pages: [{ items: [document({ sourceId: 'source-on-later-page' })] }],
     }
@@ -7246,11 +7230,11 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps filtered results partial while task-dependent statuses have more pages', async () => {
+  it('treats the first task page as authoritative for document status', async () => {
     const user = userEvent.setup()
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
@@ -7264,8 +7248,11 @@ describe('DocumentsPage', () => {
       screen.getByRole('option', { name: 'dataset.newKnowledge.documentStatus.failed' }),
     )
 
-    expect(screen.queryByText('dataset.newKnowledge.noMatchingDocuments')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.noMatchingDocuments')).toBeInTheDocument()
+    expect(
+      screen.queryByText('dataset.newKnowledge.partialDocumentResults'),
+    ).not.toBeInTheDocument()
+    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
   })
 
   it('keeps source-name searches partial while unresolved sources have more pages', async () => {
@@ -7333,11 +7320,11 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.partialDocumentResults')).toBeInTheDocument()
     await user.click(loadMore)
     expect(documentsQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(tasksQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(tasksQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps explicit result pagination busy while a dependency page is loading', () => {
+  it('keeps task-history pagination out of document result pagination', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
     tasksQuery.data = {
       pages: Array.from({ length: 20 }, () => ({ items: [], nextCursor: 'next' })),
@@ -7347,9 +7334,11 @@ describe('DocumentsPage', () => {
 
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' })).toHaveAttribute(
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).not.toHaveAttribute(
       'aria-disabled',
-      'true',
     )
   })
 
@@ -7378,8 +7367,8 @@ describe('DocumentsPage', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+    ).not.toBeInTheDocument()
   })
 
   it('locks cached documents when the task query returns a permission denial', () => {
@@ -7575,16 +7564,12 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus()
 
     permissionStateMock.datasetKeys = ['dataset.acl.readonly']
-    permissionStateMock.fetching = true
-    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    permissionStateMock.fetching = false
+    permissionStateMock.spaceKeys = []
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeDisabled()
 
     permissionStateMock.datasetKeys = ['dataset.acl.edit']
-    permissionStateMock.fetching = true
-    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
-    permissionStateMock.fetching = false
+    permissionStateMock.spaceKeys = ['knowledge_space_document_write']
     rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     await waitFor(() =>
       expect(
@@ -7686,9 +7671,7 @@ describe('DocumentsPage', () => {
     expect(
       within(dialog).getByText('dataset.newKnowledge.documentPermissionRestricted'),
     ).toBeInTheDocument()
-    expect(within(dialog).getByRole('alert')).toHaveTextContent(
-      'dataset.newKnowledge.permissionLoadFailed',
-    )
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('does not let an older permission refresh release the latest write lock', async () => {

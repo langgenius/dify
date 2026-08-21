@@ -7,8 +7,10 @@ export type RetrievalTestMode = 'deep' | 'fast' | 'research'
 
 export type RetrievalEvidence = {
   chunkId?: string
+  documentAssetId?: string
   documentId?: string
   documentName?: string
+  documentRevision?: number
   id: string
   images: string[]
   page?: number
@@ -126,15 +128,30 @@ function evidenceFromValue(
     metadata.documentName,
   )
   const documentId = firstString(
-    record.document_id,
-    record.documentId,
-    document.id,
+    record.logical_document_id,
+    record.logicalDocumentId,
+    metadata.logical_document_id,
+    metadata.logicalDocumentId,
+    record.resource_type !== 'node' && record.resourceType !== 'node'
+      ? record.target_id
+      : undefined,
+    record.resource_type !== 'node' && record.resourceType !== 'node' ? record.targetId : undefined,
+  )
+  const documentAssetId = firstString(
+    record.document_asset_id,
+    record.documentAssetId,
+    metadata.document_asset_id,
+    metadata.documentAssetId,
     metadata.document_id,
     metadata.documentId,
     citation.documentAssetId,
     citation.document_asset_id,
-    record.target_id,
-    record.targetId,
+  )
+  const documentRevision = firstNumber(
+    record.document_revision,
+    record.documentRevision,
+    metadata.document_revision,
+    metadata.documentRevision,
   )
   const page = firstNumber(
     record.page,
@@ -169,6 +186,7 @@ function evidenceFromValue(
     score !== undefined ||
     documentName ||
     documentId ||
+    documentAssetId ||
     page !== undefined ||
     record.kind === 'resource' ||
     typeof record.resource_type === 'string' ||
@@ -188,8 +206,10 @@ function evidenceFromValue(
 
   return {
     chunkId,
+    documentAssetId,
     documentId,
     documentName,
+    documentRevision,
     id,
     images: [...new Set(images)],
     page,

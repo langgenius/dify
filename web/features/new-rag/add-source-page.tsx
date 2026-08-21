@@ -33,6 +33,7 @@ import {
   datasourceParameterDefaults,
   websiteDatasourceParameterSchemas,
 } from './datasource-parameter-model'
+import { useKnowledgeSpacePermission } from './knowledge-space-context'
 import {
   createNewKnowledgeSourceDraft,
   newKnowledgeDetailPath,
@@ -773,19 +774,40 @@ function ProvisioningConnection({
   )
 }
 
-export function AddSourcePage({
-  initialSourceDraft,
-  initialSourceProvider,
-  initialSourceType,
-  knowledgeSpaceId,
-  sourceDraftKey,
-}: {
+type AddSourcePageProps = {
   initialSourceDraft?: NewKnowledgeSourceDraft
   initialSourceProvider?: string
   initialSourceType?: string
   knowledgeSpaceId: string
   sourceDraftKey?: string
-}) {
+}
+
+export function AddSourcePage(props: AddSourcePageProps) {
+  const router = useRouter()
+  const canManageSources = useKnowledgeSpacePermission('knowledge_space_document_write')
+  const detailPath = newKnowledgeDetailPath(props.knowledgeSpaceId)
+
+  useEffect(() => {
+    if (!canManageSources) router.replace(detailPath)
+  }, [canManageSources, detailPath, router])
+
+  if (!canManageSources)
+    return (
+      <div className="flex min-h-80 min-w-0 flex-1 items-center justify-center">
+        <Loading />
+      </div>
+    )
+
+  return <AddSourcePageContent {...props} />
+}
+
+function AddSourcePageContent({
+  initialSourceDraft,
+  initialSourceProvider,
+  initialSourceType,
+  knowledgeSpaceId,
+  sourceDraftKey,
+}: AddSourcePageProps) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const queryClient = useQueryClient()

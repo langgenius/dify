@@ -139,7 +139,7 @@ function renderPanel() {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )
-  return render(<QualityEvaluationPanel knowledgeSpaceId="space-1" />, { wrapper: Wrapper })
+  return render(<QualityEvaluationPanel canEdit knowledgeSpaceId="space-1" />, { wrapper: Wrapper })
 }
 
 describe('QualityEvaluationPanel', () => {

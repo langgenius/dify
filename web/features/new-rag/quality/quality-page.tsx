@@ -31,6 +31,7 @@ import Badge from '@/app/components/base/badge'
 import Loading from '@/app/components/base/loading'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { useKnowledgeSpacePermission } from '../knowledge-space-context'
 import { newKnowledgeQualityPath, newKnowledgeRetrievalTestPath } from '../routes'
 import { GoldenQuestionDialog } from './golden-question-dialog'
 import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
@@ -160,6 +161,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
+  const canEdit = useKnowledgeSpacePermission('knowledge_space_edit')
   const requestedTab = searchParams.get('tab')
   const activeTab =
     requestedTab === 'bad-cases' ? 'bad' : requestedTab === 'evaluations' ? 'evaluation' : 'golden'
@@ -435,7 +437,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       <Tabs value={activeTab} onValueChange={(value) => setTab(value as typeof activeTab)}>
         <div className="mt-2.5 flex h-14 items-end justify-between">
           <QualityTabList />
-          {activeTab === 'golden' && goldenQuestions.length > 0 && (
+          {canEdit && activeTab === 'golden' && goldenQuestions.length > 0 && (
             <div className="flex gap-2">
               <Button className="gap-1" onClick={() => setImportOpen(true)}>
                 <span aria-hidden className="i-ri-download-line size-4" />
@@ -462,6 +464,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 <Checkbox
                   aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
                   checked={allSelected}
+                  disabled={!canEdit}
                   indeterminate={partiallySelected}
                   onCheckedChange={toggleAll}
                 />
@@ -482,6 +485,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       question: item.question,
                     })}
                     checked={selected.has(item.id)}
+                    disabled={!canEdit}
                     onCheckedChange={() => toggleOne(item.id)}
                   />
                   <span className="truncate system-sm-medium text-text-primary">
@@ -506,48 +510,52 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                   <span className="system-xs-regular text-text-secondary">
                     {updated(item.updated_at)}
                   </span>
-                  <DropdownMenu modal={false}>
-                    <RowMenuTrigger
-                      label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
-                        question: item.question,
-                      })}
-                    />
-                    <DropdownMenuContent
-                      placement="bottom-end"
-                      sideOffset={4}
-                      popupClassName="w-[200px]"
-                    >
-                      <DropdownMenuItem
-                        className="gap-2 px-3"
-                        onClick={() =>
-                          setDialog({
-                            id: item.id,
-                            key: `edit-${item.id}-${Date.now()}`,
-                            mode: 'edit',
-                            value: {
-                              annotation: item.annotation,
-                              expectedEvidenceIds: item.expected_evidence_ids ?? [],
-                              matchPolicy: item.match_policy ?? 'all',
-                              question: item.question,
-                              tags: item.tags,
-                            },
-                          })
-                        }
+                  {canEdit ? (
+                    <DropdownMenu modal={false}>
+                      <RowMenuTrigger
+                        label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
+                          question: item.question,
+                        })}
+                      />
+                      <DropdownMenuContent
+                        placement="bottom-end"
+                        sideOffset={4}
+                        popupClassName="w-[200px]"
                       >
-                        <span aria-hidden className="i-ri-edit-line size-4" />
-                        {t(($) => $['newKnowledge.qualityPage.edit'])}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        className="gap-2 px-3"
-                        onClick={() => setDeleteIds(new Set([item.id]))}
-                      >
-                        <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                        {t(($) => $['newKnowledge.qualityPage.delete'])}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuItem
+                          className="gap-2 px-3"
+                          onClick={() =>
+                            setDialog({
+                              id: item.id,
+                              key: `edit-${item.id}-${Date.now()}`,
+                              mode: 'edit',
+                              value: {
+                                annotation: item.annotation,
+                                expectedEvidenceIds: item.expected_evidence_ids ?? [],
+                                matchPolicy: item.match_policy ?? 'all',
+                                question: item.question,
+                                tags: item.tags,
+                              },
+                            })
+                          }
+                        >
+                          <span aria-hidden className="i-ri-edit-line size-4" />
+                          {t(($) => $['newKnowledge.qualityPage.edit'])}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          className="gap-2 px-3"
+                          onClick={() => setDeleteIds(new Set([item.id]))}
+                        >
+                          <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                          {t(($) => $['newKnowledge.qualityPage.delete'])}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <span />
+                  )}
                 </div>
               ))}
               {goldenQuery.hasNextPage && (
@@ -571,22 +579,24 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
               </p>
-              <div className="mt-4 flex gap-2">
-                <Button className="gap-1" onClick={() => setImportOpen(true)}>
-                  <span aria-hidden className="i-ri-download-line size-4" />
-                  {t(($) => $['newKnowledge.qualityPage.importCsv'])}
-                </Button>
-                <Button
-                  variant="primary"
-                  className="gap-1"
-                  onClick={() =>
-                    setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
-                  }
-                >
-                  <span aria-hidden className="i-ri-add-line size-4" />
-                  {t(($) => $['newKnowledge.qualityPage.addGolden'])}
-                </Button>
-              </div>
+              {canEdit && (
+                <div className="mt-4 flex gap-2">
+                  <Button className="gap-1" onClick={() => setImportOpen(true)}>
+                    <span aria-hidden className="i-ri-download-line size-4" />
+                    {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="gap-1"
+                    onClick={() =>
+                      setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
+                    }
+                  >
+                    <span aria-hidden className="i-ri-add-line size-4" />
+                    {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </TabsPanel>
@@ -628,37 +638,38 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       sideOffset={4}
                       popupClassName="w-[200px]"
                     >
-                      {item.status === 'fixed' ? (
-                        <DropdownMenuItem
-                          className="gap-2 px-3"
-                          onClick={() =>
-                            setDialog({
-                              id: item.id,
-                              key: `promote-${item.id}-${Date.now()}`,
-                              mode: 'promote',
-                              value: {
-                                annotation: '',
-                                expectedEvidenceIds: [],
-                                matchPolicy: 'all',
-                                question: item.question ?? '',
-                                tags: visibleTags(item.tags),
-                              },
-                            })
-                          }
-                        >
-                          <span aria-hidden className="i-ri-star-line size-4" />
-                          {t(($) => $['newKnowledge.qualityPage.toGolden'])}
-                        </DropdownMenuItem>
-                      ) : (
-                        <DropdownMenuItem
-                          className="gap-2 px-3"
-                          disabled={item.status === 'replaying' || pendingBadCaseId === item.id}
-                          onClick={() => void replayBadCase(item)}
-                        >
-                          <span aria-hidden className="i-ri-restart-line size-4" />
-                          {t(($) => $['newKnowledge.qualityPage.replay'])}
-                        </DropdownMenuItem>
-                      )}
+                      {canEdit &&
+                        (item.status === 'fixed' ? (
+                          <DropdownMenuItem
+                            className="gap-2 px-3"
+                            onClick={() =>
+                              setDialog({
+                                id: item.id,
+                                key: `promote-${item.id}-${Date.now()}`,
+                                mode: 'promote',
+                                value: {
+                                  annotation: '',
+                                  expectedEvidenceIds: [],
+                                  matchPolicy: 'all',
+                                  question: item.question ?? '',
+                                  tags: visibleTags(item.tags),
+                                },
+                              })
+                            }
+                          >
+                            <span aria-hidden className="i-ri-star-line size-4" />
+                            {t(($) => $['newKnowledge.qualityPage.toGolden'])}
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            className="gap-2 px-3"
+                            disabled={item.status === 'replaying' || pendingBadCaseId === item.id}
+                            onClick={() => void replayBadCase(item)}
+                          >
+                            <span aria-hidden className="i-ri-restart-line size-4" />
+                            {t(($) => $['newKnowledge.qualityPage.replay'])}
+                          </DropdownMenuItem>
+                        ))}
                       <DropdownMenuItem
                         className="gap-2 px-3"
                         disabled={pendingBadCaseId === item.id}
@@ -667,7 +678,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
                         {t(($) => $['newKnowledge.qualityPage.openTrace'])}
                       </DropdownMenuItem>
-                      {item.status !== 'fixed' && (
+                      {canEdit && item.status !== 'fixed' && (
                         <DropdownMenuItem
                           className="gap-2 px-3"
                           disabled={pendingBadCaseId === item.id}
@@ -690,15 +701,17 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                           {t(($) => $['newKnowledge.qualityPage.toGolden'])}
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="gap-2 px-3"
-                        disabled={pendingBadCaseId === item.id}
-                        onClick={() => void ignoreBadCase(item)}
-                      >
-                        <span aria-hidden className="i-ri-eye-off-line size-4" />
-                        {t(($) => $['newKnowledge.qualityPage.ignore'])}
-                      </DropdownMenuItem>
+                      {canEdit && <DropdownMenuSeparator />}
+                      {canEdit && (
+                        <DropdownMenuItem
+                          className="gap-2 px-3"
+                          disabled={pendingBadCaseId === item.id}
+                          onClick={() => void ignoreBadCase(item)}
+                        >
+                          <span aria-hidden className="i-ri-eye-off-line size-4" />
+                          {t(($) => $['newKnowledge.qualityPage.ignore'])}
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -739,10 +752,10 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         </TabsPanel>
 
         <TabsPanel value="evaluation" tabIndex={-1}>
-          <QualityEvaluationPanel knowledgeSpaceId={knowledgeSpaceId} />
+          <QualityEvaluationPanel canEdit={canEdit} knowledgeSpaceId={knowledgeSpaceId} />
         </TabsPanel>
 
-        {activeTab === 'golden' && selected.size > 0 && (
+        {canEdit && activeTab === 'golden' && selected.size > 0 && (
           <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
             <span className="system-sm-medium text-text-primary">
               {t(
