@@ -164,6 +164,10 @@ export const lintConfig = {
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     'eslint-plugin-command',
+    {
+      name: 'dify',
+      specifier: './web/plugins/eslint/index.js',
+    },
     'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
@@ -173,7 +177,6 @@ export const lintConfig = {
       name: 'eslint-react',
       specifier: '@eslint-react/eslint-plugin',
     },
-    'eslint-plugin-hyoban',
     {
       name: 'jsdoc-js',
       specifier: 'eslint-plugin-jsdoc',
@@ -813,7 +816,7 @@ export const lintConfig = {
     {
       files: ['web/**/*.tsx'],
       rules: {
-        'hyoban/prefer-tailwind-icons': [
+        'dify/prefer-tailwind-icons': [
           'warn',
           {
             prefix: 'i-',

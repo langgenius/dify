@@ -8,7 +8,7 @@ declare global {
     ManagedMediaSource?: typeof MediaSource
   }
 }
-export default class AudioPlayer {
+export class AudioPlayer {
   mediaSource: MediaSource | null
   audio: HTMLAudioElement
   audioContext: AudioContext

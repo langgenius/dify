@@ -22,7 +22,6 @@
   "deployTab.moreActions": "Más acciones",
   "deployTab.redeploy": "Volver a desplegar",
   "deployTab.undeploy": "Retirar despliegue",
-  "deployTab.undeployConfirmWarning": "Después de confirmar, este entorno pasará al estado de retirada y las acciones se deshabilitarán temporalmente.",
   "health.ENVIRONMENT_STATUS_FAILED": "No disponible",
   "list.emptyTitle": "Aún no hay despliegues",
   "overview.chip.latest": "última",

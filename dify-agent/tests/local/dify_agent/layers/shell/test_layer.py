@@ -26,6 +26,7 @@ from dify_agent.layers.shell.layer import (
 from dify_agent.adapters.shell.protocols import (
     ShellCommandResult,
     ShellCommandStatus,
+    ShellExecutionMode,
     ShellProviderError,
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -113,6 +114,7 @@ class RunCall:
     cwd: str | None
     env: Mapping[str, str] | None
     timeout: float
+    mode: ShellExecutionMode = "pty"
 
 
 @dataclass(slots=True)
@@ -167,8 +169,16 @@ class FakeCommands:
     interrupt_calls: list[InterruptCall] = field(default_factory=list)
     delete_calls: list[DeleteCall] = field(default_factory=list)
 
-    async def run(self, script: str, *, cwd: str | None = None, env: dict[str, str] | None = None, timeout: float):
-        self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
+    async def run(
+        self,
+        script: str,
+        *,
+        cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        timeout: float,
+        mode: ShellExecutionMode = "pty",
+    ):
+        self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout, mode=mode))
         if self.run_handler is None:
             raise AssertionError("Unexpected run() call")
         return self.run_handler(script, cwd, env, timeout)
@@ -291,6 +301,15 @@ def _runtime_state(
 
 def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
+
+
+def test_shell_prefix_prompt_describes_workspace_as_temp_space() -> None:
+    prompt = shell_layer_module._SHELL_LAYER_PREFIX_PROMPT
+
+    assert "`cwd`) is the active Workspace and temporary working space" in prompt
+    assert "`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`" in prompt
+    assert "`$HOME` is the system space for reusable tools and state" in prompt
+    assert "<cwd>/.tmp" not in prompt
 
 
 def test_shell_layer_create_bootstraps_inside_sandbox_workspace() -> None:
@@ -499,6 +518,7 @@ def test_shell_layer_tools_map_inputs_and_maintain_offsets_with_tail_end() -> No
     asyncio.run(scenario())
 
     assert layer.runtime_state.job_offsets == {"user-job": 34}
+    assert commands.run_calls[0].mode == "pty"
     assert commands.tail_calls == [TailCall(job_id="user-job"), TailCall(job_id="user-job")]
 
 
@@ -936,6 +956,7 @@ def test_run_remote_script_complete_uses_read_output_before_wait_and_deletes_job
 
     asyncio.run(scenario())
     assert events == ["run", "read_output", "wait"]
+    assert commands.run_calls[0].mode == "stdio"
     assert [call.job_id for call in commands.delete_calls] == ["remote-job"]
 
 

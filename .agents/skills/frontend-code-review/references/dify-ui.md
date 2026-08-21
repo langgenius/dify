@@ -55,7 +55,8 @@ For non-string `Select` and `RadioGroup` values, prefer explicit domain generics
 Flag:
 
 - Form-like UI using unrelated `Input` and `Button` pieces without a submit boundary.
-- Text-like fields not composed through `Field`, `FieldLabel`, and `FieldControl` when using Dify UI form semantics.
+- Text-like fields not composed through `Field`, `FieldLabel`, and `Input` or `InputGroupInput` when using Dify UI form semantics.
+- Prefixes, suffixes, or actions manually layered over `Input` instead of using the canonical `InputGroup` composition.
 - Select fields using `FieldLabel` instead of `SelectLabel`.
 - Slider fields using a generic label instead of `SliderLabel`.
 - Checkbox/radio groups missing `Fieldset` and `FieldsetLegend`.

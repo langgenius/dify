@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from enums import DeploymentEdition
 from extensions.storage.storage_type import StorageType
 from models.base import TypeBase
 from models.enums import CreatorUserRole
@@ -295,6 +296,40 @@ class TestFileService:
     def test_get_file_presigned_url_not_found(self, file_service: FileService):
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
+    def test_get_icon_url_uses_direct_storage_url_for_cloud_s3(self, file_service: FileService):
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
+            patch.object(file_service, "get_file_presigned_url", return_value="direct-url") as get_presigned_url,
+        ):
+            result = file_service.get_icon_url("file_id", "tenant_id")
+
+        assert result == "direct-url"
+        get_presigned_url.assert_called_once_with(file_id="file_id", tenant_id="tenant_id")
+
+    @pytest.mark.parametrize(
+        ("deployment_edition", "storage_type"),
+        [
+            (DeploymentEdition.COMMUNITY, StorageType.S3),
+            (DeploymentEdition.CLOUD, StorageType.LOCAL),
+        ],
+    )
+    def test_get_icon_url_uses_preview_url_outside_cloud_s3(
+        self,
+        file_service: FileService,
+        deployment_edition: DeploymentEdition,
+        storage_type: StorageType,
+    ):
+        with (
+            patch.object(dify_config, "DEPLOYMENT_EDITION", deployment_edition),
+            patch.object(dify_config, "STORAGE_TYPE", storage_type),
+            patch("services.file_service.file_helpers.get_signed_file_url", return_value="preview-url") as get_url,
+        ):
+            result = file_service.get_icon_url("file_id", "tenant_id")
+
+        assert result == "preview-url"
+        get_url.assert_called_once_with(upload_file_id="file_id")
 
     def test_upload_text_success(self, file_service: FileService, db_session: Session):
         # Setup
