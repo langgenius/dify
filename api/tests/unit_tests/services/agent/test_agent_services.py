@@ -4437,8 +4437,11 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
             }
         )
 
-    with pytest.raises(InvalidComposerConfigError, match="reserved"):
-        ComposerConfigValidator.validate_node_job_dict({"declared_outputs": [{"name": "text", "type": "string"}]})
+    for reserved_name in ("text", "switch", "_session"):
+        with pytest.raises(InvalidComposerConfigError, match="reserved"):
+            ComposerConfigValidator.validate_node_job_dict(
+                {"declared_outputs": [{"name": reserved_name, "type": "string"}]}
+            )
 
     ComposerConfigValidator.validate_node_job_dict(
         {
@@ -5863,12 +5866,13 @@ class TestWorkflowAgentDraftBindingSync:
             ],
         ).model_dump(mode="json")
 
-    def test_rejects_system_text_output_name_from_agent_node_graph(self):
+    @pytest.mark.parametrize("reserved_name", ["text", "switch", "_session"])
+    def test_rejects_reserved_output_names_from_agent_node_graph(self, reserved_name: str):
         with pytest.raises(ValueError, match="invalid agent_declared_outputs"):
             WorkflowAgentPublishService._node_job_config_from_node_data(
                 existing_binding=None,
                 node_data={
-                    "agent_declared_outputs": [{"name": "text", "type": "string"}],
+                    "agent_declared_outputs": [{"name": reserved_name, "type": "string"}],
                 },
             )
 

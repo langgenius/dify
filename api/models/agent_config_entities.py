@@ -1070,7 +1070,8 @@ SYSTEM_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
         description="Free-form text answer.",
     ),
 )
-RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text"})
+# ``switch`` and ``_session`` are reserved for future system output contracts.
+RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text", "switch", "_session"})
 
 
 def effective_declared_outputs(

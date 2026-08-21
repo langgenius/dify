@@ -10,7 +10,11 @@ export const agentV2SystemTextOutput: DeclaredOutputConfig = Object.freeze({
   description: 'Free-form text answer.',
 })
 
-export const AGENT_V2_RESERVED_OUTPUT_NAMES: ReadonlySet<string> = new Set(['text'])
+export const AGENT_V2_RESERVED_OUTPUT_NAMES: ReadonlySet<string> = new Set([
+  'text',
+  'switch',
+  '_session',
+])
 
 const outputTypeLabels: Record<DeclaredOutputConfig['type'], string> = {
   array: 'Array',

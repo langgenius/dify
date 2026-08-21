@@ -222,9 +222,10 @@ def test_declared_output_validates_shape_and_defaults() -> None:
         )
 
 
-def test_workflow_node_job_reserves_only_system_text_output_name() -> None:
-    with pytest.raises(ValueError, match="declared output name 'text' is reserved"):
-        WorkflowNodeJobConfig.model_validate({"declared_outputs": [{"name": "text", "type": "string"}]})
+def test_workflow_node_job_reserves_system_output_names() -> None:
+    for name in ("text", "switch", "_session"):
+        with pytest.raises(ValueError, match=f"declared output name '{name}' is reserved"):
+            WorkflowNodeJobConfig.model_validate({"declared_outputs": [{"name": name, "type": "string"}]})
 
     node_job = WorkflowNodeJobConfig.model_validate(
         {

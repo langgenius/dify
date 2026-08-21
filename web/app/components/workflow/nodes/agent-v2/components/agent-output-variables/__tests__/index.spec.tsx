@@ -273,7 +273,7 @@ describe('AgentOutputVariables', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
-  it('should reject the system text output name', async () => {
+  it.each(['text', 'switch', '_session'])('should reject reserved output name %s', async (name) => {
     const user = userEvent.setup()
     const onChange = vi.fn()
 
@@ -283,7 +283,7 @@ describe('AgentOutputVariables', () => {
     await user.click(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     )
-    await confirmEditorName(user, 'text')
+    await confirmEditorName(user, name)
 
     expect(screen.getByText('workflow.nodes.agent.outputVars.nameInvalid')).toBeInTheDocument()
     expect(onChange).not.toHaveBeenCalled()
