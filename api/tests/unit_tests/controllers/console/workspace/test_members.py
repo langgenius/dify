@@ -2,13 +2,13 @@ from contextlib import nullcontext
 from datetime import datetime
 from http import HTTPStatus
 from inspect import unwrap
-from types import SimpleNamespace
 from typing import NamedTuple, override
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
 from flask_restx import Resource
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -34,6 +34,8 @@ from controllers.console.workspace.members import (
 from enums import DeploymentEdition
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
+from models.account import Account, Tenant, TenantAccountJoin
+from models.engine import db
 from services.errors.account import AccountAlreadyInTenantError, SeatsLimitExceededError
 from services.workspace_member_query_service import (
     WorkspaceMemberQueryService,
@@ -55,6 +57,19 @@ class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
 
 class _ApplicationServicesStub(NamedTuple):
     workspace_member_queries: WorkspaceMemberQueryService
+
+
+def _tenant(*, name: str = "Workspace") -> Tenant:
+    tenant = Tenant(name=name)
+    tenant.id = "t1"
+    return tenant
+
+
+def _account(*, tenant: Tenant | None = None, account_id: str = "account-1", email: str = "a@test.com") -> Account:
+    account = Account(name="Test User", email=email)
+    account.id = account_id
+    account._current_tenant = tenant
+    return account
 
 
 class TestMemberListApi:
@@ -139,8 +154,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
@@ -173,8 +188,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = True
         features.workspace_members.is_available.return_value = False
@@ -197,8 +212,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.members.size = 9
         features.members.limit = 10
@@ -222,8 +237,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
@@ -259,7 +274,7 @@ class TestMemberInviteEmailApi:
 
         with app.test_request_context("/", json=payload):
             with pytest.raises(InvalidMemberRoleError) as exc_info:
-                method(api, MagicMock())
+                method(api, _account())
 
         assert exc_info.value.error_code == "invalid_role"
 
@@ -267,11 +282,12 @@ class TestMemberInviteEmailApi:
         app = Flask(__name__)
         api = ExternalApi(app)
         method = unwrap(MemberInviteEmailApi.post)
+        current_user = _account()
 
         @api.route("/workspaces/current/members/invite-email")
         class MemberInviteValidationApi(Resource):
             def post(self):
-                return method(MemberInviteEmailApi(), MagicMock())
+                return method(MemberInviteEmailApi(), current_user)
 
         response = app.test_client().post(
             "/workspaces/current/members/invite-email",
@@ -286,8 +302,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         features.workspace_members.is_available.return_value = True
@@ -315,8 +331,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         license_info = MagicMock()
@@ -349,8 +365,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         license_info = MagicMock()
@@ -386,8 +402,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         license_info = MagicMock()
@@ -422,8 +438,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         license_info = MagicMock()
@@ -456,8 +472,8 @@ class TestMemberInviteEmailApi:
         api = MemberInviteEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(id="t1")
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         features = MagicMock()
         features.workspace_members.enabled = False
         license_info = MagicMock()
@@ -489,19 +505,30 @@ class TestMemberInviteEmailApi:
 
 
 class TestCountNewMemberInvites:
-    def test_count_new_member_invites(self):
+    def test_count_new_member_invites(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ):
         new_account = None
-        existing_account_not_in_tenant = SimpleNamespace(id="account-2")
-        existing_account_in_tenant = SimpleNamespace(id="account-3")
+        existing_account_not_in_tenant = Account(name="External", email="existing@test.com")
+        existing_account_not_in_tenant.id = "account-2"
+        existing_account_in_tenant = Account(name="Member", email="member@test.com")
+        existing_account_in_tenant.id = "account-3"
+        database_session = scoped_session(sqlite_session_factory)
+        monkeypatch.setattr(db, "session", database_session)
+        database_session.add(
+            TenantAccountJoin(
+                tenant_id="tenant-1",
+                account_id="account-3",
+                current=True,
+                role="normal",
+            )
+        )
+        database_session.commit()
 
-        with (
-            patch(
-                "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
-                side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
-            ) as mock_get_account,
-            patch("controllers.console.workspace.members.db.session") as mock_session,
-        ):
-            mock_session.scalar.side_effect = [None, "join-id"]
+        with patch(
+            "controllers.console.workspace.members.AccountService.get_account_by_email_with_case_fallback",
+            side_effect=[new_account, existing_account_not_in_tenant, existing_account_in_tenant],
+        ) as mock_get_account:
             result = _count_new_member_invites(
                 "tenant-1",
                 ["new@test.com", "existing@test.com", "member@test.com"],
@@ -509,7 +536,7 @@ class TestCountNewMemberInvites:
 
         assert result == (2, 1)
         assert mock_get_account.call_count == 3
-        assert mock_session.scalar.call_count == 2
+        database_session.remove()
 
 
 class TestMemberUpdateRoleApi:
@@ -520,7 +547,7 @@ class TestMemberUpdateRoleApi:
         payload = {"role": "invalid-role"}
 
         with app.test_request_context("/", json=payload):
-            result, status = method(api, MagicMock(), "id")
+            result, status = method(api, _account(), "id")
 
         assert status == 400
 
@@ -530,8 +557,8 @@ class TestDatasetOperatorMemberListApi:
         api = DatasetOperatorMemberListApi()
         method = unwrap(api.get)
 
-        tenant = MagicMock()
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
         member = MagicMock()
         member.id = "op1"
         member.name = "Operator"
@@ -556,7 +583,7 @@ class TestDatasetOperatorMemberListApi:
         api = DatasetOperatorMemberListApi()
         method = unwrap(api.get)
 
-        user = MagicMock(current_tenant=None)
+        user = _account(tenant=None)
 
         with (
             app.test_request_context("/"),
@@ -570,8 +597,8 @@ class TestSendOwnerTransferEmailApi:
         api = SendOwnerTransferEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock(name="ws")
-        user = MagicMock(email="a@test.com", current_tenant=tenant)
+        tenant = _tenant(name="ws")
+        user = _account(tenant=tenant, email="a@test.com")
 
         payload = {}
 
@@ -600,14 +627,14 @@ class TestSendOwnerTransferEmailApi:
             patch("controllers.console.workspace.members.AccountService.is_email_send_ip_limit", return_value=True),
         ):
             with pytest.raises(EmailSendIpLimitError):
-                method(api, MagicMock())
+                method(api, _account())
 
     def test_send_not_owner(self, app: Flask):
         api = SendOwnerTransferEmailApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant)
 
         with (
             app.test_request_context("/", json={}),
@@ -624,8 +651,8 @@ class TestOwnerTransferCheckApi:
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(email="a@test.com", current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant, email="a@test.com")
 
         payload = {"code": "x", "token": "t"}
 
@@ -648,8 +675,8 @@ class TestOwnerTransferCheckApi:
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(email="a@test.com", current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant, email="a@test.com")
 
         payload = {"code": "x", "token": "t"}
 
@@ -668,8 +695,8 @@ class TestOwnerTransferCheckApi:
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(email="a@test.com", current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant, email="a@test.com")
 
         payload = {"code": "x", "token": "t"}
 
@@ -689,8 +716,8 @@ class TestOwnerTransferCheckApi:
         api = OwnerTransferCheckApi()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(email="a@test.com", current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant, email="a@test.com")
 
         payload = {"code": "x", "token": "t"}
 
@@ -715,8 +742,8 @@ class TestOwnerTransferApi:
         api = OwnerTransfer()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(id="1", email="a@test.com", current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant, account_id="1", email="a@test.com")
 
         payload = {"token": "t"}
 
@@ -731,8 +758,8 @@ class TestOwnerTransferApi:
         api = OwnerTransfer()
         method = unwrap(api.post)
 
-        tenant = MagicMock()
-        user = MagicMock(id="1", email="a@test.com", current_tenant=tenant)
+        tenant = _tenant()
+        user = _account(tenant=tenant, account_id="1", email="a@test.com")
 
         payload = {"token": "t"}
 
