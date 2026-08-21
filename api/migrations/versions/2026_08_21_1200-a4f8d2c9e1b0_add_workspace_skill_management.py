@@ -1,7 +1,7 @@
 """add workspace skill management
 
 Revision ID: a4f8d2c9e1b0
-Revises: e4708db55c1d
+Revises: fbdfcf5f5a6e
 Create Date: 2026-07-09 12:00:00.000000
 
 """
@@ -14,7 +14,7 @@ from models.types import StringUUID
 
 # revision identifiers, used by Alembic.
 revision = "a4f8d2c9e1b0"
-down_revision = "e4708db55c1d"
+down_revision = "fbdfcf5f5a6e"
 branch_labels = None
 depends_on = None
 
