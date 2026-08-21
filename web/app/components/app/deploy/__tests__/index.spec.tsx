@@ -683,7 +683,12 @@ let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
-const mockDocLink = vi.hoisted(() => vi.fn((path: string) => `https://docs.example.com${path}`))
+const mockGetEnterpriseDocUrl = vi.hoisted(() =>
+  vi.fn(
+    (path: string, docLanguage: string) =>
+      `https://enterprise-docs.example.com/${docLanguage}${path}`,
+  ),
+)
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -760,7 +765,8 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockDocLink,
+  getEnterpriseDocUrl: mockGetEnterpriseDocUrl,
+  useLocale: () => 'en-US',
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -812,7 +818,7 @@ describe('AppDeploy', () => {
 
     expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute(
       'href',
-      'https://docs.example.com/use/deploy/overview',
+      'https://enterprise-docs.example.com/en/use/deploy/overview',
     )
   })
 
