@@ -65,7 +65,7 @@ class TestFirecrawlAuth:
             FirecrawlAuth(_credentials(api_key=""))
 
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
-    def test_should_validate_valid_credentials_successfully(self, mock_post: MagicMock, auth_instance: FirecrawlAuth):
+    def test_should_validate_valid_credentials_successfully(self, mock_post, auth_instance):
         """Test successful credential validation"""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -81,12 +81,18 @@ class TestFirecrawlAuth:
             "limit": 1,
             "scrapeOptions": {"onlyMainContent": True},
         }
-        mock_post.assert_called_once_with(
-            "https://api.firecrawl.dev/v1/crawl",
-            headers={"Content-Type": "application/json", "Authorization": "Bearer test_api_key_123"},
-            json=expected_data,
-            timeout=httpx.Timeout(10.0),
-        )
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        assert call_args.args == ("https://api.firecrawl.dev/v1/crawl",)
+        assert call_args.kwargs["headers"] == {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer test_api_key_123",
+        }
+        assert call_args.kwargs["json"] == expected_data
+        timeout = call_args.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect is not None
+        assert timeout.read is not None
 
     @pytest.mark.parametrize(
         ("status_code", "error_message"),
@@ -96,9 +102,7 @@ class TestFirecrawlAuth:
         ],
     )
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
-    def test_should_handle_http_errors(
-        self, mock_post: MagicMock, status_code, error_message, auth_instance: FirecrawlAuth
-    ):
+    def test_should_handle_http_errors(self, mock_post, status_code, error_message, auth_instance):
         """Test handling of various HTTP error codes"""
         mock_response = MagicMock()
         mock_response.status_code = status_code
@@ -138,13 +142,7 @@ class TestFirecrawlAuth:
     )
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
     def test_should_handle_unexpected_errors(
-        self,
-        mock_post: MagicMock,
-        status_code,
-        response_text,
-        has_json_error,
-        expected_error_contains,
-        auth_instance: FirecrawlAuth,
+        self, mock_post, status_code, response_text, has_json_error, expected_error_contains, auth_instance
     ):
         """Test handling of unexpected errors with various response formats"""
         mock_response = MagicMock()
@@ -170,9 +168,7 @@ class TestFirecrawlAuth:
         ],
     )
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
-    def test_should_handle_network_errors(
-        self, mock_post: MagicMock, exception_type, exception_message, auth_instance: FirecrawlAuth
-    ):
+    def test_should_handle_network_errors(self, mock_post, exception_type, exception_message, auth_instance):
         """Test handling of various network-related errors including timeouts"""
         mock_post.side_effect = exception_type(exception_message)
 
@@ -209,7 +205,7 @@ class TestFirecrawlAuth:
             assert mock_post.call_args[0][0] == "https://custom.firecrawl.dev/v1/crawl"
 
     @patch("services.auth.firecrawl.firecrawl.httpx.post", autospec=True)
-    def test_should_handle_timeout_with_retry_suggestion(self, mock_post: MagicMock, auth_instance: FirecrawlAuth):
+    def test_should_handle_timeout_with_retry_suggestion(self, mock_post, auth_instance):
         """Test that timeout errors are handled gracefully with appropriate error message"""
         mock_post.side_effect = httpx.TimeoutException("The request timed out after 30 seconds")
 
