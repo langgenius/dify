@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import ColumnElement, delete, exists, func, select, update
+from sqlalchemy import ColumnElement, delete, event, exists, func, select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -832,16 +832,24 @@ class DatasetService:
         # update pipeline knowledge base node data
         DatasetService._update_pipeline_knowledge_base_node_data(dataset, user.id, session)
 
-        # Trigger vector index task if indexing technique changed
+        # Trigger vector index task if indexing technique changed. Defer dispatch until
+        # the transaction actually commits — the worker opens its own session and
+        # re-reads the Dataset row, so dispatching before commit lets it race ahead and
+        # read the pre-update embedding model (#40961).
         if action:
-            deal_dataset_vector_index_task.delay(dataset.id, action)
-            # If embedding_model changed, also regenerate summary vectors
-            if action == "update":
-                regenerate_summary_index_task.delay(
-                    dataset.id,
-                    regenerate_reason="embedding_model_changed",
-                    regenerate_vectors_only=True,
-                )
+            dataset_id = dataset.id
+
+            def dispatch_vector_index_tasks(_session: Session) -> None:
+                deal_dataset_vector_index_task.delay(dataset_id, action)
+                # If embedding_model changed, also regenerate summary vectors
+                if action == "update":
+                    regenerate_summary_index_task.delay(
+                        dataset_id,
+                        regenerate_reason="embedding_model_changed",
+                        regenerate_vectors_only=True,
+                    )
+
+            event.listen(session, "after_commit", dispatch_vector_index_tasks, once=True)
 
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
