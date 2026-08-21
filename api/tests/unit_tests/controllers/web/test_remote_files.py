@@ -3,22 +3,60 @@
 from __future__ import annotations
 
 import urllib.parse
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
 
 from controllers.common.errors import FileTooLargeError, RemoteFileUploadError
 from controllers.web.remote_files import RemoteFileInfoApi, RemoteFileUploadApi
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole, EndUserType
+from models.model import App, AppMode, EndUser, UploadFile
 
 
-def _app_model() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1")
+def _app_model() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Web App",
+        description="",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=0,
+    )
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        session_id="session-1",
+    )
+
+
+def _upload_file() -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id="tenant-1",
+        storage_type=StorageType.LOCAL,
+        key="upload/file.pdf",
+        name="file.pdf",
+        size=100,
+        extension="pdf",
+        mime_type="application/pdf",
+        created_by_role=CreatorUserRole.END_USER,
+        created_by="eu-1",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+    )
+    upload_file.id = "f-1"
+    return upload_file
 
 
 # ---------------------------------------------------------------------------
@@ -107,8 +145,9 @@ class TestRemoteFileUploadApi:
         mock_file_svc_cls: MagicMock,
         mock_signed: MagicMock,
         app: Flask,
+        sqlite_engine: Engine,
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = sqlite_engine
         mock_ns.payload = {"url": "https://example.com/file.pdf"}
         head_resp = MagicMock()
         head_resp.status_code = 200
@@ -123,18 +162,7 @@ class TestRemoteFileUploadApi:
         )
         mock_file_svc_cls.is_file_size_within_limit.return_value = True
 
-        from datetime import datetime
-
-        upload_file = SimpleNamespace(
-            id="f-1",
-            name="file.pdf",
-            size=100,
-            extension="pdf",
-            mime_type="application/pdf",
-            created_by="eu-1",
-            created_at=datetime(2024, 1, 1),
-        )
-        mock_file_svc_cls.return_value.upload_file.return_value = upload_file
+        mock_file_svc_cls.return_value.upload_file.return_value = _upload_file()
 
         with app.test_request_context("/remote-files/upload", method="POST"):
             result, status = RemoteFileUploadApi().post(_app_model(), _end_user())
