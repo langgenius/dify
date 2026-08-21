@@ -16,6 +16,7 @@ from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddA
     [
         (ToolBuiltinProviderAddApi.post, RBACPermission.CREDENTIAL_CREATE),
         (DataSourceApi.patch, RBACPermission.CREDENTIAL_MANAGE),
+        (DataSourceApi.get, RBACPermission.CREDENTIAL_MANAGE),
     ],
 )
 def test_workspace_credential_mutations_require_management_permission(
