@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-project_dir=$(CDPATH= cd -- "$script_dir/../../../../.." && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+project_dir=$(CDPATH='' cd -- "$script_dir/../../../../.." && pwd)
 container_name="dify-agent-runtime-backend-integration-$$"
 image="${DIFY_AGENT_TEST_LOCAL_SANDBOX_IMAGE:-langgenius/dify-agent-local-sandbox:1.16.0}"
 token="${DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN:-runtime-backend-integration}"
