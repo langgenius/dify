@@ -643,9 +643,124 @@ class TestDatasetServiceCreationAndUpdate:
                 sqlite_session,
             )
 
-        assert updated.name == "After"
-        assert updated.description == "Changed"
-        assert transaction_events == []
+            assert updated.name == "After"
+            assert updated.description == "Changed"
+            assert transaction_events == []
+            vector_task.assert_not_called()
+            summary_task.assert_not_called()
+
+            sqlite_session.commit()
+
+        assert transaction_events == ["commit"]
+        vector_task.assert_called_once_with(dataset.id, "update")
+        summary_task.assert_called_once_with(
+            dataset.id,
+            regenerate_reason="embedding_model_changed",
+            regenerate_vectors_only=True,
+        )
+
+    @pytest.mark.parametrize(
+        ("action", "expect_summary"),
+        [("add", False), ("remove", False), ("update", True)],
+    )
+    def test_update_internal_dataset_dispatches_index_tasks_only_after_commit(
+        self, sqlite_session: Session, action: str, expect_summary: bool
+    ) -> None:
+        dataset = _dataset(name="Before")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        with (
+            patch.object(DatasetService, "_handle_indexing_technique_change", return_value=action),
+            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data"),
+            patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+        ):
+            DatasetService._update_internal_dataset(dataset, {"name": "After"}, _account(), sqlite_session)
+
+            vector_task.assert_not_called()
+            summary_task.assert_not_called()
+
+            sqlite_session.commit()
+
+        vector_task.assert_called_once_with(dataset.id, action)
+        if expect_summary:
+            summary_task.assert_called_once_with(
+                dataset.id,
+                regenerate_reason="embedding_model_changed",
+                regenerate_vectors_only=True,
+            )
+        else:
+            summary_task.assert_not_called()
+
+    def test_update_internal_dataset_skips_index_tasks_when_transaction_rolls_back(
+        self, sqlite_session: Session
+    ) -> None:
+        dataset = _dataset(name="Before")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        with (
+            patch.object(DatasetService, "_handle_indexing_technique_change", return_value="update"),
+            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data"),
+            patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+        ):
+            DatasetService._update_internal_dataset(dataset, {"name": "After"}, _account(), sqlite_session)
+
+            sqlite_session.rollback()
+            # A later commit on the same session must not fire the stale listener.
+            sqlite_session.commit()
+
+        vector_task.assert_not_called()
+        summary_task.assert_not_called()
+
+    def test_update_internal_dataset_without_action_dispatches_nothing(self, sqlite_session: Session) -> None:
+        dataset = _dataset(name="Before")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        with (
+            patch.object(DatasetService, "_handle_indexing_technique_change", return_value=None),
+            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data"),
+            patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+        ):
+            DatasetService._update_internal_dataset(dataset, {"name": "After"}, _account(), sqlite_session)
+            sqlite_session.commit()
+
+        vector_task.assert_not_called()
+        summary_task.assert_not_called()
+
+    def test_update_internal_dataset_dispatches_on_rag_pipeline_internal_commit(self, sqlite_session: Session) -> None:
+        """RAG_PIPELINE helpers commit internally; the re-index must dispatch
+        on that commit, and the later outer commit must not dispatch twice."""
+        dataset = _dataset(name="Before")
+        sqlite_session.add(dataset)
+        sqlite_session.commit()
+
+        def commit_inside_helper(_dataset, _user_id, session: Session) -> None:
+            session.commit()
+
+        with (
+            patch.object(DatasetService, "_handle_indexing_technique_change", return_value="update"),
+            patch.object(DatasetService, "_update_pipeline_knowledge_base_node_data", side_effect=commit_inside_helper),
+            patch("services.dataset_service.deal_dataset_vector_index_task.delay") as vector_task,
+            patch("services.dataset_service.regenerate_summary_index_task.delay") as summary_task,
+        ):
+            DatasetService._update_internal_dataset(dataset, {"name": "After"}, _account(), sqlite_session)
+
+            # Dispatched by the helper's internal commit already.
+            vector_task.assert_called_once_with(dataset.id, "update")
+            summary_task.assert_called_once_with(
+                dataset.id,
+                regenerate_reason="embedding_model_changed",
+                regenerate_vectors_only=True,
+            )
+
+            # The outer commit must not dispatch a second time.
+            sqlite_session.commit()
+
         vector_task.assert_called_once_with(dataset.id, "update")
         summary_task.assert_called_once()
 

@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import ColumnElement, delete, exists, func, select, update
+from sqlalchemy import ColumnElement, delete, event, exists, func, select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -829,19 +829,21 @@ class DatasetService:
         # Reload dataset to get updated values
         session.refresh(dataset)
 
+        # Trigger vector index task if indexing technique changed. The worker
+        # re-reads the datasets row in its own session, so publish only after
+        # this transaction commits — firing now races the commit and the
+        # re-index can run with the previous embedding model (#40961).
+        #
+        # Register BEFORE _update_pipeline_knowledge_base_node_data: for
+        # RAG_PIPELINE datasets that helper commits internally, and the
+        # re-index must dispatch on that commit. once=True keeps the later
+        # outer commit from dispatching twice, and normal datasets still
+        # dispatch on the outer commit as before.
+        if action:
+            DatasetService._register_index_tasks_after_commit(session, dataset.id, action)
+
         # update pipeline knowledge base node data
         DatasetService._update_pipeline_knowledge_base_node_data(dataset, user.id, session)
-
-        # Trigger vector index task if indexing technique changed
-        if action:
-            deal_dataset_vector_index_task.delay(dataset.id, action)
-            # If embedding_model changed, also regenerate summary vectors
-            if action == "update":
-                regenerate_summary_index_task.delay(
-                    dataset.id,
-                    regenerate_reason="embedding_model_changed",
-                    regenerate_vectors_only=True,
-                )
 
         # Note: summary_index_setting changes do not trigger automatic regeneration of existing summaries.
         # The new setting will only apply to:
@@ -849,6 +851,30 @@ class DatasetService:
         # 2. Manual summary generation requests
 
         return dataset
+
+    @staticmethod
+    def _register_index_tasks_after_commit(session: Session, dataset_id: str, action: str) -> None:
+        """Publish the re-index tasks once the surrounding transaction commits."""
+        cancelled = False
+
+        def cancel_on_rollback(_session: Session) -> None:
+            nonlocal cancelled
+            cancelled = True
+
+        def dispatch_after_commit(_session: Session) -> None:
+            if cancelled:
+                return
+            deal_dataset_vector_index_task.delay(dataset_id, action)
+            # If embedding_model changed, also regenerate summary vectors
+            if action == "update":
+                regenerate_summary_index_task.delay(
+                    dataset_id,
+                    regenerate_reason="embedding_model_changed",
+                    regenerate_vectors_only=True,
+                )
+
+        event.listen(session, "after_rollback", cancel_on_rollback, once=True)
+        event.listen(session, "after_commit", dispatch_after_commit, once=True)
 
     @staticmethod
     def _update_pipeline_knowledge_base_node_data(dataset: Dataset, updata_user_id: str, session: Session):
