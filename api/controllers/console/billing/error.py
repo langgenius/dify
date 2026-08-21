@@ -1,6 +1,5 @@
 from typing import Literal
 
-from controllers.console.error import ComplianceRateLimitError
 from fields.base import ResponseModel
 from libs.exception import BaseHTTPException
 from services.errors.billing import (
@@ -33,6 +32,12 @@ class BillingUnavailableErrorResponse(ResponseModel):
     code: Literal["billing_unavailable"]
     message: str
     status: Literal[503]
+
+
+class ComplianceRateLimitError(BaseHTTPException):
+    error_code = "compliance_rate_limit"
+    description = "Rate limit exceeded for downloading compliance report."
+    code = 429
 
 
 class BillingOperationFailedError(BaseHTTPException):
