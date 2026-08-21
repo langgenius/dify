@@ -187,6 +187,10 @@ One-Click deploy Dify to Alibaba Cloud with [Alibaba Cloud Data Management](http
 
 One-Click deploy Dify to AKS with [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Using Sealos for Deployment
+
+Deploy Dify with one click using the [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).

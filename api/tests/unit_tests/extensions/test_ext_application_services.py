@@ -17,6 +17,7 @@ from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
@@ -25,6 +26,7 @@ from services.account_activation_adapters import (
     DeploymentWorkspaceInvitePolicy,
     RegisterServiceInvitationTokenStore,
 )
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
@@ -182,6 +184,32 @@ def test_build_application_services_wires_account_profile_repository(
     accounts = services.accounts.profile._accounts
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
+    assert services.accounts.password._accounts is accounts
+    assert services.accounts.initialization._accounts is accounts
+    assert not services.accounts.initialization._invitation_required
+    assert services.accounts.change_email._accounts is accounts
+    assert services.accounts.education._accounts is accounts
+    assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
+    integrations = services.accounts.integrations._integrations
+    assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
+    assert integrations._session_factory is sqlite_session_factory
+    avatar_files = services.accounts.avatar._files
+    assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
+    assert avatar_files._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_requires_invitation_for_cloud_initialization(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert services.accounts.initialization._invitation_required
 
 
 @pytest.mark.parametrize(
