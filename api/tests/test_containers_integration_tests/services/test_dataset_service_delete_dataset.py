@@ -6,6 +6,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from models import AccountStatus, TenantStatus
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom
@@ -22,14 +23,14 @@ class DatasetDeleteIntegrationDataFactory:
             email=f"owner-{uuid4()}@example.com",
             name="Owner",
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
         db_session_with_containers.add(account)
         db_session_with_containers.commit()
 
         tenant = Tenant(
             name=f"tenant-{uuid4()}",
-            status="normal",
+            status=TenantStatus.NORMAL,
         )
         db_session_with_containers.add(tenant)
         db_session_with_containers.commit()
@@ -81,7 +82,7 @@ class DatasetDeleteIntegrationDataFactory:
         tenant_id: str,
         dataset_id: str,
         created_by: str,
-        doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
+        doc_form: IndexStructureType = IndexStructureType.PARAGRAPH_INDEX,
     ) -> Document:
         """Persist a document so dataset.doc_form resolves through the real document path."""
         document = Document(
