@@ -692,7 +692,7 @@ class MCPToolManageService:
         self, db_provider: MCPToolProvider, provider_entity: MCPProviderEntity, tools: list[MCPTool]
     ) -> ToolProviderApiEntity:
         """Build API response for tool provider."""
-        user = db_provider.load_user()
+        user = db_provider.load_user(session=self._session)
         response = provider_entity.to_api_response(
             user_name=user.name if user else None,
         )

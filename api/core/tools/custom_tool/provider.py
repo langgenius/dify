@@ -104,7 +104,7 @@ class ApiToolProviderController(ToolProviderController[ToolProviderEntity, ApiTo
         elif auth_type == ApiProviderAuthType.NONE:
             pass
 
-        user = db_provider.user
+        user = db_provider.user(session=db.session())
         user_name = user.name if user else ""
 
         return ApiToolProviderController(
