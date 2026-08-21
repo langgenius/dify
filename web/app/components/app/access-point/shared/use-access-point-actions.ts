@@ -6,11 +6,9 @@ import type { App } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { webSocketClient } from '@/app/components/workflow/collaboration/core/websocket-manager'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
@@ -41,29 +39,14 @@ export function useAccessPointActions(appId: string, canEdit: boolean) {
 
       if (!error) {
         void refreshAppDetail()
-        const socket = webSocketClient.getSocket(appId)
-        if (socket) {
-          const timestamp = Date.now()
-          socket.emit('collaboration_event', {
-            type: 'app_state_update',
-            data: { timestamp },
-            timestamp,
-          })
-        }
       }
 
       toast(t(($) => $[`actionMsg.${resolvedMessage}`], { ns: 'common' }) as string, {
         type,
       })
     },
-    [appId, refreshAppDetail, t],
+    [refreshAppDetail, t],
   )
-
-  useEffect(() => {
-    if (!appId) return
-
-    return collaborationManager.onAppStateUpdate(refreshAppDetail)
-  }, [appId, refreshAppDetail])
 
   const changeSiteStatus = useCallback(
     async (enabled: boolean) => {

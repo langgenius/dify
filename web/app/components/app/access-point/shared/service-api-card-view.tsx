@@ -1,15 +1,16 @@
 'use client'
 
 import type { ComponentProps } from 'react'
-import type { AccessPointStatus } from './access-point-status'
+import type { AccessPointStatus } from '@/app/components/base/access-point/status'
 import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { useTranslation } from 'react-i18next'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
-import { AccessPointCard } from './access-point-card'
-import { AccessPointUrl } from './access-point-url'
 import { ApiSecretKeyButton } from './api-secret-key-button'
+import { useAccessPointStatusLabel } from './use-access-point-status-label'
 import { getAppApiReferencePath } from './utils'
 
 type ServiceApiCardViewProps = {
@@ -39,6 +40,7 @@ export function ServiceApiCardView({
   const docLink = useDocLink()
   const apiReferencePath = appMode ? getAppApiReferencePath(appMode) : undefined
   const apiReferenceUrl = apiReferencePath ? docLink(apiReferencePath) : undefined
+  const statusLabel = useAccessPointStatusLabel(status)
 
   return (
     <AccessPointCard
@@ -48,6 +50,7 @@ export function ServiceApiCardView({
       })}
       icon="i-custom-vender-knowledge-api-aggregate"
       status={status}
+      statusLabel={statusLabel}
       highlighted={highlighted}
       switchDisabled={switchDisabled}
       switchLabel={t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' })}

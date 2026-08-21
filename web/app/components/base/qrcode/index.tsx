@@ -9,11 +9,14 @@ import { downloadUrl } from '@/utils/download'
 
 type Props = Readonly<{
   content: string
+  downloadLabel?: string
+  scanLabel?: string
+  triggerLabel?: string
 }>
 
 const prefixEmbedded = 'overview.appInfo.qrcode.title'
 
-const ShareQRCode = ({ content }: Props) => {
+const ShareQRCode = ({ content, downloadLabel, scanLabel, triggerLabel }: Props) => {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState<boolean>(false)
   const qrCodeRef = useRef<HTMLDivElement>(null)
@@ -42,10 +45,12 @@ const ShareQRCode = ({ content }: Props) => {
     downloadUrl({ url: canvas.toDataURL(), fileName: 'qrcode.png' })
   }
 
-  const tooltipText = t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
+  const tooltipText = triggerLabel ?? t(($) => $[`${prefixEmbedded}`], { ns: 'appOverview' })
   /* v8 ignore next -- react-i18next returns a non-empty key/string in configured runtime; empty fallback protects against missing i18n payloads. @preserve */
   const safeTooltipText = tooltipText || ''
-  const downloadText = t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
+  const scanText = scanLabel ?? t(($) => $['overview.appInfo.qrcode.scan'], { ns: 'appOverview' })
+  const downloadText =
+    downloadLabel ?? t(($) => $['overview.appInfo.qrcode.download'], { ns: 'appOverview' })
 
   return (
     <Tooltip>
@@ -64,9 +69,7 @@ const ShareQRCode = ({ content }: Props) => {
           >
             <QRCode size={160} value={content} className="mb-2" />
             <div className="flex items-center system-xs-regular">
-              <div className="text-text-tertiary">
-                {t(($) => $['overview.appInfo.qrcode.scan'], { ns: 'appOverview' })}
-              </div>
+              <div className="text-text-tertiary">{scanText}</div>
               <div className="text-text-tertiary">·</div>
               <button
                 type="button"

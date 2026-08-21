@@ -6,8 +6,17 @@ import type { DeploymentDialogRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogCloseButton, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useAtomValue } from 'jotai'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { useInfiniteScroll } from '../../hooks/use-infinite-scroll'
@@ -37,71 +46,101 @@ function VersionTag({ children }: { children: ReactNode }) {
   )
 }
 
-function VersionChoice({
-  version,
-  current,
-  disabled = false,
-  onSelect,
-}: {
-  version: DeploymentVersion
-  current: boolean
-  disabled?: boolean
-  onSelect: (version: DeploymentVersion) => void
-}) {
-  const { t } = useTranslation('deployments')
-  const { t: tWorkflow } = useTranslation('workflow')
-  const { formatTimeFromNow } = useFormatTimeFromNow()
+const VersionChoice = memo(
+  ({
+    version,
+    current,
+    disabled = false,
+    onSelect,
+  }: {
+    version: DeploymentVersion
+    current: boolean
+    disabled?: boolean
+    onSelect: (version: DeploymentVersion) => void
+  }) => {
+    const { t } = useTranslation('deployments')
+    const { t: tWorkflow } = useTranslation('workflow')
+    const { formatTimeFromNow } = useFormatTimeFromNow()
 
-  return (
-    <button
-      type="button"
-      disabled={current || disabled}
-      onClick={() => onSelect(version)}
-      className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg p-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-transparent"
-    >
-      <span className="flex min-w-0 items-center gap-1">
-        <span
-          className={cn('truncate system-md-medium text-text-secondary', current && 'opacity-50')}
-        >
-          {version.name}
+    return (
+      <button
+        type="button"
+        disabled={current || disabled}
+        onClick={() => onSelect(version)}
+        className="flex w-full cursor-pointer flex-col items-start gap-0.5 rounded-lg p-2 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:hover:bg-transparent"
+      >
+        <span className="flex min-w-0 items-center gap-1">
+          <span
+            className={cn('truncate system-md-medium text-text-secondary', current && 'opacity-50')}
+          >
+            {version.name}
+          </span>
+          {version.latest && <VersionBadge>{t(($) => $['overview.chip.latest'])}</VersionBadge>}
+          {current && <VersionBadge>{t(($) => $['studio.current'])}</VersionBadge>}
         </span>
-        {version.latest && <VersionBadge>{t(($) => $['overview.chip.latest'])}</VersionBadge>}
-        {current && <VersionBadge>{t(($) => $['studio.current'])}</VersionBadge>}
-      </span>
-      {version.description && (
-        <span className="line-clamp-3 system-xs-regular text-text-tertiary">
-          {version.description}
-        </span>
-      )}
-      {version.publishedAt !== undefined && version.publishedBy && (
-        <span className={cn('system-xs-regular text-text-tertiary', current && 'opacity-50')}>
-          {tWorkflow(($) => $['common.publishedBy'], {
-            time: formatTimeFromNow(version.publishedAt),
-            author: version.publishedBy,
-          })}
-        </span>
-      )}
-      {version.tags && version.tags.length > 0 && (
-        <span className="flex flex-wrap items-center gap-1 pt-1">
-          {version.tags.map((tag) => (
-            <VersionTag key={tag}>{tag}</VersionTag>
-          ))}
-        </span>
-      )}
-    </button>
-  )
-}
+        {version.description && (
+          <span className="line-clamp-3 system-xs-regular text-text-tertiary">
+            {version.description}
+          </span>
+        )}
+        {version.publishedAt !== undefined && version.publishedBy && (
+          <span className={cn('system-xs-regular text-text-tertiary', current && 'opacity-50')}>
+            {tWorkflow(($) => $['common.publishedBy'], {
+              time: formatTimeFromNow(version.publishedAt),
+              author: version.publishedBy,
+            })}
+          </span>
+        )}
+        {version.tags && version.tags.length > 0 && (
+          <span className="flex flex-wrap items-center gap-1 pt-1">
+            {version.tags.map((tag) => (
+              <VersionTag key={tag}>{tag}</VersionTag>
+            ))}
+          </span>
+        )}
+      </button>
+    )
+  },
+)
+VersionChoice.displayName = 'VersionChoice'
+
+const VersionChoices = memo(
+  ({
+    currentVersionId,
+    disabled,
+    onSelect,
+    versions,
+  }: {
+    currentVersionId?: string
+    disabled: boolean
+    onSelect: (version: DeploymentVersion) => void
+    versions: DeploymentVersion[]
+  }) => {
+    return versions.map((version) => (
+      <VersionChoice
+        key={version.id}
+        version={version}
+        current={version.id === currentVersionId}
+        disabled={disabled}
+        onSelect={onSelect}
+      />
+    ))
+  },
+)
+VersionChoices.displayName = 'VersionChoices'
 
 function VersionList({
   className,
   currentVersionId,
   disabled = false,
+  label,
   publishHref,
   onSelect,
 }: {
   className?: string
   currentVersionId?: string
   disabled?: boolean
+  label: string
   publishHref?: string
   onSelect: (version: DeploymentVersion) => void
 }) {
@@ -124,66 +163,57 @@ function VersionList({
   })
 
   return (
-    <div ref={rootRef} className={cn('min-h-0 flex-1 overflow-y-auto', className)}>
-      <div className="flex flex-col gap-px">
-        {versions.map((version) => (
-          <VersionChoice
-            key={version.id}
-            version={version}
-            current={version.id === currentVersionId}
-            disabled={disabled}
-            onSelect={onSelect}
-          />
-        ))}
-      </div>
-      {isLoading && (
-        <div
-          role="status"
-          aria-label={tCommon(($) => $.loading)}
-          className="flex h-20 items-center justify-center"
+    <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+      <ScrollAreaViewport
+        ref={rootRef}
+        aria-label={label}
+        className="max-h-full max-w-full overscroll-contain"
+        role="region"
+        style={{ overflowX: 'hidden' }}
+      >
+        <ScrollAreaContent
+          className={cn('min-h-full w-full max-w-full', className)}
+          style={{ minWidth: 0 }}
         >
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-        </div>
-      )}
-      {!isLoading && versionsError && versions.length === 0 && (
-        <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
-          {tCommon(($) => $.error)}
-        </p>
-      )}
-      {!isLoading && !versionsError && versions.length === 0 && (
-        <div className="flex flex-col items-center gap-2 px-2 py-6">
-          <p className="text-center system-sm-regular text-text-tertiary">
-            {t(($) => $['studio.accessPoint.noPublishedTitle'])}
-          </p>
-          {publishHref && (
-            <Button
-              size="medium"
-              render={<Link href={publishHref} />}
-              className="flex items-center gap-1"
-            >
-              {t(($) => $['studio.accessPoint.goToPublish'])}
-              <span aria-hidden className="i-ri-arrow-right-line size-4" />
-            </Button>
+          <div className="flex flex-col gap-px">
+            <VersionChoices
+              currentVersionId={currentVersionId}
+              disabled={disabled}
+              onSelect={onSelect}
+              versions={versions}
+            />
+          </div>
+          {isLoading && <Loading className="h-20" />}
+          {!isLoading && versionsError && versions.length === 0 && (
+            <p role="alert" className="px-2 py-6 text-center system-xs-regular text-text-tertiary">
+              {tCommon(($) => $.error)}
+            </p>
           )}
-        </div>
-      )}
-      {isFetchingNextPage && versions.length > 0 && (
-        <div
-          role="status"
-          aria-label={tCommon(($) => $.loading)}
-          className="flex h-8 items-center justify-center"
-        >
-          <span
-            aria-hidden
-            className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
-          />
-        </div>
-      )}
-      <div ref={sentinelRef} aria-hidden className="h-px" />
-    </div>
+          {!isLoading && !versionsError && versions.length === 0 && (
+            <div className="flex flex-col items-center gap-2 px-2 py-6">
+              <p className="text-center system-sm-regular text-text-tertiary">
+                {t(($) => $['studio.accessPoint.noPublishedTitle'])}
+              </p>
+              {publishHref && (
+                <Button
+                  size="medium"
+                  render={<Link href={publishHref} />}
+                  className="flex items-center gap-1"
+                >
+                  {t(($) => $['studio.accessPoint.goToPublish'])}
+                  <span aria-hidden className="i-ri-arrow-right-line size-4" />
+                </Button>
+              )}
+            </div>
+          )}
+          {isFetchingNextPage && versions.length > 0 && <Loading className="h-8" />}
+          <div ref={sentinelRef} aria-hidden className="h-px" />
+        </ScrollAreaContent>
+      </ScrollAreaViewport>
+      <ScrollAreaScrollbar>
+        <ScrollAreaThumb />
+      </ScrollAreaScrollbar>
+    </ScrollArea>
   )
 }
 
@@ -224,6 +254,7 @@ export function VersionSelection({
       <VersionList
         className="px-4 pt-2 pb-4"
         currentVersionId={request.currentVersionId}
+        label={title}
         publishHref={`/app/${appId}/workflow`}
         onSelect={onSelect}
       />
@@ -272,6 +303,7 @@ export function EmbeddedVersionSelection({
         className="p-2"
         currentVersionId={request.currentVersionId}
         disabled={disabled}
+        label={title}
         onSelect={onSelect}
       />
     </div>

@@ -1,20 +1,37 @@
 'use client'
 
-import type { Dispatch, SetStateAction } from 'react'
+import type { CredentialSlot } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentVersion } from '../../version'
 import type { DeploymentDialogRequest } from '../types'
 import type { DeploymentConfigurationQueryState } from './use-deployment-configuration-queries'
-import type { DeploymentConfigurationValues } from './use-deployment-configuration-values'
+import type { DeploymentConfigurationValuesController } from './use-deployment-configuration-values'
 import { cn } from '@langgenius/dify-ui/cn'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { CredentialField } from './credential-field'
 import { DeploymentPrecheckAlert } from './deployment-precheck-alert'
 import { EnvironmentVariableField } from './environment-variable-field'
-import {
-  credentialSlotKey,
-  defaultCredentialId,
-  defaultEnvironmentVariableSelection,
-} from './workflow-deployment-input'
+import { credentialSlotKey, defaultCredentialId } from './workflow-deployment-input'
+
+const CredentialConfigurationField = memo(
+  ({
+    onChange,
+    slot,
+    slotKey,
+    value,
+  }: {
+    onChange: (key: string, value: string) => void
+    slot: CredentialSlot
+    slotKey: string
+    value?: string
+  }) => {
+    return (
+      <CredentialField slot={slot} value={value} onChange={(value) => onChange(slotKey, value)} />
+    )
+  },
+)
+CredentialConfigurationField.displayName = 'CredentialConfigurationField'
 
 function SectionHeading({ title, description }: { title: string; description: string }) {
   return (
@@ -59,31 +76,17 @@ function ConfigurationError({ messages }: { messages: string[] }) {
   )
 }
 
-function ConfigurationLoading({ label }: { label: string }) {
-  return (
-    <div role="status" className="flex items-center justify-center gap-2 py-8 text-text-tertiary">
-      <span
-        aria-hidden
-        className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none"
-      />
-      <span className="system-xs-regular">{label}</span>
-    </div>
-  )
-}
-
 export function DeploymentConfigurationContent({
   compact = false,
-  onValuesChange,
+  configurationValues,
   queryState,
   request,
-  values,
   version,
 }: {
   compact?: boolean
-  onValuesChange: Dispatch<SetStateAction<DeploymentConfigurationValues>>
+  configurationValues: DeploymentConfigurationValuesController
   queryState: DeploymentConfigurationQueryState
   request: DeploymentDialogRequest
-  values: DeploymentConfigurationValues
   version: DeploymentVersion
 }) {
   const { t } = useTranslation('deployments')
@@ -98,6 +101,12 @@ export function DeploymentConfigurationContent({
     precheck,
     precheckError,
   } = queryState
+  const {
+    credentials,
+    getEnvironmentVariableSelection,
+    setCredential,
+    setEnvironmentVariableSelection,
+  } = configurationValues
   const unsupportedNodes = precheck?.unsupported_nodes ?? []
   const showPrecheckAlert = !isPrechecking && !precheckError && isPrecheckBlocked
   const showConfiguration = Boolean(deploymentOptions)
@@ -136,9 +145,7 @@ export function DeploymentConfigurationContent({
         aria-busy={isPrechecking || isLoadingDeploymentOptions}
         className="min-h-0 flex-1 overflow-y-auto"
       >
-        {isPrechecking && (
-          <ConfigurationLoading label={t(($) => $['versions.checkingReleaseContent'])} />
-        )}
+        {isPrechecking && <Loading className="py-8" />}
         {!isPrechecking && precheckError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError
@@ -158,7 +165,7 @@ export function DeploymentConfigurationContent({
             <DeploymentPrecheckAlert nodes={unsupportedNodes} />
           </div>
         )}
-        {isLoadingDeploymentOptions && <ConfigurationLoading label={tCommon(($) => $.loading)} />}
+        {isLoadingDeploymentOptions && <Loading className="py-8" />}
         {!isLoadingDeploymentOptions && deploymentOptionsError && (
           <div className={cn('py-4', horizontalPaddingClassName)}>
             <ConfigurationError
@@ -183,19 +190,12 @@ export function DeploymentConfigurationContent({
                   const slotKey = credentialSlotKey(slot)
 
                   return (
-                    <CredentialField
+                    <CredentialConfigurationField
                       key={slotKey}
                       slot={slot}
-                      value={values.credentials[slotKey] ?? defaultCredentialId(slot)}
-                      onChange={(value) =>
-                        onValuesChange((current) => ({
-                          ...current,
-                          credentials: {
-                            ...current.credentials,
-                            [slotKey]: value,
-                          },
-                        }))
-                      }
+                      slotKey={slotKey}
+                      value={credentials[slotKey] ?? defaultCredentialId(slot)}
+                      onChange={setCredential}
                     />
                   )
                 })}
@@ -215,40 +215,12 @@ export function DeploymentConfigurationContent({
                   description={t(($) => $['studio.environmentVariablesDescription'])}
                 />
                 {environmentVariableSlots.map((slot) => {
-                  const selection =
-                    values.environmentVariables[slot.key] ??
-                    defaultEnvironmentVariableSelection(slot)
-
                   return (
                     <EnvironmentVariableField
-                      key={slot.key}
+                      key={`${slot.key}:${slot.has_configured_value}:${slot.has_last_deployed_value}`}
                       slot={slot}
-                      source={selection.source}
-                      customValue={selection.customValue}
-                      onSourceChange={(source) =>
-                        onValuesChange((current) => ({
-                          ...current,
-                          environmentVariables: {
-                            ...current.environmentVariables,
-                            [slot.key]: {
-                              ...selection,
-                              source,
-                            },
-                          },
-                        }))
-                      }
-                      onCustomValueChange={(customValue) =>
-                        onValuesChange((current) => ({
-                          ...current,
-                          environmentVariables: {
-                            ...current.environmentVariables,
-                            [slot.key]: {
-                              ...selection,
-                              customValue,
-                            },
-                          },
-                        }))
-                      }
+                      getInitialSelection={getEnvironmentVariableSelection}
+                      onChange={setEnvironmentVariableSelection}
                     />
                   )
                 })}

@@ -7,6 +7,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -19,7 +20,7 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
-import { AccessPointCard, AccessPointEmptyContent } from '../shared/access-point-card'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 
 function TriggerIcon({
   trigger,
@@ -78,6 +79,7 @@ export function TriggerAccessPointCard({
   const loading = availability === 'loading' || isLoading
   const active = availability === 'available' && !loading
   const status = loading ? 'loading' : active ? 'inService' : 'unavailable'
+  const statusLabel = useAccessPointStatusLabel(status)
   const enabledCount = triggers.filter((trigger) => trigger.status === 'enabled').length
 
   useEffect(() => {
@@ -121,6 +123,7 @@ export function TriggerAccessPointCard({
       })}
       icon="i-custom-vender-integrations-trigger"
       status={status}
+      statusLabel={statusLabel}
       highlighted={highlighted}
       showStatus={!active}
       busy={statusUpdating}

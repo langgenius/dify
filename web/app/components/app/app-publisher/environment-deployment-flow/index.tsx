@@ -6,6 +6,7 @@ import type { DeploymentVersion } from '@/app/components/app/deploy/version'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentDeploymentFlow } from '@/app/components/app/deploy/environment-deployment-flow'
+import Loading from '@/app/components/base/loading'
 import {
   publisherEnvironmentDeploymentPollingAtom,
   startPublisherEnvironmentDeploymentPollingAtom,
@@ -46,19 +47,16 @@ export function PublisherEnvironmentFlow({
     return (
       <div aria-busy={isDeploymentLoading} className="flex min-h-40 flex-col gap-3 p-4">
         {environmentTabs}
-        <div
-          role={isDeploymentError ? 'alert' : 'status'}
-          className="flex flex-1 items-center justify-center gap-2 system-sm-regular text-text-tertiary"
-        >
-          {isDeploymentLoading ? (
-            <>
-              <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin" />
-              {t(($) => $.loading, { ns: 'common' })}
-            </>
-          ) : (
-            t(($) => $['common.loadFailed'], { ns: 'deployments' })
-          )}
-        </div>
+        {isDeploymentLoading ? (
+          <Loading className="flex-1" />
+        ) : (
+          <div
+            role="alert"
+            className="flex flex-1 items-center justify-center system-sm-regular text-text-tertiary"
+          >
+            {t(($) => $['common.loadFailed'], { ns: 'deployments' })}
+          </div>
+        )}
       </div>
     )
   }

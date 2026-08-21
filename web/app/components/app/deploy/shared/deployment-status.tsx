@@ -64,7 +64,10 @@ export function DeploymentStatus({ status }: { status?: DeploymentStatusValue })
       )}
     >
       {isInProgress ? (
-        <span aria-hidden className="i-ri-loader-2-line size-4 shrink-0 animate-spin" />
+        <span
+          aria-hidden
+          className="i-ri-loader-2-line size-4 shrink-0 animate-spin motion-reduce:animate-none"
+        />
       ) : (
         <StatusDot size="small" status={STATUS_DOT[resolvedStatus]} />
       )}

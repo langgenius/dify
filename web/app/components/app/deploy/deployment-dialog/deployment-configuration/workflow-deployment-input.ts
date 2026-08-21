@@ -24,7 +24,7 @@ export function defaultCredentialId(slot: CredentialSlot) {
   return slot.candidates.length === 1 ? slot.candidates[0]?.credential_id : undefined
 }
 
-export function defaultEnvironmentVariableSelection(
+function defaultEnvironmentVariableSelection(
   slot: EnvironmentVariableSlot,
 ): DeploymentConfigurationValues['environmentVariables'][string] {
   if (slot.has_configured_value) {
@@ -47,6 +47,43 @@ export function defaultEnvironmentVariableSelection(
   }
 }
 
+function isEnvironmentVariableSelectionAvailable(
+  slot: EnvironmentVariableSlot,
+  selection: DeploymentConfigurationValues['environmentVariables'][string],
+) {
+  switch (selection.source) {
+    case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CONFIGURED:
+      return slot.has_configured_value
+    case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_LAST_DEPLOYED:
+      return slot.has_last_deployed_value
+    case EnvVarValueSourceEnum.ENV_VAR_VALUE_SOURCE_CUSTOM:
+      return true
+    default:
+      return false
+  }
+}
+
+export function resolveEnvironmentVariableSelection(
+  slot: EnvironmentVariableSlot,
+  selection?: DeploymentConfigurationValues['environmentVariables'][string],
+) {
+  if (selection && isEnvironmentVariableSelectionAvailable(slot, selection)) return selection
+
+  return {
+    ...defaultEnvironmentVariableSelection(slot),
+    customValue: selection?.customValue ?? '',
+  }
+}
+
+export function hasRequiredDeploymentCredentials(
+  deploymentOptions: GetWorkflowDeploymentOptionsResponse,
+  credentials: DeploymentConfigurationValues['credentials'],
+) {
+  return deploymentOptions.credential_slots.every((slot) =>
+    Boolean(credentials[credentialSlotKey(slot)] ?? defaultCredentialId(slot)),
+  )
+}
+
 export function workflowDeploymentInput(
   deploymentOptions: GetWorkflowDeploymentOptionsResponse,
   values: DeploymentConfigurationValues,
@@ -67,8 +104,10 @@ export function workflowDeploymentInput(
   return {
     credentials,
     environment_variables: deploymentOptions.environment_variable_slots.map((slot) => {
-      const selection =
-        values.environmentVariables[slot.key] ?? defaultEnvironmentVariableSelection(slot)
+      const selection = resolveEnvironmentVariableSelection(
+        slot,
+        values.environmentVariables[slot.key],
+      )
 
       return {
         key: slot.key,
