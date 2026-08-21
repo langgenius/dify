@@ -106,9 +106,10 @@ than falling back to it.
 
 - `POST /v1/snapshot/save` — optional JSON body `{"excludes": [...]}`, gitignore
   syntax, matched at any depth; a malformed body is refused with
-  `400 invalid_request`. `workspace` and the runtime's state directory
-  (`.local/share/shellctl`) are **always** excluded and no pattern can
-  re-include them; an excluded directory is not descended into. Streams the
+  `400 invalid_request`. The runtime's own state directory
+  (`.local/share/shellctl`) is **always** excluded and no pattern can
+  re-include it; an excluded directory is not descended into. The Workspace
+  needs no such rule — it lives outside Home. Streams the
   Home as `application/octet-stream` (chunked). An empty Home is not a special
   case: it streams an ordinary archive with no entries. Success is signaled by
   trailers `X-Snapshot-Status: ok`,

@@ -52,19 +52,17 @@ func TestExcluderCallerNegationWins(t *testing.T) {
 // consulted, so no caller pattern can subtract from them.
 func TestExcluderDefaultsBeatCallerPatterns(t *testing.T) {
 	for _, pattern := range []string{
-		"!" + WorkspaceDir,
-		"!/" + WorkspaceDir,
 		"!" + RuntimeStateDir,
+		"!/" + RuntimeStateDir,
 		"!" + RuntimeStateDir + "/**",
 		"!**",
 	} {
 		t.Run(pattern, func(t *testing.T) {
 			e := NewExcluder([]string{pattern})
-			if !e.Excluded(WorkspaceDir, true) {
-				t.Errorf("%q pulled %s back in", pattern, WorkspaceDir)
-			}
-			if !e.Excluded(RuntimeStateDir, true) {
-				t.Errorf("%q pulled %s back in", pattern, RuntimeStateDir)
+			for _, dir := range defaultExcludes {
+				if !e.Excluded(dir, true) {
+					t.Errorf("%q pulled %s back in", pattern, dir)
+				}
 			}
 		})
 	}

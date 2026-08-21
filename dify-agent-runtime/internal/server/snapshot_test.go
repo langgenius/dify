@@ -81,10 +81,7 @@ func TestSnapshotSaveSuccessWithTrailers(t *testing.T) {
 // An empty Home is not a special case: it produces an ordinary archive with no
 // entries, so every caller stores and restores it through the same path.
 func TestSnapshotSaveEmptyHome(t *testing.T) {
-	home := setHome(t)
-	if err := os.MkdirAll(filepath.Join(home, "workspace"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	setHome(t)
 	srv := newSnapshotTestServer(t, testConfig())
 
 	resp, err := http.Post(srv.URL+"/v1/snapshot/save", "", nil)
@@ -93,7 +90,7 @@ func TestSnapshotSaveEmptyHome(t *testing.T) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
-		t.Fatalf("workspace-only home: status = %d, want 200", resp.StatusCode)
+		t.Fatalf("empty home: status = %d, want 200", resp.StatusCode)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

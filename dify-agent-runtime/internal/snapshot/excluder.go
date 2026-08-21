@@ -7,14 +7,11 @@ import (
 	"github.com/langgenius/dify/dify-agent-runtime/internal/snapshot/gitignore"
 )
 
-const (
-	WorkspaceDir    = "workspace"
-	RuntimeStateDir = ".local/share/shellctl"
-)
+const RuntimeStateDir = ".local/share/shellctl"
 
 // defaultExcludes are the Home paths no Home Snapshot ever carries, whatever
 // the caller asks for.
-var defaultExcludes = []string{WorkspaceDir, RuntimeStateDir}
+var defaultExcludes = []string{RuntimeStateDir}
 
 // Excluder decides which Home entries stay out of an archive.
 //
