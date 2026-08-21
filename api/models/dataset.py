@@ -202,6 +202,7 @@ class Dataset(Base):
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(AdjustedJSON, nullable=True)
     summary_index_setting = mapped_column(AdjustedJSON, nullable=True)
+    graph_index_setting = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     icon_info = mapped_column(AdjustedJSON, nullable=True)
     runtime_mode = mapped_column(
@@ -242,6 +243,12 @@ class Dataset(Base):
     @property
     def index_struct_dict(self):
         return json.loads(self.index_struct) if self.index_struct else None
+
+    @property
+    def graph_index_enabled(self) -> bool:
+        """Whether knowledge-graph indexing/retrieval is turned on for this dataset."""
+        setting = self.graph_index_setting
+        return bool(setting and setting.get("enabled"))
 
     @property
     def external_retrieval_model(self):
@@ -1874,3 +1881,142 @@ class DocumentSegmentSummary(TypeBase):
     @override
     def __repr__(self):
         return f"<DocumentSegmentSummary id={self.id} chunk_id={self.chunk_id} status={self.status}>"
+
+
+class DatasetGraphEntity(TypeBase):
+    """A canonical entity extracted from a dataset's documents.
+
+    Entities are deduplicated per dataset on the normalized ``name``; the
+    ``description`` accumulates the distinct descriptions seen across chunks so
+    that later retrieval can surface a merged view of the entity.
+    """
+
+    __tablename__ = "dataset_graph_entities"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_graph_entity_pkey"),
+        sa.UniqueConstraint("dataset_id", "name", name="dataset_graph_entity_dataset_name_uniq"),
+        sa.Index("dataset_graph_entity_tenant_idx", "tenant_id"),
+        sa.Index("dataset_graph_entity_dataset_idx", "dataset_id"),
+        sa.Index("dataset_graph_entity_dataset_type_idx", "dataset_id", "entity_type"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # normalized (case-folded, whitespace-collapsed) name used for deduplication
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # human readable name as first seen in the source text
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(64), nullable=False, default="UNKNOWN")
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    # number of chunks this entity was extracted from, used as a prior for seed ranking
+    frequency: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("1"), default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+
+    @override
+    def __repr__(self):
+        return f"<DatasetGraphEntity id={self.id} name={self.name} type={self.entity_type}>"
+
+
+class DatasetGraphRelation(TypeBase):
+    """A directed, labelled edge between two :class:`DatasetGraphEntity` rows."""
+
+    __tablename__ = "dataset_graph_relations"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_graph_relation_pkey"),
+        sa.UniqueConstraint(
+            "dataset_id",
+            "source_entity_id",
+            "target_entity_id",
+            "predicate",
+            name="dataset_graph_relation_edge_uniq",
+        ),
+        sa.Index("dataset_graph_relation_tenant_idx", "tenant_id"),
+        sa.Index("dataset_graph_relation_source_idx", "dataset_id", "source_entity_id"),
+        sa.Index("dataset_graph_relation_target_idx", "dataset_id", "target_entity_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    source_entity_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    target_entity_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    predicate: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    # how many chunks support this edge; stronger edges survive traversal pruning
+    weight: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("1"), default=1.0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+
+    @override
+    def __repr__(self):
+        return f"<DatasetGraphRelation id={self.id} predicate={self.predicate}>"
+
+
+class DatasetGraphChunkLink(TypeBase):
+    """Provenance link tying an entity or a relation back to the chunk it came from.
+
+    Exactly one of ``entity_id`` / ``relation_id`` is set. Keeping provenance in
+    its own table is what lets graph hits be rendered as ordinary citations: the
+    ``index_node_id`` resolves straight to a ``DocumentSegment``.
+    """
+
+    __tablename__ = "dataset_graph_chunk_links"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="dataset_graph_chunk_link_pkey"),
+        sa.Index("dataset_graph_chunk_link_document_idx", "dataset_id", "document_id"),
+        sa.Index("dataset_graph_chunk_link_node_idx", "dataset_id", "index_node_id"),
+        sa.Index("dataset_graph_chunk_link_entity_idx", "dataset_id", "entity_id"),
+        sa.Index("dataset_graph_chunk_link_relation_idx", "dataset_id", "relation_id"),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        nullable=False,
+        insert_default=lambda: str(uuid4()),
+        default_factory=lambda: str(uuid4()),
+        init=False,
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # DocumentSegment.index_node_id of the chunk the fact was extracted from
+    index_node_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    relation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+
+    @override
+    def __repr__(self):
+        return f"<DatasetGraphChunkLink id={self.id} index_node_id={self.index_node_id}>"

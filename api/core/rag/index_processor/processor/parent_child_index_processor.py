@@ -155,6 +155,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
+        # Facts are extracted from the parent chunk so graph hits cite the same
+        # segment the user sees, while child chunks stay the vector unit.
+        self._sync_graph_index(dataset, documents, session=session)
+
     @override
     def clean(
         self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
@@ -226,6 +230,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                         )
                     )
                     session.flush()
+
+        self._clean_graph_index(dataset, node_ids, session=session)
 
     def _split_child_nodes(
         self,

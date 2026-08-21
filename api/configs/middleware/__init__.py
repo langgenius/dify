@@ -126,6 +126,39 @@ class KeywordStoreConfig(BaseSettings):
     )
 
 
+class GraphStoreConfig(BaseSettings):
+    GRAPH_STORE: str = Field(
+        description="Backend storing the knowledge graph built from knowledge-base documents."
+        " Default is 'postgres', which reuses the metadata database and needs no extra service.",
+        default="postgres",
+    )
+
+    KNOWLEDGE_GRAPH_EXTRACTION_WORKERS: PositiveInt = Field(
+        description="Number of chunks whose entities/relations are extracted concurrently during indexing.",
+        default=5,
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_URI: str = Field(
+        description="Bolt URI of the Neo4j instance used when GRAPH_STORE is 'neo4j'.",
+        default="bolt://localhost:7687",
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_USER: str = Field(
+        description="Neo4j username used when GRAPH_STORE is 'neo4j'.",
+        default="neo4j",
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_PASSWORD: str = Field(
+        description="Neo4j password used when GRAPH_STORE is 'neo4j'.",
+        default="",
+    )
+
+    KNOWLEDGE_GRAPH_NEO4J_DATABASE: str = Field(
+        description="Neo4j database name used when GRAPH_STORE is 'neo4j'.",
+        default="neo4j",
+    )
+
+
 class SQLAlchemyEngineOptionsDict(TypedDict):
     pool_size: int
     max_overflow: int
@@ -357,6 +390,7 @@ class DatasetQueueMonitorConfig(BaseSettings):
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,  # Note: CeleryConfig already inherits from DatabaseConfig
+    GraphStoreConfig,
     KeywordStoreConfig,
     RedisConfig,
     RedisPubSubConfig,

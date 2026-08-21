@@ -142,6 +142,7 @@
   "datasetMenus.documents": "ドキュメント",
   "datasetMenus.emptyTip": "このナレッジはどのアプリケーションにも統合されていません。ドキュメントを参照してガイダンスを確認してください。",
   "datasetMenus.hitTesting": "検索テスト",
+  "datasetMenus.knowledgeGraph": "ナレッジグラフ",
   "datasetMenus.pipeline": "パイプライン",
   "datasetMenus.relatedApp": "関連アプリ",
   "datasetMenus.settings": "設定",

@@ -133,6 +133,7 @@ DATASET_DETAIL_KEYS = {
     "embedding_available",
     "retrieval_model_dict",
     "summary_index_setting",
+    "graph_index_setting",
     "tags",
     "doc_form",
     "external_knowledge_info",

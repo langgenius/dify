@@ -40,6 +40,7 @@ export type DatasetDetailResponse = {
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  graph_index_setting?: DatasetGraphIndexSettingResponse
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
@@ -230,6 +231,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  graph_index_setting?: DatasetGraphIndexSettingResponse
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
@@ -260,6 +262,9 @@ export type DatasetUpdatePayload = {
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
   external_retrieval_model?: {
+    [key: string]: unknown
+  } | null
+  graph_index_setting?: {
     [key: string]: unknown
   } | null
   icon_info?: {
@@ -497,6 +502,19 @@ export type ExternalHitTestingResponse = {
   records: Array<ExternalHitTestingRecordResponse>
 }
 
+export type DatasetGraphResponse = {
+  entities: Array<GraphEntityResponse>
+  relations: Array<GraphRelationResponse>
+}
+
+export type DatasetGraphStatsResponse = {
+  entity_count: number
+  entity_types: {
+    [key: string]: number
+  }
+  relation_count: number
+}
+
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
@@ -576,6 +594,7 @@ export type DatasetListItemResponse = {
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
   external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  graph_index_setting?: DatasetGraphIndexSettingResponse
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
@@ -618,6 +637,14 @@ export type DatasetExternalRetrievalModelResponse = {
   score_threshold?: number | null
   score_threshold_enabled?: boolean | null
   top_k: number
+}
+
+export type DatasetGraphIndexSettingResponse = {
+  enabled?: boolean | null
+  entity_types?: Array<string> | null
+  max_depth?: number | null
+  model_name?: string | null
+  model_provider_name?: string | null
 }
 
 export type DatasetIconInfoResponse = {
@@ -835,6 +862,24 @@ export type ExternalHitTestingRecordResponse = {
   title?: string | null
 }
 
+export type GraphEntityResponse = {
+  description: string
+  display_name: string
+  entity_type: string
+  frequency: number
+  id: string
+  name: string
+}
+
+export type GraphRelationResponse = {
+  description: string
+  id: string
+  predicate: string
+  source_entity_id: string
+  target_entity_id: string
+  weight: number
+}
+
 export type HitTestingQuery = {
   content: string
 }
@@ -906,6 +951,7 @@ export type RerankingModel = {
 
 export type RetrievalMethod =
   | 'full_text_search'
+  | 'graph_search'
   | 'hybrid_search'
   | 'keyword_search'
   | 'semantic_search'
@@ -2263,6 +2309,49 @@ export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponse =
   PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
+
+export type GetDatasetsByDatasetIdGraphData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: {
+    limit?: number
+    query?: string
+  }
+  url: '/datasets/{dataset_id}/graph'
+}
+
+export type GetDatasetsByDatasetIdGraphErrors = {
+  404: unknown
+}
+
+export type GetDatasetsByDatasetIdGraphResponses = {
+  200: DatasetGraphResponse
+}
+
+export type GetDatasetsByDatasetIdGraphResponse =
+  GetDatasetsByDatasetIdGraphResponses[keyof GetDatasetsByDatasetIdGraphResponses]
+
+export type GetDatasetsByDatasetIdGraphStatsData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/graph/stats'
+}
+
+export type GetDatasetsByDatasetIdGraphStatsErrors = {
+  404: unknown
+}
+
+export type GetDatasetsByDatasetIdGraphStatsResponses = {
+  200: DatasetGraphStatsResponse
+}
+
+export type GetDatasetsByDatasetIdGraphStatsResponse =
+  GetDatasetsByDatasetIdGraphStatsResponses[keyof GetDatasetsByDatasetIdGraphStatsResponses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload

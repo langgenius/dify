@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Документи",
   "datasetMenus.emptyTip": "Знання не пов’язані, будь ласка, перейдіть до програми або плагіна, щоб завершити зв’язок.",
   "datasetMenus.hitTesting": "Тестування пошуку",
+  "datasetMenus.knowledgeGraph": "Граф знань",
   "datasetMenus.pipeline": "Трубопроводу",
   "datasetMenus.relatedApp": "пов'язані програми",
   "datasetMenus.settings": "Налаштування",

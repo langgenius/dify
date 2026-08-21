@@ -142,6 +142,7 @@
   "datasetMenus.documents": "เอกสาร",
   "datasetMenus.emptyTip": "ความรู้ยังไม่ได้เชื่อมโยง โปรดไปที่แอปพลิเคชันหรือปลั๊กอินเพื่อเชื่อมโยงให้เสร็จสมบูรณ์",
   "datasetMenus.hitTesting": "การทดสอบการดึงข้อมูล",
+  "datasetMenus.knowledgeGraph": "กราฟความรู้",
   "datasetMenus.pipeline": "ท่อ",
   "datasetMenus.relatedApp": "แอปที่เชื่อมโยง",
   "datasetMenus.settings": "การตั้งค่า",

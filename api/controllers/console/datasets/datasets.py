@@ -39,6 +39,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_provider_manage
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
+from core.rag.graph.graph_index_service import GraphIndexService
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from fields.base import ResponseModel
@@ -127,6 +128,7 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = Field(default=None)
     summary_index_setting: dict[str, Any] | None = Field(default=None)
+    graph_index_setting: dict[str, Any] | None = Field(default=None)
     partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = Field(default=None)
     external_knowledge_id: str | None = None
@@ -163,6 +165,11 @@ class IndexingEstimatePayload(BaseModel):
         if result is None:
             return "text_model"
         return result
+
+
+class DatasetGraphQuery(BaseModel):
+    query: str | None = Field(default=None, description="Entity mention to centre the returned subgraph on")
+    limit: int = Field(default=50, ge=1, le=200, description="Maximum number of seed entities to return")
 
 
 class ConsoleDatasetListQuery(BaseModel):
@@ -335,8 +342,42 @@ class AutoDisableLogsResponse(ResponseModel):
     count: int
 
 
+class GraphEntityResponse(ResponseModel):
+    id: str
+    name: str
+    display_name: str
+    entity_type: str
+    description: str
+    frequency: int
+
+
+class GraphRelationResponse(ResponseModel):
+    id: str
+    source_entity_id: str
+    target_entity_id: str
+    predicate: str
+    description: str
+    weight: float
+
+
+class DatasetGraphStatsResponse(ResponseModel):
+    entity_count: int
+    relation_count: int
+    entity_types: dict[str, int]
+
+
+class DatasetGraphResponse(ResponseModel):
+    entities: list[GraphEntityResponse]
+    relations: list[GraphRelationResponse]
+
+
 register_schema_models(
-    console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload, ConsoleDatasetListQuery
+    console_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    IndexingEstimatePayload,
+    ConsoleDatasetListQuery,
+    DatasetGraphQuery,
 )
 register_response_schema_models(
     console_ns,
@@ -351,6 +392,8 @@ register_response_schema_models(
     RetrievalSettingResponse,
     PartialMemberListResponse,
     AutoDisableLogsResponse,
+    DatasetGraphStatsResponse,
+    DatasetGraphResponse,
 )
 
 
@@ -1346,3 +1389,65 @@ class DatasetAutoDisableLogApi(Resource):
             DatasetRefService.create_dataset_ref(dataset), session
         )
         return dump_response(AutoDisableLogsResponse, auto_disable_logs), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/graph/stats")
+class DatasetGraphStatsApi(Resource):
+    @console_ns.doc("get_dataset_graph_stats")
+    @console_ns.doc(description="Get knowledge graph statistics for a dataset")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(
+        200,
+        "Graph statistics retrieved successfully",
+        console_ns.models[DatasetGraphStatsResponse.__name__],
+    )
+    @console_ns.response(404, "Dataset not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, current_user: Account, dataset_id: UUID):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        stats = GraphIndexService.get_stats(dataset, session=session)
+        return dump_response(DatasetGraphStatsResponse, stats.model_dump()), 200
+
+
+@console_ns.route("/datasets/<uuid:dataset_id>/graph")
+class DatasetGraphApi(Resource):
+    @console_ns.doc("get_dataset_graph")
+    @console_ns.doc(description="Inspect the knowledge graph extracted from a dataset's documents")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.doc(params=query_params_from_model(DatasetGraphQuery))
+    @console_ns.response(200, "Graph retrieved successfully", console_ns.models[DatasetGraphResponse.__name__])
+    @console_ns.response(404, "Dataset not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    @with_session(write=False)
+    @model_validate(DatasetGraphQuery)
+    def get(
+        self,
+        args: DatasetGraphQuery,
+        session: Session,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+    ):
+        dataset = _get_accessible_dataset(dataset_id, current_tenant_id, current_user, session)
+        entities, relations = GraphIndexService.explore(dataset, args.query, args.limit, session=session)
+        return (
+            dump_response(
+                DatasetGraphResponse,
+                {
+                    "entities": [entity.model_dump() for entity in entities],
+                    "relations": [relation.model_dump() for relation in relations],
+                },
+            ),
+            200,
+        )

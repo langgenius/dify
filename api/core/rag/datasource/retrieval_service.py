@@ -16,6 +16,7 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.embedding.retrieval import AttachmentInfoDict, RetrievalChildChunk, RetrievalSegments
 from core.rag.entities import MetadataFilteringCondition
+from core.rag.graph.graph_retrieval import GraphRetrieval
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.constant.query_type import QueryType
@@ -265,6 +266,42 @@ class RetrievalService:
     def _get_dataset(cls, dataset_id: str) -> Dataset | None:
         with Session(db.engine) as session:
             return session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+
+    @classmethod
+    @trace_span()
+    def graph_search(
+        cls,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str,
+        top_k: int,
+        all_documents: list[Document],
+        exceptions: list[str],
+        document_ids_filter: list[str] | None = None,
+    ):
+        """Walk the dataset's knowledge graph and append the chunks it reaches.
+
+        Runs alongside vector and full-text search for hybrid retrieval, so the
+        merged result set is deduplicated and reranked as a whole.
+        """
+        with flask_app.app_context():
+            try:
+                dataset = cls._get_dataset(dataset_id)
+                if not dataset:
+                    raise ValueError("dataset not found")
+
+                with Session(db.engine) as session:
+                    documents = GraphRetrieval.retrieve(
+                        dataset=dataset,
+                        query=query,
+                        top_k=top_k,
+                        session=session,
+                        document_ids_filter=document_ids_filter,
+                    )
+                all_documents.extend(documents)
+            except Exception as e:
+                logger.error(e, exc_info=True)
+                exceptions.append(str(e))
 
     @classmethod
     @trace_span()
@@ -861,6 +898,19 @@ class RetrievalService:
                             reranking_model=reranking_model,
                             all_documents=all_documents_item,
                             retrieval_method=retrieval_method,
+                            exceptions=exceptions,
+                            document_ids_filter=document_ids_filter,
+                        )
+                    )
+                if RetrievalMethod.is_support_graph_search(retrieval_method) and query and dataset.graph_index_enabled:
+                    futures.append(
+                        executor.submit(
+                            propagate_context(self.graph_search),
+                            flask_app=current_app._get_current_object(),  # type: ignore
+                            dataset_id=dataset.id,
+                            query=query,
+                            top_k=top_k,
+                            all_documents=all_documents_item,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
                         )

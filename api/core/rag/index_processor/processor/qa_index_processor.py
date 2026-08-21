@@ -159,6 +159,8 @@ class QAIndexProcessor(BaseIndexProcessor):
             if multimodal_documents and dataset.is_multimodal:
                 vector.create_multimodal(multimodal_documents)
 
+        self._sync_graph_index(dataset, documents, session=session)
+
     @override
     def clean(
         self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
@@ -191,6 +193,8 @@ class QAIndexProcessor(BaseIndexProcessor):
         else:
             vector.delete()
 
+        self._clean_graph_index(dataset, node_ids, session=session)
+
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any, session: Session) -> None:
         qa_chunks = QAStructureChunk.model_validate(chunks)
@@ -221,6 +225,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 vector.create(documents)
             else:
                 raise ValueError("Indexing technique must be high quality.")
+            self._sync_graph_index(dataset, documents, session=session)
 
     @override
     def format_preview(self, chunks: Any) -> QAFormatPreviewDict:

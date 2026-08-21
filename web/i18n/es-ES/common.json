@@ -142,6 +142,7 @@
   "datasetMenus.documents": "Documentos",
   "datasetMenus.emptyTip": "El Conocimiento no ha sido asociado, por favor ve a la aplicación o plugin para completar la asociación.",
   "datasetMenus.hitTesting": "Pruebas de Recuperación",
+  "datasetMenus.knowledgeGraph": "Grafo de conocimiento",
   "datasetMenus.pipeline": "Tubería",
   "datasetMenus.relatedApp": "aplicaciones vinculadas",
   "datasetMenus.settings": "Configuraciones",
