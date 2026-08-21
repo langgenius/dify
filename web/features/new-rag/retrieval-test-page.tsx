@@ -900,50 +900,44 @@ function ResearchProcess({
         expanded ? 'w-full' : 'w-fit',
       )}
     >
-      <button
-        type="button"
-        aria-expanded={expanded}
-        className="flex min-h-10 max-w-full items-center gap-1.5 px-3 py-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
-        onClick={onToggle}
-      >
-        {task.stage === 'completed' ? (
-          <img src="/images/new-rag/vibe-coding-star.svg" alt="" className="size-3.5 shrink-0" />
-        ) : (
+      <div className="flex min-h-10 max-w-full items-center">
+        <button
+          type="button"
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch px-3 py-2 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          onClick={onToggle}
+        >
+          {task.stage === 'completed' ? (
+            <img src="/images/new-rag/vibe-coding-star.svg" alt="" className="size-3.5 shrink-0" />
+          ) : (
+            <span
+              aria-hidden
+              className={cn(
+                'size-3.5 shrink-0 text-text-accent',
+                active && 'i-ri-loader-4-line animate-spin motion-reduce:animate-none',
+                task.stage === 'canceled' && 'i-ri-stop-circle-fill text-text-tertiary',
+                task.stage === 'failed' && 'i-ri-error-warning-fill text-text-destructive',
+              )}
+            />
+          )}
+          <span className="truncate system-sm-regular whitespace-nowrap text-text-secondary">
+            {summary}
+          </span>
+          {active && <span className="system-xs-regular text-text-tertiary">{duration}</span>}
           <span
             aria-hidden
             className={cn(
-              'size-3.5 shrink-0 text-text-accent',
-              active && 'i-ri-loader-4-line animate-spin motion-reduce:animate-none',
-              task.stage === 'canceled' && 'i-ri-stop-circle-fill text-text-tertiary',
-              task.stage === 'failed' && 'i-ri-error-warning-fill text-text-destructive',
+              'i-ri-arrow-down-s-line size-4.5 shrink-0 text-text-tertiary transition-transform',
+              expanded && 'rotate-180',
             )}
           />
-        )}
-        <span className="truncate system-sm-regular whitespace-nowrap text-text-secondary">
-          {summary}
-        </span>
-        {active && <span className="system-xs-regular text-text-tertiary">{duration}</span>}
+        </button>
         {active && onCancel && (
-          <Button
-            size="small"
-            variant="secondary"
-            className="ml-auto"
-            onClick={(event) => {
-              event.stopPropagation()
-              onCancel()
-            }}
-          >
+          <Button size="small" variant="secondary" className="mr-3 shrink-0" onClick={onCancel}>
             {t(($) => $['newKnowledge.retrievalTest.cancel'])}
           </Button>
         )}
-        <span
-          aria-hidden
-          className={cn(
-            'i-ri-arrow-down-s-line size-4.5 shrink-0 text-text-tertiary transition-transform',
-            expanded && 'rotate-180',
-          )}
-        />
-      </button>
+      </div>
       {expanded && (
         <div className="border-t border-divider-subtle px-3 pt-2.5 pb-3.5">
           <ol>

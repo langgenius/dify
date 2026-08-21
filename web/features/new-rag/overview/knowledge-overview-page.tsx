@@ -1806,6 +1806,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   )
   const activityDrawerQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.infiniteOptions({
+      enabled: activityOpen,
       getNextPageParam: (lastPage) => lastPage.next_cursor,
       initialPageParam: null as string | null,
       queryKey: [

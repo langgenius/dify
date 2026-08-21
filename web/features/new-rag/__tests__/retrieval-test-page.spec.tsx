@@ -661,9 +661,14 @@ describe('RetrievalTestPage', () => {
       name: 'dataset.newKnowledge.retrievalTest.processLog',
     })
     expect(processLog).toHaveAttribute('aria-pressed', 'true')
-    expect(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.retrievalTest\.running/ }),
-    ).toHaveAttribute('aria-expanded', 'true')
+    const runningSummary = screen.getByRole('button', {
+      name: /dataset\.newKnowledge\.retrievalTest\.running/,
+    })
+    const cancelResearch = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.retrievalTest.cancel',
+    })
+    expect(runningSummary).toHaveAttribute('aria-expanded', 'true')
+    expect(runningSummary).not.toContainElement(cancelResearch)
 
     act(() => {
       emitResearchEvent?.({

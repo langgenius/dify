@@ -5,6 +5,10 @@ import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { QualityPage } from '../quality/quality-page'
 
+vi.mock('../quality/quality-evaluation-panel', () => ({
+  QualityEvaluationPanel: () => <div>Evaluation panel</div>,
+}))
+
 const serviceMock = vi.hoisted(() => ({
   bulkImport: vi.fn(),
   createGolden: vi.fn(),
@@ -210,6 +214,16 @@ describe('QualityPage', () => {
       screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.evaluationTab' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('tabpanel')).toBeInTheDocument()
+  })
+
+  it('does not load golden questions or bad cases for the evaluation tab', async () => {
+    navigationMock.tab = 'evaluations'
+
+    renderPage()
+
+    expect(await screen.findByText('Evaluation panel')).toBeInTheDocument()
+    expect(serviceMock.getGolden).not.toHaveBeenCalled()
+    expect(serviceMock.getBadCases).not.toHaveBeenCalled()
   })
 
   it('keeps quality mutations hidden for viewers while preserving trace access', async () => {
@@ -1088,6 +1102,101 @@ describe('QualityPage', () => {
         tags: ['billing'],
       },
       params: { bad_case_id: 'bad-1', control_space_id: 'space-1' },
+    })
+  })
+
+  it('resumes a partially promoted bad case without creating a duplicate', async () => {
+    navigationMock.tab = 'bad-cases'
+    serviceMock.updateBadCase
+      .mockRejectedValueOnce(new Error('dismiss failed'))
+      .mockResolvedValueOnce({ status: 'dismissed' })
+    serviceMock.deleteGolden.mockRejectedValueOnce(new Error('rollback failed'))
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('Refund after activation')
+    await user.click(
+      screen.getByRole('button', {
+        name: /dataset\.newKnowledge\.qualityPage\.questionActions/,
+      }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.qualityPage.toGolden',
+      }),
+    )
+    const promote = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.qualityPage.promote',
+    })
+
+    await user.click(promote)
+    await screen.findByText('dataset.unknownError')
+    await user.click(promote)
+
+    await waitFor(() => expect(serviceMock.updateBadCase).toHaveBeenCalledTimes(2))
+    expect(serviceMock.createGolden).toHaveBeenCalledTimes(1)
+    expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps only failed items selected after a partial bulk delete', async () => {
+    serviceMock.getGolden.mockResolvedValue({
+      data: [
+        {
+          annotation: '',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-1',
+          question: 'First question',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+        {
+          annotation: '',
+          created_at: '2026-07-28T00:00:00Z',
+          id: 'golden-2',
+          question: 'Second question',
+          tags: [],
+          updated_at: '2026-07-28T00:00:00Z',
+        },
+      ],
+      next_cursor: null,
+    })
+    serviceMock.deleteGolden.mockImplementation(
+      async (input: { params: { question_id: string } }) => {
+        if (input.params.question_id === 'golden-2') throw new Error('temporary failure')
+      },
+    )
+    const user = userEvent.setup()
+    renderPage()
+
+    await screen.findByText('First question')
+    await user.click(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.qualityPage.selectAll' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.qualityPage.deleteEllipsis' }),
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(2))
+    expect(
+      screen.getByRole('checkbox', {
+        hidden: true,
+        name: /dataset\.newKnowledge\.qualityPage\.selectQuestion.*First question/,
+      }),
+    ).not.toBeChecked()
+    expect(
+      screen.getByRole('checkbox', {
+        hidden: true,
+        name: /dataset\.newKnowledge\.qualityPage\.selectQuestion.*Second question/,
+      }),
+    ).toBeChecked()
+
+    serviceMock.deleteGolden.mockResolvedValue(undefined)
+    await user.click(screen.getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => expect(serviceMock.deleteGolden).toHaveBeenCalledTimes(3))
+    expect(serviceMock.deleteGolden.mock.calls[2]?.[0]).toMatchObject({
+      params: { question_id: 'golden-2' },
     })
   })
 })

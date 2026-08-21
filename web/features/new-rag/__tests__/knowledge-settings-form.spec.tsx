@@ -1490,6 +1490,26 @@ describe('KnowledgeSettingsForm', () => {
     destination.remove()
   })
 
+  it('protects a delayed retrieval save from immediate navigation', async () => {
+    renderForm()
+    const destination = document.createElement('a')
+    destination.href = '/datasets/new/space-1/sources'
+    destination.textContent = 'Go to sources'
+    document.body.append(destination)
+
+    fireEvent.change(
+      screen.getByRole('spinbutton', {
+        name: 'dataset.newKnowledge.settings.topKLabel',
+      }),
+      { target: { value: '8' } },
+    )
+    fireEvent.click(destination)
+
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(routerMock.push).not.toHaveBeenCalled()
+    destination.remove()
+  })
+
   it('asks before browser back navigation while the form has unsaved changes', async () => {
     const user = userEvent.setup()
     const historyBack = vi.spyOn(globalThis.history, 'back').mockImplementation(() => {})

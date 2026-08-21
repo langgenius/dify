@@ -392,7 +392,7 @@ export function KnowledgeSettingsForm({
   const basicDirty = spaceDirty || membersDirty
   liveSettingsDraftRef.current = currentSettingsDraft
   basicDirtyRef.current = basicDirty
-  const isDirty = basicDirty
+  const isDirty = basicDirty || embeddingDirty || retrievalDirty
   const nameInvalid = !name.trim()
   const descriptionInvalid = Array.from(description).length > KNOWLEDGE_DESCRIPTION_MAX_LENGTH
   const membersInvalid =

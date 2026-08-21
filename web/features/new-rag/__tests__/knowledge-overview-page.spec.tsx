@@ -662,6 +662,19 @@ describe('KnowledgeOverviewPage', () => {
     expect(whenHeader).not.toHaveClass('opacity-0')
   })
 
+  it('enables the complete activity query only while its drawer is open', async () => {
+    const user = userEvent.setup()
+    renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)
+
+    expect(infiniteOptionsMocks.activity.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.overview.allActivity' }),
+    )
+
+    expect(infiniteOptionsMocks.activity.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+  })
+
   it('restarts activity pagination when the date or operator filter changes', async () => {
     const user = userEvent.setup()
     renderWithNuqs(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)

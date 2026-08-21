@@ -74,6 +74,7 @@ import { SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
 
 const PAGE_SIZE = 200
+const MAX_AUTO_CURSOR_PAGES = 5
 const AWAIT_INITIAL_SOURCE_POLL_INTERVAL = 2000
 const SOURCE_POLL_INTERVAL = 3000
 const INITIAL_SOURCE_POLL_TIMEOUT = 10 * 60 * 1000
@@ -1130,7 +1131,9 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
   }, [filter, search, sort, sources])
   const localTransformActive = filter !== 'all' || Boolean(search.trim()) || Boolean(sort)
-  const canAutoCompleteFilteredResults = localTransformActive
+  const loadedSourcePageCount = sourcesQuery.data?.pages.length ?? 0
+  const canAutoLoadNextPage = loadedSourcePageCount < MAX_AUTO_CURSOR_PAGES
+  const canAutoCompleteFilteredResults = localTransformActive && canAutoLoadNextPage
   const latestSourcePage = sourcesQuery.data?.pages.at(-1)
   const needsVisibleSource =
     latestSourcePage !== undefined &&
@@ -1144,7 +1147,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       )
     })
   const completingFilteredResults =
-    (canAutoCompleteFilteredResults || needsVisibleSource) &&
+    (canAutoCompleteFilteredResults || (needsVisibleSource && canAutoLoadNextPage)) &&
     !sourcesQuery.isFetchNextPageError &&
     (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
   const allFilteredSourcesSelected =
@@ -1191,7 +1194,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   useEffect(() => {
     if (
-      (canAutoCompleteFilteredResults || needsVisibleSource) &&
+      (canAutoCompleteFilteredResults || (needsVisibleSource && canAutoLoadNextPage)) &&
       hasNextSourcePage &&
       !isFetchingNextSourcePage &&
       !sourcesQuery.isFetchNextPageError
@@ -1199,6 +1202,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       void fetchNextSourcePage()
   }, [
     canAutoCompleteFilteredResults,
+    canAutoLoadNextPage,
     fetchNextSourcePage,
     hasNextSourcePage,
     isFetchingNextSourcePage,
@@ -1426,6 +1430,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </tbody>
             </table>
             {!filteredSources.length &&
+              !sourcesQuery.hasNextPage &&
               !completingFilteredResults &&
               !sourcesQuery.isFetchNextPageError && (
                 <p className="py-16 text-center body-sm-regular text-text-tertiary">

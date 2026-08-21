@@ -2065,10 +2065,10 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
   })
 
-  it('continues automatic filtered pagination beyond the former page cap', async () => {
+  it('stops automatic filtered pagination at the page cap and offers manual loading', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = {
-      pages: Array.from({ length: 4 }, (_, index) => ({
+      pages: Array.from({ length: 5 }, (_, index) => ({
         items: [source({ id: `source-${index}`, name: `Source ${index}` })],
         nextCursor: `cursor-${index + 1}`,
       })),
@@ -2081,10 +2081,9 @@ describe('SourcesPage', () => {
       'later page',
     )
 
+    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
-    expect(
-      screen.queryByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
-    ).not.toBeInTheDocument()
   })
 
   it('stops automatic filtered pagination after a cursor error', async () => {
