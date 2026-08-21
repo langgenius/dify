@@ -101,7 +101,11 @@ def make_dataset(
         "is_multimodal": False,
     }
     base.update(overrides)
-    dataset = Dataset(**base)
+    created_at = cast(datetime, base.pop("created_at"))
+    updated_at = cast(datetime, base.pop("updated_at"))
+    dataset = Dataset(**base)  # type: ignore[bad-argument-type]
+    dataset.created_at = created_at
+    dataset.updated_at = updated_at
     session.add(dataset)
     session.flush()
     return dataset
