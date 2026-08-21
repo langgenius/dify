@@ -2,7 +2,7 @@ import type { Source, SourceSyncPolicy, SourceWorkflowRun } from '../source-mode
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import datasetTranslations from '@/i18n/en-US/dataset.json'
-import { render } from '@/test/console/render'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { SourcesPage } from '../sources-page'
 
 vi.mock('../components/knowledge-model-readiness-banner', () => ({
@@ -548,7 +548,7 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { onUrlUpdate } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.sourceStatus.active')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.sourceStatus.syncing')).toBeInTheDocument()
@@ -562,6 +562,9 @@ describe('SourcesPage', () => {
     await user.click(
       screen.getByRole('option', { name: 'dataset.newKnowledge.sourceStatus.error' }),
     )
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('status')).toBe('error')
+    })
     expect(screen.getByText('Support site')).toBeInTheDocument()
     expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
 
@@ -595,9 +598,12 @@ describe('SourcesPage', () => {
       ],
     }
 
-    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const { onUrlUpdate } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.sourceColumn' }))
+    await waitFor(() => {
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('sort')).toBe('name-asc')
+    })
     const rowsAscending = screen.getAllByRole('row').slice(1)
     expect(within(rowsAscending[0]!).getByText('Alpha docs')).toBeInTheDocument()
     expect(within(rowsAscending[1]!).getByText('Zulu docs')).toBeInTheDocument()
@@ -1414,6 +1420,7 @@ describe('SourcesPage', () => {
         {
           items: [
             source({
+              lastSyncedAt: '2026-07-20T09:00:00Z',
               syncWorkflow: {
                 ...sourceWorkflow('failed'),
                 lastErrorCode: 'PROVIDER_FAILED',
@@ -1425,13 +1432,15 @@ describe('SourcesPage', () => {
     }
     restored.rerender(<SourcesPage knowledgeSpaceId="space-1" />)
 
+    const row = screen.getByRole('row', { name: /Product documentation/ })
     await waitFor(() =>
       expect(
-        within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
-          'PROVIDER_FAILED',
-        ),
+        within(row).getByRole('button', {
+          name: 'dataset.newKnowledge.taskFailure.temporary',
+        }),
       ).toBeInTheDocument(),
     )
+    expect(within(row).queryByText('PROVIDER_FAILED')).not.toBeInTheDocument()
     expect(invalidateQueriesMock).not.toHaveBeenCalled()
   })
 

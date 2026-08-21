@@ -1,6 +1,7 @@
 'use client'
 
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import type { SourceFilter } from './source-list-query-state'
 import type { Source, SourceDisplayStatus, SourceSyncPolicy } from './source-models'
 import {
   AlertDialog,
@@ -38,8 +39,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
 import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -50,7 +53,9 @@ import { consoleClient, consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
 import { KnowledgeModelReadinessBanner } from './components/knowledge-model-readiness-banner'
 import { KnowledgeModelSetupDialog } from './components/knowledge-model-setup-dialog'
+import { knowledgeFsTaskFailureMessageKey } from './knowledge-fs-task-error'
 import { NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH, newKnowledgeAddSourcePath } from './routes'
+import { sourceFilterParser, sourceSearchParser, sourceSortParser } from './source-list-query-state'
 import {
   initialSourcePollingPhase,
   initialSourceWorkflowId,
@@ -69,9 +74,6 @@ import { normalizeSourceProviderName, sourceProviderPresentation } from './sourc
 import { SourceProviderIcon } from './source-setup-fields'
 import { SyncPolicyField } from './sync-policy-field'
 import { useKnowledgeModelSetupGuard } from './use-knowledge-model-setup-guard'
-
-type SourceFilter = SourceDisplayStatus | 'all'
-type SourceSort = 'name-asc' | 'name-desc'
 
 const PAGE_SIZE = 50
 const MAX_AUTO_FILTER_PAGES = 4
@@ -627,6 +629,10 @@ function SourceRow({
   const lastSync = Number.isNaN(lastSyncTimestamp)
     ? undefined
     : formatTimeFromNow(lastSyncTimestamp)
+  const syncFailureMessageKey = knowledgeFsTaskFailureMessageKey(
+    undefined,
+    syncWorkflow?.lastErrorCode,
+  )
   const typeLabel =
     source.type === 'connector' &&
     (providerKind === 'online-document' ||
@@ -871,6 +877,15 @@ function SourceRow({
           )}
           <span className="sr-only">{source.name}: </span>
           {t(($) => $[`newKnowledge.sourceStatus.${displayStatus}`])}
+          {displayStatus === 'error' && syncFailureMessageKey && (
+            <Infotip
+              aria-label={t(($) => $[syncFailureMessageKey])}
+              iconVariant="information"
+              popupClassName="max-w-80"
+            >
+              {t(($) => $[syncFailureMessageKey])}
+            </Infotip>
+          )}
         </span>
       </td>
       <td className="min-w-0 @min-[768px]/knowledge-content:hidden @min-[960px]/knowledge-content:flex @min-[960px]/knowledge-content:items-center">
@@ -881,12 +896,7 @@ function SourceRow({
           {syncPolicy ?? '—'}
         </TruncatedSourceValue>
       </td>
-      <td
-        className={cn(
-          'min-w-0 text-xs leading-4 font-normal @min-[768px]/knowledge-content:col-start-4 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto',
-          displayStatus === 'error' ? 'text-text-destructive' : 'text-text-secondary',
-        )}
-      >
+      <td className="min-w-0 text-xs leading-4 font-normal text-text-secondary @min-[768px]/knowledge-content:col-start-4 @min-[768px]/knowledge-content:row-span-2 @min-[768px]/knowledge-content:row-start-1 @min-[768px]/knowledge-content:flex @min-[768px]/knowledge-content:items-center @min-[960px]/knowledge-content:col-start-auto @min-[960px]/knowledge-content:row-span-1 @min-[960px]/knowledge-content:row-start-auto">
         <p className="mb-1 text-[11px] leading-4 font-medium tracking-[0.3px] text-text-tertiary uppercase @min-[768px]/knowledge-content:hidden">
           {t(($) => $['newKnowledge.lastSyncColumn'])}
         </p>
@@ -903,13 +913,6 @@ function SourceRow({
                 syncWorkflow.progressSkipped,
               total: syncWorkflow.progressTotal ?? '—',
             })}
-          </span>
-        ) : displayStatus === 'error' ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <span aria-hidden className="i-ri-error-warning-fill size-3.5" />
-            <TruncatedSourceValue>
-              {syncWorkflow?.lastErrorCode ?? t(($) => $['newKnowledge.sourceSyncFailed'])}
-            </TruncatedSourceValue>
           </span>
         ) : (
           <TruncatedSourceValue>{lastSync ?? '—'}</TruncatedSourceValue>
@@ -1046,9 +1049,9 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     [ensureModelReady],
   )
   const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
-  const [filter, setFilter] = useState<SourceFilter>('all')
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<SourceSort>()
+  const [filter, setFilter] = useQueryState('status', sourceFilterParser)
+  const [search, setSearch] = useQueryState('query', sourceSearchParser)
+  const [sort, setSort] = useQueryState('sort', sourceSortParser)
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const [sourceOverrides, setSourceOverrides] = useState<Record<string, Source>>({})
   const [removedSourceIds, setRemovedSourceIds] = useState<Set<string>>(() => new Set())
@@ -1276,7 +1279,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             <Select<SourceFilter>
               value={filter}
               onValueChange={(value) => {
-                if (value) setFilter(value)
+                if (value) void setFilter(value)
               }}
             >
               <SelectLabel className="sr-only">
@@ -1308,7 +1311,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               aria-label={t(($) => $['newKnowledge.searchSources'])}
               className="@min-[768px]/knowledge-content:w-60"
               value={search}
-              onValueChange={setSearch}
+              onValueChange={(value) => void setSearch(value)}
               placeholder={t(($) => $['newKnowledge.searchSources'])}
             />
             {canManageSources && (
@@ -1358,9 +1361,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     <Button
                       variant="ghost"
                       size="small"
-                      onClick={() =>
-                        setSort((current) => (current === 'name-asc' ? 'name-desc' : 'name-asc'))
-                      }
+                      onClick={() => void setSort(sort === 'name-asc' ? 'name-desc' : 'name-asc')}
                       className="h-auto gap-1 rounded px-0 text-[11px] leading-4 font-medium tracking-[0.3px] focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     >
                       {t(($) => $['newKnowledge.sourceColumn'])}

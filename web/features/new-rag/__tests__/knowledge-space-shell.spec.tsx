@@ -36,6 +36,8 @@ const externalAccessQueryMock = vi.hoisted(() => ({
     service_api_enabled: true,
     workflow_enabled: false,
   },
+  isError: false,
+  isPending: false,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -46,9 +48,12 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useQuery: (options: { queryKey?: string[] }) => {
+    useQuery: (options: { enabled?: boolean; queryKey?: string[] }) => {
       useQueryOptionsMock(options)
-      if (options.queryKey?.[0] === 'external-access') return externalAccessQueryMock
+      if (options.queryKey?.[0] === 'external-access')
+        return options.enabled
+          ? externalAccessQueryMock
+          : { data: undefined, isError: false, isPending: false }
       return queryMock
     },
   }
@@ -88,16 +93,16 @@ vi.mock('@/service/client', async (importOriginal) => {
 vi.mock('../components/knowledge-fs-api-access-dialog', () => ({
   KnowledgeFsApiAccessDialog: ({
     canManageCredentials,
-    enabled,
+    status,
     open,
   }: {
     canManageCredentials: boolean
-    enabled: boolean
+    status: 'active' | 'inactive' | 'loading' | 'unavailable'
     open: boolean
   }) =>
     open ? (
       <div role="dialog" aria-label="knowledge-fs-api-access">
-        {String(enabled)}:{String(canManageCredentials)}
+        {status}:{String(canManageCredentials)}
       </div>
     ) : null,
 }))
@@ -112,6 +117,8 @@ describe('KnowledgeSpaceShell', () => {
     pathnameMock.value = '/datasets/new/space-1/sources'
     externalAccessQueryMock.data.agent_enabled = true
     externalAccessQueryMock.data.service_api_enabled = true
+    externalAccessQueryMock.isError = false
+    externalAccessQueryMock.isPending = false
   })
 
   it.each([
@@ -126,6 +133,7 @@ describe('KnowledgeSpaceShell', () => {
     pathnameMock.value = pathname
     queryMock.data = {
       control_space_id: 'space-1',
+      permission_keys: ['knowledge_space_access_config'],
       state: 'active',
       technical_summary: { name: 'Support knowledge' },
     }
@@ -171,6 +179,7 @@ describe('KnowledgeSpaceShell', () => {
   it('renders a refresh-safe header and route navigation when loaded', () => {
     queryMock.data = {
       control_space_id: 'space-1',
+      permission_keys: ['knowledge_space_access_config'],
       state: 'active',
       technical_summary: {
         model_profile: {
@@ -222,6 +231,23 @@ describe('KnowledgeSpaceShell', () => {
     expect(screen.getByText('source content')).toBeInTheDocument()
   })
 
+  it('does not report API access as inactive when the user cannot inspect its configuration', () => {
+    queryMock.data = {
+      control_space_id: 'space-1',
+      permission_keys: [],
+      state: 'active',
+      technical_summary: { name: 'Support knowledge' },
+    }
+
+    render(<KnowledgeSpaceShell knowledgeSpaceId="space-1">source content</KnowledgeSpaceShell>)
+
+    expect(screen.getByText('dataset.unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.apiAccessInactive')).not.toBeInTheDocument()
+    expect(useQueryOptionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false, queryKey: ['external-access'] }),
+    )
+  })
+
   it('keeps all navigation discoverable in a three-column mobile grid', () => {
     queryMock.data = {
       control_space_id: 'space-1',
@@ -267,7 +293,7 @@ describe('KnowledgeSpaceShell', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.apiAgentAccess' }))
 
     expect(screen.getByRole('dialog', { name: 'knowledge-fs-api-access' })).toHaveTextContent(
-      'true:true',
+      'active:true',
     )
   })
 

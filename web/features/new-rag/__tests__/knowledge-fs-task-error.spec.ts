@@ -87,6 +87,9 @@ describe('KnowledgeFS task error presentation', () => {
   })
 
   it('provides safe compatibility behavior for legacy error codes', () => {
+    expect(knowledgeFsTaskFailureMessageKey(undefined, 'SOURCE_OPERATION_FAILED')).toBe(
+      'newKnowledge.taskFailure.source',
+    )
     expect(knowledgeFsTaskFailureMessageKey(undefined, 'PARSER_FAILED')).toBe(
       'newKnowledge.taskFailure.temporary',
     )

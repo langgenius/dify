@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "रिसर्च जारी है…",
   "newKnowledge.retrievalTest.savedBadCase": "सुधार योग्य मामले के रूप में सहेजा गया",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "संदर्भ प्रश्न के रूप में सहेजा गया",
+  "newKnowledge.retrievalTest.score": "स्कोर",
   "newKnowledge.retrievalTest.showAllChunks": "सभी {{count}} खंड दिखाएँ",
   "newKnowledge.retrievalTest.startResearch": "रिसर्च शुरू करें",
   "newKnowledge.retrievalTest.title": "रिट्रीवल परीक्षण",

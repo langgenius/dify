@@ -401,6 +401,13 @@ describe('KnowledgeOverviewPage', () => {
       },
       refetchInterval: expect.any(Function),
     })
+    expect(queryOptionsMocks.outcomes).toHaveBeenLastCalledWith({
+      input: {
+        params: { control_space_id: 'space-1' },
+        query: { window: '30d' },
+      },
+      refetchInterval: expect.any(Function),
+    })
   })
 
   it('renders ratio fields from the API contract as percentages', () => {
@@ -459,9 +466,12 @@ describe('KnowledgeOverviewPage', () => {
     const options = chartOptions.current as {
       series: Array<{ smooth: boolean }>
       tooltip: { trigger: string }
+      yAxis: { max?: number; minInterval: number }
     }
     expect(options.series.every((series) => series.smooth === false)).toBe(true)
     expect(options.tooltip.trigger).toBe('item')
+    expect(options.yAxis.minInterval).toBe(1)
+    expect(options.yAxis.max).toBeUndefined()
   })
 
   it('shows the member who performed an activity instead of a system placeholder', () => {

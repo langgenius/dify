@@ -194,21 +194,26 @@ describe('retrieval test model', () => {
 
   it('formats research durations in seconds and minutes', () => {
     expect(formatDuration(12_000)).toBe('12s')
-    expect(formatDuration(303_000)).toBe('5min 3s')
+    expect(formatDuration(303_000)).toBe('5m 3s')
   })
 
   it('keeps non-zero subsecond research stages visible', () => {
-    expect(formatStageDuration(7)).toBe('7 ms')
-    expect(formatStageDuration(21)).toBe('21 ms')
+    expect(formatStageDuration(7)).toBe('7ms')
+    expect(formatStageDuration(21)).toBe('21ms')
     expect(formatStageDuration(0)).toBe('0s')
     expect(formatStageDuration(6_900)).toBe('7s')
   })
 
   it('formats retrieval latency with millisecond precision below one second', () => {
-    expect(formatRetrievalDuration(320)).toBe('320 ms')
-    expect(formatRetrievalDuration(800)).toBe('800 ms')
-    expect(formatRetrievalDuration(1_200)).toBe('1.2 s')
-    expect(formatRetrievalDuration(2_100)).toBe('2.1 s')
+    expect(formatRetrievalDuration(320)).toBe('320ms')
+    expect(formatRetrievalDuration(800)).toBe('800ms')
+    expect(formatRetrievalDuration(1_200)).toBe('1.2s')
+    expect(formatRetrievalDuration(2_100)).toBe('2.1s')
+  })
+
+  it('localizes duration units for the active language', () => {
+    expect(formatDuration(303_000, 'zh-CN')).toBe('5分钟 3秒')
+    expect(formatRetrievalDuration(1_200, 'zh-CN')).toBe('1.2秒')
   })
 
   it('refreshes partials when an active research task becomes completed', () => {

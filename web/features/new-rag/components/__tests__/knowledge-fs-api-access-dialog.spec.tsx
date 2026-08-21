@@ -38,7 +38,7 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 vi.mock('@/app/components/base/copy-feedback', () => ({
-  default: ({ content }: { content: string }) => (
+  CopyFeedback: ({ content }: { content: string }) => (
     <button type="button" aria-label={`copy:${content}`} />
   ),
 }))
@@ -111,7 +111,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     render(
       <KnowledgeFsApiAccessDialog
         canManageCredentials
-        enabled
+        status="active"
         knowledgeSpaceId="space-1"
         open
         onOpenChange={vi.fn()}
@@ -148,7 +148,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     render(
       <KnowledgeFsApiAccessDialog
         canManageCredentials
-        enabled
+        status="active"
         knowledgeSpaceId="space-1"
         open
         onOpenChange={vi.fn()}
@@ -172,7 +172,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     render(
       <KnowledgeFsApiAccessDialog
         canManageCredentials
-        enabled={false}
+        status="inactive"
         knowledgeSpaceId="space-1"
         open
         onOpenChange={vi.fn()}
@@ -192,7 +192,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     render(
       <KnowledgeFsApiAccessDialog
         canManageCredentials
-        enabled
+        status="active"
         knowledgeSpaceId="space-1"
         open
         onOpenChange={vi.fn()}
@@ -216,7 +216,7 @@ describe('KnowledgeFsApiAccessDialog', () => {
     render(
       <KnowledgeFsApiAccessDialog
         canManageCredentials
-        enabled
+        status="active"
         knowledgeSpaceId="space-1"
         open
         onOpenChange={vi.fn()}

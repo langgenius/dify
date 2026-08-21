@@ -386,6 +386,7 @@
   "newKnowledge.removeSource": "ລຶບແຫຼ່ງ",
   "newKnowledge.resetToDefaults": "ຣີເຊັດເປັນຄ່າເລີ່ມຕົ້ນ",
   "newKnowledge.retrievalCount": "ຈໍານວນການດຶງຂໍ້ມູນ",
+  "newKnowledge.retrievalTest.score": "ຄະແນນ",
   "newKnowledge.retryCrawl": "ລອງລວບລວມຂໍ້ມູນຄືນໃໝ່",
   "newKnowledge.retryProviderLoad": "ລອງໃໝ່",
   "newKnowledge.retryReindexDocument": "Re-index ອີກເທື່ອຫນຶ່ງ",

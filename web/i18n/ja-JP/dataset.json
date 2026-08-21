@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "調査中…",
   "newKnowledge.retrievalTest.savedBadCase": "問題ケースとして保存しました",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "参考質問として保存しました",
+  "newKnowledge.retrievalTest.score": "スコア",
   "newKnowledge.retrievalTest.showAllChunks": "全 {{count}} チャンクを表示",
   "newKnowledge.retrievalTest.startResearch": "調査を開始",
   "newKnowledge.retrievalTest.title": "検索テスト",

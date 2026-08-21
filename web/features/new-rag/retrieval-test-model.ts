@@ -353,24 +353,37 @@ export function shouldRefreshResearchPartials(
   )
 }
 
-export function formatDuration(milliseconds: number) {
+function formatTimeUnit(value: number, unit: 'millisecond' | 'minute' | 'second', locale: string) {
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+    style: 'unit',
+    unit,
+    unitDisplay: 'narrow',
+  }).format(value)
+}
+
+export function formatDuration(milliseconds: number, locale = 'en-US') {
   const seconds = Math.max(0, Math.round(milliseconds / 1000))
-  if (seconds < 60) return `${seconds}s`
+  if (seconds < 60) return formatTimeUnit(seconds, 'second', locale)
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
-  return remainingSeconds ? `${minutes}min ${remainingSeconds}s` : `${minutes}min`
+  const formattedMinutes = formatTimeUnit(minutes, 'minute', locale)
+  return remainingSeconds
+    ? `${formattedMinutes} ${formatTimeUnit(remainingSeconds, 'second', locale)}`
+    : formattedMinutes
 }
 
-export function formatStageDuration(milliseconds: number) {
+export function formatStageDuration(milliseconds: number, locale = 'en-US') {
   const duration = Math.max(0, milliseconds)
-  if (duration > 0 && duration < 1_000) return `${Math.max(1, Math.round(duration))} ms`
-  return formatDuration(duration)
+  if (duration > 0 && duration < 1_000)
+    return formatTimeUnit(Math.max(1, Math.round(duration)), 'millisecond', locale)
+  return formatDuration(duration, locale)
 }
 
-export function formatRetrievalDuration(milliseconds: number) {
+export function formatRetrievalDuration(milliseconds: number, locale = 'en-US') {
   const duration = Math.max(0, milliseconds)
-  if (duration < 1_000) return `${Math.round(duration)} ms`
+  if (duration < 1_000) return formatTimeUnit(Math.round(duration), 'millisecond', locale)
   const seconds = duration / 1_000
   const roundedSeconds = seconds < 10 ? Math.round(seconds * 10) / 10 : Math.round(seconds)
-  return `${roundedSeconds} s`
+  return formatTimeUnit(roundedSeconds, 'second', locale)
 }

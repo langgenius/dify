@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Cercetare în curs…",
   "newKnowledge.retrievalTest.savedBadCase": "Salvat drept caz problematic",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Salvat ca întrebare de referință",
+  "newKnowledge.retrievalTest.score": "Scor",
   "newKnowledge.retrievalTest.showAllChunks": "Afișează toate cele {{count}} fragmente",
   "newKnowledge.retrievalTest.startResearch": "Începe cercetarea",
   "newKnowledge.retrievalTest.title": "Test de recuperare",

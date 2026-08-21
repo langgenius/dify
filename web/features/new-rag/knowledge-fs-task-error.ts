@@ -89,6 +89,9 @@ export function knowledgeFsTaskFailureMessageKey(
   legacyCode?: string,
 ): KnowledgeFsTaskFailureMessageKey | undefined {
   if (!failure && !legacyCode) return
+  const normalizedLegacyCode = legacyCode?.toUpperCase()
+  if (normalizedLegacyCode && normalizedLegacyCode in failureMessageKeyByCode)
+    return failureMessageKeyByCode[normalizedLegacyCode as keyof typeof failureMessageKeyByCode]
   if (failure) {
     const messageKey = failureMessageKeyByCode[failure.code]
     if (messageKey) return messageKey
@@ -115,7 +118,7 @@ export function knowledgeFsTaskFailureMessageKey(
       return 'newKnowledge.taskFailure.internal'
   }
 
-  const code = legacyCode?.toUpperCase() ?? ''
+  const code = normalizedLegacyCode ?? ''
   if (/AUTH|DENIED|NOT_FOUND|PERMISSION/u.test(code)) return 'newKnowledge.taskFailure.access'
   if (
     /CREDENTIAL|CONFIG|MODEL_SELECTION|MODEL_CAPABILITY|MODEL_IDENTITY|NOT_CONFIGURED/u.test(code)

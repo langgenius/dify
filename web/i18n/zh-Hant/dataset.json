@@ -603,6 +603,7 @@
   "newKnowledge.retrievalTest.running": "研究中…",
   "newKnowledge.retrievalTest.savedBadCase": "已儲存為問題案例",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "已儲存為參考問題",
+  "newKnowledge.retrievalTest.score": "分數",
   "newKnowledge.retrievalTest.showAllChunks": "顯示全部 {{count}} 個片段",
   "newKnowledge.retrievalTest.startResearch": "開始研究",
   "newKnowledge.retrievalTest.title": "檢索測試",

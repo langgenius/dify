@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Đang nghiên cứu…",
   "newKnowledge.retrievalTest.savedBadCase": "Đã lưu làm trường hợp cần cải thiện",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Đã lưu làm câu hỏi tham chiếu",
+  "newKnowledge.retrievalTest.score": "Điểm",
   "newKnowledge.retrievalTest.showAllChunks": "Hiển thị tất cả {{count}} đoạn",
   "newKnowledge.retrievalTest.startResearch": "Bắt đầu nghiên cứu",
   "newKnowledge.retrievalTest.title": "Kiểm thử truy xuất",

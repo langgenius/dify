@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "리서치 중…",
   "newKnowledge.retrievalTest.savedBadCase": "문제 사례로 저장됨",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "참고 질문으로 저장됨",
+  "newKnowledge.retrievalTest.score": "점수",
   "newKnowledge.retrievalTest.showAllChunks": "청크 {{count}}개 모두 표시",
   "newKnowledge.retrievalTest.startResearch": "리서치 시작",
   "newKnowledge.retrievalTest.title": "검색 테스트",

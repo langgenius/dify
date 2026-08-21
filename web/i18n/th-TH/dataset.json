@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "กำลังวิจัย…",
   "newKnowledge.retrievalTest.savedBadCase": "บันทึกเป็นกรณีที่ต้องปรับปรุงแล้ว",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "บันทึกเป็นคำถามอ้างอิงแล้ว",
+  "newKnowledge.retrievalTest.score": "คะแนน",
   "newKnowledge.retrievalTest.showAllChunks": "แสดงส่วนเนื้อหาทั้งหมด {{count}} รายการ",
   "newKnowledge.retrievalTest.startResearch": "เริ่มการวิจัย",
   "newKnowledge.retrievalTest.title": "ทดสอบการค้นคืน",

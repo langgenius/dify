@@ -645,6 +645,7 @@
   "newKnowledge.retrievalTest.running": "研究中…",
   "newKnowledge.retrievalTest.savedBadCase": "已保存为问题案例",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "已保存为参考问题",
+  "newKnowledge.retrievalTest.score": "得分",
   "newKnowledge.retrievalTest.showAllChunks": "显示全部 {{count}} 个分段",
   "newKnowledge.retrievalTest.startResearch": "开始研究",
   "newKnowledge.retrievalTest.title": "检索测试",

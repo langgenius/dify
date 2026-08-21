@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Raziskovanje…",
   "newKnowledge.retrievalTest.savedBadCase": "Shranjeno kot problematičen primer",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Shranjeno kot referenčno vprašanje",
+  "newKnowledge.retrievalTest.score": "Rezultat",
   "newKnowledge.retrievalTest.showAllChunks": "Prikaži vseh {{count}} odsekov",
   "newKnowledge.retrievalTest.startResearch": "Začni raziskavo",
   "newKnowledge.retrievalTest.title": "Preskus pridobivanja",

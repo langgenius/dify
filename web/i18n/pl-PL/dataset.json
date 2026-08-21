@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Trwa badanie…",
   "newKnowledge.retrievalTest.savedBadCase": "Zapisano jako przypadek do poprawy",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Zapisano jako pytanie referencyjne",
+  "newKnowledge.retrievalTest.score": "Wynik",
   "newKnowledge.retrievalTest.showAllChunks": "Pokaż wszystkie fragmenty ({{count}})",
   "newKnowledge.retrievalTest.startResearch": "Rozpocznij badanie",
   "newKnowledge.retrievalTest.title": "Test wyszukiwania",

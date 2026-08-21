@@ -815,10 +815,10 @@ describe('RetrievalTestPage', () => {
         capability: expect.objectContaining({ operation_id: 'streamResearchTask' }),
       }),
     )
-    expect(await screen.findByText('7 ms')).toBeInTheDocument()
-    expect(screen.getByText('1min 19s')).toBeInTheDocument()
+    expect(await screen.findByText('7ms')).toBeInTheDocument()
+    expect(screen.getByText('1m 19s')).toBeInTheDocument()
     expect(screen.getByText('7s')).toBeInTheDocument()
-    expect(screen.getByText('21 ms')).toBeInTheDocument()
+    expect(screen.getByText('21ms')).toBeInTheDocument()
     expect(screen.getAllByText('dataset.newKnowledge.sources: 2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('dataset.newKnowledge.documents: 2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('dataset.newKnowledge.chunkCount: 3').length).toBeGreaterThan(1)
@@ -1804,7 +1804,7 @@ describe('RetrievalTestPage', () => {
     expect(record).toHaveAttribute('aria-pressed', 'true')
     expect(
       within(record).getByText(
-        'dataset.newKnowledge.retrievalTest.recordSummary:{"count":4,"duration":"1.3 s"}',
+        'dataset.newKnowledge.retrievalTest.recordSummary:{"count":4,"duration":"1.3s"}',
       ),
     ).toBeInTheDocument()
   })

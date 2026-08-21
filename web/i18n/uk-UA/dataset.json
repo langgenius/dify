@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Триває дослідження…",
   "newKnowledge.retrievalTest.savedBadCase": "Збережено як проблемний випадок",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Збережено як еталонне запитання",
+  "newKnowledge.retrievalTest.score": "Оцінка",
   "newKnowledge.retrievalTest.showAllChunks": "Показати всі фрагменти ({{count}})",
   "newKnowledge.retrievalTest.startResearch": "Почати дослідження",
   "newKnowledge.retrievalTest.title": "Перевірка пошуку",

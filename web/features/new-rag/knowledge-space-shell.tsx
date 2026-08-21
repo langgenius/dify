@@ -1,6 +1,7 @@
 'use client'
 
 import type { CSSProperties, ReactNode } from 'react'
+import type { KnowledgeFsApiAccessStatus } from './components/knowledge-fs-api-access-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { DialogTrigger } from '@langgenius/dify-ui/dialog'
@@ -102,9 +103,16 @@ export function KnowledgeSpaceShell({
     }),
     enabled: canManageAccess && knowledgeSpaceQuery.data?.state === 'active',
   })
-  const apiAccessEnabled =
-    externalAccessQuery.data?.service_api_enabled === true &&
-    externalAccessQuery.data.agent_enabled === true
+  const apiAccessStatus: KnowledgeFsApiAccessStatus = !canManageAccess
+    ? 'unavailable'
+    : externalAccessQuery.isPending
+      ? 'loading'
+      : externalAccessQuery.isError || !externalAccessQuery.data
+        ? 'unavailable'
+        : externalAccessQuery.data.service_api_enabled === true &&
+            externalAccessQuery.data.agent_enabled === true
+          ? 'active'
+          : 'inactive'
   const knowledgeSpaceName =
     knowledgeSpaceQuery.data?.technical_summary?.name ?? t(($) => $.knowledge)
   const pageTitle = knowledgeSpacePageTitle(pathname, t, tCommon)
@@ -384,16 +392,21 @@ export function KnowledgeSpaceShell({
               )}
               <span className="sr-only">
                 {t(($) =>
-                  apiAccessEnabled
+                  apiAccessStatus === 'active'
                     ? $['newKnowledge.apiAccessActive']
-                    : $['newKnowledge.apiAccessInactive'],
+                    : apiAccessStatus === 'inactive'
+                      ? $['newKnowledge.apiAccessInactive']
+                      : $.unavailable,
                 )}
               </span>
               <span
                 aria-hidden
                 className={cn(
                   'size-2 shrink-0 rounded-full',
-                  apiAccessEnabled ? 'bg-util-colors-green-green-500' : 'bg-text-quaternary',
+                  apiAccessStatus === 'active'
+                    ? 'bg-util-colors-green-green-500'
+                    : 'bg-text-quaternary',
+                  apiAccessStatus === 'loading' && 'animate-pulse motion-reduce:animate-none',
                 )}
               />
             </Button>
@@ -405,7 +418,7 @@ export function KnowledgeSpaceShell({
       </div>
       <KnowledgeFsApiAccessDialog
         canManageCredentials={canManageCredentials}
-        enabled={apiAccessEnabled}
+        status={apiAccessStatus}
         knowledgeSpaceId={knowledgeSpaceId}
         open={apiAccessDialogOpen}
         onOpenChange={setApiAccessDialogOpen}

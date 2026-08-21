@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Recherche läuft…",
   "newKnowledge.retrievalTest.savedBadCase": "Als Problemfall gespeichert",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Als Referenzfrage gespeichert",
+  "newKnowledge.retrievalTest.score": "Punktzahl",
   "newKnowledge.retrievalTest.showAllChunks": "Alle {{count}} Abschnitte anzeigen",
   "newKnowledge.retrievalTest.startResearch": "Recherche starten",
   "newKnowledge.retrievalTest.title": "Abruf testen",

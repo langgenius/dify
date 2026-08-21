@@ -201,6 +201,24 @@ describe('QualityPage', () => {
     expect(
       screen.getByRole('tab', { name: 'dataset.newKnowledge.qualityPage.evaluationTab' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('tabpanel')).toBeInTheDocument()
+  })
+
+  it('uses tab primitive relationships and keeps route state in sync', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    const goldenTab = await screen.findByRole('tab', {
+      name: 'dataset.newKnowledge.qualityPage.goldenTab',
+    })
+    const badCasesTab = screen.getByRole('tab', {
+      name: 'dataset.newKnowledge.qualityPage.badCasesTab',
+    })
+    expect(goldenTab).toHaveAttribute('aria-controls')
+    expect(badCasesTab).toHaveAttribute('tabindex', '-1')
+    await user.click(badCasesTab)
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/quality?tab=bad-cases')
   })
 
   it('renders an empty golden-question annotation without an empty interactive control', async () => {

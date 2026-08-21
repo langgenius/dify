@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Araştırılıyor…",
   "newKnowledge.retrievalTest.savedBadCase": "Sorunlu durum olarak kaydedildi",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Referans sorusu olarak kaydedildi",
+  "newKnowledge.retrievalTest.score": "Puan",
   "newKnowledge.retrievalTest.showAllChunks": "{{count}} parçanın tümünü göster",
   "newKnowledge.retrievalTest.startResearch": "Araştırmayı başlat",
   "newKnowledge.retrievalTest.title": "Getirme Testi",

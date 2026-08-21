@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "جارٍ البحث…",
   "newKnowledge.retrievalTest.savedBadCase": "تم الحفظ كحالة تحتاج إلى تحسين",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "تم الحفظ كسؤال مرجعي",
+  "newKnowledge.retrievalTest.score": "الدرجة",
   "newKnowledge.retrievalTest.showAllChunks": "عرض جميع المقاطع وعددها {{count}}",
   "newKnowledge.retrievalTest.startResearch": "بدء البحث",
   "newKnowledge.retrievalTest.title": "اختبار الاسترجاع",

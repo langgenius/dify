@@ -7,7 +7,6 @@ import type {
   KnowledgeFsOverviewQueryOutcomeBucketResponse,
 } from '@dify/contracts/api/console/knowledge-fs/types.gen'
 import type { Dayjs } from 'dayjs'
-import type { EChartsOption } from 'echarts'
 import type { CSSProperties } from 'react'
 import type { DatePickerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { Member } from '@/models/common'
@@ -59,6 +58,7 @@ import {
   newKnowledgeRetrievalTestPath,
   newKnowledgeSettingsPath,
 } from '../routes'
+import { buildQueryOutcomesChartOptions } from './query-outcomes-chart-options'
 
 type OverviewWindow = '24h' | '7d' | '30d'
 type ActivityRange = 'today' | '7d' | '30d' | '90d' | 'all' | 'custom'
@@ -67,7 +67,6 @@ type ActivityDateRange = { end: Dayjs; start: Dayjs }
 
 const WINDOWS: OverviewWindow[] = ['24h', '7d', '30d']
 const ACTIVITY_RANGES: ActivityRange[] = ['today', '7d', '30d', '90d', 'all', 'custom']
-const QUERY_OUTCOMES_WINDOW: OverviewWindow = '7d'
 const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'queued',
   'running',
@@ -246,76 +245,19 @@ function QueryOutcomesChart({
   loading: boolean
 }) {
   const { t, i18n } = useTranslation('dataset')
-  const chartOptions = useMemo<EChartsOption>(() => {
-    const dailyBuckets =
-      buckets.length > 1 &&
-      new Date(buckets[1]!.start_at).getTime() - new Date(buckets[0]!.start_at).getTime() >=
-        12 * 60 * 60 * 1000
-    const label = (date: string) =>
-      Intl.DateTimeFormat(i18n.language, {
-        day: 'numeric',
-        hour: dailyBuckets ? undefined : 'numeric',
-        month: dailyBuckets ? 'short' : undefined,
-      }).format(new Date(date))
-
-    return {
-      animationDuration: 250,
-      color: ['#0033ff', '#bdb4fe', '#f79009'],
-      grid: { bottom: 18, containLabel: true, left: 0, right: 24, top: 42 },
-      legend: {
-        icon: 'circle',
-        itemHeight: 7,
-        itemWidth: 7,
-        right: 0,
-        textStyle: { color: '#6b7280', fontSize: 11 },
-        top: 0,
-      },
-      series: [
-        {
-          areaStyle: { opacity: 0.08 },
-          data: buckets.map((bucket) => bucket.answered),
-          name: t(($) => $['newKnowledge.overview.answered']),
-          showSymbol: true,
-          smooth: false,
-          symbolSize: 6,
-          type: 'line',
+  const chartOptions = useMemo(
+    () =>
+      buildQueryOutcomesChartOptions({
+        buckets,
+        labels: {
+          answered: t(($) => $['newKnowledge.overview.answered']),
+          lowConfidence: t(($) => $['newKnowledge.overview.lowConfidence']),
+          noEvidence: t(($) => $['newKnowledge.overview.noEvidence']),
         },
-        {
-          data: buckets.map((bucket) => bucket.low_confidence),
-          name: t(($) => $['newKnowledge.overview.lowConfidence']),
-          showSymbol: true,
-          smooth: false,
-          symbolSize: 5,
-          type: 'line',
-        },
-        {
-          data: buckets.map((bucket) => bucket.no_evidence),
-          name: t(($) => $['newKnowledge.overview.noEvidence']),
-          showSymbol: true,
-          smooth: false,
-          symbolSize: 5,
-          type: 'line',
-        },
-      ],
-      tooltip: { confine: true, trigger: 'item' },
-      xAxis: {
-        axisLabel: { color: '#9ca3af', fontSize: 10, hideOverlap: true },
-        axisLine: { lineStyle: { color: '#e5e7eb' } },
-        axisTick: { show: false },
-        boundaryGap: false,
-        data: buckets.map((bucket) => label(bucket.start_at)),
-        type: 'category',
-      },
-      yAxis: {
-        axisLabel: { color: '#9ca3af', fontSize: 10 },
-        axisLine: { show: false },
-        interval: 50,
-        max: (value) => Math.max(250, Math.ceil(value.max / 50) * 50),
-        splitLine: { lineStyle: { color: '#eef0f3', type: 'dashed' } },
-        type: 'value',
-      },
-    }
-  }, [buckets, i18n.language, t])
+        locale: i18n.language,
+      }),
+    [buckets, i18n.language, t],
+  )
 
   if (error)
     return (
@@ -1823,7 +1765,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get.queryOptions({
       input: {
         params: { control_space_id: knowledgeSpaceId },
-        query: { window: QUERY_OUTCOMES_WINDOW },
+        query: { window },
       },
       refetchInterval: (query) =>
         overviewRefreshInterval({

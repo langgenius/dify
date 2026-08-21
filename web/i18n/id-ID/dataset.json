@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Sedang melakukan riset…",
   "newKnowledge.retrievalTest.savedBadCase": "Disimpan sebagai kasus bermasalah",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Disimpan sebagai pertanyaan referensi",
+  "newKnowledge.retrievalTest.score": "Skor",
   "newKnowledge.retrievalTest.showAllChunks": "Tampilkan semua {{count}} potongan",
   "newKnowledge.retrievalTest.startResearch": "Mulai riset",
   "newKnowledge.retrievalTest.title": "Uji Pengambilan",

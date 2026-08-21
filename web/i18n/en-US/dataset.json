@@ -645,6 +645,7 @@
   "newKnowledge.retrievalTest.running": "Researching…",
   "newKnowledge.retrievalTest.savedBadCase": "Saved as bad case",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Saved as golden question",
+  "newKnowledge.retrievalTest.score": "Score",
   "newKnowledge.retrievalTest.showAllChunks": "Show all {{count}} chunks",
   "newKnowledge.retrievalTest.startResearch": "Start research",
   "newKnowledge.retrievalTest.title": "Retrieval Test",

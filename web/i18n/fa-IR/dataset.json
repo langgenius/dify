@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "در حال پژوهش…",
   "newKnowledge.retrievalTest.savedBadCase": "به‌عنوان مورد نیازمند بهبود ذخیره شد",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "به‌عنوان پرسش مرجع ذخیره شد",
+  "newKnowledge.retrievalTest.score": "امتیاز",
   "newKnowledge.retrievalTest.showAllChunks": "نمایش همه {{count}} قطعه",
   "newKnowledge.retrievalTest.startResearch": "شروع پژوهش",
   "newKnowledge.retrievalTest.title": "آزمون بازیابی",

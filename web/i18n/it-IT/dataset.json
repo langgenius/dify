@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Ricerca in corso…",
   "newKnowledge.retrievalTest.savedBadCase": "Salvato come caso problematico",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Salvato come domanda di riferimento",
+  "newKnowledge.retrievalTest.score": "Punteggio",
   "newKnowledge.retrievalTest.showAllChunks": "Mostra tutti i {{count}} segmenti",
   "newKnowledge.retrievalTest.startResearch": "Avvia ricerca",
   "newKnowledge.retrievalTest.title": "Test di recupero",

@@ -24,19 +24,21 @@ import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 
 const DEFAULT_ALLOWED_ACTIONS = ['queries.create']
 
+export type KnowledgeFsApiAccessStatus = 'active' | 'inactive' | 'loading' | 'unavailable'
+
 function maskedCredential(credential: KnowledgeFsCredentialItemResponse) {
   return `${credential.credential_prefix}••••${credential.credential_last4}`
 }
 
 export function KnowledgeFsApiAccessDialog({
   canManageCredentials,
-  enabled,
+  status,
   knowledgeSpaceId,
   onOpenChange,
   open,
 }: {
   canManageCredentials: boolean
-  enabled: boolean
+  status: KnowledgeFsApiAccessStatus
   knowledgeSpaceId: string
   onOpenChange: (open: boolean) => void
   open: boolean
@@ -45,6 +47,7 @@ export function KnowledgeFsApiAccessDialog({
   const { t: tAppApi, i18n } = useTranslation('appApi')
   const { t: tCommon } = useTranslation('common')
   const { data: apiBaseInfo } = useDatasetApiBaseUrl()
+  const enabled = status === 'active'
   const [createdCredential, setCreatedCredential] = useState<KnowledgeFsCredentialCreateResponse>()
   const [credentialToRevoke, setCredentialToRevoke] = useState<KnowledgeFsCredentialItemResponse>()
   const [actionError, setActionError] = useState<'create' | 'revoke'>()
@@ -157,7 +160,15 @@ export function KnowledgeFsApiAccessDialog({
               </div>
             </section>
 
-            {!enabled ? (
+            {status === 'loading' ? (
+              <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
+                {tAppApi(($) => $.loading)}
+              </div>
+            ) : status === 'unavailable' ? (
+              <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
+                {t(($) => $.unavailable)}
+              </div>
+            ) : status === 'inactive' ? (
               <div className="rounded-lg bg-background-section px-3 py-2 body-xs-regular text-text-tertiary">
                 {t(($) => $['newKnowledge.apiAccessInactive'])}
               </div>

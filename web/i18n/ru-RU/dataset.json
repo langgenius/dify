@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Идёт исследование…",
   "newKnowledge.retrievalTest.savedBadCase": "Сохранено как проблемный случай",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Сохранено как эталонный вопрос",
+  "newKnowledge.retrievalTest.score": "Оценка",
   "newKnowledge.retrievalTest.showAllChunks": "Показать все фрагменты ({{count}})",
   "newKnowledge.retrievalTest.startResearch": "Начать исследование",
   "newKnowledge.retrievalTest.title": "Проверка поиска",

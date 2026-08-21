@@ -343,6 +343,7 @@ function researchStageIndex(stage: KnowledgeFsResearchTaskResponse['stage']) {
 function estimatedStageDuration(
   plan: KnowledgeFsResearchTaskPlanResponse | undefined,
   stage: ResearchStage,
+  locale: string,
 ) {
   if (!plan) return undefined
   const stepNames: Record<ResearchStage, Set<string>> = {
@@ -355,7 +356,7 @@ function estimatedStageDuration(
     if (!stepNames[stage].has(typeof step.name === 'string' ? step.name : '')) return total
     return total + (typeof step.estimatedLatencyMs === 'number' ? step.estimatedLatencyMs : 0)
   }, 0)
-  return milliseconds > 0 ? formatStageDuration(milliseconds) : undefined
+  return milliseconds > 0 ? formatStageDuration(milliseconds, locale) : undefined
 }
 
 function researchProgressTime(event: ResearchTaskProgressEvent) {
@@ -367,6 +368,7 @@ function actualStageDuration(
   stage: ResearchStage,
   task: KnowledgeFsResearchTaskResponse,
   now: number,
+  locale: string,
 ) {
   const start = events.find((event) => event.stage === stage)
   if (!start) return
@@ -388,7 +390,7 @@ function actualStageDuration(
         ? timeValue(task.completed_at)
         : undefined
   if (endedAt === undefined || endedAt < startedAt) return
-  return formatStageDuration(endedAt - startedAt)
+  return formatStageDuration(endedAt - startedAt, locale)
 }
 
 function mergeResearchProgressEvent(
@@ -401,6 +403,7 @@ function mergeResearchProgressEvent(
 }
 
 function ScorePill({ score }: { score: number }) {
+  const { t } = useTranslation('dataset')
   const normalized = Math.max(0, Math.min(1, score))
   const displayedScore = normalized > 0 && normalized < 0.01 ? '<0.01' : normalized.toFixed(2)
   return (
@@ -410,7 +413,9 @@ function ScorePill({ score }: { score: number }) {
         className="absolute inset-y-0 left-0 border-r-[1.5px] border-components-progress-bar-progress-highlight bg-util-colors-blue-brand-blue-brand-100"
         style={{ width: `${normalized * 100}%` }}
       />
-      <span className="relative system-2xs-medium">Score</span>
+      <span className="relative system-2xs-medium">
+        {t(($) => $['newKnowledge.retrievalTest.score'])}
+      </span>
       <span className="relative system-xs-semibold">{displayedScore}</span>
     </span>
   )
@@ -842,7 +847,7 @@ function ResearchProcess({
   plan?: KnowledgeFsResearchTaskPlanResponse
   task: KnowledgeFsResearchTaskResponse
 }) {
-  const { t } = useTranslation('dataset')
+  const { t, i18n } = useTranslation('dataset')
   const active = researchTaskIsActive(task)
   const now = useClock(active)
   const firstProgressAt = events[0] ? researchProgressTime(events[0]) : undefined
@@ -858,7 +863,7 @@ function ResearchProcess({
     : task.completed_at
       ? timeValue(task.completed_at)
       : now
-  const duration = formatDuration(endedAt - startedAt)
+  const duration = formatDuration(endedAt - startedAt, i18n.language)
   const currentIndex = researchStageIndex(task.stage)
   const latestVisitedIndex = events.reduce((latest, event) => {
     const index = researchStageOrder.indexOf(event.stage as ResearchStage)
@@ -951,7 +956,8 @@ function ResearchProcess({
                 task.stage === 'completed' || index < currentIndex || index < latestVisitedIndex
               const current = index === currentIndex && active
               const stageDuration =
-                actualStageDuration(events, stage, task, now) ?? estimatedStageDuration(plan, stage)
+                actualStageDuration(events, stage, task, now, i18n.language) ??
+                estimatedStageDuration(plan, stage, i18n.language)
               const fallbackPayload = fallbackResearchStagePayload({
                 documentCount,
                 evidenceCount,
@@ -1041,7 +1047,7 @@ function RecordButton({
   onClick: () => void
   record: RetrievalTestRecord
 }) {
-  const { t } = useTranslation('dataset')
+  const { t, i18n } = useTranslation('dataset')
   const failed = record.kind !== 'research' && record.status === 'failed'
   const activeResearchStage =
     record.kind === 'research' && record.status === 'running'
@@ -1074,7 +1080,7 @@ function RecordButton({
             ) : failed ? (
               record.durationMs !== undefined ? (
                 t(($) => $['newKnowledge.retrievalTest.failedAfter'], {
-                  duration: formatDuration(record.durationMs),
+                  duration: formatDuration(record.durationMs, i18n.language),
                 })
               ) : (
                 t(($) => $['newKnowledge.retrievalTest.failedTitle'])
@@ -1084,7 +1090,7 @@ function RecordButton({
               record.durationMs !== undefined ? (
               t(($) => $['newKnowledge.retrievalTest.recordSummary'], {
                 count: record.resultCount,
-                duration: formatRetrievalDuration(record.durationMs),
+                duration: formatRetrievalDuration(record.durationMs, i18n.language),
               })
             ) : (
               t(($) => $[`newKnowledge.settings.retrievalMode.${record.mode}`])

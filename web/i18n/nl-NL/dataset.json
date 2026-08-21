@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Onderzoek wordt uitgevoerd…",
   "newKnowledge.retrievalTest.savedBadCase": "Opgeslagen als probleemgeval",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Opgeslagen als referentievraag",
+  "newKnowledge.retrievalTest.score": "Score",
   "newKnowledge.retrievalTest.showAllChunks": "Alle {{count}} fragmenten tonen",
   "newKnowledge.retrievalTest.startResearch": "Onderzoek starten",
   "newKnowledge.retrievalTest.title": "Ophalen testen",

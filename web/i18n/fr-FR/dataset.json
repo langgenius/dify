@@ -600,6 +600,7 @@
   "newKnowledge.retrievalTest.running": "Recherche en cours…",
   "newKnowledge.retrievalTest.savedBadCase": "Enregistré comme cas problématique",
   "newKnowledge.retrievalTest.savedGoldenQuestion": "Enregistré comme question de référence",
+  "newKnowledge.retrievalTest.score": "Score",
   "newKnowledge.retrievalTest.showAllChunks": "Afficher les {{count}} segments",
   "newKnowledge.retrievalTest.startResearch": "Démarrer la recherche",
   "newKnowledge.retrievalTest.title": "Test de récupération",

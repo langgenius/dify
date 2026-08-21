@@ -75,6 +75,15 @@ export function DocumentActionsDropdown({
   const [nextTitle, setNextTitle] = useState(documentTitle)
   const busy = Boolean(pendingAction)
   const renameDisabled = !canEdit || busy
+  const reprocessUnavailable = !canEdit || (showRetry ? retryDisabled : reindexDisabled)
+  const downloadUnavailable = !canDownload || downloadDisabled
+  const availabilityUnavailable = !canEdit || toggleAvailabilityDisabled
+  const removeUnavailable = !canEdit || removeDisabled
+  const hasUnavailableAction =
+    reprocessUnavailable ||
+    downloadUnavailable ||
+    (showAvailabilityAction && availabilityUnavailable) ||
+    removeUnavailable
 
   const openRenameDialog = () => {
     setNextTitle(documentTitle)
@@ -118,9 +127,7 @@ export function DocumentActionsDropdown({
             {tCommon(($) => $['operation.rename'])}
           </DropdownMenuItem>
           <DropdownMenuItem
-            aria-describedby={
-              (showRetry ? retryDisabled : reindexDisabled) ? unavailableReasonId : undefined
-            }
+            aria-describedby={reprocessUnavailable ? unavailableReasonId : undefined}
             className="mb-px h-7 gap-2 px-2 system-sm-medium"
             disabled={!canEdit || busy || (showRetry ? retryDisabled : reindexDisabled)}
             onClick={() => {
@@ -137,7 +144,7 @@ export function DocumentActionsDropdown({
             )}
           </DropdownMenuItem>
           <DropdownMenuItem
-            aria-describedby={downloadDisabled || !canDownload ? unavailableReasonId : undefined}
+            aria-describedby={downloadUnavailable ? unavailableReasonId : undefined}
             className="mb-px h-7 gap-2 px-2 system-sm-medium"
             disabled={!canDownload || busy || downloadDisabled}
             onClick={() => void onDownload()}
@@ -147,7 +154,7 @@ export function DocumentActionsDropdown({
           </DropdownMenuItem>
           {showAvailabilityAction && (
             <DropdownMenuItem
-              aria-describedby={toggleAvailabilityDisabled ? unavailableReasonId : undefined}
+              aria-describedby={availabilityUnavailable ? unavailableReasonId : undefined}
               className="mb-px h-7 gap-2 px-2 system-sm-medium"
               disabled={!canEdit || busy || toggleAvailabilityDisabled}
               onClick={() => void onToggleAvailability()}
@@ -164,20 +171,22 @@ export function DocumentActionsDropdown({
           )}
           <DropdownMenuSeparator className="my-px" />
           <DropdownMenuItem
-            aria-describedby={removeDisabled ? unavailableReasonId : undefined}
+            aria-describedby={removeUnavailable ? unavailableReasonId : undefined}
             className="h-7 gap-2 px-2 system-sm-medium"
             disabled={!canEdit || busy || removeDisabled}
             variant="destructive"
             onClick={() => setRemoveDialogOpen(true)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            {t(($) => $['newKnowledge.removeSource'])}
+            {tCommon(($) => $['operation.delete'])}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <span id={unavailableReasonId} className="sr-only">
-        {t(($) => $['newKnowledge.documentActionsUnavailable'])}
-      </span>
+      {hasUnavailableAction && (
+        <span id={unavailableReasonId} className="sr-only">
+          {t(($) => $['newKnowledge.documentActionsUnavailable'])}
+        </span>
+      )}
 
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent>
@@ -256,7 +265,7 @@ export function DocumentActionsDropdown({
                 })
               }
             >
-              {t(($) => $['newKnowledge.removeSource'])}
+              {tCommon(($) => $['operation.delete'])}
             </AlertDialogConfirmButton>
           </AlertDialogActions>
         </AlertDialogContent>

@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Tabs, TabsPanel } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -34,6 +35,7 @@ import { newKnowledgeQualityPath, newKnowledgeRetrievalTestPath } from '../route
 import { GoldenQuestionDialog } from './golden-question-dialog'
 import { GoldenQuestionImportDialog } from './golden-question-import-dialog'
 import { QualityEvaluationPanel } from './quality-evaluation-panel'
+import { QualityTabList } from './quality-tab-list'
 
 const emptyDraft: GoldenQuestionDraft = {
   annotation: '',
@@ -430,184 +432,11 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           {t(($) => $['newKnowledge.qualityPage.description'])}
         </p>
       </header>
-      <div className="mt-2.5 flex h-14 items-end justify-between">
-        <div
-          role="tablist"
-          aria-label={t(($) => $['newKnowledge.qualityPage.title'])}
-          className="flex h-8 items-center rounded-lg bg-background-section-burn p-0.5"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'golden'}
-            className={cn(
-              'h-7 rounded-md px-2.5 system-xs-medium text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              activeTab === 'golden' && 'bg-background-default text-text-primary shadow-xs',
-            )}
-            onClick={() => setTab('golden')}
-          >
-            {t(($) => $['newKnowledge.qualityPage.goldenTab'])}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'bad'}
-            className={cn(
-              'h-7 rounded-md px-2.5 system-xs-medium text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              activeTab === 'bad' && 'bg-background-default text-text-primary shadow-xs',
-            )}
-            onClick={() => setTab('bad')}
-          >
-            {t(($) => $['newKnowledge.qualityPage.badCasesTab'])}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'evaluation'}
-            className={cn(
-              'h-7 rounded-md px-2.5 system-xs-medium text-text-tertiary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-              activeTab === 'evaluation' && 'bg-background-default text-text-primary shadow-xs',
-            )}
-            onClick={() => setTab('evaluation')}
-          >
-            {t(($) => $['newKnowledge.qualityPage.evaluationTab'])}
-          </button>
-        </div>
-        {activeTab === 'golden' && goldenQuestions.length > 0 && (
-          <div className="flex gap-2">
-            <Button className="gap-1" onClick={() => setImportOpen(true)}>
-              <span aria-hidden className="i-ri-download-line size-4" />
-              {t(($) => $['newKnowledge.qualityPage.importCsv'])}
-            </Button>
-            <Button
-              variant="primary"
-              className="gap-1"
-              onClick={() =>
-                setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
-              }
-            >
-              <span aria-hidden className="i-ri-add-line size-4" />
-              {t(($) => $['newKnowledge.qualityPage.addGolden'])}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {activeTab === 'golden' &&
-        (goldenQuestions.length ? (
-          <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
-              <Checkbox
-                aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
-                checked={allSelected}
-                indeterminate={partiallySelected}
-                onCheckedChange={toggleAll}
-              />
-              <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.tags'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.annotation'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.updated'])}</span>
-              <span />
-            </div>
-            {goldenQuestions.map((item) => (
-              <div
-                key={item.id}
-                className="grid h-12 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
-              >
-                <Checkbox
-                  aria-label={t(($) => $['newKnowledge.qualityPage.selectQuestion'], {
-                    question: item.question,
-                  })}
-                  checked={selected.has(item.id)}
-                  onCheckedChange={() => toggleOne(item.id)}
-                />
-                <span className="truncate system-sm-medium text-text-primary">
-                  {item.question ?? ''}
-                </span>
-                <GoldenStatus
-                  status={
-                    item.status ??
-                    ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')
-                  }
-                />
-                <div className="flex min-w-0 gap-1 overflow-hidden">
-                  {visibleTags(item.tags).map((tag) => (
-                    <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
-                      <span className="min-w-0 truncate system-2xs-medium normal-case">{tag}</span>
-                    </Badge>
-                  ))}
-                </div>
-                <GoldenAnnotation annotation={item.annotation} />
-                <span className="system-xs-regular text-text-secondary">
-                  {updated(item.updated_at)}
-                </span>
-                <DropdownMenu modal={false}>
-                  <RowMenuTrigger
-                    label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
-                      question: item.question,
-                    })}
-                  />
-                  <DropdownMenuContent
-                    placement="bottom-end"
-                    sideOffset={4}
-                    popupClassName="w-[200px]"
-                  >
-                    <DropdownMenuItem
-                      className="gap-2 px-3"
-                      onClick={() =>
-                        setDialog({
-                          id: item.id,
-                          key: `edit-${item.id}-${Date.now()}`,
-                          mode: 'edit',
-                          value: {
-                            annotation: item.annotation,
-                            expectedEvidenceIds: item.expected_evidence_ids ?? [],
-                            matchPolicy: item.match_policy ?? 'all',
-                            question: item.question,
-                            tags: item.tags,
-                          },
-                        })
-                      }
-                    >
-                      <span aria-hidden className="i-ri-edit-line size-4" />
-                      {t(($) => $['newKnowledge.qualityPage.edit'])}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      variant="destructive"
-                      className="gap-2 px-3"
-                      onClick={() => setDeleteIds(new Set([item.id]))}
-                    >
-                      <span aria-hidden className="i-ri-delete-bin-line size-4" />
-                      {t(($) => $['newKnowledge.qualityPage.delete'])}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
-            {goldenQuery.hasNextPage && (
-              <div className="flex min-w-195 justify-center border-t border-divider-subtle py-4">
-                <Button
-                  loading={goldenQuery.isFetchingNextPage}
-                  disabled={goldenQuery.isFetchingNextPage}
-                  onClick={() => void goldenQuery.fetchNextPage()}
-                >
-                  {t(($) => $['newKnowledge.loadMore'])}
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-thumb-up-line size-7 text-text-tertiary" />
-            <h2 className="mt-3 system-md-semibold text-text-primary">
-              {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
-            </h2>
-            <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
-            </p>
-            <div className="mt-4 flex gap-2">
+      <Tabs value={activeTab} onValueChange={(value) => setTab(value as typeof activeTab)}>
+        <div className="mt-2.5 flex h-14 items-end justify-between">
+          <QualityTabList />
+          {activeTab === 'golden' && goldenQuestions.length > 0 && (
+            <div className="flex gap-2">
               <Button className="gap-1" onClick={() => setImportOpen(true)}>
                 <span aria-hidden className="i-ri-download-line size-4" />
                 {t(($) => $['newKnowledge.qualityPage.importCsv'])}
@@ -623,186 +452,328 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 {t(($) => $['newKnowledge.qualityPage.addGolden'])}
               </Button>
             </div>
-          </div>
-        ))}
+          )}
+        </div>
 
-      {activeTab === 'bad' &&
-        (badCases.length ? (
-          <div className="mt-3 w-full overflow-x-auto">
-            <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
-              <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.reason'])}</span>
-              <span>{t(($) => $['newKnowledge.qualityPage.updated'])}</span>
-              <span />
-            </div>
-            {badCases.map((item) => (
-              <div
-                key={item.id}
-                className="grid h-12 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle"
-              >
-                <span className="truncate system-sm-medium text-text-primary">{item.question}</span>
-                <Status status={item.status} />
-                <span className="system-xs-regular text-text-secondary">
-                  <Reason question={item.question} reason={item.reason} tags={item.tags} />
-                </span>
-                <span className="system-xs-regular text-text-secondary">
-                  {updated(item.updated_at)}
-                </span>
-                <DropdownMenu modal={false}>
-                  <RowMenuTrigger
-                    disabled={pendingBadCaseId === item.id}
-                    label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
-                      question: item.question ?? '',
+        <TabsPanel value="golden" tabIndex={-1}>
+          {goldenQuestions.length ? (
+            <div className="mt-3 w-full overflow-x-auto">
+              <div className="grid h-8 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
+                <Checkbox
+                  aria-label={t(($) => $['newKnowledge.qualityPage.selectAll'])}
+                  checked={allSelected}
+                  indeterminate={partiallySelected}
+                  onCheckedChange={toggleAll}
+                />
+                <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.tags'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.annotation'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.updated'])}</span>
+                <span />
+              </div>
+              {goldenQuestions.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid h-12 min-w-195 grid-cols-[16px_minmax(180px,2fr)_90px_minmax(120px,1fr)_minmax(160px,1.5fr)_minmax(100px,0.75fr)_32px] items-center gap-3 border-t border-divider-subtle"
+                >
+                  <Checkbox
+                    aria-label={t(($) => $['newKnowledge.qualityPage.selectQuestion'], {
+                      question: item.question,
                     })}
+                    checked={selected.has(item.id)}
+                    onCheckedChange={() => toggleOne(item.id)}
                   />
-                  <DropdownMenuContent
-                    placement="bottom-end"
-                    sideOffset={4}
-                    popupClassName="w-[200px]"
-                  >
-                    {item.status === 'fixed' ? (
+                  <span className="truncate system-sm-medium text-text-primary">
+                    {item.question ?? ''}
+                  </span>
+                  <GoldenStatus
+                    status={
+                      item.status ??
+                      ((item.expected_evidence_ids?.length ?? 0) > 0 ? 'active' : 'draft')
+                    }
+                  />
+                  <div className="flex min-w-0 gap-1 overflow-hidden">
+                    {visibleTags(item.tags).map((tag) => (
+                      <Badge key={tag} size="xs" variant="dimm" className="max-w-full min-w-0">
+                        <span className="min-w-0 truncate system-2xs-medium normal-case">
+                          {tag}
+                        </span>
+                      </Badge>
+                    ))}
+                  </div>
+                  <GoldenAnnotation annotation={item.annotation} />
+                  <span className="system-xs-regular text-text-secondary">
+                    {updated(item.updated_at)}
+                  </span>
+                  <DropdownMenu modal={false}>
+                    <RowMenuTrigger
+                      label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
+                        question: item.question,
+                      })}
+                    />
+                    <DropdownMenuContent
+                      placement="bottom-end"
+                      sideOffset={4}
+                      popupClassName="w-[200px]"
+                    >
                       <DropdownMenuItem
                         className="gap-2 px-3"
                         onClick={() =>
                           setDialog({
                             id: item.id,
-                            key: `promote-${item.id}-${Date.now()}`,
-                            mode: 'promote',
+                            key: `edit-${item.id}-${Date.now()}`,
+                            mode: 'edit',
                             value: {
-                              annotation: '',
-                              expectedEvidenceIds: [],
-                              matchPolicy: 'all',
-                              question: item.question ?? '',
-                              tags: visibleTags(item.tags),
+                              annotation: item.annotation,
+                              expectedEvidenceIds: item.expected_evidence_ids ?? [],
+                              matchPolicy: item.match_policy ?? 'all',
+                              question: item.question,
+                              tags: item.tags,
                             },
                           })
                         }
                       >
-                        <span aria-hidden className="i-ri-star-line size-4" />
-                        {t(($) => $['newKnowledge.qualityPage.toGolden'])}
+                        <span aria-hidden className="i-ri-edit-line size-4" />
+                        {t(($) => $['newKnowledge.qualityPage.edit'])}
                       </DropdownMenuItem>
-                    ) : (
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
+                        variant="destructive"
                         className="gap-2 px-3"
-                        disabled={item.status === 'replaying' || pendingBadCaseId === item.id}
-                        onClick={() => void replayBadCase(item)}
+                        onClick={() => setDeleteIds(new Set([item.id]))}
                       >
-                        <span aria-hidden className="i-ri-restart-line size-4" />
-                        {t(($) => $['newKnowledge.qualityPage.replay'])}
+                        <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                        {t(($) => $['newKnowledge.qualityPage.delete'])}
                       </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      className="gap-2 px-3"
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+              {goldenQuery.hasNextPage && (
+                <div className="flex min-w-195 justify-center border-t border-divider-subtle py-4">
+                  <Button
+                    loading={goldenQuery.isFetchingNextPage}
+                    disabled={goldenQuery.isFetchingNextPage}
+                    onClick={() => void goldenQuery.fetchNextPage()}
+                  >
+                    {t(($) => $['newKnowledge.loadMore'])}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+              <span aria-hidden className="i-ri-thumb-up-line size-7 text-text-tertiary" />
+              <h2 className="mt-3 system-md-semibold text-text-primary">
+                {t(($) => $['newKnowledge.qualityPage.goldenEmptyTitle'])}
+              </h2>
+              <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
+                {t(($) => $['newKnowledge.qualityPage.goldenEmptyDescription'])}
+              </p>
+              <div className="mt-4 flex gap-2">
+                <Button className="gap-1" onClick={() => setImportOpen(true)}>
+                  <span aria-hidden className="i-ri-download-line size-4" />
+                  {t(($) => $['newKnowledge.qualityPage.importCsv'])}
+                </Button>
+                <Button
+                  variant="primary"
+                  className="gap-1"
+                  onClick={() =>
+                    setDialog({ key: `create-${Date.now()}`, mode: 'create', value: emptyDraft })
+                  }
+                >
+                  <span aria-hidden className="i-ri-add-line size-4" />
+                  {t(($) => $['newKnowledge.qualityPage.addGolden'])}
+                </Button>
+              </div>
+            </div>
+          )}
+        </TabsPanel>
+
+        <TabsPanel value="bad" tabIndex={-1}>
+          {badCases.length ? (
+            <div className="mt-3 w-full overflow-x-auto">
+              <div className="grid h-8 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 text-[11px] leading-4 font-medium text-text-tertiary">
+                <span>{t(($) => $['newKnowledge.qualityPage.question'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.statusLabel'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.reason'])}</span>
+                <span>{t(($) => $['newKnowledge.qualityPage.updated'])}</span>
+                <span />
+              </div>
+              {badCases.map((item) => (
+                <div
+                  key={item.id}
+                  className="grid h-12 min-w-202 grid-cols-[minmax(240px,624px)_140px_180px_120px_80px] items-center gap-3 border-t border-divider-subtle"
+                >
+                  <span className="truncate system-sm-medium text-text-primary">
+                    {item.question}
+                  </span>
+                  <Status status={item.status} />
+                  <span className="system-xs-regular text-text-secondary">
+                    <Reason question={item.question} reason={item.reason} tags={item.tags} />
+                  </span>
+                  <span className="system-xs-regular text-text-secondary">
+                    {updated(item.updated_at)}
+                  </span>
+                  <DropdownMenu modal={false}>
+                    <RowMenuTrigger
                       disabled={pendingBadCaseId === item.id}
-                      onClick={() => void openTrace(item.id)}
+                      label={t(($) => $['newKnowledge.qualityPage.questionActions'], {
+                        question: item.question ?? '',
+                      })}
+                    />
+                    <DropdownMenuContent
+                      placement="bottom-end"
+                      sideOffset={4}
+                      popupClassName="w-[200px]"
                     >
-                      <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
-                      {t(($) => $['newKnowledge.qualityPage.openTrace'])}
-                    </DropdownMenuItem>
-                    {item.status !== 'fixed' && (
+                      {item.status === 'fixed' ? (
+                        <DropdownMenuItem
+                          className="gap-2 px-3"
+                          onClick={() =>
+                            setDialog({
+                              id: item.id,
+                              key: `promote-${item.id}-${Date.now()}`,
+                              mode: 'promote',
+                              value: {
+                                annotation: '',
+                                expectedEvidenceIds: [],
+                                matchPolicy: 'all',
+                                question: item.question ?? '',
+                                tags: visibleTags(item.tags),
+                              },
+                            })
+                          }
+                        >
+                          <span aria-hidden className="i-ri-star-line size-4" />
+                          {t(($) => $['newKnowledge.qualityPage.toGolden'])}
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          className="gap-2 px-3"
+                          disabled={item.status === 'replaying' || pendingBadCaseId === item.id}
+                          onClick={() => void replayBadCase(item)}
+                        >
+                          <span aria-hidden className="i-ri-restart-line size-4" />
+                          {t(($) => $['newKnowledge.qualityPage.replay'])}
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         className="gap-2 px-3"
                         disabled={pendingBadCaseId === item.id}
-                        onClick={() =>
-                          setDialog({
-                            id: item.id,
-                            key: `promote-${item.id}-${Date.now()}`,
-                            mode: 'promote',
-                            value: {
-                              annotation: '',
-                              expectedEvidenceIds: [],
-                              matchPolicy: 'all',
-                              question: item.question ?? '',
-                              tags: visibleTags(item.tags),
-                            },
-                          })
-                        }
+                        onClick={() => void openTrace(item.id)}
                       >
-                        <span aria-hidden className="i-ri-star-line size-4" />
-                        {t(($) => $['newKnowledge.qualityPage.toGolden'])}
+                        <span aria-hidden className="i-ri-arrow-right-up-line size-4" />
+                        {t(($) => $['newKnowledge.qualityPage.openTrace'])}
                       </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="gap-2 px-3"
-                      disabled={pendingBadCaseId === item.id}
-                      onClick={() => void ignoreBadCase(item)}
-                    >
-                      <span aria-hidden className="i-ri-eye-off-line size-4" />
-                      {t(($) => $['newKnowledge.qualityPage.ignore'])}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
-            {badCaseQuery.hasNextPage && (
-              <div className="flex min-w-202 justify-center border-t border-divider-subtle py-4">
+                      {item.status !== 'fixed' && (
+                        <DropdownMenuItem
+                          className="gap-2 px-3"
+                          disabled={pendingBadCaseId === item.id}
+                          onClick={() =>
+                            setDialog({
+                              id: item.id,
+                              key: `promote-${item.id}-${Date.now()}`,
+                              mode: 'promote',
+                              value: {
+                                annotation: '',
+                                expectedEvidenceIds: [],
+                                matchPolicy: 'all',
+                                question: item.question ?? '',
+                                tags: visibleTags(item.tags),
+                              },
+                            })
+                          }
+                        >
+                          <span aria-hidden className="i-ri-star-line size-4" />
+                          {t(($) => $['newKnowledge.qualityPage.toGolden'])}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="gap-2 px-3"
+                        disabled={pendingBadCaseId === item.id}
+                        onClick={() => void ignoreBadCase(item)}
+                      >
+                        <span aria-hidden className="i-ri-eye-off-line size-4" />
+                        {t(($) => $['newKnowledge.qualityPage.ignore'])}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ))}
+              {badCaseQuery.hasNextPage && (
+                <div className="flex min-w-202 justify-center border-t border-divider-subtle py-4">
+                  <Button
+                    loading={badCaseQuery.isFetchingNextPage}
+                    disabled={badCaseQuery.isFetchingNextPage}
+                    onClick={() => void badCaseQuery.fetchNextPage()}
+                  >
+                    {t(($) => $['newKnowledge.loadMore'])}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
+              <span aria-hidden className="i-ri-check-line size-7 text-text-tertiary" />
+              <h2 className="mt-3 system-md-semibold text-text-primary">
+                {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
+              </h2>
+              <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
+                {t(($) => $['newKnowledge.qualityPage.badCasesEmptyDescription'])}
+              </p>
+              {badCaseQuery.hasNextPage && (
                 <Button
+                  className="mt-4"
                   loading={badCaseQuery.isFetchingNextPage}
                   disabled={badCaseQuery.isFetchingNextPage}
                   onClick={() => void badCaseQuery.fetchNextPage()}
                 >
                   {t(($) => $['newKnowledge.loadMore'])}
                 </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mt-2.5 flex h-140 flex-col items-center justify-center text-center">
-            <span aria-hidden className="i-ri-check-line size-7 text-text-tertiary" />
-            <h2 className="mt-3 system-md-semibold text-text-primary">
-              {t(($) => $['newKnowledge.qualityPage.badCasesEmptyTitle'])}
-            </h2>
-            <p className="mt-1 max-w-136 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.qualityPage.badCasesEmptyDescription'])}
-            </p>
-            {badCaseQuery.hasNextPage && (
-              <Button
-                className="mt-4"
-                loading={badCaseQuery.isFetchingNextPage}
-                disabled={badCaseQuery.isFetchingNextPage}
-                onClick={() => void badCaseQuery.fetchNextPage()}
-              >
-                {t(($) => $['newKnowledge.loadMore'])}
-              </Button>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          )}
+        </TabsPanel>
 
-      {activeTab === 'evaluation' && <QualityEvaluationPanel knowledgeSpaceId={knowledgeSpaceId} />}
+        <TabsPanel value="evaluation" tabIndex={-1}>
+          <QualityEvaluationPanel knowledgeSpaceId={knowledgeSpaceId} />
+        </TabsPanel>
 
-      {activeTab === 'golden' && selected.size > 0 && (
-        <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
-          <span className="system-sm-medium text-text-primary">
-            {t(
-              ($) =>
-                $[
-                  selected.size === 1
-                    ? 'newKnowledge.qualityPage.selectedCount_one'
-                    : 'newKnowledge.qualityPage.selectedCount_other'
-                ],
-              { count: selected.size },
-            )}
-          </span>
-          <span aria-hidden className="h-5 w-px bg-divider-regular" />
-          <Button
-            variant="secondary"
-            tone="destructive"
-            onClick={() => setDeleteIds(new Set(selected))}
-          >
-            {t(($) => $['newKnowledge.qualityPage.deleteEllipsis'])}
-          </Button>
-          <button
-            type="button"
-            aria-label={t(($) => $['newKnowledge.qualityPage.clearSelection'])}
-            className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-            onClick={() => setSelected(new Set())}
-          >
-            <span aria-hidden className="i-ri-close-line size-4" />
-          </button>
-        </div>
-      )}
+        {activeTab === 'golden' && selected.size > 0 && (
+          <div className="fixed bottom-6 left-[calc(50%+var(--new-rag-sidebar-width)/2)] flex h-12 -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg px-3 shadow-xl">
+            <span className="system-sm-medium text-text-primary">
+              {t(
+                ($) =>
+                  $[
+                    selected.size === 1
+                      ? 'newKnowledge.qualityPage.selectedCount_one'
+                      : 'newKnowledge.qualityPage.selectedCount_other'
+                  ],
+                { count: selected.size },
+              )}
+            </span>
+            <span aria-hidden className="h-5 w-px bg-divider-regular" />
+            <Button
+              variant="secondary"
+              tone="destructive"
+              onClick={() => setDeleteIds(new Set(selected))}
+            >
+              {t(($) => $['newKnowledge.qualityPage.deleteEllipsis'])}
+            </Button>
+            <button
+              type="button"
+              aria-label={t(($) => $['newKnowledge.qualityPage.clearSelection'])}
+              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              onClick={() => setSelected(new Set())}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </button>
+          </div>
+        )}
+      </Tabs>
 
       {dialog && (
         <GoldenQuestionDialog
