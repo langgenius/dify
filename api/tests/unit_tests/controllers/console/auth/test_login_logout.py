@@ -31,6 +31,7 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
+from models.account import Account, Tenant
 from services.email_code_login_challenge import EmailCodeLoginChallengeResult, EmailCodeLoginChallengeStatus
 from services.entities.auth_entities import LoginFailureReason
 from services.errors.account import (
@@ -81,12 +82,10 @@ class TestLoginApi:
         return app.test_client()
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
+    def mock_account(self) -> Account:
+        """Create a real transient account for the service boundary."""
+        account = Account(name="Test User", email="test@example.com")
         account.id = "test-account-id"
-        account.email = "test@example.com"
-        account.name = "Test User"
         return account
 
     @pytest.fixture
@@ -131,7 +130,7 @@ class TestLoginApi:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]  # Has at least one tenant
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
@@ -182,7 +181,7 @@ class TestLoginApi:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = {"data": {"email": "test@example.com"}}
         mock_authenticate.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
@@ -561,7 +560,7 @@ class TestLoginApi:
         mock_is_rate_limit.return_value = False
         mock_get_invitation.return_value = None
         mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login_service.return_value = mock_token_pair
 
         with app.test_request_context(
@@ -661,11 +660,10 @@ class TestLogoutApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
+    def mock_account(self) -> Account:
+        """Create a real transient account for the logout service boundary."""
+        account = Account(name="Test User", email="test@example.com")
         account.id = "test-account-id"
-        account.email = "test@example.com"
         return account
 
     @patch("controllers.console.auth.login.AccountService.logout")

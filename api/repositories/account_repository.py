@@ -6,7 +6,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account
 from services.account_ports import AccountRepository
-from services.entities.account_entities import AccountProfileChanges, AccountSnapshot
+from services.entities.account_entities import (
+    AccountCredentials,
+    AccountPasswordDigest,
+    AccountProfileChanges,
+    AccountSnapshot,
+)
 
 
 class SQLAlchemyAccountRepository(AccountRepository):
@@ -18,6 +23,14 @@ class SQLAlchemyAccountRepository(AccountRepository):
         with self._session_factory() as session:
             account = session.get(Account, account_id)
             return self._to_snapshot(account) if account is not None else None
+
+    @override
+    def get_credentials(self, account_id: str) -> AccountCredentials | None:
+        with self._session_factory() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                return None
+            return AccountCredentials(password_hash=account.password, password_salt=account.password_salt)
 
     @override
     def update_profile(self, account_id: str, changes: AccountProfileChanges) -> AccountSnapshot | None:
@@ -37,6 +50,18 @@ class SQLAlchemyAccountRepository(AccountRepository):
             if changes.timezone is not None:
                 account.timezone = changes.timezone
 
+            session.flush()
+            return self._to_snapshot(account)
+
+    @override
+    def update_password(self, account_id: str, password: AccountPasswordDigest) -> AccountSnapshot | None:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None:
+                return None
+
+            account.password = password.password_hash
+            account.password_salt = password.password_salt
             session.flush()
             return self._to_snapshot(account)
 
