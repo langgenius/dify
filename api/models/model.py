@@ -1662,16 +1662,21 @@ class Message(Base):
         if not self.answer:
             return self.answer
 
-        pattern = r"\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)"
+        # Match the signed file URL itself rather than the markdown that may surround it, so bare,
+        # backticked and fenced occurrences are re-signed too. `url_char` stops the match at the
+        # delimiters that can terminate a URL in an answer (whitespace, markdown link/quote chars).
+        url_char = r"[^\s)\]`\"'<>]"
+        pattern = (
+            rf"(?:https?://{url_char}+)?/files/(?:tools/)?"
+            rf"{url_char}*?timestamp={url_char}*?nonce={url_char}*?sign={url_char}*"
+        )
         matches = re.findall(pattern, self.answer)
 
         if not matches:
             return self.answer
 
-        urls = [match[0] for match in matches]
-
         # remove duplicate urls
-        urls = list(set(urls))
+        urls = list(set(matches))
 
         if not urls:
             return self.answer
