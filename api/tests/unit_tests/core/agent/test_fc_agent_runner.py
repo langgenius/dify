@@ -11,7 +11,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from core.agent.errors import AgentMaxIterationError
+from core.agent.errors import AgentMaxIterationError, AgentToolCallRequiredError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
@@ -606,3 +606,18 @@ class TestRunMethod:
 
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(runner.session, message, "query"))
+
+    def test_run_raises_when_required_tool_call_missing(self, runner: FunctionCallAgentRunner):
+        message = _make_message()
+        prompt_tool = MagicMock()
+        prompt_tool.name = "delete_record"
+        runner._init_prompt_tools.return_value = ({"delete_record": MagicMock()}, [prompt_tool])
+        runner.model_instance.invoke_llm.return_value = DummyResult(
+            message=DummyMessage(content="Deleted successfully.", tool_calls=[]),
+            usage=build_usage(),
+        )
+
+        with pytest.raises(AgentToolCallRequiredError):
+            list(runner.run(runner.session, message, "query"))
+
+        runner.save_agent_thought.assert_not_called()

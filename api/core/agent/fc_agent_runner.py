@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.errors import AgentMaxIterationError
+from core.agent.errors import AgentMaxIterationError, AgentToolCallRequiredError
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.app.file_access import grant_upload_file_access
@@ -124,6 +124,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         llm_usage: dict[str, LLMUsage | None] = {"usage": None}
         final_answer = ""
         prompt_messages: list = []  # Initialize prompt_messages
+        has_tool_response = False
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
@@ -167,6 +168,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             session.close()
 
             # invoke model
+            tool_call_required = bool(prompt_messages_tools and not has_tool_response)
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -264,6 +266,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         usage=result.usage,
                     ),
                 )
+
+            if tool_call_required and not function_call_state:
+                raise AgentToolCallRequiredError()
 
             assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
             if tool_calls:
@@ -374,6 +379,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         )
 
             if len(tool_responses) > 0:
+                has_tool_response = True
                 # save agent thought
                 self.save_agent_thought(
                     agent_thought_id=agent_thought_id,
