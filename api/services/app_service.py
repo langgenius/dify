@@ -290,6 +290,13 @@ class AppService:
         return session.get(App, app_id)
 
     @staticmethod
+    def get_normal_app_by_id(
+        app_id: str,
+        session: Session,
+    ) -> App | None:
+        return session.scalar(select(App).where(App.id == app_id, App.status == "normal").limit(1))
+
+    @staticmethod
     def get_visible_app_by_id(
         app_id: str,
         session: Session,
