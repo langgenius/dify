@@ -10,10 +10,6 @@ import { runCleanupTasks } from '../../support/cleanup'
 import { apiURL, baseURL, defaultLocale } from '../../test-env'
 
 export type ScenarioCleanup = () => Promise<void> | void
-export type CreatedAgentDriveFile = {
-  agentId: string
-  key: string
-}
 export type CreatedAgentConfigFile = {
   agentId: string
   name: string
@@ -95,7 +91,6 @@ export class DifyWorld extends World {
   createdDatasetIds: string[] = []
   createdAgentConfigFiles: CreatedAgentConfigFile[] = []
   createdAgentConfigSkills: CreatedAgentConfigSkill[] = []
-  createdAgentDriveFiles: CreatedAgentDriveFile[] = []
   createdBuiltinToolCredentials: CreatedBuiltinToolCredential[] = []
   agentBuilder: AgentBuilderWorldState = createAgentBuilderWorldState()
   scenarioCleanups: ScenarioCleanup[] = []
@@ -120,7 +115,6 @@ export class DifyWorld extends World {
     this.createdDatasetIds = []
     this.createdAgentConfigFiles = []
     this.createdAgentConfigSkills = []
-    this.createdAgentDriveFiles = []
     this.createdBuiltinToolCredentials = []
     this.agentBuilder = createAgentBuilderWorldState()
     this.scenarioCleanups = []

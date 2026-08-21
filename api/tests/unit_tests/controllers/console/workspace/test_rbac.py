@@ -16,7 +16,6 @@ changes.
 from __future__ import annotations
 
 import inspect
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -28,6 +27,7 @@ from configs import dify_config
 from controllers.console.workspace import rbac as rbac_mod
 from controllers.console.workspace.rbac import _RolesListQuery
 from enums import DeploymentEdition
+from models import Account
 
 
 @pytest.fixture
@@ -37,21 +37,31 @@ def app():
     return flask_app
 
 
-def _enabled(enabled: bool):
-    deployment_edition = DeploymentEdition.ENTERPRISE if enabled else DeploymentEdition.COMMUNITY
-    return patch("controllers.console.workspace.rbac.dify_config.DEPLOYMENT_EDITION", deployment_edition)
+@pytest.fixture(autouse=True)
+def _rbac_config(config_overrides) -> None:
+    config_overrides(
+        DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE,
+        RBAC_ENABLED=True,
+        LOGIN_DISABLED=True,
+    )
+
+
+def _account() -> Account:
+    account = Account(name="RBAC User", email="rbac@example.com")
+    account.id = "acct-1"
+    return account
 
 
 class TestCurrentIds:
     def test_rejects_missing_tenant(self):
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (SimpleNamespace(id="acct-1"), None)
+            mock_user.return_value = (_account(), None)
             with pytest.raises(NotFound):
                 rbac_mod._current_ids()
 
     def test_returns_tuple(self):
         with patch("controllers.console.workspace.rbac.current_account_with_tenant") as mock_user:
-            mock_user.return_value = (SimpleNamespace(id="acct-1"), "tenant-1")
+            mock_user.return_value = (_account(), "tenant-1")
             assert rbac_mod._current_ids() == ("tenant-1", "acct-1")
 
 
@@ -192,10 +202,10 @@ class TestPydanticModels:
 
 
 class TestPaginationMapping:
-    def test_roles_get_returns_legacy_compatible_roles_when_rbac_disabled(self, app):
+    def test_roles_get_returns_legacy_compatible_roles_when_rbac_disabled(self, app, config_overrides):
+        config_overrides(RBAC_ENABLED=False)
         with (
             app.test_request_context("/workspaces/current/rbac/roles?page=1&limit=2&include_owner=1"),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
         ):
@@ -250,10 +260,10 @@ class TestPaginationMapping:
         }
         mock_list.assert_not_called()
 
-    def test_roles_get_filters_out_owner_when_include_owner_is_zero(self, app):
+    def test_roles_get_filters_out_owner_when_include_owner_is_zero(self, app, config_overrides):
+        config_overrides(RBAC_ENABLED=False)
         with (
             app.test_request_context("/workspaces/current/rbac/roles?include_owner=0"),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
@@ -262,10 +272,10 @@ class TestPaginationMapping:
         names = [r["name"] for r in response["data"]]
         assert "owner" not in names
 
-    def test_roles_get_keeps_owner_when_include_owner_is_one(self, app):
+    def test_roles_get_keeps_owner_when_include_owner_is_one(self, app, config_overrides):
+        config_overrides(RBAC_ENABLED=False)
         with (
             app.test_request_context("/workspaces/current/rbac/roles?include_owner=1"),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
@@ -277,10 +287,10 @@ class TestPaginationMapping:
         names = [r["name"] for r in response["data"]]
         assert "owner" in names
 
-    def test_roles_get_filters_out_owner_by_default(self, app):
+    def test_roles_get_filters_out_owner_by_default(self, app, config_overrides):
+        config_overrides(RBAC_ENABLED=False)
         with (
             app.test_request_context("/workspaces/current/rbac/roles"),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", False),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list"),
         ):
@@ -292,7 +302,6 @@ class TestPaginationMapping:
     def test_roles_get_forwards_outer_pagination_params(self, app):
         with (
             app.test_request_context("/workspaces/current/rbac/roles?page=2&limit=50&reverse=true&include_owner=1"),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.list") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -318,7 +327,6 @@ class TestResourceAccessScopeBindings:
                 json={"scope": "all"},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.workspace.rbac.svc.RBACService.AppAccess.replace_whitelist",
                 return_value=rbac_mod.svc.ResourceWhitelist(),
@@ -339,7 +347,6 @@ class TestResourceAccessScopeBindings:
                 json={"scope": "all"},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
                 return_value=rbac_mod.svc.ResourceWhitelist(),
@@ -358,7 +365,6 @@ class TestResourceAccessScopeBindings:
                 json={"scope": "specific"},
             ),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
-            patch("controllers.console.workspace.rbac.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.replace_whitelist",
                 return_value=rbac_mod.svc.ResourceWhitelist(),
@@ -448,7 +454,6 @@ class TestPaginationForwarding:
             app.test_request_context(
                 "/workspaces/current/rbac/access-policies?resource_type=app&page=3&limit=25&reverse=false"
             ),
-            _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.list") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -465,7 +470,6 @@ class TestPaginationForwarding:
     def test_workspace_app_matrix_forwards_outer_pagination_params(self, app):
         with (
             app.test_request_context("/workspaces/current/rbac/workspace/apps/access-policy?page=4&limit=10"),
-            _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.app_matrix") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -483,7 +487,6 @@ class TestPaginationForwarding:
             app.test_request_context(
                 "/workspaces/current/rbac/workspace/datasets/access-policy?page=5&limit=15&reverse=true"
             ),
-            _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.WorkspaceAccess.dataset_matrix") as mock_list,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -501,7 +504,6 @@ class TestAccessPolicyBindingLockUnlock:
     def test_lock_forwards_binding_id(self, app):
         with (
             app.test_request_context("/workspaces/current/rbac/access-policy-bindings/binding-1/lock", method="PUT"),
-            _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.lock") as mock_lock,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -515,7 +517,6 @@ class TestAccessPolicyBindingLockUnlock:
     def test_unlock_forwards_binding_id(self, app):
         with (
             app.test_request_context("/workspaces/current/rbac/access-policy-bindings/binding-1/unlock", method="PUT"),
-            _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicyBindings.unlock") as mock_unlock,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -531,7 +532,6 @@ class TestRoleCopy:
     def test_role_copy_forwards_path_id(self, app):
         with (
             app.test_request_context("/workspaces/current/rbac/roles/role-1/copy", method="POST", json={}),
-            _enabled(True),
             patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.copy") as mock_copy,
             patch("controllers.console.workspace.rbac._dump", return_value={}),
@@ -549,11 +549,9 @@ class TestWorkspaceRbacGuards:
                 method="POST",
                 json={"name": "test_role", "permission_keys": []},
             ),
-            patch("libs.login.dify_config.LOGIN_DISABLED", True),
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.Roles.create") as mock_create,
@@ -570,11 +568,9 @@ class TestWorkspaceRbacGuards:
                 method="POST",
                 json={"name": "full_access", "resource_type": "app", "permission_keys": []},
             ),
-            patch("libs.login.dify_config.LOGIN_DISABLED", True),
-            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", True),
             patch(
                 "controllers.common.wraps.current_account_with_tenant",
-                return_value=(SimpleNamespace(id="acct-1"), "tenant-1"),
+                return_value=(_account(), "tenant-1"),
             ),
             patch("controllers.common.wraps.RBACService.CheckAccess.check", return_value=False),
             patch("controllers.console.workspace.rbac.svc.RBACService.AccessPolicies.create") as mock_create,

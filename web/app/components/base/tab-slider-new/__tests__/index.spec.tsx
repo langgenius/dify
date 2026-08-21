@@ -18,19 +18,19 @@ describe('TabSliderNew', () => {
       />,
     )
 
-    expect(screen.getByRole('group', { name: 'Tool categories' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Tool categories' })).toBeInTheDocument()
 
-    const allButton = screen.getByRole('button', { name: 'All' })
-    const activeButton = screen.getByRole('button', { name: 'Active' })
+    const allOption = screen.getByRole('radio', { name: 'All' })
+    const activeOption = screen.getByRole('radio', { name: 'Active' })
 
-    expect(allButton).toHaveAttribute('aria-pressed', 'true')
-    expect(activeButton).toHaveAttribute('aria-pressed', 'false')
+    expect(allOption).toHaveAttribute('aria-checked', 'true')
+    expect(activeOption).toHaveAttribute('aria-checked', 'false')
 
-    await user.click(allButton)
+    await user.click(allOption)
     expect(onChange).not.toHaveBeenCalled()
 
-    activeButton.focus()
-    await user.keyboard('{Enter}')
+    allOption.focus()
+    await user.keyboard('{ArrowRight}')
 
     expect(onChange).toHaveBeenCalledWith('active')
   })

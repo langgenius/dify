@@ -231,7 +231,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
         return features
 
     monkeypatch.setattr(
-        "controllers.web.site.FeatureService.get_features",
+        "controllers.web.human_input_form.FeatureService.get_features",
         mock_get_features,
     )
 

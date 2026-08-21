@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "گره‌ها",
   "agentDetail.access.workflow.table.version": "نسخه",
   "agentDetail.access.workflow.title": "دسترسی گردش کار",
-  "agentDetail.configure.advancedSettings.description": "برای کاربران حرفه‌ای. متغیرهای محیطی، sandbox و حافظه.",
+  "agentDetail.configure.advancedSettings.description": "برای کاربران حرفه‌ای، مانند متغیرهای محیطی.",
   "agentDetail.configure.advancedSettings.envEditor.add": "افزودن متغیر محیطی",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "حذف {{key}}",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "پنهان کردن مقدار {{key}}",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "عامل را مثل یک چت نهایی اجرا کنید، دقیقاً همان‌طور که کاربران پس از انتشار تجربه می‌کنند.",
   "agentDetail.configure.preview.empty.title": "پیش‌نمایش {{name}}",
   "agentDetail.configure.preview.endUserAuth": "احراز هویت کاربر نهایی",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "این اجرای Agent پس از رسیدن به حداکثر تعداد درخواست‌های مدل متوقف شد. دوباره تلاش کنید یا کار را به گام‌های کوچک‌تر تقسیم کنید.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "این اجرای Agent به‌دلیل رسیدن به محدودیت زمانی متوقف شد. دوباره تلاش کنید یا کار را به گام‌های کوچک‌تر تقسیم کنید.",
   "agentDetail.configure.preview.inputPlaceholder": "ارسال پیام به {{name}}",
   "agentDetail.configure.preview.restart": "شروع تازه",
@@ -382,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "مثلاً دستیار پژوهش",
   "roster.createSuccess": "عامل ایجاد شد.",
   "roster.dateTimeFormat": "YYYY/MM/DD HH:mm:ss",
-  "roster.deleteDialog.description": "این Agent از فهرست Agent حذف خواهد شد.",
+  "roster.deleteDialog.description": "این کار {{name}} را برای همیشه حذف می‌کند. برنامه وب آن، دسترسی به API و گردش‌های کاری که از آن استفاده می‌کنند، بلافاصله از کار می‌افتند.",
   "roster.deleteDialog.title": "حذف {{name}}؟",
   "roster.deleteFailed": "حذف عامل ناموفق بود.",
   "roster.deleteSuccess": "عامل حذف شد.",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "آخرین تغییر",
   "roster.sort.optionsLabel": "گزینه‌های مرتب‌سازی",
   "roster.sort.recentlyCreated": "تازه‌ترین ایجاد",
+  "roster.title": "عامل‌ها",
   "roster.updateSuccess": "عامل به‌روزرسانی شد.",
   "roster.usageStatus.draft": "پیش‌نویس"
 }

@@ -49,6 +49,7 @@
   "join": "Gabung",
   "joinTipEnd": "tim di Dify",
   "joinTipStart": "Mengundang Anda untuk bergabung",
+  "joinWorkspace": "Gabung ke {{workspaceName}}",
   "license.link": "Lisensi sumber terbuka",
   "license.tip": "Sebelum memulai Edisi Komunitas Dify, baca GitHub",
   "licenseExpired": "Lisensi Kedaluwarsa",

@@ -182,14 +182,7 @@ class WorkflowAgentComposerValidateApi(Resource):
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
-        findings = AgentComposerService.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=req_data,
-            agent_id=AgentComposerService.resolve_workflow_node_agent_id(
-                session=session, tenant_id=tenant_id, app_id=app_model.id, node_id=node_id
-            ),
-        )
+        findings = AgentComposerService.collect_validation_findings(payload=req_data)
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
@@ -413,22 +406,12 @@ class SnippetAgentComposerValidateApi(Resource):
     @with_session(write=False)
     @model_validate(ComposerSavePayload)
     def post(self, req_data: ComposerSavePayload, session: Session, tenant_id: str, snippet_id: UUID, node_id: str):
-        app_id = _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
+        _require_snippet_app_id(session=session, tenant_id=tenant_id, snippet_id=snippet_id)
         ComposerConfigValidator.validate_publish_payload(req_data)
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
-        findings = AgentComposerService.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=req_data,
-            agent_id=AgentComposerService.resolve_workflow_node_agent_id(
-                session=session,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                node_id=node_id,
-            ),
-        )
+        findings = AgentComposerService.collect_validation_findings(payload=req_data)
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 
@@ -580,12 +563,7 @@ class AgentComposerValidateApi(Resource):
         AgentComposerService.validate_knowledge_datasets(
             session=session, tenant_id=tenant_id, agent_soul=req_data.agent_soul
         )
-        findings = AgentComposerService.collect_validation_findings(
-            session=session,
-            tenant_id=tenant_id,
-            payload=req_data,
-            agent_id=str(agent_id),
-        )
+        findings = AgentComposerService.collect_validation_findings(payload=req_data)
         return dump_response(AgentComposerValidateResponse, {"result": "success", "errors": [], **findings})
 
 

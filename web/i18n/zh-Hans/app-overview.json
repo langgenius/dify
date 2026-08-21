@@ -121,7 +121,7 @@
   "overview.triggerInfo.learnAboutTriggers": "进一步了解触发器",
   "overview.triggerInfo.noTriggerAdded": "未添加触发器",
   "overview.triggerInfo.title": "触发器",
-  "overview.triggerInfo.triggerStatusDescription": "发布包含触发器的版本后，触发器会显示在这里。",
+  "overview.triggerInfo.triggerStatusDescription": "发布后，触发器会显示在这里。",
   "overview.triggerInfo.triggersAdded": "已添加 {{count}} 个触发器",
   "welcome.enterKeyTip": "请先在下方输入你的 OpenAI API Key",
   "welcome.firstStepTip": "开始之前，",

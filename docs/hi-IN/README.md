@@ -195,6 +195,10 @@ Grafana में Dify के PostgreSQL डेटाबेस को डेट�
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) के साथ एक क्लिक में Dify को AKS पर डिप्लॉय करें।
 
+#### Sealos के साथ डिप्लॉय करें
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/) के साथ एक क्लिक में Dify को डिप्लॉय करें।
+
 ## योगदान (Contributing)
 
 जो लोग कोड में योगदान देना चाहते हैं, वे हमारे [Contribution Guide](./CONTRIBUTING.md) को देखें।\

@@ -1,4 +1,4 @@
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import {
   createBaseWorkflowRunCallbacks,
   createFinalWorkflowRunCallbacks,

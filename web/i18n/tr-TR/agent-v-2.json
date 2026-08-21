@@ -38,7 +38,7 @@
   "agentDetail.access.workflow.table.nodes": "Düğümler",
   "agentDetail.access.workflow.table.version": "Sürüm",
   "agentDetail.access.workflow.title": "İş akışı erişimi",
-  "agentDetail.configure.advancedSettings.description": "Güç kullanıcıları için. Çevre değişkenleri, sandbox ve bellek.",
+  "agentDetail.configure.advancedSettings.description": "Güç kullanıcıları için, ör. ortam değişkenleri.",
   "agentDetail.configure.advancedSettings.envEditor.add": "Çevre değişkeni ekle",
   "agentDetail.configure.advancedSettings.envEditor.deleteVariable": "{{key}} sil",
   "agentDetail.configure.advancedSettings.envEditor.hideValue": "{{key}} değerini gizle",
@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Aracıyı yayınlandıktan sonra kullanıcıların deneyimleyeceği tamamlanmış sohbet olarak çalıştırın.",
   "agentDetail.configure.preview.empty.title": "{{name}} önizlemesi",
   "agentDetail.configure.preview.endUserAuth": "Son kullanıcı kimlik doğrulaması",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Bu Agent çalışması, maksimum model isteği sayısına ulaştığı için durduruldu. Tekrar deneyin veya görevi daha küçük adımlara bölün.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Bu Agent çalışması süre sınırına ulaştığı için durduruldu. Tekrar deneyin veya görevi daha küçük adımlara bölün.",
   "agentDetail.configure.preview.inputPlaceholder": "{{name}} ile mesajlaş",
   "agentDetail.configure.preview.restart": "Baştan başla",
@@ -382,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "örn. Araştırma Asistanı",
   "roster.createSuccess": "Ajan oluşturuldu.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Bu Agent, Agent listesinden kaldırılacak.",
+  "roster.deleteDialog.description": "Bu işlem {{name}} adlı Agent'ı kalıcı olarak siler. Bu Agent'ın web uygulaması ve API erişimi ile onu kullanan iş akışları hemen çalışmayı durdurur.",
   "roster.deleteDialog.title": "{{name}} silinsin mi?",
   "roster.deleteFailed": "Ajan silinemedi.",
   "roster.deleteSuccess": "Ajan silindi.",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Son değiştirilme",
   "roster.sort.optionsLabel": "Sıralama seçenekleri",
   "roster.sort.recentlyCreated": "Yeni oluşturulanlar",
+  "roster.title": "Ajanlar",
   "roster.updateSuccess": "Ajan güncellendi.",
   "roster.usageStatus.draft": "Taslak"
 }

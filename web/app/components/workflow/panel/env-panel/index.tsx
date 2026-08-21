@@ -1,4 +1,4 @@
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ModelSelectorProvider } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type {
   EnvironmentVariable,
@@ -166,7 +166,7 @@ const useEnvPanelActions = ({
   updateEnvList: (envList: EnvironmentVariable[]) => void
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
-  activeTextGenerationModelList: Model[]
+  activeTextGenerationModelList: ModelSelectorProvider[]
 }) => {
   const emitVarsAndFeaturesUpdate = useCallback(
     async (syncWorkflowDraft = false) => {
@@ -802,7 +802,7 @@ const EnvPanel = () => {
             className="flex size-6 cursor-pointer items-center justify-center"
             onClick={() => setShowEnvPanel(false)}
           >
-            {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons */}
+            {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
             <RiCloseLine className="size-4 text-text-tertiary" />
           </button>
         </div>

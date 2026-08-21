@@ -1,9 +1,10 @@
 'use client'
 
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useTranslation } from 'react-i18next'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import ShareQRCode from '@/app/components/base/qrcode'
-import ActionButton from '../../../base/action-button'
 import { AccessPointEndpoint } from './access-point-card'
 
 type AccessPointUrlProps = {
@@ -43,6 +44,7 @@ export function AccessPointUrl({
   unavailableLabel,
   value,
 }: AccessPointUrlProps) {
+  const { t } = useTranslation()
   const detailsAvailable = !loading && !unavailable
 
   const disabledActions = (
@@ -79,7 +81,7 @@ export function AccessPointUrl({
           <span aria-hidden className="i-ri-file-copy-line size-4 text-text-disabled" />
         </div>
       ) : (
-        <CopyFeedback content={value} className="size-6!" />
+        <CopyFeedback content={value} className="size-6" />
       )}
       {showQrCode &&
         (copyDisabled ? (
@@ -90,9 +92,8 @@ export function AccessPointUrl({
           <ShareQRCode content={value} />
         ))}
       {showRegenerate && (
-        <ActionButton
-          className="size-6 px-0"
-          aria-label={regenerateLabel}
+        <IconButton
+          aria-label={regenerateLabel || t(($) => $['operation.regenerate'], { ns: 'common' })}
           disabled={regenerateDisabled || regenerating}
           onClick={onRegenerate}
         >
@@ -100,7 +101,7 @@ export function AccessPointUrl({
             aria-hidden
             className={`i-ri-loop-left-line size-4 ${regenerating ? 'animate-spin' : ''}`}
           />
-        </ActionButton>
+        </IconButton>
       )}
       {showOpen && (
         <>

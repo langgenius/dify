@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import after mock
 import { renameDocumentName } from '@/service/datasets'
 import RenameModal from '../rename-modal'
@@ -44,7 +45,7 @@ describe('RenameModal', () => {
 
     it('should render name label', () => {
       render(<RenameModal {...defaultProps} />)
-      expect(screen.getByText(/list\.table\.name/i)).toBeInTheDocument()
+      expect(screen.getByRole('textbox', { name: /list\.table\.name/i })).toBeInTheDocument()
     })
 
     it('should render input with initial name', () => {
@@ -130,7 +131,7 @@ describe('RenameModal', () => {
   })
 
   describe('Loading State', () => {
-    it('should show loading state while saving', async () => {
+    it('should not submit again while saving', async () => {
       // Create a promise that we can resolve manually
       let resolvePromise: (value: { result: 'success' | 'fail' }) => void
       const pendingPromise = new Promise<{ result: 'success' | 'fail' }>((resolve) => {
@@ -139,18 +140,21 @@ describe('RenameModal', () => {
       mockRenameDocumentName.mockReturnValueOnce(pendingPromise)
 
       render(<RenameModal {...defaultProps} />)
-      const saveButton = screen.getByText(/operation\.save/i)
-      fireEvent.click(saveButton)
+      const user = userEvent.setup()
+      const input = screen.getByRole('textbox', { name: /list\.table\.name/i })
+      await user.click(input)
+      await user.keyboard('{Enter}')
 
-      // The button should be in loading state
       await waitFor(() => {
-        const buttons = screen.getAllByRole('button')
-        const saveBtn = buttons.find((btn) => btn.textContent?.includes('operation.save'))
-        expect(saveBtn).toBeInTheDocument()
+        expect(mockRenameDocumentName).toHaveBeenCalledTimes(1)
       })
+      await user.keyboard('{Enter}')
+      expect(mockRenameDocumentName).toHaveBeenCalledTimes(1)
 
-      // Resolve the promise to clean up
       resolvePromise!({ result: 'success' })
+      await waitFor(() => {
+        expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
+      })
     })
   })
 
@@ -180,6 +184,7 @@ describe('RenameModal', () => {
       render(<RenameModal {...defaultProps} name="" />)
       const input = screen.getByRole('textbox')
       expect(input).toHaveValue('')
+      expect(input).toHaveAttribute('placeholder', 'common.placeholder.input')
     })
 
     it('should handle name with special characters', () => {

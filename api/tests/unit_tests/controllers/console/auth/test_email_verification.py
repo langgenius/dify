@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 from controllers.console.auth.error import (
     EmailCodeError,
+    EmailCodeLoginServiceUnavailableError,
     InvalidEmailError,
     InvalidTokenError,
     TurnstileServiceUnavailableError,
@@ -32,13 +33,27 @@ from controllers.console.auth.login import (
 from controllers.console.error import (
     AccountInFreezeError,
     AccountNotFound,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
-from services.errors.account import AccountRegisterError
+from models.account import Account, Tenant
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeResult,
+    EmailCodeLoginChallengeStatus,
+    EmailCodeLoginChallengeUnavailableError,
+)
+from services.errors.account import (
+    AccountRegisterError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
+
+TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 
 
 def encode_code(code: str) -> str:
@@ -52,7 +67,7 @@ def test_email_code_login_payload_rejects_invalid_timezone():
             {
                 "email": "newuser@example.com",
                 "code": "123456",
-                "token": "token-123",
+                "token": TEST_TOKEN,
                 "timezone": "",
             }
         )
@@ -61,6 +76,18 @@ def test_email_code_login_payload_rejects_invalid_timezone():
 def test_turnstile_token_is_scoped_to_email_code_send_payload():
     assert "turnstile_token" in EmailCodeSendPayload.model_fields
     assert "turnstile_token" not in EmailPayload.model_fields
+    assert "turnstile_token" in EmailCodeLoginPayload.model_fields
+
+
+def test_email_code_login_code_schema_does_not_describe_plaintext_format():
+    code_schema = EmailCodeLoginPayload.model_json_schema()["properties"]["code"]
+
+    assert "pattern" not in code_schema
+
+
+def test_email_code_login_payload_rejects_non_uuid_token():
+    with pytest.raises(ValidationError):
+        EmailCodeLoginPayload.model_validate({"email": "user@example.com", "code": "123456", "token": "not-a-uuid"})
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -74,12 +101,9 @@ class TestEmailCodeLoginSendEmailApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.email = "test@example.com"
-        account.name = "Test User"
-        return account
+    def mock_account(self) -> Account:
+        """Create a real transient account for the mail service boundary."""
+        return Account(name="Test User", email="test@example.com")
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
@@ -288,7 +312,22 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
-    def test_send_email_code_frozen_account(self, mock_get_user, mock_is_ip_limit, mock_db, app: Flask):
+    @pytest.mark.parametrize(
+        ("service_error", "expected_error"),
+        [
+            (AccountRegisterError("Account frozen"), AccountInFreezeError),
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedError),
+        ],
+    )
+    def test_send_email_code_frozen_account(
+        self,
+        mock_get_user,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        service_error,
+        expected_error,
+    ):
         """
         Test email code sending to frozen account.
 
@@ -297,12 +336,12 @@ class TestEmailCodeLoginSendEmailApi:
         """
         # Arrange
         mock_is_ip_limit.return_value = False
-        mock_get_user.side_effect = AccountRegisterError("Account frozen")
+        mock_get_user.side_effect = service_error
 
         # Act & Assert
         with app.test_request_context("/email-code-login", method="POST", json={"email": "frozen@example.com"}):
             api = EmailCodeLoginSendEmailApi()
-            with pytest.raises(AccountInFreezeError):
+            with pytest.raises(expected_error):
                 api.post()
 
     @pytest.mark.parametrize(
@@ -363,12 +402,9 @@ class TestEmailCodeLoginApi:
         return app
 
     @pytest.fixture
-    def mock_account(self):
-        """Create mock account object."""
-        account = MagicMock()
-        account.email = "test@example.com"
-        account.name = "Test User"
-        return account
+    def mock_account(self) -> Account:
+        """Create a real transient account for login orchestration."""
+        return Account(name="Test User", email="test@example.com")
 
     @pytest.fixture
     def mock_token_pair(self):
@@ -379,9 +415,146 @@ class TestEmailCodeLoginApi:
         token_pair.csrf_token = "csrf_token"
         return token_pair
 
+    @pytest.mark.parametrize("code", ["12345", "1234567", "abcdef", "١٢٣٤٥٦"])
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    def test_rejects_malformed_code_after_wire_decode(
+        self,
+        mock_verify_challenge,
+        mock_db,
+        app: Flask,
+        code: str,
+    ):
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "test@example.com", "code": encode_code(code), "token": TEST_TOKEN},
+            ),
+            pytest.raises(EmailCodeError),
+        ):
+            EmailCodeLoginApi().post()
+
+        mock_verify_challenge.assert_not_called()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    @patch("controllers.console.auth.login.TurnstileService.verify")
+    def test_cloud_verify_uses_separate_turnstile_action_when_required(
+        self,
+        mock_turnstile_verify,
+        mock_verify_challenge,
+        mock_db,
+        app: Flask,
+    ):
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
+        )
+
+        with (
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", True),
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={
+                    "email": "test@example.com",
+                    "code": encode_code("123456"),
+                    "token": TEST_TOKEN,
+                    "turnstile_token": "verify-challenge-token",
+                },
+                headers={"CF-Connecting-IP": "203.0.113.8"},
+            ),
+            pytest.raises(InvalidTokenError),
+        ):
+            EmailCodeLoginApi().post()
+
+        mock_turnstile_verify.assert_called_once_with(
+            token="verify-challenge-token",
+            remote_ip="203.0.113.8",
+            expected_action="signin_code_verify",
+        )
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    @patch(
+        "controllers.console.auth.login.TurnstileService.verify",
+        side_effect=TurnstileChallengeRejectedError,
+    )
+    def test_cloud_verify_rejects_missing_turnstile_before_consuming_code(
+        self,
+        mock_turnstile_verify,
+        mock_verify_challenge,
+        mock_db,
+        app: Flask,
+    ):
+        with (
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", True),
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(TurnstileVerificationFailedError),
+        ):
+            EmailCodeLoginApi().post()
+
+        mock_turnstile_verify.assert_called_once()
+        mock_verify_challenge.assert_not_called()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    @patch("controllers.console.auth.login.TurnstileService.verify")
+    def test_cloud_verify_flag_off_allows_legacy_client_without_turnstile(
+        self,
+        mock_turnstile_verify,
+        mock_verify_challenge,
+        mock_db,
+        app: Flask,
+    ):
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
+        )
+
+        with (
+            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch("controllers.console.auth.login.dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED", False),
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(InvalidTokenError),
+        ):
+            EmailCodeLoginApi().post()
+
+        mock_turnstile_verify.assert_not_called()
+        mock_verify_challenge.assert_called_once()
+
+    @patch("controllers.console.wraps.db")
+    @patch(
+        "controllers.console.auth.login.AccountService.verify_email_code_login_challenge",
+        side_effect=EmailCodeLoginChallengeUnavailableError,
+    )
+    def test_verify_maps_redis_failure_to_service_unavailable(
+        self,
+        mock_verify_challenge,
+        mock_db,
+        app: Flask,
+    ):
+        with (
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
+            ),
+            pytest.raises(EmailCodeLoginServiceUnavailableError),
+        ):
+            EmailCodeLoginApi().post()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.AccountService.login")
@@ -392,8 +565,7 @@ class TestEmailCodeLoginApi:
         mock_login,
         mock_get_tenants,
         mock_get_user,
-        mock_revoke_token,
-        mock_get_data,
+        mock_verify_challenge,
         mock_db,
         app: Flask,
         mock_account,
@@ -408,28 +580,29 @@ class TestEmailCodeLoginApi:
         - User is logged in with token pair
         """
         # Arrange
-        mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_user.return_value = mock_account
-        mock_get_tenants.return_value = [MagicMock()]
+        mock_get_tenants.return_value = [Tenant(name="Test Workspace")]
         mock_login.return_value = mock_token_pair
 
         # Act
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": encode_code("123456"), "token": "valid_token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             response = api.post()
 
         # Assert
         assert response.json["result"] == "success"
-        mock_revoke_token.assert_called_once_with("valid_token")
+        mock_verify_challenge.assert_called_once_with(email="test@example.com", code="123456", token=TEST_TOKEN)
         mock_login.assert_called_once()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.AccountService.create_account_and_tenant")
     @patch("controllers.console.auth.login.AccountService.login")
@@ -440,8 +613,7 @@ class TestEmailCodeLoginApi:
         mock_login,
         mock_create_account,
         mock_get_user,
-        mock_revoke_token,
-        mock_get_data,
+        mock_verify_challenge,
         mock_db,
         app: Flask,
         mock_account,
@@ -456,22 +628,27 @@ class TestEmailCodeLoginApi:
         - User is logged in after account creation
         """
         # Arrange
-        mock_get_data.return_value = {"email": "newuser@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_user.return_value = None
         mock_create_account.return_value = mock_account
         mock_login.return_value = mock_token_pair
 
         # Act
-        with app.test_request_context(
-            "/email-code-login/validity",
-            method="POST",
-            json={
-                "email": "newuser@example.com",
-                "code": encode_code("123456"),
-                "token": "valid_token",
-                "language": "en-US",
-                "timezone": "Asia/Shanghai",
-            },
+        with (
+            patch("controllers.console.auth.login.extract_remote_ip", return_value="203.0.113.10"),
+            app.test_request_context(
+                "/email-code-login/validity",
+                method="POST",
+                json={
+                    "email": "newuser@example.com",
+                    "code": encode_code("123456"),
+                    "token": TEST_TOKEN,
+                    "language": "en-US",
+                    "timezone": "Asia/Shanghai",
+                },
+            ),
         ):
             api = EmailCodeLoginApi()
             response = api.post()
@@ -483,12 +660,13 @@ class TestEmailCodeLoginApi:
             name="newuser@example.com",
             interface_language="en-US",
             timezone="Asia/Shanghai",
+            ip_address="203.0.113.10",
             session=ANY,
         )
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_invalid_token(self, mock_get_data, mock_db, app: Flask):
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    def test_email_code_login_invalid_token(self, mock_verify_challenge, mock_db, app: Flask):
         """
         Test email code login with invalid token.
 
@@ -496,21 +674,23 @@ class TestEmailCodeLoginApi:
         - InvalidTokenError is raised for invalid/expired tokens
         """
         # Arrange
-        mock_get_data.return_value = None
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.INVALID_TOKEN
+        )
 
         # Act & Assert
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": encode_code("123456"), "token": "invalid_token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(InvalidTokenError):
                 api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_email_mismatch(self, mock_get_data, mock_db, app: Flask):
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    def test_email_code_login_email_mismatch(self, mock_verify_challenge, mock_db, app: Flask):
         """
         Test email code login with mismatched email.
 
@@ -518,21 +698,23 @@ class TestEmailCodeLoginApi:
         - InvalidEmailError is raised when email doesn't match token
         """
         # Arrange
-        mock_get_data.return_value = {"email": "original@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.EMAIL_MISMATCH
+        )
 
         # Act & Assert
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "different@example.com", "code": encode_code("123456"), "token": "token"},
+            json={"email": "different@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(InvalidEmailError):
                 api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    def test_email_code_login_wrong_code(self, mock_get_data, mock_db, app: Flask):
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
+    def test_email_code_login_wrong_code(self, mock_verify_challenge, mock_db, app: Flask):
         """
         Test email code login with incorrect code.
 
@@ -540,21 +722,23 @@ class TestEmailCodeLoginApi:
         - EmailCodeError is raised for wrong verification code
         """
         # Arrange
-        mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.INVALID_CODE,
+            remaining_attempts=4,
+        )
 
         # Act & Assert
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": encode_code("wrong_code"), "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("654321"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(EmailCodeError):
                 api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
@@ -563,8 +747,7 @@ class TestEmailCodeLoginApi:
         mock_is_workspace_creation_allowed,
         mock_get_tenants,
         mock_get_user,
-        mock_revoke_token,
-        mock_get_data,
+        mock_verify_challenge,
         mock_db,
         app: Flask,
         mock_account,
@@ -577,7 +760,9 @@ class TestEmailCodeLoginApi:
         - User is added as owner of new workspace
         """
         # Arrange
-        mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
         mock_is_workspace_creation_allowed.return_value = True
@@ -586,15 +771,14 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": "123456", "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             # This would complete the flow, but we're testing workspace creation logic
             # In real implementation, TenantService.create_tenant would be called
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.FeatureService.get_license")
@@ -605,8 +789,7 @@ class TestEmailCodeLoginApi:
         mock_get_license,
         mock_get_tenants,
         mock_get_user,
-        mock_revoke_token,
-        mock_get_data,
+        mock_verify_challenge,
         mock_db,
         app: Flask,
         mock_account,
@@ -618,7 +801,9 @@ class TestEmailCodeLoginApi:
         - WorkspacesLimitExceeded is raised when limit reached
         """
         # Arrange
-        mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
         mock_get_license.return_value.workspaces.is_available.return_value = False
@@ -628,15 +813,14 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": encode_code("123456"), "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(WorkspacesLimitExceeded):
                 api.post()
 
     @patch("controllers.console.wraps.db")
-    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
-    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    @patch("controllers.console.auth.login.AccountService.verify_email_code_login_challenge")
     @patch("controllers.console.auth.login.AccountService.get_user_through_email")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.FeatureService.is_workspace_creation_allowed")
@@ -645,8 +829,7 @@ class TestEmailCodeLoginApi:
         mock_is_workspace_creation_allowed,
         mock_get_tenants,
         mock_get_user,
-        mock_revoke_token,
-        mock_get_data,
+        mock_verify_challenge,
         mock_db,
         app: Flask,
         mock_account,
@@ -658,7 +841,9 @@ class TestEmailCodeLoginApi:
         - NotAllowedCreateWorkspace is raised when creation disabled
         """
         # Arrange
-        mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
+        mock_verify_challenge.return_value = EmailCodeLoginChallengeResult(
+            status=EmailCodeLoginChallengeStatus.VERIFIED
+        )
         mock_get_user.return_value = mock_account
         mock_get_tenants.return_value = []
         mock_is_workspace_creation_allowed.return_value = False
@@ -667,7 +852,7 @@ class TestEmailCodeLoginApi:
         with app.test_request_context(
             "/email-code-login/validity",
             method="POST",
-            json={"email": "test@example.com", "code": encode_code("123456"), "token": "token"},
+            json={"email": "test@example.com", "code": encode_code("123456"), "token": TEST_TOKEN},
         ):
             api = EmailCodeLoginApi()
             with pytest.raises(NotAllowedCreateWorkspace):

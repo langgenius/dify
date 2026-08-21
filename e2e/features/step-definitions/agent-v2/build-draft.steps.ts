@@ -13,7 +13,6 @@ import {
   agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../../agent-v2/support/agent-builder-resources'
-import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/agent-drive'
 import {
   createAgentSoulConfigWithModel,
   normalAgentPrompt,
@@ -21,6 +20,7 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
+import { uploadAgentConfigFileToDraft } from '../../agent-v2/support/config-assets'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
@@ -159,7 +159,7 @@ When(
       await readFile(getAgentBuilderTestMaterialPath('buildInstruction'), 'utf8')
     ).trim()
 
-    await page.getByRole('button', { exact: true, name: 'Build' }).click()
+    await page.getByRole('radio', { exact: true, name: 'Build' }).click()
     await page.getByPlaceholder('Describe what your agent should do').fill(instruction)
 
     const checkoutResponsePromise = page.waitForResponse(
@@ -191,7 +191,7 @@ When(
 When('I try to generate an Agent v2 Build draft without a model', async function (this: DifyWorld) {
   const page = this.getPage()
 
-  await page.getByRole('button', { exact: true, name: 'Build' }).click()
+  await page.getByRole('radio', { exact: true, name: 'Build' }).click()
   await page
     .getByPlaceholder('Describe what your agent should do')
     .fill('Update the agent instructions for E2E.')

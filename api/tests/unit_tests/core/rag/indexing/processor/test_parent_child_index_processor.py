@@ -1,6 +1,6 @@
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import event
@@ -11,7 +11,9 @@ from core.rag.entities import ParentMode, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
-from models.dataset import ChildChunk, DatasetProcessRule, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentCreatedFrom, DocumentSegment
+from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType
 
 
 class TestParentChildIndexProcessor:
@@ -28,20 +30,34 @@ class TestParentChildIndexProcessor:
         return ParentChildIndexProcessor()
 
     @pytest.fixture
-    def dataset(self) -> Mock:
-        dataset = Mock()
-        dataset.id = "dataset-1"
-        dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.is_multimodal = True
+    def dataset(self) -> Dataset:
+        dataset = Dataset(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            name="Dataset",
+            created_by="user-1",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            is_multimodal=True,
+        )
+        self.session.add(dataset)
+        self.session.flush()
         return dataset
 
     @pytest.fixture
-    def dataset_document(self) -> Mock:
-        document = Mock()
-        document.id = "doc-1"
-        document.created_by = "user-1"
-        document.dataset_process_rule_id = None
+    def dataset_document(self, dataset: Dataset) -> DatasetDocument:
+        document = DatasetDocument(
+            id="doc-1",
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch-1",
+            name="Document",
+            created_from=DocumentCreatedFrom.API,
+            created_by="user-1",
+        )
+        self.session.add(document)
+        self.session.flush()
         return document
 
     def _segmentation(self) -> SimpleNamespace:
@@ -207,7 +223,7 @@ class TestParentChildIndexProcessor:
         assert result[0].attachments is not None
 
     def test_load_creates_vector_and_keyword_indexes_for_child_docs(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         parent_doc = Document(
             page_content="parent",
@@ -235,7 +251,9 @@ class TestParentChildIndexProcessor:
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(formatted_docs, session)
 
-    def test_load_skips_keyword_index_when_disabled(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
+    def test_load_skips_keyword_index_when_disabled(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
         parent_doc = Document(
             page_content="parent",
             metadata={},
@@ -252,7 +270,7 @@ class TestParentChildIndexProcessor:
         mock_keyword_cls.assert_not_called()
 
     def test_load_economy_indexes_keywords_without_vectors(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         parent_doc = Document(
@@ -272,7 +290,7 @@ class TestParentChildIndexProcessor:
         assert [document.page_content for document in keyword_documents] == ["child"]
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(keyword_documents, self.session)
 
-    def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
+    def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         session = self.session
 
         with (
@@ -293,7 +311,7 @@ class TestParentChildIndexProcessor:
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"], session)
 
     def test_clean_queries_child_ids_when_not_precomputed(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         session = self.session
         parent = DocumentSegment(
@@ -338,7 +356,7 @@ class TestParentChildIndexProcessor:
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1", "child-2"], session)
 
     def test_clean_skips_keyword_cleanup_when_disabled(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -356,7 +374,7 @@ class TestParentChildIndexProcessor:
         mock_keyword_cls.assert_not_called()
 
     def test_clean_economy_removes_keywords_without_vectors(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
 
@@ -374,7 +392,7 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.assert_not_called()
         mock_keyword_cls.return_value.delete_by_ids.assert_called_once_with(["child-1"], self.session)
 
-    def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
+    def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         session = self.session
 
         with (
@@ -388,7 +406,9 @@ class TestParentChildIndexProcessor:
         assert session.query(ChildChunk).count() == 0
         mock_keyword_cls.return_value.delete.assert_called_once_with(session=session)
 
-    def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
+    def test_clean_deletes_summaries_when_requested(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
         session = self.session
         segment = DocumentSegment(
             tenant_id=dataset.tenant_id,
@@ -416,7 +436,7 @@ class TestParentChildIndexProcessor:
         mock_summary.assert_called_once_with(dataset, [segment.id], session=session)
 
     def test_clean_deletes_all_summaries_when_node_ids_missing(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         with (
             patch(
@@ -460,7 +480,7 @@ class TestParentChildIndexProcessor:
         assert child_docs[0].metadata["doc_hash"] == "hash"
 
     def test_index_creates_process_rule_segments_and_vectors(
-        self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         parent_childs = SimpleNamespace(
             parent_mode=ParentMode.PARAGRAPH,
@@ -520,7 +540,7 @@ class TestParentChildIndexProcessor:
         mock_keyword_cls.return_value.add_texts.assert_called_once_with(indexed_child_documents, session)
 
     def test_index_uses_content_files_when_files_missing(
-        self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         parent_childs = SimpleNamespace(
             parent_mode=ParentMode.PARAGRAPH,
@@ -564,7 +584,7 @@ class TestParentChildIndexProcessor:
         assert account_session is not session
 
     def test_index_raises_when_account_missing(
-        self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         parent_childs = SimpleNamespace(
             parent_mode=ParentMode.PARAGRAPH,
@@ -586,7 +606,7 @@ class TestParentChildIndexProcessor:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid account"):
-                processor.index(dataset, dataset_document, {"parent_child_chunks": []}, MagicMock())
+                processor.index(dataset, dataset_document, {"parent_child_chunks": []}, self.session)
 
     def test_format_preview_returns_parent_child_structure(self, processor: ParentChildIndexProcessor) -> None:
         parent_childs = SimpleNamespace(
