@@ -23,6 +23,7 @@ const maxDecoderWindow = 64 << 20
 var environmentalErrnos = []syscall.Errno{
 	syscall.ENOSPC, syscall.EDQUOT, syscall.EROFS, syscall.EIO,
 	syscall.ENOMEM, syscall.EMFILE, syscall.ENFILE,
+	syscall.EACCES, syscall.EPERM,
 }
 
 func classifyEntryErr(err error) error {
