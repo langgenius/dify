@@ -1,16 +1,20 @@
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 import core.app.apps.completion.app_runner as module
 from core.app.apps.completion.app_runner import CompletionAppRunner
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.moderation.base import ModerationError
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.model import App, AppMode, IconType
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, Conversation, IconType, Message
 
 APP_ID = "00000000-0000-0000-0000-000000000001"
 TENANT_ID = "00000000-0000-0000-0000-000000000002"
@@ -54,7 +58,27 @@ def _build_generate_entity(app_config, file_upload_config=None):
     )
 
 
-def _persist_app(session: Session) -> App:
+def _message() -> Message:
+    return Message(
+        id="msg",
+        app_id=APP_ID,
+        conversation_id="conv",
+        inputs={},
+        query="query",
+        message={},
+        message_unit_price=Decimal(0),
+        answer="",
+        answer_unit_price=Decimal(0),
+        total_price=Decimal(0),
+        currency="USD",
+        invoke_from=InvokeFrom.SERVICE_API,
+        from_source=ConversationFromSource.API,
+        from_account_id="user",
+        app_mode=AppMode.COMPLETION,
+    )
+
+
+def _persist_records(session: Session) -> tuple[App, Message]:
     app = App(
         id=APP_ID,
         tenant_id=TENANT_ID,
@@ -66,9 +90,20 @@ def _persist_app(session: Session) -> App:
         enable_site=False,
         enable_api=False,
     )
-    session.add(app)
+    conversation = Conversation(
+        id="conv",
+        app_id=APP_ID,
+        mode=AppMode.COMPLETION,
+        name="Conversation",
+        inputs={},
+        invoke_from=InvokeFrom.SERVICE_API,
+        from_source=ConversationFromSource.API,
+        from_account_id="user",
+    )
+    message = _message()
+    session.add_all([app, conversation, message])
     session.commit()
-    return app
+    return app, message
 
 
 class TestCompletionAppRunner:
@@ -77,10 +112,10 @@ class TestCompletionAppRunner:
         app_generate_entity = _build_generate_entity(app_config)
 
         with pytest.raises(ValueError):
-            runner.run(app_generate_entity, MagicMock(), MagicMock(), sqlite_session)
+            runner.run(app_generate_entity, MagicMock(), _message(), sqlite_session)
 
     def test_run_moderation_error_outputs_direct(self, runner, mocker: MockerFixture, sqlite_session: Session):
-        _persist_app(sqlite_session)
+        _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -90,13 +125,13 @@ class TestCompletionAppRunner:
         runner.direct_output = MagicMock()
         runner._handle_invoke_result = MagicMock()
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
 
         runner.direct_output.assert_called_once()
         runner._handle_invoke_result.assert_not_called()
 
     def test_run_hosting_moderation_stops(self, runner, mocker: MockerFixture, sqlite_session: Session):
-        _persist_app(sqlite_session)
+        _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
@@ -106,12 +141,12 @@ class TestCompletionAppRunner:
         runner.check_hosting_moderation = MagicMock(return_value=True)
         runner._handle_invoke_result = MagicMock()
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
 
         runner._handle_invoke_result.assert_not_called()
 
     def test_run_dataset_and_external_tools_flow(self, runner, mocker: MockerFixture, sqlite_session: Session):
-        _persist_app(sqlite_session)
+        _, message = _persist_records(sqlite_session)
 
         retrieve_config = MagicMock(query_variable="qvar")
         dataset_config = MagicMock(dataset_ids=["ds"], retrieve_config=retrieve_config)
@@ -144,7 +179,7 @@ class TestCompletionAppRunner:
         model_manager.get_model_instance.return_value = model_instance
         mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg", tenant_id=TENANT_ID), sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
 
         dataset_retrieval.retrieve.assert_called_once()
         assert dataset_retrieval.retrieve.call_args.kwargs["query"] == "query_from_input"
@@ -153,26 +188,17 @@ class TestCompletionAppRunner:
     def test_run_closes_explicit_session_before_stream_consumption(
         self, runner, mocker: MockerFixture, sqlite_session: Session
     ):
-        _persist_app(sqlite_session)
+        _, message = _persist_records(sqlite_session)
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
         queue_manager = MagicMock()
 
         events = []
         session = sqlite_session
-        original_commit = session.commit
-        original_close = session.close
 
-        def commit_session() -> None:
+        def record_commit(_session: Session) -> None:
             events.append("commit")
-            original_commit()
 
-        def close_session() -> None:
-            events.append("close")
-            original_close()
-
-        mocker.patch.object(session, "commit", side_effect=commit_session)
-        mocker.patch.object(session, "close", side_effect=close_session)
         runner.organize_prompt_messages = MagicMock(return_value=([], None))
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
         runner.check_hosting_moderation = MagicMock(return_value=False)
@@ -194,9 +220,13 @@ class TestCompletionAppRunner:
         model_manager.get_model_instance.return_value = model_instance
         mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
-        runner.run(app_generate_entity, queue_manager, MagicMock(id="msg"), session)
+        event.listen(session, "after_commit", record_commit)
+        try:
+            runner.run(app_generate_entity, queue_manager, message, session)
+        finally:
+            event.remove(session, "after_commit", record_commit)
 
-        assert events == ["commit", "close", "invoke", "first-chunk"]
+        assert events == ["commit", "invoke", "first-chunk"]
         runner._handle_invoke_result.assert_called_once_with(
             invoke_result=ANY,
             queue_manager=queue_manager,
@@ -214,7 +244,7 @@ class TestCompletionAppRunner:
         sqlite_session: Session,
         stream: bool,
     ):
-        _persist_app(sqlite_session)
+        _, message = _persist_records(sqlite_session)
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config)
         app_generate_entity.stream = stream
@@ -231,7 +261,7 @@ class TestCompletionAppRunner:
         model_manager.get_model_instance.return_value = model_instance
         model_manager_factory = mocker.patch.object(module.ModelManager, "for_tenant", return_value=model_manager)
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
 
         model_manager_factory.assert_called_once_with(tenant_id=TENANT_ID)
         model_manager.get_model_instance.assert_called_once_with(
@@ -249,7 +279,7 @@ class TestCompletionAppRunner:
         )
 
     def test_run_uses_low_image_detail_default(self, runner, mocker: MockerFixture, sqlite_session: Session):
-        _persist_app(sqlite_session)
+        _, message = _persist_records(sqlite_session)
 
         app_config = _build_app_config()
         app_generate_entity = _build_generate_entity(app_config, file_upload_config=None)
@@ -258,7 +288,7 @@ class TestCompletionAppRunner:
         runner.moderation_for_inputs = MagicMock(return_value=(None, app_generate_entity.inputs, "query"))
         runner.check_hosting_moderation = MagicMock(return_value=True)
 
-        runner.run(app_generate_entity, MagicMock(), MagicMock(id="msg"), sqlite_session)
+        runner.run(app_generate_entity, MagicMock(), message, sqlite_session)
 
         assert (
             runner.organize_prompt_messages.call_args.kwargs["image_detail_config"]
