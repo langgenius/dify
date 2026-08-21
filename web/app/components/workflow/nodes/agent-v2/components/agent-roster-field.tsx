@@ -437,7 +437,7 @@ export function AgentRosterField({
           <PopoverContent
             placement="bottom-end"
             sideOffset={4}
-            popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+            className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
           >
             <PopoverTitle className="sr-only">
               {t(($) => $['roster.nodeSelector.dialogLabel'], { ns: 'agentV2' })}

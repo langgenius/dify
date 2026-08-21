@@ -50,7 +50,7 @@ export function CommunityEditionTip({
       />
       <PopoverContent
         placement={placement}
-        popupClassName={cn('px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
+        className={cn('px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
       >
         {tip}
       </PopoverContent>

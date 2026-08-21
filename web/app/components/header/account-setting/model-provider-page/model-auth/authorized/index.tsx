@@ -183,7 +183,7 @@ const Authorized = ({
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div
             className={cn(

@@ -56,7 +56,7 @@ function ModeInfoTip({ children, ariaLabel }: { children: ReactNode; ariaLabel: 
       <PopoverContent
         placement="bottom"
         sideOffset={2}
-        popupClassName="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
+        className="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
       >
         {children}
       </PopoverContent>
@@ -98,7 +98,7 @@ function PreviewModeItem({
       <PopoverContent
         placement="bottom"
         sideOffset={6}
-        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
+        className="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
       >
         {disabledTip}
       </PopoverContent>

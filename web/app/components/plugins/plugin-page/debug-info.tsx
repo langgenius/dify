@@ -60,7 +60,7 @@ function DebugInfo({
       />
       <PopoverContent
         placement={popupPlacement}
-        popupClassName="border-0 bg-transparent p-0 shadow-none"
+        className="border-0 bg-transparent p-0 shadow-none"
       >
         <PluginSidecarPanel
           title={title}

@@ -344,7 +344,7 @@ const Operations = ({
               </div>
             }
           />
-          <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+          <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
             {t(($) => $['list.action.enableWarning'], { ns: 'datasetDocuments' })}
           </PopoverContent>
         </Popover>

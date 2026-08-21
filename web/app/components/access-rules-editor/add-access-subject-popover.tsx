@@ -77,7 +77,7 @@ function AddAccessSubjectPopover({
       <PopoverContent
         placement="bottom-end"
         sideOffset={8}
-        popupClassName="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+        className="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
       >
         <PopoverTitle className="sr-only">{addMembersTitle}</PopoverTitle>
         <div className="p-2 pb-1">

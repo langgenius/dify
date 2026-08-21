@@ -233,7 +233,7 @@ const Authorized = ({
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupClassName={cn(
+          className={cn(
             'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
             triggerPopupSameWidth && 'w-(--anchor-width)',
           )}

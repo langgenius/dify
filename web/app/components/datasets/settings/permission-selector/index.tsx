@@ -161,7 +161,7 @@ const PermissionSelector = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">{permissionLabel}</PopoverTitle>
         <div className="relative w-120 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
