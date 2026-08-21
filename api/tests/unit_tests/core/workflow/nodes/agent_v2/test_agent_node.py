@@ -524,6 +524,21 @@ def test_agent_node_structured_success_preserves_text_and_checks_only_custom_out
     }
 
 
+def test_agent_node_structured_output_type_failure_stops_the_node():
+    events = list(
+        _node(
+            declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+            agent_backend_client=FileOutputBackendClient(output_payload={"summary": 42}),
+        )._run()
+    )
+
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error_type == "output_type_check_failed"
+    agent_log = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]
+    assert agent_log["output_failure_decision"] == "fail_node"
+
+
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
     client = FakeAgentBackendRunClient()
     store = FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
