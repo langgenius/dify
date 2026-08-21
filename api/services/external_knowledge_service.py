@@ -113,8 +113,11 @@ class ExternalDatasetService:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
-        if response.status_code == 404:
-            raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
+        # Note: do NOT treat 404 as an invalid endpoint.  Providers such as RAGFlow return
+        # 404 when knowledge_id is empty or not found — meaning the path is valid but the
+        # referenced dataset does not exist yet.  Rejecting 404 here caused correct endpoints
+        # like /api/v1/dify to fail validation while wrong endpoints like /api/v1 (whose
+        # /retrieval route happens to return a different status) passed.  See issue #40028.
         if response.status_code == 403:
             raise ValueError("Forbidden: Authorization failed with the provided api_key")
 
