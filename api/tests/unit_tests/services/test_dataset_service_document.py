@@ -309,26 +309,32 @@ class TestDocumentServiceMutations:
         assert commits == 0
 
     def test_rename_document_raises_when_dataset_is_missing(self, sqlite_session: Session):
-        with patch("services.dataset_service.current_user", _account()):
-            with pytest.raises(ValueError, match="Dataset not found"):
-                DocumentService.rename_document("dataset-1", "doc-1", "New Name", sqlite_session)
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            pytest.raises(ValueError, match="Dataset not found"),
+        ):
+            DocumentService.rename_document("dataset-1", "doc-1", "New Name", sqlite_session)
 
     def test_rename_document_raises_when_document_is_missing(self, sqlite_session: Session):
         dataset = _dataset_row()
         sqlite_session.add(dataset)
         sqlite_session.commit()
-        with patch("services.dataset_service.current_user", _account()):
-            with pytest.raises(ValueError, match="Document not found"):
-                DocumentService.rename_document(dataset.id, "doc-1", "New Name", sqlite_session)
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            pytest.raises(ValueError, match="Document not found"),
+        ):
+            DocumentService.rename_document(dataset.id, "doc-1", "New Name", sqlite_session)
 
     def test_rename_document_rejects_cross_tenant_access(self, sqlite_session: Session):
         dataset = _dataset_row()
         document = _document_row(tenant_id="tenant-other")
         sqlite_session.add_all([dataset, document])
         sqlite_session.commit()
-        with patch("services.dataset_service.current_user", _account()):
-            with pytest.raises(ValueError, match="No permission"):
-                DocumentService.rename_document(dataset.id, document.id, "New Name", sqlite_session)
+        with (
+            patch("services.dataset_service.current_user", _account()),
+            pytest.raises(ValueError, match="No permission"),
+        ):
+            DocumentService.rename_document(dataset.id, document.id, "New Name", sqlite_session)
 
     def test_rename_document_updates_document_metadata_and_upload_file_name(self, sqlite_session: Session):
         dataset = _dataset_row(built_in_field_enabled=True)
@@ -399,9 +405,9 @@ class TestDocumentServiceMutations:
         with (
             patch("services.dataset_service.current_user", _account()),
             patch("services.dataset_service.redis_client", retry_flags),
+            pytest.raises(ValueError, match="being retried"),
         ):
-            with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document("dataset-1", [document], sqlite_session)
+            DocumentService.retry_document("dataset-1", [document], sqlite_session)
 
     def test_retry_document_leaves_batch_unchanged_when_later_document_is_already_being_retried(
         self, sqlite_session: Session
@@ -417,13 +423,13 @@ class TestDocumentServiceMutations:
             patch("services.dataset_service.current_user", _account()),
             patch("services.dataset_service.redis_client", retry_flags),
             patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+            pytest.raises(ValueError, match="being retried"),
         ):
-            with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document(
-                    "dataset-1",
-                    [first_document, second_document],
-                    sqlite_session,
-                )
+            DocumentService.retry_document(
+                "dataset-1",
+                [first_document, second_document],
+                sqlite_session,
+            )
 
         assert first_document.indexing_status == IndexingStatus.ERROR
         assert second_document.indexing_status == IndexingStatus.ERROR
@@ -448,9 +454,9 @@ class TestDocumentServiceMutations:
         with (
             patch("services.dataset_service.current_user", _account()),
             patch("services.dataset_service.redis_client", retry_flags),
+            pytest.raises(ValueError, match="being retried"),
         ):
-            with pytest.raises(ValueError, match="being retried"):
-                DocumentService.retry_document("dataset-1", documents, sqlite_session)
+            DocumentService.retry_document("dataset-1", documents, sqlite_session)
 
         assert retry_flags.values[first_retry_key] == "new-owner"
         assert retry_flags.values[second_retry_key] == "other-request"
@@ -469,9 +475,9 @@ class TestDocumentServiceMutations:
             patch("services.dataset_service.current_user", _account()),
             patch("services.dataset_service.redis_client", retry_flags),
             patch("services.dataset_service.retry_document_indexing_task") as retry_task,
+            pytest.raises(RuntimeError, match="database unavailable"),
         ):
-            with pytest.raises(RuntimeError, match="database unavailable"):
-                DocumentService.retry_document("dataset-1", [document], sqlite_session)
+            DocumentService.retry_document("dataset-1", [document], sqlite_session)
         event.remove(sqlite_session, "before_commit", fail_commit)
 
         assert retry_flags.values == {}
@@ -680,11 +686,11 @@ class TestDocumentServiceSaveDocumentWithoutDatasetId:
                 return_value=_make_features(enabled=True, plan=CloudPlan.SANDBOX),
             ),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
+            pytest.raises(ValueError, match="does not support batch upload"),
         ):
-            with pytest.raises(ValueError, match="does not support batch upload"):
-                DocumentService.save_document_without_dataset_id(
-                    "tenant-1", knowledge_config, account_context, unbound_session
-                )
+            DocumentService.save_document_without_dataset_id(
+                "tenant-1", knowledge_config, account_context, unbound_session
+            )
 
         check_quota.assert_not_called()
 
@@ -713,14 +719,16 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
                 )
             ),
         )
-        with patch.object(DatasetService, "check_dataset_model_setting") as check_model_setting:
-            with pytest.raises(NotFound, match="Document not found"):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with (
+            patch.object(DatasetService, "check_dataset_model_setting") as check_model_setting,
+            pytest.raises(NotFound, match="Document not found"),
+        ):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
         check_model_setting.assert_called_once_with(dataset)
 
@@ -741,14 +749,16 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
                 )
             ),
         )
-        with patch.object(DatasetService, "check_dataset_model_setting"):
-            with pytest.raises(ValueError, match="Document is not available"):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with (
+            patch.object(DatasetService, "check_dataset_model_setting"),
+            pytest.raises(ValueError, match="Document is not available"),
+        ):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_update_document_with_dataset_id_upload_file_process_rule_and_name_override(
         self, account_context, sqlite_session: Session
@@ -860,14 +870,16 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             ),
         )
 
-        with patch.object(DatasetService, "check_dataset_model_setting"):
-            with pytest.raises(ValueError, match="Data source binding not found"):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with (
+            patch.object(DatasetService, "check_dataset_model_setting"),
+            pytest.raises(ValueError, match="Data source binding not found"),
+        ):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_update_document_with_dataset_id_website_crawl_updates_segments_and_dispatches_task(
         self, account_context, sqlite_session: Session
@@ -1085,14 +1097,16 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(file_ids=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)):
-            with pytest.raises(ValueError, match="File source info is required"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
+        with (
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
+            pytest.raises(ValueError, match="File source info is required"),
+        ):
+            DocumentService.save_document_with_dataset_id(
+                dataset,
+                knowledge_config,
+                account_context,
+                session=unbound_session,
+            )
 
     def test_save_document_with_dataset_id_blocks_batch_upload_for_sandbox_plan(
         self, account_context, unbound_session: Session
@@ -1106,14 +1120,14 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
                 return_value=_make_features(enabled=True, plan=CloudPlan.SANDBOX),
             ),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
+            pytest.raises(ValueError, match="does not support batch upload"),
         ):
-            with pytest.raises(ValueError, match="does not support batch upload"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
+            DocumentService.save_document_with_dataset_id(
+                dataset,
+                knowledge_config,
+                account_context,
+                session=unbound_session,
+            )
 
         check_quota.assert_not_called()
 
@@ -1125,14 +1139,14 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
             patch("services.dataset_service.dify_config.BATCH_UPLOAD_LIMIT", 1),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
+            pytest.raises(ValueError, match="batch upload limit of 1"),
         ):
-            with pytest.raises(ValueError, match="batch upload limit of 1"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
+            DocumentService.save_document_with_dataset_id(
+                dataset,
+                knowledge_config,
+                account_context,
+                session=unbound_session,
+            )
 
         check_quota.assert_not_called()
 
@@ -1168,14 +1182,16 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         dataset = _dataset_row()
         knowledge_config = _make_upload_knowledge_config(data_source=None)
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
-            with pytest.raises(ValueError, match="Data source is required when creating new documents"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
+        with (
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            pytest.raises(ValueError, match="Data source is required when creating new documents"),
+        ):
+            DocumentService.save_document_with_dataset_id(
+                dataset,
+                knowledge_config,
+                account_context,
+                session=unbound_session,
+            )
 
     def test_save_document_with_dataset_id_requires_existing_process_rule_for_custom_mode(
         self, account_context, sqlite_session: Session
@@ -1188,14 +1204,16 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             process_rule=ProcessRule(mode="custom"),
         )
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
-            with pytest.raises(ValueError, match="No process rule found"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with (
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            pytest.raises(ValueError, match="No process rule found"),
+        ):
+            DocumentService.save_document_with_dataset_id(
+                dataset,
+                knowledge_config,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_save_document_with_dataset_id_rejects_invalid_indexing_technique(
         self, account_context, unbound_session: Session
@@ -1208,14 +1226,16 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             indexing_technique="broken-technique",
         )
 
-        with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
-            with pytest.raises(ValueError, match="Indexing technique is invalid"):
-                DocumentService.save_document_with_dataset_id(
-                    dataset,
-                    knowledge_config,
-                    account_context,
-                    session=unbound_session,
-                )
+        with (
+            patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)),
+            pytest.raises(ValueError, match="Indexing technique is invalid"),
+        ):
+            DocumentService.save_document_with_dataset_id(
+                dataset,
+                knowledge_config,
+                account_context,
+                session=unbound_session,
+            )
 
     def test_save_document_with_dataset_id_returns_empty_for_invalid_process_rule_mode(
         self, account_context, unbound_session: Session
@@ -1576,14 +1596,16 @@ class TestDocumentServiceTenantAndUpdateEdges:
             data_source=DataSource(info_list=InfoList(data_source_type="upload_file")),
         )
 
-        with patch.object(DatasetService, "check_dataset_model_setting"):
-            with pytest.raises(ValueError, match="No file info list found"):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with (
+            patch.object(DatasetService, "check_dataset_model_setting"),
+            pytest.raises(ValueError, match="No file info list found"),
+        ):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_update_document_with_dataset_id_raises_when_upload_file_is_missing(
         self, account_context, sqlite_session: Session
@@ -1603,14 +1625,13 @@ class TestDocumentServiceTenantAndUpdateEdges:
             ),
         )
 
-        with patch.object(DatasetService, "check_dataset_model_setting"):
-            with pytest.raises(FileNotExistsError):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with patch.object(DatasetService, "check_dataset_model_setting"), pytest.raises(FileNotExistsError):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_update_document_with_dataset_id_requires_notion_info_list(self, account_context, sqlite_session: Session):
         dataset = _dataset_row()
@@ -1623,14 +1644,16 @@ class TestDocumentServiceTenantAndUpdateEdges:
             data_source=DataSource(info_list=InfoList(data_source_type="notion_import")),
         )
 
-        with patch.object(DatasetService, "check_dataset_model_setting"):
-            with pytest.raises(ValueError, match="No notion info list found"):
-                DocumentService.update_document_with_dataset_id(
-                    dataset,
-                    document_data,
-                    account_context,
-                    session=sqlite_session,
-                )
+        with (
+            patch.object(DatasetService, "check_dataset_model_setting"),
+            pytest.raises(ValueError, match="No notion info list found"),
+        ):
+            DocumentService.update_document_with_dataset_id(
+                dataset,
+                document_data,
+                account_context,
+                session=sqlite_session,
+            )
 
     def test_update_document_with_dataset_id_notion_import_updates_page_info(
         self, account_context, sqlite_session: Session
@@ -1776,11 +1799,11 @@ class TestDocumentServiceSaveWithoutDatasetBilling:
             patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=True)),
             patch("services.dataset_service.dify_config.BATCH_UPLOAD_LIMIT", "1"),
             patch.object(DocumentService, "check_documents_upload_quota") as check_quota,
+            pytest.raises(ValueError, match="batch upload limit of 1"),
         ):
-            with pytest.raises(ValueError, match="batch upload limit of 1"):
-                DocumentService.save_document_without_dataset_id(
-                    "tenant-1", knowledge_config, account_context, unbound_session
-                )
+            DocumentService.save_document_without_dataset_id(
+                "tenant-1", knowledge_config, account_context, unbound_session
+            )
 
         check_quota.assert_not_called()
 

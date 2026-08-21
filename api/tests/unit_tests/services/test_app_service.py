@@ -240,9 +240,11 @@ def test_unpublished_agent_app_access_cannot_be_enabled(
     commits: list[str] = []
     event.listen(sqlite_session, "after_commit", lambda _session: commits.append("commit"))
 
-    with patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False):
-        with pytest.raises(AgentAccessNotReadyError):
-            update_status(AppService(), app, True, session=sqlite_session)
+    with (
+        patch("services.app_service.agent_has_workflow_callable_active_snapshot", return_value=False),
+        pytest.raises(AgentAccessNotReadyError),
+    ):
+        update_status(AppService(), app, True, session=sqlite_session)
 
     assert app.enable_site is False
     assert app.enable_api is False
@@ -601,22 +603,22 @@ class TestAgentAppType:
         with (
             patch("services.app_service.current_user", _account_identity(str(uuid4()))),
             patch("services.app_service.app_was_updated.send"),
+            pytest.raises(AgentNameConflictError),
         ):
-            with pytest.raises(AgentNameConflictError):
-                AppService().update_app(
-                    app,
-                    {
-                        "name": "Existing Agent",
-                        "description": "agent app",
-                        "role": "research assistant",
-                        "icon_type": "emoji",
-                        "icon": "robot",
-                        "icon_background": "#fff",
-                        "use_icon_as_answer_icon": False,
-                        "max_active_requests": 0,
-                    },
-                    session=sqlite_session,
-                )
+            AppService().update_app(
+                app,
+                {
+                    "name": "Existing Agent",
+                    "description": "agent app",
+                    "role": "research assistant",
+                    "icon_type": "emoji",
+                    "icon": "robot",
+                    "icon_background": "#fff",
+                    "use_icon_as_answer_icon": False,
+                    "max_active_requests": 0,
+                },
+                session=sqlite_session,
+            )
 
         assert rollback_events == ["rollback"]
         sqlite_session.expire_all()
@@ -768,9 +770,9 @@ class TestAgentAppType:
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
             patch("services.app_service.remove_app_and_related_data_task.delay") as enqueue_app_cleanup,
+            pytest.raises(RuntimeError, match="commit failed"),
         ):
-            with pytest.raises(RuntimeError, match="commit failed"):
-                AppService().delete_app(app, session=sqlite_session)
+            AppService().delete_app(app, session=sqlite_session)
 
         retire_unowned.assert_not_called()
         enqueue_collection.assert_not_called()
@@ -857,9 +859,9 @@ class TestAgentAppType:
             patch("services.app_service.remove_app_and_related_data_task.delay", side_effect=error),
             patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
             patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+            pytest.raises(RuntimeError) as exc_info,
         ):
-            with pytest.raises(RuntimeError) as exc_info:
-                AppService().delete_app(app, session=sqlite_session)
+            AppService().delete_app(app, session=sqlite_session)
 
         assert exc_info.value is error
         retire_unowned.assert_not_called()

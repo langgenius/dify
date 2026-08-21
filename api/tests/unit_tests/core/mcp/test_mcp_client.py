@@ -404,36 +404,38 @@ class TestMCPClient:
             "X-Custom-Header": "test-value",
         }
 
-        with patch("core.mcp.mcp_client.streamablehttp_client") as mock_streamable_client:
-            with patch("core.mcp.mcp_client.ClientSession") as mock_client_session:
-                # Setup mocks
-                mock_read_stream = Mock()
-                mock_write_stream = Mock()
-                mock_client_context = Mock()
-                mock_streamable_client.return_value.__enter__.return_value = (
-                    mock_read_stream,
-                    mock_write_stream,
-                    mock_client_context,
-                )
+        with (
+            patch("core.mcp.mcp_client.streamablehttp_client") as mock_streamable_client,
+            patch("core.mcp.mcp_client.ClientSession") as mock_client_session,
+        ):
+            # Setup mocks
+            mock_read_stream = Mock()
+            mock_write_stream = Mock()
+            mock_client_context = Mock()
+            mock_streamable_client.return_value.__enter__.return_value = (
+                mock_read_stream,
+                mock_write_stream,
+                mock_client_context,
+            )
 
-                mock_session = Mock()
-                mock_client_session.return_value.__enter__.return_value = mock_session
+            mock_session = Mock()
+            mock_client_session.return_value.__enter__.return_value = mock_session
 
-                client = MCPClient(
-                    server_url="http://test.example.com/mcp",
-                    headers=custom_headers,
-                    timeout=30.0,
-                    sse_read_timeout=60.0,
-                )
-                client._initialize()
+            client = MCPClient(
+                server_url="http://test.example.com/mcp",
+                headers=custom_headers,
+                timeout=30.0,
+                sse_read_timeout=60.0,
+            )
+            client._initialize()
 
-                # Verify headers were passed
-                mock_streamable_client.assert_called_once_with(
-                    url="http://test.example.com/mcp",
-                    headers=custom_headers,
-                    timeout=30.0,
-                    sse_read_timeout=60.0,
-                )
+            # Verify headers were passed
+            mock_streamable_client.assert_called_once_with(
+                url="http://test.example.com/mcp",
+                headers=custom_headers,
+                timeout=30.0,
+                sse_read_timeout=60.0,
+            )
 
 
 class TestMCPClientWithAuthRetry:

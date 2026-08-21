@@ -112,10 +112,12 @@ def test_trace_config_mutations_require_edit_permission(
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)
 
-    with app.test_request_context(path, method=method_name.upper(), json=payload):
-        with _patch_payload(payload):
-            with pytest.raises(Forbidden):
-                getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
+    with (
+        app.test_request_context(path, method=method_name.upper(), json=payload),
+        _patch_payload(payload),
+        pytest.raises(Forbidden),
+    ):
+        getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
 
     service_mock.assert_not_called()
 
@@ -185,9 +187,11 @@ def test_trace_config_mutations_require_rbac_permission(
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)
 
-    with app.test_request_context(path, method=method_name.upper(), json=payload):
-        with _patch_payload(payload):
-            with pytest.raises(Forbidden):
-                getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
+    with (
+        app.test_request_context(path, method=method_name.upper(), json=payload),
+        _patch_payload(payload),
+        pytest.raises(Forbidden),
+    ):
+        getattr(ops_trace_module.TraceAppConfigApi(), method_name)(app_id="app-123")
 
     service_mock.assert_not_called()

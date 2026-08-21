@@ -30,14 +30,16 @@ class TestToolTransformService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
-        with patch("services.tools.tools_transform_service.dify_config") as mock_dify_config:
-            with patch("core.plugin.plugin_service.dify_config", new=mock_dify_config):
-                # Setup default mock returns
-                mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
+        with (
+            patch("services.tools.tools_transform_service.dify_config") as mock_dify_config,
+            patch("core.plugin.plugin_service.dify_config", new=mock_dify_config),
+        ):
+            # Setup default mock returns
+            mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
 
-                yield {
-                    "dify_config": mock_dify_config,
-                }
+            yield {
+                "dify_config": mock_dify_config,
+            }
 
     def test_get_plugin_icon_url_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """

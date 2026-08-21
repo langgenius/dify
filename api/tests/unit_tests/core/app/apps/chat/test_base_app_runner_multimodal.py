@@ -241,25 +241,27 @@ class TestBaseAppRunnerMultimodal:
             mime_type="image/png",
         )
 
-        with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
-            with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
-                file_session = MagicMock()
-                runner = MagicMock()
-                method = AppRunner._handle_multimodal_image_content
-                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
+        with (
+            patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class,
+            patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class,
+        ):
+            file_session = MagicMock()
+            runner = MagicMock()
+            method = AppRunner._handle_multimodal_image_content
+            runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                runner._handle_multimodal_image_content(
-                    session=file_session,
-                    content=content,
-                    message_id=mock_message_id,
-                    user_id=mock_user_id,
-                    tenant_id=mock_tenant_id,
-                    queue_manager=mock_queue_manager,
-                )
+            runner._handle_multimodal_image_content(
+                session=file_session,
+                content=content,
+                message_id=mock_message_id,
+                user_id=mock_user_id,
+                tenant_id=mock_tenant_id,
+                queue_manager=mock_queue_manager,
+            )
 
-                mock_mgr_class.assert_not_called()
-                mock_msg_file_class.assert_not_called()
-                mock_queue_manager.publish.assert_not_called()
+            mock_mgr_class.assert_not_called()
+            mock_msg_file_class.assert_not_called()
+            mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_error(
         self,

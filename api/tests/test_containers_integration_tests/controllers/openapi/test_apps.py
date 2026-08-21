@@ -151,15 +151,14 @@ class TestAppDescribe:
         missing_id = str(uuid4())
 
         api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{missing_id}"):
-            with pytest.raises(NotFound):
-                unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    app_id=missing_id,
-                    auth_data=auth_for(account),
-                    query=AppDescribeQuery(),
-                )
+        with app.test_request_context(f"/openapi/v1/apps/{missing_id}"), pytest.raises(NotFound):
+            unwrap(api.get)(
+                api,
+                db_session_with_containers,
+                app_id=missing_id,
+                auth_data=auth_for(account),
+                query=AppDescribeQuery(),
+            )
 
     def test_describe_api_disabled_app_is_404(
         self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
@@ -170,12 +169,11 @@ class TestAppDescribe:
         hidden = _create_app(db_session_with_containers, account, name="Hidden", enable_api=False)
 
         api = AppDescribeApi()
-        with app.test_request_context(f"/openapi/v1/apps/{hidden.id}"):
-            with pytest.raises(NotFound):
-                unwrap(api.get)(
-                    api,
-                    db_session_with_containers,
-                    app_id=hidden.id,
-                    auth_data=auth_for(account),
-                    query=AppDescribeQuery(),
-                )
+        with app.test_request_context(f"/openapi/v1/apps/{hidden.id}"), pytest.raises(NotFound):
+            unwrap(api.get)(
+                api,
+                db_session_with_containers,
+                app_id=hidden.id,
+                auth_data=auth_for(account),
+                query=AppDescribeQuery(),
+            )

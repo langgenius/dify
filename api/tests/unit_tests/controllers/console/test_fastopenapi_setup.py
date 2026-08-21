@@ -210,13 +210,15 @@ def test_console_setup_translates_service_errors_to_controller_errors(
             "language": "en-US",
         }
     )
-    with app.test_request_context(
-        "/console/api/setup",
-        method="POST",
-        headers={"CF-Connecting-IP": "203.0.113.7"},
+    with (
+        app.test_request_context(
+            "/console/api/setup",
+            method="POST",
+            headers={"CF-Connecting-IP": "203.0.113.7"},
+        ),
+        pytest.raises(expected_controller_error) as raised,
     ):
-        with pytest.raises(expected_controller_error) as raised:
-            setup_controller.setup_system(payload)
+        setup_controller.setup_system(payload)
 
     assert type(raised.value) is expected_controller_error
     mark_setup_completed.assert_not_called()

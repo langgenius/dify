@@ -205,9 +205,11 @@ def test_sync_draft_workflow_invalid_content_type(app: Flask, monkeypatch: pytes
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"):
-        with pytest.raises(HTTPException) as exc:
-            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+    with (
+        app.test_request_context("/apps/app/workflows/draft", method="POST", data="x", content_type="text/html"),
+        pytest.raises(HTTPException) as exc,
+    ):
+        handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert exc.value.code == 415
 
@@ -353,13 +355,15 @@ def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.Monke
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/app/workflows/draft",
-        method="POST",
-        json={"graph": {}, "features": {}, "hash": "h"},
+    with (
+        app.test_request_context(
+            "/apps/app/workflows/draft",
+            method="POST",
+            json={"graph": {}, "features": {}, "hash": "h"},
+        ),
+        pytest.raises(DraftWorkflowNotSync),
     ):
-        with pytest.raises(DraftWorkflowNotSync):
-            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+        handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
 
 def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -374,13 +378,15 @@ def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: 
     api = workflow_module.DraftWorkflowApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/app/workflows/draft",
-        method="POST",
-        json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+    with (
+        app.test_request_context(
+            "/apps/app/workflows/draft",
+            method="POST",
+            json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+        ),
+        pytest.raises(InvalidArgumentError) as exc,
     ):
-        with pytest.raises(InvalidArgumentError) as exc:
-            handler(api, "t1", app_model=SimpleNamespace(id="app"))
+        handler(api, "t1", app_model=SimpleNamespace(id="app"))
 
     assert exc.value.description == "description too long"
 
@@ -431,17 +437,19 @@ def test_restore_published_workflow_to_draft_not_found(app: Flask, monkeypatch: 
     api = workflow_module.DraftWorkflowRestoreApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/app/workflows/published-workflow/restore",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/apps/app/workflows/published-workflow/restore",
+            method="POST",
+        ),
+        pytest.raises(NotFound),
     ):
-        with pytest.raises(NotFound):
-            handler(
-                api,
-                "t1",
-                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
-                workflow_id="published-workflow",
-            )
+        handler(
+            api,
+            "t1",
+            app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+            workflow_id="published-workflow",
+        )
 
 
 def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
@@ -463,17 +471,19 @@ def test_restore_published_workflow_to_draft_returns_400_for_draft_source(
     api = workflow_module.DraftWorkflowRestoreApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/app/workflows/draft-workflow/restore",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/apps/app/workflows/draft-workflow/restore",
+            method="POST",
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            handler(
-                api,
-                "t1",
-                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
-                workflow_id="draft-workflow",
-            )
+        handler(
+            api,
+            "t1",
+            app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+            workflow_id="draft-workflow",
+        )
 
     assert exc.value.code == 400
     assert exc.value.description == workflow_module.RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE
@@ -495,17 +505,19 @@ def test_restore_published_workflow_to_draft_returns_400_for_invalid_structure(
     api = workflow_module.DraftWorkflowRestoreApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/app/workflows/published-workflow/restore",
-        method="POST",
+    with (
+        app.test_request_context(
+            "/apps/app/workflows/published-workflow/restore",
+            method="POST",
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            handler(
-                api,
-                "t1",
-                app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
-                workflow_id="published-workflow",
-            )
+        handler(
+            api,
+            "t1",
+            app_model=SimpleNamespace(id="app", tenant_id="tenant-1"),
+            workflow_id="published-workflow",
+        )
 
     assert exc.value.code == 400
     assert exc.value.description == "invalid workflow graph"
@@ -801,13 +813,15 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
     api = workflow_module.AdvancedChatDraftWorkflowRunApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/app/advanced-chat/workflows/draft/run",
-        method="POST",
-        json={"inputs": {}},
+    with (
+        app.test_request_context(
+            "/apps/app/advanced-chat/workflows/draft/run",
+            method="POST",
+            json={"inputs": {}},
+        ),
+        pytest.raises(NotFound),
     ):
-        with pytest.raises(NotFound):
-            handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
+        handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
 
 
 @pytest.mark.parametrize(
@@ -834,9 +848,11 @@ def test_trigger_run_loads_draft_with_request_session(
     app_model = SimpleNamespace(id="app-1")
     handler = inspect.unwrap(resource.post)
 
-    with app.test_request_context("/", method="POST", json=payload):
-        with pytest.raises(ValueError, match="Workflow not found"):
-            handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
+    with (
+        app.test_request_context("/", method="POST", json=payload),
+        pytest.raises(ValueError, match="Workflow not found"),
+    ):
+        handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
 
     get_draft_workflow.assert_called_once_with(app_model, session=session)
 
@@ -984,13 +1000,15 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
     api = workflow_module.WorkflowOnlineUsersApi()
     handler = inspect.unwrap(api.post)
 
-    with app.test_request_context(
-        "/apps/workflows/online-users",
-        method="POST",
-        json={"app_ids": excessive_ids},
+    with (
+        app.test_request_context(
+            "/apps/workflows/online-users",
+            method="POST",
+            json={"app_ids": excessive_ids},
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            handler(api, "tenant-1", SimpleNamespace(id="account-1"))
+        handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert exc.value.code == 400
     assert exc.value.description is not None

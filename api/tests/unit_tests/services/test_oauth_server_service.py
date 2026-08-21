@@ -182,9 +182,11 @@ class TestOAuthServerServiceTokenOperations:
         expected_user = Account(name="Test User", email="user@example.com")
         expected_user.id = "user-88"
 
-        with Session(sqlite_engine) as session:
-            with patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load:
-                result = OAuthServerService.validate_oauth_access_token("client-1", "access-token", session)
-                mock_load.assert_called_once_with("user-88", session)
+        with (
+            Session(sqlite_engine) as session,
+            patch("services.oauth_server.AccountService.load_user", return_value=expected_user) as mock_load,
+        ):
+            result = OAuthServerService.validate_oauth_access_token("client-1", "access-token", session)
+            mock_load.assert_called_once_with("user-88", session)
 
         assert result is expected_user

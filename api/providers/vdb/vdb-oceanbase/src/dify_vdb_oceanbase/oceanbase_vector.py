@@ -437,12 +437,11 @@ class OceanBaseVector(BaseVector):
             ORDER BY score DESC
             LIMIT {top_k}"""
 
-            with self._client.engine.connect() as conn:
-                with conn.begin():
-                    result = conn.execute(text(full_sql), params)
-                    rows = result.fetchall()
+            with self._client.engine.connect() as conn, conn.begin():
+                result = conn.execute(text(full_sql), params)
+                rows = result.fetchall()
 
-                    return self._process_search_results(rows, score_threshold=score_threshold)
+                return self._process_search_results(rows, score_threshold=score_threshold)
         except Exception as e:
             logger.exception(
                 "Failed to perform full-text search on collection '%s' with query '%s'",

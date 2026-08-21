@@ -325,9 +325,8 @@ class TestInstalledAppsListApi:
         api = module.InstalledAppsListApi()
         method = unwrap(api.get)
 
-        with app.test_request_context("/?cursor=not-a-cursor"):
-            with pytest.raises(BadRequest, match="Invalid cursor"):
-                method(api, tenant_id, current_user)
+        with app.test_request_context("/?cursor=not-a-cursor"), pytest.raises(BadRequest, match="Invalid cursor"):
+            method(api, tenant_id, current_user)
 
     def test_get_installed_apps_with_webapp_auth_enabled(
         self, app: Flask, current_user: MagicMock, tenant_id: str, installed_app: MagicMock
@@ -519,9 +518,9 @@ class TestInstalledAppsListApi:
         with (
             app.test_request_context("/"),
             patch.object(module.db, "session", session),
+            pytest.raises(ValueError, match="current_user.current_tenant must not be None"),
         ):
-            with pytest.raises(ValueError, match="current_user.current_tenant must not be None"):
-                method(api, tenant_id, current_user)
+            method(api, tenant_id, current_user)
 
 
 class TestInstalledAppsCreateApi:
@@ -564,9 +563,9 @@ class TestInstalledAppsCreateApi:
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
             patch.object(module.db, "session", session),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
+            method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
 
     def test_post_app_not_public(self, app: Flask, tenant_id: str, payload_patch: PayloadPatch) -> None:
         api = module.InstalledAppsListApi()
@@ -585,9 +584,9 @@ class TestInstalledAppsCreateApi:
             app.test_request_context("/", json={"app_id": "a1"}),
             payload_patch({"app_id": "a1"}),
             patch.object(module.db, "session", session),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
+            method(api, module.InstalledAppCreatePayload.model_validate({"app_id": "a1"}), tenant_id)
 
 
 class TestInstalledAppApi:
@@ -633,9 +632,9 @@ class TestInstalledAppApi:
         with (
             app.test_request_context("/"),
             patch.object(module.db, "session", session),
+            pytest.raises(NotFound, match="Installed app not found"),
         ):
-            with pytest.raises(NotFound, match="Installed app not found"):
-                method(api, tenant_id, current_user, installed_app)
+            method(api, tenant_id, current_user, installed_app)
 
     def test_delete_success(self, tenant_id: str, installed_app: MagicMock) -> None:
         api = module.InstalledAppApi()

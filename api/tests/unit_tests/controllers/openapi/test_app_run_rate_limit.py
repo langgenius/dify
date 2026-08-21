@@ -15,15 +15,13 @@ from services.errors.llm import InvokeRateLimitError
 
 def test_translate_maps_app_concurrency_to_too_many_requests():
     # Regression guard: this used to fall through to a 500 (it was not caught here).
-    with pytest.raises(TooManyRequests) as exc:
-        with _translate_service_errors():
-            raise AppInvokeQuotaExceededError("internal: client_id=abc max=10")
+    with pytest.raises(TooManyRequests) as exc, _translate_service_errors():
+        raise AppInvokeQuotaExceededError("internal: client_id=abc max=10")
     assert exc.value.code == 429
 
 
 def test_translate_maps_workflow_quota_to_rate_limit_error():
-    with pytest.raises(InvokeRateLimitHttpError) as exc:
-        with _translate_service_errors():
-            raise InvokeRateLimitError("workflow quota exhausted")
+    with pytest.raises(InvokeRateLimitHttpError) as exc, _translate_service_errors():
+        raise InvokeRateLimitError("workflow quota exhausted")
     assert exc.value.error_code == "rate_limit_error"
     assert exc.value.code == 429

@@ -144,9 +144,8 @@ class TestMemberCancelInviteApiWithContainers:
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
 
-        with flask_app_with_containers.test_request_context("/"):
-            with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+        with flask_app_with_containers.test_request_context("/"), pytest.raises(HTTPException):
+            method(api, current_user, str(uuid4()))
 
     def test_cancel_cannot_operate_self(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -245,9 +244,8 @@ class TestMemberUpdateRoleApiWithContainers:
         factory = WorkspaceMembersIntegrationFactory
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
 
-        with flask_app_with_containers.test_request_context("/", json={"role": "normal"}):
-            with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+        with flask_app_with_containers.test_request_context("/", json={"role": "normal"}), pytest.raises(HTTPException):
+            method(api, current_user, str(uuid4()))
 
 
 class TestOwnerTransferApiWithContainers:
@@ -259,9 +257,11 @@ class TestOwnerTransferApiWithContainers:
         member = factory.create_account(db_session_with_containers, email_prefix="member")
         token = factory.create_owner_transfer_token(current_user)
 
-        with flask_app_with_containers.test_request_context("/", json={"token": token}):
-            with pytest.raises(MemberNotInTenantError):
-                method(api, current_user, member.id)
+        with (
+            flask_app_with_containers.test_request_context("/", json={"token": token}),
+            pytest.raises(MemberNotInTenantError),
+        ):
+            method(api, current_user, member.id)
 
     def test_member_not_found(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()
@@ -270,9 +270,8 @@ class TestOwnerTransferApiWithContainers:
         tenant, current_user = factory.create_owner_workspace(db_session_with_containers)
         token = factory.create_owner_transfer_token(current_user)
 
-        with flask_app_with_containers.test_request_context("/", json={"token": token}):
-            with pytest.raises(HTTPException):
-                method(api, current_user, str(uuid4()))
+        with flask_app_with_containers.test_request_context("/", json={"token": token}), pytest.raises(HTTPException):
+            method(api, current_user, str(uuid4()))
 
     def test_transfer_success(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = OwnerTransfer()

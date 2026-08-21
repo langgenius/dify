@@ -378,9 +378,11 @@ class TestCurrentWorkspaceSummaryApi:
         tenant = make_tenant(status=TenantStatus.ARCHIVE)
         user = make_account_with_tenant(tenant)
 
-        with app.test_request_context("/workspaces/current/summary"):
-            with pytest.raises(CurrentWorkspaceArchivedError) as exc_info:
-                method(api, MagicMock(), user)
+        with (
+            app.test_request_context("/workspaces/current/summary"),
+            pytest.raises(CurrentWorkspaceArchivedError) as exc_info,
+        ):
+            method(api, MagicMock(), user)
 
         assert exc_info.value.code == HTTPStatus.CONFLICT
         assert exc_info.value.error_code == "current_workspace_archived"
@@ -439,9 +441,9 @@ class TestSwitchWorkspaceApi:
         with (
             app.test_request_context("/workspaces/switch", json=payload),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant", side_effect=Exception),
+            pytest.raises(AccountNotLinkTenantError),
         ):
-            with pytest.raises(AccountNotLinkTenantError):
-                method(api, MagicMock(), user)
+            method(api, MagicMock(), user)
 
     def test_switch_tenant_not_found(self, app: Flask, workspace_session: scoped_session[Session]):
         api = SwitchWorkspaceApi()
@@ -451,9 +453,9 @@ class TestSwitchWorkspaceApi:
         with (
             app.test_request_context("/workspaces/switch", json=payload),
             patch("controllers.console.workspace.workspace.TenantService.switch_tenant"),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, workspace_session, user)
+            method(api, workspace_session, user)
 
 
 class TestCustomConfigWorkspaceApi:
@@ -543,27 +545,24 @@ class TestWebappLogoWorkspaceApi:
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
         user = make_account()
-        with app.test_request_context("/upload", data={}):
-            with pytest.raises(NoFileUploadedError):
-                method(api, user)
+        with app.test_request_context("/upload", data={}), pytest.raises(NoFileUploadedError):
+            method(api, user)
 
     def test_too_many_files(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
         data = {"file": MagicMock(), "extra": MagicMock()}
         user = make_account()
-        with app.test_request_context("/upload", data=data):
-            with pytest.raises(TooManyFilesError):
-                method(api, user)
+        with app.test_request_context("/upload", data=data), pytest.raises(TooManyFilesError):
+            method(api, user)
 
     def test_invalid_extension(self, app: Flask):
         api = WebappLogoWorkspaceApi()
         method = unwrap(api.post)
         file = MagicMock(filename="test.txt")
         user = make_account()
-        with app.test_request_context("/upload", data={"file": file}):
-            with pytest.raises(UnsupportedFileTypeError):
-                method(api, user)
+        with app.test_request_context("/upload", data={"file": file}), pytest.raises(UnsupportedFileTypeError):
+            method(api, user)
 
     def test_upload_success(self, app: Flask):
         api = WebappLogoWorkspaceApi()
@@ -588,9 +587,11 @@ class TestWebappLogoWorkspaceApi:
         method = unwrap(api.post)
         file = FileStorage(stream=BytesIO(b"data"), filename="", content_type="image/png")
         user = make_account()
-        with app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"):
-            with pytest.raises(FilenameNotExistsError):
-                method(api, user)
+        with (
+            app.test_request_context("/upload", data={"file": file}, content_type="multipart/form-data"),
+            pytest.raises(FilenameNotExistsError),
+        ):
+            method(api, user)
 
     def test_file_too_large(self, app: Flask):
         api = WebappLogoWorkspaceApi()
@@ -654,9 +655,8 @@ class TestWorkspaceInfoApi:
         api = WorkspaceInfoApi()
         method = unwrap(api.post)
         payload = {"name": "X"}
-        with app.test_request_context("/workspaces/info", json=payload):
-            with pytest.raises(ValueError):
-                method(api, MagicMock(), None)
+        with app.test_request_context("/workspaces/info", json=payload), pytest.raises(ValueError):
+            method(api, MagicMock(), None)
 
 
 class TestWorkspacePermissionApi:
@@ -680,6 +680,5 @@ class TestWorkspacePermissionApi:
     def test_no_current_tenant(self, app: Flask):
         api = WorkspacePermissionApi()
         method = unwrap(api.get)
-        with app.test_request_context("/permission"):
-            with pytest.raises(ValueError):
-                method(api, None)
+        with app.test_request_context("/permission"), pytest.raises(ValueError):
+            method(api, None)

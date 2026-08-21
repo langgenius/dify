@@ -44,9 +44,9 @@ def database_session(sqlite_engine: Engine) -> Iterator[Session]:
     with (
         patch.object(session_factory, "create_session", session_maker),
         patch.object(type(db), "engine", new_callable=PropertyMock, return_value=sqlite_engine),
+        session_maker() as session,
     ):
-        with session_maker() as session:
-            yield session
+        yield session
 
 
 def _controller(provider_id: str = "provider-1") -> WorkflowToolProviderController:

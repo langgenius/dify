@@ -480,11 +480,13 @@ class TestDatasetCollectionBindingServiceIntegration:
     def test_get_dataset_collection_binding_by_id_and_type_raises_when_missing(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
     ):
-        with flask_app_with_containers.app_context():
-            with pytest.raises(ValueError, match="Dataset collection binding not found"):
-                DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
-                    str(uuid4()), session=db_session_with_containers
-                )
+        with (
+            flask_app_with_containers.app_context(),
+            pytest.raises(ValueError, match="Dataset collection binding not found"),
+        ):
+            DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                str(uuid4()), session=db_session_with_containers
+            )
 
     def test_get_dataset_collection_binding_by_id_and_type_returns_binding(self, db_session_with_containers: Session):
         binding = DatasetPermissionIntegrationFactory.create_collection_binding(
@@ -593,15 +595,17 @@ class TestDatasetPermissionServiceIntegration:
         user = SimpleNamespace(is_dataset_editor=True, is_dataset_operator=True)
         dataset = SimpleNamespace(id="dataset-1", permission=DatasetPermissionEnum.PARTIAL_TEAM)
 
-        with patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]):
-            with pytest.raises(ValueError, match="cannot change the dataset permissions"):
-                DatasetPermissionService.check_permission(
-                    user,
-                    dataset,
-                    DatasetPermissionEnum.PARTIAL_TEAM,
-                    [{"user_id": "user-2"}],
-                    session=db_session_with_containers,
-                )
+        with (
+            patch.object(DatasetPermissionService, "get_dataset_partial_member_list", return_value=["user-1"]),
+            pytest.raises(ValueError, match="cannot change the dataset permissions"),
+        ):
+            DatasetPermissionService.check_permission(
+                user,
+                dataset,
+                DatasetPermissionEnum.PARTIAL_TEAM,
+                [{"user_id": "user-2"}],
+                session=db_session_with_containers,
+            )
 
     def test_check_permission_allows_dataset_operator_when_member_list_is_unchanged(
         self, db_session_with_containers: Session

@@ -328,9 +328,8 @@ class TestModelProviderCredentialApi:
         api = ModelProviderCredentialApi()
         method = unwrap(api.get)
 
-        with app.test_request_context(f"/?credential_id={INVALID_UUID}"):
-            with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+        with app.test_request_context(f"/?credential_id={INVALID_UUID}"), pytest.raises(ValidationError):
+            method(api, "tenant1", provider="openai")
 
     def test_post_create_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -368,9 +367,9 @@ class TestModelProviderCredentialApi:
                 "controllers.console.workspace.model_providers.ModelProviderService.create_provider_credential",
                 side_effect=CredentialsValidateFailedError("bad"),
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                method(api, "tenant1", provider="openai")
+            method(api, "tenant1", provider="openai")
 
     def test_put_update_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -402,9 +401,8 @@ class TestModelProviderCredentialApi:
 
         payload = {"credential_id": INVALID_UUID, "credentials": {"a": "b"}}
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+        with app.test_request_context("/", json=payload), pytest.raises(ValidationError):
+            method(api, "tenant1", provider="openai")
 
     def test_delete_success(self, app: Flask):
         api = ModelProviderCredentialApi()
@@ -457,9 +455,8 @@ class TestModelProviderCredentialSwitchApi:
 
         payload = {"credential_id": INVALID_UUID}
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+        with app.test_request_context("/", json=payload), pytest.raises(ValidationError):
+            method(api, "tenant1", provider="openai")
 
 
 class TestModelProviderValidateApi:
@@ -528,9 +525,9 @@ class TestModelProviderIconApi:
                 "controllers.console.workspace.model_providers.ModelProviderService.get_model_provider_icon",
                 return_value=(None, None),
             ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                api.get("t1", "openai", "logo", "en")
+            api.get("t1", "openai", "logo", "en")
 
 
 class TestPreferredProviderTypeUpdateApi:
@@ -560,9 +557,8 @@ class TestPreferredProviderTypeUpdateApi:
 
         payload = {"preferred_provider_type": "invalid"}
 
-        with app.test_request_context("/", json=payload):
-            with pytest.raises(ValidationError):
-                method(api, "tenant1", provider="openai")
+        with app.test_request_context("/", json=payload), pytest.raises(ValidationError):
+            method(api, "tenant1", provider="openai")
 
 
 class TestModelProviderPaymentCheckoutUrlApi:
@@ -598,9 +594,8 @@ class TestModelProviderPaymentCheckoutUrlApi:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
-        with app.test_request_context("/"):
-            with pytest.raises(ValueError):
-                method(api, "tenant1", make_account(), provider="openai")
+        with app.test_request_context("/"), pytest.raises(ValueError):
+            method(api, "tenant1", make_account(), provider="openai")
 
     def test_permission_denied(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
@@ -614,6 +609,6 @@ class TestModelProviderPaymentCheckoutUrlApi:
                 "controllers.console.workspace.model_providers.BillingService.is_tenant_owner_or_admin",
                 side_effect=Forbidden(),
             ),
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, "tenant1", user, provider="anthropic")
+            method(api, "tenant1", user, provider="anthropic")

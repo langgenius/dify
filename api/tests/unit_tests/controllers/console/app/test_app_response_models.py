@@ -609,48 +609,47 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
         permission_keys=[],
     )
 
-    with app.test_request_context("/apps", method="POST", json={}):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
-            app_module.console_ns.payload = {
-                "name": "Created App",
-                "description": "Summary",
-                "mode": "advanced-chat",
-            }
-            monkeypatch.setattr(
-                app_module,
-                "AppService",
-                lambda: SimpleNamespace(create_app=lambda tenant_id, params, user, session: app_obj),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppPermissions,
-                "batch_get",
-                lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
-            )
-            initialize_rbac_task = MagicMock()
-            monkeypatch.setattr(
-                app_module,
-                "initialize_created_app_rbac_access_task",
-                initialize_rbac_task,
-            )
-            replace_whitelist = MagicMock()
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "replace_whitelist",
-                replace_whitelist,
-            )
+    with app.test_request_context("/apps", method="POST", json={}), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+        app_module.console_ns.payload = {
+            "name": "Created App",
+            "description": "Summary",
+            "mode": "advanced-chat",
+        }
+        monkeypatch.setattr(
+            app_module,
+            "AppService",
+            lambda: SimpleNamespace(create_app=lambda tenant_id, params, user, session: app_obj),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppPermissions,
+            "batch_get",
+            lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
+        )
+        initialize_rbac_task = MagicMock()
+        monkeypatch.setattr(
+            app_module,
+            "initialize_created_app_rbac_access_task",
+            initialize_rbac_task,
+        )
+        replace_whitelist = MagicMock()
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppAccess,
+            "replace_whitelist",
+            replace_whitelist,
+        )
 
-            resp, status = method(
-                app_module.AppListApi(),
-                app_module.CreateAppPayload(
-                    name="Created App",
-                    description="Summary",
-                    mode="advanced-chat",
-                ),
-                unbound_session,
-                "tenant-1",
-                SimpleNamespace(id="acct-1"),
-            )
+        resp, status = method(
+            app_module.AppListApi(),
+            app_module.CreateAppPayload(
+                name="Created App",
+                description="Summary",
+                mode="advanced-chat",
+            ),
+            unbound_session,
+            "tenant-1",
+            SimpleNamespace(id="acct-1"),
+        )
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
@@ -676,41 +675,40 @@ def test_app_list_api_attaches_permission_keys(app, app_module, sqlite_session: 
     pagination = SimpleNamespace(page=1, per_page=20, total=1, has_next=False, items=[app_obj])
     get_paginate_apps = MagicMock(return_value=pagination)
 
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(
-                app_module.AppService,
-                "get_paginate_apps",
-                get_paginate_apps,
-            )
-            monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        default_permission_keys=["app.preview", "app.acl.view_layout"],
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-1",
-                                permission_keys=["app.acl.view_layout", "app.acl.edit"],
-                            )
-                        ],
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(unrestricted=True, resource_ids=[]),
-            )
+    with app.test_request_context("/apps"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(
+            app_module.AppService,
+            "get_paginate_apps",
+            get_paginate_apps,
+        )
+        monkeypatch.setattr(
+            app_module.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                    default_permission_keys=["app.preview", "app.acl.view_layout"],
+                    overrides=[
+                        app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                            resource_id="app-1",
+                            permission_keys=["app.acl.view_layout", "app.acl.edit"],
+                        )
+                    ],
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppAccess,
+            "whitelist_resources",
+            lambda tenant_id, account_id: SimpleNamespace(unrestricted=True, resource_ids=[]),
+        )
 
-            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", sqlite_session)
+        resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", sqlite_session)
 
     assert status == 200
     params = get_paginate_apps.call_args.args[2]
@@ -737,26 +735,25 @@ def test_recent_app_list_api_returns_only_home_card_fields(app, app_module, unbo
     )
     get_recent_apps = MagicMock(return_value=[recent_app])
 
-    with app.test_request_context("/apps/recent?limit=8"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
-            monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-1",
-                                permission_keys=["app.acl.monitor"],
-                            )
-                        ]
-                    )
-                ),
-            )
+    with app.test_request_context("/apps/recent?limit=8"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", False)
+        monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                    overrides=[
+                        app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                            resource_id="app-1",
+                            permission_keys=["app.acl.monitor"],
+                        )
+                    ]
+                )
+            ),
+        )
 
-            resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", unbound_session)
+        resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", unbound_session)
 
     assert status == 200
     assert resp == {
@@ -803,29 +800,28 @@ def test_recent_app_list_api_applies_rbac_visibility_filter(app, app_module, unb
         method = method.__wrapped__
 
     get_recent_apps = MagicMock(return_value=[])
-    with app.test_request_context("/apps/recent"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
-                        permission_keys=["app.create_and_management"]
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(
-                    unrestricted=False,
-                    resource_ids=["app-shared"],
-                ),
-            )
+    with app.test_request_context("/apps/recent"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(app_module.AppService, "get_recent_apps", get_recent_apps)
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
+                    permission_keys=["app.create_and_management"]
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppAccess,
+            "whitelist_resources",
+            lambda tenant_id, account_id: SimpleNamespace(
+                unrestricted=False,
+                resource_ids=["app-shared"],
+            ),
+        )
 
-            resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", unbound_session)
+        resp, status = method(app_module.RecentAppListApi(), "tenant-1", "acct-1", unbound_session)
 
     assert status == 200
     assert resp == {"data": []}
@@ -844,31 +840,30 @@ def test_app_list_api_limits_to_apps_created_by_current_user_without_view_permis
     pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
     get_paginate_apps = MagicMock(return_value=pagination)
 
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
-                        permission_keys=["app.create_and_management"]
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-not-permitted"]),
-            )
-            monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
-            )
+    with app.test_request_context("/apps"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+        monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                workspace=app_module.enterprise_rbac_service.WorkspacePermissionSnapshot(
+                    permission_keys=["app.create_and_management"]
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppAccess,
+            "whitelist_resources",
+            lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-shared", "app-not-permitted"]),
+        )
+        monkeypatch.setattr(
+            app_module.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
 
-            resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
+        resp, status = method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
 
     assert status == 200
     assert resp["data"] == []
@@ -888,46 +883,45 @@ def test_app_list_api_limits_to_preview_overrides_without_manage_own_permission(
     pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
     get_paginate_apps = MagicMock(return_value=pagination)
 
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-acl-shared",
-                                permission_keys=["app.acl.preview"],
-                            ),
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-full",
-                                permission_keys=["app.full_access"],
-                            ),
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-shared",
-                                permission_keys=["app.preview"],
-                            ),
-                        ]
-                    )
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(
-                    resource_ids=["app-shared", "app-acl-shared", "app-full", "app-whitelist-only"]
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
-            )
+    with app.test_request_context("/apps"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+        monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+                app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                    overrides=[
+                        app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                            resource_id="app-acl-shared",
+                            permission_keys=["app.acl.preview"],
+                        ),
+                        app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                            resource_id="app-full",
+                            permission_keys=["app.full_access"],
+                        ),
+                        app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                            resource_id="app-shared",
+                            permission_keys=["app.preview"],
+                        ),
+                    ]
+                )
+            ),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppAccess,
+            "whitelist_resources",
+            lambda tenant_id, account_id: SimpleNamespace(
+                resource_ids=["app-shared", "app-acl-shared", "app-full", "app-whitelist-only"]
+            ),
+        )
+        monkeypatch.setattr(
+            app_module.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
 
-            method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
+        method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
 
     params = get_paginate_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-acl-shared", "app-full", "app-shared", "app-whitelist-only"]
@@ -945,27 +939,26 @@ def test_app_list_api_returns_no_apps_without_workspace_or_resource_view_permiss
     pagination = SimpleNamespace(page=1, per_page=20, total=0, has_next=False, items=[])
     get_paginate_apps = MagicMock(return_value=pagination)
 
-    with app.test_request_context("/apps"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
-            monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(),
-            )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "whitelist_resources",
-                lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-not-permitted"]),
-            )
-            monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
-            )
+    with app.test_request_context("/apps"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(app_module.AppService, "get_paginate_apps", get_paginate_apps)
+        monkeypatch.setattr(app_module.dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(),
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppAccess,
+            "whitelist_resources",
+            lambda tenant_id, account_id: SimpleNamespace(resource_ids=["app-not-permitted"]),
+        )
+        monkeypatch.setattr(
+            app_module.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
 
-            method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
+        method(app_module.AppListApi(), "tenant-1", "acct-1", unbound_session)
 
     params = get_paginate_apps.call_args.args[2]
     assert params.accessible_app_ids == ["app-not-permitted"]
@@ -988,46 +981,45 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module, u
         permission_keys=[],
     )
 
-    with app.test_request_context("/apps/app-1"):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-            get_app = MagicMock(return_value=app_obj)
-            monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=get_app))
-            monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
-            )
-            get_permissions = MagicMock(
-                return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
-                    app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
-                        overrides=[
-                            app_module.enterprise_rbac_service.ResourcePermissionKeys(
-                                resource_id="app-1",
-                                permission_keys=[
-                                    "app.acl.view_layout",
-                                    "app.acl.edit",
-                                    "app.acl.deploy",
-                                    "app.acl.monitor",
-                                ],
-                            )
-                        ]
-                    )
+    with app.test_request_context("/apps/app-1"), pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        get_app = MagicMock(return_value=app_obj)
+        monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=get_app))
+        monkeypatch.setattr(
+            app_module.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
+        get_permissions = MagicMock(
+            return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
+                app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
+                    overrides=[
+                        app_module.enterprise_rbac_service.ResourcePermissionKeys(
+                            resource_id="app-1",
+                            permission_keys=[
+                                "app.acl.view_layout",
+                                "app.acl.edit",
+                                "app.acl.deploy",
+                                "app.acl.monitor",
+                            ],
+                        )
+                    ]
                 )
             )
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.MyPermissions,
-                "get",
-                get_permissions,
-            )
+        )
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.MyPermissions,
+            "get",
+            get_permissions,
+        )
 
-            resp = method(
-                app_module.AppApi(),
-                unbound_session,
-                "tenant-1",
-                SimpleNamespace(id="acct-1"),
-                app_model=app_obj,
-            )
+        resp = method(
+            app_module.AppApi(),
+            unbound_session,
+            "tenant-1",
+            SimpleNamespace(id="acct-1"),
+            app_model=app_obj,
+        )
 
     get_app.assert_called_once_with(app_obj, session=unbound_session)
     get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=unbound_session)
@@ -1061,36 +1053,38 @@ def test_app_copy_api_attaches_permission_keys(app, app_module, sqlite_session: 
 
     import_result = SimpleNamespace(status=app_module.ImportStatus.COMPLETED, app_id=app_obj.id)
 
-    with app.test_request_context("/apps/app-original/copy", method="POST", json={}):
-        with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(
-                app_module,
-                "AppDslService",
-                lambda *_args, **_kwargs: SimpleNamespace(
-                    export_dsl=lambda **_kwargs: "dsl",
-                    import_app=lambda **_kwargs: import_result,
-                ),
-            )
-            monkeypatch.setattr(
-                app_module.FeatureService,
-                "get_system_features",
-                lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
-            )
-            monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=sqlite_engine))
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppPermissions,
-                "batch_get",
-                lambda tenant_id, account_id, app_ids, session: {app_obj.id: ["app.acl.view_layout", "app.acl.edit"]},
-            )
+    with (
+        app.test_request_context("/apps/app-original/copy", method="POST", json={}),
+        pytest.MonkeyPatch.context() as monkeypatch,
+    ):
+        monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+        monkeypatch.setattr(
+            app_module,
+            "AppDslService",
+            lambda *_args, **_kwargs: SimpleNamespace(
+                export_dsl=lambda **_kwargs: "dsl",
+                import_app=lambda **_kwargs: import_result,
+            ),
+        )
+        monkeypatch.setattr(
+            app_module.FeatureService,
+            "get_system_features",
+            lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
+        )
+        monkeypatch.setattr(app_module, "db", SimpleNamespace(engine=sqlite_engine))
+        monkeypatch.setattr(
+            app_module.enterprise_rbac_service.RBACService.AppPermissions,
+            "batch_get",
+            lambda tenant_id, account_id, app_ids, session: {app_obj.id: ["app.acl.view_layout", "app.acl.edit"]},
+        )
 
-            resp, status = method(
-                app_module.AppCopyApi(),
-                app_module.CopyAppPayload(),
-                "tenant-1",
-                SimpleNamespace(id="acct-1"),
-                app_model=SimpleNamespace(id="app-original"),
-            )
+        resp, status = method(
+            app_module.AppCopyApi(),
+            app_module.CopyAppPayload(),
+            "tenant-1",
+            SimpleNamespace(id="acct-1"),
+            app_model=SimpleNamespace(id="app-original"),
+        )
 
     assert status == 201
     assert sqlite_session.get(App, app_obj.id) is not None

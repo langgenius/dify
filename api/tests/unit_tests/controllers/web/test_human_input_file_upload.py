@@ -80,14 +80,16 @@ def test_human_input_file_upload_route_uses_unified_path() -> None:
 def test_local_upload_requires_authorization_before_reading_files(app: Flask) -> None:
     data = {"file": (BytesIO(b"content"), "sample.txt")}
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        data=data,
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            data=data,
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(InvalidUploadTokenUnauthorizedError),
     ):
-        with pytest.raises(InvalidUploadTokenUnauthorizedError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
 
 def test_local_upload_ignores_source_and_records_form_file_link(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
@@ -133,14 +135,16 @@ def test_local_upload_missing_file_raises_after_valid_token(monkeypatch: pytest.
     _patch_upload_service(monkeypatch, service)
     monkeypatch.setattr(upload_module, "db", SimpleNamespace(engine=object()))
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": "bearer hitl_upload_token-1"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": "bearer hitl_upload_token-1"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(NoFileUploadedError),
     ):
-        with pytest.raises(NoFileUploadedError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
     service.validate_upload_token.assert_called_once_with("hitl_upload_token-1")
 
@@ -153,15 +157,17 @@ def test_remote_upload_validates_token_before_fetching_remote_url(monkeypatch: p
     ssrf_proxy = MagicMock()
     monkeypatch.setattr(upload_module, "ssrf_proxy", ssrf_proxy)
 
-    with app.test_request_context(
-        "/api/human-input-forms/files",
-        method="POST",
-        headers={"Authorization": "Bearer hitl_upload_token-1"},
-        data={"url": "https://example.com/file.txt"},
-        content_type="multipart/form-data",
+    with (
+        app.test_request_context(
+            "/api/human-input-forms/files",
+            method="POST",
+            headers={"Authorization": "Bearer hitl_upload_token-1"},
+            data={"url": "https://example.com/file.txt"},
+            content_type="multipart/form-data",
+        ),
+        pytest.raises(InvalidUploadTokenForbiddenError),
     ):
-        with pytest.raises(InvalidUploadTokenForbiddenError):
-            HumanInputFileUploadApi().post()
+        HumanInputFileUploadApi().post()
 
     ssrf_proxy.head.assert_not_called()
     ssrf_proxy.get.assert_not_called()

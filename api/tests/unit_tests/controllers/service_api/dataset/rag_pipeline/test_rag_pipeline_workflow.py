@@ -750,9 +750,9 @@ class TestFileUploadApiPost:
                 content_type="multipart/form-data",
                 data={"file": file_data},
             ),
+            pytest.raises(FileTooLargeHTTPError) as exc_info,
         ):
-            with pytest.raises(FileTooLargeHTTPError) as exc_info:
-                KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
+            KnowledgebasePipelineFileUploadApi().post(tenant_id="tenant-1")
 
         assert exc_info.value.code == 413
         assert exc_info.value.error_code == "file_too_large"

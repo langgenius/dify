@@ -2025,12 +2025,12 @@ class TestWorkflowService:
                 return_value={BuiltinNodeTypes.HTTP_REQUEST: {"latest": HttpRequestNode}},
             ),
             patch("services.workflow_service.LATEST_VERSION", "latest"),
+            pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"),
         ):
-            with pytest.raises(TypeError, match="http_request_config must be an HttpRequestNodeConfig instance"):
-                workflow_service.get_default_block_config(
-                    BuiltinNodeTypes.HTTP_REQUEST,
-                    filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"},
-                )
+            workflow_service.get_default_block_config(
+                BuiltinNodeTypes.HTTP_REQUEST,
+                filters={HTTP_REQUEST_CONFIG_FILTER_KEY: "invalid"},
+            )
 
     # ==================== Workflow Conversion Tests ====================
     # These tests verify converting basic apps to workflow apps
@@ -2320,9 +2320,11 @@ class TestWorkflowServiceCredentialValidation:
         workflow = self._make_workflow(nodes)
 
         # Act + Assert
-        with patch.object(service, "_validate_llm_model_config", side_effect=RuntimeError("boom")):
-            with pytest.raises(ValueError, match="boom"):
-                service._validate_workflow_credentials(workflow, session=sqlite_session)
+        with (
+            patch.object(service, "_validate_llm_model_config", side_effect=RuntimeError("boom")),
+            pytest.raises(ValueError, match="boom"),
+        ):
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
     def test_validate_workflow_credentials_should_validate_agent_node_model(
         self, service: WorkflowService, sqlite_session: Session
@@ -2395,10 +2397,11 @@ class TestWorkflowServiceCredentialValidation:
         assembly = MagicMock()
         assembly.model_manager.get_model_instance.side_effect = RuntimeError("no key")
 
-        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
-            # Act + Assert
-            with pytest.raises(ValueError, match="Failed to validate LLM model configuration"):
-                service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
+        with (
+            patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly),
+            pytest.raises(ValueError, match="Failed to validate LLM model configuration"),
+        ):
+            service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
 
     def test_validate_llm_model_config_success(self, service: WorkflowService) -> None:
         """Test success path with ProviderManager and Model entities."""
@@ -2431,10 +2434,11 @@ class TestWorkflowServiceCredentialValidation:
         assembly = MagicMock()
         assembly.provider_manager.get_configurations.return_value = mock_configs
 
-        with patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly):
-            # Act + Assert
-            with pytest.raises(ValueError, match="Model gpt-4 not found for provider openai"):
-                service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
+        with (
+            patch("services.workflow_service.create_plugin_model_assembly", return_value=assembly),
+            pytest.raises(ValueError, match="Model gpt-4 not found for provider openai"),
+        ):
+            service._validate_llm_model_config("tenant-1", "openai", "gpt-4")
 
     # --- _check_default_tool_credential ---
 
@@ -2456,9 +2460,11 @@ class TestWorkflowServiceCredentialValidation:
         sqlite_session.add(provider)
         sqlite_session.commit()
 
-        with patch("core.helper.credential_utils.check_credential_policy_compliance", side_effect=Exception("denied")):
-            with pytest.raises(ValueError, match="Failed to validate default credential"):
-                service._check_default_tool_credential("tenant-1", "some-provider", session=sqlite_session)
+        with (
+            patch("core.helper.credential_utils.check_credential_policy_compliance", side_effect=Exception("denied")),
+            pytest.raises(ValueError, match="Failed to validate default credential"),
+        ):
+            service._check_default_tool_credential("tenant-1", "some-provider", session=sqlite_session)
 
     # --- _is_load_balancing_enabled ---
 
@@ -2581,9 +2587,9 @@ class TestWorkflowServiceCredentialValidation:
                 "core.helper.credential_utils.check_credential_policy_compliance",
                 side_effect=Exception("policy violation"),
             ),
+            pytest.raises(ValueError, match="Invalid load balancing credentials"),
         ):
-            with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
 
 # ===========================================================================
@@ -3522,15 +3528,15 @@ class TestWorkflowServiceHumanInputOperations:
         with (
             patch("services.workflow_service.HumanInputNodeData.model_validate"),
             patch.object(service, "_resolve_human_input_delivery_method", return_value=None),
+            pytest.raises(ValueError, match="Delivery method not found"),
         ):
-            with pytest.raises(ValueError, match="Delivery method not found"):
-                service.test_human_input_delivery(
-                    app_model=TestWorkflowAssociatedDataFactory.create_app(),
-                    account=TestWorkflowAssociatedDataFactory.create_account(),
-                    node_id="node-1",
-                    delivery_method_id="none",
-                    session=sqlite_session,
-                )
+            service.test_human_input_delivery(
+                app_model=TestWorkflowAssociatedDataFactory.create_app(),
+                account=TestWorkflowAssociatedDataFactory.create_account(),
+                node_id="node-1",
+                delivery_method_id="none",
+                session=sqlite_session,
+            )
 
     def test_load_email_recipients_parsing_failure(self, service: WorkflowService, sqlite_session: Session) -> None:
         """Malformed persisted recipient payloads are skipped instead of aborting delivery tests."""
@@ -3618,9 +3624,11 @@ class TestWorkflowServiceFreeNodeExecution:
             service.validate_features_structure(app, {})
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
-        with patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")):
-            with pytest.raises(ValueError, match="Invalid HumanInput node data"):
-                service._validate_human_input_node_data({})
+        with (
+            patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")),
+            pytest.raises(ValueError, match="Invalid HumanInput node data"),
+        ):
+            service._validate_human_input_node_data({})
 
     def test_rebuild_single_file_unreachable(self) -> None:
         # Test line 1523 (unreachable)

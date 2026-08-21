@@ -163,12 +163,14 @@ def test_create_agent_api_key_requires_published_access(sqlite_session: Session)
     session = sqlite_session
     app = _persist_app(session, mode=AppMode.AGENT)
 
-    with patch(
-        "controllers.console.apikey.AppService.ensure_agent_app_access_ready",
-        side_effect=AgentAccessNotReadyError(),
-    ) as ensure_access_ready:
-        with pytest.raises(AgentAccessNotReadyError):
-            resource._create_api_key("app-1", "tenant-1", session=session)
+    with (
+        patch(
+            "controllers.console.apikey.AppService.ensure_agent_app_access_ready",
+            side_effect=AgentAccessNotReadyError(),
+        ) as ensure_access_ready,
+        pytest.raises(AgentAccessNotReadyError),
+    ):
+        resource._create_api_key("app-1", "tenant-1", session=session)
 
     ensure_access_ready.assert_called_once_with(app, session=session)
     assert session.scalar(select(ApiToken)) is None
@@ -235,15 +237,14 @@ def test_delete_api_key_rejects_foreign_tenant_token(sqlite_session: Session) ->
     session.add(api_key)
     session.commit()
 
-    with patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache:
-        with pytest.raises(NotFound):
-            resource._delete_api_key(
-                "app-1",
-                "key-1",
-                "tenant-1",
-                _make_account(TenantAccountRole.OWNER),
-                session=session,
-            )
+    with patch("controllers.console.apikey.ApiTokenCache.delete") as delete_cache, pytest.raises(NotFound):
+        resource._delete_api_key(
+            "app-1",
+            "key-1",
+            "tenant-1",
+            _make_account(TenantAccountRole.OWNER),
+            session=session,
+        )
 
     delete_cache.assert_not_called()
     assert session.get(ApiToken, "key-1") is api_key
@@ -285,12 +286,14 @@ def test_api_key_lists_require_matching_rbac_permission() -> None:
         patch.object(BaseApiKeyListResource, "_get_api_key_list") as get_api_key_list,
     ):
         for invoke, expected_gates in cases:
-            with patch(
-                "controllers.common.wraps.enforce_rbac_access",
-                side_effect=[None] * (len(expected_gates) - 1) + [Forbidden()],
-            ) as enforce_rbac_access:
-                with pytest.raises(Forbidden):
-                    invoke()
+            with (
+                patch(
+                    "controllers.common.wraps.enforce_rbac_access",
+                    side_effect=[None] * (len(expected_gates) - 1) + [Forbidden()],
+                ) as enforce_rbac_access,
+                pytest.raises(Forbidden),
+            ):
+                invoke()
 
             assert [
                 (kwargs["resource_type"], kwargs["scene"], kwargs["resource_required"])

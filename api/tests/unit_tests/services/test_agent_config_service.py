@@ -616,21 +616,23 @@ def test_upload_skill_for_console_maps_package_validation_failures(sqlite_sessio
     service = _service(sqlite_session)
     message = "skill package must contain exactly one skill; multiple skill folders in one archive are not supported"
 
-    with patch.object(
-        service._skill_normalizer,
-        "normalize",
-        side_effect=SkillPackageError("files_outside_skill_root", message, status_code=400),
+    with (
+        patch.object(
+            service._skill_normalizer,
+            "normalize",
+            side_effect=SkillPackageError("files_outside_skill_root", message, status_code=400),
+        ),
+        pytest.raises(AgentConfigServiceError, match="exactly one skill") as exc_info,
     ):
-        with pytest.raises(AgentConfigServiceError, match="exactly one skill") as exc_info:
-            service.upload_skill_for_console(
-                tenant_id=TENANT,
-                agent_id=AGENT,
-                user_id=USER,
-                config_version_id=DRAFT,
-                config_version_kind=AgentConfigVersionKind.DRAFT,
-                content=b"bad-archive",
-                filename="skills.zip",
-            )
+        service.upload_skill_for_console(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id=DRAFT,
+            config_version_kind=AgentConfigVersionKind.DRAFT,
+            content=b"bad-archive",
+            filename="skills.zip",
+        )
 
     assert exc_info.value.code == "files_outside_skill_root"
     assert exc_info.value.message == message
@@ -693,19 +695,19 @@ def test_apply_skill_updates_maps_normalizer_failures(
             "normalize",
             side_effect=SkillPackageError(error_code, message, status_code=400),
         ),
+        pytest.raises(AgentConfigServiceError, match=message) as exc_info,
     ):
-        with pytest.raises(AgentConfigServiceError, match=message) as exc_info:
-            service._apply_skill_updates(
-                sqlite_session,
-                tenant_id=TENANT,
-                user_id=USER,
-                current=[],
-                updates=[
-                    ConfigPushSkillItem.model_validate(
-                        {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
-                    )
-                ],
-            )
+        service._apply_skill_updates(
+            sqlite_session,
+            tenant_id=TENANT,
+            user_id=USER,
+            current=[],
+            updates=[
+                ConfigPushSkillItem.model_validate(
+                    {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
+                )
+            ],
+        )
 
     assert exc_info.value.code == error_code
 
@@ -748,16 +750,16 @@ def test_inspect_skill_maps_invalid_archives_to_service_errors(archive_bytes: by
     with (
         patch.object(service, "resolve_target", return_value=target),
         patch.object(service, "_load_tool_file_bytes", return_value=(archive_bytes, "application/zip")),
+        pytest.raises(AgentConfigServiceError, match="stored config skill archive is invalid") as exc_info,
     ):
-        with pytest.raises(AgentConfigServiceError, match="stored config skill archive is invalid") as exc_info:
-            service.inspect_skill(
-                tenant_id=TENANT,
-                agent_id=AGENT,
-                config_version_id="build-draft-1",
-                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
-                name="alpha",
-                user_id=USER,
-            )
+        service.inspect_skill(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="build-draft-1",
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            name="alpha",
+            user_id=USER,
+        )
 
     assert exc_info.value.code == "skill_archive_invalid"
     assert exc_info.value.status_code == 500

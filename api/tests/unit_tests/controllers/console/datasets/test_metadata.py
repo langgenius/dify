@@ -96,11 +96,9 @@ class TestDatasetMetadataCreateApi:
             patch.object(type(console_ns), "payload", new_callable=PropertyMock, return_value=valid_payload),
             patch.object(MetadataArgs, "model_validate", return_value=MagicMock()),
             patch.object(DatasetService, "get_dataset", return_value=None),
+            pytest.raises(NotFound, match="Dataset not found"),
         ):
-            with pytest.raises(NotFound, match="Dataset not found"):
-                method(
-                    api, MetadataArgs(type="string", name="author"), MagicMock(), "tenant-1", current_user, dataset_id
-                )
+            method(api, MetadataArgs(type="string", name="author"), MagicMock(), "tenant-1", current_user, dataset_id)
 
 
 class TestDatasetMetadataGetApi:
@@ -137,9 +135,9 @@ class TestDatasetMetadataGetApi:
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=None) as get_dataset,
             patch.object(DatasetService, "check_dataset_permission") as check_permission,
             patch.object(MetadataService, "get_dataset_metadatas") as get_metadata,
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                method(api, session, "tenant-1", current_user, dataset_id)
+            method(api, session, "tenant-1", current_user, dataset_id)
 
         get_dataset.assert_called_once_with(str(dataset_id), "tenant-1", session=session)
         check_permission.assert_not_called()
@@ -172,9 +170,9 @@ class TestDatasetMetadataGetApi:
             patch.object(DatasetService, "get_dataset_for_tenant", return_value=dataset),
             patch.object(DatasetService, "check_dataset_permission", side_effect=NoPermissionError),
             patch.object(MetadataService, "get_dataset_metadatas") as get_metadata,
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(Forbidden):
-                method(api, MagicMock(), "tenant-1", current_user, dataset_id)
+            method(api, MagicMock(), "tenant-1", current_user, dataset_id)
 
         get_metadata.assert_not_called()
 

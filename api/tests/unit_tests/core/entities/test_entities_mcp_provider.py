@@ -176,11 +176,13 @@ def test_to_api_response_with_sensitive_data_includes_masked_values() -> None:
         }
     )
 
-    with patch.object(MCPProviderEntity, "masked_server_url", return_value="https://api.example.com/******"):
-        with patch.object(MCPProviderEntity, "masked_headers", return_value={"Authorization": "Be****"}):
-            with patch.object(MCPProviderEntity, "masked_credentials", return_value={"client_id": "cl****"}):
-                # Act
-                response = entity.to_api_response(user_name="Rajat", include_sensitive=True)
+    with (
+        patch.object(MCPProviderEntity, "masked_server_url", return_value="https://api.example.com/******"),
+        patch.object(MCPProviderEntity, "masked_headers", return_value={"Authorization": "Be****"}),
+        patch.object(MCPProviderEntity, "masked_credentials", return_value={"client_id": "cl****"}),
+    ):
+        # Act
+        response = entity.to_api_response(user_name="Rajat", include_sensitive=True)
 
     # Assert
     assert response["author"] == "Rajat"
@@ -194,10 +196,12 @@ def test_retrieve_client_information_decrypts_nested_secret() -> None:
     entity = _build_mcp_provider_entity()
     credentials = {"client_information": {"client_id": "client-1", "encrypted_client_secret": "enc-secret"}}
 
-    with patch.object(MCPProviderEntity, "decrypt_credentials", return_value=credentials):
-        with patch("core.entities.mcp_provider.encrypter.decrypt_token", return_value="plain-secret") as mock_decrypt:
-            # Act
-            client_info = entity.retrieve_client_information()
+    with (
+        patch.object(MCPProviderEntity, "decrypt_credentials", return_value=credentials),
+        patch("core.entities.mcp_provider.encrypter.decrypt_token", return_value="plain-secret") as mock_decrypt,
+    ):
+        # Act
+        client_info = entity.retrieve_client_information()
 
     # Assert
     assert client_info is not None
@@ -275,10 +279,12 @@ def test_masked_credentials_handles_nested_secret_fields() -> None:
         }
     }
 
-    with patch.object(MCPProviderEntity, "decrypt_credentials", return_value=credentials):
-        with patch("core.entities.mcp_provider.encrypter.decrypt_token", return_value="decrypted-secret"):
-            # Act
-            masked = entity.masked_credentials()
+    with (
+        patch.object(MCPProviderEntity, "decrypt_credentials", return_value=credentials),
+        patch("core.entities.mcp_provider.encrypter.decrypt_token", return_value="decrypted-secret"),
+    ):
+        # Act
+        masked = entity.masked_credentials()
 
     # Assert
     assert masked["client_id"] == "cl*****id"
@@ -352,14 +358,16 @@ def test_decrypt_authentication_injects_authorization_for_oauth() -> None:
     # Arrange
     entity = _build_mcp_provider_entity().model_copy(update={"authed": True, "headers": {}})
 
-    with patch.object(MCPProviderEntity, "decrypt_headers", return_value={}):
-        with patch.object(
+    with (
+        patch.object(MCPProviderEntity, "decrypt_headers", return_value={}),
+        patch.object(
             MCPProviderEntity,
             "retrieve_tokens",
             return_value=OAuthTokens(access_token="abc123", token_type="bearer"),
-        ):
-            # Act
-            headers = entity.decrypt_authentication()
+        ),
+    ):
+        # Act
+        headers = entity.decrypt_authentication()
 
     # Assert
     assert headers["Authorization"] == "Bearer abc123"
@@ -371,14 +379,16 @@ def test_decrypt_authentication_does_not_overwrite_existing_headers() -> None:
         update={"authed": True, "headers": {"Authorization": "encrypted-header"}}
     )
 
-    with patch.object(MCPProviderEntity, "decrypt_headers", return_value={"Authorization": "existing"}):
-        with patch.object(
+    with (
+        patch.object(MCPProviderEntity, "decrypt_headers", return_value={"Authorization": "existing"}),
+        patch.object(
             MCPProviderEntity,
             "retrieve_tokens",
             return_value=OAuthTokens(access_token="abc", token_type="bearer"),
-        ) as mock_tokens:
-            # Act
-            headers = entity.decrypt_authentication()
+        ) as mock_tokens,
+    ):
+        # Act
+        headers = entity.decrypt_authentication()
 
     # Assert
     mock_tokens.assert_not_called()

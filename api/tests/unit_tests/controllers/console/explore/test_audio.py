@@ -111,9 +111,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=audio_module.services.errors.app_model_config.AppModelConfigBrokenError(),
             ),
+            pytest.raises(AppUnavailableError),
         ):
-            with pytest.raises(AppUnavailableError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_no_audio_uploaded(self, app: Flask, installed_app, audio_file):
         with (
@@ -127,9 +127,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=NoAudioUploadedServiceError(),
             ),
+            pytest.raises(NoAudioUploadedError),
         ):
-            with pytest.raises(NoAudioUploadedError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_audio_too_large(self, app: Flask, installed_app, audio_file):
         with (
@@ -143,9 +143,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=AudioTooLargeServiceError("too big"),
             ),
+            pytest.raises(AudioTooLargeError),
         ):
-            with pytest.raises(AudioTooLargeError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_provider_quota_exceeded(self, app: Flask, installed_app, audio_file):
         with (
@@ -159,9 +159,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=QuotaExceededError(),
             ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_unknown_exception(self, app: Flask, installed_app, audio_file):
         with (
@@ -175,9 +175,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=Exception("boom"),
             ),
+            pytest.raises(InternalServerError),
         ):
-            with pytest.raises(InternalServerError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_unsupported_audio_type(self, app: Flask, installed_app, audio_file):
         with (
@@ -191,9 +191,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=audio_module.UnsupportedAudioTypeServiceError(),
             ),
+            pytest.raises(audio_module.UnsupportedAudioTypeError),
         ):
-            with pytest.raises(audio_module.UnsupportedAudioTypeError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_provider_not_support_speech_to_text(self, app: Flask, installed_app, audio_file):
         with (
@@ -207,9 +207,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=audio_module.ProviderNotSupportSpeechToTextServiceError(),
             ),
+            pytest.raises(audio_module.ProviderNotSupportSpeechToTextError),
         ):
-            with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_speech_to_text_disabled(self, app: Flask, installed_app, audio_file):
         with (
@@ -223,9 +223,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=SpeechToTextDisabledServiceError(),
             ),
+            pytest.raises(SpeechToTextDisabledError),
         ):
-            with pytest.raises(SpeechToTextDisabledError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_provider_not_initialized(self, app: Flask, installed_app, audio_file):
         with (
@@ -239,9 +239,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=ProviderTokenNotInitError("not init"),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_model_currently_not_supported(self, app: Flask, installed_app, audio_file):
         with (
@@ -255,9 +255,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=ModelCurrentlyNotSupportError(),
             ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                self.method(installed_app)
+            self.method(installed_app)
 
     def test_invoke_error_asr(self, app: Flask, installed_app, audio_file):
         with (
@@ -271,9 +271,9 @@ class TestChatAudioApi:
                 "transcript_asr",
                 side_effect=InvokeError("invoke failed"),
             ),
+            pytest.raises(CompletionRequestError),
         ):
-            with pytest.raises(CompletionRequestError):
-                self.method(installed_app)
+            self.method(installed_app)
 
 
 class TestChatTextApi:
@@ -321,9 +321,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=ProviderTokenNotInitError("not init"),
             ),
+            pytest.raises(ProviderNotInitializeError),
         ):
-            with pytest.raises(ProviderNotInitializeError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_model_not_supported(self, app: Flask, installed_app):
         with (
@@ -336,9 +336,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=ModelCurrentlyNotSupportError(),
             ),
+            pytest.raises(ProviderModelCurrentlyNotSupportError),
         ):
-            with pytest.raises(ProviderModelCurrentlyNotSupportError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_invoke_error(self, app: Flask, installed_app):
         with (
@@ -351,9 +351,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=InvokeError("invoke failed"),
             ),
+            pytest.raises(CompletionRequestError),
         ):
-            with pytest.raises(CompletionRequestError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_unknown_exception(self, app: Flask, installed_app):
         with (
@@ -366,9 +366,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=Exception("boom"),
             ),
+            pytest.raises(InternalServerError),
         ):
-            with pytest.raises(InternalServerError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_app_unavailable_tts(self, app: Flask, installed_app):
         with (
@@ -381,9 +381,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=audio_module.services.errors.app_model_config.AppModelConfigBrokenError(),
             ),
+            pytest.raises(AppUnavailableError),
         ):
-            with pytest.raises(AppUnavailableError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_no_audio_uploaded_tts(self, app: Flask, installed_app):
         with (
@@ -396,9 +396,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=NoAudioUploadedServiceError(),
             ),
+            pytest.raises(NoAudioUploadedError),
         ):
-            with pytest.raises(NoAudioUploadedError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_audio_too_large_tts(self, app: Flask, installed_app):
         with (
@@ -411,9 +411,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=AudioTooLargeServiceError("too big"),
             ),
+            pytest.raises(AudioTooLargeError),
         ):
-            with pytest.raises(AudioTooLargeError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_unsupported_audio_type_tts(self, app: Flask, installed_app):
         with (
@@ -426,9 +426,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=audio_module.UnsupportedAudioTypeServiceError(),
             ),
+            pytest.raises(audio_module.UnsupportedAudioTypeError),
         ):
-            with pytest.raises(audio_module.UnsupportedAudioTypeError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_provider_not_support_speech_to_text_tts(self, app: Flask, installed_app):
         with (
@@ -441,9 +441,9 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=audio_module.ProviderNotSupportSpeechToTextServiceError(),
             ),
+            pytest.raises(audio_module.ProviderNotSupportSpeechToTextError),
         ):
-            with pytest.raises(audio_module.ProviderNotSupportSpeechToTextError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
 
     def test_quota_exceeded_tts(self, app: Flask, installed_app):
         with (
@@ -456,6 +456,6 @@ class TestChatTextApi:
                 "transcript_tts",
                 side_effect=QuotaExceededError(),
             ),
+            pytest.raises(ProviderQuotaExceededError),
         ):
-            with pytest.raises(ProviderQuotaExceededError):
-                self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)
+            self.method(audio_module.TextToAudioPayload.model_validate({"text": "hi"}), installed_app)

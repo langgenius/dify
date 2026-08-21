@@ -603,9 +603,8 @@ class TestAccountGeneration:
         mock_feature_service.get_system_features.return_value.is_allow_register = False
         mock_get_freeze_type.return_value = freeze_type
 
-        with app.test_request_context("/"):
-            with pytest.raises(expected_error):
-                _generate_account("github", user_info)
+        with app.test_request_context("/"), pytest.raises(expected_error):
+            _generate_account("github", user_info)
 
         mock_get_freeze_type.assert_called_once_with("test@example.com")
 

@@ -71,9 +71,8 @@ class TestBlob:
     def test_as_bytes_io_raises_for_unsupported_data_type(self):
         blob = Blob.from_data("text-value")
 
-        with pytest.raises(NotImplementedError, match="Unable to convert blob"):
-            with blob.as_bytes_io():
-                pass
+        with pytest.raises(NotImplementedError, match="Unable to convert blob"), blob.as_bytes_io():
+            pass
 
     def test_from_path_respects_guessing_and_explicit_mime(self, tmp_path: Path):
         file_path = tmp_path / "example.txt"

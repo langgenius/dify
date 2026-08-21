@@ -249,9 +249,8 @@ class TestCurrentUser:
         """Test that current_user proxy handles None user."""
         mocker.patch.object(login_module, "_get_user", return_value=None)
 
-        with login_app.test_request_context():
-            with pytest.raises(AttributeError):
-                _ = current_user.id
+        with login_app.test_request_context(), pytest.raises(AttributeError):
+            _ = current_user.id
 
 
 class TestCurrentAccountWithTenant:

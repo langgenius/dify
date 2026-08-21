@@ -47,13 +47,15 @@ def test_rule_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -
 
         monkeypatch.setattr(generator_module.LLMGenerator, "generate_rule_config", _raise)
 
-        with app.test_request_context(
-            "/console/api/rule-generate",
-            method="POST",
-            json={"instruction": "do it", "model_config": _model_config_payload()},
+        with (
+            app.test_request_context(
+                "/console/api/rule-generate",
+                method="POST",
+                json={"instruction": "do it", "model_config": _model_config_payload()},
+            ),
+            pytest.raises(expected_exception),
         ):
-            with pytest.raises(expected_exception):
-                method(api, RuleGeneratePayload.model_validate(request.get_json()), "t1")
+            method(api, RuleGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -73,13 +75,15 @@ def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPat
 
         monkeypatch.setattr(generator_module.LLMGenerator, "generate_code", _raise)
 
-        with app.test_request_context(
-            "/console/api/rule-code-generate",
-            method="POST",
-            json={"instruction": "do it", "model_config": _model_config_payload()},
+        with (
+            app.test_request_context(
+                "/console/api/rule-code-generate",
+                method="POST",
+                json={"instruction": "do it", "model_config": _model_config_payload()},
+            ),
+            pytest.raises(expected_exception),
         ):
-            with pytest.raises(expected_exception):
-                method(api, RuleCodeGeneratePayload.model_validate(request.get_json()), "t1")
+            method(api, RuleCodeGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -100,13 +104,15 @@ def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.M
 
         monkeypatch.setattr(generator_module.LLMGenerator, "generate_structured_output", _raise)
 
-        with app.test_request_context(
-            "/console/api/structured-output-generate",
-            method="POST",
-            json={"instruction": "do it", "model_config": _model_config_payload()},
+        with (
+            app.test_request_context(
+                "/console/api/structured-output-generate",
+                method="POST",
+                json={"instruction": "do it", "model_config": _model_config_payload()},
+            ),
+            pytest.raises(expected_exception),
         ):
-            with pytest.raises(expected_exception):
-                method(api, RuleStructuredOutputPayload.model_validate(request.get_json()), "t1")
+            method(api, RuleStructuredOutputPayload.model_validate(request.get_json()), "t1")
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -132,16 +138,18 @@ def test_instruction_generate_exceptions(
 
         monkeypatch.setattr(generator_module.LLMGenerator, "instruction_modify_legacy", _raise)
 
-        with app.test_request_context(
-            "/console/api/instruction-generate",
-            method="POST",
-            json={
-                "flow_id": "app-1",
-                "node_id": "",
-                "current": "old",
-                "instruction": "do it",
-                "model_config": _model_config_payload(),
-            },
+        with (
+            app.test_request_context(
+                "/console/api/instruction-generate",
+                method="POST",
+                json={
+                    "flow_id": "app-1",
+                    "node_id": "",
+                    "current": "old",
+                    "instruction": "do it",
+                    "model_config": _model_config_payload(),
+                },
+            ),
+            pytest.raises(expected_exception),
         ):
-            with pytest.raises(expected_exception):
-                method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")
+            method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")

@@ -315,15 +315,15 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
             "services.credit_pool_service.CreditPoolService.get_pool",
             side_effect=[trial_pool, paid_pool],
         ) as get_pool,
+        ThreadPoolExecutor(max_workers=1) as executor,
     ):
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            assert executor.submit(has_app_context).result() is False
-            configuration = executor.submit(
-                manager._to_system_configuration,
-                "tenant-id",
-                provider_entity,
-                [_build_trial_provider_record()],
-            ).result()
+        assert executor.submit(has_app_context).result() is False
+        configuration = executor.submit(
+            manager._to_system_configuration,
+            "tenant-id",
+            provider_entity,
+            [_build_trial_provider_record()],
+        ).result()
 
     assert configuration.enabled is True
     assert [call.kwargs["pool_type"] for call in get_pool.call_args_list] == [
@@ -678,9 +678,11 @@ def test_get_provider_names_returns_short_and_full_aliases(provider_name: str, e
 def test_get_provider_model_bundle_raises_for_unknown_provider():
     manager = _build_provider_manager()
 
-    with patch.object(manager, "get_configurations", return_value={}):
-        with pytest.raises(ValueError, match="Provider openai does not exist."):
-            manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
+    with (
+        patch.object(manager, "get_configurations", return_value={}),
+        pytest.raises(ValueError, match="Provider openai does not exist."),
+    ):
+        manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
 
 
 def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock_provider_entity):
@@ -892,9 +894,11 @@ def test_get_first_provider_first_model_returns_first_model_and_provider():
 def test_update_default_model_record_raises_for_unknown_provider():
     manager = _build_provider_manager()
 
-    with patch.object(manager, "get_configurations", return_value={}):
-        with pytest.raises(ValueError, match="Provider openai does not exist."):
-            manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
+    with (
+        patch.object(manager, "get_configurations", return_value={}),
+        pytest.raises(ValueError, match="Provider openai does not exist."),
+    ):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
 
 
 def test_update_default_model_record_raises_for_unknown_model():
@@ -903,9 +907,11 @@ def test_update_default_model_record_raises_for_unknown_model():
     provider_configurations.__contains__.return_value = True
     provider_configurations.get_models.return_value = [Mock(model="gpt-4")]
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        with pytest.raises(ValueError, match="Model gpt-3.5-turbo does not exist."):
-            manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
+    with (
+        patch.object(manager, "get_configurations", return_value=provider_configurations),
+        pytest.raises(ValueError, match="Model gpt-3.5-turbo does not exist."),
+    ):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
 
     provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
 

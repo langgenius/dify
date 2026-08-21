@@ -63,13 +63,13 @@ class TestForgotPasswordSendEmailApi:
             ),
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        ):
-            with app.test_request_context(
+            app.test_request_context(
                 "/forgot-password",
                 method="POST",
                 json={"email": "User@Example.com", "language": "zh-Hans"},
-            ):
-                response = ForgotPasswordSendEmailApi().post()
+            ),
+        ):
+            response = ForgotPasswordSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
         mock_send_email.assert_called_once_with(
@@ -110,13 +110,13 @@ class TestForgotPasswordCheckApi:
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        ):
-            with app.test_request_context(
+            app.test_request_context(
                 "/forgot-password/validity",
                 method="POST",
                 json={"email": "ADMIN@Example.com", "code": "4321", "token": "token-123"},
-            ):
-                response = ForgotPasswordCheckApi().post()
+            ),
+        ):
+            response = ForgotPasswordCheckApi().post()
 
         assert response == {"is_valid": True, "email": "admin@example.com", "token": "new-token"}
         mock_rate_limit_check.assert_called_once_with("admin@example.com")
@@ -156,8 +156,7 @@ class TestForgotPasswordResetApi:
         with (
             patch("controllers.console.wraps.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
-        ):
-            with database_app.test_request_context(
+            database_app.test_request_context(
                 "/forgot-password/resets",
                 method="POST",
                 json={
@@ -165,8 +164,9 @@ class TestForgotPasswordResetApi:
                     "new_password": "ValidPass123!",
                     "password_confirm": "ValidPass123!",
                 },
-            ):
-                response = ForgotPasswordResetApi().post()
+            ),
+        ):
+            response = ForgotPasswordResetApi().post()
 
         assert response == {"result": "success"}
         mock_get_reset_data.assert_called_once_with("token-123")

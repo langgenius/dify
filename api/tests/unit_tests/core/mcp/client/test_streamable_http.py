@@ -1518,9 +1518,8 @@ class TestStreamablehttpClientContextManagerNew:
         with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
             mock_cf.side_effect = RuntimeError("connection failed")
 
-            with pytest.raises(RuntimeError):
-                with streamablehttp_client("http://example.com/mcp"):
-                    pass  # pragma: no cover
+            with pytest.raises(RuntimeError), streamablehttp_client("http://example.com/mcp"):
+                pass  # pragma: no cover
 
     def test_timedelta_args_accepted(self):
         from core.mcp.client.streamable_client import streamablehttp_client

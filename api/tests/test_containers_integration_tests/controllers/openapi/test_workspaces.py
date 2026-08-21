@@ -80,11 +80,10 @@ class TestWorkspaceDetail:
         assert someone_elses_ws is not None
 
         api = WorkspaceByIdApi()
-        with app.test_request_context(f"/openapi/v1/workspaces/{someone_elses_ws.id}"):
-            with pytest.raises(NotFound):
-                unwrap(api.get)(
-                    api, db_session_with_containers, workspace_id=someone_elses_ws.id, auth_data=auth_for(outsider)
-                )
+        with app.test_request_context(f"/openapi/v1/workspaces/{someone_elses_ws.id}"), pytest.raises(NotFound):
+            unwrap(api.get)(
+                api, db_session_with_containers, workspace_id=someone_elses_ws.id, auth_data=auth_for(outsider)
+            )
 
 
 class TestWorkspaceSwitch:
@@ -126,8 +125,8 @@ class TestWorkspaceSwitch:
         assert outsider_ws is not None
 
         api = WorkspaceSwitchApi()
-        with app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", method="POST"):
-            with pytest.raises(NotFound):
-                unwrap(api.post)(
-                    api, db_session_with_containers, workspace_id=outsider_ws.id, auth_data=auth_for(account)
-                )
+        with (
+            app.test_request_context(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", method="POST"),
+            pytest.raises(NotFound),
+        ):
+            unwrap(api.post)(api, db_session_with_containers, workspace_id=outsider_ws.id, auth_data=auth_for(account))

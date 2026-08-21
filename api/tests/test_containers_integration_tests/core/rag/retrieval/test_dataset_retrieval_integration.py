@@ -514,14 +514,16 @@ class TestKnowledgeRetrievalIntegration:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock rate limit check and retrieval
-        with patch.object(dataset_retrieval, "_check_knowledge_rate_limit"):
-            with patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)):
-                with patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]):
-                    # Act
-                    result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
+        with (
+            patch.object(dataset_retrieval, "_check_knowledge_rate_limit"),
+            patch.object(dataset_retrieval, "get_metadata_filter_condition", return_value=(None, None)),
+            patch.object(dataset_retrieval, "multiple_retrieve", return_value=[]),
+        ):
+            # Act
+            result = dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
-                    # Assert
-                    assert isinstance(result, list)
+            # Assert
+            assert isinstance(result, list)
 
     def test_knowledge_retrieval_no_available_datasets(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -613,14 +615,15 @@ class TestKnowledgeRetrievalIntegration:
         dataset_retrieval = DatasetRetrieval()
 
         # Mock rate limit check to raise exception
-        with patch.object(
-            dataset_retrieval,
-            "_check_knowledge_rate_limit",
-            side_effect=Exception("Rate limit exceeded"),
+        with (
+            patch.object(
+                dataset_retrieval,
+                "_check_knowledge_rate_limit",
+                side_effect=Exception("Rate limit exceeded"),
+            ),
+            pytest.raises(Exception, match="Rate limit exceeded"),
         ):
-            # Act & Assert
-            with pytest.raises(Exception, match="Rate limit exceeded"):
-                dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
+            dataset_retrieval.knowledge_retrieval(db_session_with_containers, request)
 
 
 @pytest.fixture

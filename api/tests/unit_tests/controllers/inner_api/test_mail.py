@@ -111,20 +111,22 @@ class TestBaseMail:
         mock_task.delay.return_value = None
 
         # Act
-        with app.test_request_context(
-            json={
-                "to": ["test@example.com"],
-                "subject": "Test Subject",
-                "body": "Test Body",
-            }
-        ):
-            with patch("controllers.inner_api.mail.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
+        with (
+            app.test_request_context(
+                json={
                     "to": ["test@example.com"],
                     "subject": "Test Subject",
                     "body": "Test Body",
                 }
-                result = api_instance.post()
+            ),
+            patch("controllers.inner_api.mail.inner_api_ns") as mock_ns,
+        ):
+            mock_ns.payload = {
+                "to": ["test@example.com"],
+                "subject": "Test Subject",
+                "body": "Test Body",
+            }
+            result = api_instance.post()
 
         # Assert
         assert result == ({"message": "success"}, 200)
@@ -142,15 +144,14 @@ class TestBaseMail:
         mock_task.delay.return_value = None
 
         # Act
-        with app.test_request_context():
-            with patch("controllers.inner_api.mail.inner_api_ns") as mock_ns:
-                mock_ns.payload = {
-                    "to": ["test@example.com"],
-                    "subject": "Hello {{name}}",
-                    "body": "Welcome {{name}}!",
-                    "substitutions": {"name": "John"},
-                }
-                result = api_instance.post()
+        with app.test_request_context(), patch("controllers.inner_api.mail.inner_api_ns") as mock_ns:
+            mock_ns.payload = {
+                "to": ["test@example.com"],
+                "subject": "Hello {{name}}",
+                "body": "Welcome {{name}}!",
+                "substitutions": {"name": "John"},
+            }
+            result = api_instance.post()
 
         # Assert
         assert result == ({"message": "success"}, 200)

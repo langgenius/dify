@@ -635,9 +635,11 @@ class TestTextSplitterBasePaths:
 
     def test_from_huggingface_tokenizer_import_error(self):
         """Cover from_huggingface_tokenizer import-error branch."""
-        with patch.dict(sys.modules, {"transformers": None}):
-            with pytest.raises(ValueError, match="Could not import transformers"):
-                RecursiveCharacterTextSplitter.from_huggingface_tokenizer(tokenizer=object(), chunk_size=5)
+        with (
+            patch.dict(sys.modules, {"transformers": None}),
+            pytest.raises(ValueError, match="Could not import transformers"),
+        ):
+            RecursiveCharacterTextSplitter.from_huggingface_tokenizer(tokenizer=object(), chunk_size=5)
 
     def test_atransform_documents_raises_not_implemented(self):
         """Cover atransform_documents NotImplemented branch."""

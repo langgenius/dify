@@ -321,9 +321,11 @@ class TestTraceDispatcher:
             mock_gn.assert_called_once()
 
     def test_reraises_exception(self, trace_instance, mock_tracing, mock_db):
-        with patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("boom")):
-            with pytest.raises(RuntimeError, match="boom"):
-                trace_instance.trace(_make_workflow_trace_info())
+        with (
+            patch.object(trace_instance, "workflow_trace", side_effect=RuntimeError("boom")),
+            pytest.raises(RuntimeError, match="boom"),
+        ):
+            trace_instance.trace(_make_workflow_trace_info())
 
 
 # ── workflow_trace ───────────────────────────────────────────────────────────

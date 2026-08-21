@@ -102,15 +102,18 @@ class TestParentChildIndexProcessor:
     def test_transform_paragraph_requires_segmentation(self, processor: ParentChildIndexProcessor) -> None:
         rules = SimpleNamespace(parent_mode=ParentMode.PARAGRAPH, segmentation=None)
 
-        with patch(
-            "core.rag.index_processor.processor.parent_child_index_processor.Rule.model_validate", return_value=rules
+        with (
+            patch(
+                "core.rag.index_processor.processor.parent_child_index_processor.Rule.model_validate",
+                return_value=rules,
+            ),
+            pytest.raises(ValueError, match="No segmentation found in rules"),
         ):
-            with pytest.raises(ValueError, match="No segmentation found in rules"):
-                processor.transform(
-                    [Document(page_content="text", metadata={})],
-                    process_rule={"mode": "custom", "rules": {"enabled": True}},
-                    session=self.session,
-                )
+            processor.transform(
+                [Document(page_content="text", metadata={})],
+                process_rule={"mode": "custom", "rules": {"enabled": True}},
+                session=self.session,
+            )
 
     def test_transform_paragraph_builds_parent_and_child_docs(self, processor: ParentChildIndexProcessor) -> None:
         splitter = Mock()
@@ -508,9 +511,9 @@ class TestParentChildIndexProcessor:
                 "core.rag.index_processor.processor.parent_child_index_processor.AccountService.load_user",
                 return_value=None,
             ),
+            pytest.raises(ValueError, match="Invalid account"),
         ):
-            with pytest.raises(ValueError, match="Invalid account"):
-                processor.index(dataset, dataset_document, {"parent_child_chunks": []}, self.session)
+            processor.index(dataset, dataset_document, {"parent_child_chunks": []}, self.session)
 
     def test_format_preview_returns_parent_child_structure(self, processor: ParentChildIndexProcessor) -> None:
         parent_childs = SimpleNamespace(
@@ -558,12 +561,14 @@ class TestParentChildIndexProcessor:
     def test_generate_summary_preview_raises_when_worker_fails(self, processor: ParentChildIndexProcessor) -> None:
         preview_texts = [PreviewDetail(content="chunk-1")]
 
-        with patch(
-            "core.rag.index_processor.processor.paragraph_index_processor.ParagraphIndexProcessor.generate_summary",
-            side_effect=RuntimeError("summary failed"),
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.ParagraphIndexProcessor.generate_summary",
+                side_effect=RuntimeError("summary failed"),
+            ),
+            pytest.raises(ValueError, match="Failed to generate summaries"),
         ):
-            with pytest.raises(ValueError, match="Failed to generate summaries"):
-                processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
+            processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
 
     def test_generate_summary_preview_falls_back_without_flask_context(
         self, processor: ParentChildIndexProcessor
@@ -594,8 +599,8 @@ class TestParentChildIndexProcessor:
         with (
             patch("concurrent.futures.ThreadPoolExecutor", return_value=executor),
             patch("concurrent.futures.wait", side_effect=[(set(), {future}), (set(), set())]),
+            pytest.raises(ValueError, match="timeout"),
         ):
-            with pytest.raises(ValueError, match="timeout"):
-                processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
+            processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
 
         future.cancel.assert_called_once()

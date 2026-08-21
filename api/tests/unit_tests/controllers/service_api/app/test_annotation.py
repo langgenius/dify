@@ -259,9 +259,11 @@ class TestAnnotationListApi:
         api = AnnotationListApi()
         handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app")
-        with app.test_request_context(f"/apps/annotations?{query_string}", method="GET"):
-            with pytest.raises(ValidationError):
-                handler(api, MagicMock(), app_model=app_model)
+        with (
+            app.test_request_context(f"/apps/annotations?{query_string}", method="GET"),
+            pytest.raises(ValidationError),
+        ):
+            handler(api, MagicMock(), app_model=app_model)
         get_mock.assert_not_called()
 
     def test_create(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

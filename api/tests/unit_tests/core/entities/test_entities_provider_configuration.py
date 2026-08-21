@@ -368,20 +368,22 @@ def test_validate_provider_credentials_handles_hidden_secret_value() -> None:
     mock_factory = Mock()
     mock_factory.provider_credentials_validate.return_value = {"openai_api_key": "restored-key", "region": "us"}
 
-    with _patched_session(mock_session):
-        with patch(
+    with (
+        _patched_session(mock_session),
+        patch(
             "core.entities.provider_configuration.create_plugin_model_assembly",
             return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-        ):
-            with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="restored-key"):
-                with patch(
-                    "core.entities.provider_configuration.encrypter.encrypt_token",
-                    side_effect=lambda tenant_id, value: f"enc::{value}",
-                ):
-                    validated = configuration.validate_provider_credentials(
-                        credentials={"openai_api_key": HIDDEN_VALUE, "region": "us"},
-                        credential_id="credential-1",
-                    )
+        ),
+        patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="restored-key"),
+        patch(
+            "core.entities.provider_configuration.encrypter.encrypt_token",
+            side_effect=lambda tenant_id, value: f"enc::{value}",
+        ),
+    ):
+        validated = configuration.validate_provider_credentials(
+            credentials={"openai_api_key": HIDDEN_VALUE, "region": "us"},
+            credential_id="credential-1",
+        )
 
     assert validated["openai_api_key"] == "enc::restored-key"
     assert validated["region"] == "us"
@@ -907,16 +909,18 @@ def test_validate_provider_credentials_handles_invalid_original_json() -> None:
     mock_factory = Mock()
     mock_factory.provider_credentials_validate.return_value = {"openai_api_key": "new-key"}
 
-    with _patched_session(mock_session):
-        with patch(
+    with (
+        _patched_session(mock_session),
+        patch(
             "core.entities.provider_configuration.create_plugin_model_assembly",
             return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-        ):
-            with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-key"):
-                validated = configuration.validate_provider_credentials(
-                    credentials={"openai_api_key": HIDDEN_VALUE},
-                    credential_id="cred-1",
-                )
+        ),
+        patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-key"),
+    ):
+        validated = configuration.validate_provider_credentials(
+            credentials={"openai_api_key": HIDDEN_VALUE},
+            credential_id="cred-1",
+        )
 
     assert validated == {"openai_api_key": "enc-key"}
 
@@ -935,17 +939,19 @@ def test_create_provider_credential_creates_provider_record_when_missing() -> No
     session = Mock()
     session.flush.side_effect = lambda: None
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-            with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-                with patch.object(
-                    ProviderConfiguration,
-                    "_generate_provider_credential_name",
-                    return_value="API KEY 2",
-                ):
-                    with patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch:
-                        with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                            configuration.create_provider_credential({"api_key": "raw"}, None)
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        patch.object(
+            ProviderConfiguration,
+            "_generate_provider_credential_name",
+            return_value="API KEY 2",
+        ),
+        patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch,
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.create_provider_credential({"api_key": "raw"}, None)
 
     assert session.add.call_count == 2
     session.commit.assert_called_once()
@@ -958,11 +964,13 @@ def test_create_provider_credential_marks_existing_provider_as_valid() -> None:
     session = Mock()
     provider_record = SimpleNamespace(id="provider-1", is_valid=False, credential_id="existing-cred")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-                with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-                    configuration.create_provider_credential({"api_key": "raw"}, "Main")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+    ):
+        configuration.create_provider_credential({"api_key": "raw"}, "Main")
 
     assert provider_record.is_valid is True
     assert provider_record.credential_id == "existing-cred"
@@ -974,13 +982,15 @@ def test_create_provider_credential_auto_activates_when_no_active_credential() -
     session = Mock()
     provider_record = SimpleNamespace(id="provider-1", is_valid=False, credential_id=None, updated_at=None)
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-                with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-                    with patch("core.entities.provider_configuration.ProviderCredentialsCache"):
-                        with patch.object(ProviderConfiguration, "switch_preferred_provider_type"):
-                            configuration.create_provider_credential({"api_key": "raw"}, "Main")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache"),
+        patch.object(ProviderConfiguration, "switch_preferred_provider_type"),
+    ):
+        configuration.create_provider_credential({"api_key": "raw"}, "Main")
 
     assert provider_record.is_valid is True
     assert provider_record.credential_id is not None
@@ -991,10 +1001,12 @@ def test_create_provider_credential_raises_when_duplicate_name_exists() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=True):
-            with pytest.raises(ValueError, match="already exists"):
-                configuration.create_provider_credential({"api_key": "raw"}, "Main")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=True),
+        pytest.raises(ValueError, match="already exists"),
+    ):
+        configuration.create_provider_credential({"api_key": "raw"}, "Main")
 
 
 def test_update_provider_credential_success_updates_and_invalidates_cache() -> None:
@@ -1004,20 +1016,22 @@ def test_update_provider_credential_success_updates_and_invalidates_cache() -> N
     provider_record = SimpleNamespace(id="provider-1", credential_id="cred-1")
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-                with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-                    with patch.object(
-                        ProviderConfiguration,
-                        "_update_load_balancing_configs_with_credential",
-                    ) as mock_lb:
-                        with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                            configuration.update_provider_credential(
-                                credentials={"api_key": "raw"},
-                                credential_id="cred-1",
-                                credential_name="New Name",
-                            )
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        patch.object(
+            ProviderConfiguration,
+            "_update_load_balancing_configs_with_credential",
+        ) as mock_lb,
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.update_provider_credential(
+            credentials={"api_key": "raw"},
+            credential_id="cred-1",
+            credential_name="New Name",
+        )
 
     assert credential_record.credential_name == "New Name"
     session.commit.assert_called_once()
@@ -1030,11 +1044,13 @@ def test_update_provider_credential_raises_when_record_not_found() -> None:
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-            with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-                with pytest.raises(ValueError, match="Credential record not found"):
-                    configuration.update_provider_credential({"api_key": "raw"}, "cred-1", None)
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        pytest.raises(ValueError, match="Credential record not found"),
+    ):
+        configuration.update_provider_credential({"api_key": "raw"}, "cred-1", None)
 
 
 def test_update_load_balancing_configs_updates_all_matching_configs() -> None:
@@ -1086,11 +1102,13 @@ def test_delete_provider_credential_removes_provider_record_when_last_credential
         _exec_result(scalar=1),
     ]
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-            with patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch:
-                with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                    configuration.delete_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch,
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.delete_provider_credential("cred-1")
 
     assert any(call.args and call.args[0] is provider_record for call in session.delete.call_args_list)
     mock_cache.return_value.delete.assert_called_once()
@@ -1102,9 +1120,8 @@ def test_delete_provider_credential_raises_when_not_found() -> None:
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
 
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential record not found"):
-            configuration.delete_provider_credential("cred-1")
+    with _patched_session(session), pytest.raises(ValueError, match="Credential record not found"):
+        configuration.delete_provider_credential("cred-1")
 
 
 def test_delete_provider_credential_unsets_active_credential_when_more_available() -> None:
@@ -1119,11 +1136,13 @@ def test_delete_provider_credential_unsets_active_credential_when_more_available
         _exec_result(scalar=2),
     ]
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-            with patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch:
-                with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                    configuration.delete_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch,
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.delete_provider_credential("cred-1")
 
     assert provider_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
@@ -1134,26 +1153,29 @@ def test_switch_active_provider_credential_success_and_failures() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential record not found"):
-            configuration.switch_active_provider_credential("cred-1")
+    with _patched_session(session), pytest.raises(ValueError, match="Credential record not found"):
+        configuration.switch_active_provider_credential("cred-1")
 
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(id="cred-1")
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-            with pytest.raises(ValueError, match="Provider record not found"):
-                configuration.switch_active_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        pytest.raises(ValueError, match="Provider record not found"),
+    ):
+        configuration.switch_active_provider_credential("cred-1")
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
     provider_record = SimpleNamespace(id="provider-1", credential_id=None, updated_at=None)
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-            with patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch:
-                with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                    configuration.switch_active_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        patch.object(ProviderConfiguration, "switch_preferred_provider_type") as mock_switch,
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.switch_active_provider_credential("cred-1")
 
     assert provider_record.credential_id == "cred-1"
     mock_cache.return_value.delete.assert_called_once()
@@ -1212,19 +1234,20 @@ def test_get_specific_custom_model_credential_success_and_not_found() -> None:
     record = SimpleNamespace(id="cred-1", credential_name="Main", encrypted_config='{"openai_api_key":"enc"}')
     session.execute.return_value.scalar_one_or_none.return_value = record
 
-    with _patched_session(session):
-        with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"):
-            with patch.object(ProviderConfiguration, "obfuscated_credentials", return_value={"openai_api_key": "***"}):
-                response = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"),
+        patch.object(ProviderConfiguration, "obfuscated_credentials", return_value={"openai_api_key": "***"}),
+    ):
+        response = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert response["current_credential_id"] == "cred-1"
     assert response["credentials"] == {"openai_api_key": "***"}
 
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential with id cred-1 not found"):
-            configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with _patched_session(session), pytest.raises(ValueError, match="Credential with id cred-1 not found"):
+        configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(
@@ -1292,19 +1315,21 @@ def test_validate_custom_model_credentials_supports_hidden_reuse_and_sessionless
     mock_factory = Mock()
     mock_factory.model_credentials_validate.return_value = {"openai_api_key": "raw"}
 
-    with _patched_session(mock_session):
-        with patch(
+    with (
+        _patched_session(mock_session),
+        patch(
             "core.entities.provider_configuration.create_plugin_model_assembly",
             return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-        ):
-            with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"):
-                with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"):
-                    validated = configuration.validate_custom_model_credentials(
-                        model_type=ModelType.LLM,
-                        model="gpt-4o",
-                        credentials={"openai_api_key": HIDDEN_VALUE},
-                        credential_id="cred-1",
-                    )
+        ),
+        patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw"),
+        patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"),
+    ):
+        validated = configuration.validate_custom_model_credentials(
+            model_type=ModelType.LLM,
+            model="gpt-4o",
+            credentials={"openai_api_key": HIDDEN_VALUE},
+            credential_id="cred-1",
+        )
     assert validated == {"openai_api_key": "enc-new"}
 
     mock_factory2 = Mock()
@@ -1328,45 +1353,49 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
     provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
     credential_record = SimpleNamespace(id="cred-1", encrypted_config="{}", credential_name="Old", updated_at=None)
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_generate_custom_model_credential_name", return_value="API KEY 1"):
-            with patch.object(
-                ProviderConfiguration,
-                "validate_custom_model_credentials",
-                return_value={"openai_api_key": "enc"},
-            ):
-                with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-                    with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                        configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, None)
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_generate_custom_model_credential_name", return_value="API KEY 1"),
+        patch.object(
+            ProviderConfiguration,
+            "validate_custom_model_credentials",
+            return_value={"openai_api_key": "enc"},
+        ),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, None)
     assert session.add.call_count == 2
     assert mock_cache.return_value.delete.call_count == 1
 
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False):
-            with patch.object(
-                ProviderConfiguration,
-                "validate_custom_model_credentials",
-                return_value={"openai_api_key": "enc2"},
-            ):
-                with patch.object(
-                    ProviderConfiguration,
-                    "_get_custom_model_record",
-                    return_value=provider_model_record,
-                ):
-                    with patch.object(
-                        ProviderConfiguration,
-                        "_update_load_balancing_configs_with_credential",
-                    ) as mock_lb:
-                        with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                            configuration.update_custom_model_credential(
-                                model_type=ModelType.LLM,
-                                model="gpt-4o",
-                                credentials={"k": "v"},
-                                credential_name="New Name",
-                                credential_id="cred-1",
-                            )
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False),
+        patch.object(
+            ProviderConfiguration,
+            "validate_custom_model_credentials",
+            return_value={"openai_api_key": "enc2"},
+        ),
+        patch.object(
+            ProviderConfiguration,
+            "_get_custom_model_record",
+            return_value=provider_model_record,
+        ),
+        patch.object(
+            ProviderConfiguration,
+            "_update_load_balancing_configs_with_credential",
+        ) as mock_lb,
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.update_custom_model_credential(
+            model_type=ModelType.LLM,
+            model="gpt-4o",
+            credentials={"k": "v"},
+            credential_name="New Name",
+            credential_id="cred-1",
+        )
     assert credential_record.credential_name == "New Name"
     assert mock_cache.return_value.delete.call_count == 1
     mock_lb.assert_called_once()
@@ -1380,10 +1409,12 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
         _exec_result(scalars_all=[lb_config]),
         _exec_result(scalar=2),
     ]
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert provider_model_record.credential_id is None
     assert mock_cache.return_value.delete.call_count == 2
     assert mock_cache.call_args_list[0].kwargs["cache_type"] == ProviderCredentialsCacheType.LOAD_BALANCING_MODEL
@@ -1402,13 +1433,15 @@ def test_create_update_delete_custom_model_credential_flow() -> None:
         _exec_result(scalars_all=[]),
         _exec_result(scalar=1),
     ]
-    with _patched_session(session):
-        with patch.object(
+    with (
+        _patched_session(session),
+        patch.object(
             ProviderConfiguration,
             "_get_custom_model_record",
             return_value=provider_model_record,
-        ) as mock_get_model:
-            configuration.delete_custom_model_credential(ModelType.LLM, "request-model", "cred-2")
+        ) as mock_get_model,
+    ):
+        configuration.delete_custom_model_credential(ModelType.LLM, "request-model", "cred-2")
     mock_get_model.assert_called_once_with(ModelType.TEXT_EMBEDDING, "stored-model", session=session)
     session.delete.assert_any_call(mismatched_credential_record)
 
@@ -1417,16 +1450,14 @@ def test_add_model_credential_to_model_and_switch_custom_model_credential() -> N
     configuration = _build_provider_configuration()
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential record not found"):
-            configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
+    with _patched_session(session), pytest.raises(ValueError, match="Credential record not found"):
+        configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-            configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
+    with _patched_session(session), patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
+        configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
     session.add.assert_called_once()
     session.commit.assert_called_once()
 
@@ -1434,44 +1465,51 @@ def test_add_model_credential_to_model_and_switch_custom_model_credential() -> N
     credential_record = SimpleNamespace(id="cred-1")
     provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with pytest.raises(ValueError, match="Can't add same credential"):
-                configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record),
+        pytest.raises(ValueError, match="Can't add same credential"),
+    ):
+        configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-1")
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-2")
     provider_model_record = SimpleNamespace(id="model-1", credential_id="cred-1", updated_at=None)
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-2")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.add_model_credential_to_model(ModelType.LLM, "gpt-4o", "cred-2")
     assert provider_model_record.credential_id == "cred-2"
     mock_cache.return_value.delete.assert_called_once()
 
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential record not found"):
-            configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with _patched_session(session), pytest.raises(ValueError, match="Credential record not found"):
+        configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-            with pytest.raises(ValueError, match="custom model record not found"):
-                configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None),
+        pytest.raises(ValueError, match="custom model record not found"),
+    ):
+        configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     session = Mock()
     credential_record = SimpleNamespace(id="cred-1")
     provider_model_record = SimpleNamespace(id="model-1", credential_id=None, updated_at=None)
     session.execute.return_value.scalar_one_or_none.return_value = credential_record
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.switch_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
     assert provider_model_record.credential_id == "cred-1"
     mock_cache.return_value.delete.assert_called_once()
 
@@ -1480,44 +1518,56 @@ def test_delete_custom_model_and_model_setting_methods() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
     provider_model_record = SimpleNamespace(id="model-1")
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.delete_custom_model(ModelType.LLM, "gpt-4o")
     session.delete.assert_called_once_with(provider_model_record)
     session.commit.assert_called_once()
     mock_cache.return_value.delete.assert_called_once()
 
     session = Mock()
     existing = SimpleNamespace(enabled=False, updated_at=None)
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing):
-            assert configuration.enable_model(ModelType.LLM, "gpt-4o") is existing
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing),
+    ):
+        assert configuration.enable_model(ModelType.LLM, "gpt-4o") is existing
     assert existing.enabled is True
 
     session = Mock()
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None):
-            created = configuration.enable_model(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None),
+    ):
+        created = configuration.enable_model(ModelType.LLM, "gpt-4o")
     assert created.enabled is True
 
     session = Mock()
     existing = SimpleNamespace(enabled=True, load_balancing_enabled=True, updated_at=None)
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing):
-            assert configuration.disable_model(ModelType.LLM, "gpt-4o") is existing
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing),
+    ):
+        assert configuration.disable_model(ModelType.LLM, "gpt-4o") is existing
     assert existing.enabled is False
 
     session = Mock()
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None):
-            created = configuration.disable_model(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None),
+    ):
+        created = configuration.disable_model(ModelType.LLM, "gpt-4o")
     assert created.enabled is False
 
     session = Mock()
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing):
-            result = configuration.get_provider_model_setting(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing),
+    ):
+        result = configuration.get_provider_model_setting(ModelType.LLM, "gpt-4o")
     assert result is existing
 
 
@@ -1525,38 +1575,45 @@ def test_model_load_balancing_enable_disable_and_switch_preferred_provider_type_
     configuration = _build_provider_configuration()
     session = Mock()
     session.execute.return_value.scalar.return_value = 1
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="must be more than 1"):
-            configuration.enable_model_load_balancing(ModelType.LLM, "gpt-4o")
+    with _patched_session(session), pytest.raises(ValueError, match="must be more than 1"):
+        configuration.enable_model_load_balancing(ModelType.LLM, "gpt-4o")
 
     session = Mock()
     session.execute.return_value.scalar.return_value = 2
     existing = SimpleNamespace(load_balancing_enabled=False, updated_at=None)
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing):
-            result = configuration.enable_model_load_balancing(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing),
+    ):
+        result = configuration.enable_model_load_balancing(ModelType.LLM, "gpt-4o")
     assert result is existing
     assert existing.load_balancing_enabled is True
 
     session = Mock()
     session.execute.return_value.scalar.return_value = 2
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None):
-            created = configuration.enable_model_load_balancing(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None),
+    ):
+        created = configuration.enable_model_load_balancing(ModelType.LLM, "gpt-4o")
     assert created.load_balancing_enabled is True
 
     session = Mock()
     existing = SimpleNamespace(load_balancing_enabled=True, updated_at=None)
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing):
-            result = configuration.disable_model_load_balancing(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=existing),
+    ):
+        result = configuration.disable_model_load_balancing(ModelType.LLM, "gpt-4o")
     assert result is existing
     assert existing.load_balancing_enabled is False
 
     session = Mock()
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None):
-            created = configuration.disable_model_load_balancing(ModelType.LLM, "gpt-4o")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_model_setting", return_value=None),
+    ):
+        created = configuration.disable_model_load_balancing(ModelType.LLM, "gpt-4o")
     assert created.load_balancing_enabled is False
 
     configuration.preferred_provider_type = ProviderType.SYSTEM
@@ -1780,15 +1837,17 @@ def test_get_specific_provider_credential_decrypts_and_obfuscates_credentials() 
     )
     provider_record = SimpleNamespace(provider_name="aliased-openai")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-            with patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw-secret"):
-                with patch.object(
-                    ProviderConfiguration,
-                    "obfuscated_credentials",
-                    side_effect=lambda credentials, credential_form_schemas: credentials,
-                ):
-                    credentials = configuration._get_specific_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        patch("core.entities.provider_configuration.encrypter.decrypt_token", return_value="raw-secret"),
+        patch.object(
+            ProviderConfiguration,
+            "obfuscated_credentials",
+            side_effect=lambda credentials, credential_form_schemas: credentials,
+        ),
+    ):
+        credentials = configuration._get_specific_provider_credential("cred-1")
 
     assert credentials == {"openai_api_key": "raw-secret", "region": "us"}
 
@@ -1802,18 +1861,20 @@ def test_get_specific_provider_credential_logs_when_decrypt_fails(caplog: pytest
     )
     caplog.set_level(logging.ERROR, logger="core.entities.provider_configuration")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-            with patch(
-                "core.entities.provider_configuration.encrypter.decrypt_token",
-                side_effect=RuntimeError("boom"),
-            ):
-                with patch.object(
-                    ProviderConfiguration,
-                    "obfuscated_credentials",
-                    side_effect=lambda credentials, credential_form_schemas: credentials,
-                ):
-                    credentials = configuration._get_specific_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        patch(
+            "core.entities.provider_configuration.encrypter.decrypt_token",
+            side_effect=RuntimeError("boom"),
+        ),
+        patch.object(
+            ProviderConfiguration,
+            "obfuscated_credentials",
+            side_effect=lambda credentials, credential_form_schemas: credentials,
+        ),
+    ):
+        credentials = configuration._get_specific_provider_credential("cred-1")
 
     assert credentials == {"openai_api_key": "enc-secret"}
     assert caplog.messages.count("Failed to decrypt credential secret variable openai_api_key") == 1
@@ -1827,16 +1888,18 @@ def test_validate_provider_credentials_uses_empty_original_when_record_missing()
     mock_factory = Mock()
     mock_factory.provider_credentials_validate.return_value = {"openai_api_key": "raw"}
 
-    with _patched_session(mock_session):
-        with patch(
+    with (
+        _patched_session(mock_session),
+        patch(
             "core.entities.provider_configuration.create_plugin_model_assembly",
             return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-        ):
-            with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"):
-                validated = configuration.validate_provider_credentials(
-                    credentials={"openai_api_key": HIDDEN_VALUE},
-                    credential_id="cred-1",
-                )
+        ),
+        patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"),
+    ):
+        validated = configuration.validate_provider_credentials(
+            credentials={"openai_api_key": HIDDEN_VALUE},
+            credential_id="cred-1",
+        )
 
     assert validated == {"openai_api_key": "enc-new"}
 
@@ -1846,12 +1909,14 @@ def test_create_provider_credential_rolls_back_on_error() -> None:
     session = Mock()
     session.add.side_effect = RuntimeError("boom")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_generate_provider_credential_name", return_value="API KEY 9"):
-            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-                with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-                    with pytest.raises(RuntimeError, match="boom"):
-                        configuration.create_provider_credential({"api_key": "raw"}, None)
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_generate_provider_credential_name", return_value="API KEY 9"),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.create_provider_credential({"api_key": "raw"}, None)
 
     session.rollback.assert_called_once()
 
@@ -1860,10 +1925,12 @@ def test_update_provider_credential_raises_on_duplicate_name() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=True):
-            with pytest.raises(ValueError, match="already exists"):
-                configuration.update_provider_credential({"api_key": "raw"}, "cred-1", "Main")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=True),
+        pytest.raises(ValueError, match="already exists"),
+    ):
+        configuration.update_provider_credential({"api_key": "raw"}, "cred-1", "Main")
 
 
 def test_update_provider_credential_rolls_back_on_error() -> None:
@@ -1877,12 +1944,14 @@ def test_update_provider_credential_rolls_back_on_error() -> None:
     )
     session.commit.side_effect = RuntimeError("boom")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}):
-                with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-                    with pytest.raises(RuntimeError, match="boom"):
-                        configuration.update_provider_credential({"api_key": "raw"}, "cred-1", "Main")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_provider_credential_name_exists", return_value=False),
+        patch.object(ProviderConfiguration, "validate_provider_credentials", return_value={"api_key": "enc"}),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.update_provider_credential({"api_key": "raw"}, "cred-1", "Main")
 
     session.rollback.assert_called_once()
 
@@ -1897,10 +1966,12 @@ def test_delete_provider_credential_rolls_back_on_error() -> None:
         _exec_result(scalar=2),
     ]
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
-            with pytest.raises(RuntimeError, match="boom"):
-                configuration.delete_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=None),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.delete_provider_credential("cred-1")
 
     session.rollback.assert_called_once()
 
@@ -1912,10 +1983,12 @@ def test_switch_active_provider_credential_rolls_back_on_error() -> None:
     session.commit.side_effect = RuntimeError("boom")
     provider_record = SimpleNamespace(id="provider-1", credential_id=None, updated_at=None)
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record):
-            with pytest.raises(RuntimeError, match="boom"):
-                configuration.switch_active_provider_credential("cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_provider_record", return_value=provider_record),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.switch_active_provider_credential("cred-1")
 
     session.rollback.assert_called_once()
 
@@ -1931,14 +2004,16 @@ def test_get_specific_custom_model_credential_logs_when_decrypt_fails(caplog: py
     )
     caplog.set_level(logging.ERROR, logger="core.entities.provider_configuration")
 
-    with _patched_session(session):
-        with patch("core.entities.provider_configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
-            with patch.object(
-                ProviderConfiguration,
-                "obfuscated_credentials",
-                side_effect=lambda credentials, credential_form_schemas: credentials,
-            ):
-                result = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch("core.entities.provider_configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")),
+        patch.object(
+            ProviderConfiguration,
+            "obfuscated_credentials",
+            side_effect=lambda credentials, credential_form_schemas: credentials,
+        ),
+    ):
+        result = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert result["credentials"] == {"openai_api_key": "enc-secret"}
     assert caplog.messages.count("Failed to decrypt model credential secret variable openai_api_key") == 1
@@ -1954,18 +2029,20 @@ def test_validate_custom_model_credentials_handles_invalid_original_json() -> No
     mock_factory = Mock()
     mock_factory.model_credentials_validate.return_value = {"openai_api_key": "raw"}
 
-    with _patched_session(mock_session):
-        with patch(
+    with (
+        _patched_session(mock_session),
+        patch(
             "core.entities.provider_configuration.create_plugin_model_assembly",
             return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
-        ):
-            with patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"):
-                validated = configuration.validate_custom_model_credentials(
-                    model_type=ModelType.LLM,
-                    model="gpt-4o",
-                    credentials={"openai_api_key": HIDDEN_VALUE},
-                    credential_id="cred-1",
-                )
+        ),
+        patch("core.entities.provider_configuration.encrypter.encrypt_token", return_value="enc-new"),
+    ):
+        validated = configuration.validate_custom_model_credentials(
+            model_type=ModelType.LLM,
+            model="gpt-4o",
+            credentials={"openai_api_key": HIDDEN_VALUE},
+            credential_id="cred-1",
+        )
 
     assert validated == {"openai_api_key": "enc-new"}
 
@@ -1974,10 +2051,12 @@ def test_create_custom_model_credential_raises_on_duplicate_name() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=True):
-            with pytest.raises(ValueError, match="already exists"):
-                configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, "Main")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=True),
+        pytest.raises(ValueError, match="already exists"),
+    ):
+        configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, "Main")
 
 
 def test_create_custom_model_credential_rolls_back_on_error() -> None:
@@ -1985,16 +2064,18 @@ def test_create_custom_model_credential_rolls_back_on_error() -> None:
     session = Mock()
     session.add.side_effect = RuntimeError("boom")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_generate_custom_model_credential_name", return_value="API KEY 4"):
-            with patch.object(
-                ProviderConfiguration,
-                "validate_custom_model_credentials",
-                return_value={"openai_api_key": "enc"},
-            ):
-                with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-                    with pytest.raises(RuntimeError, match="boom"):
-                        configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, None)
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_generate_custom_model_credential_name", return_value="API KEY 4"),
+        patch.object(
+            ProviderConfiguration,
+            "validate_custom_model_credentials",
+            return_value={"openai_api_key": "enc"},
+        ),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.create_custom_model_credential(ModelType.LLM, "gpt-4o", {"k": "v"}, None)
 
     session.rollback.assert_called_once()
 
@@ -2003,16 +2084,18 @@ def test_update_custom_model_credential_raises_on_duplicate_name() -> None:
     configuration = _build_provider_configuration()
     session = Mock()
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=True):
-            with pytest.raises(ValueError, match="already exists"):
-                configuration.update_custom_model_credential(
-                    model_type=ModelType.LLM,
-                    model="gpt-4o",
-                    credentials={"k": "v"},
-                    credential_name="Main",
-                    credential_id="cred-1",
-                )
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=True),
+        pytest.raises(ValueError, match="already exists"),
+    ):
+        configuration.update_custom_model_credential(
+            model_type=ModelType.LLM,
+            model="gpt-4o",
+            credentials={"k": "v"},
+            credential_name="Main",
+            credential_id="cred-1",
+        )
 
 
 def test_update_custom_model_credential_raises_when_record_not_found() -> None:
@@ -2020,18 +2103,20 @@ def test_update_custom_model_credential_raises_when_record_not_found() -> None:
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_custom_model_credentials", return_value={"k": "v"}):
-                with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-                    with pytest.raises(ValueError, match="Credential record not found"):
-                        configuration.update_custom_model_credential(
-                            model_type=ModelType.LLM,
-                            model="gpt-4o",
-                            credentials={"k": "v"},
-                            credential_name="Main",
-                            credential_id="cred-1",
-                        )
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False),
+        patch.object(ProviderConfiguration, "validate_custom_model_credentials", return_value={"k": "v"}),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None),
+        pytest.raises(ValueError, match="Credential record not found"),
+    ):
+        configuration.update_custom_model_credential(
+            model_type=ModelType.LLM,
+            model="gpt-4o",
+            credentials={"k": "v"},
+            credential_name="Main",
+            credential_id="cred-1",
+        )
 
 
 def test_update_custom_model_credential_rolls_back_on_error() -> None:
@@ -2045,18 +2130,20 @@ def test_update_custom_model_credential_rolls_back_on_error() -> None:
     )
     session.commit.side_effect = RuntimeError("boom")
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False):
-            with patch.object(ProviderConfiguration, "validate_custom_model_credentials", return_value={"k": "v"}):
-                with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-                    with pytest.raises(RuntimeError, match="boom"):
-                        configuration.update_custom_model_credential(
-                            model_type=ModelType.LLM,
-                            model="gpt-4o",
-                            credentials={"k": "v"},
-                            credential_name="Main",
-                            credential_id="cred-1",
-                        )
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_check_custom_model_credential_name_exists", return_value=False),
+        patch.object(ProviderConfiguration, "validate_custom_model_credentials", return_value={"k": "v"}),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.update_custom_model_credential(
+            model_type=ModelType.LLM,
+            model="gpt-4o",
+            credentials={"k": "v"},
+            credential_name="Main",
+            credential_id="cred-1",
+        )
 
     session.rollback.assert_called_once()
 
@@ -2066,9 +2153,8 @@ def test_delete_custom_model_credential_raises_when_record_not_found() -> None:
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = None
 
-    with _patched_session(session):
-        with pytest.raises(ValueError, match="Credential record not found"):
-            configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with _patched_session(session), pytest.raises(ValueError, match="Credential record not found"):
+        configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
 
 def test_delete_custom_model_credential_removes_custom_model_record_when_last_credential() -> None:
@@ -2082,10 +2168,12 @@ def test_delete_custom_model_credential_removes_custom_model_record_when_last_cr
         _exec_result(scalar=1),
     ]
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record):
-            with patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache:
-                configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=provider_model_record),
+        patch("core.entities.provider_configuration.ProviderCredentialsCache") as mock_cache,
+    ):
+        configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert any(call.args and call.args[0] is provider_model_record for call in session.delete.call_args_list)
     mock_cache.assert_called_once_with(
@@ -2106,10 +2194,12 @@ def test_delete_custom_model_credential_rolls_back_on_error() -> None:
         _exec_result(scalar=2),
     ]
 
-    with _patched_session(session):
-        with patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None):
-            with pytest.raises(RuntimeError, match="boom"):
-                configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+    with (
+        _patched_session(session),
+        patch.object(ProviderConfiguration, "_get_custom_model_record", return_value=None),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        configuration.delete_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     session.rollback.assert_called_once()
 
@@ -2161,13 +2251,15 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
             return None
         return _build_ai_model(model)
 
-    with caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"):
-        with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema):
-            models = configuration._get_custom_provider_models(
-                model_types=[ModelType.LLM],
-                provider_schema=provider_schema,
-                model_setting_map={},
-            )
+    with (
+        caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"),
+        patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema),
+    ):
+        models = configuration._get_custom_provider_models(
+            model_types=[ModelType.LLM],
+            provider_schema=provider_schema,
+            model_setting_map={},
+        )
 
     assert "get custom model schema failed, boom" in caplog.messages
     assert any(model.model == "ok-custom" for model in models)

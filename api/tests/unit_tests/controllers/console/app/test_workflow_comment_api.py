@@ -184,11 +184,13 @@ def test_write_endpoints_require_edit_permission(app: Flask, monkeypatch: pytest
     _patch_console_guards(monkeypatch, account, app_model)
     _patch_write_services(monkeypatch)
 
-    with app.test_request_context(case.path, method=case.method_name.upper(), json=case.payload):
-        with _patch_payload(case.payload):
-            handler = getattr(case.resource_cls(), case.method_name)
-            with pytest.raises(Forbidden):
-                handler(**case.kwargs)
+    with (
+        app.test_request_context(case.path, method=case.method_name.upper(), json=case.payload),
+        _patch_payload(case.payload),
+    ):
+        handler = getattr(case.resource_cls(), case.method_name)
+        with pytest.raises(Forbidden):
+            handler(**case.kwargs)
 
 
 def test_create_comment_allows_editor(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -206,9 +208,11 @@ def test_create_comment_allows_editor(app: Flask, monkeypatch: pytest.MonkeyPatc
         "mentioned_user_ids": [],
     }
 
-    with app.test_request_context("/console/api/apps/app-123/workflow/comments", method="POST", json=payload):
-        with _patch_payload(payload):
-            result = workflow_comment_module.WorkflowCommentListApi().post(app_id="app-123")
+    with (
+        app.test_request_context("/console/api/apps/app-123/workflow/comments", method="POST", json=payload),
+        _patch_payload(payload),
+    ):
+        result = workflow_comment_module.WorkflowCommentListApi().post(app_id="app-123")
 
     response, status = unwrap_response(result)
     assert response["id"] == "comment-1"
@@ -236,9 +240,11 @@ def test_update_comment_omits_mentions_when_payload_does_not_include_them(
     monkeypatch.setattr(workflow_comment_module.WorkflowCommentService, "update_comment", update_comment_mock)
     payload: dict[str, object] = {"content": "hello", "position_x": 10.0, "position_y": 20.0}
 
-    with app.test_request_context("/console/api/apps/app-123/workflow/comments/comment-1", method="PUT", json=payload):
-        with _patch_payload(payload):
-            result = workflow_comment_module.WorkflowCommentDetailApi().put(app_id="app-123", comment_id="comment-1")
+    with (
+        app.test_request_context("/console/api/apps/app-123/workflow/comments/comment-1", method="PUT", json=payload),
+        _patch_payload(payload),
+    ):
+        result = workflow_comment_module.WorkflowCommentDetailApi().put(app_id="app-123", comment_id="comment-1")
 
     response, status = unwrap_response(result)
     assert response == {"id": "comment-1", "updated_at": JAN_1_2024_NOON_TS}
@@ -493,9 +499,11 @@ def test_mutation_endpoints_serialize_response_models(
         MagicMock(return_value=case.service_return),
     )
 
-    with app.test_request_context(case.path, method=case.method_name.upper(), json=case.payload):
-        with _patch_payload(case.payload):
-            result = getattr(case.resource_cls(), case.method_name)(**case.kwargs)
+    with (
+        app.test_request_context(case.path, method=case.method_name.upper(), json=case.payload),
+        _patch_payload(case.payload),
+    ):
+        result = getattr(case.resource_cls(), case.method_name)(**case.kwargs)
 
     response, status = unwrap_response(result)
     assert response == case.expected_response

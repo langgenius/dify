@@ -162,9 +162,8 @@ class TestRemoteFileUploadApi:
             filename="big.zip", extension="zip", mimetype="application/zip", size=999999999
         )
 
-        with app.test_request_context("/remote-files/upload", method="POST"):
-            with pytest.raises(FileTooLargeError):
-                RemoteFileUploadApi().post(_app_model(), _end_user())
+        with app.test_request_context("/remote-files/upload", method="POST"), pytest.raises(FileTooLargeError):
+            RemoteFileUploadApi().post(_app_model(), _end_user())
 
     @patch("controllers.web.remote_files.remote_fetcher")
     @patch("controllers.web.remote_files.web_ns")
@@ -174,6 +173,5 @@ class TestRemoteFileUploadApi:
         mock_ns.payload = {"url": "https://example.com/bad"}
         mock_proxy.make_request.side_effect = httpx.RequestError("connection failed")
 
-        with app.test_request_context("/remote-files/upload", method="POST"):
-            with pytest.raises(RemoteFileUploadError):
-                RemoteFileUploadApi().post(_app_model(), _end_user())
+        with app.test_request_context("/remote-files/upload", method="POST"), pytest.raises(RemoteFileUploadError):
+            RemoteFileUploadApi().post(_app_model(), _end_user())

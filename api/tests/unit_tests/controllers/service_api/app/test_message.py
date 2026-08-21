@@ -415,9 +415,8 @@ class TestMessageListApi:
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages?conversation_id=cid", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user)
+        with app.test_request_context("/messages?conversation_id=cid", method="GET"), pytest.raises(NotChatAppError):
+            handler(api, app_model=app_model, end_user=end_user)
 
     def test_conversation_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -431,12 +430,14 @@ class TestMessageListApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context(
-            "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
-            method="GET",
+        with (
+            app.test_request_context(
+                "/messages?conversation_id=00000000-0000-0000-0000-000000000001",
+                method="GET",
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+            handler(api, app_model=app_model, end_user=end_user)
 
     def test_first_message_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -450,12 +451,14 @@ class TestMessageListApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context(
-            "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
-            method="GET",
+        with (
+            app.test_request_context(
+                "/messages?conversation_id=00000000-0000-0000-0000-000000000001&first_id=00000000-0000-0000-0000-000000000002",
+                method="GET",
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user)
+            handler(api, app_model=app_model, end_user=end_user)
 
 
 class TestMessageFeedbackApi:
@@ -471,13 +474,15 @@ class TestMessageFeedbackApi:
         app_model = SimpleNamespace()
         end_user = SimpleNamespace()
 
-        with app.test_request_context(
-            "/messages/m1/feedbacks",
-            method="POST",
-            json={"rating": "like", "content": "ok"},
+        with (
+            app.test_request_context(
+                "/messages/m1/feedbacks",
+                method="POST",
+                json={"rating": "like", "content": "ok"},
+            ),
+            pytest.raises(NotFound),
         ):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
 
 class TestAppGetFeedbacksApi:
@@ -514,9 +519,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(NotChatAppError):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -530,9 +534,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(NotFound):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(NotFound):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_disabled(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -546,9 +549,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(BadRequest):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(BadRequest):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_internal_error(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
@@ -562,9 +564,8 @@ class TestMessageSuggestedApi:
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
-        with app.test_request_context("/messages/m1/suggested", method="GET"):
-            with pytest.raises(InternalServerError):
-                handler(api, app_model=app_model, end_user=end_user, message_id="m1")
+        with app.test_request_context("/messages/m1/suggested", method="GET"), pytest.raises(InternalServerError):
+            handler(api, app_model=app_model, end_user=end_user, message_id="m1")
 
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

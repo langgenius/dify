@@ -377,7 +377,11 @@ class TestIndexingRunnerExtract:
         mock_dependencies["session"].add(upload_file)
         mock_dependencies["session"].commit()
 
-        with patch.object(runner, "_update_document_index_status"), patch("core.indexing_runner.ExtractSetting"):
+        with (
+            patch.object(runner, "_update_document_index_status"),
+            patch("core.indexing_runner.ExtractSetting"),
+        ):
+            # Act: Call the extract method
             result = runner._extract(
                 mock_processor, sample_dataset_document, sample_process_rule, mock_dependencies["session"]
             )
@@ -1083,10 +1087,11 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock _extract to raise DocumentIsPausedError
-        with patch.object(runner, "_extract", side_effect=DocumentIsPausedError("Document paused")):
-            # Act & Assert
-            with pytest.raises(DocumentIsPausedError):
-                runner.run([doc], mock_dependencies["session"])
+        with (
+            patch.object(runner, "_extract", side_effect=DocumentIsPausedError("Document paused")),
+            pytest.raises(DocumentIsPausedError),
+        ):
+            runner.run([doc], mock_dependencies["session"])
 
     @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_counts_each_transformed_document_once(
@@ -1976,13 +1981,15 @@ class TestIndexingRunnerProcessChunk:
         mock_context.__exit__ = MagicMock(return_value=None)
         mock_flask_app.app_context.return_value = mock_context
 
-        with patch("core.indexing_runner.session_factory.create_session", sqlite_session_factory):
-            # Act & Assert - the method creates its own app_context and session
-            with pytest.raises(DocumentIsPausedError):
-                runner._process_chunk(
-                    mock_flask_app,
-                    IndexStructureType.PARAGRAPH_INDEX,
-                    chunk_documents,
-                    mock_dataset.id,
-                    mock_dataset_document.id,
-                )
+        # Act & Assert - the method creates its own app_context and session
+        with (
+            patch("core.indexing_runner.session_factory.create_session", sqlite_session_factory),
+            pytest.raises(DocumentIsPausedError),
+        ):
+            runner._process_chunk(
+                mock_flask_app,
+                IndexStructureType.PARAGRAPH_INDEX,
+                chunk_documents,
+                mock_dataset.id,
+                mock_dataset_document.id,
+            )
