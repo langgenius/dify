@@ -14,7 +14,7 @@ permissions:
 jobs:
   test:
     name: Web Full-Stack E2E
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     defaults:
       run:

@@ -333,6 +333,11 @@ vi.mock('../upgrade/knowledge-upgrade-card', () => ({
   ),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink: () => (path?: string) => `https://docs.example.com${path ?? ''}`,
+  useLocale: () => 'en-US',
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     workspaces: {
@@ -913,6 +918,17 @@ describe('NewKnowledgeList', () => {
 
     expect(screen.getByRole('link', { name: 'Upgraded knowledge' }).closest('li')).not.toHaveClass(
       'border-state-accent-solid',
+    )
+  })
+
+  it('links the guide through the shared documentation URL', () => {
+    setResolvedPage()
+
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: 'dataset.newKnowledge.learnMore' })).toHaveAttribute(
+      'href',
+      'https://docs.example.com/use-dify/knowledge/readme',
     )
   })
 

@@ -10,6 +10,7 @@ import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segm
 import { useIsClient } from 'foxact/use-is-client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import {
   useNewKnowledgeGuideDismissedValue,
   useSetNewKnowledgeGuideDismissed,
@@ -22,6 +23,7 @@ export type KnowledgeViewSwitcherProps = {
 
 export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcherProps) {
   const { t } = useTranslation('dataset')
+  const docLink = useDocLink()
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
   const isClient = useIsClient()
@@ -86,7 +88,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
             </PopoverDescription>
             <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-3">
               <a
-                href="https://docs.dify.ai/en/guides/knowledge-base"
+                href={docLink('/use-dify/knowledge/readme')}
                 target="_blank"
                 rel="noreferrer"
                 className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"

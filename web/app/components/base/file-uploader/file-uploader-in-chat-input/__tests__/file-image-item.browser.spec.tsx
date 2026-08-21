@@ -24,8 +24,10 @@ describe('FileImageItem pointer interaction', () => {
   it('keeps the preview clickable when the download action is visible', async () => {
     const screen = await render(<FileImageItem file={file} canPreview showDownloadAction />)
     const preview = screen.getByRole('button', { name: 'common.operation.view photo.png' })
+    const download = screen.getByRole('button', { name: 'common.operation.download' })
 
     await preview.hover()
+    await expect.element(download).toBeVisible()
     await preview.click()
 
     await expect.element(page.getByRole('dialog')).toBeVisible()

@@ -6,7 +6,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import services.async_workflow_service as async_workflow_service_module
-from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.account import Account
+from models.enums import AppTriggerType, CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
+from models.model import App, AppMode, EndUser
+from models.workflow import Workflow, WorkflowType
 from services.async_workflow_service import AsyncWorkflowService
 from services.errors.app import QuotaExceededError, WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData
@@ -37,6 +40,20 @@ class AsyncWorkflowServiceTestDataFactory:
         )
 
     @staticmethod
+    def create_app(app_id: str = "app-123", tenant_id: str = "tenant-123") -> App:
+        """Create an app model for service-return tests."""
+        return App(
+            id=app_id,
+            tenant_id=tenant_id,
+            name="Async workflow app",
+            description="",
+            mode=AppMode.WORKFLOW,
+            enable_site=True,
+            enable_api=True,
+            max_active_requests=0,
+        )
+
+    @staticmethod
     def create_trigger_log_with_data(trigger_data: TriggerData, retry_count: int = 0) -> MagicMock:
         """Create a mock trigger log with serialized trigger data."""
         trigger_log = MagicMock()
@@ -47,6 +64,41 @@ class AsyncWorkflowServiceTestDataFactory:
         trigger_log.status = WorkflowTriggerStatus.FAILED
         trigger_log.to_dict.return_value = {"id": trigger_log.id}
         return trigger_log
+
+    @staticmethod
+    def create_workflow(
+        *, workflow_id: str = "workflow-123", app_id: str = "app-123", tenant_id: str = "tenant-123"
+    ) -> Workflow:
+        """Create a mapped workflow for service-return and trigger-log tests."""
+        return Workflow(
+            id=workflow_id,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            type=WorkflowType.WORKFLOW,
+            version="1",
+            graph="{}",
+            _features="{}",
+            created_by="account-123",
+        )
+
+    @staticmethod
+    def create_account(account_id: str = "account-123") -> Account:
+        """Create a mapped account for role-discrimination tests."""
+        account = Account(name="Account", email=f"{account_id}@example.com")
+        account.id = account_id
+        return account
+
+    @staticmethod
+    def create_end_user(end_user_id: str = "end-user-123") -> EndUser:
+        """Create a mapped end user for role-discrimination and retry tests."""
+        return EndUser(
+            id=end_user_id,
+            tenant_id="tenant-123",
+            app_id="app-123",
+            type=EndUserType.BROWSER,
+            name="End User",
+            session_id=f"session-{end_user_id}",
+        )
 
 
 class TestAsyncWorkflowService:
@@ -129,8 +181,7 @@ class TestAsyncWorkflowService:
         app_model.id = "app-123"
         session.scalar.return_value = app_model
         trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = MagicMock()
-        workflow.id = "workflow-123"
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
 
         mocks = async_workflow_trigger_mocks
         mocks["dispatcher"].get_queue_name.return_value = queue_name
@@ -145,15 +196,10 @@ class TestAsyncWorkflowService:
         quota_charge_mock = MagicMock()
         mocks["quota_service"].reserve.return_value = quota_charge_mock
 
-        class DummyAccount:
-            def __init__(self, user_id: str):
-                self.id = user_id
+        user = AsyncWorkflowServiceTestDataFactory.create_account()
 
-        with patch.object(async_workflow_service_module, "Account", DummyAccount):
-            user = DummyAccount("account-123")
-
-            # Act
-            result = AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
+        # Act
+        result = AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
 
         # Assert
         assert isinstance(result, AsyncTriggerResponse)
@@ -195,8 +241,7 @@ class TestAsyncWorkflowService:
         app_model.id = "app-123"
         session.scalar.return_value = app_model
         trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = MagicMock()
-        workflow.id = "workflow-123"
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
 
         mocks = async_workflow_trigger_mocks
         mocks["dispatcher"].get_queue_name.return_value = QueuePriority.SANDBOX
@@ -205,7 +250,7 @@ class TestAsyncWorkflowService:
         task_result = MagicMock(id="task-123")
         mocks["sandbox_task"].delay.return_value = task_result
 
-        user = SimpleNamespace(id="end-user-123")
+        user = AsyncWorkflowServiceTestDataFactory.create_end_user()
 
         # Act
         AsyncWorkflowService.trigger_workflow_async(session=session, user=user, trigger_data=trigger_data)
@@ -231,7 +276,7 @@ class TestAsyncWorkflowService:
             with pytest.raises(WorkflowNotFoundError, match="App not found: missing-app"):
                 AsyncWorkflowService.trigger_workflow_async(
                     session=session,
-                    user=SimpleNamespace(id="user-123"),
+                    user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
                     trigger_data=trigger_data,
                 )
 
@@ -246,8 +291,7 @@ class TestAsyncWorkflowService:
         app_model.id = "app-123"
         session.scalar.return_value = app_model
         trigger_data = AsyncWorkflowServiceTestDataFactory.create_trigger_data()
-        workflow = MagicMock()
-        workflow.id = "workflow-123"
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
 
         mocks = async_workflow_trigger_mocks
         mocks["dispatcher"].get_queue_name.return_value = QueuePriority.TEAM
@@ -263,7 +307,7 @@ class TestAsyncWorkflowService:
         with pytest.raises(QuotaExceededError) as exc_info:
             AsyncWorkflowService.trigger_workflow_async(
                 session=session,
-                user=SimpleNamespace(id="user-123"),
+                user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
                 trigger_data=trigger_data,
             )
 
@@ -294,7 +338,7 @@ class TestAsyncWorkflowService:
             with pytest.raises(ValueError, match="Trigger log not found: missing-log"):
                 AsyncWorkflowService.reinvoke_trigger(
                     session=session,
-                    user=SimpleNamespace(id="user-123"),
+                    user=AsyncWorkflowServiceTestDataFactory.create_end_user("user-123"),
                     workflow_trigger_log_id="missing-log",
                 )
 
@@ -322,7 +366,7 @@ class TestAsyncWorkflowService:
                 return_value=expected_response,
             ) as mock_trigger_workflow_async,
         ):
-            user = SimpleNamespace(id="user-123")
+            user = AsyncWorkflowServiceTestDataFactory.create_end_user("user-123")
 
             # Act
             response = AsyncWorkflowService.reinvoke_trigger(
@@ -468,8 +512,8 @@ class TestAsyncWorkflowServiceGetWorkflow:
         """Test _get_workflow returns published workflow by id when provided."""
         # Arrange
         workflow_service = MagicMock()
-        app_model = MagicMock()
-        workflow = MagicMock()
+        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
         workflow_service.get_published_workflow_by_id.return_value = workflow
 
         # Act
@@ -489,7 +533,7 @@ class TestAsyncWorkflowServiceGetWorkflow:
         """Test _get_workflow raises WorkflowNotFoundError for unknown workflow id."""
         # Arrange
         workflow_service = MagicMock()
-        app_model = MagicMock()
+        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
         workflow_service.get_published_workflow_by_id.return_value = None
 
         # Act / Assert
@@ -502,9 +546,8 @@ class TestAsyncWorkflowServiceGetWorkflow:
         """Test _get_workflow returns default published workflow when no id is provided."""
         # Arrange
         workflow_service = MagicMock()
-        app_model = MagicMock()
-        app_model.id = "app-123"
-        workflow = MagicMock()
+        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
+        workflow = AsyncWorkflowServiceTestDataFactory.create_workflow()
         workflow_service.get_published_workflow.return_value = workflow
 
         # Act
@@ -520,8 +563,7 @@ class TestAsyncWorkflowServiceGetWorkflow:
         """Test _get_workflow raises WorkflowNotFoundError when app has no published workflow."""
         # Arrange
         workflow_service = MagicMock()
-        app_model = MagicMock()
-        app_model.id = "app-123"
+        app_model = AsyncWorkflowServiceTestDataFactory.create_app()
         workflow_service.get_published_workflow.return_value = None
 
         # Act / Assert

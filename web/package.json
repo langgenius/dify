@@ -29,9 +29,8 @@
     "start:vinext": "vinext start",
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
-    "test": "vp test",
-    "test:coverage": "vp test --coverage",
-    "test:watch": "vp test --watch",
+    "test": "vp test --project unit",
+    "test:browser": "vp test --project browser",
     "type-check": "tsc",
     "uglify-embed": "node ./bin/uglify-embed"
   },

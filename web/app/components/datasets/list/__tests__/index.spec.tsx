@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
+import { queryClientAtom } from 'jotai-tanstack-query'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -399,14 +400,15 @@ describe('List', () => {
       await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
       firstRender.unmount()
 
-      const store = createStore()
-      seedRegisteredConsoleStateFixture(store)
       const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
-      const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+      const { queryClient, wrapper: QueryWrapper } = createConsoleQueryWrapper({
         systemFeatures: {
           knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
         },
       })
+      const store = createStore()
+      store.set(queryClientAtom, queryClient)
+      seedRegisteredConsoleStateFixture(store)
       const app = (
         <QueryWrapper>
           <Provider store={store}>

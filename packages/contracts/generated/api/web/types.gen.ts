@@ -1569,6 +1569,7 @@ export type GetWebappPermissionErrors = {
   400: unknown
   401: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappPermissionResponses = {

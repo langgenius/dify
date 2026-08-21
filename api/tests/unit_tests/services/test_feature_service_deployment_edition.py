@@ -43,3 +43,24 @@ def test_get_system_features_uses_configured_deployment_edition(
         fulfill_from_enterprise.assert_called_once_with(result)
     else:
         fulfill_from_enterprise.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("edition", "feature_enabled", "expected"),
+    [
+        (DeploymentEdition.CLOUD, True, True),
+        (DeploymentEdition.CLOUD, False, False),
+        (DeploymentEdition.COMMUNITY, True, False),
+        (DeploymentEdition.ENTERPRISE, True, False),
+    ],
+)
+def test_trial_app_policy_is_cloud_only(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    feature_enabled: bool,
+    expected: bool,
+) -> None:
+    monkeypatch.setattr("services.feature_service.dify_config.DEPLOYMENT_EDITION", edition)
+    monkeypatch.setattr("services.feature_service.dify_config.ENABLE_TRIAL_APP", feature_enabled)
+
+    assert FeatureService.is_trial_app_enabled() is expected

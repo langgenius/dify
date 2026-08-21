@@ -26,6 +26,7 @@ import { useSnippetRun } from '../hooks/use-snippet-run'
 import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
 import { canCreateAndModifySnippets } from '../utils/permission'
+import { useSnippetDSL } from './hooks/use-snippet-dsl'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SnippetChildren from './snippet-children'
@@ -205,6 +206,7 @@ const SnippetMain = ({
     canEdit: canEditSnippet,
     snippetId,
   })
+  const { handleExportDSL } = useSnippetDSL({ snippetId, snippetName: snippet.name })
   const { handleStartWorkflowRun, handleWorkflowStartRunInWorkflow } = useSnippetStartRun({
     handleRun,
   })
@@ -322,6 +324,7 @@ const SnippetMain = ({
       handleStopRun,
       handleStartWorkflowRun,
       handleWorkflowStartRunInWorkflow,
+      handleExportDSL,
       getWorkflowRunAndTraceUrl,
       availableNodesMetaData,
       fetchInspectVars,
@@ -368,6 +371,7 @@ const SnippetMain = ({
     handleStartWorkflowRun,
     handleStopRun,
     handleWorkflowStartRunInWorkflow,
+    handleExportDSL,
     getWorkflowRunAndTraceUrl,
     hasNodeInspectVars,
     hasSetInspectVar,

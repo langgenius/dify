@@ -302,12 +302,11 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert app_list_item_schema["properties"]["can_trial"]["type"] == "boolean"
     assert "anyOf" not in app_list_item_schema["properties"]["can_trial"]
     assert "can_trial" in app_list_item_schema["required"]
-    app_detail_nullable_schema = schemas["RecommendedAppDetailNullableResponse"]
     assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
-        "#/components/schemas/RecommendedAppDetailNullableResponse"
+        "#/components/schemas/RecommendedAppDetailResponse"
     )
-    assert {"$ref": "#/components/schemas/RecommendedAppDetailResponse"} in app_detail_nullable_schema["anyOf"]
-    assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
+    assert "404" in paths["/explore/apps/{app_id}"]["get"]["responses"]
+    assert "RecommendedAppDetailNullableResponse" not in schemas
     assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"
