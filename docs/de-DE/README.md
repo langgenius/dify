@@ -188,6 +188,10 @@ Ein-Klick-Bereitstellung von Dify in der Alibaba Cloud mit [Alibaba Cloud Data M
 
 Stellen Sie Dify mit einem Klick in AKS bereit, indem Sie [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) verwenden
 
+#### Bereitstellung mit Sealos
+
+Stellen Sie Dify mit einem Klick über den [Sealos App Store](https://sealos.io/products/app-store/dify/) bereit
+
 ## Contributing
 
 Falls Sie Code beitragen möchten, lesen Sie bitte unseren [Contribution Guide](./CONTRIBUTING.md). Gleichzeitig bitten wir Sie, Dify zu unterstützen, indem Sie es in den sozialen Medien teilen und auf Veranstaltungen und Konferenzen präsentieren.

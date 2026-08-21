@@ -379,11 +379,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2298,11 +2293,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/external-api/external-api-modal/Form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -2872,11 +2862,6 @@
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -4051,11 +4036,6 @@
   },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
