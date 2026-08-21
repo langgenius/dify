@@ -6,11 +6,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { getPathBaseName } from './shared'
 import { isUploadReviewItemSkipped, isUploadReviewResolved } from './upload-workflow'
@@ -169,7 +170,17 @@ export function SkillUploadReviewDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[600px] max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
-        <DialogCloseButton className="top-5 right-5" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={tCommon(($) => $['operation.close'])}
+              size="lg"
+              className="absolute inset-e-5 top-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <header className="px-6 pt-6 pr-14 pb-3">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['skillManagement.detail.uploadReviewTitle'])}
@@ -200,9 +211,9 @@ export function SkillUploadReviewDialog({
           )}
         </div>
         <footer className="flex h-[76px] items-start justify-end gap-2 px-6 pt-5 pb-6">
-          <Button size="large" onClick={() => onOpenChange(false)}>
+          <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             size="large"
             variant="primary"
@@ -239,7 +250,17 @@ export function SkillUploadFailuresDialog({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onDismiss()}>
       <DialogContent className="w-[600px] max-w-[calc(100vw-32px)] overflow-hidden! p-0!">
-        <DialogCloseButton className="top-5 right-5" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={tCommon(($) => $['operation.close'])}
+              size="lg"
+              className="absolute inset-e-5 top-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <header className="px-6 pt-6 pr-14 pb-3">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['skillManagement.detail.uploadFailureTitle'])}
@@ -280,9 +301,9 @@ export function SkillUploadFailuresDialog({
           ))}
         </div>
         <footer className="flex h-[76px] items-start justify-end gap-2 px-6 pt-5 pb-6">
-          <Button size="large" onClick={onDismiss}>
+          <DialogClose render={<Button size="large" />}>
             {tCommon(($) => $['operation.cancel'])}
-          </Button>
+          </DialogClose>
           <Button
             size="large"
             variant="primary"
