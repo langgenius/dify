@@ -407,6 +407,11 @@ export interface SourceProductWorkflowRepository {
     readonly sourceIds: readonly string[];
     readonly tenantId: string;
   }): Promise<readonly SourceWorkflowRun[]>;
+  /**
+   * Returns the latest successful source content update. This includes the
+   * initial import as well as later sync runs so a newly imported source has a
+   * meaningful `lastSyncedAt` value before its first scheduled refresh.
+   */
   listLatestSyncCompletions(input: {
     readonly knowledgeSpaceId: string;
     readonly sourceIds: readonly string[];

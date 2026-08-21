@@ -1139,17 +1139,44 @@ describe("in-memory source product workflow repository", () => {
     ).resolves.toMatchObject({ nextRunAt: "2026-03-02T00:00:00.000Z", revision: 2 });
   });
 
-  it("lists successful sync timestamps in the requested tenant and space", async () => {
+  it("lists successful initial imports and sync timestamps in the requested tenant and space", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     await terminalRun(repository, "zero-result-sync", "zero_results");
+    const importedSourceIds = [
+      ["crawl-preview", "source-crawl-preview"],
+      ["crawl-import", "source-crawl-import"],
+      ["online-document-import", "source-online-document"],
+      ["online-drive-import", "source-online-drive"],
+    ] as const;
+    for (const [kind, sourceId] of importedSourceIds) {
+      await terminalRun(repository, `completed-${kind}`, "completed", { kind, sourceId });
+    }
+    await terminalRun(repository, "preview-only", "preview_ready", {
+      kind: "crawl-preview",
+      sourceId: "source-preview-only",
+    });
+    await terminalRun(repository, "empty-initial-crawl", "zero_results", {
+      kind: "crawl-preview",
+      sourceId: "source-empty-initial-crawl",
+    });
 
     await expect(
       repository.listLatestSyncCompletions({
         knowledgeSpaceId,
-        sourceIds: ["missing", "source-memory", "source-memory"],
+        sourceIds: [
+          "missing",
+          "source-memory",
+          "source-memory",
+          ...importedSourceIds.map(([, sourceId]) => sourceId),
+          "source-preview-only",
+          "source-empty-initial-crawl",
+        ],
         tenantId,
       }),
-    ).resolves.toEqual([{ completedAt: createdAt, sourceId: "source-memory" }]);
+    ).resolves.toEqual([
+      { completedAt: createdAt, sourceId: "source-memory" },
+      ...importedSourceIds.map(([, sourceId]) => ({ completedAt: createdAt, sourceId })),
+    ]);
     await expect(
       repository.listLatestSyncCompletions({
         knowledgeSpaceId,
@@ -1311,9 +1338,10 @@ function fence(run: SourceWorkflowRun, workerId: string) {
 async function terminalRun(
   repository: SourceProductWorkflowRepository,
   id: string,
-  state: "completed" | "zero_results",
+  state: "completed" | "preview_ready" | "zero_results",
+  patch: Partial<NewSourceWorkflowRun> = {},
 ) {
-  await repository.start(runRecord(id));
+  await repository.start(runRecord(id, patch));
   const claimed = requiredClaim(
     await repository.claim({
       leaseExpiresAt: "2026-03-01T01:00:00.000Z",

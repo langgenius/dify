@@ -1836,7 +1836,7 @@ describe("database source-product workflow repository edge coverage", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("lists the latest successful sync timestamp for each requested source", async () => {
+  it("lists the latest successful import or sync timestamp for each requested source", async () => {
     const calls: DatabaseExecuteInput[] = [];
     const database = testDatabase("postgres", async (input) => {
       calls.push(input);
@@ -1873,14 +1873,20 @@ describe("database source-product workflow repository edge coverage", () => {
         "sync",
         "completed",
         "zero_results",
+        "crawl-preview",
+        "crawl-import",
+        "online-document-import",
+        "online-drive-import",
         sourceId,
         "source-b",
       ],
       tableName: "source_workflow_runs",
     });
-    expect(calls[0]?.sql).toContain('"source_id" IN ($6, $7)');
+    expect(calls[0]?.sql).toContain('"source_id" IN ($10, $11)');
     expect(calls[0]?.sql).toContain('MAX("completed_at")');
     expect(calls[0]?.sql).toContain('"run_state" IN ($4, $5)');
+    expect(calls[0]?.sql).toContain('"kind" IN ($6, $7, $8, $9)');
+    expect(calls[0]?.sql).toContain('"run_state" = $4');
     await expect(
       repository.listLatestSyncCompletions({ knowledgeSpaceId, sourceIds: [], tenantId }),
     ).resolves.toEqual([]);

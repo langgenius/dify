@@ -697,8 +697,14 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
         if (
           run.tenantId !== tenantId ||
           run.knowledgeSpaceId !== knowledgeSpaceId ||
-          run.kind !== "sync" ||
-          (run.state !== "completed" && run.state !== "zero_results") ||
+          !(
+            (run.kind === "sync" && (run.state === "completed" || run.state === "zero_results")) ||
+            (run.state === "completed" &&
+              (run.kind === "crawl-preview" ||
+                run.kind === "crawl-import" ||
+                run.kind === "online-document-import" ||
+                run.kind === "online-drive-import"))
+          ) ||
           !run.sourceId ||
           !run.completedAt ||
           !requestedSourceIds.has(run.sourceId)

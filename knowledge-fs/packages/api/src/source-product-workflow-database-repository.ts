@@ -1184,14 +1184,18 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         "sync",
         "completed",
         "zero_results",
+        "crawl-preview",
+        "crawl-import",
+        "online-document-import",
+        "online-drive-import",
         ...ids,
       ];
-      const placeholders = ids.map((_, index) => p(database, index + 6)).join(", ");
+      const placeholders = ids.map((_, index) => p(database, index + 10)).join(", ");
       const result = await database.execute({
         maxRows: ids.length,
         operation: "select",
         params,
-        sql: `SELECT ${q(database, "source_id")}, MAX(${q(database, "completed_at")}) AS ${q(database, "completed_at")} FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "kind")} = ${p(database, 3)} AND ${q(database, "run_state")} IN (${p(database, 4)}, ${p(database, 5)}) AND ${q(database, "source_id")} IN (${placeholders}) AND ${q(database, "completed_at")} IS NOT NULL GROUP BY ${q(database, "source_id")};`,
+        sql: `SELECT ${q(database, "source_id")}, MAX(${q(database, "completed_at")}) AS ${q(database, "completed_at")} FROM ${q(database, runTable)} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ((${q(database, "kind")} = ${p(database, 3)} AND ${q(database, "run_state")} IN (${p(database, 4)}, ${p(database, 5)})) OR (${q(database, "kind")} IN (${p(database, 6)}, ${p(database, 7)}, ${p(database, 8)}, ${p(database, 9)}) AND ${q(database, "run_state")} = ${p(database, 4)})) AND ${q(database, "source_id")} IN (${placeholders}) AND ${q(database, "completed_at")} IS NOT NULL GROUP BY ${q(database, "source_id")};`,
         tableName: runTable,
       });
       return result.rows.map(mapSyncCompletion);
