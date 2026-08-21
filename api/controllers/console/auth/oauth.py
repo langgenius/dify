@@ -119,7 +119,11 @@ def _get_redirect_target(redirect_url: str | None) -> str:
     parsed_url = urllib.parse.urlsplit(redirect_url)
     normalized_path = redirect_url.lstrip().replace("\\", "/")
     if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
-        return redirect_url
+        # Relative paths must be resolved against the web front-end origin.
+        # Returning a bare relative URL from the API host would cause the browser
+        # to resolve it against the API origin, not the Console web URL, which
+        # produces a 404 in split-domain deployments (CONSOLE_WEB_URL != API host).
+        return urllib.parse.urljoin(dify_config.CONSOLE_WEB_URL, redirect_url)
 
     redirect_origin = _url_origin(redirect_url)
     if redirect_origin is not None and redirect_origin == _url_origin(dify_config.CONSOLE_WEB_URL):
