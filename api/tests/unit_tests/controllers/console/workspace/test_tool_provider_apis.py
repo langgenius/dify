@@ -10,6 +10,13 @@ from flask import Flask
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.tool_providers import (
+    ApiToolProviderAddPayload,
+    ApiToolProviderDeletePayload,
+    ApiToolProviderUpdatePayload,
+    BuiltinProviderDefaultCredentialPayload,
+    BuiltinToolAddPayload,
+    BuiltinToolCredentialDeletePayload,
+    BuiltinToolUpdatePayload,
     ToolApiListApi,
     ToolApiProviderAddApi,
     ToolApiProviderDeleteApi,
@@ -32,6 +39,7 @@ from controllers.console.workspace.tool_providers import (
     ToolLabelsApi,
     ToolOAuthCallback,
     ToolOAuthCustomClient,
+    ToolOAuthCustomClientPayload,
     ToolPluginOAuthApi,
     ToolProviderListApi,
     ToolWorkflowListApi,
@@ -39,6 +47,9 @@ from controllers.console.workspace.tool_providers import (
     ToolWorkflowProviderDeleteApi,
     ToolWorkflowProviderGetApi,
     ToolWorkflowProviderUpdateApi,
+    WorkflowToolCreatePayload,
+    WorkflowToolDeletePayload,
+    WorkflowToolUpdatePayload,
     is_valid_url,
 )
 from core.tools.entities.api_entities import ToolProviderApiEntity as CoreToolProviderApiEntity
@@ -276,7 +287,8 @@ class TestBuiltinProviderApis:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t1", "provider")["result"] == "success"
+            req = BuiltinToolCredentialDeletePayload(credential_id="cid")
+            assert method(api, req, "t1", "provider")["result"] == "success"
 
     def test_add_invalid_type(self, app: Flask) -> None:
         api = ToolBuiltinProviderAddApi()
@@ -286,7 +298,13 @@ class TestBuiltinProviderApis:
             app.test_request_context("/", json={"credentials": empty_mapping(), "type": "invalid"}),
         ):
             with pytest.raises(ValueError):
-                method(api, "t", make_account(), "provider")
+                method(
+                    api,
+                    BuiltinToolAddPayload(credentials=empty_mapping(), type="invalid"),
+                    "t",
+                    make_account(),
+                    "provider",
+                )
 
     def test_add_success(self, app: Flask) -> None:
         api = ToolBuiltinProviderAddApi()
@@ -301,7 +319,7 @@ class TestBuiltinProviderApis:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t", make_account(), "provider")["result"] == "success"
+            assert method(api, BuiltinToolAddPayload(**payload), "t", make_account(), "provider")["result"] == "success"
 
     def test_update(self, app: Flask) -> None:
         api = ToolBuiltinProviderUpdateApi()
@@ -316,7 +334,8 @@ class TestBuiltinProviderApis:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t", make_account(), "provider")["result"] == "success"
+            req = BuiltinToolUpdatePayload(**payload)
+            assert method(api, req, "t", make_account(), "provider")["result"] == "success"
 
     def test_get_credentials(self, app: Flask) -> None:
         api = ToolBuiltinProviderGetCredentialsApi()
@@ -369,7 +388,8 @@ class TestBuiltinProviderApis:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t", "provider")["result"] == "success"
+            req = BuiltinProviderDefaultCredentialPayload(id="c1")
+            assert method(api, req, "t", "provider")["result"] == "success"
 
     def test_get_credential_info(self, app: Flask) -> None:
         api = ToolBuiltinProviderGetCredentialInfoApi()
@@ -418,7 +438,7 @@ class TestApiProviderApis:
                 return_value={"result": "success"},
             ) as create_api_tool_provider,
         ):
-            assert method(api, "t", make_account()) == {"result": "success"}
+            assert method(api, ApiToolProviderAddPayload(**payload), "t", make_account()) == {"result": "success"}
 
         create_api_tool_provider.assert_called_once()
         assert create_api_tool_provider.call_args.args[3] == emoji_icon()
@@ -472,7 +492,7 @@ class TestApiProviderApis:
                 return_value={"result": "success"},
             ) as update_api_tool_provider,
         ):
-            assert method(api, "t", make_account()) == {"result": "success"}
+            assert method(api, ApiToolProviderUpdatePayload(**payload), "t", make_account()) == {"result": "success"}
 
         update_api_tool_provider.assert_called_once()
         assert update_api_tool_provider.call_args.args[4] == emoji_icon()
@@ -488,7 +508,8 @@ class TestApiProviderApis:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t", make_account())["result"] == "success"
+            req = ApiToolProviderDeletePayload(provider="p")
+            assert method(api, req, "t", make_account())["result"] == "success"
 
     def test_get(self, app: Flask) -> None:
         api = ToolApiProviderGetApi()
@@ -525,7 +546,7 @@ class TestWorkflowApis:
                 return_value={"result": "success"},
             ) as create_workflow_tool,
         ):
-            assert method(api, "t", make_account()) == {"result": "success"}
+            assert method(api, WorkflowToolCreatePayload(**payload), "t", make_account()) == {"result": "success"}
 
         create_workflow_tool.assert_called_once()
         assert create_workflow_tool.call_args.kwargs["icon"] == emoji_icon()
@@ -549,7 +570,7 @@ class TestWorkflowApis:
                 return_value={"result": "success"},
             ) as update_workflow_tool,
         ):
-            result = method(api, "t", make_account())
+            result = method(api, WorkflowToolUpdatePayload(**payload), "t", make_account())
             assert result == {"result": "success"}
 
         update_workflow_tool.assert_called_once()
@@ -566,7 +587,8 @@ class TestWorkflowApis:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t", make_account())["result"] == "success"
+            req = WorkflowToolDeletePayload(workflow_tool_id="123e4567-e89b-12d3-a456-426614174000")
+            assert method(api, req, "t", make_account())["result"] == "success"
 
     def test_get_error(self, app: Flask) -> None:
         api = ToolWorkflowProviderGetApi()
@@ -671,7 +693,8 @@ class TestOAuthCustomClient:
                 return_value={"result": "success"},
             ),
         ):
-            assert method(api, "t", "provider") == {"result": "success"}
+            req = ToolOAuthCustomClientPayload(client_params={"a": 1})
+            assert method(api, req, "t", "provider") == {"result": "success"}
 
     def test_get_custom_client(self, app: Flask) -> None:
         api = ToolOAuthCustomClient()

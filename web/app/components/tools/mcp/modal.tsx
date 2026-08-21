@@ -3,19 +3,19 @@ import type { FC } from 'react'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useHover } from 'ahooks'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
@@ -28,9 +28,6 @@ import HeadersSection from './sections/headers-section'
 // therefore can back MCP per-user identity forwarding. SAML cannot — it has
 // no refresh model and no token endpoint, so the enterprise side returns the
 // disabled stub for it.
-const MCP_FORWARDING_CAPABLE_PROTOCOLS = ['oidc', 'oauth2'] as const
-type MCPForwardingCapableProtocol = (typeof MCP_FORWARDING_CAPABLE_PROTOCOLS)[number]
-
 type MCPModalConfirmPayload = {
   name: string
   server_url: string
@@ -67,6 +64,10 @@ type MCPModalContentProps = {
 
 const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) => {
   const { t } = useTranslation()
+  const serverUrlInputId = useId()
+  const nameInputId = useId()
+  const serverIdentifierInputId = useId()
+  const serverIdentifierDescriptionId = useId()
 
   const { isCreate, originalServerUrl, originalServerID, appIconRef, state, actions } =
     useMCPModalForm(data)
@@ -75,10 +76,10 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
   // SAML has no refresh_token model, so the enterprise side can't mint
   // per-call MCP tokens. Only OIDC and OAuth2 can — gate the toggle on
   // both "SSO enforced" AND "protocol is refresh-capable".
-  const ssoProtocol =
-    systemFeatures.sso_enforced_for_signin_protocol as MCPForwardingCapableProtocol
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
   const isForwardIdentitySupported =
-    systemFeatures.sso_enforced_for_signin && MCP_FORWARDING_CAPABLE_PROTOCOLS.includes(ssoProtocol)
+    systemFeatures.sso_enforced_for_signin &&
+    (ssoProtocol === zSsoProtocol.enum.oidc || ssoProtocol === zSsoProtocol.enum.oauth2)
 
   const isHovering = useHover(appIconRef)
 
@@ -150,23 +151,24 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         className="absolute top-5 right-5 z-10 cursor-pointer border-none bg-transparent p-1.5 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
         onClick={onHide}
       >
-        <RiCloseLine className="size-5 text-text-tertiary" aria-hidden="true" />
+        <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
       </button>
-      <div className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
+      <DialogTitle className="relative pb-3 title-2xl-semi-bold text-xl text-text-primary">
         {!isCreate
           ? t(($) => $['mcp.modal.editTitle'], { ns: 'tools' })
           : t(($) => $['mcp.modal.title'], { ns: 'tools' })}
-      </div>
+      </DialogTitle>
 
       <div className="space-y-5 py-3">
         {/* Server URL */}
         <div>
           <div className="mb-1 flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">
+            <label htmlFor={serverUrlInputId} className="system-sm-medium text-text-secondary">
               {t(($) => $['mcp.modal.serverUrl'], { ns: 'tools' })}
-            </span>
+            </label>
           </div>
           <Input
+            id={serverUrlInputId}
             value={state.url}
             onChange={(e) => actions.setUrl(e.target.value)}
             onBlur={(e) => actions.handleUrlBlur(e.target.value.trim())}
@@ -185,11 +187,12 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         <div className="flex space-x-3">
           <div className="grow pb-1">
             <div className="mb-1 flex h-6 items-center">
-              <span className="system-sm-medium text-text-secondary">
+              <label htmlFor={nameInputId} className="system-sm-medium text-text-secondary">
                 {t(($) => $['mcp.modal.name'], { ns: 'tools' })}
-              </span>
+              </label>
             </div>
             <Input
+              id={nameInputId}
               value={state.name}
               onChange={(e) => actions.setName(e.target.value)}
               placeholder={t(($) => $['mcp.modal.namePlaceholder'], { ns: 'tools' })}
@@ -206,7 +209,10 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
                   state.appIcon.type,
                   state.appIcon.type === 'emoji' ? state.appIcon.icon : '',
                 ) ? (
-                  <Mcp className="size-8 text-text-primary-on-surface" />
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-other-mcp size-8 text-text-primary-on-surface"
+                  />
                 ) : undefined
               }
               size="xxl"
@@ -214,7 +220,10 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
               coverElement={
                 isHovering ? (
                   <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
-                    <RiEditLine className="size-6 text-text-primary-on-surface" />
+                    <span
+                      aria-hidden
+                      className="i-ri-edit-line size-6 text-text-primary-on-surface"
+                    />
                   </div>
                 ) : null
               }
@@ -226,14 +235,22 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
         {/* Server Identifier */}
         <div>
           <div className="flex h-6 items-center">
-            <span className="system-sm-medium text-text-secondary">
+            <label
+              htmlFor={serverIdentifierInputId}
+              className="system-sm-medium text-text-secondary"
+            >
               {t(($) => $['mcp.modal.serverIdentifier'], { ns: 'tools' })}
-            </span>
+            </label>
           </div>
-          <div className="mb-1 body-xs-regular text-text-tertiary">
+          <div
+            id={serverIdentifierDescriptionId}
+            className="mb-1 body-xs-regular text-text-tertiary"
+          >
             {t(($) => $['mcp.modal.serverIdentifierTip'], { ns: 'tools' })}
           </div>
           <Input
+            id={serverIdentifierInputId}
+            aria-describedby={serverIdentifierDescriptionId}
             value={state.serverIdentifier}
             onChange={(e) => actions.setServerIdentifier(e.target.value)}
             placeholder={t(($) => $['mcp.modal.serverIdentifierPlaceholder'], { ns: 'tools' })}
@@ -271,11 +288,8 @@ const MCPModalContent: FC<MCPModalContentProps> = ({ data, onConfirm, onHide }) 
 
         {/* Auth Method Tabs */}
         <SegmentedControl<MCPAuthMethod>
-          value={[state.authMethod]}
-          onValueChange={(nextValue) => {
-            const nextAuthMethod = nextValue[0]
-            if (nextAuthMethod) actions.setAuthMethod(nextAuthMethod)
-          }}
+          value={state.authMethod}
+          onValueChange={actions.setAuthMethod}
           aria-label={t(($) => $['mcp.modal.authentication'], { ns: 'tools' })}
           className="w-full"
         >
@@ -355,7 +369,12 @@ const MCPModal: FC<DuplicateAppModalProps> = ({ data, show, onConfirm, onHide })
   const formKey = data?.id ?? 'create'
 
   return (
-    <Dialog open={show}>
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) onHide()
+      }}
+    >
       <DialogContent className="w-full max-w-130! border-none p-6 text-left align-middle">
         <MCPModalContent key={formKey} data={data} onConfirm={onConfirm} onHide={onHide} />
       </DialogContent>

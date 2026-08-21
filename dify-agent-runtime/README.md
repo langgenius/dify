@@ -14,6 +14,21 @@ cmd/
 internal/            - internal implementations
 ```
 
+## Job execution modes
+
+`POST /v1/jobs/run` accepts an optional `mode` field:
+
+- `pty` (default) keeps the interactive tmux PTY path. stdout and stderr are
+  merged, sanitized, and written to `output.log`; the job accepts `/input`.
+- `stdio` keeps tmux as the lifecycle owner but gives the child `/dev/null` as
+  stdin and captures stdout and stderr through separate pipes. Public output
+  and pagination read stdout from `output.log`; private diagnostics are written
+  to `stderr.log`. A stdio job completes only after both streams reach EOF and
+  does not accept `/input`.
+
+The response models are identical in both modes. Use `stdio` for bounded,
+machine-readable control commands and `pty` for interactive jobs.
+
 ## Building
 
 ```bash
@@ -59,12 +74,12 @@ Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
 | Access               | Paths (defaults)                                                                                              |
 | -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Read-Write**       | `$HOME` (always, includes `$CWD/.tmp` as `TMPDIR`)                                                            |
+| **Read-Write**       | `$HOME` and the job's `cwd` (also used directly as `TMPDIR`, `TMP`, and `TEMP`)                               |
 | **Read-Write (dev)** | `/dev/null`, `/dev/zero`, `/dev/urandom`, `/dev/random`, `/dev/tty`                                           |
 | **Read-Only + Exec** | `/usr`, `/bin`, `/sbin`, `/lib`, `/lib64`, `/etc`, `/proc`, `/opt/dify-agent-tools`, `/opt/homebrew`, `/snap` |
 | **Denied**           | Everything else (`/tmp`, other agents' homes, `/var`, `/srv`, etc.)                                           |
 
-The runner automatically creates `$CWD/.tmp` and sets `TMPDIR`, `TMP`, `TEMP` to it, so temp files stay isolated per workspace.
+The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does not create a separate temp directory, so the active Workspace is both the working directory and temp space.
 
 ### Environment Variables
 

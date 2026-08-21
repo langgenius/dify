@@ -1,32 +1,57 @@
 import base64
 import hashlib
 import hmac
+import json
 import os
 import time
 import urllib.parse
+from typing import Literal
+from urllib.parse import urlsplit
 
 from configs import dify_config
+
+
+def bind_file_uri(uri: str, base_url: str) -> str:
+    """Bind a Dify-owned file URI to one caller-selected origin.
+
+    Explicit remote HTTP(S) URLs are already complete and pass through. Other
+    values must be origin-free ``/files/...`` URIs.
+    """
+
+    parsed = urlsplit(uri)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return uri
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or parsed.fragment
+        or uri.startswith("//")
+        or not parsed.path.startswith("/files/")
+    ):
+        raise ValueError("file URI must be an absolute HTTP(S) URL or a /files/ URI")
+    return f"{base_url}{uri}"
 
 
 def _secret_key() -> bytes:
     return dify_config.SECRET_KEY.encode()
 
 
-def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
-    """
-    sign file to get a temporary url for plugin access
-    """
-    # Use internal URL for plugin/tool file access in Docker environments, unless for_external is True
-    base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
-    file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
-
+def sign_tool_file_uri(tool_file_id: str, extension: str) -> str:
+    """Sign a ToolFile path without selecting a network origin."""
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
     data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
     sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-    return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+    return f"/files/tools/{tool_file_id}{extension}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+
+
+def sign_tool_file(tool_file_id: str, extension: str, for_external: bool = True) -> str:
+    """Sign a ToolFile URL for the browser or an internal Dify service."""
+
+    base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+    return bind_file_uri(sign_tool_file_uri(tool_file_id, extension), base_url)
 
 
 def sign_upload_file_preview_url(upload_file_id: str, extension: str) -> str:
@@ -64,16 +89,30 @@ def verify_tool_file_signature(file_id: str, timestamp: str, nonce: str, sign: s
     return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
 
-def get_signed_file_url_for_plugin(
-    filename: str, mimetype: str, tenant_id: str, user_id: str, conversation_id: str | None = None
+def get_signed_file_uri_for_plugin(
+    filename: str,
+    mimetype: str,
+    tenant_id: str,
+    user_id: str,
+    conversation_id: str | None = None,
+    user_from: Literal["account", "end-user"] | None = None,
+    max_size: int | None = None,
 ) -> str:
-    """Build the signed upload URL used by the plugin-facing file upload endpoint."""
+    """Build a signed plugin-upload URI without selecting a network origin."""
 
-    base_url = dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL
-    upload_url = f"{base_url}/files/upload/for-plugin"
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
-    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
+    data_to_sign = _plugin_upload_signature_payload(
+        filename=filename,
+        mimetype=mimetype,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        timestamp=timestamp,
+        nonce=nonce,
+        user_from=user_from,
+        max_size=max_size,
+    )
     sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     encoded_sign = base64.urlsafe_b64encode(sign).decode()
     query_params = {
@@ -85,8 +124,12 @@ def get_signed_file_url_for_plugin(
     }
     if conversation_id:
         query_params["conversation_id"] = conversation_id
+    if user_from is not None:
+        query_params["user_from"] = user_from
+    if max_size is not None:
+        query_params["max_size"] = str(max_size)
     query = urllib.parse.urlencode(query_params)
-    return f"{upload_url}?{query}"
+    return f"/files/upload/for-plugin?{query}"
 
 
 def verify_plugin_file_signature(
@@ -96,13 +139,25 @@ def verify_plugin_file_signature(
     tenant_id: str,
     user_id: str,
     conversation_id: str | None = None,
+    user_from: Literal["account", "end-user"] | None = None,
     timestamp: str,
     nonce: str,
     sign: str,
+    max_size: int | None = None,
 ) -> bool:
     """Verify the signature used by the plugin-facing file upload endpoint."""
 
-    data_to_sign = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
+    data_to_sign = _plugin_upload_signature_payload(
+        filename=filename,
+        mimetype=mimetype,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+        timestamp=timestamp,
+        nonce=nonce,
+        user_from=user_from,
+        max_size=max_size,
+    )
     recalculated_sign = hmac.new(_secret_key(), data_to_sign.encode(), hashlib.sha256).digest()
     recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
@@ -111,3 +166,47 @@ def verify_plugin_file_signature(
 
     current_time = int(time.time())
     return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+
+def _plugin_upload_signature_payload(
+    *,
+    filename: str,
+    mimetype: str,
+    tenant_id: str,
+    user_id: str,
+    conversation_id: str | None,
+    timestamp: str,
+    nonce: str,
+    user_from: Literal["account", "end-user"] | None,
+    max_size: int | None,
+) -> str:
+    """Build the compatible upload signature payload with optional protected claims.
+
+    Omitting ``max_size`` preserves the legacy payload. Size-limited tickets use
+    a versioned JSON payload so unconstrained string fields cannot absorb or
+    impersonate optional trailing claims.
+    """
+
+    if max_size is not None:
+        return json.dumps(
+            {
+                "conversation_id": conversation_id or "",
+                "filename": filename,
+                "max_size": max_size,
+                "mimetype": mimetype,
+                "nonce": nonce,
+                "tenant_id": tenant_id,
+                "timestamp": timestamp,
+                "user_from": user_from,
+                "user_id": user_id,
+                "version": 2,
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    payload = f"upload|{filename}|{mimetype}|{tenant_id}|{user_id}|{conversation_id or ''}|{timestamp}|{nonce}"
+    if user_from is not None:
+        payload = f"{payload}|{user_from}"
+    return payload

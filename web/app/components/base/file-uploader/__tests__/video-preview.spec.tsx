@@ -14,6 +14,7 @@ describe('VideoPreview', () => {
     const video = document.querySelector('video')
     expect(video).toBeInTheDocument()
     expect(video).toHaveAttribute('title', 'Test Video')
+    expect(video?.parentElement).not.toHaveAttribute('aria-label')
   })
 
   it('should render source element with correct src and type', () => {
@@ -45,14 +46,15 @@ describe('VideoPreview', () => {
     expect(onCancel).toHaveBeenCalled()
   })
 
-  it('should not close when backdrop is clicked', () => {
+  it('should not close when video content is clicked', () => {
     const onCancel = vi.fn()
     render(
       <VideoPreview url="https://example.com/video.mp4" title="Test Video" onCancel={onCancel} />,
     )
 
-    const dialog = screen.getByRole('dialog')
-    fireEvent.click(dialog)
+    const video = document.querySelector('video')
+    expect(video).toBeInTheDocument()
+    fireEvent.click(video!)
 
     expect(onCancel).not.toHaveBeenCalled()
   })

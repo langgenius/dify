@@ -7,6 +7,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { FileList } from '@/app/components/base/file-uploader'
@@ -68,7 +69,7 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
             aria-label={field.output_variable_name}
             disabled
           >
-            {selectedValue}
+            <SelectValue />
           </SelectTrigger>
           <SelectContent listClassName="max-h-[140px] overflow-y-auto">
             {field.option_source.value.map((option) => (

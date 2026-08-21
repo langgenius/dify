@@ -3,8 +3,6 @@
 import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
-import { ExternalApiPanelProvider } from '@/context/external-api-panel-context'
-import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
@@ -60,9 +58,5 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
     return null
   }
 
-  return (
-    <ExternalKnowledgeApiProvider enabled={canConnectExternalDataset}>
-      <ExternalApiPanelProvider>{children}</ExternalApiPanelProvider>
-    </ExternalKnowledgeApiProvider>
-  )
+  return children
 }

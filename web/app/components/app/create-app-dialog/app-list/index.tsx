@@ -3,29 +3,26 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiRobot2Line } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
-import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Divider from '@/app/components/base/divider'
-import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { importDSL } from '@/service/apps'
+import { consoleQuery } from '@/service/client'
 import { fetchAppDetail } from '@/service/explore'
-import { useInvalidateAppList } from '@/service/use-apps'
 import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
@@ -47,7 +44,10 @@ type AppsProps = {
 const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateAppFromTemplate = hasPermission(
@@ -55,24 +55,17 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
     'app.create_and_management',
   )
   const { push } = useRouter()
-  const invalidateAppList = useInvalidateAppList()
+  const { mutateAsync: importApp } = useMutation(consoleQuery.apps.imports.post.mutationOptions())
   const allCategoriesEn = AppCategories.RECOMMENDED
 
-  const setNeedRefresh = useSetNeedRefreshAppList()
-
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
+  const handleClearSearch = () => {
+    setKeywords('')
+    searchInputRef.current?.focus()
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
@@ -141,35 +134,35 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
   }) => {
     const { export_data, mode } = await fetchAppDetail(currApp?.app.id as string)
     try {
-      const app = await importDSL({
-        mode: DSLImportMode.YAML_CONTENT,
-        yaml_content: export_data,
-        name,
-        icon_type,
-        icon,
-        icon_background,
-        description,
+      const app = await importApp({
+        body: {
+          mode: 'yaml-content',
+          yaml_content: export_data,
+          name,
+          icon_type,
+          icon,
+          icon_background,
+          description,
+        },
       })
+      if (!app.app_id || !app.app_mode) throw new Error('Completed import is missing app metadata')
+
       trackCreateApp({ source: 'studio_template_list', appMode: mode, templateId: currApp?.app_id })
 
       setIsShowCreateModal(false)
       toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (onSuccess) onSuccess()
-      if (app.app_id) await handleCheckPluginDependencies(app.app_id)
-      setNeedRefresh('1')
-      invalidateAppList()
-      if (app.app_id) {
-        getRedirection(
-          { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
-          push,
-          {
-            currentUserId,
-            resourceMaintainer: currentUserId,
-            workspacePermissionKeys,
-            isRbacEnabled,
-          },
-        )
-      }
+      await handleCheckPluginDependencies(app.app_id)
+      getRedirection(
+        { id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys },
+        push,
+        {
+          currentUserId,
+          resourceMaintainer: currentUserId,
+          workspacePermissionKeys,
+          isRbacEnabled,
+        },
+      )
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
@@ -196,17 +189,32 @@ const Apps = ({ onSuccess, onCreateFromBlank }: AppsProps) => {
           <div className="h-3.5">
             <Divider type="vertical" />
           </div>
-          <Input
-            showClearIcon
-            wrapperClassName="w-full flex-1"
-            className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
-            placeholder={
-              t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' }) as string
-            }
-            value={keywords}
-            onChange={(e) => handleKeywordsChange(e.target.value)}
-            onClear={() => handleKeywordsChange('')}
-          />
+          <InputGroup className="flex-1 bg-transparent hover:border-transparent hover:bg-transparent">
+            <InputGroupInput
+              ref={searchInputRef}
+              type="search"
+              name="query"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+              className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+              placeholder={t(($) => $['newAppFromTemplate.searchAllTemplate'], { ns: 'app' })}
+              value={keywords}
+              onValueChange={setKeywords}
+            />
+            {keywords && (
+              <InputGroupAddon align="inline-end" className="ps-0.75 pe-1.25">
+                <IconButton
+                  size="sm"
+                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
+                  className="text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
+                  onClick={handleClearSearch}
+                >
+                  <span aria-hidden className="i-ri-close-circle-fill size-3.5" />
+                </IconButton>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
         </div>
         <div className="h-8 w-45"></div>
       </div>
@@ -294,7 +302,7 @@ function NoTemplateFound() {
   return (
     <div className="w-full rounded-lg bg-workflow-process-bg p-4">
       <div className="mb-2 inline-flex size-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
-        <RiRobot2Line className="size-5 text-text-tertiary" />
+        <span aria-hidden className="i-ri-robot-2-line size-5 text-text-tertiary" />
       </div>
       <p className="title-md-semi-bold text-text-primary">
         {t(($) => $['newApp.noTemplateFound'], { ns: 'app' })}

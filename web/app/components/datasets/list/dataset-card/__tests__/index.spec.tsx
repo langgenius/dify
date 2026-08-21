@@ -1,11 +1,13 @@
 import type { DataSet } from '@/models/datasets'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
 import Description from '../components/description'
@@ -63,11 +65,15 @@ let mockConsoleState = {
   workspacePermissionKeys: [] as string[],
 }
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
+  const queryClient = createAccountProfileQueryClient(mockConsoleState.userProfile)
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
 
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -78,7 +84,7 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
+vi.mock('@/features/system-features/state', async () => {
   const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
   return createSystemFeaturesStateModuleMock(() => mockConsoleState)
@@ -120,17 +126,11 @@ vi.mock('../components/dataset-card-modals', () => ({
   ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
-  DatasetCardTags: ({
-    onClick,
-    canBindOrUnbindTags,
-  }: {
-    onClick: (e: React.MouseEvent) => void
-    canBindOrUnbindTags?: boolean
-  }) => (
-    <div
+  DatasetCardTags: ({ canBindOrUnbindTags }: { canBindOrUnbindTags?: boolean }) => (
+    <button
+      type="button"
       data-testid="tag-area"
       data-can-bind-or-unbind-tags={String(Boolean(canBindOrUnbindTags))}
-      onClick={onClick}
     />
   ),
 }))
@@ -389,16 +389,11 @@ describe('DatasetCard Component', () => {
 
     const card = screen.getByRole('button', { name: 'Preview Only Dataset' })
     expect(card).toHaveClass('opacity-60')
-    expect(card).toHaveAttribute('aria-disabled', 'true')
+    expect(card).not.toHaveAttribute('aria-disabled')
     expect(screen.getByText('Preview Only Dataset')).toBeInTheDocument()
     const tagArea = screen.getByTestId('tag-area')
     expect(tagArea).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
     expect(screen.queryByTestId('operations-dropdown')).not.toBeInTheDocument()
-
-    fireEvent.click(tagArea)
-
-    expect(mockPush).not.toHaveBeenCalled()
-    expect(toastMocks.record).not.toHaveBeenCalled()
 
     fireEvent.click(card)
 
@@ -476,16 +471,6 @@ describe('DatasetCard Component', () => {
 
     fireEvent.click(screen.getByText('Test Dataset'))
     expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/pipeline')
-  })
-
-  it('should stop propagation when tag area is clicked', () => {
-    const dataset = createMockDataset()
-    render(<DatasetCard dataset={dataset} />)
-
-    const tagArea = screen.getByTestId('tag-area')
-    fireEvent.click(tagArea)
-    // Tag area click should not trigger card navigation
-    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('should allow tag binding when dataset has edit ACL', () => {

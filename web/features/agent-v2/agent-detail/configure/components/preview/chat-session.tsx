@@ -16,12 +16,14 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
-import { deploymentEditionAtom } from '@/context/system-features-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { deploymentEditionAtom } from '@/features/system-features/state'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
+
+const chatMaxWidthClassName = 'max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
 
 export function AgentPreviewChatSession({
   conversationSessionKey,
@@ -181,7 +183,12 @@ export function AgentPreviewChatSession({
   )
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+    <div
+      className={cn(
+        'relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden',
+        chatMaxWidthClassName,
+      )}
+    >
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
           key={conversationSessionKey}
@@ -220,18 +227,21 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? 'flex w-full max-w-150 flex-col items-start p-3 text-left'
+              ? cn('flex w-full flex-col items-start text-left', chatMaxWidthClassName)
               : 'pointer-events-none relative w-full',
           )}
         >
-          {isEmptyChat &&
-            renderEmptyState({
-              agentIcon,
-              agentIconBackground,
-              agentIconType,
-              agentName,
-              showUnconfiguredNotice,
-            })}
+          {isEmptyChat && (
+            <div className="w-full p-3 pb-0">
+              {renderEmptyState({
+                agentIcon,
+                agentIconBackground,
+                agentIconType,
+                agentName,
+                showUnconfiguredNotice,
+              })}
+            </div>
+          )}
           <div className={cn(isEmptyChat && 'pointer-events-auto mt-5 w-full')}>
             {chatInputNode}
           </div>

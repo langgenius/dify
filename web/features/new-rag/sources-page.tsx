@@ -654,7 +654,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       onClick={() =>
                         setSort((current) => (current === 'name-asc' ? 'name-desc' : 'name-asc'))
                       }
-                      className="inline-flex items-center gap-1 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="inline-flex items-center gap-1 rounded focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                     >
                       {t(($) => $['newKnowledge.sourceColumn'])}
                       <span

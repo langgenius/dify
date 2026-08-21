@@ -48,10 +48,6 @@ const Datasets = ({
     !isFetchingNextPage && (isLoading || (isPlaceholderData && isFetching && datasets.length === 0))
 
   useEffect(() => {
-    document.title = `${t(($) => $.knowledge, { ns: 'dataset' })} - Dify`
-  }, [t])
-
-  useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver(
         (entries) => {

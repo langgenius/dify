@@ -16,6 +16,7 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useHooksStore } from '../../hooks-store/store'
 import { useChecklist } from '../../hooks/use-checklist'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
+import { useStore } from '../../store'
 import { ChecklistNodeGroup } from './node-group'
 import { ChecklistPluginGroup } from './plugin-group'
 
@@ -33,6 +34,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const needWarningNodes = useChecklist(nodes, edges, { flowType })
   const { handleNodeSelect } = useNodesInteractions()
+  const setOpenInlineAgentPanelNodeId = useStore((state) => state.setOpenInlineAgentPanelNodeId)
   const checklistLabel = t(($) => $['panel.checklist'], { ns: 'workflow' })
 
   const { pluginItems, nodeItems } = useMemo(() => {
@@ -47,19 +49,23 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
 
   const handleItemClick = (item: ChecklistItem) => {
     if (onItemClick) onItemClick(item)
-    else handleNodeSelect(item.id)
+    else {
+      handleNodeSelect(item.id)
+      if (item.openInlineAgentPanel) setOpenInlineAgentPanelNodeId(item.id)
+    }
     setOpen(false)
   }
 
   return (
     <Popover open={open} onOpenChange={(newOpen) => !disabled && setOpen(newOpen)}>
       <PopoverTrigger
+        disabled={disabled}
         render={
           <button
             type="button"
             className={cn(
               'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-              disabled && 'cursor-not-allowed opacity-50',
+              'data-disabled:cursor-not-allowed data-disabled:opacity-50',
             )}
             disabled={disabled || undefined}
             aria-label={checklistLabel}

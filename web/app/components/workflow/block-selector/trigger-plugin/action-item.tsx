@@ -1,5 +1,6 @@
 'use client'
-import type { ComponentProps, FC } from 'react'
+import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
+import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -26,8 +27,8 @@ export type TriggerPluginActionPreviewPayload = {
   language: ReturnType<typeof useGetLanguage>
 }
 
-type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
-export type TriggerPluginActionPreviewCardHandle = PreviewCardHandle
+export type TriggerPluginActionPreviewCardHandle =
+  PreviewCardHandle<TriggerPluginActionPreviewPayload>
 
 const TriggerPluginActionItem: FC<Props> = ({
   provider,

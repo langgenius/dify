@@ -86,6 +86,7 @@ const ComponentPicker = ({
   const baseCheckForTriggerMatch = useBasicTypeaheadTriggerMatch(triggerString, {
     minLength: 0,
     maxLength: 75,
+    requireTriggerBoundary: triggerString === '/',
   })
   const checkForTriggerMatch = useCallback(
     (text: string, editor: LexicalEditor) => {

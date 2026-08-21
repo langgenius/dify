@@ -1,7 +1,8 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
-import type { Model, ModelItem, ModelProvider } from '../../declarations'
+import type { Model, ModelItem } from '../../declarations'
 import type { PopupProps } from '../popup'
-import { Combobox } from '@langgenius/dify-ui/combobox'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
@@ -16,21 +17,6 @@ import Popup from '../popup'
 
 let mockLanguage = 'en_US'
 
-const mockSearchParams = vi.hoisted(() => ({
-  current: new URLSearchParams(),
-}))
-const mockSetSettingsDestination = vi.hoisted(() => vi.fn())
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return {
-    ...actual,
-    useQueryState: () => [mockSearchParams.current.get('settings'), mockSetSettingsDestination],
-  }
-})
-vi.mock('@/next/navigation', () => ({
-  useSearchParams: () => mockSearchParams.current,
-}))
-
 vi.mock(
   '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
   () => ({
@@ -43,13 +29,8 @@ vi.mock('@/utils/tool-call', () => ({
   supportFunctionCall: mockSupportFunctionCall,
 }))
 
-type MockMarketplacePlugin = {
-  plugin_id: string
-  latest_package_identifier: string
-}
-
 type MockContextProvider = Pick<
-  ModelProvider,
+  ModelProviderSummaryResponse,
   | 'provider'
   | 'label'
   | 'icon_small'
@@ -58,12 +39,11 @@ type MockContextProvider = Pick<
   | 'system_configuration'
 >
 
-const mockMarketplacePlugins = vi.hoisted(() => ({
-  current: [] as MockMarketplacePlugin[],
-  isLoading: false,
-}))
 const mockContextModelProviders = vi.hoisted(() => ({
   current: [] as MockContextProvider[],
+}))
+const mockContextModelProviderPlugins = vi.hoisted(() => ({
+  current: {} as Record<string, { plugin_id: string }>,
 }))
 const mockTrialModels = vi.hoisted(() => ({
   current: ['test-openai', 'test-anthropic'] as string[],
@@ -73,10 +53,6 @@ vi.mock('../../hooks', async () => {
   return {
     ...actual,
     useLanguage: () => mockLanguage,
-    useMarketplaceAllPlugins: () => ({
-      plugins: mockMarketplacePlugins.current,
-      isLoading: mockMarketplacePlugins.isLoading,
-    }),
   }
 })
 
@@ -92,25 +68,43 @@ vi.mock('../popup-item', () => ({
 }))
 
 vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({ modelProviders: mockContextModelProviders.current }),
+  useProviderContext: () => ({
+    modelProviders: mockContextModelProviders.current,
+    modelProviderPlugins: mockContextModelProviderPlugins.current,
+  }),
 }))
 
-type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange'>
+type PopupTestProps = Omit<PopupProps, 'inputValue' | 'onInputValueChange' | 'onSelect'>
 
 function PopupHarness(props: PopupTestProps) {
   const [inputValue, setInputValue] = useState('')
 
   return (
-    <Combobox
-      filter={null}
+    <Popup
+      {...props}
       inputValue={inputValue}
-      open
-      onInputValueChange={(newInputValue, details) => {
-        if (details.reason !== 'item-press') setInputValue(newInputValue)
-      }}
-    >
-      <Popup {...props} inputValue={inputValue} onInputValueChange={setInputValue} />
-    </Combobox>
+      onInputValueChange={setInputValue}
+      onSelect={vi.fn()}
+    />
+  )
+}
+
+function PopupContentHarness(props: PopupTestProps) {
+  const [inputValue, setInputValue] = useState('')
+
+  return (
+    <Popover open>
+      <PopoverTrigger>Selected model</PopoverTrigger>
+      <PopoverContent>
+        <PopoverTitle>Model selector</PopoverTitle>
+        <Popup
+          {...props}
+          inputValue={inputValue}
+          onInputValueChange={setInputValue}
+          onSelect={vi.fn()}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -158,6 +152,12 @@ vi.mock('next-themes', () => ({
 const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromMarketPlace: () => ({ mutateAsync: mockInstallMutateAsync }),
+}))
+
+const mockFetchPluginInfoFromMarketPlace = vi.hoisted(() => vi.fn())
+vi.mock('@/service/plugins', () => ({
+  fetchPluginInfoFromMarketPlace: (params: Record<string, string>) =>
+    mockFetchPluginInfoFromMarketPlace(params),
 }))
 
 const mockRefreshPluginList = vi.hoisted(() => vi.fn())
@@ -240,11 +240,16 @@ describe('Popup', () => {
     vi.clearAllMocks()
     mockLanguage = 'en_US'
     mockSupportFunctionCall.mockReturnValue(true)
-    mockMarketplacePlugins.current = []
-    mockMarketplacePlugins.isLoading = false
+    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
+      data: {
+        plugin: {
+          latest_package_identifier: 'langgenius/openai:1.0.0',
+        },
+      },
+    })
     mockContextModelProviders.current = []
+    mockContextModelProviderPlugins.current = {}
     mockTrialModels.current = ['test-openai', 'test-anthropic']
-    mockSearchParams.current = new URLSearchParams()
     Object.assign(mockTrialCredits, {
       credits: 200,
       totalCredits: 200,
@@ -882,19 +887,20 @@ describe('Popup', () => {
       <PopupHarness
         modelList={[makeModel()]}
         onHide={vi.fn()}
+        onOpenProviderSettings={vi.fn()}
         scopeFeatures={[ModelFeatureEnum.vision]}
       />,
     )
 
     const scrollRegion = screen.getByRole('region', { name: 'common.modelProvider.models' })
     const searchInput = screen.getByPlaceholderText('datasetSettings.form.searchModel')
-    const settingsButton = screen.getByRole('button', {
+    const settingsAction = screen.getByRole('button', {
       name: /common\.modelProvider\.selector\.modelProviderSettings/,
     })
 
     expect(scrollRegion)!.toBeInTheDocument()
     expect(scrollRegion).not.toContainElement(searchInput)
-    expect(scrollRegion).not.toContainElement(settingsButton)
+    expect(scrollRegion).not.toContainElement(settingsAction)
     expect(scrollRegion).toContainElement(
       screen.getByText('common.modelProvider.selector.onlyCompatibleModelsShown'),
     )
@@ -1001,6 +1007,52 @@ describe('Popup', () => {
     )
   })
 
+  it('should only mark API key fallback when the current credential is usable', () => {
+    Object.assign(mockTrialCredits, {
+      credits: 0,
+      totalCredits: 200,
+      isExhausted: true,
+    })
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        custom_configuration: {
+          status: 'active',
+          current_credential_usable: false,
+        } as MockContextProvider['custom_configuration'],
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+
+    const { rerender } = renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
+
+    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
+      'data-has-api-key-fallback',
+      'false',
+    )
+
+    mockContextModelProviders.current = [
+      makeContextProvider({
+        provider: 'test-openai',
+        custom_configuration: {
+          status: 'active',
+          current_credential_usable: true,
+        } as MockContextProvider['custom_configuration'],
+        system_configuration: {
+          enabled: true,
+        } as MockContextProvider['system_configuration'],
+      }),
+    ]
+    rerender(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
+
+    expect(screen.getByTestId('credits-exhausted-alert')).toHaveAttribute(
+      'data-has-api-key-fallback',
+      'true',
+    )
+  })
+
   it('should not show credits exhausted alert when only non-trial system providers are exhausted', () => {
     Object.assign(mockTrialCredits, {
       credits: 0,
@@ -1046,19 +1098,7 @@ describe('Popup', () => {
     expect(screen.queryByTestId('credits-exhausted-alert')).not.toBeInTheDocument()
   })
 
-  it('should open provider settings when clicking footer link', () => {
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[makeModel()]} onHide={onHide} />)
-
-    fireEvent.click(screen.getByText('common.modelProvider.selector.modelProviderSettings'))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-  })
-
-  it('should hide provider settings footer when provider settings are already open', () => {
-    mockSearchParams.current = new URLSearchParams('settings=provider')
-
+  it('should hide the provider settings action when requested by the owner', () => {
     renderPopup(<PopupHarness modelList={[makeModel()]} onHide={vi.fn()} />)
 
     expect(
@@ -1066,19 +1106,52 @@ describe('Popup', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('should hide provider settings footer when requested by the caller', () => {
+  it('should expose popup actions in the dialog tab sequence without a listbox', async () => {
+    const user = userEvent.setup()
+    const onConfigureEmptyState = vi.fn()
+    const onOpenProviderSettings = vi.fn()
+
     renderPopup(
-      <PopupHarness hideProviderSettingsFooter modelList={[makeModel()]} onHide={vi.fn()} />,
+      <PopupContentHarness
+        modelList={[]}
+        onConfigureEmptyState={onConfigureEmptyState}
+        onOpenProviderSettings={onOpenProviderSettings}
+        onHide={vi.fn()}
+      />,
+      {
+        systemFeatures: { enable_marketplace: false },
+      },
     )
 
-    expect(
-      screen.queryByText('common.modelProvider.selector.modelProviderSettings'),
-    ).not.toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Model selector' })).toBeInTheDocument()
+
+    const searchInput = screen.getByRole('searchbox', {
+      name: 'datasetSettings.form.searchModel',
+    })
+    const configureButton = screen.getByRole('button', {
+      name: /modelProvider\.selector\.configure/,
+    })
+    const providerSettingsButton = screen.getByRole('button', {
+      name: /common\.modelProvider\.selector\.modelProviderSettings/,
+    })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    await user.click(searchInput)
+    await user.tab()
+    expect(configureButton).toHaveFocus()
+    await user.tab()
+    expect(providerSettingsButton).toHaveFocus()
   })
 
   it('should open provider settings from empty state when no providers are configured', () => {
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
+    const onConfigureEmptyState = vi.fn()
+    renderPopup(
+      <PopupHarness
+        modelList={[]}
+        onConfigureEmptyState={onConfigureEmptyState}
+        onHide={vi.fn()}
+      />,
+    )
 
     expect(
       screen.getByText(/modelProvider\.selector\.noProviderConfigured(?!Desc)/),
@@ -1088,23 +1161,14 @@ describe('Popup', () => {
     )!.toBeInTheDocument()
 
     fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-  })
-
-  it('should only close the empty state selector when provider settings are already open', () => {
-    mockSearchParams.current = new URLSearchParams('settings=provider')
-    const onHide = vi.fn()
-    renderPopup(<PopupHarness modelList={[]} onHide={onHide} />)
-
-    fireEvent.click(screen.getByText(/modelProvider\.selector\.configure/))
-
-    expect(onHide).toHaveBeenCalled()
-    expect(mockSetSettingsDestination).not.toHaveBeenCalled()
+    expect(onConfigureEmptyState).toHaveBeenCalledTimes(1)
   })
 
   it('should render marketplace providers that are not installed', () => {
     mockContextModelProviders.current = [makeContextProvider({ provider: 'test-openai' })]
+    mockContextModelProviderPlugins.current = {
+      'langgenius/openai': { plugin_id: 'langgenius/openai' },
+    }
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1148,6 +1212,9 @@ describe('Popup', () => {
         } as MockContextProvider['system_configuration'],
       }),
     ]
+    mockContextModelProviderPlugins.current = {
+      'langgenius/anthropic': { plugin_id: 'langgenius/anthropic' },
+    }
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1169,6 +1236,9 @@ describe('Popup', () => {
         } as MockContextProvider['system_configuration'],
       }),
     ]
+    mockContextModelProviderPlugins.current = {
+      'langgenius/anthropic': { plugin_id: 'langgenius/anthropic' },
+    }
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1191,10 +1261,18 @@ describe('Popup', () => {
     expect(screen.getByText('TestOpenAI'))!.toBeInTheDocument()
   })
 
+  it('should hide a marketplace provider when its plugin is already installed', () => {
+    mockContextModelProviderPlugins.current = {
+      'langgenius/openai': { plugin_id: 'langgenius/openai' },
+    }
+
+    renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
+
+    expect(screen.queryByText('TestOpenAI')).not.toBeInTheDocument()
+    expect(screen.getByText('TestAnthropic')).toBeInTheDocument()
+  })
+
   it('should install plugin when clicking install button', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
     mockInstallMutateAsync.mockResolvedValue({ all_installed: true, task_id: 'task-1' })
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
@@ -1205,13 +1283,14 @@ describe('Popup', () => {
     await waitFor(() => {
       expect(mockInstallMutateAsync).toHaveBeenCalledWith('langgenius/openai:1.0.0')
     })
+    expect(mockFetchPluginInfoFromMarketPlace).toHaveBeenCalledWith({
+      org: 'langgenius',
+      name: 'openai',
+    })
     expect(mockRefreshPluginList).toHaveBeenCalled()
   })
 
   it('should handle install failure gracefully', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
     mockInstallMutateAsync.mockRejectedValue(new Error('Install failed'))
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
@@ -1229,9 +1308,6 @@ describe('Popup', () => {
   })
 
   it('should run checkTaskStatus when not all_installed', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
     mockInstallMutateAsync.mockResolvedValue({ all_installed: false, task_id: 'task-1' })
     mockCheck.mockResolvedValue(undefined)
 
@@ -1249,11 +1325,8 @@ describe('Popup', () => {
     expect(mockRefreshPluginList).toHaveBeenCalled()
   })
 
-  it('should skip install requests when marketplace plugins are still loading', async () => {
-    mockMarketplacePlugins.current = [
-      { plugin_id: 'langgenius/openai', latest_package_identifier: 'langgenius/openai:1.0.0' },
-    ]
-    mockMarketplacePlugins.isLoading = true
+  it('should skip install requests when the marketplace plugin lookup fails', async () => {
+    mockFetchPluginInfoFromMarketPlace.mockRejectedValue(new Error('Not found'))
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 
@@ -1264,8 +1337,10 @@ describe('Popup', () => {
     })
   })
 
-  it('should skip install requests when the marketplace plugin cannot be found', async () => {
-    mockMarketplacePlugins.current = []
+  it('should skip install requests when the marketplace plugin has no package identifier', async () => {
+    mockFetchPluginInfoFromMarketPlace.mockResolvedValue({
+      data: { plugin: { latest_package_identifier: '' } },
+    })
 
     renderPopup(<PopupHarness modelList={[]} onHide={vi.fn()} />)
 

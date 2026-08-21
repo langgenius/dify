@@ -32,7 +32,7 @@ const HeaderInHistory = ({ viewHistoryProps }: HeaderInHistoryProps) => {
         <ViewHistory {...viewHistoryProps} withText />
         <Divider type="vertical" className="mx-auto h-3.5" />
         <Button variant="primary" onClick={handleGoBackToEdit}>
-          <ArrowNarrowLeft className="mr-1 size-4" />
+          <ArrowNarrowLeft className="size-4" />
           {t(($) => $['common.goBackToEdit'], { ns: 'workflow' })}
         </Button>
       </div>

@@ -5,7 +5,7 @@ import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowUpLine, RiAtLine, RiLoader2Line } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   forwardRef,
   memo,
@@ -568,29 +568,35 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               ref={setActionContainerRef}
               className="absolute right-1 bottom-0 z-20 flex items-end gap-1"
             >
-              <div
-                className={cn(
-                  'z-20 flex size-8 items-center justify-center rounded-lg transition-opacity',
-                  shouldDisableMentionButton
-                    ? 'cursor-not-allowed opacity-40'
-                    : 'cursor-pointer hover:bg-state-base-hover',
-                )}
-                onClick={shouldDisableMentionButton ? undefined : handleMentionButtonClick}
+              <IconButton
+                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflow' })}
+                size="lg"
+                disabled={shouldDisableMentionButton}
+                className="z-20 transition-opacity data-disabled:opacity-40"
+                onClick={handleMentionButtonClick}
               >
-                <RiAtLine className="size-4 text-text-tertiary" />
-              </div>
-              <Button
-                className="z-20 ml-2 w-8 px-0"
+                <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
+              </IconButton>
+              <IconButton
+                aria-label={t(($) => $['operation.send'], { ns: 'common' })}
+                className="z-20 ml-2"
+                size="lg"
                 variant="primary"
                 disabled={!value.trim() || disabled || loading}
                 onClick={handleSubmit}
               >
                 {loading ? (
-                  <RiLoader2Line className="size-4 animate-spin text-components-button-primary-text" />
+                  <span
+                    aria-hidden
+                    className="i-ri-loader-2-line size-4 animate-spin text-components-button-primary-text"
+                  />
                 ) : (
-                  <RiArrowUpLine className="size-4 text-components-button-primary-text" />
+                  <span
+                    aria-hidden
+                    className="i-ri-arrow-up-line size-4 text-components-button-primary-text"
+                  />
                 )}
-              </Button>
+              </IconButton>
             </div>
           )}
 
@@ -599,17 +605,15 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
               ref={setActionContainerRef}
               className="absolute inset-x-1 bottom-0 z-20 flex items-end justify-between"
             >
-              <div
-                className={cn(
-                  'z-20 flex size-8 items-center justify-center rounded-lg transition-opacity',
-                  shouldDisableMentionButton
-                    ? 'cursor-not-allowed opacity-40'
-                    : 'cursor-pointer hover:bg-state-base-hover',
-                )}
-                onClick={shouldDisableMentionButton ? undefined : handleMentionButtonClick}
+              <IconButton
+                aria-label={t(($) => $['nodes.agent.task.mention'], { ns: 'workflow' })}
+                size="lg"
+                disabled={shouldDisableMentionButton}
+                className="z-20 transition-opacity data-disabled:opacity-40"
+                onClick={handleMentionButtonClick}
               >
-                <RiAtLine className="size-4 text-text-tertiary" />
-              </div>
+                <span aria-hidden className="i-ri-at-line size-4 text-text-tertiary" />
+              </IconButton>
               <div ref={setActionRightRef} className="flex items-center gap-2">
                 <Button variant="secondary" size="small" onClick={onCancel} disabled={loading}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -619,9 +623,10 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(
                   size="small"
                   disabled={loading || !value.trim()}
                   onClick={() => handleSubmit()}
-                  className="gap-1"
                 >
-                  {loading && <RiLoader2Line className="mr-1 size-3.5 animate-spin" />}
+                  {loading && (
+                    <span aria-hidden className="i-ri-loader-2-line size-3.5 animate-spin" />
+                  )}
                   <span>{t(($) => $['operation.save'], { ns: 'common' })}</span>
                   {!loading && <EnterKey className="size-4" />}
                 </Button>

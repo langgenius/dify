@@ -6,6 +6,9 @@
     "check": "vp check && pnpm lint:eslint",
     "check:fix": "pnpm lint:eslint:fix && vp check --fix",
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
+    "knip": "knip --workspace web",
+    "knip:production": "knip --workspace web --production --include files",
+    "knip:production-unused-check": "node ./scripts/check-web-production-unused-after-knip-fix.mjs",
     "prepare": "vp config",
     "lint:oxlint": "vp lint",
     "lint:oxlint:fix": "vp lint --fix",
@@ -23,6 +26,7 @@
     "@iconify-json/heroicons": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@tanstack/eslint-plugin-query": "catalog:",
+    "@types/node": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "@typescript/native": "catalog:",
     "concurrently": "catalog:",
@@ -32,7 +36,6 @@
     "eslint-plugin-better-tailwindcss": "catalog:",
     "eslint-plugin-command": "catalog:",
     "eslint-plugin-erasable-syntax-only": "catalog:",
-    "eslint-plugin-hyoban": "catalog:",
     "eslint-plugin-jsdoc": "catalog:",
     "eslint-plugin-jsonc": "catalog:",
     "eslint-plugin-markdown-preferences": "catalog:",
@@ -45,6 +48,7 @@
     "eslint-plugin-toml": "catalog:",
     "eslint-plugin-unicorn": "catalog:",
     "eslint-plugin-yml": "catalog:",
+    "knip": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
@@ -59,5 +63,5 @@
   "engines": {
     "node": "^22.22.1"
   },
-  "packageManager": "pnpm@11.17.0"
+  "packageManager": "pnpm@11.21.0"
 }

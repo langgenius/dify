@@ -1,22 +1,26 @@
 'use client'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
 type Props = {
   readonly status: string
   readonly children?: React.ReactNode
+  readonly copyContent?: string
 }
 
-const StatusContainer: FC<Props> = ({ status, children }) => {
+const StatusContainer: FC<Props> = ({ status, children, copyContent }) => {
   const { theme } = useTheme()
+  const isCopyable = copyContent !== undefined
 
   return (
     <div
       role="status"
       className={cn(
-        'relative rounded-lg border border-workflow-display-disabled-border-1 px-3 py-2.5 system-xs-regular break-all',
+        'group/status relative rounded-lg border border-workflow-display-disabled-border-1 px-3 py-2.5 system-xs-regular break-all',
+        isCopyable && 'focus-within:pr-10 hover:pr-10 [@media(hover:none)]:pr-10',
         status === 'succeeded' &&
           'border-[rgba(23,178,106,0.8)] bg-workflow-display-success-bg bg-[url(~@/app/components/workflow/run/assets/bg-line-success.svg)] text-text-success',
         status === 'succeeded' &&
@@ -69,13 +73,18 @@ const StatusContainer: FC<Props> = ({ status, children }) => {
     >
       <div
         className={cn(
-          'absolute top-0 left-0 h-12.5 w-[65%] bg-no-repeat',
+          'pointer-events-none absolute top-0 left-0 h-12.5 w-[65%] bg-no-repeat',
           theme === Theme.light && 'bg-[url(~@/app/components/workflow/run/assets/highlight.svg)]',
           theme === Theme.dark &&
             'bg-[url(~@/app/components/workflow/run/assets/highlight-dark.svg)]',
         )}
       ></div>
       {children}
+      {isCopyable && (
+        <div className="pointer-events-none absolute top-1.5 right-1.5 z-10 opacity-0 transition-opacity group-focus-within/status:pointer-events-auto group-focus-within/status:opacity-100 group-hover/status:pointer-events-auto group-hover/status:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100">
+          <CopyFeedback content={copyContent} />
+        </div>
+      )}
     </div>
   )
 }

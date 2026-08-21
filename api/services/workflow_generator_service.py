@@ -18,7 +18,11 @@ from typing import Any
 from core.app.app_config.entities import ModelConfig
 from core.model_manager import ModelInstance, ModelManager
 from core.workflow.generator import WorkflowGenerator
-from core.workflow.generator.tool_catalogue import build_tool_catalogue, format_tool_catalogue, installed_tool_keys
+from core.workflow.generator.tool_catalogue import (
+    ToolCatalogueEntry,
+    build_tool_catalogue,
+    installed_tool_keys,
+)
 from core.workflow.generator.types import (
     WorkflowGenerateResultDict,
     WorkflowGenerationModeRequest,
@@ -62,8 +66,8 @@ class WorkflowGeneratorService:
         controller can map them to existing HTTP error envelopes (same
         envelope as ``/rule-generate``).
         """
-        model_instance, model_parameters, tool_catalogue_text, installed_tools = cls._resolve_generation_context(
-            tenant_id=tenant_id, model_config=model_config
+        model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
+            cls._resolve_generation_context(tenant_id=tenant_id, model_config=model_config)
         )
 
         return WorkflowGenerator.generate_workflow_graph(
@@ -76,6 +80,7 @@ class WorkflowGeneratorService:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=tool_catalogue_entries,
             installed_tools=installed_tools,
             current_graph=current_graph,
         )
@@ -101,8 +106,8 @@ class WorkflowGeneratorService:
         instance propagate to the caller (the controller emits them as a
         single ``result`` SSE event).
         """
-        model_instance, model_parameters, tool_catalogue_text, installed_tools = cls._resolve_generation_context(
-            tenant_id=tenant_id, model_config=model_config
+        model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
+            cls._resolve_generation_context(tenant_id=tenant_id, model_config=model_config)
         )
 
         yield from WorkflowGenerator.generate_workflow_graph_stream(
@@ -115,6 +120,7 @@ class WorkflowGeneratorService:
             instruction=instruction,
             ideal_output=ideal_output,
             tool_catalogue_text=tool_catalogue_text,
+            tool_catalogue_entries=tool_catalogue_entries,
             installed_tools=installed_tools,
             current_graph=current_graph,
         )
@@ -125,7 +131,13 @@ class WorkflowGeneratorService:
         *,
         tenant_id: str,
         model_config: ModelConfig,
-    ) -> tuple[ModelInstance, dict[str, Any], str, set[tuple[str, str]] | None]:
+    ) -> tuple[
+        ModelInstance,
+        dict[str, Any],
+        list[ToolCatalogueEntry],
+        str,
+        set[tuple[str, str]] | None,
+    ]:
         """Resolve the model instance, completion params, and tool catalogue.
 
         Build the installed-tool catalogue for this tenant so the planner /
@@ -147,13 +159,19 @@ class WorkflowGeneratorService:
 
         model_parameters: dict[str, Any] = dict(model_config.completion_params or {})
 
+        tool_catalogue_entries: list[ToolCatalogueEntry] = []
+        # Formatting is instruction-dependent and therefore owned by the
+        # runner. Keep the text slot empty so the complete structured catalogue
+        # can be dynamically routed after the instruction is available.
         tool_catalogue_text = ""
         installed_tools: set[tuple[str, str]] | None = None
         try:
-            entries = build_tool_catalogue(tenant_id)
-            tool_catalogue_text = format_tool_catalogue(entries)
-            installed_tools = installed_tool_keys(entries)
+            tool_catalogue_entries = build_tool_catalogue(tenant_id)
+            installed_tools = installed_tool_keys(tool_catalogue_entries)
         except Exception:
             logger.exception("Workflow generator: failed to build tool catalogue for tenant %s", tenant_id)
+            tool_catalogue_entries = []
+            tool_catalogue_text = ""
+            installed_tools = None
 
-        return model_instance, model_parameters, tool_catalogue_text, installed_tools
+        return model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools

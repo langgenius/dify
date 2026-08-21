@@ -7,6 +7,7 @@ import {
   SelectItemIndicator,
   SelectItemText,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
@@ -54,7 +55,7 @@ const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
         }}
       >
         <SelectTrigger size="large" className="w-full" aria-label={field.output_variable_name}>
-          {typeof value === 'string' ? value : ''}
+          <SelectValue />
         </SelectTrigger>
         <SelectContent listClassName="max-h-[140px] overflow-y-auto">
           {options.map((option) => (

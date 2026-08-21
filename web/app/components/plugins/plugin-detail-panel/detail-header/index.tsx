@@ -3,11 +3,11 @@
 import type { PluginDetail } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import { AuthCategory, PluginAuth } from '@/app/components/plugins/plugin-auth'
 import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -209,12 +209,12 @@ const DetailHeader = ({
                 pluginID={plugin_id}
                 currentVersion={version}
                 onSelect={handleVersionSelect}
-                trigger={
+                trigger={(open) => (
                   <Badge
                     className={cn(
                       'mx-1',
-                      versionPicker.isShow && 'bg-state-base-hover',
-                      (versionPicker.isShow || (canUpdatePlugin && isFromMarketplace)) &&
+                      open && 'bg-state-base-hover',
+                      (open || (canUpdatePlugin && isFromMarketplace)) &&
                         'hover:bg-state-base-hover',
                     )}
                     uppercase={false}
@@ -231,7 +231,7 @@ const DetailHeader = ({
                     }
                     hasRedCornerMark={hasNewVersion}
                   />
-                }
+                )}
               />
             )}
 
@@ -310,9 +310,12 @@ const DetailHeader = ({
               showCheckVersion={canUpdatePlugin}
               showRemove={canDeletePlugin}
             />
-            <ActionButton onClick={onHide}>
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              onClick={onHide}
+            >
               <span aria-hidden className="i-ri-close-line size-4" />
-            </ActionButton>
+            </IconButton>
           </div>
         )}
       </div>

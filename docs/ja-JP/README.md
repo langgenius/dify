@@ -185,6 +185,10 @@ Grafanaにダッシュボードをインポートし、DifyのPostgreSQLデー�
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)を使用してDifyをAKSにワンクリックでデプロイ
 
+#### Sealosを使用したデプロイ
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/)を使用してDifyをワンクリックでデプロイできます
+
 ## 貢献
 
 コードに貢献したい方は、[Contribution Guide](./CONTRIBUTING.md)を参照してください。

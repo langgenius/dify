@@ -31,7 +31,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -71,7 +70,7 @@ class EnterpriseExecutionBindingBackend:
     gateway_timeout: float = 30.0
     proxy_timeout: float = 60.0
     layout: RuntimeLayout = field(
-        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
@@ -105,8 +104,8 @@ class EnterpriseExecutionBindingBackend:
                     [
                         "set -eu",
                         f"mkdir -p {shlex.quote(self.layout.home_dir)}",
-                        f"rm -rf -- {shlex.quote(self.layout.workspace_dir)}",
                         f"mkdir -p {shlex.quote(self.layout.workspace_dir)}",
+                        f"find {shlex.quote(self.layout.workspace_dir)} -mindepth 1 -maxdepth 1 -exec rm -rf -- {{}} +",
                         f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
                     ]
                 ),
@@ -254,10 +253,6 @@ class EnterpriseRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
-
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
 
 
 def _is_missing_sandbox(exc: ShellProviderError) -> bool:

@@ -66,9 +66,7 @@ _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\
 WORKFLOW_VARIABLE_PATTERN = re.compile(r"\{\{#([^{}#]+?\.[^{}#]+?)#\}\}")
 
 MAX_MENTIONS_PER_PROMPT = 200
-# Drive keys are validated up to 512 Unicode code points before URL encoding.
-# Worst case, one code point becomes 4 UTF-8 bytes and each byte becomes a
-# 3-character ``%XX`` escape, so a valid encoded drive key can reach 6144 chars.
+# Mention ids are bounded independently of their owning configuration schema.
 MAX_MENTION_REF_ID_LENGTH = 6144
 MAX_MENTION_LABEL_LENGTH = 255
 
@@ -241,7 +239,7 @@ def scrub_mention_markers(text: str) -> str:
 
 
 def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
-    """Resolve non-drive soul-surface mentions to canonical display names."""
+    """Resolve Soul-surface mentions to canonical display names."""
 
     def _resolve(mention: PromptMention) -> str | None:
         match mention.kind:
@@ -320,7 +318,7 @@ def _format_output_mention(output: DeclaredOutputConfig) -> str:
             f"{output.name} (file output; create the file locally, run "
             f"`dify-agent file upload <path>`, then set final_output.{output.name} to a `tool_file` mapping "
             f"using the returned `reference`; if replying to the user in natural language, use the returned "
-            f"`download_url`; do not call final_output before upload succeeds, and do not use the local path, "
+            f"`public_download_url`; do not call final_output before upload succeeds, and do not use the local path, "
             "filename, URL, or a synthesized dify-file-ref as the reference)"
         )
     if (
@@ -332,7 +330,7 @@ def _format_output_mention(output: DeclaredOutputConfig) -> str:
             f"{output.name} (array[file] output; upload each produced file with "
             f"`dify-agent file upload <path>`, then set final_output.{output.name} to `tool_file` mappings "
             f"using the returned `reference` values; if replying to the user in natural language, use the returned "
-            f"`download_url`; do not call final_output before all uploads succeed, and do not use local paths, "
+            f"`public_download_url`; do not call final_output before all uploads succeed, and do not use local paths, "
             "filenames, URLs, or synthesized dify-file-ref values as references)"
         )
     return f"{output.name} ({output.type.value})"

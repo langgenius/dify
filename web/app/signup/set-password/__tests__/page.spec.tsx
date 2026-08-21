@@ -1,12 +1,14 @@
 import type { ReactElement } from 'react'
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Cookies from 'js-cookie'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
 
@@ -68,6 +70,7 @@ const renderWithQueryClient = (ui: ReactElement) => {
       mutations: { retry: false },
     },
   })
+  seedSystemFeatures(queryClient)
   return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
@@ -90,17 +93,25 @@ describe('Signup Set Password Page', () => {
     mockRegister.mockResolvedValue({ result: 'fail', data: {} })
   })
 
+  it('exposes the page title as the main heading', () => {
+    renderWithQueryClient(<ChangePasswordForm />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+  })
+
   describe('Registration payload', () => {
     it('should submit locale and browser timezone when setting password', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(<ChangePasswordForm />)
 
-      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
-        target: { value: 'ValidPass123!' },
-      })
-      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+      const passwordInput = screen.getByLabelText('common.account.newPassword')
+      const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+      expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+      expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+      await user.type(passwordInput, 'ValidPass123!')
+      await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
 
       await waitFor(() => {
         expect(mockRegister).toHaveBeenCalledWith({

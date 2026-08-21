@@ -177,6 +177,10 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) kullanarak Dify'ı tek tıkla AKS'ye dağıtın
 
+#### Sealos ile Dağıtım
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/) kullanarak Dify'ı tek tıkla dağıtın
+
 ## Katkıda Bulunma
 
 Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](./CONTRIBUTING.md) bakabilirsiniz.

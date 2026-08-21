@@ -16,7 +16,8 @@ from flask import render_template
 from pydantic import BaseModel, Field
 
 from extensions.ext_mail import mail
-from services.feature_service import BrandingModel, FeatureService
+from services.entities.feature_entities import BrandingModel
+from services.feature_service import FeatureService
 
 
 class EmailType(StrEnum):

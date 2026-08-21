@@ -22,7 +22,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 
@@ -218,7 +218,7 @@ export function AgentApiKeyModal({
 
           <div className="mt-4 flex justify-start">
             <Button onClick={handleCreateApiKey} loading={isCreating}>
-              <span aria-hidden className="mr-1 i-heroicons-plus-20-solid size-4" />
+              <span aria-hidden className="i-heroicons-plus-20-solid size-4" />
               {t(($) => $['apiKeyModal.createNewSecretKey'])}
             </Button>
           </div>

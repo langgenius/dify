@@ -23,6 +23,13 @@ from core.workflow.human_input_adapter import (
     adapt_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
+from core.workflow.llm_environment_variable import (
+    LLMEnvironmentVariable,
+    parse_llm_model_selector,
+    resolve_llm_model_config,
+    should_resolve_llm_model_selector,
+    validate_llm_environment_model_references,
+)
 from core.workflow.node_factory import (
     LATEST_VERSION,
     get_node_type_classes_mapping,
@@ -43,7 +50,7 @@ from core.workflow.system_variables import build_bootstrap_variables, build_syst
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -62,7 +69,9 @@ from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRun
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
+from graphon.nodes.llm.entities import ModelConfig
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import VariablePool
 from graphon.variable_loader import load_into_variable_pool
@@ -71,6 +80,7 @@ from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
 from libs.datetime_utils import naive_utc_now
 from models import Account
+from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -84,7 +94,6 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
-from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 
 @dataclass(frozen=True)
@@ -133,6 +142,7 @@ HumanInputNode = _DebugHumanInputNode
 from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_ref_service import WorkflowRef
+from services.workflow_version_number_service import allocate_version_number
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .human_input_delivery_test_service import (
@@ -146,6 +156,48 @@ from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader,
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+def _merge_environment_variable_patch(
+    current_variables: Sequence[VariableBase],
+    environment_variable_upserts: Sequence[VariableBase],
+    deleted_environment_variable_ids: Sequence[str],
+) -> list[VariableBase]:
+    """Merge a per-ID environment-variable patch while preserving untouched server values."""
+    upserts_by_id: dict[str, VariableBase] = {}
+    for variable in environment_variable_upserts:
+        if not variable.id:
+            raise ValueError("Patched environment variables require an id.")
+        if variable.id in upserts_by_id:
+            raise ValueError(f"Duplicate patched environment variable id: {variable.id}")
+        upserts_by_id[variable.id] = variable
+
+    deleted_ids = set(deleted_environment_variable_ids)
+    if len(deleted_ids) != len(deleted_environment_variable_ids):
+        raise ValueError("Deleted environment variable ids must be unique.")
+    if "" in deleted_ids:
+        raise ValueError("Deleted environment variable ids must not be empty.")
+    if conflicting_ids := deleted_ids.intersection(upserts_by_id):
+        conflicting_id = min(conflicting_ids)
+        raise ValueError(f"Environment variable cannot be upserted and deleted in the same patch: {conflicting_id}")
+
+    existing_ids: set[str] = set()
+    merged_variables: list[VariableBase] = []
+    for variable in current_variables:
+        variable_id = variable.id
+        if variable_id:
+            existing_ids.add(variable_id)
+        if variable_id in deleted_ids:
+            continue
+        merged_variables.append(upserts_by_id.get(variable_id, variable))
+
+    merged_variables.extend(
+        variable for variable_id, variable in upserts_by_id.items() if variable_id not in existing_ids
+    )
+    names = [variable.name for variable in merged_variables]
+    if len(set(names)) != len(names):
+        raise ValueError("Environment variable names must be unique.")
+    return merged_variables
 
 
 class WorkflowService:
@@ -215,14 +267,34 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def get_published_workflow_by_id(self, app_model: App, workflow_id: str, *, session: Session) -> Workflow | None:
-        """
-        fetch published workflow by workflow_id
+    def _get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
+        """Return the app draft while holding its row lock for the caller's transaction."""
+        return session.scalar(
+            select(Workflow)
+            .where(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+            .limit(1)
+            .with_for_update()
+        )
 
-        Reuses the caller's active session so workflow reads stay in the same
-        transaction as the surrounding request or task.
+    def get_published_workflow_by_id(
+        self,
+        app_model: App,
+        workflow_id: str,
+        *,
+        session: Session,
+        for_update: bool = False,
+    ) -> Workflow | None:
+        """Fetch a published workflow by ID in the caller's transaction.
+
+        With ``for_update=True``, the source version stays locked until that
+        transaction ends. Restore uses the lock while copying Agent bindings so
+        a concurrent delete cannot release the same owner.
         """
-        workflow = session.scalar(
+        stmt = (
             select(Workflow)
             .where(
                 Workflow.tenant_id == app_model.tenant_id,
@@ -231,6 +303,9 @@ class WorkflowService:
             )
             .limit(1)
         )
+        if for_update:
+            stmt = stmt.with_for_update()
+        workflow = session.scalar(stmt)
         if not workflow:
             return None
         if workflow.version == Workflow.VERSION_DRAFT:
@@ -263,15 +338,17 @@ class WorkflowService:
 
         return workflow
 
-    def get_accessible_app_ids(self, app_ids: Sequence[str], tenant_id: str, *, session: Session) -> set[str]:
-        """
-        Return app IDs that belong to the given tenant.
-        """
+    def get_tenant_app_maintainers(
+        self, app_ids: Sequence[str], tenant_id: str, *, session: Session
+    ) -> dict[str, str | None]:
+        """Return requested normal apps and their maintainers within a tenant."""
         if not app_ids:
-            return set()
+            return {}
 
-        stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
-        return {str(app_id) for app_id in session.scalars(stmt).all()}
+        stmt = select(App.id, App.maintainer).where(
+            App.id.in_(app_ids), App.tenant_id == tenant_id, App.status == "normal"
+        )
+        return {str(app_id): maintainer for app_id, maintainer in session.execute(stmt)}
 
     def get_all_published_workflow(
         self,
@@ -292,7 +369,16 @@ class WorkflowService:
         stmt = (
             select(Workflow)
             .where(Workflow.app_id == app_model.id)
-            .order_by(Workflow.version.desc())
+            # The draft leads the list; its `created_at` is the app's creation time, so it would
+            # otherwise sort last. Published versions then order by publish time: `version` is a
+            # stringified timestamp whose microseconds are omitted when zero, so ordering by it
+            # misplaces versions across second boundaries, and `version_number` is NULL for
+            # versions published before numbering was introduced.
+            .order_by(
+                (Workflow.version == Workflow.VERSION_DRAFT).desc(),
+                Workflow.created_at.desc(),
+                Workflow.id.desc(),
+            )
             .limit(limit + 1)
             .offset((page - 1) * limit)
         )
@@ -322,6 +408,9 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         conversation_variables: Sequence[VariableBase],
         session: Session,
+        environment_variable_upserts: Sequence[VariableBase] | None = None,
+        deleted_environment_variable_ids: Sequence[str] = (),
+        preserve_environment_variables: bool = False,
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
@@ -333,10 +422,17 @@ class WorkflowService:
         portable package references can be materialized atomically after the
         draft workflow has received its target-workspace id.
 
+        Existing drafts are row-locked before the hash check. Collaborative
+        graph-only saves preserve independently persisted draft fields, while
+        an explicit per-ID environment patch is merged with the graph.
+
         :raises WorkflowHashNotEqualError
         """
+        if environment_variable_upserts is None and deleted_environment_variable_ids:
+            raise ValueError("Deleted environment variable ids require an environment variable patch.")
+
         # fetch draft workflow by app_model
-        workflow = self.get_draft_workflow(app_model=app_model, session=session)
+        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -351,6 +447,15 @@ class WorkflowService:
 
         # create draft workflow if not found
         if not workflow:
+            initial_environment_variables = (
+                _merge_environment_variable_patch(
+                    environment_variables,
+                    environment_variable_upserts,
+                    deleted_environment_variable_ids,
+                )
+                if environment_variable_upserts is not None
+                else list(environment_variables)
+            )
             workflow = Workflow(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
@@ -359,7 +464,7 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=environment_variables,
+                environment_variables=initial_environment_variables,
                 conversation_variables=conversation_variables,
             )
             session.add(workflow)
@@ -370,8 +475,15 @@ class WorkflowService:
             workflow.updated_at = naive_utc_now()
             if not graph_only:
                 workflow.features = json.dumps(features)
-                workflow.environment_variables = environment_variables
                 workflow.conversation_variables = conversation_variables
+            if environment_variable_upserts is not None:
+                workflow.environment_variables = _merge_environment_variable_patch(
+                    workflow.environment_variables,
+                    environment_variable_upserts,
+                    deleted_environment_variable_ids,
+                )
+            elif not graph_only and not preserve_environment_variables:
+                workflow.environment_variables = environment_variables
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
@@ -391,15 +503,10 @@ class WorkflowService:
         # commit db session changes
         if commit:
             session.commit()
-            binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=app_model.tenant_id,
                 agent_ids=retirement_candidates,
                 account_id=account.id,
-            )
-            enqueue_agent_resource_collection(
-                tenant_id=app_model.tenant_id,
-                binding_ids=binding_ids,
-                home_snapshot_ids=home_snapshot_ids,
             )
 
         # trigger app workflow events
@@ -416,10 +523,8 @@ class WorkflowService:
         environment_variables: Sequence[VariableBase],
         account: Account,
         session: Session,
-    ):
-        """
-        Update draft workflow environment variables
-        """
+    ) -> None:
+        """Replace every environment variable on a draft workflow and commit the transaction."""
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model, session=session)
 
@@ -431,6 +536,34 @@ class WorkflowService:
         workflow.updated_at = naive_utc_now()
 
         # commit db session changes
+        session.commit()
+
+    def patch_draft_workflow_environment_variables(
+        self,
+        *,
+        app_model: App,
+        environment_variables: Sequence[VariableBase],
+        deleted_environment_variable_ids: Sequence[str],
+        account: Account,
+        session: Session,
+    ) -> None:
+        """Atomically merge per-ID environment-variable upserts and deletions into a draft workflow.
+
+        The draft row is locked before reading its current variables so concurrent patches preserve
+        variables they do not touch. Existing variables keep their order and new variables are appended.
+        The transaction is committed before this method returns.
+        """
+        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        if not workflow:
+            raise ValueError("No draft workflow found.")
+
+        workflow.environment_variables = _merge_environment_variable_patch(
+            workflow.environment_variables,
+            environment_variables,
+            deleted_environment_variable_ids,
+        )
+        workflow.updated_by = account.id
+        workflow.updated_at = naive_utc_now()
         session.commit()
 
     def update_draft_workflow_conversation_variables(
@@ -498,7 +631,10 @@ class WorkflowService:
         published workflow so the normal draft sync flow stays stateless.
         """
         source_workflow = self.get_published_workflow_by_id(
-            app_model=app_model, workflow_id=workflow_id, session=session
+            app_model=app_model,
+            workflow_id=workflow_id,
+            session=session,
+            for_update=True,
         )
         if not source_workflow:
             raise WorkflowNotFoundError("Workflow not found.")
@@ -530,15 +666,10 @@ class WorkflowService:
         )
 
         session.commit()
-        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+        WorkflowAgentRetirementService.retire_unowned(
             tenant_id=app_model.tenant_id,
             agent_ids=retirement_candidates,
             account_id=account.id,
-        )
-        enqueue_agent_resource_collection(
-            tenant_id=app_model.tenant_id,
-            binding_ids=binding_ids,
-            home_snapshot_ids=home_snapshot_ids,
         )
         app_draft_workflow_was_synced.send(app_model, synced_draft_workflow=draft_workflow)
 
@@ -552,7 +683,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> tuple[Workflow, set[str]]:
+    ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -561,6 +692,11 @@ class WorkflowService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
 
         # Validate credentials before publishing, for credential policy check
         from services.feature_service import FeatureService
@@ -579,7 +715,7 @@ class WorkflowService:
         )
 
         # billing check
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             limit_info = BillingService.get_info(app_model.tenant_id)
             if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
                 # Check trigger node count limit for SANDBOX plan
@@ -599,6 +735,7 @@ class WorkflowService:
             app_id=app_model.id,
             type=draft_workflow.type,
             version=Workflow.version_from_datetime(naive_utc_now()),
+            version_number=allocate_version_number(session=session, app_id=app_model.id),
             graph=draft_workflow.graph,
             created_by=account.id,
             environment_variables=draft_workflow.environment_variables,
@@ -611,7 +748,7 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        retirement_candidates = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
@@ -621,7 +758,7 @@ class WorkflowService:
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
 
         # return new workflow
-        return workflow, retirement_candidates
+        return workflow
 
     def _validate_workflow_credentials(self, workflow: Workflow, *, session: Session) -> None:
         """
@@ -632,6 +769,14 @@ class WorkflowService:
         """
         graph_dict = workflow.graph_dict
         nodes = graph_dict.get("nodes", [])
+        has_llm_model_reference = any(
+            node.get("data", {}).get("type") == "llm"
+            and should_resolve_llm_model_selector(node.get("data", {}).get("model_selector"))
+            for node in nodes
+        )
+        environment_variables = (
+            {variable.name: variable for variable in workflow.environment_variables} if has_llm_model_reference else {}
+        )
 
         for node in nodes:
             node_data = node.get("data", {})
@@ -687,7 +832,22 @@ class WorkflowService:
                                 self._check_default_tool_credential(workflow.tenant_id, provider, session=session)
 
                 elif node_type in ["llm", "knowledge_retrieval", "parameter_extractor", "question_classifier"]:
+                    validation_node_data = node_data
                     model_config = node_data.get("model", {})
+                    if node_type == "llm" and should_resolve_llm_model_selector(node_data.get("model_selector")):
+                        selector = parse_llm_model_selector(node_data["model_selector"])
+                        variable = environment_variables.get(selector[1])
+                        if not isinstance(variable, LLMEnvironmentVariable):
+                            raise ValueError(
+                                f"LLM environment variable '{selector[1]}' was not found or is not an LLM variable"
+                            )
+                        resolved_model = resolve_llm_model_config(
+                            node_model=ModelConfig.model_validate(model_config),
+                            variable_name=selector[1],
+                            variable_value=variable.value,
+                        )
+                        model_config = resolved_model.model_dump(mode="json")
+                        validation_node_data = {**node_data, "model": model_config}
                     provider = model_config.get("provider")
                     model_name = model_config.get("name")
 
@@ -695,7 +855,9 @@ class WorkflowService:
                         # Validate that the provider+model combination can fetch valid credentials
                         self._validate_llm_model_config(workflow.tenant_id, provider, model_name)
                         # Validate load balancing credentials if load balancing is enabled
-                        self._validate_load_balancing_credentials(workflow, node_data, node_id, session=session)
+                        self._validate_load_balancing_credentials(
+                            workflow, validation_node_data, node_id, session=session
+                        )
                     else:
                         raise ValueError(f"Node {node_id} ({node_type}): Missing provider or model configuration")
 
@@ -1472,7 +1634,10 @@ class WorkflowService:
 
     def _handle_single_step_result(
         self,
-        invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
+        invoke_node_fn: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
         start_at: float,
         node_id: str,
     ) -> WorkflowNodeExecution:
@@ -1508,7 +1673,11 @@ class WorkflowService:
         return node_execution
 
     def _execute_node_safely(
-        self, invoke_node_fn: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]]
+        self,
+        invoke_node_fn: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
     ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
         """
         Execute node safely and handle errors according to error strategy.
@@ -1724,21 +1893,29 @@ class WorkflowService:
 
         return workflow
 
-    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> bool:
-        """
-        Delete a workflow
+    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> list[str]:
+        """Stage a published Workflow and its binding owners for deletion.
+
+        The exact owner key is tenant, App, Workflow, and Workflow version. The
+        Workflow row lock serializes source-version reads and restoration with
+        deletion. The caller must commit successfully before retiring the
+        returned, sorted and deduplicated inline Agent candidates.
 
         :param session: SQLAlchemy database session
         :param workflow_ref: Owner-bound workflow reference
-        :return: True if successful
+        :return: Inline Agent IDs whose owner binding is staged for deletion
         :raises: ValueError if workflow not found
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        stmt = select(Workflow).where(
-            Workflow.id == workflow_ref.workflow_id,
-            Workflow.tenant_id == workflow_ref.tenant_id,
-            Workflow.app_id == workflow_ref.owner_id,
+        stmt = (
+            select(Workflow)
+            .where(
+                Workflow.id == workflow_ref.workflow_id,
+                Workflow.tenant_id == workflow_ref.tenant_id,
+                Workflow.app_id == workflow_ref.owner_id,
+            )
+            .with_for_update()
         )
         workflow = session.scalar(stmt)
 
@@ -1770,8 +1947,25 @@ class WorkflowService:
             # Cannot delete a workflow that's published as a tool
             raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
 
+        bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == workflow.version,
+            )
+        ).all()
+        retirement_candidates = sorted(
+            {
+                binding.agent_id
+                for binding in bindings
+                if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+            }
+        )
+        for binding in bindings:
+            session.delete(binding)
         session.delete(workflow)
-        return True
+        return retirement_candidates
 
 
 def _setup_variable_pool(

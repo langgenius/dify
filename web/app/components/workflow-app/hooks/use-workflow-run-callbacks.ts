@@ -1,4 +1,4 @@
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
 import type { IOtherOptions } from '@/service/base'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { sseGet } from '@/service/base'
@@ -147,6 +147,7 @@ export const createBaseWorkflowRunCallbacks = ({
     onHumanInputFormTimeout,
     onCompleted,
   } = callbacks
+  let hasStartedResumeStream = false
 
   const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
     clearAbortController()
@@ -260,8 +261,11 @@ export const createBaseWorkflowRunCallbacks = ({
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
       if (onWorkflowPaused) onWorkflowPaused(params)
-      const url = `/workflow/${params.workflow_run_id}/events`
-      sseGet(url, {}, baseSseOptions)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
+        sseGet(url, {}, baseSseOptions)
+      }
     },
     onHumanInputRequired: (params) => {
       handleWorkflowNodeHumanInputRequired(params)
@@ -340,6 +344,7 @@ export const createFinalWorkflowRunCallbacks = ({
     onHumanInputFormFilled,
     onHumanInputFormTimeout,
   } = callbacks
+  let hasStartedResumeStream = false
 
   const finalCallbacks: IOtherOptions = {
     ...baseSseOptions,
@@ -437,8 +442,11 @@ export const createFinalWorkflowRunCallbacks = ({
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
       if (onWorkflowPaused) onWorkflowPaused(params)
-      const url = `/workflow/${params.workflow_run_id}/events`
-      sseGet(url, {}, finalCallbacks)
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        const url = `/workflow/${params.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`
+        sseGet(url, {}, finalCallbacks)
+      }
     },
     onHumanInputRequired: (params) => {
       handleWorkflowNodeHumanInputRequired(params)

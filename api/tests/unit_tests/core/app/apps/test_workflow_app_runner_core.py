@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -23,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.pause_reason import HitlRequired
@@ -32,7 +34,6 @@ from graphon.graph_events import (
     GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
-    NodeRunAgentLogEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunHumanInputFormFilledEvent,
@@ -48,6 +49,22 @@ from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from graphon.variables.variables import StringVariable
+from models.workflow import Workflow, WorkflowType
+
+
+def _workflow(graph: dict[str, object] | None = None) -> Workflow:
+    return Workflow.new(
+        tenant_id="tenant",
+        app_id="app",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps(graph or {}, default=str),
+        features="{}",
+        created_by="account",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
 
 
 class TestWorkflowBasedAppRunner:
@@ -122,7 +139,7 @@ class TestWorkflowBasedAppRunner:
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
-        workflow = SimpleNamespace(environment_variables=[], graph_dict={})
+        workflow = _workflow()
 
         with pytest.raises(ValueError, match="Neither single_iteration_run nor single_loop_run"):
             runner._prepare_single_node_execution(workflow, None, None, user_id="00000000-0000-0000-0000-000000000001")
@@ -138,7 +155,8 @@ class TestWorkflowBasedAppRunner:
             "nodes": [{"id": "node-1", "data": {"type": "start", "version": "1"}}],
             "edges": [],
         }
-        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+        workflow = _workflow(graph_config)
+        workflow.id = "workflow"
 
         monkeypatch.setattr(
             "core.app.apps.workflow_app_runner.Graph.init",
@@ -191,7 +209,8 @@ class TestWorkflowBasedAppRunner:
             "nodes": [{"id": "node-1", "data": {"type": "start", "version": "1"}}],
             "edges": [],
         }
-        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+        workflow = _workflow(graph_config)
+        workflow.id = "workflow"
         captured = {}
 
         def fake_from_graph_init_context(**kwargs):
@@ -256,10 +275,8 @@ class TestWorkflowBasedAppRunner:
             start_at=0.0,
         )
 
-        workflow = SimpleNamespace(
-            tenant_id="tenant",
-            id="workflow",
-            graph_dict={
+        workflow = _workflow(
+            {
                 "nodes": [
                     {"id": "loop-node", "data": {"type": "loop", "version": "1", "title": "Loop"}},
                     {
@@ -273,8 +290,9 @@ class TestWorkflowBasedAppRunner:
                     },
                 ],
                 "edges": [],
-            },
+            }
         )
+        workflow.id = "workflow"
 
         class _LoopNodeCls:
             @staticmethod
@@ -334,7 +352,6 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        graph_runtime_state.register_paused_node("node-1")
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         emails: list[dict] = []

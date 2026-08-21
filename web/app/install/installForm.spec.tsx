@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { expectLoadingButton } from '@/test/button'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -44,21 +45,85 @@ describe('InstallForm', () => {
   it('should render form after loading', async () => {
     render(<InstallForm />)
 
-    expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    const emailInput = await screen.findByLabelText('login.email')
+    const nameInput = screen.getByLabelText('login.name')
+    const passwordInput = screen.getByLabelText('login.password')
+
+    expect(emailInput).toHaveAttribute('type', 'email')
+    expect(emailInput).toHaveAttribute('autocomplete', 'email')
+    expect(nameInput).toHaveAttribute('autocomplete', 'name')
+    expect(nameInput).toHaveAttribute('maxlength', '30')
+    expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.setAdminAccount')
     expect(screen.getByRole('button', { name: /login\.installBtn/ })).toBeInTheDocument()
   })
 
-  it('should show validation error when required fields are empty', async () => {
+  it('should reveal and hide the password with an accessible action', async () => {
+    const user = userEvent.setup()
     render(<InstallForm />)
 
-    await screen.findByLabelText('login.email')
+    const passwordInput = await screen.findByLabelText('login.password')
 
-    fireEvent.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+    await user.click(screen.getByRole('button', { name: 'login.showPassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'text')
+
+    await user.click(screen.getByRole('button', { name: 'login.hidePassword' }))
+    expect(passwordInput).toHaveAttribute('type', 'password')
+  })
+
+  it('should identify required fields only after submission', async () => {
+    const user = userEvent.setup()
+    render(<InstallForm />)
+
+    const emailInput = await screen.findByLabelText('login.email')
+    const nameInput = screen.getByLabelText('login.name')
+    const passwordInput = screen.getByLabelText('login.password')
+
+    expect(screen.queryByText('login.error.emailInValid')).not.toBeInTheDocument()
+    expect(screen.queryByText('login.error.nameEmpty')).not.toBeInTheDocument()
+    expect(screen.getAllByText('login.error.passwordInvalid')).toHaveLength(1)
+    expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
+
+    await user.click(screen.getByRole('button', { name: /login\.installBtn/ }))
 
     await waitFor(() => {
       expect(screen.getByText('login.error.emailInValid')).toBeInTheDocument()
       expect(screen.getByText('login.error.nameEmpty')).toBeInTheDocument()
+      expect(screen.getAllByText('login.error.passwordInvalid')).toHaveLength(1)
     })
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(nameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+    expect(passwordInput).toHaveAccessibleDescription('login.error.passwordInvalid')
+    expect(mockSetup).not.toHaveBeenCalled()
+  })
+
+  it('should identify an invalid email and focus the field', async () => {
+    const user = userEvent.setup()
+    render(<InstallForm />)
+
+    const emailInput = await screen.findByLabelText('login.email')
+    await user.type(emailInput, 'invalid-email')
+    await user.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+
+    expect(await screen.findByText('login.error.emailInValid')).toBeInTheDocument()
+    expect(emailInput).toHaveAttribute('aria-invalid', 'true')
+    expect(emailInput).toHaveFocus()
+    expect(mockSetup).not.toHaveBeenCalled()
+  })
+
+  it('should enforce the password requirements before submission', async () => {
+    const user = userEvent.setup()
+    render(<InstallForm />)
+
+    await user.type(await screen.findByLabelText('login.email'), 'admin@example.com')
+    await user.type(screen.getByLabelText('login.name'), 'Admin')
+    const passwordInput = screen.getByLabelText('login.password')
+    await user.type(passwordInput, 'abcdefgh')
+    await user.click(screen.getByRole('button', { name: /login\.installBtn/ }))
+
+    expect(passwordInput).toHaveAttribute('aria-invalid', 'true')
+    expect(passwordInput).toHaveFocus()
     expect(mockSetup).not.toHaveBeenCalled()
   })
 

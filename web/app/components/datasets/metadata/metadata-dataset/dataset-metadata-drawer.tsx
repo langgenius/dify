@@ -241,7 +241,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
                   setOpen={setOpen}
                   trigger={
                     <Button variant="primary" className="mt-3">
-                      <RiAddLine className="mr-1" />
+                      <RiAddLine />
                       {t(($) => $[`${i18nPrefix}.addMetaData`], { ns: 'dataset' })}
                     </Button>
                   }

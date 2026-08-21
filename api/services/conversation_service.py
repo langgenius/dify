@@ -228,7 +228,7 @@ class ConversationService:
                 )
                 if retired_binding_id is None:
                     raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
-            session.delete(conversation)
+            conversation.is_deleted = True
             session.commit()
         except Exception:
             session.rollback()
@@ -238,7 +238,12 @@ class ConversationService:
                 tenant_id=app_model.tenant_id,
                 binding_ids=(retired_binding_id,),
             )
-        delete_conversation_related_data.delay(conversation.id)
+        try:
+            delete_conversation_related_data.delay(conversation.id)
+        except Exception:
+            # The soft-deleted row is a durable cleanup marker picked up by the
+            # periodic sweeper, so a broker outage must not resurrect or expose it.
+            logger.exception("Failed to enqueue cleanup for conversation %s", conversation.id)
 
     @classmethod
     def get_conversational_variable(
@@ -256,8 +261,7 @@ class ConversationService:
 
         stmt = (
             select(ConversationVariable)
-            .where(ConversationVariable.app_id == app_model.id)
-            .where(ConversationVariable.conversation_id == conversation.id)
+            .where(ConversationVariable.app_id == app_model.id, ConversationVariable.conversation_id == conversation.id)
             .order_by(ConversationVariable.created_at)
         )
 
@@ -342,11 +346,10 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
 
         # Get the existing conversation variable
-        stmt = (
-            select(ConversationVariable)
-            .where(ConversationVariable.app_id == app_model.id)
-            .where(ConversationVariable.conversation_id == conversation.id)
-            .where(ConversationVariable.id == variable_id)
+        stmt = select(ConversationVariable).where(
+            ConversationVariable.app_id == app_model.id,
+            ConversationVariable.conversation_id == conversation.id,
+            ConversationVariable.id == variable_id,
         )
 
         existing_variable = session.scalar(stmt)

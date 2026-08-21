@@ -49,11 +49,13 @@ for the full indexing pipeline are handled separately in the integration test su
 
 import json
 import uuid
-from types import SimpleNamespace
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.entities.knowledge_entities import PreviewDetail
@@ -65,12 +67,15 @@ from core.indexing_runner import (
 )
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.models.document import ChildDocument, Document
+from enums import DeploymentEdition
+from extensions.storage.storage_type import StorageType
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.datetime_utils import naive_utc_now
-from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.enums import SegmentStatus
-from models.model import Account
+from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, SegmentStatus
+from models.model import Account, UploadFile
+from services.vector_space_admission_service import VectorSpaceAdmissionError
 
 # ============================================================================
 # Helper Functions
@@ -83,10 +88,10 @@ def create_mock_dataset(
     indexing_technique: str = IndexTechniqueType.HIGH_QUALITY,
     embedding_provider: str = "openai",
     embedding_model: str = "text-embedding-ada-002",
-) -> Mock:
-    """Create a mock Dataset object with configurable parameters.
+) -> Dataset:
+    """Create a Dataset object with configurable parameters.
 
-    This helper function creates a properly configured mock Dataset object that can be
+    This helper function creates a properly configured Dataset object that can be
     used across multiple tests, ensuring consistency in test data.
 
     Args:
@@ -97,18 +102,19 @@ def create_mock_dataset(
         embedding_model: The embedding model name.
 
     Returns:
-        Mock: A configured mock Dataset object with all required attributes.
+        Dataset: A configured Dataset object with all required attributes.
 
     Example:
         >>> dataset = create_mock_dataset(indexing_technique="economy")
         >>> assert dataset.indexing_technique == "economy"
     """
-    dataset = Mock(spec=Dataset)
-    dataset.id = dataset_id or str(uuid.uuid4())
-    dataset.tenant_id = tenant_id or str(uuid.uuid4())
-    dataset.indexing_technique = indexing_technique
-    dataset.embedding_model_provider = embedding_provider
-    dataset.embedding_model = embedding_model
+    dataset = Dataset(
+        id=dataset_id or str(uuid.uuid4()),
+        tenant_id=tenant_id or str(uuid.uuid4()),
+        indexing_technique=indexing_technique,
+        embedding_model_provider=embedding_provider,
+        embedding_model=embedding_model,
+    )
     return dataset
 
 
@@ -119,10 +125,10 @@ def create_mock_dataset_document(
     doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     data_source_type: str = "upload_file",
     doc_language: str = "English",
-) -> Mock:
-    """Create a mock DatasetDocument object with configurable parameters.
+) -> DatasetDocument:
+    """Create a DatasetDocument object with configurable parameters.
 
-    This helper function creates a properly configured mock DatasetDocument object,
+    This helper function creates a properly configured DatasetDocument object,
     reducing boilerplate code in individual tests.
 
     Args:
@@ -134,23 +140,50 @@ def create_mock_dataset_document(
         doc_language: The document language.
 
     Returns:
-        Mock: A configured mock DatasetDocument object with all required attributes.
+        DatasetDocument: A configured DatasetDocument object with all required attributes.
 
     Example:
         >>> doc = create_mock_dataset_document(doc_form=IndexStructureType.QA_INDEX)
         >>> assert doc.doc_form == IndexStructureType.QA_INDEX
     """
-    doc = Mock(spec=DatasetDocument)
-    doc.id = document_id or str(uuid.uuid4())
-    doc.dataset_id = dataset_id or str(uuid.uuid4())
-    doc.tenant_id = tenant_id or str(uuid.uuid4())
-    doc.doc_form = doc_form
-    doc.doc_language = doc_language
-    doc.data_source_type = data_source_type
-    doc.data_source_info_dict = {"upload_file_id": str(uuid.uuid4())}
-    doc.dataset_process_rule_id = str(uuid.uuid4())
-    doc.created_by = str(uuid.uuid4())
-    return doc
+    return DatasetDocument(
+        id=document_id or str(uuid.uuid4()),
+        dataset_id=dataset_id or str(uuid.uuid4()),
+        tenant_id=tenant_id or str(uuid.uuid4()),
+        doc_form=doc_form,
+        doc_language=doc_language,
+        data_source_type=data_source_type,
+        data_source_info=json.dumps({"upload_file_id": str(uuid.uuid4())}),
+        dataset_process_rule_id=str(uuid.uuid4()),
+        created_by=str(uuid.uuid4()),
+    )
+
+
+def persist_indexing_scope(session: Session) -> tuple[Dataset, DatasetDocument]:
+    tenant_id = str(uuid.uuid4())
+    created_by = str(uuid.uuid4())
+    dataset = Dataset(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        name="Dataset",
+        description="",
+        created_by=created_by,
+        indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+    )
+    document = DatasetDocument(
+        id=str(uuid.uuid4()),
+        tenant_id=tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        batch="batch",
+        name="Document",
+        created_from=DocumentCreatedFrom.API,
+        created_by=created_by,
+    )
+    session.add_all([dataset, document])
+    session.commit()
+    return dataset, document
 
 
 def create_sample_documents(
@@ -260,14 +293,14 @@ class TestIndexingRunnerExtract:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, sqlite_session: Session):
         """Mock all external dependencies for extract tests."""
         with (
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
             patch("core.indexing_runner.storage") as mock_storage,
         ):
             yield {
-                "session": MagicMock(),
+                "session": sqlite_session,
                 "factory": mock_factory,
                 "storage": mock_storage,
             }
@@ -275,14 +308,14 @@ class TestIndexingRunnerExtract:
     @pytest.fixture
     def sample_dataset_document(self):
         """Create a sample dataset document for testing."""
-        doc = Mock(spec=DatasetDocument)
-        doc.id = str(uuid.uuid4())
-        doc.dataset_id = str(uuid.uuid4())
-        doc.tenant_id = str(uuid.uuid4())
-        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-        doc.data_source_type = "upload_file"
-        doc.data_source_info_dict = {"upload_file_id": str(uuid.uuid4())}
-        return doc
+        return DatasetDocument(
+            id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+            data_source_type="upload_file",
+            data_source_info=json.dumps({"upload_file_id": str(uuid.uuid4())}),
+        )
 
     @pytest.fixture
     def sample_process_rule(self):
@@ -326,16 +359,28 @@ class TestIndexingRunnerExtract:
             ),
         ]
         mock_processor.extract.return_value = extracted_docs
+        file_id = json.loads(sample_dataset_document.data_source_info)["upload_file_id"]
+        upload_file = UploadFile(
+            tenant_id=sample_dataset_document.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="uploads/test.pdf",
+            name="test.pdf",
+            size=10,
+            extension="pdf",
+            mime_type="application/pdf",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-id",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = file_id
+        mock_dependencies["session"].add(upload_file)
+        mock_dependencies["session"].commit()
 
-        # Mock the entire _extract method to avoid ExtractSetting validation
-        # This is necessary because ExtractSetting uses Pydantic validation
-        with patch.object(runner, "_update_document_index_status"):
-            with patch("core.indexing_runner.select"):
-                with patch("core.indexing_runner.ExtractSetting"):
-                    # Act: Call the extract method
-                    result = runner._extract(
-                        mock_processor, sample_dataset_document, sample_process_rule, mock_dependencies["session"]
-                    )
+        with patch.object(runner, "_update_document_index_status"), patch("core.indexing_runner.ExtractSetting"):
+            result = runner._extract(
+                mock_processor, sample_dataset_document, sample_process_rule, mock_dependencies["session"]
+            )
 
         # Assert: Verify the extraction results
         assert len(result) == 2, "Should extract 2 documents from the PDF"
@@ -353,12 +398,14 @@ class TestIndexingRunnerExtract:
         # Arrange
         runner = IndexingRunner()
         sample_dataset_document.data_source_type = "notion_import"
-        sample_dataset_document.data_source_info_dict = {
-            "credential_id": str(uuid.uuid4()),
-            "notion_workspace_id": "workspace123",
-            "notion_page_id": "page123",
-            "type": "page",
-        }
+        sample_dataset_document.data_source_info = json.dumps(
+            {
+                "credential_id": str(uuid.uuid4()),
+                "notion_workspace_id": "workspace123",
+                "notion_page_id": "page123",
+                "type": "page",
+            }
+        )
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -383,13 +430,15 @@ class TestIndexingRunnerExtract:
         # Arrange
         runner = IndexingRunner()
         sample_dataset_document.data_source_type = "website_crawl"
-        sample_dataset_document.data_source_info_dict = {
-            "provider": "firecrawl",
-            "url": "https://example.com",
-            "job_id": "job123",
-            "mode": "crawl",
-            "only_main_content": True,
-        }
+        sample_dataset_document.data_source_info = json.dumps(
+            {
+                "provider": "firecrawl",
+                "url": "https://example.com",
+                "job_id": "job123",
+                "mode": "crawl",
+                "only_main_content": True,
+            }
+        )
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -415,7 +464,7 @@ class TestIndexingRunnerExtract:
         """Test extraction fails when upload file is missing."""
         # Arrange
         runner = IndexingRunner()
-        sample_dataset_document.data_source_info_dict = {}
+        sample_dataset_document.data_source_info = "{}"
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -453,25 +502,26 @@ class TestIndexingRunnerTransform:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, unbound_session: Session):
         """Mock all external dependencies for transform tests."""
         with (
             patch("core.indexing_runner.ModelManager.for_tenant") as mock_model_manager,
         ):
             yield {
-                "session": MagicMock(),
+                "session": unbound_session,
                 "model_manager": mock_model_manager,
             }
 
     @pytest.fixture
     def sample_dataset(self):
         """Create a sample dataset for testing."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid.uuid4())
-        dataset.tenant_id = str(uuid.uuid4())
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.embedding_model_provider = "openai"
-        dataset.embedding_model = "text-embedding-ada-002"
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            embedding_model_provider="openai",
+            embedding_model="text-embedding-ada-002",
+        )
         return dataset
 
     @pytest.fixture
@@ -617,7 +667,7 @@ class TestIndexingRunnerLoad:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, unbound_session: Session):
         """Mock all external dependencies for load tests."""
         with (
             patch("core.indexing_runner.ModelManager.for_tenant") as mock_model_manager,
@@ -627,7 +677,7 @@ class TestIndexingRunnerLoad:
         ):
             mock_app._get_current_object = Mock(return_value=Mock())
             yield {
-                "session": MagicMock(),
+                "session": unbound_session,
                 "model_manager": mock_model_manager,
                 "app": mock_app,
                 "thread": mock_thread,
@@ -637,22 +687,23 @@ class TestIndexingRunnerLoad:
     @pytest.fixture
     def sample_dataset(self):
         """Create a sample dataset for testing."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid.uuid4())
-        dataset.tenant_id = str(uuid.uuid4())
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.embedding_model_provider = "openai"
-        dataset.embedding_model = "text-embedding-ada-002"
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            embedding_model_provider="openai",
+            embedding_model="text-embedding-ada-002",
+        )
         return dataset
 
     @pytest.fixture
     def sample_dataset_document(self):
         """Create a sample dataset document for testing."""
-        doc = Mock(spec=DatasetDocument)
-        doc.id = str(uuid.uuid4())
-        doc.dataset_id = str(uuid.uuid4())
-        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-        return doc
+        return DatasetDocument(
+            id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        )
 
     @pytest.fixture
     def sample_documents(self):
@@ -821,7 +872,7 @@ class TestIndexingRunnerRun:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, sqlite_session: Session):
         """Mock all external dependencies for run tests."""
         with (
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
@@ -830,7 +881,7 @@ class TestIndexingRunnerRun:
             patch("core.indexing_runner.threading.Thread") as mock_thread,
         ):
             yield {
-                "session": MagicMock(),
+                "session": sqlite_session,
                 "factory": mock_factory,
                 "model_manager": mock_model_manager,
                 "storage": mock_storage,
@@ -838,20 +889,46 @@ class TestIndexingRunnerRun:
             }
 
     @pytest.fixture
-    def sample_dataset_documents(self):
+    def sample_dataset_documents(self, sqlite_session: Session):
         """Create sample dataset documents for testing."""
         docs = []
         for i in range(2):
-            doc = Mock(spec=DatasetDocument)
-            doc.id = str(uuid.uuid4())
-            doc.dataset_id = str(uuid.uuid4())
-            doc.tenant_id = str(uuid.uuid4())
-            doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-            doc.doc_language = "English"
-            doc.data_source_type = "upload_file"
-            doc.data_source_info_dict = {"upload_file_id": str(uuid.uuid4())}
-            doc.dataset_process_rule_id = str(uuid.uuid4())
-            docs.append(doc)
+            tenant_id = str(uuid.uuid4())
+            dataset_id = str(uuid.uuid4())
+            account = Account(name=f"Account {i}", email=f"account-{i}@example.com")
+            account.id = str(uuid.uuid4())
+            dataset = Dataset(
+                id=dataset_id,
+                tenant_id=tenant_id,
+                name=f"Dataset {i}",
+                description="",
+                created_by=account.id,
+                indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            )
+            process_rule = DatasetProcessRule(
+                dataset_id=dataset_id,
+                mode="automatic",
+                rules="{}",
+                created_by=account.id,
+            )
+            document = DatasetDocument(
+                id=str(uuid.uuid4()),
+                dataset_id=dataset_id,
+                tenant_id=tenant_id,
+                position=1,
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                doc_language="English",
+                data_source_type=DataSourceType.UPLOAD_FILE,
+                data_source_info=json.dumps({"upload_file_id": str(uuid.uuid4())}),
+                dataset_process_rule_id=process_rule.id,
+                batch="batch",
+                name=f"Document {i}",
+                created_from=DocumentCreatedFrom.API,
+                created_by=account.id,
+            )
+            sqlite_session.add_all([account, dataset, process_rule, document])
+            docs.append(document)
+        sqlite_session.commit()
         return docs
 
     def test_run_in_indexing_status_loads_child_chunks_with_caller_session(
@@ -860,47 +937,81 @@ class TestIndexingRunnerRun:
         runner = IndexingRunner()
         dataset_document = sample_dataset_documents[0]
         dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
-        dataset = Mock(spec=Dataset)
-        segment = Mock(spec=DocumentSegment)
-        segment.status = "waiting"
-        segment.content = "parent"
-        segment.index_node_id = "parent-node"
-        segment.index_node_hash = "parent-hash"
-        segment.document_id = dataset_document.id
-        segment.dataset_id = dataset_document.dataset_id
-        segment.tokens = 12
-        segment.get_child_chunks.return_value = [
-            SimpleNamespace(content="child", index_node_id="child-node", index_node_hash="child-hash")
-        ]
         session = mock_dependencies["session"]
-        session.get.side_effect = lambda model, _: dataset_document if model is DatasetDocument else dataset
-        session.scalars.return_value.all.return_value = [segment]
+        dataset = session.get(Dataset, dataset_document.dataset_id)
+        assert dataset is not None
+        process_rule = session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
+        assert process_rule is not None
+        process_rule.mode = "hierarchical"
+        process_rule.rules = json.dumps({"parent_mode": "paragraph"})
+        segment = DocumentSegment(
+            tenant_id=dataset_document.tenant_id,
+            dataset_id=dataset_document.dataset_id,
+            document_id=dataset_document.id,
+            position=1,
+            content="parent",
+            word_count=0,
+            tokens=12,
+            created_by="account-id",
+            status="waiting",
+            index_node_id="parent-node",
+            index_node_hash="parent-hash",
+        )
+        child_chunk = ChildChunk(
+            tenant_id=dataset_document.tenant_id,
+            dataset_id=dataset_document.dataset_id,
+            document_id=dataset_document.id,
+            segment_id=segment.id,
+            position=1,
+            content="child",
+            word_count=1,
+            created_by=dataset_document.created_by,
+            index_node_id="child-node",
+            index_node_hash="child-hash",
+        )
+        session.add_all([segment, child_chunk])
+        session.commit()
 
-        with patch.object(runner, "_load") as load:
+        with (
+            patch.object(runner, "_load") as load,
+        ):
             runner.run_in_indexing_status(dataset_document, session)
 
-        segment.get_child_chunks.assert_called_once_with(session=session)
         assert load.call_args.kwargs["documents"][0].children[0].page_content == "child"
         assert load.call_args.kwargs["total_tokens"] == 12
 
     def test_run_in_indexing_status_uses_tokens_from_all_segments(self, mock_dependencies, sample_dataset_documents):
         runner = IndexingRunner()
         dataset_document = sample_dataset_documents[0]
-        dataset = Mock(spec=Dataset)
-        completed_segment = Mock(spec=DocumentSegment)
-        completed_segment.status = SegmentStatus.COMPLETED
-        completed_segment.tokens = 10
-        incomplete_segment = Mock(spec=DocumentSegment)
-        incomplete_segment.status = SegmentStatus.WAITING
-        incomplete_segment.tokens = 20
-        incomplete_segment.content = "pending"
-        incomplete_segment.index_node_id = "pending-node"
-        incomplete_segment.index_node_hash = "pending-hash"
-        incomplete_segment.document_id = dataset_document.id
-        incomplete_segment.dataset_id = dataset_document.dataset_id
         session = mock_dependencies["session"]
-        session.get.side_effect = lambda model, _: dataset_document if model is DatasetDocument else dataset
-        session.scalars.return_value.all.return_value = [completed_segment, incomplete_segment]
+        dataset = session.get(Dataset, dataset_document.dataset_id)
+        assert dataset is not None
+        completed_segment = DocumentSegment(
+            tenant_id=dataset_document.tenant_id,
+            dataset_id=dataset_document.dataset_id,
+            document_id=dataset_document.id,
+            position=1,
+            content="",
+            word_count=0,
+            tokens=10,
+            created_by="account-id",
+            status=SegmentStatus.COMPLETED,
+        )
+        incomplete_segment = DocumentSegment(
+            tenant_id="tenant-id",
+            dataset_id=dataset_document.dataset_id,
+            document_id=dataset_document.id,
+            position=1,
+            content="pending",
+            word_count=0,
+            tokens=20,
+            created_by="account-id",
+            status=SegmentStatus.WAITING,
+            index_node_id="pending-node",
+            index_node_hash="pending-hash",
+        )
+        session.add_all([completed_segment, incomplete_segment])
+        session.commit()
 
         with patch.object(runner, "_load") as load:
             runner.run_in_indexing_status(dataset_document, session)
@@ -908,26 +1019,19 @@ class TestIndexingRunnerRun:
         assert load.call_args.kwargs["documents"][0].page_content == "pending"
         assert load.call_args.kwargs["total_tokens"] == 30
 
-    def test_run_success_single_document(self, mock_dependencies, sample_dataset_documents):
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_success_single_document(self, set_tenant_id, mock_dependencies, sample_dataset_documents):
         """Test successful run with single document."""
         # Arrange
         runner = IndexingRunner()
         doc = sample_dataset_documents[0]
-
-        # Mock database queries
-        mock_dataset = Mock(spec=Dataset)
-        mock_dataset.id = doc.dataset_id
-        mock_dataset.tenant_id = doc.tenant_id
+        session = mock_dependencies["session"]
+        mock_dataset = session.get(Dataset, doc.dataset_id)
+        mock_current_user = session.get(Account, doc.created_by)
+        assert mock_dataset is not None
+        assert mock_current_user is not None
         mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-
-        mock_current_user = Mock(spec=Account)
-
-        get_dispatch = {"Document": doc, "Dataset": mock_dataset, "Account": mock_current_user}
-        mock_dependencies["session"].get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
-
-        mock_process_rule = Mock(spec=DatasetProcessRule)
-        mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["session"].scalar.return_value = mock_process_rule
+        session.commit()
 
         # Mock processor
         mock_processor = MagicMock()
@@ -946,29 +1050,13 @@ class TestIndexingRunnerRun:
         mock_thread_instance = MagicMock()
         mock_dependencies["thread"].return_value = mock_thread_instance
 
-        # Mock all internal methods that interact with database
-        with (
-            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]),
-            patch.object(
-                runner,
-                "_transform",
-                return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
-            ),
-            patch.object(runner, "_load_segments"),
-            patch.object(runner, "_load"),
-        ):
-            # Act
-            mock_dependencies["session"].commit.reset_mock()
-            runner.run([doc], mock_dependencies["session"])
+        commits = 0
 
-        # Assert - verify the methods were called
-        # Since we're mocking the internal methods, we just verify no exceptions were raised
-        mock_current_user.set_tenant_id_with_session.assert_called_once_with(
-            mock_dataset.tenant_id,
-            session=mock_dependencies["session"],
-        )
+        def record_commit(_session) -> None:
+            nonlocal commits
+            commits += 1
 
-        mock_dependencies["session"].commit.reset_mock()
+        event.listen(session, "after_commit", record_commit)
         with (
             patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]) as mock_extract,
             patch.object(
@@ -980,14 +1068,16 @@ class TestIndexingRunnerRun:
             patch.object(runner, "_load") as mock_load,
         ):
             # Act
-            runner.run([doc], mock_dependencies["session"])
+            runner.run([doc], session)
+        event.remove(session, "after_commit", record_commit)
 
         # Assert - verify the methods were called
         mock_extract.assert_called_once()
         mock_transform.assert_called_once()
         mock_load_segments.assert_called_once()
         mock_load.assert_called_once()
-        assert mock_dependencies["session"].commit.call_count == 2
+        assert commits == 2
+        set_tenant_id.assert_called_once_with(mock_current_user, mock_dataset.tenant_id, session=session)
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -998,27 +1088,21 @@ class TestIndexingRunnerRun:
             with pytest.raises(DocumentIsPausedError):
                 runner.run([doc], mock_dependencies["session"])
 
-    def test_run_counts_each_transformed_document_once(self, mock_dependencies, sample_dataset_documents):
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_counts_each_transformed_document_once(
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents
+    ):
         runner = IndexingRunner()
         dataset_document = sample_dataset_documents[0]
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_document.dataset_id
-        dataset.tenant_id = dataset_document.tenant_id
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        current_user = Mock(spec=Account)
+        session = mock_dependencies["session"]
+        dataset = session.get(Dataset, dataset_document.dataset_id)
+        current_user = session.get(Account, dataset_document.created_by)
+        assert dataset is not None
+        assert current_user is not None
         transformed_documents = [
             Document(page_content="first", metadata={"doc_id": "first", "doc_hash": "hash-first"}),
             Document(page_content="second", metadata={"doc_id": "second", "doc_hash": "hash-second"}),
         ]
-        model_dispatch = {
-            DatasetDocument: dataset_document,
-            Dataset: dataset,
-            Account: current_user,
-        }
-        mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
-        process_rule = Mock(spec=DatasetProcessRule)
-        process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["session"].scalar.return_value = process_rule
 
         with (
             patch.object(runner, "_extract", return_value=[Document(page_content="source", metadata={})]),
@@ -1041,32 +1125,75 @@ class TestIndexingRunnerRun:
             token_counts=[11, 22],
         )
         assert load.call_args.kwargs["total_tokens"] == 33
+        set_tenant_id.assert_called_once_with(
+            current_user,
+            dataset.tenant_id,
+            session=mock_dependencies["session"],
+        )
 
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_rejects_before_segment_or_vector_writes(
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents
+    ):
+        runner = IndexingRunner(enforce_vector_space_admission=True)
+        dataset_document = sample_dataset_documents[0]
+        dataset_document.need_summary = False
+        session = mock_dependencies["session"]
+        dataset = session.get(Dataset, dataset_document.dataset_id)
+        current_user = session.get(Account, dataset_document.created_by)
+        assert dataset is not None
+        assert current_user is not None
+        transformed_documents = [Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})]
+        admission_error = VectorSpaceAdmissionError("estimated storage exceeds capacity")
+        admission_service = Mock()
+        admission_service.ensure_document_can_be_indexed.side_effect = admission_error
+
+        with (
+            patch("core.indexing_runner.VectorSpaceAdmissionService", return_value=admission_service),
+            patch.object(runner, "_extract", return_value=[Document(page_content="source", metadata={})]),
+            patch.object(
+                runner,
+                "_transform",
+                return_value=transformed_documents,
+            ),
+            patch.object(runner, "_load_segments") as load_segments,
+            patch.object(runner, "_load") as load,
+            patch.object(runner, "_handle_indexing_error") as handle_error,
+        ):
+            runner.run([dataset_document], mock_dependencies["session"])
+
+        load_segments.assert_not_called()
+        load.assert_not_called()
+        admission_service.ensure_document_can_be_indexed.assert_called_once_with(
+            dataset=dataset,
+            document_id=dataset_document.id,
+            doc_form=dataset_document.doc_form,
+            documents=transformed_documents,
+            include_summaries=False,
+            session=mock_dependencies["session"],
+        )
+        handle_error.assert_called_once_with(dataset_document.id, admission_error, mock_dependencies["session"])
+        set_tenant_id.assert_called_once_with(
+            current_user,
+            dataset.tenant_id,
+            session=mock_dependencies["session"],
+        )
+
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
     def test_run_in_splitting_status_counts_each_transformed_document_once(
-        self, mock_dependencies, sample_dataset_documents
+        self, set_tenant_id, mock_dependencies, sample_dataset_documents
     ):
         runner = IndexingRunner()
         dataset_document = sample_dataset_documents[0]
-        dataset_document.created_by = "user-1"
-        dataset = Mock(spec=Dataset)
-        dataset.id = dataset_document.dataset_id
-        dataset.tenant_id = dataset_document.tenant_id
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        current_user = Mock(spec=Account)
+        session = mock_dependencies["session"]
+        dataset = session.get(Dataset, dataset_document.dataset_id)
+        current_user = session.get(Account, dataset_document.created_by)
+        assert dataset is not None
+        assert current_user is not None
         transformed_documents = [
             Document(page_content="first", metadata={"doc_id": "first", "doc_hash": "hash-first"}),
             Document(page_content="second", metadata={"doc_id": "second", "doc_hash": "hash-second"}),
         ]
-        model_dispatch = {
-            DatasetDocument: dataset_document,
-            Dataset: dataset,
-            Account: current_user,
-        }
-        mock_dependencies["session"].get.side_effect = lambda model, _: model_dispatch.get(model)
-        mock_dependencies["session"].scalars.return_value.all.return_value = []
-        process_rule = Mock(spec=DatasetProcessRule)
-        process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["session"].scalar.return_value = process_rule
 
         with (
             patch.object(runner, "_extract", return_value=[Document(page_content="source", metadata={})]),
@@ -1089,23 +1216,17 @@ class TestIndexingRunnerRun:
             token_counts=[11, 22],
         )
         assert load.call_args.kwargs["total_tokens"] == 33
+        set_tenant_id.assert_called_once_with(
+            current_user,
+            dataset.tenant_id,
+            session=mock_dependencies["session"],
+        )
 
     def test_run_handles_provider_token_error(self, mock_dependencies, sample_dataset_documents):
         """Test run handles ProviderTokenNotInitError and updates document status."""
         # Arrange
         runner = IndexingRunner()
         doc = sample_dataset_documents[0]
-
-        # Mock database
-        mock_dataset = Mock(spec=Dataset)
-        mock_dataset.tenant_id = doc.tenant_id
-
-        get_dispatch = {"Document": doc, "Dataset": mock_dataset}
-        mock_dependencies["session"].get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
-
-        mock_process_rule = Mock(spec=DatasetProcessRule)
-        mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["session"].scalar.return_value = mock_process_rule
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -1115,26 +1236,14 @@ class TestIndexingRunnerRun:
         with patch.object(runner, "_extract", side_effect=ProviderTokenNotInitError("Token not initialized")):
             runner.run([doc], mock_dependencies["session"])
 
-        # Assert
-        # Verify document status was updated to error
-        assert mock_dependencies["session"].flush.called
+        mock_dependencies["session"].refresh(doc)
+        assert doc.indexing_status == "error"
 
     def test_run_handles_object_deleted_error(self, mock_dependencies, sample_dataset_documents):
         """Test run handles ObjectDeletedError gracefully."""
         # Arrange
         runner = IndexingRunner()
         doc = sample_dataset_documents[0]
-
-        # Mock database
-        mock_dataset = Mock(spec=Dataset)
-        mock_dataset.tenant_id = doc.tenant_id
-
-        get_dispatch = {"Document": doc, "Dataset": mock_dataset}
-        mock_dependencies["session"].get.side_effect = lambda model, id: get_dispatch.get(model.__name__)
-
-        mock_process_rule = Mock(spec=DatasetProcessRule)
-        mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["session"].scalar.return_value = mock_process_rule
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -1147,31 +1256,17 @@ class TestIndexingRunnerRun:
         # Assert - should not raise, just log warning
         # No exception should be raised
 
-    def test_run_processes_multiple_documents(self, mock_dependencies, sample_dataset_documents):
+    @patch.object(Account, "set_tenant_id_with_session", autospec=True)
+    def test_run_processes_multiple_documents(self, set_tenant_id, mock_dependencies, sample_dataset_documents):
         """Test run processes multiple documents sequentially."""
         # Arrange
         runner = IndexingRunner()
         docs = sample_dataset_documents
-
-        # Mock database
-        mock_dataset = Mock(spec=Dataset)
-        mock_dataset.indexing_technique = IndexTechniqueType.ECONOMY
-        mock_current_user = Mock(spec=Account)
-
-        doc_map = {doc.id: doc for doc in docs}
-        model_dispatch = {"Dataset": mock_dataset, "Account": mock_current_user}
-
-        def get_side_effect(model_class, id):
-            name = model_class.__name__
-            if name == "Document":
-                return doc_map.get(id)
-            return model_dispatch.get(name)
-
-        mock_dependencies["session"].get.side_effect = get_side_effect
-
-        mock_process_rule = Mock(spec=DatasetProcessRule)
-        mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["session"].scalar.return_value = mock_process_rule
+        for doc in docs:
+            dataset = mock_dependencies["session"].get(Dataset, doc.dataset_id)
+            assert dataset is not None
+            dataset.indexing_technique = IndexTechniqueType.ECONOMY
+        mock_dependencies["session"].commit()
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
@@ -1197,7 +1292,7 @@ class TestIndexingRunnerRun:
         # Assert
         # Verify extract was called for each document
         assert mock_extract.call_count == len(docs)
-        assert mock_current_user.set_tenant_id_with_session.call_count == len(docs)
+        assert set_tenant_id.call_count == len(docs)
 
 
 class TestIndexingRunnerRetryLogic:
@@ -1211,13 +1306,13 @@ class TestIndexingRunnerRetryLogic:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, sqlite_session: Session):
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.redis_client") as mock_redis,
         ):
             yield {
-                "session": MagicMock(),
+                "session": sqlite_session,
                 "redis": mock_redis,
             }
 
@@ -1242,42 +1337,62 @@ class TestIndexingRunnerRetryLogic:
 
     def test_update_document_index_status_success(self, mock_dependencies):
         """Test successful document status update."""
-        # Arrange
         document_id = str(uuid.uuid4())
-        mock_document = Mock(spec=DatasetDocument)
-        mock_document.id = document_id
-
-        mock_dependencies["session"].scalar.return_value = 0
-        mock_dependencies["session"].get.return_value = mock_document
+        session = mock_dependencies["session"]
+        document = DatasetDocument(
+            id=document_id,
+            tenant_id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch",
+            name="Document",
+            created_from=DocumentCreatedFrom.API,
+            created_by=str(uuid.uuid4()),
+            is_paused=False,
+        )
+        session.add(document)
+        session.commit()
 
         # Act
         IndexingRunner._update_document_index_status(
             document_id,
             "completed",
             {"tokens": 100, "completed_at": naive_utc_now()},
-            session=mock_dependencies["session"],
+            session=session,
         )
 
-        # Assert
-        mock_dependencies["session"].flush.assert_called()
+        session.refresh(document)
+        assert document.indexing_status == "completed"
+        assert document.tokens == 100
 
     def test_update_document_index_status_paused(self, mock_dependencies):
         """Test document status update when document is paused."""
-        # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["session"].scalar.return_value = 1
+        session = mock_dependencies["session"]
+        document = DatasetDocument(
+            id=document_id,
+            tenant_id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch",
+            name="Paused document",
+            created_from=DocumentCreatedFrom.API,
+            created_by=str(uuid.uuid4()),
+            is_paused=True,
+        )
+        session.add(document)
+        session.commit()
 
         # Act & Assert
         with pytest.raises(DocumentIsPausedError):
-            IndexingRunner._update_document_index_status(document_id, "completed", session=mock_dependencies["session"])
+            IndexingRunner._update_document_index_status(document_id, "completed", session=session)
 
     def test_update_document_index_status_deleted(self, mock_dependencies):
         """Test document status update when document is deleted."""
         # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["session"].scalar.return_value = 0
-        mock_dependencies["session"].get.return_value = None
-
         # Act & Assert
         with pytest.raises(DocumentIsDeletedPausedError):
             IndexingRunner._update_document_index_status(document_id, "completed", session=mock_dependencies["session"])
@@ -1296,23 +1411,29 @@ class TestIndexingRunnerDocumentCleaning:
     @pytest.fixture
     def sample_process_rule_automatic(self):
         """Create automatic processing rule."""
-        rule = Mock(spec=DatasetProcessRule)
-        rule.mode = "automatic"
-        rule.rules = None
+        rule = DatasetProcessRule(
+            dataset_id="dataset-id",
+            mode="automatic",
+            rules=None,
+            created_by="account-id",
+        )
         return rule
 
     @pytest.fixture
     def sample_process_rule_custom(self):
         """Create custom processing rule."""
-        rule = Mock(spec=DatasetProcessRule)
-        rule.mode = "custom"
-        rule.rules = json.dumps(
-            {
-                "pre_processing_rules": [
-                    {"id": "remove_extra_spaces", "enabled": True},
-                    {"id": "remove_urls_emails", "enabled": True},
-                ]
-            }
+        rule = DatasetProcessRule(
+            dataset_id="dataset-id",
+            mode="custom",
+            rules=json.dumps(
+                {
+                    "pre_processing_rules": [
+                        {"id": "remove_extra_spaces", "enabled": True},
+                        {"id": "remove_urls_emails", "enabled": True},
+                    ]
+                }
+            ),
+            created_by="account-id",
         )
         return rule
 
@@ -1459,21 +1580,17 @@ class TestIndexingRunnerSplitter:
                 embedding_model_instance=mock_embedding_instance,
             )
 
-    def test_get_splitter_validates_max_tokens_too_large(self, mock_embedding_instance):
+    def test_get_splitter_validates_max_tokens_too_large(self, mock_embedding_instance, config_overrides):
         """Test splitter validation rejects max_tokens above maximum."""
-        # Arrange
-        with patch("core.indexing_runner.dify_config") as mock_config:
-            mock_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = 5000
-
-            # Act & Assert
-            with pytest.raises(ValueError, match="Custom segment length should be between"):
-                IndexingRunner._get_splitter(
-                    processing_rule_mode="custom",
-                    max_tokens=10000,  # Above maximum
-                    chunk_overlap=100,
-                    separator="\\n",
-                    embedding_model_instance=mock_embedding_instance,
-                )
+        config_overrides(INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH=5000)
+        with pytest.raises(ValueError, match="Custom segment length should be between"):
+            IndexingRunner._get_splitter(
+                processing_rule_mode="custom",
+                max_tokens=10000,  # Above maximum
+                chunk_overlap=100,
+                separator="\\n",
+                embedding_model_instance=mock_embedding_instance,
+            )
 
 
 class TestIndexingRunnerLoadSegments:
@@ -1487,33 +1604,34 @@ class TestIndexingRunnerLoadSegments:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, unbound_session: Session):
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.DatasetDocumentStore") as mock_docstore,
         ):
             yield {
-                "session": MagicMock(),
+                "session": unbound_session,
                 "docstore": mock_docstore,
             }
 
     @pytest.fixture
     def sample_dataset(self):
         """Create sample dataset."""
-        dataset = Mock(spec=Dataset)
-        dataset.id = str(uuid.uuid4())
-        dataset.tenant_id = str(uuid.uuid4())
+        dataset = Dataset(
+            id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+        )
         return dataset
 
     @pytest.fixture
     def sample_dataset_document(self):
         """Create sample dataset document."""
-        doc = Mock(spec=DatasetDocument)
-        doc.id = str(uuid.uuid4())
-        doc.dataset_id = str(uuid.uuid4())
-        doc.created_by = str(uuid.uuid4())
-        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
-        return doc
+        return DatasetDocument(
+            id=str(uuid.uuid4()),
+            dataset_id=str(uuid.uuid4()),
+            created_by=str(uuid.uuid4()),
+            doc_form=IndexStructureType.PARAGRAPH_INDEX,
+        )
 
     @pytest.fixture
     def sample_documents(self):
@@ -1650,46 +1768,46 @@ class TestIndexingRunnerEstimate:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, sqlite_session: Session):
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             yield {
-                "session": MagicMock(),
+                "session": sqlite_session,
                 "factory": mock_factory,
             }
 
-    def test_indexing_estimate_respects_batch_limit(self, mock_dependencies):
+    def test_indexing_estimate_respects_batch_limit(self, mock_dependencies, config_overrides):
         """Test indexing estimate enforces batch upload limit."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, BATCH_UPLOAD_LIMIT=10)
         # Arrange
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
 
-        # Create too many extract settings
-        with patch("core.indexing_runner.dify_config") as mock_config:
-            mock_config.BILLING_ENABLED = True
-            mock_config.BATCH_UPLOAD_LIMIT = 10
-            extract_settings = [MagicMock() for _ in range(15)]
+        extract_settings = [MagicMock() for _ in range(15)]
 
-            # Act & Assert
-            with pytest.raises(ValueError, match="batch upload limit"):
-                runner.indexing_estimate(
-                    tenant_id=tenant_id,
-                    extract_settings=extract_settings,
-                    tmp_processing_rule={"mode": "automatic", "rules": {}},
-                    doc_form=IndexStructureType.PARAGRAPH_INDEX,
-                    session=mock_dependencies["session"],
-                )
+        with pytest.raises(ValueError, match="batch upload limit"):
+            runner.indexing_estimate(
+                tenant_id=tenant_id,
+                extract_settings=extract_settings,
+                tmp_processing_rule={"mode": "automatic", "rules": {}},
+                doc_form=IndexStructureType.PARAGRAPH_INDEX,
+                session=mock_dependencies["session"],
+            )
 
-    def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(self, mock_dependencies):
+    def test_indexing_estimate_commits_preview_cleanup_before_summary_workers(
+        self, mock_dependencies, config_overrides
+    ):
         """Test preview cleanup is visible before summary workers use independent sessions."""
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         runner = IndexingRunner()
         tenant_id = str(uuid.uuid4())
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
         phase_events: list[str] = []
-        mock_dependencies["session"].commit.side_effect = lambda: phase_events.append("commit")
+        session = mock_dependencies["session"]
+        event.listen(session, "after_commit", lambda _session: phase_events.append("commit"))
 
         preview_doc = Document(
             page_content="![image](http://files.local/files/image-1/file-preview)",
@@ -1701,16 +1819,28 @@ class TestIndexingRunnerEstimate:
             phase_events.append("summary") or [PreviewDetail(content=preview_doc.page_content)]
         )
 
-        image_file = SimpleNamespace(key="image_files/tenant-1/source-file-1/image.png")
-        mock_dependencies["session"].scalar.return_value = image_file
+        image_file = UploadFile(
+            tenant_id=tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="image_files/tenant-1/source-file-1/image.png",
+            name="image.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-id",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        image_file.id = "image-1"
+        session.add(image_file)
+        session.commit()
+        phase_events.clear()
 
         with (
             patch("core.indexing_runner.get_image_upload_file_ids", return_value=["image-1"]),
             patch("core.indexing_runner.storage") as mock_storage,
-            patch("core.indexing_runner.dify_config") as mock_config,
         ):
-            mock_config.BILLING_ENABLED = False
-
             result = runner.indexing_estimate(
                 tenant_id=tenant_id,
                 extract_settings=[MagicMock()],
@@ -1720,12 +1850,12 @@ class TestIndexingRunnerEstimate:
                     "summary_index_setting": {"enable": True},
                 },
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
-                session=mock_dependencies["session"],
+                session=session,
             )
 
         assert result.total_segments == 1
         mock_storage.delete.assert_called_once_with(image_file.key)
-        mock_dependencies["session"].delete.assert_called_once_with(image_file)
+        assert session.get(UploadFile, image_file.id) is None
         assert phase_events == ["commit", "summary"]
 
 
@@ -1739,13 +1869,13 @@ class TestIndexingRunnerProcessChunk:
     """
 
     @pytest.fixture
-    def mock_dependencies(self):
+    def mock_dependencies(self, sqlite_session: Session):
         """Mock all external dependencies."""
         with (
             patch("core.indexing_runner.redis_client") as mock_redis,
         ):
             yield {
-                "session": MagicMock(),
+                "session": sqlite_session,
                 "redis": mock_redis,
             }
 
@@ -1757,7 +1887,12 @@ class TestIndexingRunnerProcessChunk:
         app.app_context.return_value.__exit__ = MagicMock()
         return app
 
-    def test_process_chunk_loads_index_and_completes_segments(self, mock_dependencies, mock_flask_app):
+    def test_process_chunk_loads_index_and_completes_segments(
+        self,
+        mock_dependencies,
+        mock_flask_app,
+        sqlite_session_factory: sessionmaker[Session],
+    ):
         """Test process chunk loads the index and completes segments without counting tokens."""
         # Arrange
         from core.indexing_runner import IndexingRunner
@@ -1769,20 +1904,27 @@ class TestIndexingRunnerProcessChunk:
             Document(page_content="Chunk 2", metadata={"doc_id": "c2"}),
         ]
 
-        mock_dataset = Mock(spec=Dataset)
-        mock_dataset.id = str(uuid.uuid4())
-
-        mock_dataset_document = Mock(spec=DatasetDocument)
-        mock_dataset_document.id = str(uuid.uuid4())
+        session = mock_dependencies["session"]
+        mock_dataset, mock_dataset_document = persist_indexing_scope(session)
+        segments = [
+            DocumentSegment(
+                tenant_id=mock_dataset.tenant_id,
+                dataset_id=mock_dataset.id,
+                document_id=mock_dataset_document.id,
+                position=position,
+                content=f"Chunk {position}",
+                word_count=1,
+                tokens=1,
+                created_by=mock_dataset.created_by,
+                index_node_id=doc.metadata["doc_id"],
+                status=SegmentStatus.INDEXING,
+            )
+            for position, doc in enumerate(chunk_documents, start=1)
+        ]
+        session.add_all(segments)
+        session.commit()
 
         mock_dependencies["redis"].get.return_value = None
-
-        # Mock database update for segment status
-        mock_dependencies["session"].execute.return_value = None
-        mock_dependencies["session"].get.side_effect = lambda model, _id: {
-            Dataset: mock_dataset,
-            DatasetDocument: mock_dataset_document,
-        }.get(model)
 
         # Create a proper context manager mock
         mock_context = MagicMock()
@@ -1790,12 +1932,8 @@ class TestIndexingRunnerProcessChunk:
         mock_context.__exit__ = MagicMock(return_value=None)
         mock_flask_app.app_context.return_value = mock_context
 
-        session_context = MagicMock()
-        session_context.__enter__.return_value = mock_dependencies["session"]
-        session_context.__exit__.return_value = None
-
         with (
-            patch("core.indexing_runner.session_factory.create_session", return_value=session_context),
+            patch("core.indexing_runner.session_factory.create_session", sqlite_session_factory),
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             mock_factory.return_value.init_index_processor.return_value = mock_processor
@@ -1812,10 +1950,15 @@ class TestIndexingRunnerProcessChunk:
         # Assert
         assert result is None
         mock_processor.load.assert_called_once()
-        mock_dependencies["session"].execute.assert_called_once()
-        mock_dependencies["session"].commit.assert_called_once()
+        session.expire_all()
+        assert all(session.get(DocumentSegment, segment.id).status == SegmentStatus.COMPLETED for segment in segments)
 
-    def test_process_chunk_detects_pause(self, mock_dependencies, mock_flask_app):
+    def test_process_chunk_detects_pause(
+        self,
+        mock_dependencies,
+        mock_flask_app,
+        sqlite_session_factory: sessionmaker[Session],
+    ):
         """Test process chunk detects document pause."""
         # Arrange
         from core.indexing_runner import IndexingRunner
@@ -1823,28 +1966,17 @@ class TestIndexingRunnerProcessChunk:
         runner = IndexingRunner()
         chunk_documents = [Document(page_content="Chunk", metadata={"doc_id": "c1"})]
 
-        mock_dataset = Mock(spec=Dataset)
-        mock_dataset_document = Mock(spec=DatasetDocument)
-        mock_dataset_document.id = str(uuid.uuid4())
+        mock_dataset, mock_dataset_document = persist_indexing_scope(mock_dependencies["session"])
 
         # Mock Redis to return paused status
         mock_dependencies["redis"].get.return_value = "1"
-        mock_dependencies["session"].get.side_effect = lambda model, _id: {
-            Dataset: mock_dataset,
-            DatasetDocument: mock_dataset_document,
-        }.get(model)
-
         # Create a proper context manager mock
         mock_context = MagicMock()
         mock_context.__enter__ = MagicMock(return_value=None)
         mock_context.__exit__ = MagicMock(return_value=None)
         mock_flask_app.app_context.return_value = mock_context
 
-        session_context = MagicMock()
-        session_context.__enter__.return_value = mock_dependencies["session"]
-        session_context.__exit__.return_value = None
-
-        with patch("core.indexing_runner.session_factory.create_session", return_value=session_context):
+        with patch("core.indexing_runner.session_factory.create_session", sqlite_session_factory):
             # Act & Assert - the method creates its own app_context and session
             with pytest.raises(DocumentIsPausedError):
                 runner._process_chunk(

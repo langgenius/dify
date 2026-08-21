@@ -24,8 +24,8 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -79,7 +79,7 @@ const slashCommandDescriptionKeys = {
 const actionDescriptionKeys = {
   '@app': 'gotoAnything.actions.searchApplicationsDesc',
   '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+  '@kb': 'gotoAnything.actions.searchKnowledgeBasesDesc',
   '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
 } as const
 
@@ -443,11 +443,11 @@ function GotoAnythingDialog() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollAreaRoot
-                aria-busy={isLoading || undefined}
-                className="relative h-60 min-h-0 overflow-hidden"
-              >
-                <ScrollAreaViewport className="scroll-py-1 overscroll-contain">
+              <ScrollArea className="relative h-60 min-h-0 overflow-hidden">
+                <ScrollAreaViewport
+                  aria-busy={isLoading || undefined}
+                  className="scroll-py-1 overscroll-contain"
+                >
                   <ScrollAreaContent
                     className="min-h-full w-full max-w-full"
                     style={{ minWidth: '100%' }}
@@ -477,8 +477,8 @@ function GotoAnythingDialog() {
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <AutocompleteCollection>
-                            {(option: CommandOption) => (
+                          <AutocompleteCollection<CommandOption>>
+                            {(option) => (
                               <AutocompleteItem
                                 key={option.shortcut}
                                 value={option}
@@ -542,8 +542,8 @@ function GotoAnythingDialog() {
                                   { ns: 'app' },
                                 )}
                               </AutocompleteGroupLabel>
-                              <AutocompleteCollection>
-                                {(result: SearchResult) => (
+                              <AutocompleteCollection<SearchResult>>
+                                {(result) => (
                                   <AutocompleteItem
                                     key={`${result.type}-${result.id}`}
                                     value={result}
@@ -576,7 +576,7 @@ function GotoAnythingDialog() {
                 <ScrollAreaScrollbar>
                   <ScrollAreaThumb />
                 </ScrollAreaScrollbar>
-              </ScrollAreaRoot>
+              </ScrollArea>
 
               <Footer
                 resultCount={autocompleteResultCount}

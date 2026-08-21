@@ -1,17 +1,13 @@
 import { memo } from 'react'
 import { IS_PROD, ZENDESK_WIDGET_KEY } from '@/config'
-import { getQueryClientServer } from '@/context/query-client-server'
+import { prefetchSystemFeatures } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import Script from '@/next/script'
-import { serverConsoleQuery } from '@/service/server'
 
 const Zendesk = async () => {
   if (!ZENDESK_WIDGET_KEY) return null
 
-  const queryClient = getQueryClientServer()
-  const systemFeaturesQuery = serverConsoleQuery.systemFeatures.get.queryOptions()
-  await queryClient.prefetchQuery(systemFeaturesQuery)
-  const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
+  const systemFeatures = await prefetchSystemFeatures()
   if (!systemFeatures || systemFeatures.deployment_edition !== 'CLOUD') return null
 
   const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? '') : ''

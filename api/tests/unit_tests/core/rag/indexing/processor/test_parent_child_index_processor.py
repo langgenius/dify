@@ -1,36 +1,63 @@
 from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.entities import ParentMode, Rule, Segmentation
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
 from core.rag.models.document import AttachmentDocument, ChildDocument, Document
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentCreatedFrom, DocumentSegment
+from models.dataset import Document as DatasetDocument
+from models.enums import DataSourceType
 
 
 class TestParentChildIndexProcessor:
+    session: Session
+    session_factory: sessionmaker[Session]
+
+    @pytest.fixture(autouse=True)
+    def _inject_sqlite_sessions(self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]) -> None:
+        self.session = sqlite_session
+        self.session_factory = sqlite_session_factory
+
     @pytest.fixture
     def processor(self) -> ParentChildIndexProcessor:
         return ParentChildIndexProcessor()
 
     @pytest.fixture
-    def dataset(self) -> Mock:
-        dataset = Mock()
-        dataset.id = "dataset-1"
-        dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.is_multimodal = True
+    def dataset(self) -> Dataset:
+        dataset = Dataset(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            name="Dataset",
+            created_by="user-1",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            is_multimodal=True,
+        )
+        self.session.add(dataset)
+        self.session.flush()
         return dataset
 
     @pytest.fixture
-    def dataset_document(self) -> Mock:
-        document = Mock()
-        document.id = "doc-1"
-        document.created_by = "user-1"
-        document.dataset_process_rule_id = None
+    def dataset_document(self, dataset: Dataset) -> DatasetDocument:
+        document = DatasetDocument(
+            id="doc-1",
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            position=1,
+            data_source_type=DataSourceType.UPLOAD_FILE,
+            batch="batch-1",
+            name="Document",
+            created_from=DocumentCreatedFrom.API,
+            created_by="user-1",
+        )
+        self.session.add(document)
+        self.session.flush()
         return document
 
     def _segmentation(self) -> SimpleNamespace:
@@ -50,7 +77,7 @@ class TestParentChildIndexProcessor:
 
     def test_extract_forwards_automatic_flag(self, processor: ParentChildIndexProcessor) -> None:
         extract_setting = Mock()
-        session = Mock()
+        session = self.session
         expected = [Document(page_content="chunk", metadata={})]
 
         with patch(
@@ -63,7 +90,7 @@ class TestParentChildIndexProcessor:
         mock_extract.assert_called_once_with(extract_setting=extract_setting, is_automatic=True, session=session)
 
     def test_transform_validates_process_rule(self, processor: ParentChildIndexProcessor) -> None:
-        session = MagicMock()
+        session = self.session
         with pytest.raises(ValueError, match="No process rule found"):
             processor.transform([Document(page_content="text", metadata={})], process_rule=None, session=session)
 
@@ -82,7 +109,7 @@ class TestParentChildIndexProcessor:
                 processor.transform(
                     [Document(page_content="text", metadata={})],
                     process_rule={"mode": "custom", "rules": {"enabled": True}},
-                    session=MagicMock(),
+                    session=self.session,
                 )
 
     def test_transform_paragraph_builds_parent_and_child_docs(self, processor: ParentChildIndexProcessor) -> None:
@@ -117,7 +144,7 @@ class TestParentChildIndexProcessor:
                 [parent_document],
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=False,
-                session=MagicMock(),
+                session=self.session,
             )
 
         assert len(result) == 1
@@ -154,7 +181,7 @@ class TestParentChildIndexProcessor:
                 documents,
                 process_rule={"mode": "custom", "rules": {"enabled": True}},
                 preview=True,
-                session=MagicMock(),
+                session=self.session,
             )
 
         assert len(result) == 10
@@ -188,14 +215,14 @@ class TestParentChildIndexProcessor:
                 docs,
                 process_rule={"mode": "hierarchical", "rules": {"enabled": True}},
                 preview=True,
-                session=MagicMock(),
+                session=self.session,
             )
 
         assert len(result) == 1
         assert len(result[0].children or []) == 2
         assert result[0].attachments is not None
 
-    def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
+    def test_load_creates_vectors_for_child_docs(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
         parent_doc = Document(
             page_content="parent",
             metadata={},
@@ -205,7 +232,7 @@ class TestParentChildIndexProcessor:
             ],
         )
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
-        session = MagicMock()
+        session = self.session
 
         with patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls:
             vector = mock_vector_cls.return_value
@@ -218,8 +245,8 @@ class TestParentChildIndexProcessor:
         assert all(isinstance(doc, Document) for doc in formatted_docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
 
-    def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        session = MagicMock()
+    def test_clean_with_precomputed_child_ids(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
+        session = self.session
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -234,16 +261,42 @@ class TestParentChildIndexProcessor:
             )
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
-        session.execute.assert_called()
-        session.flush.assert_called_once()
+        assert session.query(ChildChunk).count() == 0
 
     def test_clean_queries_child_ids_when_not_precomputed(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
-        execute_result = Mock()
-        execute_result.all.return_value = [("child-1",), (None,), ("child-2",)]
-        session = MagicMock()
-        session.execute.return_value = execute_result
+        session = self.session
+        parent = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id="doc-1",
+            position=1,
+            content="parent",
+            word_count=1,
+            tokens=1,
+            created_by="user-1",
+            index_node_id="node-1",
+        )
+        session.add(parent)
+        session.flush()
+        session.add_all(
+            [
+                ChildChunk(
+                    tenant_id=dataset.tenant_id,
+                    dataset_id=dataset.id,
+                    document_id="doc-1",
+                    segment_id=parent.id,
+                    position=index,
+                    content=f"child-{index}",
+                    word_count=1,
+                    created_by="user-1",
+                    index_node_id=f"child-{index}",
+                )
+                for index in (1, 2)
+            ]
+        )
+        session.flush()
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -253,8 +306,8 @@ class TestParentChildIndexProcessor:
 
         vector.delete_by_ids.assert_called_once_with(["child-1", "child-2"])
 
-    def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        session = MagicMock()
+    def test_clean_dataset_wide_cleanup(self, processor: ParentChildIndexProcessor, dataset: Dataset) -> None:
+        session = self.session
 
         with (
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector") as mock_vector_cls,
@@ -263,17 +316,25 @@ class TestParentChildIndexProcessor:
             processor.clean(dataset, None, delete_child_chunks=True, session=session)
 
         vector.delete.assert_called_once()
-        session.execute.assert_called()
-        session.flush.assert_called_once()
+        assert session.query(ChildChunk).count() == 0
 
-    def test_clean_deletes_summaries_when_requested(self, processor: ParentChildIndexProcessor, dataset: Mock) -> None:
-        scalars_result = Mock()
-        scalars_result.all.return_value = [SimpleNamespace(id="seg-1")]
-        session = MagicMock()
-        session.scalars.return_value = scalars_result
-        session_ctx = MagicMock()
-        session_ctx.__enter__.return_value = session
-        session_ctx.__exit__.return_value = False
+    def test_clean_deletes_summaries_when_requested(
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
+    ) -> None:
+        session = self.session
+        segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id="doc-1",
+            position=1,
+            content="parent",
+            word_count=1,
+            tokens=1,
+            created_by="user-1",
+            index_node_id="node-1",
+        )
+        session.add(segment)
+        session.flush()
 
         with (
             patch(
@@ -283,10 +344,10 @@ class TestParentChildIndexProcessor:
         ):
             processor.clean(dataset, ["node-1"], delete_summaries=True, precomputed_child_node_ids=[], session=session)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"], session=session)
+        mock_summary.assert_called_once_with(dataset, [segment.id], session=session)
 
     def test_clean_deletes_all_summaries_when_node_ids_missing(
-        self, processor: ParentChildIndexProcessor, dataset: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset
     ) -> None:
         with (
             patch(
@@ -294,7 +355,7 @@ class TestParentChildIndexProcessor:
             ) as mock_summary,
             patch("core.rag.index_processor.processor.parent_child_index_processor.Vector"),
         ):
-            session = MagicMock()
+            session = self.session
             processor.clean(dataset, None, delete_summaries=True, session=session)
 
         mock_summary.assert_called_once_with(dataset, None, session=session)
@@ -329,7 +390,7 @@ class TestParentChildIndexProcessor:
         assert child_docs[0].metadata["doc_hash"] == "hash"
 
     def test_index_creates_process_rule_segments_and_vectors(
-        self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         parent_childs = SimpleNamespace(
             parent_mode=ParentMode.PARAGRAPH,
@@ -341,19 +402,14 @@ class TestParentChildIndexProcessor:
                 )
             ],
         )
-        dataset_rule = SimpleNamespace(id="rule-1")
-        session = MagicMock()
+        session = self.session
         phase_events: list[str] = []
-        session.commit.side_effect = lambda: phase_events.append("commit")
+        event.listen(session, "after_commit", lambda _session: phase_events.append("commit"))
 
         with (
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.ParentChildStructureChunk.model_validate",
                 return_value=parent_childs,
-            ),
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.DatasetProcessRule",
-                return_value=dataset_rule,
             ),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
@@ -373,9 +429,8 @@ class TestParentChildIndexProcessor:
             processor.index(dataset, dataset_document, {"parent_child_chunks": []}, session)
 
         assert phase_events == ["count", "store", "commit", "vector"]
-        assert dataset_document.dataset_process_rule_id == "rule-1"
-        session.add.assert_called_once_with(dataset_rule)
-        session.flush.assert_called_once()
+        dataset_rule = session.get(DatasetProcessRule, dataset_document.dataset_process_rule_id)
+        assert dataset_rule is not None
         documents = mock_token_counter.call_args.kwargs["documents"]
         assert [document.page_content for document in documents] == ["parent text"]
         mock_token_counter.assert_called_once_with(dataset=dataset, documents=documents)
@@ -390,24 +445,19 @@ class TestParentChildIndexProcessor:
         mock_vector_cls.return_value.create_multimodal.assert_called_once()
 
     def test_index_uses_content_files_when_files_missing(
-        self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         parent_childs = SimpleNamespace(
             parent_mode=ParentMode.PARAGRAPH,
             parent_child_chunks=[SimpleNamespace(parent_content="parent", child_contents=["child"], files=None)],
         )
-        dataset_rule = SimpleNamespace(id="rule-1")
-        session = MagicMock()
-        account_session = MagicMock()
+        session = self.session
+        account_session = self.session_factory()
 
         with (
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.ParentChildStructureChunk.model_validate",
                 return_value=parent_childs,
-            ),
-            patch(
-                "core.rag.index_processor.processor.parent_child_index_processor.DatasetProcessRule",
-                return_value=dataset_rule,
             ),
             patch(
                 "core.rag.index_processor.processor.parent_child_index_processor.helper.generate_text_hash",
@@ -438,7 +488,7 @@ class TestParentChildIndexProcessor:
         assert account_session is not session
 
     def test_index_raises_when_account_missing(
-        self, processor: ParentChildIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: ParentChildIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         parent_childs = SimpleNamespace(
             parent_mode=ParentMode.PARAGRAPH,
@@ -460,7 +510,7 @@ class TestParentChildIndexProcessor:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid account"):
-                processor.index(dataset, dataset_document, {"parent_child_chunks": []}, MagicMock())
+                processor.index(dataset, dataset_document, {"parent_child_chunks": []}, self.session)
 
     def test_format_preview_returns_parent_child_structure(self, processor: ParentChildIndexProcessor) -> None:
         parent_childs = SimpleNamespace(
@@ -480,8 +530,8 @@ class TestParentChildIndexProcessor:
 
     def test_generate_summary_preview_sets_summaries(self, processor: ParentChildIndexProcessor) -> None:
         preview_texts = [PreviewDetail(content="chunk-1"), PreviewDetail(content="chunk-2")]
-        session = MagicMock()
-        worker_sessions = [MagicMock(), MagicMock()]
+        session = self.session
+        worker_sessions = [self.session_factory(), self.session_factory()]
 
         with (
             patch(
@@ -513,7 +563,7 @@ class TestParentChildIndexProcessor:
             side_effect=RuntimeError("summary failed"),
         ):
             with pytest.raises(ValueError, match="Failed to generate summaries"):
-                processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=MagicMock())
+                processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
 
     def test_generate_summary_preview_falls_back_without_flask_context(
         self, processor: ParentChildIndexProcessor
@@ -529,7 +579,7 @@ class TestParentChildIndexProcessor:
             ),
         ):
             result = processor.generate_summary_preview(
-                "tenant-1", preview_texts, {"enable": True}, session=MagicMock()
+                "tenant-1", preview_texts, {"enable": True}, session=self.session
             )
 
         assert result[0].summary == "summary"
@@ -546,6 +596,6 @@ class TestParentChildIndexProcessor:
             patch("concurrent.futures.wait", side_effect=[(set(), {future}), (set(), set())]),
         ):
             with pytest.raises(ValueError, match="timeout"):
-                processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=MagicMock())
+                processor.generate_summary_preview("tenant-1", preview_texts, {"enable": True}, session=self.session)
 
         future.cancel.assert_called_once()
