@@ -1,7 +1,6 @@
 package snapshot
 
 import (
-	"path"
 	"slices"
 	"strings"
 
@@ -9,18 +8,18 @@ import (
 )
 
 const (
-	WorkspaceDir   = "workspace"
-	RuntimeDataDir = ".local"
+	WorkspaceDir    = "workspace"
+	RuntimeStateDir = ".local/share/shellctl"
 )
 
-// defaultExcludes are the top-level Home entries no Home Snapshot ever
-// carries, whatever the caller asks for.
-var defaultExcludes = []string{WorkspaceDir, RuntimeDataDir}
+// defaultExcludes are the Home paths no Home Snapshot ever carries, whatever
+// the caller asks for.
+var defaultExcludes = []string{WorkspaceDir, RuntimeStateDir}
 
 // Excluder decides which Home entries stay out of an archive.
 //
-// Two layers: the runtime's own top-level defaults, and the caller's
-// gitignore-syntax patterns, which may match at any depth.
+// Two layers: the runtime's own defaults, and the caller's gitignore-syntax
+// patterns, which may match at any depth.
 type Excluder struct {
 	matcher gitignore.Matcher
 }
@@ -45,5 +44,5 @@ func (e *Excluder) Excluded(rel string, isDir bool) bool {
 }
 
 func isDefaultExcluded(rel string) bool {
-	return path.Dir(rel) == "." && slices.Contains(defaultExcludes, rel)
+	return slices.Contains(defaultExcludes, rel)
 }

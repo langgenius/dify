@@ -33,6 +33,7 @@ func buildFixtureHome(t *testing.T) string {
 	mustWrite("bin/tool.sh", "#!/bin/sh\necho hi\n", 0o755)
 	mustWrite("workspace/ignored.txt", "must not travel", 0o644)
 	mustWrite(".local/share/shellctl/shellctl.db", "live server state", 0o644)
+	mustWrite(".local/bin/agent-tool", "#!/bin/sh\necho tool\n", 0o755)
 	if err := os.MkdirAll(filepath.Join(home, "emptydir"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -85,6 +86,12 @@ func TestSaveHomeArchivesTreeWithoutExcludes(t *testing.T) {
 	}
 	if _, ok := headers["workspace/ignored.txt"]; ok {
 		t.Error("excluded workspace contents must not be archived")
+	}
+	if _, ok := headers[RuntimeStateDir+"/shellctl.db"]; ok {
+		t.Error("runtime state must not be archived")
+	}
+	if hdr := headers[".local/bin/agent-tool"]; hdr == nil {
+		t.Error("user-installed tooling under .local must be archived")
 	}
 	if got := string(contents[".bashrc"]); got != "export PS1='$ '\n" {
 		t.Errorf(".bashrc content = %q", got)
@@ -157,8 +164,8 @@ func TestSaveHomeAlwaysSkipsDefaultExcludes(t *testing.T) {
 		"unrelated excludes": {".cache"},
 		// A caller must not be able to negotiate a default back in, whether
 		// by re-including it outright or by anchoring the attempt.
-		"re-inclusion":          {"!" + WorkspaceDir, "!" + RuntimeDataDir},
-		"anchored re-inclusion": {"!/" + WorkspaceDir, "!/" + RuntimeDataDir + "/**"},
+		"re-inclusion":          {"!" + WorkspaceDir, "!" + RuntimeStateDir},
+		"anchored re-inclusion": {"!/" + WorkspaceDir, "!/" + RuntimeStateDir + "/**"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			home := buildFixtureHome(t)
@@ -168,7 +175,7 @@ func TestSaveHomeAlwaysSkipsDefaultExcludes(t *testing.T) {
 			}
 			headers, _ := decodeArchive(t, buf.Bytes())
 			for entry := range headers {
-				for _, dir := range []string{WorkspaceDir, RuntimeDataDir} {
+				for _, dir := range []string{WorkspaceDir, RuntimeStateDir} {
 					if entry == dir+"/" || strings.HasPrefix(entry, dir+"/") {
 						t.Errorf("%s entry %q archived", dir, entry)
 					}
@@ -180,8 +187,8 @@ func TestSaveHomeAlwaysSkipsDefaultExcludes(t *testing.T) {
 
 // A nested path that merely repeats a default-exclude name is ordinary Home
 // content and must survive.
-func TestSaveHomeSkipsOnlyTopLevelDefaultExcludes(t *testing.T) {
-	for _, dir := range []string{WorkspaceDir, RuntimeDataDir} {
+func TestSaveHomeSkipsOnlyExactDefaultExcludePaths(t *testing.T) {
+	for _, dir := range []string{WorkspaceDir, RuntimeStateDir} {
 		t.Run(dir, func(t *testing.T) {
 			home := buildFixtureHome(t)
 			nested := filepath.Join(home, "bin", dir)

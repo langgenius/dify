@@ -54,8 +54,8 @@ func TestExcluderDefaultsBeatCallerPatterns(t *testing.T) {
 	for _, pattern := range []string{
 		"!" + WorkspaceDir,
 		"!/" + WorkspaceDir,
-		"!" + RuntimeDataDir,
-		"!" + RuntimeDataDir + "/**",
+		"!" + RuntimeStateDir,
+		"!" + RuntimeStateDir + "/**",
 		"!**",
 	} {
 		t.Run(pattern, func(t *testing.T) {
@@ -63,8 +63,8 @@ func TestExcluderDefaultsBeatCallerPatterns(t *testing.T) {
 			if !e.Excluded(WorkspaceDir, true) {
 				t.Errorf("%q pulled %s back in", pattern, WorkspaceDir)
 			}
-			if !e.Excluded(RuntimeDataDir, true) {
-				t.Errorf("%q pulled %s back in", pattern, RuntimeDataDir)
+			if !e.Excluded(RuntimeStateDir, true) {
+				t.Errorf("%q pulled %s back in", pattern, RuntimeStateDir)
 			}
 		})
 	}
