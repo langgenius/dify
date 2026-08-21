@@ -40,6 +40,7 @@ def unwrap(func: Callable[..., object]) -> Callable[..., object]:
     unwrapped = inspect_unwrap(func)
     parameters = list(signature(unwrapped).parameters.values())
     if len(parameters) > 1 and parameters[1].name == "session":
+
         def invoke(*args: object, **kwargs: object) -> object:
             return unwrapped(args[0], MagicMock(), *args[1:], **kwargs)
 
