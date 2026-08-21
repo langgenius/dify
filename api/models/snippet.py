@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, cast
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from libs.uuid_utils import uuidv7
 
 from .account import Account
-from .base import Base
+from .base import TypeBase
 from .engine import db
 from .model import Tag, TagBinding
 from .types import AdjustedJSON, LongText, StringUUID
@@ -23,7 +23,7 @@ class SnippetType(StrEnum):
     GROUP = "group"
 
 
-class CustomizedSnippet(Base):
+class CustomizedSnippet(TypeBase, kw_only=True):
     """
     Customized Snippet Model
 
@@ -37,32 +37,50 @@ class CustomizedSnippet(Base):
         sa.Index("customized_snippet_tenant_idx", "tenant_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    type: Mapped[str] = mapped_column(String(50), nullable=False, server_default=sa.text("'node'"))
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+    )
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=cast(str, None))
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default=cast(str, None))
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    type: Mapped[str] = mapped_column(
+        String(50), nullable=False, server_default=sa.text("'node'"), default=cast(str, None)
+    )
 
     # Workflow reference for published version
-    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
 
     # State flags
-    is_published: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    version: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("1"))
-    use_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default=sa.text("0"))
+    is_published: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=cast(bool, None)
+    )
+    version: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, server_default=sa.text("1"), default=cast(int, None)
+    )
+    use_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, server_default=sa.text("0"), default=cast(int, None)
+    )
 
     # Visual customization
-    icon_info: Mapped[dict | None] = mapped_column(AdjustedJSON, nullable=True)
+    icon_info: Mapped[dict[str, Any] | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
 
     # Snippet configuration (stored as JSON text)
-    input_fields: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    input_fields: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
 
     # Audit fields
-    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
