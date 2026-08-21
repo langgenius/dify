@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api.dataset.segment import (
@@ -225,6 +226,16 @@ class TestChildChunkCreatePayload:
         payload = ChildChunkCreatePayload(content=long_content)
         assert len(payload.content) == 10000
 
+    def test_payload_content_at_max_length(self):
+        """Test content at the maximum allowed length is accepted."""
+        payload = ChildChunkCreatePayload.model_validate({"content": "A" * 16384})
+        assert len(payload.content) == 16384
+
+    def test_payload_content_over_max_length(self):
+        """Test content over the maximum allowed length is rejected."""
+        with pytest.raises(ValidationError):
+            ChildChunkCreatePayload.model_validate({"content": "A" * 16385})
+
     def test_payload_with_unicode_content(self):
         """Test payload with unicode content."""
         unicode_content = "这是中文内容 🎉 Привет мир"
@@ -287,6 +298,16 @@ class TestChildChunkUpdatePayload:
         """Test payload with empty content."""
         payload = ChildChunkUpdatePayload(content="")
         assert payload.content == ""
+
+    def test_payload_content_at_max_length(self):
+        """Test content at the maximum allowed length is accepted."""
+        payload = ChildChunkUpdatePayload.model_validate({"content": "A" * 16384})
+        assert len(payload.content) == 16384
+
+    def test_payload_content_over_max_length(self):
+        """Test content over the maximum allowed length is rejected."""
+        with pytest.raises(ValidationError):
+            ChildChunkUpdatePayload.model_validate({"content": "A" * 16385})
 
 
 class TestSegmentServiceInterface:
