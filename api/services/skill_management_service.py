@@ -29,6 +29,7 @@ from typing import Any, Literal
 from uuid import uuid4
 
 import json_repair
+import pypdfium2
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 from sqlalchemy import delete, func, select
@@ -229,6 +230,7 @@ Skill content."""
 _MAX_ASSISTANT_CONTEXT_CHARS = 60_000
 _MAX_ASSISTANT_ATTACHMENTS = 10
 _MAX_ASSISTANT_ATTACHMENT_CHARS = 20_000
+_MAX_ASSISTANT_PDF_PAGES = 100
 _SKILL_ASSISTANT_ROLE = "__skill_authoring_assistant__"
 
 
@@ -3247,7 +3249,12 @@ class SkillManagementService:
                 tenant_id=tenant_id,
                 file_id=attachment.tool_file_id,
             )
-            if not SkillManagementService._is_text_payload(filename=attachment.name, mime_type=mime_type):
+            if SkillManagementService._is_pdf_payload(filename=attachment.name, mime_type=mime_type):
+                available_content = remaining - len(header)
+                body = SkillManagementService._extract_pdf_text(payload, max_chars=available_content)
+                if not body:
+                    body = "[PDF has no extractable text; image-only content is not processed.]"
+            elif not SkillManagementService._is_text_payload(filename=attachment.name, mime_type=mime_type):
                 body = (
                     "[Image attachment is provided separately as multimodal content.]"
                     if vision_enabled and mime_type.startswith("image/")
@@ -4404,6 +4411,56 @@ class SkillManagementService:
                 ".yml",
             )
         )
+
+    @staticmethod
+    def _is_pdf_payload(*, filename: str, mime_type: str) -> bool:
+        return mime_type == "application/pdf" or filename.lower().endswith(".pdf")
+
+    @staticmethod
+    def _extract_pdf_text(payload: bytes, *, max_chars: int) -> str:
+        if max_chars <= 0:
+            return ""
+
+        pages: list[str] = []
+        extracted_chars = 0
+        truncated = False
+        pdf_document = None
+        try:
+            pdf_document = pypdfium2.PdfDocument(io.BytesIO(payload), autoclose=True)
+            for page_number, page in enumerate(pdf_document):
+                if page_number >= _MAX_ASSISTANT_PDF_PAGES:
+                    truncated = True
+                    break
+                text_page = page.get_textpage()
+                try:
+                    page_text = text_page.get_text_range()
+                finally:
+                    text_page.close()
+                page.close()
+                if not page_text:
+                    continue
+
+                separator = "\n\n" if pages else ""
+                available = max_chars - extracted_chars - len(separator)
+                if available <= 0:
+                    truncated = True
+                    break
+                if len(page_text) > available:
+                    pages.append(f"{separator}{page_text[:available]}")
+                    truncated = True
+                    break
+                pages.append(f"{separator}{page_text}")
+                extracted_chars += len(separator) + len(page_text)
+        except Exception:
+            return ""
+        finally:
+            if pdf_document is not None:
+                pdf_document.close()
+
+        text = "".join(pages).strip()
+        if truncated and text:
+            text += "\n[TRUNCATED]"
+        return text
 
     @staticmethod
     def _model_supports_vision(model_instance: Any) -> bool:
