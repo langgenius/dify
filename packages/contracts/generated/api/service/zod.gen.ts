@@ -186,7 +186,7 @@ export const zChatRequestPayloadWithUser = z.object({
  * ChildChunkCreatePayload
  */
 export const zChildChunkCreatePayload = z.object({
-  content: z.string(),
+  content: z.string().max(16384),
 })
 
 /**
@@ -234,7 +234,7 @@ export const zChildChunkListResponse = z.object({
  * ChildChunkUpdatePayload
  */
 export const zChildChunkUpdatePayload = z.object({
-  content: z.string(),
+  content: z.string().max(16384),
 })
 
 /**

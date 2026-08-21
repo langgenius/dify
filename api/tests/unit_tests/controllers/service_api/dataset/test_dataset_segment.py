@@ -20,8 +20,10 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
+from controllers.common.controller_schemas import CHILD_CHUNK_CONTENT_MAX_LENGTH
 from controllers.service_api.dataset.segment import (
     ChildChunkApi,
     ChildChunkCreatePayload,
@@ -237,6 +239,16 @@ class TestChildChunkCreatePayload:
         payload = ChildChunkCreatePayload(content=special_content)
         assert payload.content == special_content
 
+    def test_payload_accepts_content_at_max_length(self):
+        """Content exactly at CHILD_CHUNK_CONTENT_MAX_LENGTH is accepted."""
+        payload = ChildChunkCreatePayload(content="A" * CHILD_CHUNK_CONTENT_MAX_LENGTH)
+        assert len(payload.content) == CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+    def test_payload_rejects_content_above_max_length(self):
+        """Content one character over the cap is rejected with ValidationError."""
+        with pytest.raises(ValidationError):
+            ChildChunkCreatePayload(content="A" * (CHILD_CHUNK_CONTENT_MAX_LENGTH + 1))
+
 
 class TestChildChunkListQuery:
     """Test suite for ChildChunkListQuery Pydantic model."""
@@ -287,6 +299,16 @@ class TestChildChunkUpdatePayload:
         """Test payload with empty content."""
         payload = ChildChunkUpdatePayload(content="")
         assert payload.content == ""
+
+    def test_payload_accepts_content_at_max_length(self):
+        """Content exactly at CHILD_CHUNK_CONTENT_MAX_LENGTH is accepted."""
+        payload = ChildChunkUpdatePayload(content="A" * CHILD_CHUNK_CONTENT_MAX_LENGTH)
+        assert len(payload.content) == CHILD_CHUNK_CONTENT_MAX_LENGTH
+
+    def test_payload_rejects_content_above_max_length(self):
+        """Content one character over the cap is rejected with ValidationError."""
+        with pytest.raises(ValidationError):
+            ChildChunkUpdatePayload(content="A" * (CHILD_CHUNK_CONTENT_MAX_LENGTH + 1))
 
 
 class TestSegmentServiceInterface:
