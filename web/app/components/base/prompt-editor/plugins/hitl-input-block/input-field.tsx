@@ -32,6 +32,13 @@ import TypeSwitch from './type-switch'
 
 const i18nPrefix = 'nodes.humanInput.insertInputField'
 
+const normalizeParagraphPayload = (payload: ParagraphFormInput): ParagraphFormInput => {
+  return {
+    ...payload,
+    default: payload.default || createDefaultParagraphFormInput().default,
+  }
+}
+
 type InputFieldProps = {
   nodeId: string
   isEdit: boolean
@@ -74,12 +81,7 @@ const InputField: React.FC<InputFieldProps> = ({
     ]
   }, [t])
   const paragraphPayload = useMemo<ParagraphFormInput>(() => {
-    if (isParagraphFormInput(tempPayload)) {
-      return {
-        ...tempPayload,
-        default: tempPayload.default || createDefaultParagraphFormInput().default,
-      }
-    }
+    if (isParagraphFormInput(tempPayload)) return normalizeParagraphPayload(tempPayload)
 
     return createDefaultParagraphFormInput(tempPayload.output_variable_name)
   }, [tempPayload])
@@ -116,10 +118,12 @@ const InputField: React.FC<InputFieldProps> = ({
       createDefaultFormInputByType(item.value as FormInputItem['type'], prev.output_variable_name),
     )
   }, [])
-  const handleDefaultValueChange = useCallback(
-    (key: keyof FormInputItemDefault) => {
-      return (value: ValueSelector | string) => {
-        const nextValue = produce(paragraphPayload, (draft) => {
+  const handleDefaultValueChange = useCallback((key: keyof FormInputItemDefault) => {
+    return (value: ValueSelector | string) => {
+      setTempPayload((prev) => {
+        if (!isParagraphFormInput(prev)) return prev
+
+        return produce(normalizeParagraphPayload(prev), (draft) => {
           if (key === 'selector') {
             draft.default.type = 'variable'
             draft.default.selector = value as ValueSelector
@@ -130,11 +134,9 @@ const InputField: React.FC<InputFieldProps> = ({
             draft.default.type = value as 'constant' | 'variable'
           }
         })
-        setTempPayload(nextValue)
-      }
-    },
-    [paragraphPayload],
-  )
+      })
+    }
+  }, [])
   const handleSelectOptionsChange = useCallback((options: string[]) => {
     setTempPayload((prev) => {
       if (!isSelectFormInput(prev)) return prev
@@ -216,7 +218,7 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="flex max-h-(--shortcut-popup-max-height,80dvh) w-93 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+    <div className="flex max-h-(--shortcut-popup-max-height) w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
       <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">
           {t(($) => $[`${i18nPrefix}.title`], { ns: 'workflow' })}
@@ -284,7 +286,7 @@ const InputField: React.FC<InputFieldProps> = ({
               {t(($) => $[`${i18nPrefix}.options`], { ns: 'workflow' })}
             </div>
             {tempPayload.option_source.type === 'variable' ? (
-              <div className="relative min-h-20 rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
+              <div className="relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2 pb-8">
                 <VarReferencePicker
                   nodeId={nodeId}
                   value={tempPayload.option_source.selector}
@@ -352,7 +354,9 @@ const InputField: React.FC<InputFieldProps> = ({
             </Button>
           ) : (
             <Button className="flex" variant="primary" disabled={!nameValid} onClick={handleSave}>
-              <span>{t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflow' })}</span>
+              <span className="mr-1">
+                {t(($) => $[`${i18nPrefix}.insert`], { ns: 'workflow' })}
+              </span>
               <KbdGroup>
                 {['Mod', 'Enter'].map((key) => (
                   <Kbd key={key} color="white">
