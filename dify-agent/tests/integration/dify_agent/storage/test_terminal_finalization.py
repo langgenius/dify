@@ -1,4 +1,4 @@
-"""Real-Redis contracts for terminal finalization and cancellation observation."""
+"""Real-Redis contracts for terminal sealing and cancellation observation."""
 
 import asyncio
 from collections.abc import Iterator
@@ -26,6 +26,7 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.event_sink import RunEventStreamSealedError
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -179,6 +180,41 @@ def test_terminal_first_rejects_late_cancellation(redis_url: str, terminal_statu
     asyncio.run(scenario())
 
 
+def test_terminal_rejects_late_non_terminal_from_another_redis_client(redis_url: str) -> None:
+    async def scenario() -> None:
+        terminal_client = Redis.from_url(redis_url)
+        late_writer_client = Redis.from_url(redis_url)
+        prefix = f"terminal-stream-seal-{uuid4().hex}"
+        terminal_store = RedisRunStore(terminal_client, prefix=prefix, run_retention_seconds=60)
+        late_writer_store = RedisRunStore(late_writer_client, prefix=prefix, run_retention_seconds=60)
+        try:
+            record = await terminal_store.create_run()
+            cancellation_status = await terminal_store.request_cancellation(
+                record.run_id,
+                CancelRunRequest(reason="remote_cancel"),
+            )
+            assert cancellation_status == "running"
+            intent = await terminal_store.get_cancellation_intent(record.run_id)
+            assert intent is not None
+            finalization = await terminal_store.finalize_cancellation(record.run_id, intent)
+            assert finalization.applied is True
+            assert finalization.event_id is not None
+
+            with pytest.raises(RunEventStreamSealedError, match="cancelled"):
+                _ = await late_writer_store.append_event(RunStartedEvent(run_id=record.run_id))
+
+            page = await terminal_store.get_events(record.run_id)
+            after_terminal = await late_writer_store.get_events(record.run_id, after=finalization.event_id)
+            assert [event.type for event in page.events] == ["run_cancelled"]
+            assert after_terminal.events == []
+            assert after_terminal.next_cursor == finalization.event_id
+        finally:
+            await terminal_client.aclose()
+            await late_writer_client.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_cancellation_intent_lifecycle_and_terminal_exclusion(redis_url: str) -> None:
     async def scenario() -> None:
         client = Redis.from_url(redis_url)
@@ -263,6 +299,51 @@ def test_cancellation_finalization_without_intent_is_unapplied(redis_url: str) -
     asyncio.run(scenario())
 
 
+def test_non_terminal_and_terminal_race_always_leaves_terminal_last(redis_url: str) -> None:
+    async def scenario() -> None:
+        writer_client = Redis.from_url(redis_url)
+        terminal_client = Redis.from_url(redis_url)
+        prefix = f"terminal-stream-race-{uuid4().hex}"
+        writer_store = RedisRunStore(writer_client, prefix=prefix, run_retention_seconds=60)
+        terminal_store = RedisRunStore(terminal_client, prefix=prefix, run_retention_seconds=60)
+        try:
+            for _attempt in range(32):
+                record = await writer_store.create_run()
+                cancellation_status = await terminal_store.request_cancellation(
+                    record.run_id,
+                    CancelRunRequest(reason="concurrent_cancel"),
+                )
+                assert cancellation_status == "running"
+                intent = await terminal_store.get_cancellation_intent(record.run_id)
+                assert intent is not None
+                append_outcome, finalization = await asyncio.gather(
+                    writer_store.append_event(RunStartedEvent(run_id=record.run_id)),
+                    terminal_store.finalize_cancellation(record.run_id, intent),
+                    return_exceptions=True,
+                )
+
+                assert not isinstance(finalization, BaseException)
+                assert finalization.applied is True
+                assert finalization.event_id is not None
+                if isinstance(append_outcome, BaseException):
+                    assert isinstance(append_outcome, RunEventStreamSealedError)
+                    expected_types = ["run_cancelled"]
+                else:
+                    expected_types = ["run_started", "run_cancelled"]
+
+                page = await terminal_store.get_events(record.run_id)
+                assert [event.type for event in page.events] == expected_types
+                assert page.events[-1].type == "run_cancelled"
+                after_terminal = await writer_store.get_events(record.run_id, after=finalization.event_id)
+                assert after_terminal.events == []
+                assert after_terminal.next_cursor == finalization.event_id
+        finally:
+            await writer_client.aclose()
+            await terminal_client.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_classified_failure_persists_matching_record_and_event_error_type(redis_url: str) -> None:
     async def scenario() -> None:
         client = Redis.from_url(redis_url)
@@ -301,6 +382,10 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
 
         @property
         def terminal_session_snapshot(self) -> None:
+            return None
+
+        @property
+        def terminal_usage(self) -> None:
             return None
 
         async def run(self) -> None:

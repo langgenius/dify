@@ -30,6 +30,7 @@ from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.event_sink import (
     NonTerminalRunEvent,
     RunEventSink,
+    RunEventStreamSealedError,
     RunFinalizationResult,
     TerminalRunEvent,
     terminal_event_status_fields,
@@ -43,6 +44,25 @@ _TERMINAL_RUN_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 
 class RunNotFoundError(LookupError):
     """Raised when a requested run record does not exist."""
+
+
+_APPEND_RUN_EVENT_SCRIPT = """
+local record_json = redis.call("GET", KEYS[1])
+if not record_json then
+    return {-1, "", ""}
+end
+
+local record = cjson.decode(record_json)
+if record.status ~= "running" then
+    return {0, tostring(record.status), ""}
+end
+
+local ttl = tonumber(ARGV[2])
+local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[1])
+redis.call("EXPIRE", KEYS[2], ttl)
+redis.call("EXPIRE", KEYS[1], ttl)
+return {1, "running", event_id}
+"""
 
 
 _FINALIZE_RUN_SCRIPT = """
@@ -147,11 +167,11 @@ class RedisRunStore(RunEventSink):
     """Async Redis implementation for run records and event logs.
 
     ``run_retention_seconds`` is applied to both the run record key and the
-    per-run Redis stream. Event writes run ``XADD`` and both TTL refreshes in one
-    Redis transaction so a newly created stream is not left without expiration if
-    the client is interrupted between commands. Event writes also refresh the
-    record TTL so long-running runs that keep producing events do not lose their
-    status record mid-run.
+    per-run Redis stream. Non-terminal writes atomically verify that the run is
+    still ``running`` before ``XADD`` and both TTL refreshes. Terminal writes
+    atomically seal the stream while updating the matching record. Event writes
+    refresh the record TTL so long-running runs that keep producing events do not
+    lose their status record mid-run.
     """
 
     redis: Redis
@@ -192,19 +212,32 @@ class RedisRunStore(RunEventSink):
         return RunRecord.model_validate_json(value)
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Append a non-terminal event JSON payload with refreshed TTLs."""
-        events_key = run_events_key(self.prefix, event.run_id)
+        """Atomically append a non-terminal event only while its run is active."""
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        async with self.redis.pipeline(transaction=True) as pipeline:
-            _ = pipeline.xadd(
-                events_key,
-                {"payload": payload},
-            )
-            _ = pipeline.expire(events_key, self.run_retention_seconds)
-            _ = pipeline.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
-            results = cast(list[object], await pipeline.execute())
-        event_id = results[0]
-        return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+        evaluation = cast(
+            Awaitable[object],
+            self.redis.eval(
+                _APPEND_RUN_EVENT_SCRIPT,
+                2,
+                run_record_key(self.prefix, event.run_id),
+                run_events_key(self.prefix, event.run_id),
+                payload,
+                str(self.run_retention_seconds),
+            ),
+        )
+        raw_result = await evaluation
+        result = cast(list[object], raw_result)
+        applied = int(cast(int | bytes | str, result[0]))
+        if applied == -1:
+            raise RunNotFoundError(event.run_id)
+
+        persisted_status = cast(RunStatus, _decode_redis_text(result[1]))
+        event_id = _decode_redis_text(result[2]) or None
+        if applied == 0:
+            raise RunEventStreamSealedError(run_id=event.run_id, status=persisted_status)
+        if applied != 1 or persisted_status != "running" or event_id is None:
+            raise RuntimeError(f"unexpected append-event result for run {event.run_id!r}: {result!r}")
+        return event_id
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first success/failure event and update its run record."""
