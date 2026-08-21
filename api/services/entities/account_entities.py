@@ -40,3 +40,28 @@ class AccountProfileChanges:
                 self.timezone,
             )
         )
+
+
+@dataclass(frozen=True, slots=True)
+class AccountCredentials:
+    password_hash: str | None
+    password_salt: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountPasswordDigest:
+    password_hash: str
+    password_salt: str
+
+
+@dataclass(frozen=True, slots=True)
+class AccountIntegrationSnapshot:
+    provider: str
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class AccountIntegrationStatus:
+    provider: str
+    created_at: datetime | None
+    is_bound: bool
