@@ -2911,6 +2911,34 @@ def test_build_assistant_attachment_context_includes_text_and_marks_binary() -> 
     assert "[Binary attachment available as uploaded file metadata only.]" in context
 
 
+def test_build_assistant_attachment_context_includes_extractable_pdf_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="resume-file-1",
+        name="resume.pdf",
+        mime_type="application/pdf",
+        size=166035,
+    )
+
+    with (
+        patch(
+            "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+            return_value=b"pdf bytes",
+        ),
+        patch(
+            "services.skill_management_service.SkillManagementService._extract_pdf_text",
+            return_value="Wang Lei\nAlgorithm Engineer",
+        ),
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- resume.pdf (application/pdf, 166035 bytes) ---" in context
+    assert "Wang Lei\nAlgorithm Engineer" in context
+    assert "Binary attachment available" not in context
+
+
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
     attachments = [
         SkillAssistAttachmentPayload(
