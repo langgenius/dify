@@ -3047,6 +3047,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
   }
   query?: {
     include_secret?: string
+    workflow_id?: string
   }
   url: '/workspaces/current/customized-snippets/{snippet_id}/export'
 }

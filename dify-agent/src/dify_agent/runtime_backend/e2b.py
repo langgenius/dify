@@ -49,10 +49,16 @@ class _E2BControlPlaneNotFoundError(RuntimeError):
     """Typed boundary error for SDK resources that no longer exist."""
 
 
+class _E2BFileEntry(Protocol):
+    path: str
+
+
 class _E2BFileSystem(Protocol):
     async def make_dir(self, path: str) -> bool: ...
 
     async def exists(self, path: str) -> bool: ...
+
+    async def list(self, path: str) -> list[_E2BFileEntry]: ...
 
     async def remove(self, path: str) -> None: ...
 
@@ -212,7 +218,7 @@ class E2BExecutionBindingBackend:
     active_timeout_seconds: int
     shellctl_port: int = 5004
     layout: RuntimeLayout = field(
-        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
@@ -233,9 +239,9 @@ class E2BExecutionBindingBackend:
                 },
                 on_timeout="pause",
             )
-            if await sandbox.files.exists(self.layout.workspace_dir):
-                await sandbox.files.remove(self.layout.workspace_dir)
             _ = await sandbox.files.make_dir(self.layout.workspace_dir)
+            for entry in await sandbox.files.list(self.layout.workspace_dir):
+                await sandbox.files.remove(entry.path)
             sandbox_id = sandbox.sandbox_id
             _ = await sandbox.pause(keep_memory=True)
             return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)

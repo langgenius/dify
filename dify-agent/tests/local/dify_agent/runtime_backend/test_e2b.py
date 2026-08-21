@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import posixpath
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
@@ -28,9 +29,15 @@ from dify_agent.runtime_backend.e2b import (
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
 
 
+@dataclass(frozen=True, slots=True)
+class _FileEntry:
+    path: str
+
+
 @dataclass(slots=True)
 class _Files:
     paths: set[str] = field(default_factory=set)
+    removed: list[str] = field(default_factory=list)
 
     async def make_dir(self, path: str) -> bool:
         self.paths.add(path)
@@ -39,8 +46,17 @@ class _Files:
     async def exists(self, path: str) -> bool:
         return path in self.paths
 
+    async def list(self, path: str) -> list[_FileEntry]:
+        prefix = f"{path.rstrip('/')}/"
+        return [
+            _FileEntry(path=entry)
+            for entry in sorted(self.paths)
+            if entry.startswith(prefix) and "/" not in entry.removeprefix(prefix)
+        ]
+
     async def remove(self, path: str) -> None:
-        self.paths.discard(path)
+        self.removed.append(path)
+        self.paths = {entry for entry in self.paths if entry != path and posixpath.commonpath((entry, path)) != path}
 
 
 @dataclass(slots=True)
@@ -90,6 +106,14 @@ class _ControlPlane:
         del timeout
         sandbox_id = f"sandbox-{len(self.sandboxes) + 1}"
         sandbox = _Sandbox(sandbox_id=sandbox_id, pause_error=self.pause_error)
+        sandbox.files.paths.update(
+            {
+                "/workspace",
+                "/workspace/stale-dir",
+                "/workspace/stale-dir/nested.txt",
+                "/workspace/stale.txt",
+            }
+        )
         self.sandboxes[sandbox_id] = sandbox
         self.created.append((template, on_timeout))
         assert metadata["dify.resource"] == "runtime-sandbox"
@@ -129,7 +153,7 @@ def _mock_http(
 def _connected_backend(*, pause_error: Exception | None = None) -> tuple[E2BExecutionBindingBackend, _Sandbox]:
     control = _ControlPlane()
     sandbox = _Sandbox(sandbox_id="sandbox-1", pause_error=pause_error)
-    sandbox.files.paths.add("/home/dify/workspace")
+    sandbox.files.paths.add("/workspace")
     control.sandboxes[sandbox.sandbox_id] = sandbox
     return (
         E2BExecutionBindingBackend(
@@ -207,9 +231,12 @@ async def test_e2b_binding_uses_default_template_or_exact_snapshot_and_couples_r
     assert control.created == [("prepared-template", "pause"), ("snapshot-1", "pause")]
     assert default_allocation.binding_ref == default_allocation.workspace_ref
     assert snapshot_allocation.binding_ref == snapshot_allocation.workspace_ref
-    runtime = control.sandboxes[default_allocation.binding_ref]
-    assert runtime.files.paths == {"/home/dify/workspace"}
-    assert runtime.pauses == [True]
+    assert control.sandboxes[default_allocation.binding_ref].pauses == [True]
+
+    for allocation in (default_allocation, snapshot_allocation):
+        runtime = control.sandboxes[allocation.binding_ref]
+        assert runtime.files.paths == {"/workspace"}
+        assert "/workspace" not in runtime.files.removed
 
     for allocation in (default_allocation, snapshot_allocation):
         await bindings.destroy_binding(
@@ -358,6 +385,8 @@ async def test_e2b_acquire_retries_transient_shellctl_failures_until_ready(
 
     assert attempts == 3
     assert sleeps == [0.5, 0.5]
+    assert lease.layout.home_dir == "/home/dify"
+    assert lease.layout.workspace_dir == "/workspace"
     assert not clients[0].is_closed
     await backend.release(lease)
     assert clients[0].is_closed
