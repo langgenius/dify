@@ -14,6 +14,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceWorkflowImportPayload,
     KnowledgeFSSourceWorkflowResponse,
 )
+from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 
 _ASYNC_IMPORT_KINDS = {
     "crawl-preview-selection",
@@ -127,7 +128,7 @@ def commit_source_import(
 def resume_committed_source_import(
     *, facade, tenant_id: str, account_id: str, control_space_id: str, workflow: KnowledgeFSSourceWorkflowResponse
 ) -> None:
-    """Restore server reconciliation when a failed committed import is retried."""
+    """Restore server reconciliation when a committed import is retried or reconciled."""
 
     if workflow.source_id is None:
         return
@@ -137,33 +138,42 @@ def resume_committed_source_import(
         control_space_id=control_space_id,
         source_id=workflow.source_id,
     )
-    last_import = source.metadata.get("lastImport")
-    if not isinstance(last_import, dict) or last_import.get("kind") not in _ASYNC_IMPORT_KINDS:
+    last_import = _matching_import_marker(source.metadata.get("lastImport"), workflow.id)
+    current_pending_import = _matching_import_marker(source.metadata.get(_PENDING_IMPORT_KEY), workflow.id)
+    import_marker = last_import or current_pending_import
+    if import_marker is None:
         return
     pending_import = {
-        "kind": last_import.get("kind"),
+        "kind": import_marker.get("kind"),
         **(
-            {"previewWorkflowId": last_import.get("previewWorkflowId")}
-            if last_import.get("previewWorkflowId") is not None
+            {"previewWorkflowId": import_marker.get("previewWorkflowId")}
+            if import_marker.get("previewWorkflowId") is not None
             else {}
         ),
         "workflowId": workflow.id,
-        "syncPolicy": last_import.get("syncPolicy"),
+        "syncPolicy": import_marker.get("syncPolicy"),
     }
-    metadata = dict(source.metadata)
-    # updateSource merges metadata; null explicitly supersedes the terminal marker while retrying.
-    metadata["lastImport"] = None
-    facade.update_source(
-        tenant_id=tenant_id,
-        account_id=account_id,
-        control_space_id=control_space_id,
-        source_id=source.id,
-        payload=KnowledgeFSSourceUpdatePayload(
-            expectedVersion=source.version,
-            metadata={**metadata, "preview": False, _PENDING_IMPORT_KEY: pending_import},
-            status="syncing",
-        ),
-    )
+    if last_import is not None or current_pending_import != pending_import or source.status != "syncing":
+        metadata = dict(source.metadata)
+        # updateSource merges metadata; null explicitly supersedes the terminal marker while retrying.
+        metadata["lastImport"] = None
+        try:
+            facade.update_source(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                source_id=source.id,
+                payload=KnowledgeFSSourceUpdatePayload(
+                    expectedVersion=source.version,
+                    metadata={**metadata, "preview": False, _PENDING_IMPORT_KEY: pending_import},
+                    status="syncing",
+                ),
+            )
+        except KnowledgeFSProductRequestRejectedError as error:
+            if error.status_code != 409:
+                raise
+            # A prior reconciler can finish its stale terminal write while retry is accepted.
+            # The newly dispatched reconciler below re-reads both authorities and repairs it.
     from tasks.knowledge_fs_source_import_tasks import finalize_source_import
 
     finalize_source_import.delay(
@@ -175,4 +185,55 @@ def resume_committed_source_import(
     )
 
 
-__all__ = ["commit_source_import", "resume_committed_source_import"]
+def retry_or_resume_source_workflow(
+    *, facade, tenant_id: str, account_id: str, control_space_id: str, run_id: str
+) -> KnowledgeFSSourceWorkflowResponse:
+    """Retry a failed run, or reconcile an already-completed import idempotently."""
+
+    workflow = facade.get_source_workflow(
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        run_id=run_id,
+    )
+    if workflow.state != "completed":
+        try:
+            workflow = facade.retry_source_workflow(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                run_id=run_id,
+            )
+        except KnowledgeFSProductRequestRejectedError as error:
+            if error.status_code != 409:
+                raise
+            # A concurrent retry may have completed between the authoritative read and mutation.
+            workflow = facade.get_source_workflow(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                run_id=run_id,
+            )
+            if workflow.state != "completed":
+                raise
+    resume_committed_source_import(
+        facade=facade,
+        tenant_id=tenant_id,
+        account_id=account_id,
+        control_space_id=control_space_id,
+        workflow=workflow,
+    )
+    return workflow
+
+
+def _matching_import_marker(value: object, workflow_id: str) -> dict[str, object] | None:
+    if (
+        not isinstance(value, dict)
+        or value.get("kind") not in _ASYNC_IMPORT_KINDS
+        or value.get("workflowId") != workflow_id
+    ):
+        return None
+    return value
+
+
+__all__ = ["commit_source_import", "resume_committed_source_import", "retry_or_resume_source_workflow"]

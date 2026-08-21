@@ -10,7 +10,11 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSSourceSyncPolicyPayload,
     KnowledgeFSSourceUpdatePayload,
 )
-from services.knowledge_fs.product_remote import KnowledgeFSProductRemoteError, KnowledgeFSProductResourceNotFoundError
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSProductRemoteError,
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
+)
 from services.knowledge_fs.runtime import get_knowledge_fs_runtime
 
 _ACTIVE_STATES = {"queued", "running", "crawling", "importing", "syncing"}
@@ -45,22 +49,15 @@ def finalize_source_import_once(
         control_space_id=control_space_id,
         source_id=source_id,
     )
-    pending = source.metadata.get(_PENDING_IMPORT_KEY)
-    last_import = source.metadata.get("lastImport")
-    completed_import = (
-        last_import
-        if isinstance(last_import, dict)
-        and last_import.get("kind") in _ASYNC_IMPORT_KINDS
-        and last_import.get("state") == "completed"
-        and last_import.get("workflowId") == workflow_id
-        else None
-    )
-    if (not isinstance(pending, dict) or pending.get("workflowId") != workflow_id) and completed_import is None:
+    pending = _matching_import_marker(source.metadata.get(_PENDING_IMPORT_KEY), workflow_id)
+    last_import = _matching_import_marker(source.metadata.get("lastImport"), workflow_id)
+    completed_import = last_import if last_import is not None and last_import.get("state") == "completed" else None
+    if pending is None and last_import is None:
         return workflow_id
 
     metadata = dict(source.metadata)
     if workflow.state != "completed":
-        if not isinstance(pending, dict):
+        if pending is None:
             return workflow_id
         # updateSource applies a metadata merge patch, so omission preserves the old marker.
         # An explicit null is the tombstone consumed by Dify/UI readers.
@@ -87,8 +84,8 @@ def finalize_source_import_once(
         )
         return workflow_id
 
-    import_metadata = completed_import or pending
-    if not isinstance(import_metadata, dict):
+    import_metadata = completed_import or pending or last_import
+    if import_metadata is None:
         return workflow_id
     if completed_import is None:
         completion = {
@@ -143,6 +140,16 @@ def finalize_source_import_once(
     return workflow_id
 
 
+def _matching_import_marker(value: object, workflow_id: str) -> dict[str, object] | None:
+    if (
+        not isinstance(value, dict)
+        or value.get("kind") not in _ASYNC_IMPORT_KINDS
+        or value.get("workflowId") != workflow_id
+    ):
+        return None
+    return value
+
+
 @shared_task(bind=True, queue="knowledge_fs_lifecycle", max_retries=300, default_retry_delay=2)
 def finalize_source_import(
     self, *, tenant_id: str, account_id: str, control_space_id: str, source_id: str, workflow_id: str
@@ -156,6 +163,10 @@ def finalize_source_import(
             workflow_id=workflow_id,
         )
     except (KnowledgeFSSourceImportNotReadyError, KnowledgeFSProductRemoteError) as exc:
+        raise self.retry(exc=exc)
+    except KnowledgeFSProductRequestRejectedError as exc:
+        if exc.status_code != 409:
+            raise
         raise self.retry(exc=exc)
 
 

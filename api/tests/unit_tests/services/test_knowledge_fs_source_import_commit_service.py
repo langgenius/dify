@@ -2,9 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from services.knowledge_fs.product_dto import KnowledgeFSAsyncSourceImportPayload
+from services.knowledge_fs.product_remote import KnowledgeFSProductRequestRejectedError
 from services.knowledge_fs.source_import_commit_service import (
     commit_source_import,
     resume_committed_source_import,
+    retry_or_resume_source_workflow,
 )
 
 
@@ -160,3 +162,166 @@ def test_resume_committed_source_import_restores_pending_marker() -> None:
     assert update.metadata["lastImport"] is None
     assert update.metadata["pendingImport"]["workflowId"] == "import-1"
     delay.assert_called_once()
+
+
+def test_resume_committed_source_import_redispatches_an_existing_pending_marker() -> None:
+    facade = MagicMock()
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "preview": False,
+            "pendingImport": {
+                "kind": "crawl-preview-selection",
+                "previewWorkflowId": "preview-1",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+        },
+        status="syncing",
+        version=5,
+    )
+    workflow = SimpleNamespace(id="import-1", source_id="source-1")
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
+        resume_committed_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            workflow=workflow,
+        )
+
+    facade.update_source.assert_not_called()
+    delay.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        source_id="source-1",
+        workflow_id="import-1",
+    )
+
+
+def test_resume_committed_source_import_redispatches_after_source_revision_conflict() -> None:
+    facade = MagicMock()
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+        },
+        status="error",
+        version=5,
+    )
+    facade.update_source.side_effect = KnowledgeFSProductRequestRejectedError(status_code=409)
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
+        resume_committed_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            workflow=SimpleNamespace(id="import-1", source_id="source-1"),
+        )
+
+    delay.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        source_id="source-1",
+        workflow_id="import-1",
+    )
+
+
+def test_resume_committed_source_import_ignores_a_different_workflow_marker() -> None:
+    facade = MagicMock()
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "other-import",
+            },
+        },
+        status="error",
+        version=5,
+    )
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
+        resume_committed_source_import(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            workflow=SimpleNamespace(id="import-1", source_id="source-1"),
+        )
+
+    facade.update_source.assert_not_called()
+    delay.assert_not_called()
+
+
+def test_retry_or_resume_reconciles_an_already_completed_import() -> None:
+    facade = MagicMock()
+    workflow = SimpleNamespace(id="import-1", source_id="source-1", state="completed")
+    facade.get_source_workflow.return_value = workflow
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+        },
+        status="error",
+        version=5,
+    )
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay") as delay:
+        result = retry_or_resume_source_workflow(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            run_id="import-1",
+        )
+
+    assert result is workflow
+    facade.retry_source_workflow.assert_not_called()
+    assert facade.update_source.call_args.kwargs["payload"].status == "syncing"
+    delay.assert_called_once()
+
+
+def test_retry_or_resume_reconciles_a_concurrently_completed_import_after_conflict() -> None:
+    facade = MagicMock()
+    failed = SimpleNamespace(id="import-1", source_id="source-1", state="failed")
+    completed = SimpleNamespace(id="import-1", source_id="source-1", state="completed")
+    facade.get_source_workflow.side_effect = [failed, completed]
+    facade.retry_source_workflow.side_effect = KnowledgeFSProductRequestRejectedError(status_code=409)
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+        },
+        status="error",
+        version=5,
+    )
+
+    with patch("tasks.knowledge_fs_source_import_tasks.finalize_source_import.delay"):
+        result = retry_or_resume_source_workflow(
+            facade=facade,
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            run_id="import-1",
+        )
+
+    assert result is completed
+    assert facade.get_source_workflow.call_count == 2

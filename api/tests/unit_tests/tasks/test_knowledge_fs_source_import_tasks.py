@@ -2,8 +2,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from celery.exceptions import Retry
 
-from services.knowledge_fs.product_remote import KnowledgeFSProductResourceNotFoundError
+from services.knowledge_fs.product_remote import (
+    KnowledgeFSProductRequestRejectedError,
+    KnowledgeFSProductResourceNotFoundError,
+)
+from tasks import knowledge_fs_source_import_tasks as task_module
 from tasks.knowledge_fs_source_import_tasks import (
     KnowledgeFSSourceImportNotReadyError,
     finalize_source_import_once,
@@ -110,6 +115,55 @@ def test_finalize_source_import_retries_policy_after_source_activation() -> None
     assert policy.expected_source_version == 5
 
 
+def test_finalize_source_import_recovers_a_stale_failed_marker_after_workflow_completion() -> None:
+    facade = MagicMock()
+    facade.get_source_workflow.return_value = SimpleNamespace(id="import-1", state="completed")
+    facade.get_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "errorCode": "SOURCE_OPERATION_FAILED",
+                "errorMessage": "provider failed",
+                "kind": "crawl-preview-selection",
+                "previewWorkflowId": "preview-1",
+                "state": "failed",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+            "pendingImport": None,
+            "preview": False,
+        },
+        status="error",
+        version=5,
+    )
+    facade.update_source.return_value = SimpleNamespace(
+        id="source-1",
+        metadata={
+            "lastImport": {
+                "kind": "crawl-preview-selection",
+                "previewWorkflowId": "preview-1",
+                "state": "completed",
+                "syncPolicy": {"enabled": False, "mode": "manual"},
+                "workflowId": "import-1",
+            },
+            "pendingImport": None,
+            "preview": False,
+        },
+        status="active",
+        version=6,
+    )
+    facade.get_source_sync_policy.side_effect = KnowledgeFSProductResourceNotFoundError("missing")
+
+    assert _run(facade) == "import-1"
+
+    update = facade.update_source.call_args.kwargs["payload"]
+    assert update.status == "active"
+    assert update.metadata["lastImport"]["state"] == "completed"
+    assert update.metadata["pendingImport"] is None
+    policy = facade.update_source_sync_policy.call_args.kwargs["payload"]
+    assert policy.expected_source_version == 6
+
+
 def test_finalize_source_import_persists_failure_on_visible_source() -> None:
     facade = MagicMock()
     facade.get_source_workflow.return_value = SimpleNamespace(
@@ -135,3 +189,21 @@ def test_finalize_source_import_persists_failure_on_visible_source() -> None:
     }
     assert update.metadata["pendingImport"] is None
     facade.update_source_sync_policy.assert_not_called()
+
+
+def test_finalize_source_import_retries_a_source_revision_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = KnowledgeFSProductRequestRejectedError(status_code=409)
+    monkeypatch.setattr(task_module, "finalize_source_import_once", MagicMock(side_effect=error))
+    retry = MagicMock(side_effect=Retry())
+    monkeypatch.setattr(task_module.finalize_source_import, "retry", retry)
+
+    with pytest.raises(Retry):
+        task_module.finalize_source_import.run(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            control_space_id="control-1",
+            source_id="source-1",
+            workflow_id="import-1",
+        )
+
+    retry.assert_called_once_with(exc=error)

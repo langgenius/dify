@@ -256,7 +256,7 @@ from services.knowledge_fs.query_images import KnowledgeFSQueryImageError, valid
 from services.knowledge_fs.runtime import KnowledgeFSRuntime, get_knowledge_fs_runtime
 from services.knowledge_fs.source_import_commit_service import (
     commit_source_import,
-    resume_committed_source_import,
+    retry_or_resume_source_workflow,
 )
 from services.knowledge_fs.space_tag_service import KnowledgeFSSpaceTagValidationError
 from services.knowledge_fs.staged_upload_service import (
@@ -2754,19 +2754,12 @@ class KnowledgeFSSourceWorkflowRetryApi(Resource):
     @_knowledge_fs_errors
     def post(self, control_space_id: str, run_id: str):
         actor_id, tenant_id = _actor()
-        facade = _console_services().facade
-        result = facade.retry_source_workflow(
+        result = retry_or_resume_source_workflow(
+            facade=_console_services().facade,
             tenant_id=tenant_id,
             account_id=actor_id,
             control_space_id=control_space_id,
             run_id=run_id,
-        )
-        resume_committed_source_import(
-            facade=facade,
-            tenant_id=tenant_id,
-            account_id=actor_id,
-            control_space_id=control_space_id,
-            workflow=result,
         )
         return dump_response(KnowledgeFSSourceWorkflowResponse, result)
 
