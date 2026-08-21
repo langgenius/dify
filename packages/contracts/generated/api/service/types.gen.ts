@@ -1652,6 +1652,7 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+  is_bulk_execution?: boolean
   response_mode?: 'blocking' | 'streaming' | null
 }
 
@@ -1665,6 +1666,7 @@ export type WorkflowRunPayloadWithUser = {
   inputs: {
     [key: string]: unknown
   }
+  is_bulk_execution?: boolean
   response_mode?: 'blocking' | 'streaming' | null
   user: string
 }

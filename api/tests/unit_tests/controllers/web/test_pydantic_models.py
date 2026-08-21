@@ -319,6 +319,11 @@ class TestWorkflowRunPayload:
         p = WorkflowRunPayload(inputs={})
         assert p.inputs == {}
         assert p.files is None
+        assert p.is_bulk_execution is False
+
+    def test_accepts_bulk_execution(self) -> None:
+        p = WorkflowRunPayload(inputs={}, is_bulk_execution=True)
+        assert p.is_bulk_execution is True
 
     def test_with_files(self) -> None:
         p = WorkflowRunPayload(inputs={"k": "v"}, files=[{"id": "f1"}])

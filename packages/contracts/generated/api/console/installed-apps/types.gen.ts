@@ -179,6 +179,7 @@ export type WorkflowRunPayload = {
   inputs: {
     [key: string]: unknown
   }
+  is_bulk_execution?: boolean
 }
 
 export type InstalledAppInfoResponse = {

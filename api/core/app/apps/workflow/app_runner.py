@@ -118,6 +118,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 timestamp=int(naive_utc_now().timestamp()),
                 workflow_id=app_config.workflow_id,
                 workflow_execution_id=self.application_generate_entity.workflow_execution_id,
+                is_bulk_execution=self.application_generate_entity.is_bulk_execution,
             )
             variable_pool = VariablePool()
             add_variables_to_pool(

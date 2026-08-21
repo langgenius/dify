@@ -69,6 +69,10 @@ export const getGlobalVars = (isChatMode: boolean): Var[] => {
             variable: 'sys.timestamp',
             type: VarType.number,
           },
+          {
+            variable: 'sys.is_bulk_execution',
+            type: VarType.boolean,
+          },
         ]
       : []),
   ]

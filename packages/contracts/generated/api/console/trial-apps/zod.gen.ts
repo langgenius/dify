@@ -125,6 +125,7 @@ export const zAudioBinaryResponse = z.custom<Blob | File>(
 export const zWorkflowRunRequest = z.object({
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
+  is_bulk_execution: z.boolean().optional().default(false),
 })
 
 /**

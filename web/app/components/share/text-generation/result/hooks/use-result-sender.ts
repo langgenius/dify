@@ -86,6 +86,7 @@ export const useResultSender = ({
     const data = buildResultRequestData({
       completionFiles,
       inputs,
+      isBulkExecution: isCallBatchAPI,
       promptConfig,
       visionConfig,
     })
