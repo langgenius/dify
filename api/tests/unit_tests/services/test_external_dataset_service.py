@@ -790,12 +790,73 @@ class TestExternalDatasetServiceCheckEndpoint:
         assert "CDEF" not in message
 
     @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_strips_trailing_slash_before_retrieval(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #40028: trailing slashes must not produce a double-slash retrieval URL."""
+        settings = {"endpoint": "http://ragflow.example.com/api/v1/dify/", "api_key": "ragflow-test-key"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_proxy.post.return_value = mock_response
+
+        ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        assert mock_proxy.post.call_args[0][0] == "http://ragflow.example.com/api/v1/dify/retrieval"
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_ragflow_wrong_base_returns_401(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #40028: a generic /api/v1 base must not pass when it only returns 401."""
+        settings = {"endpoint": "http://ragflow.example.com/api/v1", "api_key": "ragflow-test-key"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_proxy.post.return_value = mock_response
+
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        call_args = mock_proxy.post.call_args
+        assert call_args[0][0] == "http://ragflow.example.com/api/v1/retrieval"
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_ragflow_dify_base_accepts_argument_error(
+        self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory
+    ):
+        """Regression for #40028: the documented /api/v1/dify base should pass when the provider
+        rejects the probe payload with a 400 argument error instead of dropping the connection."""
+        settings = {"endpoint": "http://ragflow.example.com/api/v1/dify", "api_key": "ragflow-test-key"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_proxy.post.return_value = mock_response
+
+        ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+        call_args = mock_proxy.post.call_args
+        assert call_args[0][0] == "http://ragflow.example.com/api/v1/dify/retrieval"
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
+    def test_check_endpoint_401_unauthorized(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
+        """Test validation fails with 401 Unauthorized (auth failure)."""
+        settings = {"endpoint": "https://api.example.com", "api_key": "wrong-key"}
+
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_proxy.post.return_value = mock_response
+
+        with pytest.raises(ValueError, match="Forbidden.*Authorization failed"):
+            ExternalDatasetService.check_endpoint_and_api_key(settings)
+
+    @patch("services.external_knowledge_service.ssrf_proxy")
     def test_check_endpoint_other_4xx_codes_pass(self, mock_proxy, factory: ExternalDatasetServiceTestDataFactory):
         """Test that other 4xx codes don't raise exceptions."""
         # Arrange
         settings = {"endpoint": "https://api.example.com", "api_key": "test-key"}
 
-        for status_code in [400, 401, 405, 429]:
+        for status_code in [400, 405, 429]:
             mock_response = MagicMock()
             mock_response.status_code = status_code
             mock_proxy.post.return_value = mock_response
