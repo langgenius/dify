@@ -12,6 +12,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
   PopoverArrow,
+  PopoverClose,
   PopoverDescription,
   PopoverPopup,
   PopoverPortal,
@@ -816,7 +817,18 @@ function SkipRecoveryPrompt({
   const dismissRef = useRef<HTMLButtonElement>(null)
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen, eventDetails) => {
+        onOpenChange(nextOpen)
+        if (
+          !nextOpen &&
+          (eventDetails.reason === 'close-press' || eventDetails.reason === 'escape-key')
+        ) {
+          anchorRef.current?.focus({ preventScroll: true })
+        }
+      }}
+    >
       <PopoverPortal>
         <PopoverPositioner
           placement="top-end"
@@ -840,18 +852,12 @@ function SkipRecoveryPrompt({
                 {message}
               </PopoverDescription>
               <div className="flex h-12 items-end justify-end pt-4">
-                <Button
+                <PopoverClose
                   ref={dismissRef}
-                  variant="primary"
-                  size="medium"
-                  className="w-20"
-                  onClick={() => {
-                    onOpenChange(false)
-                    anchorRef.current?.focus({ preventScroll: true })
-                  }}
+                  render={<Button variant="primary" size="medium" className="w-20" />}
                 >
                   {dismissLabel}
-                </Button>
+                </PopoverClose>
               </div>
             </div>
             <PopoverArrow className="pointer-events-none -bottom-7 h-7 w-3">
