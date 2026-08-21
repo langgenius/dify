@@ -489,9 +489,7 @@ def test_file_output_preview_includes_signed_url(session_for: SessionFor) -> Non
         return_value="https://signed.example/x.pdf",
     ):
         snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
-    preview_value = next(
-        output.value_preview for output in snapshot.node_outputs[0].outputs if output.name == "report"
-    )
+    preview_value = next(output.value_preview for output in snapshot.node_outputs[0].outputs if output.name == "report")
     assert isinstance(preview_value, dict)
     assert preview_value["preview_url"] == "https://signed.example/x.pdf"
     assert preview_value["reference"] == file_payload["reference"]
@@ -628,9 +626,7 @@ def test_file_output_preview_uses_none_when_signed_url_resolution_fails(session_
     ):
         snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1", session=session)
 
-    preview_value = next(
-        output.value_preview for output in snapshot.node_outputs[0].outputs if output.name == "report"
-    )
+    preview_value = next(output.value_preview for output in snapshot.node_outputs[0].outputs if output.name == "report")
     assert isinstance(preview_value, dict)
     assert preview_value["preview_url"] is None
 

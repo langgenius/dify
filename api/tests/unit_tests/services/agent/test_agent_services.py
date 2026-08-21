@@ -4438,9 +4438,7 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
         )
 
     with pytest.raises(InvalidComposerConfigError, match="reserved"):
-        ComposerConfigValidator.validate_node_job_dict(
-            {"declared_outputs": [{"name": "text", "type": "string"}]}
-        )
+        ComposerConfigValidator.validate_node_job_dict({"declared_outputs": [{"name": "text", "type": "string"}]})
 
     ComposerConfigValidator.validate_node_job_dict(
         {

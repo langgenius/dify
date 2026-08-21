@@ -457,9 +457,7 @@ def test_output_preview_for_file_renders_signed_url(seeded_run, fake_app_model):
             select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == agent_execution.id)
         )
         assert row is not None
-        row.outputs = json.dumps(
-            {"report": {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}}
-        )
+        row.outputs = json.dumps({"report": {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}})
         session.commit()
 
     service = NodeOutputInspectorService(binding_resolver=_stub_resolver([{"name": "report", "type": "file"}]))
