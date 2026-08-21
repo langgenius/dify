@@ -1,14 +1,14 @@
 'use client'
-
 import type { Role } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
@@ -68,7 +68,17 @@ const RoleModal = ({ mode, open, role, onClose, onSubmit }: RoleModalProps) => {
         backdropProps={{ forceRender: true }}
       >
         <div className="relative shrink-0 px-6 pt-6 pb-4">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="pr-8">
             <DialogTitle className="system-xl-semibold text-text-primary">
               {t(($) => $[`role.modal.${mode}.title`], { ns: 'permission' })}
