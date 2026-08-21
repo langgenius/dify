@@ -200,7 +200,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
   const [qualityPendingKey, setQualityPendingKey] = useState<string>()
   const [goldenPromotion, setGoldenPromotion] = useState<GoldenQuestionPromotion>()
   const [goldenPromotionError, setGoldenPromotionError] = useState<string>()
-  const [showAll, setShowAll] = useState(false)
+  const [expandedResultKey, setExpandedResultKey] = useState<string>()
   const [selectedCitation, setSelectedCitation] = useState<{
     citationIndex: number
     requestId: number
@@ -514,6 +514,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       .filter((document): document is string => Boolean(document)),
   ).size
   const resultKey = selected ? `${selected.kind}:${selected.id}` : undefined
+  const showAll = resultKey !== undefined && expandedResultKey === resultKey
   const selectedQuery =
     selected?.kind === 'local'
       ? localRun?.query
@@ -577,14 +578,14 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     (citationIndex: number) => {
       if (!selectedResearchTaskId || citationIndex < 0 || citationIndex >= currentEvidence.length)
         return
-      setShowAll(true)
+      setExpandedResultKey(resultKey)
       setSelectedCitation((current) => ({
         citationIndex,
         requestId: (current?.requestId ?? 0) + 1,
         taskId: selectedResearchTaskId,
       }))
     },
-    [currentEvidence.length, selectedResearchTaskId],
+    [currentEvidence.length, resultKey, selectedResearchTaskId],
   )
 
   useEffect(() => {
@@ -615,7 +616,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
       query: record.query,
       ...(record.kind === 'local' ? {} : { selectionKey: `${record.kind}:${record.id}` }),
     })
-    setShowAll(false)
+    setExpandedResultKey(undefined)
   }
 
   const startGoldenPromotion = () => {
@@ -722,7 +723,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
     })
     setLocalSelected({ id, kind: 'local' })
     void setLinkedSelection({ research: null, retest: null, trace: null }, { history: 'replace' })
-    setShowAll(false)
+    setExpandedResultKey(undefined)
     const events: KnowledgeQueryEvent[] = []
     try {
       const admission =
@@ -831,7 +832,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
         { research: task.id, retest: null, trace: null },
         { history: 'push', shallow: false },
       )
-      setShowAll(false)
+      setExpandedResultKey(undefined)
       await researchTasksQuery.refetch()
     } catch {
       toast.error(t(($) => $['newKnowledge.retrievalTest.failedDescription']))
@@ -1161,7 +1162,7 @@ export function RetrievalTestPage({ knowledgeSpaceId }: { knowledgeSpaceId: stri
                     <button
                       type="button"
                       className="flex items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-                      onClick={() => setShowAll(true)}
+                      onClick={() => setExpandedResultKey(resultKey)}
                     >
                       {t(($) => $['newKnowledge.retrievalTest.showAllChunks'], {
                         count: currentEvidence.length,

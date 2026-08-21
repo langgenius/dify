@@ -481,7 +481,7 @@ describe('KnowledgeOverviewPage', () => {
     expect(screen.queryByText('dataset.newKnowledge.overview.system')).not.toBeInTheDocument()
   })
 
-  it('keeps the designed skeleton until every initial snapshot resolves to the empty state', () => {
+  it('reveals resolved modules while waiting to decide the page empty state', () => {
     queryData.stats.source_count = 0
     queryData.stats.documents = 0
     for (const state of Object.values(overviewQueryState)) state.isPending = true
@@ -508,7 +508,7 @@ describe('KnowledgeOverviewPage', () => {
     expect(
       screen.queryByRole('heading', { name: 'dataset.newKnowledge.overview.noSources' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByText('84%')).not.toBeInTheDocument()
+    expect(screen.getByText('84%')).toBeInTheDocument()
 
     for (const state of Object.values(overviewQueryState)) state.isPending = false
     rerender(<KnowledgeOverviewPage knowledgeSpaceId="space-1" />)

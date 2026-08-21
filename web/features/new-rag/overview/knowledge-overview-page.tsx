@@ -1,14 +1,12 @@
 'use client'
 
 import type { KnowledgeFsBackgroundTaskResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
-import type { ActivityDateRange, ActivityOperator, ActivityRange } from './overview-activity-types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   datasetDefaultPermissionKeysAtom,
@@ -16,11 +14,9 @@ import {
 } from '@/context/permission-state'
 import { knowledgeFsUploadEnabledAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/client'
-import { useMembers } from '@/service/use-common'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeModelReadinessBanner } from '../components/knowledge-model-readiness-banner'
-import { ActivityDrawer, RecentActivity } from './overview-activity'
-import { activityDatesForRange } from './overview-activity-types'
+import { OverviewActivity } from './overview-activity'
 import { AttentionPanel } from './overview-attention'
 import {
   changeLabel,
@@ -41,7 +37,6 @@ const ACTIVE_TASK_STATES = new Set<KnowledgeFsBackgroundTaskResponse['state']>([
   'running',
 ])
 const TASK_PAGE_SIZE = 20
-const ACTIVITY_PAGE_SIZE = 20
 const overviewWindowParser = parseAsStringLiteral(WINDOWS)
   .withDefault('24h')
   .withOptions({ history: 'push' })
@@ -64,28 +59,6 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
   const canUpload =
     uploadAvailable && hasPermission(datasetDefaultPermissionKeys, DatasetACLPermission.Edit)
   const [window, setWindow] = useQueryState('window', overviewWindowParser)
-  const [activityOpen, setActivityOpen] = useState(false)
-  const [activityRange, setActivityRange] = useState<ActivityRange>('today')
-  const [activityDates, setActivityDates] = useState<ActivityDateRange>(() =>
-    activityDatesForRange('today'),
-  )
-  const [activityOperator, setActivityOperator] = useState<ActivityOperator>('all')
-  const activityFrom = activityRange === 'all' ? undefined : activityDates.start.toISOString()
-  const activityTo = activityRange === 'all' ? undefined : activityDates.end.toISOString()
-  const activityActorType =
-    activityOperator === 'all' ? undefined : activityOperator === 'system' ? 'system' : 'member'
-  const activityActorId = activityOperator.startsWith('member:')
-    ? `dify-account:${activityOperator.slice(7)}`
-    : undefined
-  const handleActivityRangeChange = (range: ActivityRange) => {
-    setActivityRange(range)
-    if (range !== 'custom') setActivityDates(activityDatesForRange(range))
-  }
-  const handleActivityDatesChange = (dates: ActivityDateRange) => {
-    setActivityDates(dates)
-    setActivityRange('custom')
-  }
-  const membersQuery = useMembers()
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.infiniteOptions({
       getNextPageParam: (lastPage) => lastPage.next_cursor,
@@ -160,42 +133,6 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
     }),
   )
-  const activityPreviewQuery = useQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
-      input: {
-        params: { control_space_id: knowledgeSpaceId },
-        query: { limit: 5 },
-      },
-      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
-    }),
-  )
-  const activityDrawerQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.infiniteOptions({
-      enabled: activityOpen,
-      getNextPageParam: (lastPage) => lastPage.next_cursor,
-      initialPageParam: null as string | null,
-      queryKey: [
-        'knowledge-fs-overview-activity',
-        knowledgeSpaceId,
-        activityFrom,
-        activityTo,
-        activityOperator,
-      ],
-      input: (pageParam) => ({
-        params: { control_space_id: knowledgeSpaceId },
-        query: {
-          ...(activityActorId ? { actor_id: activityActorId } : {}),
-          ...(activityActorType ? { actor_type: activityActorType } : {}),
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          ...(activityFrom ? { from_at: activityFrom } : {}),
-          limit: ACTIVITY_PAGE_SIZE,
-          ...(activityTo ? { to_at: activityTo } : {}),
-        },
-      }),
-    }),
-  )
-  const activities = activityDrawerQuery.data?.pages.flatMap((page) => page.data) ?? []
-  const members = membersQuery.data?.accounts ?? []
   const indexingTask = tasks.find(
     (task) => ACTIVE_TASK_STATES.has(task.state) && isFirstSourceTask(task),
   )
@@ -221,15 +158,13 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
     outcomesQuery.isPending ||
     inventoryQuery.isPending ||
     attentionQuery.isPending ||
-    activityPreviewQuery.isPending ||
     (indexingTask?.source_id != null && indexingSourceQuery.isPending)
   const firstLoadFailed =
     !pageLoading &&
     (statsQuery.isError ||
       outcomesQuery.isError ||
       inventoryQuery.isError ||
-      attentionQuery.isError ||
-      activityPreviewQuery.isError)
+      attentionQuery.isError)
   const hasContent =
     (statsQuery.data?.source_count ?? 0) > 0 || (statsQuery.data?.documents ?? 0) > 0
   const showIndexing =
@@ -245,7 +180,6 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
       outcomesQuery.refetch(),
       inventoryQuery.refetch(),
       attentionQuery.refetch(),
-      activityPreviewQuery.refetch(),
       tasksQuery.refetch(),
     ])
 
@@ -339,7 +273,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
         >
           <MetricCard
             empty={showEmptyModules}
-            loading={pageLoading}
+            loading={statsQuery.isPending}
             title={t(($) => $['newKnowledge.overview.queries'])}
             help={t(($) => $['newKnowledge.overview.queriesHelp'])}
             value={statsQuery.data ? compactNumber(statsQuery.data.queries.value) : '—'}
@@ -355,7 +289,7 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={pageLoading}
+            loading={statsQuery.isPending}
             title={t(($) => $['newKnowledge.overview.answerRate'])}
             help={t(($) => $['newKnowledge.overview.answerRateHelp'])}
             value={
@@ -369,19 +303,19 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={pageLoading}
+            loading={statsQuery.isPending}
             title={t(($) => $['newKnowledge.overview.documents'])}
             value={statsQuery.data ? compactNumber(statsQuery.data.documents) : '—'}
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={pageLoading}
+            loading={statsQuery.isPending}
             title={t(($) => $['newKnowledge.overview.linkedApps'])}
             value={statsQuery.data ? compactNumber(statsQuery.data.linked_apps) : '—'}
           />
           <MetricCard
             empty={showEmptyModules}
-            loading={pageLoading}
+            loading={statsQuery.isPending}
             title={t(($) => $['newKnowledge.overview.freshness'])}
             help={t(($) => $['newKnowledge.overview.freshnessHelp'])}
             value={formatDuration(statsQuery.data?.freshness_seconds)}
@@ -398,57 +332,31 @@ export function KnowledgeOverviewPage({ knowledgeSpaceId }: { knowledgeSpaceId: 
             empty={showEmptyModules}
             error={attentionQuery.isError}
             knowledgeSpaceId={knowledgeSpaceId}
-            loading={pageLoading}
+            loading={attentionQuery.isPending}
           />
           <QueryOutcomesChart
             buckets={outcomesQuery.data?.buckets ?? []}
             empty={showEmptyModules}
             error={outcomesQuery.isError}
-            loading={pageLoading}
+            loading={outcomesQuery.isPending}
           />
         </div>
-        <div className="mt-3">
-          <RecentActivity
-            activities={activityPreviewQuery.data?.data ?? []}
-            empty={showEmptyModules}
-            error={activityPreviewQuery.isError}
-            indexing={showIndexing}
-            loading={pageLoading}
-            members={members}
-            retrying={activityPreviewQuery.isRefetching}
-            onOpenAll={() => {
-              setActivityOpen(true)
-              void activityDrawerQuery.refetch()
-            }}
-            onRetry={() => void activityPreviewQuery.refetch()}
-          />
-        </div>
+        <OverviewActivity
+          empty={showEmptyModules}
+          hasActiveTasks={hasActiveTasks}
+          indexing={showIndexing}
+          knowledgeSpaceId={knowledgeSpaceId}
+        />
         <div className="mt-3">
           <InventoryPanel
             empty={showEmptyModules}
             error={inventoryQuery.isError}
             indexing={showIndexing}
             inventory={inventoryQuery.data}
-            loading={pageLoading}
+            loading={inventoryQuery.isPending}
           />
         </div>
       </div>
-      <ActivityDrawer
-        activities={activities}
-        dates={activityDates}
-        hasNextPage={Boolean(activityDrawerQuery.hasNextPage)}
-        isFetchingNextPage={activityDrawerQuery.isFetchingNextPage}
-        loading={activityDrawerQuery.isPending || activityDrawerQuery.isRefetching}
-        members={members}
-        open={activityOpen}
-        operator={activityOperator}
-        range={activityRange}
-        onDatesChange={handleActivityDatesChange}
-        onFetchNextPage={() => void activityDrawerQuery.fetchNextPage()}
-        onOpenChange={setActivityOpen}
-        onOperatorChange={setActivityOperator}
-        onRangeChange={handleActivityRangeChange}
-      />
     </main>
   )
 }

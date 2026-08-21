@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { useState } from 'react'
 import { render } from '@/test/console/render'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { RetrievalTestPage } from '../retrieval-test-page'
@@ -1252,6 +1254,61 @@ describe('RetrievalTestPage', () => {
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(apiMock.fetchNextEvidence).toHaveBeenCalledOnce()
+  })
+
+  it('does not carry the expanded evidence state to a URL-selected result', async () => {
+    apiMock.traces = ['trace-1', 'trace-2'].map((id) => ({
+      completed: true,
+      created_at: '2026-07-29T00:00:00.000Z',
+      id,
+      mode: 'fast',
+      profile: {},
+      query: `${id} query`,
+      scores: {},
+      stages: [],
+    }))
+    apiMock.evidence = {
+      data: Array.from({ length: 4 }, (_, index) => ({
+        kind: 'resource',
+        metadata: { text: `Evidence ${index + 1}` },
+        name: `chunk-${index + 1}`,
+        path: `/queries/evidence/chunk-${index + 1}`,
+        resourceType: 'node',
+        targetId: `chunk-${index + 1}`,
+      })),
+      next_cursor: null,
+      truncated: false,
+    }
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false }, queries: { retry: false } },
+    })
+    const user = userEvent.setup()
+
+    function NavigationHarness() {
+      const [searchParams, setSearchParams] = useState('?trace=trace-1')
+      return (
+        <NuqsTestingAdapter hasMemory searchParams={searchParams}>
+          <button type="button" onClick={() => setSearchParams('?trace=trace-2')}>
+            Navigate to trace 2
+          </button>
+          <RetrievalTestPage knowledgeSpaceId="space-1" />
+        </NuqsTestingAdapter>
+      )
+    }
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NavigationHarness />
+      </QueryClientProvider>,
+    )
+
+    const showAllName = /dataset\.newKnowledge\.retrievalTest\.showAllChunks/
+    await user.click(screen.getByRole('button', { name: showAllName }))
+    expect(screen.queryByRole('button', { name: showAllName })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Navigate to trace 2' }))
+
+    expect(await screen.findByRole('button', { name: showAllName })).toBeInTheDocument()
   })
 
   it('keeps partial trace evidence visible and retries a failed next page', async () => {

@@ -25,13 +25,19 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import { consoleQuery } from '@/service/client'
+import { useMembers } from '@/service/use-common'
+import { activityDatesForRange } from './overview-activity-types'
+import { OVERVIEW_REFRESH_INTERVAL } from './overview-format'
 import { EmptyInline, Panel, Skeleton } from './overview-panel'
 
 const ACTIVITY_RANGES: ActivityRange[] = ['today', '7d', '30d', '90d', 'all', 'custom']
+const ACTIVITY_PAGE_SIZE = 20
 
 function activityOperationLabel(
   activity: KnowledgeFsOverviewActivityResponse,
@@ -144,7 +150,7 @@ function ActivityActor({
   )
 }
 
-export function RecentActivity({
+function RecentActivity({
   activities,
   empty,
   error,
@@ -309,6 +315,55 @@ export function RecentActivity({
   )
 }
 
+export function OverviewActivity({
+  empty,
+  hasActiveTasks,
+  indexing,
+  knowledgeSpaceId,
+}: {
+  empty: boolean
+  hasActiveTasks: boolean
+  indexing: boolean
+  knowledgeSpaceId: string
+}) {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const membersQuery = useMembers()
+  const previewQuery = useQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.queryOptions({
+      input: {
+        params: { control_space_id: knowledgeSpaceId },
+        query: { limit: 5 },
+      },
+      refetchInterval: hasActiveTasks ? OVERVIEW_REFRESH_INTERVAL : false,
+    }),
+  )
+  const members = membersQuery.data?.accounts ?? []
+
+  return (
+    <>
+      <div className="mt-3">
+        <RecentActivity
+          activities={previewQuery.data?.data ?? []}
+          empty={empty}
+          error={previewQuery.isError}
+          indexing={indexing}
+          loading={previewQuery.isPending}
+          members={members}
+          retrying={previewQuery.isRefetching}
+          onOpenAll={() => setDrawerOpen(true)}
+          onRetry={() => void previewQuery.refetch()}
+        />
+      </div>
+      <ActivityDrawer
+        knowledgeSpaceId={knowledgeSpaceId}
+        members={members}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
+    </>
+  )
+}
+
 function ActivityDateRangePicker({
   dates,
   onChange,
@@ -384,40 +439,57 @@ function ActivityDateRangePicker({
   )
 }
 
-export function ActivityDrawer({
-  activities,
-  dates,
-  hasNextPage,
-  isFetchingNextPage,
-  loading,
+function ActivityDrawer({
+  knowledgeSpaceId,
   members,
-  onDatesChange,
-  onFetchNextPage,
   onOpenChange,
-  onOperatorChange,
-  onRangeChange,
   open,
-  operator,
-  range,
 }: {
-  activities: KnowledgeFsOverviewActivityResponse[]
-  dates: ActivityDateRange
-  hasNextPage: boolean
-  isFetchingNextPage: boolean
-  loading: boolean
+  knowledgeSpaceId: string
   members: Member[]
-  onDatesChange: (dates: ActivityDateRange) => void
-  onFetchNextPage: () => void
   onOpenChange: (open: boolean) => void
-  onOperatorChange: (operator: ActivityOperator) => void
-  onRangeChange: (range: ActivityRange) => void
   open: boolean
-  operator: ActivityOperator
-  range: ActivityRange
 }) {
   const { t, i18n } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { t: tActivityLog } = useTranslation('appLog')
+  const [range, setRange] = useState<ActivityRange>('today')
+  const [dates, setDates] = useState<ActivityDateRange>(() => activityDatesForRange('today'))
+  const [operator, setOperator] = useState<ActivityOperator>('all')
+  const activityFrom = range === 'all' ? undefined : dates.start.toISOString()
+  const activityTo = range === 'all' ? undefined : dates.end.toISOString()
+  const activityActorType =
+    operator === 'all' ? undefined : operator === 'system' ? 'system' : 'member'
+  const activityActorId = operator.startsWith('member:')
+    ? `dify-account:${operator.slice(7)}`
+    : undefined
+  const activityQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.infiniteOptions({
+      enabled: open,
+      getNextPageParam: (lastPage) => lastPage.next_cursor,
+      initialPageParam: null as string | null,
+      queryKey: [
+        'knowledge-fs-overview-activity',
+        knowledgeSpaceId,
+        activityFrom,
+        activityTo,
+        operator,
+      ],
+      input: (pageParam) => ({
+        params: { control_space_id: knowledgeSpaceId },
+        query: {
+          ...(activityActorId ? { actor_id: activityActorId } : {}),
+          ...(activityActorType ? { actor_type: activityActorType } : {}),
+          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+          ...(activityFrom ? { from_at: activityFrom } : {}),
+          limit: ACTIVITY_PAGE_SIZE,
+          ...(activityTo ? { to_at: activityTo } : {}),
+        },
+      }),
+    }),
+  )
+  const activities = activityQuery.data?.pages.flatMap((page) => page.data) ?? []
+  const loading = activityQuery.isPending || activityQuery.isRefetching
   const rangeTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreFilterFocusRef = useRef(false)
   const now = dayjs()
@@ -483,8 +555,19 @@ export function ActivityDrawer({
         : members.find((member) => `member:${member.id}` === operator)?.name || operator.slice(7)
   const clearFilters = () => {
     restoreFilterFocusRef.current = true
-    onRangeChange('today')
-    onOperatorChange('all')
+    setRange('today')
+    setDates(activityDatesForRange('today'))
+    setOperator('all')
+  }
+
+  const handleRangeChange = (nextRange: ActivityRange) => {
+    setRange(nextRange)
+    if (nextRange !== 'custom') setDates(activityDatesForRange(nextRange))
+  }
+
+  const handleDatesChange = (nextDates: ActivityDateRange) => {
+    setDates(nextDates)
+    setRange('custom')
   }
 
   useEffect(() => {
@@ -511,7 +594,7 @@ export function ActivityDrawer({
               <div className="flex h-9 shrink-0 items-start gap-1 border-b border-divider-subtle px-5">
                 <Select
                   value={range}
-                  onValueChange={(value) => onRangeChange(value as ActivityRange)}
+                  onValueChange={(value) => handleRangeChange(value as ActivityRange)}
                 >
                   <SelectTrigger
                     ref={rangeTriggerRef}
@@ -534,11 +617,11 @@ export function ActivityDrawer({
                     {rangeLabel.all}
                   </div>
                 ) : (
-                  <ActivityDateRangePicker dates={dates} onChange={onDatesChange} />
+                  <ActivityDateRangePicker dates={dates} onChange={handleDatesChange} />
                 )}
                 <Select
                   value={operator}
-                  onValueChange={(value) => onOperatorChange(value as ActivityOperator)}
+                  onValueChange={(value) => setOperator(value as ActivityOperator)}
                 >
                   <SelectTrigger
                     aria-label={t(($) => $['newKnowledge.overview.operator'])}
@@ -630,13 +713,13 @@ export function ActivityDrawer({
                       </section>
                     ))}
                     <div className="flex h-11 items-start justify-center pt-4">
-                      {hasNextPage && (
+                      {activityQuery.hasNextPage && (
                         <Button
-                          disabled={isFetchingNextPage}
-                          loading={isFetchingNextPage}
+                          disabled={activityQuery.isFetchingNextPage}
+                          loading={activityQuery.isFetchingNextPage}
                           size="small"
                           variant="secondary"
-                          onClick={onFetchNextPage}
+                          onClick={() => void activityQuery.fetchNextPage()}
                         >
                           {t(($) => $['newKnowledge.overview.loadMore'])}
                           <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
