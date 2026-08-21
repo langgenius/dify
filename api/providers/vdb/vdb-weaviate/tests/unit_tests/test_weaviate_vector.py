@@ -585,6 +585,36 @@ class TestWeaviateVector(unittest.TestCase):
         assert docs[0].metadata.get("doc_type") == "image"
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_returns_bm25_score_metadata(self, mock_weaviate_module):
+        """Test that search_by_full_text propagates Weaviate BM25 scores."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "bm25 result", "doc_id": "segment-1"}
+        mock_obj.vector = {"default": [0.3, 0.4]}
+        mock_obj.metadata = SimpleNamespace(score=10.29)
+
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+        mock_col.query.bm25.return_value = mock_result
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="bm25", top_k=1)
+
+        assert mock_col.query.bm25.call_args.kwargs.get("return_metadata") is not None
+        assert len(docs) == 1
+        assert docs[0].metadata["score"] == pytest.approx(10.29)
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_uses_document_filter(self, mock_weaviate_module):
         mock_client = MagicMock()
         mock_client.is_ready.return_value = True
