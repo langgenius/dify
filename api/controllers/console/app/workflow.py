@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, NotRequired, Self, TypedDict
 
 from flask import abort, request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -1687,14 +1687,7 @@ class DraftWorkflowTriggerRunApi(Resource):
     @console_ns.doc("poll_draft_workflow_trigger_run")
     @console_ns.doc(description="Poll for trigger events and execute full workflow when event arrives")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowTriggerRunRequest",
-            {
-                "node_id": fields.String(required=True, description="Node ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunPayload.__name__])
     @console_ns.response(
         200,
         "Trigger event received and workflow executed successfully",
