@@ -1,4 +1,4 @@
-"""Unit tests for account deletion synchronization with SQLite memberships.
+"""Unit tests for account deletion synchronization.
 
 Verifies enterprise account deletion sync functionality including
 Redis queuing, error handling, and community vs enterprise behavior.
@@ -11,13 +11,10 @@ from uuid import uuid4
 
 import pytest
 from redis import RedisError
-from sqlalchemy.orm import Session
 
 from enums import DeploymentEdition
-from models.account import TenantAccountJoin
 from services.enterprise.account_deletion_sync import (
     _queue_task,
-    sync_account_deletion,
     sync_account_deletion_memberships,
     sync_workspace_member_removal,
 )
@@ -94,80 +91,3 @@ def test_sync_account_deletion_memberships_queues_preloaded_workspace_ids() -> N
 
     assert result is True
     assert [call.kwargs["workspace_id"] for call in queue_task.call_args_list] == ["workspace-1", "workspace-2"]
-
-
-@pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
-class TestSyncAccountDeletion:
-    @pytest.fixture
-    def mock_queue_task(self):
-        with patch("services.enterprise.account_deletion_sync._queue_task") as mock_queue:
-            mock_queue.return_value = True
-            yield mock_queue
-
-    def test_sync_account_deletion_non_enterprise_edition(
-        self, mock_queue_task, sqlite_session: Session, config_overrides
-    ) -> None:
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-
-        result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
-
-        assert result is True
-        mock_queue_task.assert_not_called()
-
-    def test_sync_account_deletion_multiple_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
-        account_id = str(uuid4())
-        tenant_ids = [str(uuid4()) for _ in range(3)]
-
-        for tenant_id in tenant_ids:
-            join = TenantAccountJoin(tenant_id=tenant_id, account_id=account_id)
-            sqlite_session.add(join)
-        sqlite_session.commit()
-
-        result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
-
-        assert result is True
-        assert mock_queue_task.call_count == 3
-
-        queued_workspace_ids = {call.kwargs["workspace_id"] for call in mock_queue_task.call_args_list}
-        assert queued_workspace_ids == set(tenant_ids)
-
-    def test_sync_account_deletion_no_workspaces(self, sqlite_session: Session, mock_queue_task) -> None:
-        result = sync_account_deletion(account_id=str(uuid4()), source="account_deleted", session=sqlite_session)
-
-        assert result is True
-        mock_queue_task.assert_not_called()
-
-    def test_sync_account_deletion_partial_failure(self, sqlite_session: Session, mock_queue_task) -> None:
-        account_id = str(uuid4())
-        tenant_ids = [str(uuid4()) for _ in range(3)]
-        fail_tenant = tenant_ids[1]
-
-        for tenant_id in tenant_ids:
-            join = TenantAccountJoin(tenant_id=tenant_id, account_id=account_id)
-            sqlite_session.add(join)
-        sqlite_session.commit()
-
-        def queue_side_effect(workspace_id, member_id, source):
-            return workspace_id != fail_tenant
-
-        mock_queue_task.side_effect = queue_side_effect
-
-        result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
-
-        assert result is False
-        assert mock_queue_task.call_count == 3
-
-    def test_sync_account_deletion_all_failures(self, sqlite_session: Session, mock_queue_task) -> None:
-        account_id = str(uuid4())
-        tenant_id = str(uuid4())
-
-        join = TenantAccountJoin(tenant_id=tenant_id, account_id=account_id)
-        sqlite_session.add(join)
-        sqlite_session.commit()
-
-        mock_queue_task.return_value = False
-
-        result = sync_account_deletion(account_id=account_id, source="account_deleted", session=sqlite_session)
-
-        assert result is False
-        mock_queue_task.assert_called_once()
