@@ -668,10 +668,12 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str, session)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        try:
-            DatasetService.check_dataset_permission(dataset, current_user, session)
-        except services.errors.account.NoPermissionError as e:
-            raise Forbidden(str(e))
+
+        if not dify_config.RBAC_ENABLED:
+            try:
+                DatasetService.check_dataset_permission(dataset, current_user, session)
+            except services.errors.account.NoPermissionError as e:
+                raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             current_tenant_id,
             current_user.id,

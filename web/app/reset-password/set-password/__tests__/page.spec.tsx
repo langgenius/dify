@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
@@ -79,6 +80,36 @@ describe('Reset Password Set Password Page', () => {
     render(<ChangePasswordForm />)
 
     expect(mockUseDocumentTitle).toHaveBeenCalledWith('login.changePassword')
+  })
+
+  it('supports password reveal and native form submission', async () => {
+    const user = userEvent.setup()
+    render(<ChangePasswordForm />)
+
+    const passwordInput = screen.getByLabelText('common.account.newPassword')
+    const confirmPasswordInput = screen.getByLabelText('common.account.confirmPassword')
+
+    expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
+    expect(confirmPasswordInput).toHaveAttribute('autocomplete', 'new-password')
+
+    await user.type(passwordInput, 'ValidPass123!')
+    await user.click(screen.getAllByRole('button', { name: 'login.showPassword' })[0]!)
+
+    expect(passwordInput).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('button', { name: 'login.hidePassword' })).toBeInTheDocument()
+
+    await user.type(confirmPasswordInput, 'ValidPass123!{Enter}')
+
+    await waitFor(() => {
+      expect(mockChangePasswordWithToken).toHaveBeenCalledWith({
+        url: '/forgot-password/resets',
+        body: {
+          token: 'reset-token',
+          new_password: 'ValidPass123!',
+          password_confirm: 'ValidPass123!',
+        },
+      })
+    })
   })
 
   describe('Post-reset navigation', () => {

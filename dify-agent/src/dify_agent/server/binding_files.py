@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 _LIST_MAX_ENTRIES = 1000
 _BROWSE_TIMEOUT_SECONDS = 60.0
 _BROWSE_OUTPUT_MAX_BYTES = 1024 * 1024
-_DOWNLOAD_TIMEOUT_SECONDS = 60.0
 _DOWNLOAD_OUTPUT_MAX_BYTES = 32 * 1024
 _PAYLOAD_BEGIN = "<<<DIFY_BINDING_FILE_BEGIN>>>"
 _PAYLOAD_END = "<<<DIFY_BINDING_FILE_END>>>"
@@ -149,6 +148,7 @@ class BindingFileService:
     execution_bindings: ExecutionBindingBackend
     agent_stub_api_base_url: str | None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None
+    download_command_timeout_seconds: float
 
     async def list_files(self, request: BindingFileListRequest) -> BindingFileListResponse:
         try:
@@ -166,6 +166,7 @@ class BindingFileService:
                     env={"HOME": lease.layout.home_dir},
                     timeout=_BROWSE_TIMEOUT_SECONDS,
                     max_output_bytes=_BROWSE_OUTPUT_MAX_BYTES,
+                    mode="stdio",
                 )
             payload = _require_browse_payload(result, operation="list")
             try:
@@ -193,6 +194,7 @@ class BindingFileService:
                     env={"HOME": lease.layout.home_dir},
                     timeout=_BROWSE_TIMEOUT_SECONDS,
                     max_output_bytes=_BROWSE_OUTPUT_MAX_BYTES,
+                    mode="stdio",
                 )
             payload = _require_browse_payload(result, operation="read")
             try:
@@ -241,8 +243,9 @@ class BindingFileService:
                         f"dify-agent file upload --no-download-link {shlex.quote(resolved_path)}",
                         cwd=lease.layout.workspace_dir,
                         env=env,
-                        timeout=_DOWNLOAD_TIMEOUT_SECONDS,
+                        timeout=self.download_command_timeout_seconds,
                         max_output_bytes=_DOWNLOAD_OUTPUT_MAX_BYTES,
+                        mode="stdio",
                     )
                 except ShellProviderError as exc:
                     if exc.code == "timeout":

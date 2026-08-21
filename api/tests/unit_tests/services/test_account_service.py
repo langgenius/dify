@@ -28,7 +28,7 @@ from services.errors.account import (
     AccountLoginError,
     AccountPasswordError,
     AccountRegisterError,
-    CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     NoPermissionError,
 )
 
@@ -312,6 +312,50 @@ class TestAccountService:
                     session=unbound_session,
                 )
 
+    def test_create_account_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.create_account(
+                    email="user@suspended.example",
+                    name="Test User",
+                    interface_language="en-US",
+                    session=unbound_session,
+                )
+
+    def test_get_user_through_email_rejects_suspended_email_domain(
+        self, unbound_session: Session, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
+        mock_external_service_dependencies[
+            "billing_service"
+        ].get_email_freeze_type.return_value = "email_domain_suspended"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            with pytest.raises(EmailDomainSuspendedError):
+                AccountService.get_user_through_email("user@suspended.example", session=unbound_session)
+
+    def test_get_account_freeze_type_is_enabled_only_for_cloud(
+        self, mock_external_service_dependencies: _MockDependencies
+    ) -> None:
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.return_value = "freeze"
+
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD):
+            assert AccountService.get_account_freeze_type("frozen@example.com") == "freeze"
+        with patch("services.account_service.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY):
+            assert AccountService.get_account_freeze_type("frozen@example.com") is None
+
+        mock_external_service_dependencies["billing_service"].get_email_freeze_type.assert_called_once_with(
+            "frozen@example.com"
+        )
+
     def test_create_account_without_password(
         self,
         sqlite_session_factory: sessionmaker[Session],
@@ -380,103 +424,6 @@ class TestAccountService:
             assert persisted_account is not None
             assert persisted_account.last_login_ip == "203.0.113.11"
             assert persisted_account.last_login_at is not None
-
-    # ==================== Password Management Tests ====================
-
-    def test_update_account_password_success(
-        self,
-        sqlite_session_factory: sessionmaker[Session],
-        mock_password_dependencies: _MockDependencies,
-    ) -> None:
-        """Test successful password update with correct current password and valid new password."""
-        with sqlite_session_factory() as service_session:
-            account = Account(
-                name="Test User",
-                email="test@example.com",
-                password="hashed_password",
-                password_salt="salt",
-            )
-            service_session.add(account)
-            service_session.commit()
-            account_id = account.id
-
-            mock_password_dependencies["compare_password"].return_value = True
-            mock_password_dependencies["valid_password"].return_value = None
-            mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
-
-            result = AccountService.update_account_password(
-                account,
-                "old_password",
-                "new_password123",
-                session=service_session,
-            )
-            assert result is account
-
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "old_password", "hashed_password", "salt"
-        )
-        mock_password_dependencies["valid_password"].assert_called_once_with("new_password123")
-
-        with sqlite_session_factory() as assertion_session:
-            persisted_account = assertion_session.get(Account, account_id)
-            assert persisted_account is not None
-            assert persisted_account.password is not None
-            assert persisted_account.password != "hashed_password"
-            assert persisted_account.password_salt is not None
-            assert persisted_account.password_salt != "salt"
-
-    def test_update_account_password_current_password_incorrect(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with incorrect current password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = False
-
-        # Execute test and verify exception
-        with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(
-                mock_account,
-                "wrong_password",
-                "new_password123",
-                session=unbound_session,
-            )
-
-        # Verify password comparison was called
-        mock_password_dependencies["compare_password"].assert_called_once_with(
-            "wrong_password", "hashed_password", "salt"
-        )
-
-    def test_update_account_password_invalid_new_password(
-        self, unbound_session: Session, mock_password_dependencies: _MockDependencies
-    ) -> None:
-        """Test password update with invalid new password."""
-        # Setup test data
-        mock_account = Account(
-            name="Test User",
-            email="test@example.com",
-            password="hashed_password",
-            password_salt="salt",
-        )
-        mock_password_dependencies["compare_password"].return_value = True
-        mock_password_dependencies["valid_password"].side_effect = ValueError("Password too short")
-
-        # Execute test and verify exception
-        with pytest.raises(ValueError):
-            AccountService.update_account_password(
-                mock_account,
-                "old_password",
-                "short",
-                session=unbound_session,
-            )
-
-        # Verify password validation was called
-        mock_password_dependencies["valid_password"].assert_called_once_with("short")
 
     # ==================== User Loading Tests ====================
 

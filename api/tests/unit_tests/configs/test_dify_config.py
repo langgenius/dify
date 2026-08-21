@@ -3,12 +3,41 @@ from typing import override
 import pytest
 from flask import Flask
 from packaging.version import Version
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from configs.feature import OpsTraceConfig
 from enums import DeploymentEdition
+
+
+def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
+    with pytest.raises(ValidationError, match="must cover the retry window"):
+        OpsTraceConfig(
+            OPS_TRACE_UNIFIED_ENABLED=True,
+            OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+            OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+            OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+        )
+
+
+def test_ops_trace_config_skips_parent_context_validation_when_unified_tracing_is_disabled() -> None:
+    OpsTraceConfig(
+        OPS_TRACE_UNIFIED_ENABLED=False,
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+    )
+
+
+def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> None:
+    OpsTraceConfig(
+        OPS_TRACE_UNIFIED_ENABLED=True,
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=20,
+    )
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -121,11 +150,19 @@ def test_turnstile_config_is_parsed() -> None:
     config = _make_config(
         TURNSTILE_SECRET_KEY=" test-secret ",
         TURNSTILE_ALLOWED_HOSTNAMES="dify.dev, Login.Example.COM. ",
+        TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED="true",
     )
 
     assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
     assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
     assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
+    assert config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED is True
+
+
+def test_email_code_login_attempt_budget_is_parsed() -> None:
+    config = _make_config(EMAIL_CODE_LOGIN_MAX_ATTEMPTS="7")
+
+    assert config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS == 7
 
 
 def test_plugin_remote_install_port_rejects_host_port_spec() -> None:

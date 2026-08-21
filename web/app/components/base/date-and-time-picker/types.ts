@@ -74,7 +74,6 @@ export type TimePickerProps = {
   ) => React.ReactElement
   title?: string
   minuteFilter?: (minutes: string[]) => string[]
-  popupClassName?: string
   notClearable?: boolean
   triggerFullWidth?: boolean
   showTimezone?: boolean

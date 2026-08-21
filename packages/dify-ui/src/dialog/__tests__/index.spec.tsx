@@ -1,8 +1,9 @@
 import { render } from 'vitest-browser-react'
+import { IconButton } from '../../icon-button'
 import {
   createDialogHandle,
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -46,24 +47,22 @@ describe('Dialog wrapper', () => {
     })
   })
 
-  describe('Props', () => {
-    it('should not render close button when DialogCloseButton is not provided', async () => {
+  describe('Composition', () => {
+    it('should compose an explicitly named IconButton as the close control', async () => {
       const screen = await render(
         <Dialog open>
           <DialogContent>
-            <span>Dialog body</span>
-          </DialogContent>
-        </Dialog>,
-      )
-
-      expect(() => screen.getByRole('button', { name: 'Close' }).element()).toThrow()
-    })
-
-    it('should render explicit close button with custom aria-label', async () => {
-      const screen = await render(
-        <Dialog open>
-          <DialogContent>
-            <DialogCloseButton aria-label="Dismiss dialog" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label="Dismiss dialog"
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
@@ -74,31 +73,53 @@ describe('Dialog wrapper', () => {
         .toBeInTheDocument()
     })
 
-    it('should render default close button label when aria-label is omitted', async () => {
+    it('should close the dialog when the composed close control is activated', async () => {
       const screen = await render(
-        <Dialog open>
+        <Dialog defaultOpen>
           <DialogContent>
-            <DialogCloseButton />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label="Close dialog"
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
       )
 
-      await expect.element(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+      await screen.getByRole('button', { name: 'Close dialog' }).click()
+
+      await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
     })
 
-    it('should forward close button props to base primitive', async () => {
+    it('should preserve the disabled state of a composed close control', async () => {
       const screen = await render(
         <Dialog open>
           <DialogContent>
-            <DialogCloseButton data-testid="close-button" disabled />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label="Close dialog"
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                  disabled
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <span>Dialog body</span>
           </DialogContent>
         </Dialog>,
       )
 
-      const closeButton = screen.getByTestId('close-button')
-      await expect.element(closeButton).toBeDisabled()
+      await expect.element(screen.getByRole('button', { name: 'Close dialog' })).toBeDisabled()
     })
   })
 })

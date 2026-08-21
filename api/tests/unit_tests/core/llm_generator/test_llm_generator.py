@@ -186,9 +186,13 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.return_value = mock_response
 
         with patch("core.llm_generator.llm_generator.TraceQueueManager") as mock_trace:
-            name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
+            name = LLMGenerator.generate_conversation_name(
+                "tenant_id", "test query", "conversation-1", "app-1", message_id="message-1"
+            )
             assert name == "Test Conversation Name"
-            mock_trace.assert_called_once()
+            mock_trace.assert_called_once_with(app_id="app-1")
+            trace_task = mock_trace.return_value.add_trace_task.call_args.args[0]
+            assert trace_task.message_id == "message-1"
 
     def test_generate_conversation_name_truncated(self, mock_model_instance):
         long_query = "a" * 2100
@@ -464,7 +468,6 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = Exception("Unexpected multi-step error")
 
         result = LLMGenerator.generate_rule_config("tenant_id", payload)
-        assert "Failed to handle unexpected exception" in result["error"]
         assert "Unexpected multi-step error" in result["error"]
 
     def test_generate_code_python_success(self, mock_model_instance, model_config_entity):
@@ -503,7 +506,7 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
         result = LLMGenerator.generate_code("tenant_id", payload)
-        assert "An unexpected error occurred" in result["error"]
+        assert "Random error" in result["error"]
 
     def test_generate_qa_document_success(self, mock_model_instance):
         mock_response = MagicMock(spec=LLMResult)
@@ -548,7 +551,6 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.return_value = mock_response
 
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
-        assert "An unexpected error occurred" in result["error"]
         assert "Failed to parse structured output" in result["error"]
 
     def test_generate_structured_output_invoke_error(self, mock_model_instance, model_config_entity):
@@ -556,14 +558,14 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke failed")
 
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
-        assert "Failed to generate JSON Schema" in result["error"]
+        assert "Invoke failed" in result["error"]
 
     def test_generate_structured_output_exception(self, mock_model_instance, model_config_entity):
         payload = RuleStructuredOutputPayload(instruction="error", model_config=model_config_entity)
         mock_model_instance.invoke_llm.side_effect = Exception("Random error")
 
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
-        assert "An unexpected error occurred" in result["error"]
+        assert "Random error" in result["error"]
 
     def test_instruction_modify_legacy_without_last_run_uses_real_empty_query(
         self,
@@ -835,12 +837,11 @@ class TestLLMGenerator:
             app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
         )
 
-        assert "An unexpected error occurred" in result["error"]
         assert error_fragment in result["error"]
 
     @pytest.mark.parametrize(
         ("model_error", "error_fragment"),
-        [(InvokeError("invoke failed"), "Failed to generate code"), (RuntimeError("boom"), "unexpected error")],
+        [(InvokeError("invoke failed"), "invoke failed"), (RuntimeError("boom"), "boom")],
     )
     def test_instruction_modify_handles_model_errors(
         self,
@@ -858,3 +859,75 @@ class TestLLMGenerator:
         )
 
         assert error_fragment.lower() in result["error"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Prompt-generation telemetry emit-site tests
+# ---------------------------------------------------------------------------
+
+
+class TestPromptGenerationTelemetryEmit:
+    """Verify that LLM generator methods call telemetry_emit with a
+    PromptGenerationEvent so the metric pipeline is not accidentally broken."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, recording_model_instance: Mock) -> None:
+        self.model_instance = recording_model_instance
+
+    @patch("core.llm_generator.llm_generator.telemetry_emit")
+    def test_generate_code_emits_on_success(self, mock_emit: MagicMock) -> None:
+        self.model_instance.invoke_llm.return_value = _llm_result("print('hello')")
+        model_cfg = ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={})
+        args = RuleCodeGeneratePayload(instruction="write hello world", model_config=model_cfg, code_language="python")
+
+        LLMGenerator.generate_code(tenant_id="t-1", args=args, app_id="app-1")
+
+        mock_emit.assert_called_once()
+        event = mock_emit.call_args[0][0]
+        assert type(event).__name__ == "PromptGenerationEvent"
+        assert event.payload["operation_type"] == "code_generate"
+        assert event.payload["model_provider"] == "openai"
+        assert event.payload["model_name"] == "gpt-4"
+        assert event.context.tenant_id == "t-1"
+        assert event.context.app_id == "app-1"
+        assert event.payload["error"] is None
+
+    @patch("core.llm_generator.llm_generator.telemetry_emit")
+    def test_generate_code_emits_on_failure(self, mock_emit: MagicMock) -> None:
+        self.model_instance.invoke_llm.side_effect = InvokeError("model down")
+        model_cfg = ModelConfig(provider="openai", name="gpt-4", mode="chat", completion_params={})
+        args = RuleCodeGeneratePayload(instruction="write hello world", model_config=model_cfg, code_language="python")
+
+        result = LLMGenerator.generate_code(tenant_id="t-1", args=args)
+
+        mock_emit.assert_called_once()
+        event = mock_emit.call_args[0][0]
+        assert event.payload["error"] == "model down"
+        assert "Failed to generate code" in result["error"]
+
+    @patch("core.llm_generator.llm_generator.telemetry_emit")
+    def test_generate_rule_config_no_variable_emits(self, mock_emit: MagicMock) -> None:
+        self.model_instance.invoke_llm.return_value = _llm_result("generated prompt")
+        model_cfg = ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={})
+        args = RuleGeneratePayload(instruction="be helpful", model_config=model_cfg, no_variable=True)
+
+        LLMGenerator.generate_rule_config(tenant_id="t-1", args=args, app_id="app-2")
+
+        mock_emit.assert_called_once()
+        event = mock_emit.call_args[0][0]
+        assert event.payload["operation_type"] == "rule_generate"
+        assert event.payload["model_provider"] == "anthropic"
+        assert event.context.app_id == "app-2"
+
+    @patch("core.llm_generator.llm_generator.telemetry_emit")
+    def test_generate_rule_config_no_variable_emits_on_failure(self, mock_emit: MagicMock) -> None:
+        self.model_instance.invoke_llm.side_effect = InvokeError("auth fail")
+        model_cfg = ModelConfig(provider="anthropic", name="claude-3", mode="chat", completion_params={})
+        args = RuleGeneratePayload(instruction="be helpful", model_config=model_cfg, no_variable=True)
+
+        result = LLMGenerator.generate_rule_config(tenant_id="t-1", args=args)
+
+        mock_emit.assert_called_once()
+        event = mock_emit.call_args[0][0]
+        assert event.payload["error"] == "auth fail"
+        assert "error" in result

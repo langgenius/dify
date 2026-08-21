@@ -125,7 +125,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
             self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
-                conversation_id=self._conversation_id, query=self._application_generate_entity.query
+                conversation_id=self._conversation_id,
+                query=self._application_generate_entity.query,
+                message_id=self._message_id,
             )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
@@ -273,6 +275,17 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     with session_factory.create_session() as session:
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
                         session.commit()
+
+                    if trace_manager:
+                        trace_manager.add_trace_task(
+                            TraceTask(
+                                TraceTaskName.MESSAGE_TRACE,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
+                            )
+                        )
+
                     yield self.error_to_stream_response(err)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():

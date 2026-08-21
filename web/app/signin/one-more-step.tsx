@@ -149,7 +149,7 @@ const OneMoreStep = () => {
                 />
                 <PopoverContent
                   placement="top"
-                  popupClassName="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
+                  className="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>
                     <div className="font-medium">{t(($) => $.sendUsMail, { ns: 'login' })}</div>

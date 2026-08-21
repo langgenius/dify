@@ -12,6 +12,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -1336,15 +1337,36 @@ class NewAgentBetaConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_UNIFIED_ENABLED: bool = Field(
+        description="Enable unified ops tracing for providers registered in the unified registry.",
+        default=False,
+    )
+
+    # Include scheduling and export grace after the parent workflow's maximum execution time.
+    # Recommended: max_retries >= ceil((WORKFLOW_MAX_EXECUTION_TIME + grace_seconds) / delay_seconds).
     OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
         description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=60,
+        default=300,
     )
 
     OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
         description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
         default=5,
     )
+
+    OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
+        description="Retention in seconds for unified tracing parent contexts.",
+        default=1800,
+    )
+
+    @model_validator(mode="after")
+    def validate_parent_context_retention(self) -> "OpsTraceConfig":
+        if not self.OPS_TRACE_UNIFIED_ENABLED:
+            return self
+        retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
+        if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
+            raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")
+        return self
 
 
 class CeleryBeatConfig(BaseSettings):
@@ -1547,6 +1569,10 @@ class LoginConfig(BaseSettings):
     )
     EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="expiry time in minutes for email code login token",
+        default=5,
+    )
+    EMAIL_CODE_LOGIN_MAX_ATTEMPTS: PositiveInt = Field(
+        description="maximum number of verification attempts for an email code login challenge",
         default=5,
     )
     ALLOW_REGISTER: bool = Field(

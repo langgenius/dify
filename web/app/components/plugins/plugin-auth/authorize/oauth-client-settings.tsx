@@ -1,7 +1,8 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useForm, useStore } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
@@ -150,7 +151,17 @@ const OAuthClientSettings = ({
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 pt-0">
             {pluginPayload.detail && (
