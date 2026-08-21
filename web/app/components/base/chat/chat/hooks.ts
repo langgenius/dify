@@ -899,17 +899,21 @@ export const useChat = (
               responseItem.workflowProcess.tracing[currentIndex] = nodeFinishedData as any
           })
         },
-        onTTSChunk: (messageId: string, audio: string) => {
+        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
           if (!audio || audio === '') return
           const audioPlayer = getOrCreatePlayer()
           if (audioPlayer) {
-            audioPlayer.playAudioWithAudio(audio, true)
+            if (audioType) audioPlayer.playAudioWithAudio(audio, true, audioType)
+            else audioPlayer.playAudioWithAudio(audio, true)
             AudioPlayerManager.getInstance().resetMsgId(messageId)
           }
         },
-        onTTSEnd: (messageId: string, audio: string) => {
+        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
           const audioPlayer = getOrCreatePlayer()
-          if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
+          if (audioPlayer) {
+            if (audioType) audioPlayer.playAudioWithAudio(audio, false, audioType)
+            else audioPlayer.playAudioWithAudio(audio, false)
+          }
         },
         onLoopStart: ({ data: loopStartedData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
@@ -1636,17 +1640,21 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
-        onTTSChunk: (messageId: string, audio: string) => {
+        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
           if (!audio || audio === '') return
           const audioPlayer = getOrCreatePlayer()
           if (audioPlayer) {
-            audioPlayer.playAudioWithAudio(audio, true)
+            if (audioType) audioPlayer.playAudioWithAudio(audio, true, audioType)
+            else audioPlayer.playAudioWithAudio(audio, true)
             AudioPlayerManager.getInstance().resetMsgId(messageId)
           }
         },
-        onTTSEnd: (messageId: string, audio: string) => {
+        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
           const audioPlayer = getOrCreatePlayer()
-          if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
+          if (audioPlayer) {
+            if (audioType) audioPlayer.playAudioWithAudio(audio, false, audioType)
+            else audioPlayer.playAudioWithAudio(audio, false)
+          }
         },
         onLoopStart: ({ data: loopStartedData }) => {
           responseItem.workflowProcess!.tracing!.push({

@@ -350,7 +350,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             return None
         audio_msg = publisher.check_and_get_audio()
         if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
-            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
+            return MessageAudioStreamResponse(audio=audio_msg.audio, audio_type=audio_msg.audio_type, task_id=task_id)
         return None
 
     def _wrapper_process_stream_response(
@@ -392,12 +392,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     break
                 else:
                     start_listener_time = time.time()
-                    yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
+                    yield MessageAudioStreamResponse(
+                        audio=audio_trunk.audio, audio_type=audio_trunk.audio_type, task_id=task_id
+                    )
             except Exception:
                 logger.exception("Failed to listen audio message, task_id: %s", task_id)
                 break
         if tts_publisher:
-            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+            yield MessageAudioEndStreamResponse(audio="", audio_type=tts_publisher.audio_mime_type, task_id=task_id)
 
     @contextmanager
     def _database_session(self):

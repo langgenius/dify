@@ -60,9 +60,12 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
+from core.plugin.entities.plugin_daemon import TTSAudioChunk
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
@@ -581,7 +584,8 @@ class TestAudioServiceTTS:
         )
 
         # Assert
-        assert result == b"audio data"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio data"
         mock_model_manager_class.assert_called_once_with(tenant_id=app.tenant_id, user_id="user-123")
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Hello world",
@@ -619,7 +623,8 @@ class TestAudioServiceTTS:
         )
 
         # Assert
-        assert result == b"audio data"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio data"
         # Verify default voice was used
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "default-voice"
@@ -656,7 +661,8 @@ class TestAudioServiceTTS:
         )
 
         # Assert
-        assert result == b"audio data"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"audio data"
         call_args = mock_model_instance.invoke_tts.call_args
         assert call_args.kwargs["voice"] == "auto-voice"
 
@@ -696,7 +702,8 @@ class TestAudioServiceTTS:
         )
 
         # Assert
-        assert result == b"draft audio"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"draft audio"
         mock_workflow_service.get_draft_workflow.assert_called_once_with(app_model=app, session=sqlite_session)
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
@@ -762,11 +769,68 @@ class TestAudioServiceTTS:
         )
 
         # Assert
-        assert result == b"message audio"
+        assert result.content_type == "audio/mpeg"
+        assert result.get_data() == b"message audio"
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Message answer",
             voice="message-voice",
         )
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_tts_uses_detected_wav_mime_type_for_streams(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+        app: Flask,
+    ):
+        app_model_config = factory.create_app_model_config_mock(
+            text_to_speech_dict={"enabled": True, "voice": "en-US-Neural"}
+        )
+        app_model = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_tts.return_value = iter(
+            [b"RIFF\x24\x00\x00\x00WAVEfmt ", b"\x10\x00\x00\x00audio-data"]
+        )
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        with app.test_request_context("/text-to-audio", method="POST"):
+            result = AudioService.transcript_tts(
+                app_model=app_model,
+                session=sqlite_session,
+                text="Hello world",
+                voice="en-US-Neural",
+            )
+
+        assert result.content_type == "audio/wav"
+        assert result.get_data() == b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data"
+
+    @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
+    def test_transcript_tts_returns_provider_output_error_for_mime_magic_mismatch(
+        self,
+        mock_model_manager_class,
+        factory: AudioServiceTestDataFactory,
+        sqlite_session: Session,
+        app: Flask,
+    ):
+        app_model_config = factory.create_app_model_config_mock(
+            text_to_speech_dict={"enabled": True, "voice": "en-US-Neural"}
+        )
+        app_model = factory.create_app_mock(mode=AppMode.CHAT, app_model_config=app_model_config)
+        mock_model_instance = MagicMock()
+        mock_model_instance.invoke_tts.return_value = iter(
+            [TTSAudioChunk(b"RIFF\x24\x00\x00\x00WAVEfmt \x10\x00\x00\x00audio-data", "audio/mpeg")]
+        )
+        mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
+
+        with app.test_request_context("/text-to-audio", method="POST"):
+            with pytest.raises(InvokeBadRequestError, match="Invalid TTS provider audio output"):
+                AudioService.transcript_tts(
+                    app_model=app_model,
+                    session=sqlite_session,
+                    text="Hello world",
+                    voice="en-US-Neural",
+                )
 
     def test_transcript_tts_raises_error_when_text_missing(
         self,

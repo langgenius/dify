@@ -1026,6 +1026,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Publisher:
+            audio_mime_type = "audio/mpeg"
+
             def check_and_get_audio(self):
                 return AudioTrunk("finish", "")
 
@@ -1061,6 +1063,8 @@ class TestEasyUiBasedGenerateTaskPipeline:
         )
 
         class _Publisher:
+            audio_mime_type = "audio/mpeg"
+
             def __init__(self):
                 self._events = iter([None, AudioTrunk("responding", "later"), AudioTrunk("finish", "")])
 
