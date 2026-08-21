@@ -20,7 +20,6 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentSoulConfig,
-    DeclaredOutputConfig,
     WorkflowNodeJobConfig,
     WorkflowPreviousNodeOutputRef,
 )
@@ -554,9 +553,12 @@ class WorkflowAgentPublishService:
             if not isinstance(declared_outputs_payload, list):
                 raise ValueError("Workflow Agent node agent_declared_outputs must be a list.")
             try:
-                node_job.declared_outputs = [
-                    DeclaredOutputConfig.model_validate(output) for output in declared_outputs_payload
-                ]
+                node_job = WorkflowNodeJobConfig.model_validate(
+                    {
+                        **node_job.model_dump(mode="python"),
+                        "declared_outputs": declared_outputs_payload,
+                    }
+                )
             except ValidationError as exc:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
