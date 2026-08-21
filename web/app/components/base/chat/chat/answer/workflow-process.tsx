@@ -1,6 +1,6 @@
 import type { ChatItem, WorkflowProcess } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -21,7 +21,12 @@ const WorkflowProcessItem = ({
   readonly = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
+  const [prevExpand, setPrevExpand] = useState(expand)
   const [collapse, setCollapse] = useState(!expand)
+  if (prevExpand !== expand) {
+    setPrevExpand(expand)
+    setCollapse(!expand)
+  }
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed =
@@ -41,10 +46,6 @@ const WorkflowProcessItem = ({
   const collapsedTitle = failed
     ? data.error || latestNode?.error || latestNode?.title || fallbackTitle
     : latestNode?.title || fallbackTitle
-
-  useEffect(() => {
-    setCollapse(!expand)
-  }, [expand])
 
   if (readonly) return null
 
