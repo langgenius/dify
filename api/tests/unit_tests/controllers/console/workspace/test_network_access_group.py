@@ -296,6 +296,7 @@ def test_upstream_error_mapping(status_code: int, expected_exception: type[HTTPE
 def test_conflict_error_mapping_preserves_safe_actionable_reason(reason: str, expected_message: str) -> None:
     error = _translate_upstream_error(NetworkAccessGroupUpstreamError(409, reason))
     assert isinstance(error, Conflict)
+    assert error.description is not None
     assert expected_message in error.description
 
 

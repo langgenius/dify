@@ -26,7 +26,7 @@ def billing_config() -> Iterator[None]:
 def test_group_list_and_item_reads_use_authenticated_saas_endpoints() -> None:
     response = MagicMock(status_code=httpx.codes.OK)
     response.json.side_effect = [
-        {"tenant_id": TENANT_ID, "entitled": True, "groups": []},
+        {"tenant_id": TENANT_ID, "entitled": True, "groups": list[object]()},
         {"group": {"id": GROUP_ID}},
     ]
 
