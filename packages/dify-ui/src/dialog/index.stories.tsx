@@ -319,7 +319,7 @@ const FormDialogDemo = () => {
                   href="https://docs.dify.ai/use-dify/workspace/api-extension/api-extension"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:ring-1 focus-visible:ring-components-input-border-active"
+                  className="inline-flex w-fit items-center text-text-accent underline decoration-text-accent/60 decoration-1 underline-offset-2 outline-hidden hover:decoration-text-accent focus-visible:rounded-xs focus-visible:no-underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 >
                   View API extension docs
                 </a>
