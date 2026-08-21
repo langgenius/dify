@@ -60,6 +60,43 @@ def test_remote_client_builds_capability_only_headers(monkeypatch: pytest.Monkey
     assert captured["follow_redirects"] is False
 
 
+def test_remote_client_allows_quality_replay_evidence_detail_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+    response = httpx.Response(
+        200,
+        json={"id": "run-1", "items": []},
+        headers={"Content-Type": "application/json"},
+    )
+
+    def fake_make_request(**kwargs):
+        captured.update(kwargs)
+        return response
+
+    monkeypatch.setattr(ssrf_proxy, "make_request", fake_make_request)
+    monkeypatch.setattr(ssrf_proxy, "buffer_response", lambda response, **_: response)
+    client = HTTPKnowledgeFSProductRemoteClient(base_url="https://knowledge-fs.test", timeout_seconds=3)
+    evidence_item_id = "771a6d87-6421-458d-bd44-5127f016370d"
+
+    result = client.execute_json(
+        KnowledgeFSRemoteJSONRequest(
+            operation_id="getQualityReplay",
+            method="GET",
+            path="/knowledge-spaces/space-1/quality/replay-runs/run-1",
+            namespace_id="tenant-1",
+            knowledge_space_id="space-1",
+            capability_token="capability-token",
+            trace_id="trace-1",
+            payload=None,
+            query=(("evidenceItemId", evidence_item_id),),
+        )
+    )
+
+    assert result == {"id": "run-1", "items": []}
+    assert captured["params"] == (("evidenceItemId", evidence_item_id),)
+
+
 def test_remote_client_streams_sse_through_internal_capability_transport(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

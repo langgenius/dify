@@ -1152,7 +1152,9 @@ KNOWLEDGE_FS_PRODUCT_OPERATIONS: Final[MappingProxyType[str, KnowledgeFSProductO
             "/knowledge-spaces/{id}/quality/replay-runs/{runId}",
             "json",
             resource_resolver="knowledge_space",
-            max_request_bytes=0,
+            # The optional evidenceItemId detail selector is transported as a query string.
+            # Keep the same bounded query allowance as the replay list operation.
+            max_request_bytes=16 * 1024,
             max_response_bytes=4 * 1024 * 1024,
             stream_kind="json",
         ),
