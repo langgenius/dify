@@ -6,6 +6,10 @@ class BillingAccessDeniedError(BillingError):
     pass
 
 
+class ComplianceRateLimitExceededError(BillingError):
+    pass
+
+
 class BillingUpstreamInvalidResponseError(BillingError):
     pass
 

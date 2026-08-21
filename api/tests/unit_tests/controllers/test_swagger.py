@@ -642,6 +642,12 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
             "502": "BillingOperationFailedErrorResponse",
             "503": "BillingUnavailableErrorResponse",
         },
+        ("/compliance/download", "get"): {
+            "422": "BillingUnprocessableEntityErrorResponse",
+            "429": "ComplianceRateLimitErrorResponse",
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
     }
 
     for (path, method), responses in expected_responses.items():
@@ -653,6 +659,7 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
     expected_error_contracts = {
         "BillingAccessDeniedErrorResponse": ("billing_access_denied", 403),
         "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
+        "ComplianceRateLimitErrorResponse": ("compliance_rate_limit", 429),
         "BillingOperationFailedErrorResponse": ("billing_operation_failed", 502),
         "BillingUnavailableErrorResponse": ("billing_unavailable", 503),
     }
@@ -661,6 +668,10 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
         properties = schemas[model_name]["properties"]
         assert properties["code"]["const"] == error_code
         assert properties["status"]["const"] == status
+
+    compliance_response = schemas["ComplianceDownloadResponse"]
+    assert set(compliance_response["properties"]) == {"url"}
+    assert compliance_response["required"] == ["url"]
 
 
 def test_console_model_provider_checkout_route_is_deprecated(monkeypatch: pytest.MonkeyPatch):
