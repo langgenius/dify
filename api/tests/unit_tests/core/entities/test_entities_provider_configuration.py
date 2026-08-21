@@ -314,14 +314,24 @@ def test_generate_next_api_key_name_uses_highest_numeric_suffix() -> None:
 
 
 def test_generate_next_api_key_name_falls_back_to_default_on_error() -> None:
+    from core.entities.provider_configuration import logger as provider_config_logger
+
     configuration = _build_provider_configuration()
     session = Mock()
 
     def _raise_query_error():
         raise RuntimeError("boom")
 
-    name = configuration._generate_next_api_key_name(session=session, query_factory=_raise_query_error)
+    with patch.object(provider_config_logger, "warning") as mock_warning:
+        name = configuration._generate_next_api_key_name(session=session, query_factory=_raise_query_error)
+
     assert name == "API KEY 1"
+    mock_warning.assert_called_once()
+    call_kwargs = mock_warning.call_args.kwargs
+    # exc_info=True is passed so the traceback is captured at WARNING level.
+    assert call_kwargs.get("exc_info") is True
+    # The original exception message is no longer interpolated into the format string.
+    assert "boom" not in mock_warning.call_args.args[0]
 
 
 def test_generate_provider_and_custom_model_names_delegate_to_shared_generator() -> None:
