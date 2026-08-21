@@ -4049,11 +4049,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/human-input/types.ts": {
     "erasable-syntax-only/enums": {
       "count": 2
