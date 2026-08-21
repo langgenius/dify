@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Največje število nalaganj",
   "variableConfig.maxNumberTip": "Dokument < {{docLimit}}, slika < {{imgLimit}}, avdio < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "Seznam datotek",
+  "variableConfig.multi-select": "Večkratna izbira",
   "variableConfig.noDefaultSelected": "Ne izberite",
   "variableConfig.noDefaultValue": "Ni privzete vrednosti",
   "variableConfig.notSet": "Ni nastavljeno, poskusite v predpono vnesti {{input}}",

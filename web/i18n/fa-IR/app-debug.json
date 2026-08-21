@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "حداکثر تعداد آپلود",
   "variableConfig.maxNumberTip": "سند < {{docLimit}}، تصویر < {{imgLimit}}، صوت < {{audioLimit}}، ویدئو < {{videoLimit}}",
   "variableConfig.multi-files": "لیست فایل ها",
+  "variableConfig.multi-select": "انتخاب چندگانه",
   "variableConfig.noDefaultSelected": "انتخاب نکنید",
   "variableConfig.noDefaultValue": "بدون مقدار پیش فرض",
   "variableConfig.notSet": "تنظیم نشده است، سعی کنید {{input}} را در پیش‌نویس وارد کنید",

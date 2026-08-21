@@ -13,7 +13,12 @@ import {
   VarType,
 } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
-import { getNodeUsedVars, toNodeAvailableVars, updateNodeVars } from '../utils'
+import {
+  getNodeUsedVars,
+  inputVarTypeToVarType,
+  toNodeAvailableVars,
+  updateNodeVars,
+} from '../utils'
 
 const createNode = <T>(data: Node<T>['data']): Node<T> => ({
   id: 'node-1',
@@ -49,6 +54,11 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 })
 
 describe('variable utils', () => {
+  it('maps multi-select inputs to array strings', () => {
+    expect(InputVarType.multiSelect).toBe('multi-select')
+    expect(inputVarTypeToVarType(InputVarType.multiSelect)).toBe(VarType.arrayString)
+  })
+
   describe('toNodeAvailableVars', () => {
     it('excludes LLM environment aliases from generic variable pickers', () => {
       const environmentVariables: EnvironmentVariable[] = [

@@ -158,6 +158,7 @@ describe('StartPanel', () => {
 
     expect(mockConfigVarModal).toHaveBeenCalledWith(
       expect.objectContaining({
+        supportMultiSelect: true,
         varKeys: ['locale'],
       }),
     )

@@ -37,6 +37,7 @@ type IConfigModalProps = {
   onClose: () => void
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
   supportFile?: boolean
+  supportMultiSelect?: boolean
   showHiddenField?: boolean
 }
 
@@ -48,6 +49,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   onConfirm,
   showHiddenField,
   supportFile,
+  supportMultiSelect,
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
@@ -113,9 +115,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
       buildSelectOptions({
         isBasicApp,
         supportFile,
+        supportMultiSelect,
         t,
       }),
-    [isBasicApp, supportFile, t],
+    [isBasicApp, supportFile, supportMultiSelect, t],
   )
 
   const handleTypeChange = useCallback((item: SelectItem) => {

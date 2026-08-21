@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "最大上傳次數",
   "variableConfig.maxNumberTip": "文件 < {{docLimit}}, 圖片 < {{imgLimit}}, 音訊 < {{audioLimit}}, 影片 < {{videoLimit}}",
   "variableConfig.multi-files": "檔案清單",
+  "variableConfig.multi-select": "多選",
   "variableConfig.noDefaultSelected": "請勿選取",
   "variableConfig.noDefaultValue": "無預設值",
   "variableConfig.notSet": "未設定，在 Prompt 中輸入 {{input}} 試試",

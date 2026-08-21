@@ -25,6 +25,7 @@ const getIcon = (type: InputVarType) => {
         [InputVarType.textInput]: RiTextSnippet,
         [InputVarType.paragraph]: RiAlignLeft,
         [InputVarType.select]: RiCheckboxMultipleLine,
+        [InputVarType.multiSelect]: RiCheckboxMultipleLine,
         [InputVarType.number]: RiHashtag,
         [InputVarType.checkbox]: RiCheckboxLine,
         [InputVarType.jsonObject]: RiBracesLine,

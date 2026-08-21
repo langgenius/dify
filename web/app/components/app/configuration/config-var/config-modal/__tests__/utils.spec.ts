@@ -73,6 +73,20 @@ describe('config-modal utils', () => {
       expect(nextPayload.default).toBeUndefined()
     })
 
+    it('should clear unsupported defaults and hidden state when switching to multi-select', () => {
+      const payload = createInputVar({
+        type: InputVarType.textInput,
+        default: 'hello',
+        hide: true,
+      })
+
+      const nextPayload = createPayloadForType(payload, InputVarType.multiSelect)
+
+      expect(nextPayload.type).toBe(InputVarType.multiSelect)
+      expect(nextPayload.default).toBeUndefined()
+      expect(nextPayload.hide).toBe(false)
+    })
+
     it('should normalize empty select defaults to undefined', () => {
       const nextPayload = normalizeSelectDefaultValue(
         createInputVar({
@@ -111,6 +125,7 @@ describe('config-modal utils', () => {
       const options = buildSelectOptions({
         isBasicApp: false,
         supportFile: true,
+        supportMultiSelect: true,
         t,
       })
 
@@ -118,9 +133,13 @@ describe('config-modal utils', () => {
         expect.arrayContaining([
           InputVarType.singleFile,
           InputVarType.multiFiles,
+          InputVarType.multiSelect,
           InputVarType.jsonObject,
         ]),
       )
+
+      const appOptions = buildSelectOptions({ isBasicApp: false, t })
+      expect(appOptions.map((option) => option.value)).not.toContain(InputVarType.multiSelect)
     })
 
     it('should derive checkbox defaults from boolean and string values', () => {
@@ -162,6 +181,43 @@ describe('config-modal utils', () => {
 
       expect(result.errorMessage).toBe('variableConfig.errorMsg.optionRepeat')
       expect(checkVariableName).toHaveBeenCalledWith('question')
+    })
+
+    it('should validate multi-select options with the select rules', () => {
+      const emptyResult = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.multiSelect,
+          options: [],
+          hide: true,
+        }),
+        checkVariableName: () => true,
+        payload: createInputVar(),
+        t,
+      })
+      const duplicateResult = validateConfigModalPayload({
+        tempPayload: createInputVar({
+          type: InputVarType.multiSelect,
+          options: ['alpha', 'alpha'],
+        }),
+        checkVariableName: () => true,
+        payload: createInputVar(),
+        t,
+      })
+
+      expect(emptyResult.errorMessage).toBe('variableConfig.errorMsg.atLeastOneOption')
+      expect(duplicateResult.errorMessage).toBe('variableConfig.errorMsg.optionRepeat')
+      expect(
+        validateConfigModalPayload({
+          tempPayload: createInputVar({
+            type: InputVarType.multiSelect,
+            options: ['alpha'],
+            hide: true,
+          }),
+          checkVariableName: () => true,
+          payload: createInputVar(),
+          t,
+        }).payloadToSave,
+      ).toEqual(expect.objectContaining({ hide: false }))
     })
 
     it('should require custom extensions when custom file types are enabled', () => {

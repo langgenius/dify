@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "จํานวนการอัปโหลดสูงสุด",
   "variableConfig.maxNumberTip": "เอกสาร < {{docLimit}}, รูปภาพ < {{imgLimit}}, เสียง < {{audioLimit}}, วิดีโอ < {{videoLimit}}",
   "variableConfig.multi-files": "รายการไฟล์",
+  "variableConfig.multi-select": "เลือกหลายรายการ",
   "variableConfig.noDefaultSelected": "อย่าเลือก",
   "variableConfig.noDefaultValue": "ไม่มีค่าเริ่มต้น",
   "variableConfig.notSet": "ยังไม่ได้ตั้งค่า ลองพิมพ์ {{input}} ในช่องแจ้งนำหน้า",

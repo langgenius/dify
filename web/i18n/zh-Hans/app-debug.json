@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "最大上传数",
   "variableConfig.maxNumberTip": "文档 < {{docLimit}}, 图片 < {{imgLimit}}, 音频 < {{audioLimit}}, 视频 < {{videoLimit}}",
   "variableConfig.multi-files": "文件列表",
+  "variableConfig.multi-select": "多选",
   "variableConfig.noDefaultSelected": "不默认选中",
   "variableConfig.noDefaultValue": "无默认值",
   "variableConfig.notSet": "未设置，在 Prompt 中输入 {{input}} 试试",

@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Số lượt tải lên tối đa",
   "variableConfig.maxNumberTip": "Tài liệu < {{docLimit}}, hình ảnh < {{imgLimit}}, âm thanh < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "Danh sách tập tin",
+  "variableConfig.multi-select": "Chọn nhiều",
   "variableConfig.noDefaultSelected": "Không chọn",
   "variableConfig.noDefaultValue": "Không có giá trị mặc định",
   "variableConfig.notSet": "Chưa thiết lập, hãy thử nhập {{input}} trong gợi ý tiền tố",

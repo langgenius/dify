@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Jumlah upload maksimal",
   "variableConfig.maxNumberTip": "Dokumen < {{docLimit}}, gambar < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "Daftar File",
+  "variableConfig.multi-select": "Pilihan ganda",
   "variableConfig.noDefaultSelected": "Jangan pilih",
   "variableConfig.noDefaultValue": "Tidak ada nilai default",
   "variableConfig.notSet": "Belum diatur, coba ketik {{input}} di prompt awalan",

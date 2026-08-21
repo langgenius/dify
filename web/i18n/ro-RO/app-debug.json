@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Numărul maxim de încărcări",
   "variableConfig.maxNumberTip": "Document < {{docLimit}}, imagine < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "Lista de fișiere",
+  "variableConfig.multi-select": "Selecție multiplă",
   "variableConfig.noDefaultSelected": "Nu selecta",
   "variableConfig.noDefaultValue": "Fără valoare implicită",
   "variableConfig.notSet": "Nesetat, încercați să tastați {{input}} în promptul de prefix",

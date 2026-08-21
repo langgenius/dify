@@ -41,6 +41,9 @@ export const normalizeSelectDefaultValue = (inputVar: InputVar) => {
   return inputVar
 }
 
+const isOptionInputType = (type: InputVarType) =>
+  type === InputVarType.select || type === InputVarType.multiSelect
+
 export const getJsonSchemaEditorValue = (
   type: InputVarType,
   jsonSchema?: InputVar['json_schema'],
@@ -79,7 +82,10 @@ export const updatePayloadField = (payload: InputVar, key: string, value: unknow
 export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
   return produce(payload, (draft) => {
     draft.type = type
-    if (type === InputVarType.select) draft.default = undefined
+    if (isOptionInputType(type)) {
+      draft.default = undefined
+      if (type === InputVarType.multiSelect) draft.hide = false
+    }
 
     if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       draft.hide = false
@@ -99,10 +105,12 @@ export const createPayloadForType = (payload: InputVar, type: InputVarType) => {
 export const buildSelectOptions = ({
   isBasicApp,
   supportFile,
+  supportMultiSelect,
   t: rawTranslate,
 }: {
   isBasicApp: boolean
   supportFile?: boolean
+  supportMultiSelect?: boolean
   t: SelectorTranslate<'appDebug' | 'workflow'>
 }): SelectItem[] => {
   const t = getStringSelectorTranslate(rawTranslate)
@@ -119,6 +127,14 @@ export const buildSelectOptions = ({
       name: t(($) => $['variableConfig.select'], { ns: 'appDebug' }),
       value: InputVarType.select,
     },
+    ...(supportMultiSelect
+      ? [
+          {
+            name: t(($) => $['variableConfig.multi-select'], { ns: 'appDebug' }),
+            value: InputVarType.multiSelect,
+          },
+        ]
+      : []),
     {
       name: t(($) => $['variableConfig.number'], { ns: 'appDebug' }),
       value: InputVarType.number,
@@ -157,9 +173,11 @@ export const validateConfigModalPayload = ({
   t: rawTranslate,
 }: ValidateConfigModalPayloadOptions): ValidateConfigModalPayloadResult => {
   const t = getStringSelectorTranslate(rawTranslate)
-  const normalizedTempPayload = [InputVarType.singleFile, InputVarType.multiFiles].includes(
-    tempPayload.type,
-  )
+  const normalizedTempPayload = [
+    InputVarType.singleFile,
+    InputVarType.multiFiles,
+    InputVarType.multiSelect,
+  ].includes(tempPayload.type)
     ? { ...tempPayload, hide: false }
     : tempPayload
   const jsonSchemaValue = tempPayload.json_schema
@@ -186,7 +204,7 @@ export const validateConfigModalPayload = ({
     }
   }
 
-  if (normalizedTempPayload.type === InputVarType.select) {
+  if (isOptionInputType(normalizedTempPayload.type)) {
     if (!normalizedTempPayload.options?.length) {
       return {
         errorMessage: t(($) => $['variableConfig.errorMsg.atLeastOneOption'], { ns: 'appDebug' }),

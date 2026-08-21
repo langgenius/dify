@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Максимальна кількість завантажень",
   "variableConfig.maxNumberTip": "Документ < {{docLimit}}, зображення < {{imgLimit}}, аудіо < {{audioLimit}}, відео < {{videoLimit}}",
   "variableConfig.multi-files": "Список файлів",
+  "variableConfig.multi-select": "Множинний вибір",
   "variableConfig.noDefaultSelected": "Не вибирати",
   "variableConfig.noDefaultValue": "Без значення за замовчуванням",
   "variableConfig.notSet": "Не встановлено, спробуйте ввести {{input}} у префіксній підказці",
