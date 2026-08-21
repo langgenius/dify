@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import io
-from inspect import unwrap
+from inspect import signature
+from inspect import unwrap as inspect_unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -31,6 +32,18 @@ from controllers.console.workspace.skills import (
 from controllers.inner_api.plugin.skills import PublishedSkillPullApi
 from models.account import Account
 from services.skill_management_service import SkillAssistAttachmentPayload, SkillManagementServiceError
+
+
+def unwrap(func):
+    """Keep direct controller tests compatible with the session-injected methods."""
+    unwrapped = inspect_unwrap(func)
+    parameters = list(signature(unwrapped).parameters.values())
+    if len(parameters) > 1 and parameters[1].name == "session":
+        def invoke(*args: object, **kwargs: object):
+            return unwrapped(args[0], MagicMock(), *args[1:], **kwargs)
+
+        return invoke
+    return unwrapped
 
 
 @pytest.fixture
