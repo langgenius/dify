@@ -116,9 +116,7 @@ class AgentDslService:
             snapshot_id=agent.active_config_snapshot_id,
             include_draft=draft is not None,
         )
-        return package_ref, {
-            package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)
-        }
+        return package_ref, {package_ref: make_portable_agent_package(agent, soul, workspace_skills=workspace_skills)}
 
     def export_workflow_packages(
         self, *, workflow: Workflow, graph: Mapping[str, Any]
@@ -413,10 +411,10 @@ class AgentDslService:
         if include_draft:
             rows = list(
                 self.session.execute(
-                select(AgentSkillBinding, Skill)
-                .join(Skill, Skill.id == AgentSkillBinding.skill_id)
-                .where(AgentSkillBinding.tenant_id == tenant_id, AgentSkillBinding.agent_id == agent_id)
-                .order_by(AgentSkillBinding.priority)
+                    select(AgentSkillBinding, Skill)
+                    .join(Skill, Skill.id == AgentSkillBinding.skill_id)
+                    .where(AgentSkillBinding.tenant_id == tenant_id, AgentSkillBinding.agent_id == agent_id)
+                    .order_by(AgentSkillBinding.priority)
                 )
             )
             if rows or not snapshot_id:
@@ -432,14 +430,14 @@ class AgentDslService:
         if snapshot_id:
             rows = list(
                 self.session.execute(
-                select(AgentSkillBindingSnapshot, Skill)
-                .join(Skill, Skill.id == AgentSkillBindingSnapshot.skill_id)
-                .where(
-                    AgentSkillBindingSnapshot.tenant_id == tenant_id,
-                    AgentSkillBindingSnapshot.agent_id == agent_id,
-                    AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
-                )
-                .order_by(AgentSkillBindingSnapshot.priority)
+                    select(AgentSkillBindingSnapshot, Skill)
+                    .join(Skill, Skill.id == AgentSkillBindingSnapshot.skill_id)
+                    .where(
+                        AgentSkillBindingSnapshot.tenant_id == tenant_id,
+                        AgentSkillBindingSnapshot.agent_id == agent_id,
+                        AgentSkillBindingSnapshot.config_snapshot_id == snapshot_id,
+                    )
+                    .order_by(AgentSkillBindingSnapshot.priority)
                 )
             )
         else:
@@ -466,9 +464,7 @@ class AgentDslService:
     ) -> None:
         for workspace_skill in sorted(package.workspace_skills, key=lambda item: item.priority):
             skill = self.session.scalar(
-                select(Skill)
-                .where(Skill.tenant_id == tenant_id, Skill.name == workspace_skill.name)
-                .limit(1)
+                select(Skill).where(Skill.tenant_id == tenant_id, Skill.name == workspace_skill.name).limit(1)
             )
             if skill is None:
                 warnings.append(
