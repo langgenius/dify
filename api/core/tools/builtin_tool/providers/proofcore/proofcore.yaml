@@ -1,0 +1,12 @@
+identity:
+  author: ProofCore Protocol
+  name: proofcore
+  label:
+    en_US: ProofCore Notary
+    zh_Hans: ProofCore 存证公证
+    ru_RU: ProofCore Нотариат
+  icon: _icon.png
+description:
+  en_US: Zero-auth cryptographic notarization and provenance engine on TON Blockchain.
+  zh_Hans: 基于 TON 区块链的零授权密码学存证与溯源引擎。
+  ru_RU: Криптографический нотариат и фиксация данных в блокчейне TON.

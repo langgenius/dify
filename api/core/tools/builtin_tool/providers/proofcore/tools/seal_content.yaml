@@ -1,0 +1,34 @@
+identity:
+  name: seal_content
+  author: ProofCore Protocol
+  label:
+    en_US: Seal Content
+    zh_Hans: 存证内容
+    ru_RU: Запечатать контент
+description:
+  human:
+    en_US: Cryptographically seals text onto the TON Blockchain and returns a verification badge.
+    zh_Hans: 将文本加密固定到 TON 区块链并返回验证徽章。
+    ru_RU: Запечатывает текст в блокчейне TON и возвращает бейдж верификации.
+  llm: Use this tool to notarize important reports, agreements, or outputs on the blockchain.
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Content
+      zh_Hans: 内容
+      ru_RU: Текст
+    human_description:
+      en_US: The exact text to be sealed.
+      zh_Hans: 要存证的具体文本内容。
+      ru_RU: Текст для нотариальной фиксации.
+    llm_description: The full text report or document to notarize.
+    form: llm
+  - name: agent_id
+    type: string
+    required: false
+    default: Dify Agent
+    label:
+      en_US: Agent Identifier
+    form: llm
