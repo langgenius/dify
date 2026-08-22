@@ -499,6 +499,56 @@ class TestPaginationForwarding:
         assert options.results_per_page == 15
         assert options.reverse is True
 
+    def test_app_user_access_policies_forwards_outer_pagination_params(self, app):
+        result = rbac_mod.svc.ResourceUserAccessPoliciesResponse(scope=rbac_mod.RBACResourceWhitelistScope.SPECIFIC)
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/apps/app-1/user-access-policies?page=2&limit=30&reverse=false"
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.AppAccess.user_access_policies",
+                return_value=result,
+            ) as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACAppUserAccessPoliciesApi.get)(
+                rbac_mod.RBACAppUserAccessPoliciesApi(),
+                "app-1",
+            )
+
+        args, kwargs = mock_list.call_args
+        assert args == ("tenant-1", "acct-1", "app-1")
+        options = kwargs["options"]
+        assert options.page_number == 2
+        assert options.results_per_page == 30
+        assert options.reverse is False
+
+    def test_dataset_user_access_policies_forwards_outer_pagination_params(self, app):
+        result = rbac_mod.svc.ResourceUserAccessPoliciesResponse(scope=rbac_mod.RBACResourceWhitelistScope.SPECIFIC)
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/datasets/dataset-1/user-access-policies?page=3&limit=40&reverse=true"
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.DatasetAccess.user_access_policies",
+                return_value=result,
+            ) as mock_list,
+            patch("controllers.console.workspace.rbac._dump", return_value={}),
+        ):
+            inspect.unwrap(rbac_mod.RBACDatasetUserAccessPoliciesApi.get)(
+                rbac_mod.RBACDatasetUserAccessPoliciesApi(),
+                "dataset-1",
+            )
+
+        args, kwargs = mock_list.call_args
+        assert args == ("tenant-1", "acct-1", "dataset-1")
+        options = kwargs["options"]
+        assert options.page_number == 3
+        assert options.results_per_page == 40
+        assert options.reverse is True
+
 
 class TestAccessPolicyBindingLockUnlock:
     def test_lock_forwards_binding_id(self, app):

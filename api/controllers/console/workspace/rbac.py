@@ -568,12 +568,17 @@ class _AccessControlLanguageQuery(BaseModel):
     language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
 
 
+class _ResourceUserAccessPoliciesQuery(_PaginationQuery):
+    language: Literal["en", "ja", "zh"] | None = Field(default=None, description="Localized policy label language")
+
+
 register_schema_models(
     console_ns,
     _ResourceAccessScopeRequest,
     _ReplaceBindingsRequest,
     _DeleteMemberBindingsRequest,
     _AccessControlLanguageQuery,
+    _ResourceUserAccessPoliciesQuery,
     svc.ReplaceUserAccessPolicies,
 )
 
@@ -635,11 +640,12 @@ class RBACAppWhitelistApi(Resource):
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/user-access-policies")
 class RBACAppUserAccessPoliciesApi(Resource):
     @login_required
-    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.doc(params=query_params_from_model(_ResourceUserAccessPoliciesQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, app_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id))
+        options = _pagination_options()
+        result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id), options=options)
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 
@@ -743,11 +749,14 @@ class RBACDatasetWhitelistApi(Resource):
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/user-access-policies")
 class RBACDatasetUserAccessPoliciesApi(Resource):
     @login_required
-    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.doc(params=query_params_from_model(_ResourceUserAccessPoliciesQuery))
     @console_ns.response(200, "Success", console_ns.models[svc.ResourceUserAccessPoliciesResponse.__name__])
     def get(self, dataset_id):
         tenant_id, account_id = _current_ids()
-        result = svc.RBACService.DatasetAccess.user_access_policies(tenant_id, account_id, str(dataset_id))
+        options = _pagination_options()
+        result = svc.RBACService.DatasetAccess.user_access_policies(
+            tenant_id, account_id, str(dataset_id), options=options
+        )
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 
