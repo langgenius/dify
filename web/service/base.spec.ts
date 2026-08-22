@@ -461,7 +461,24 @@ describe('ssePost and sseGet', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Base model not found')
     })
-    expect(onError).toHaveBeenCalledWith('Server Error')
+    expect(onError).toHaveBeenCalledWith('Base model not found')
+  })
+
+  it('should preserve the response error for silent requests without notifying', async () => {
+    const onError = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ code: 'model_not_found', message: 'Base model not found' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, silent: true })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
+    })
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should route the stream error through a custom notifier', async () => {
@@ -562,6 +579,43 @@ describe('ssePost and sseGet', () => {
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
+  })
+
+  it('should not notify stream reader failures when silent', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const mockReader = {
+      read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
+    }
+    const response = {
+      status: 200,
+      ok: true,
+      body: {
+        getReader: () => mockReader,
+      },
+    } as unknown as Response
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
+
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
+      },
+      {
+        onError,
+        onCompleted,
+        silent: true,
+      },
+    )
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+    })
+    expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should not notify when the stream reader is aborted', async () => {

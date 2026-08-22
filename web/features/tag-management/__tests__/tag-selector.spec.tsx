@@ -204,6 +204,20 @@ describe('TagSelector', () => {
     expect(screen.getByRole('option', { name: /Backend/i })).toBeInTheDocument()
   })
 
+  it('matches existing tags without offering a case-only duplicate', async () => {
+    const user = userEvent.setup()
+    render(<TagSelector {...defaultProps} />)
+
+    await user.click(screen.getByRole('combobox', { name: /Frontend/i }))
+    await user.type(
+      await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }),
+      'frontend',
+    )
+
+    expect(screen.getByRole('option', { name: 'Frontend' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /common\.tag\.create/i })).not.toBeInTheDocument()
+  })
+
   it('applies added tags only when the popup closes', async () => {
     const user = userEvent.setup()
     render(<TagSelector {...defaultProps} />)

@@ -402,7 +402,7 @@ function PublishBarActions({
         variant="primary"
         disabled={!canPublish}
         loading={isPublishing}
-        className="h-8 rounded-lg px-3"
+        className="h-8 gap-1 rounded-lg px-3"
         onClick={onPublishRequest}
       >
         {actionIcon && <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />}
