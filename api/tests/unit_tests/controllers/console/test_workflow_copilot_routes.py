@@ -93,6 +93,47 @@ def test_action_conflict_maps_409(monkeypatch):
     assert body["code"] == "conflict"
 
 
+def test_action_resolves_action_id_to_handler_kind(monkeypatch):
+    svc = MagicMock()
+    svc.submit_action.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._action("s1", {"action_id": "run_validation", "payload": {}, "base_version": 1}, actor)
+
+    assert status == 200
+    called_action = svc.submit_action.call_args.args[2]
+    assert called_action.kind == "run_verify"
+
+
+def test_action_id_supersedes_legacy_kind_when_both_present(monkeypatch):
+    svc = MagicMock()
+    svc.submit_action.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._action(
+        "s1", {"action_id": "publish_fix", "kind": "run_verify", "payload": {}, "base_version": 1}, actor
+    )
+
+    assert status == 200
+    called_action = svc.submit_action.call_args.args[2]
+    assert called_action.kind == "publish"
+
+
+def test_action_legacy_kind_still_accepted_without_action_id(monkeypatch):
+    svc = MagicMock()
+    svc.submit_action.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._action("s1", {"kind": "run_verify", "payload": {}, "base_version": 1}, actor)
+
+    assert status == 200
+    called_action = svc.submit_action.call_args.args[2]
+    assert called_action.kind == "run_verify"
+
+
 def test_action_busy_maps_409_session_busy(monkeypatch):
     svc = MagicMock()
     svc.submit_action.side_effect = BusyError("busy")
