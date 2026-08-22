@@ -10,6 +10,9 @@ from services.workflow_copilot.service import SessionView
 def test_session_view_to_dict_round_trips_fields():
     view = SessionView(
         session_id="s1", app_id="a1", version=3, state="fix.await_verify",
+        # "waiting-input" (hyphen) is a raw passthrough literal for this
+        # asdict round-trip test, not real service output -- _run_status
+        # never returns this; the real widened value is "waiting_input".
         canvas_read_only=False, run_status="waiting-input", interrupted=False,
         conversation=[],
     )
