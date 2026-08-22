@@ -200,6 +200,8 @@ class ApplyResult:
 
     changed_nodes: list[str] = field(default_factory=list)
     new_hash: str = ""
+    changes: list[str] = field(default_factory=list)
+    scope: str = ""
 
 
 @dataclass(kw_only=True)
