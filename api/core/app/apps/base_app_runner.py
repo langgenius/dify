@@ -1,7 +1,7 @@
 import base64
 import logging
 import time
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping, MutableMapping, Sequence
 from mimetypes import guess_extension
 from typing import TYPE_CHECKING, Any, Union
 
@@ -54,9 +54,15 @@ _logger = logging.getLogger(__name__)
 
 class AppRunner:
     def recalc_llm_max_tokens(
-        self, model_config: ModelConfigWithCredentialsEntity, prompt_messages: list[PromptMessage]
-    ):
+        self,
+        model_config: ModelConfigWithCredentialsEntity,
+        prompt_messages: list[PromptMessage],
+        *,
+        model_parameters: MutableMapping[str, Any] | None = None,
+    ) -> int | None:
+        """Clamp max tokens against the final prompt on the selected parameter mapping."""
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
+        parameters = model_parameters if model_parameters is not None else model_config.parameters
         model_instance = ModelInstance(
             provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
         )
@@ -69,8 +75,7 @@ class AppRunner:
                 parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
             ):
                 max_tokens = (
-                    model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template or "")
+                    parameters.get(parameter_rule.name) or parameters.get(parameter_rule.use_template or "")
                 ) or 0
 
         if model_context_tokens is None:
@@ -85,7 +90,9 @@ class AppRunner:
                 if parameter_rule.name == "max_tokens" or (
                     parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
                 ):
-                    model_config.parameters[parameter_rule.name] = max_tokens
+                    parameters[parameter_rule.name] = max_tokens
+
+        return None
 
     def organize_prompt_messages(
         self,

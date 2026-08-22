@@ -61,8 +61,10 @@ logger = logging.getLogger(__name__)
 
 
 class TextToSpeechPayload(BaseModel):
+    model_config = ConfigDict(json_schema_extra={"required": ["text"]})
+
     message_id: str | None = Field(default=None, description="Message ID")
-    text: str = Field(..., description="Text to convert")
+    text: str = Field(default="", description="Text to convert")
     voice: str | None = Field(default=None, description="Voice name")
     streaming: bool | None = Field(default=None, description="Whether to stream audio")
 

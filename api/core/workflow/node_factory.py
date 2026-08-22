@@ -29,6 +29,8 @@ from core.workflow.llm_environment_variable import (
 )
 from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import (
+    DIFY_BEFORE_LLM_INVOKE_KEY,
+    BeforeLLMInvoke,
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
     DifyPreparedLLM,
@@ -616,11 +618,16 @@ class DifyNodeFactory(NodeFactory):
     ) -> dict[str, object]:
         validated_node_data = cast(LLMCompatibleNodeData, node_data)
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
+        before_llm_invoke = cast(
+            BeforeLLMInvoke | None,
+            self.graph_init_params.run_context.get(DIFY_BEFORE_LLM_INVOKE_KEY),
+        )
         node_model_instance = (
             self._wrap_model_instance_for_node(
                 node_data=validated_node_data,
                 model_instance=model_instance,
                 request_metadata={"app_id": self._dify_context.app_id},
+                before_invoke=before_llm_invoke,
             )
             if wrap_model_instance
             else model_instance
@@ -659,13 +666,22 @@ class DifyNodeFactory(NodeFactory):
         node_data: LLMCompatibleNodeData,
         model_instance: ModelInstance,
         request_metadata: Mapping[str, object] | None = None,
+        before_invoke: BeforeLLMInvoke | None = None,
     ) -> DifyPreparedLLM:
         # Only graphon's LLM node consumes the polling protocol. Keep classifier
         # and extractor nodes on the existing wrapper even if the same model
         # advertises polling support.
         if node_data.type == BuiltinNodeTypes.LLM and DifyNodeFactory._supports_plugin_llm_polling(model_instance):
-            return DifyPreparedPollingLLM(model_instance, request_metadata=request_metadata)
-        return DifyPreparedLLM(model_instance, request_metadata=request_metadata)
+            return DifyPreparedPollingLLM(
+                model_instance,
+                request_metadata=request_metadata,
+                before_invoke=before_invoke,
+            )
+        return DifyPreparedLLM(
+            model_instance,
+            request_metadata=request_metadata,
+            before_invoke=before_invoke,
+        )
 
     @staticmethod
     def _supports_plugin_llm_polling(model_instance: ModelInstance) -> bool:
