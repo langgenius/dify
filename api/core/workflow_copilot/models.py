@@ -37,6 +37,8 @@ from core.workflow_copilot.state import PcState
 class EntryMode(StrEnum):
     FIX = "fix"
     FIX_CHECKLIST = "fix_checklist"
+    BUILD = "build"
+    EDIT = "edit"
 
 
 @dataclass(kw_only=True)
