@@ -280,17 +280,20 @@ class WeaviateVector(BaseVector):
     @override
     def _get_uuids(self, documents: list[Document]) -> list[str]:
         """
-        Generates deterministic UUIDs for documents based on their content.
-
-        Uses UUID5 with URL namespace to ensure consistent IDs for identical content.
+        Use Dify's own doc_id (index_node_id, set in each Document's metadata by
+        the caller) as the Weaviate object UUID instead of hashing the page
+        content. This keeps write-time IDs consistent with what delete_by_ids()
+        looks up, and stops segments with identical text across different
+        documents from colliding on the same Weaviate object.
+        Falls back to a fresh random UUID if a document has no usable doc_id.
         """
-        URL_NAMESPACE = _uuid.UUID("6ba7b811-9dad-11d1-80b4-00c04fd430c8")
-
         uuids = []
         for doc in documents:
-            uuid_val = _uuid.uuid5(URL_NAMESPACE, doc.page_content)
-            uuids.append(str(uuid_val))
-
+            doc_id = (doc.metadata or {}).get("doc_id")
+            if doc_id and self._is_uuid(str(doc_id)):
+                uuids.append(str(doc_id))
+            else:
+                uuids.append(str(_uuid.uuid4()))
         return uuids
 
     @override
