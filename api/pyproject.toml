@@ -40,6 +40,10 @@ dependencies = [
     "opentelemetry-instrumentation-redis==0.65b0",
     "opentelemetry-instrumentation-sqlalchemy==0.65b0",
     "opentelemetry-propagator-b3>=1.41.1,<2.0.0",
+    # Dify imports pypandoc directly (core/rag/extractor/unstructured); the
+    # bundled binary keeps the Docker image working without a system pandoc.
+    "pypandoc>=1.17,<2.0.0",
+    "pypandoc-binary>=1.17,<2.0.0",
     "readabilipy==0.3.0",
     "resend>=2.27.0,<3.0.0",
     "zstandard==0.25.0",
