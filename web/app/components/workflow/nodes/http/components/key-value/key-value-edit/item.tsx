@@ -103,6 +103,7 @@ const KeyValueItem: FC<Props> = ({
             placeholder={t(($) => $[`${i18nPrefix}.key`], { ns: 'workflow' })!}
             readOnly={readonly}
             insertVarTipToLeft={insertVarTipToLeft}
+            singleLine
           />
         ) : (
           <input
@@ -161,6 +162,8 @@ const KeyValueItem: FC<Props> = ({
             readOnly={readonly}
             isSupportFile={isSupportFile}
             insertVarTipToLeft={insertVarTipToLeft}
+            singleLine
+            onCommit={handleValueContainerClick}
           />
         )}
       </div>
