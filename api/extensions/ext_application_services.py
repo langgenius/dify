@@ -15,6 +15,7 @@ from core.db.session_factory import get_session_maker
 from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from libs.helper import RateLimiter
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
@@ -50,6 +51,7 @@ from services.auth.data_source_api_key_auth_gateways import (
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
+from services.compliance_download_service import ComplianceDownloadService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.enterprise import EnterpriseServiceError
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -115,6 +117,7 @@ class ApplicationServices:
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
     billing_portal: BillingPortalService
+    compliance_downloads: ComplianceDownloadService
     data_source_api_key_auth: DataSourceApiKeyAuthService
     webapp_access: WebAppAccessQueryService
     web_app_runtime: WebAppRuntimeQueryService
@@ -185,6 +188,15 @@ def build_application_services(
         billing_portal=BillingPortalService(
             get_subscription=BillingService.get_subscription,
             get_invoices=BillingService.get_invoices,
+        ),
+        compliance_downloads=ComplianceDownloadService(
+            fetch_link=BillingService.get_compliance_download_link,
+            rate_limiter=RateLimiter(
+                prefix="compliance_download_rate_limiter",
+                max_attempts=4,
+                time_window=60,
+                redis_client=redis,
+            ),
         ),
         data_source_api_key_auth=DataSourceApiKeyAuthService(
             bindings=data_source_api_key_auth_bindings,
