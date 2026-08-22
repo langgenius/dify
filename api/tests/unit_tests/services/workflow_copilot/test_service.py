@@ -27,6 +27,7 @@ from core.workflow_copilot.models import (
 )
 from core.workflow_copilot.state import PcState
 from models.base import Base
+from services.workflow_copilot import service as service_module
 from services.workflow_copilot.repository import SqlCopilotRepository
 from services.workflow_copilot.service import WorkflowCopilotService, resolve_action_kind
 
@@ -335,6 +336,58 @@ def test_resolve_action_kind_passes_through_legacy_and_unmapped_kinds() -> None:
     assert resolve_action_kind("recheck") == "recheck"
     assert resolve_action_kind("provide_testdata") == "provide_testdata"
     assert resolve_action_kind("keep_draft") == "keep_draft"
+
+
+def test_waiting_state_actions_resolve_to_handled_kinds() -> None:
+    """For EACH Fix/Checklist waiting state in ``_ACTIONS_FOR``, every
+    surfaced non-client-only action id must resolve (via
+    ``resolve_action_kind``) to a handler kind that state's handler in
+    ``handlers_fix.py`` actually branches on -- otherwise the button is dead
+    (falls through to the state's default no-op/branch) rather than doing
+    what its label promises.
+
+    Regression for the FIX_AWAIT_APPROVAL ``revert`` dead button:
+    ``resolve_action_kind("revert") == "undo"``, but
+    ``handle_await_approval`` only branches on ``approve_repair`` /
+    ``reject_repair`` -- ``undo`` fell through to the gate's no-op branch,
+    so the reject path was unreachable from the FE."""
+    handled_kinds: dict[PcState, set[str]] = {
+        PcState.FIX_AWAIT_APPROVAL: {"approve_repair", "reject_repair"},
+        PcState.FIX_AWAIT_VERIFY: {"run_verify", "undo"},
+        PcState.FIX_AWAIT_TESTDATA: {"provide_testdata"},
+        # excludes the client-only view_changes, which never reaches the handler.
+        PcState.FIX_AWAIT_DECISION: {"publish", "undo"},
+        PcState.CHECKLIST_AWAIT_RECHECK: {"recheck"},
+    }
+    for state, handled in handled_kinds.items():
+        actions = service_module._ACTIONS_FOR[state]
+        resolved = {
+            resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
+        }
+        assert resolved <= handled, f"{state}: resolved kinds {resolved} not handled by its handler ({handled})"
+
+
+def test_submit_action_view_changes_is_a_noop_not_keep_draft(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository, enqueued: list[tuple]
+) -> None:
+    """``view_changes`` is a client-side-only card toggle (forces
+    ``change_set.full_diff_open`` in the FE) that is never mapped in
+    ``_ACTION_ID_TO_KIND``, so ``resolve_action_kind`` passes it through
+    unchanged. If it ever reached ``dispatch`` at ``fix.await_decision``,
+    ``handle_await_decision``'s DEFAULT branch (``keep_draft`` ->
+    ``PcState.SUCCESS``, terminal) would silently end the session. The
+    ``_CLIENT_ONLY_ACTIONS`` guard in ``submit_action`` must intercept it
+    before the CAS check/dispatch and return the view unchanged."""
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+    actor = _actor()
+
+    view = service.submit_action(s.id, actor, Action(kind="view_changes", base_version=s.version))
+
+    assert view.state == "fix.await_decision"
+    assert view.state != "success"
+    assert view.version == s.version  # no CAS/dispatch advance happened
+    assert view.run_status != "complete"
+    assert enqueued == []  # never reached enqueue_fn -- proves it's a no-op, not a dispatched keep_draft
 
 
 def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlCopilotRepository) -> None:

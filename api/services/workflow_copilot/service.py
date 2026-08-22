@@ -113,7 +113,7 @@ def _phase_for(state: PcState) -> Phase:
 _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.FIX_AWAIT_APPROVAL: [
         UiAction(id="approve_plan", label="Approve fix", kind=ActionKind.PRIMARY),
-        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+        UiAction(id="reject_repair", label="Reject", kind=ActionKind.DESTRUCTIVE),
     ],
     PcState.FIX_AWAIT_VERIFY: [
         UiAction(id="run_validation", label="Run validation", kind=ActionKind.PRIMARY),
@@ -146,6 +146,9 @@ _ACTION_ID_TO_KIND: dict[str, str] = {
     "retry_after_revert": "re_fix",
     # provide_testdata / recheck / keep_draft already match handler kinds → passthrough
 }
+
+
+_CLIENT_ONLY_ACTIONS = frozenset({"view_changes"})
 
 
 def resolve_action_kind(raw: str) -> str:
@@ -279,6 +282,11 @@ class WorkflowCopilotService:
         s, _fc = self._repo.get_session(session_id)
         if s.owner_account_id != actor.account_id:
             raise NotFoundError("session not found")
+        if action.kind in _CLIENT_ONLY_ACTIONS:
+            # Client-side-only actions (e.g. view_changes toggles a card locally) never
+            # reach the engine — dispatching would hit handle_await_decision's keep_draft
+            # default and silently terminate the session. Return the current view unchanged.
+            return self.get_session_view(session_id, actor)
         if action.base_version != s.version:
             raise ConflictError(f"stale base_version {action.base_version} for session {session_id}")
         self.dispatch(session_id, action, actor)
