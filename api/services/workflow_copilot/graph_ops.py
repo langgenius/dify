@@ -159,3 +159,49 @@ def apply_delete_node(graph: Graph, node_id: str) -> tuple[Graph, list[str]]:
         if e.get("source") != node_id and e.get("target") != node_id
     ]
     return new_graph, [node_id]
+
+
+def _next_edge_id(source: str, target: str, existing_ids: set) -> str:
+    """Return a short edge id (``source-target``, then ``source-target_2``,
+    ... on collision) not present in ``existing_ids``."""
+    candidate = f"{source}-{target}"
+    suffix = 1
+    while candidate in existing_ids:
+        suffix += 1
+        candidate = f"{source}-{target}_{suffix}"
+    return candidate
+
+
+def apply_connect(
+    graph: Graph,
+    from_node: str,
+    to_node: str,
+    source_handle: str | None = None,
+    target_handle: str | None = None,
+) -> tuple[Graph, list[str]]:
+    """Add a ``GraphEdgeDict``-shaped edge between two existing nodes.
+
+    Raises ``ValueError`` if either ``from_node`` or ``to_node`` is not a
+    node id present in ``graph["nodes"]`` (the Slice 1 dangling-ref
+    validation). Handles default to "source"/"target" (mirrors the
+    generator's ``_fill_edge_defaults``). Returns
+    ``(new_graph, [from_node, to_node])``.
+    """
+    new_graph = copy.deepcopy(graph)
+    node_ids = {n.get("id") for n in new_graph.get("nodes", [])}
+    if from_node not in node_ids:
+        raise ValueError(f"node not found: {from_node}")
+    if to_node not in node_ids:
+        raise ValueError(f"node not found: {to_node}")
+
+    existing_edge_ids = {e.get("id") for e in new_graph.get("edges", [])}
+    edge = {
+        "id": _next_edge_id(from_node, to_node, existing_edge_ids),
+        "source": from_node,
+        "target": to_node,
+        "type": "custom",
+        "sourceHandle": source_handle or "source",
+        "targetHandle": target_handle or "target",
+    }
+    new_graph.setdefault("edges", []).append(edge)
+    return new_graph, [from_node, to_node]
