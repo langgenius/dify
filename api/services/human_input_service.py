@@ -186,11 +186,24 @@ class HumanInputService:
         return form
 
     def resolve_form_inputs(self, form: Form) -> Sequence[FormInputConfig]:
-        variable_pool = self._load_variable_pool_for_form(form)
-        return resolve_variable_select_input_options(
-            form.get_definition().inputs,
-            variable_pool=variable_pool,
-        )
+        definition = form.get_definition()
+        inputs = list(definition.inputs)
+        if not definition.select_options_resolved and any(
+            isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
+            for form_input in inputs
+        ):
+            inputs = resolve_variable_select_input_options(
+                inputs,
+                variable_pool=self._load_variable_pool_for_form(form),
+            )
+        return [
+            form_input.model_copy(
+                update={"option_source": form_input.option_source.model_copy(update={"type": ValueSourceType.CONSTANT})}
+            )
+            if isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
+            else form_input
+            for form_input in inputs
+        ]
 
     def submit_form_by_token(
         self,
@@ -252,6 +265,7 @@ class HumanInputService:
         form_data: Mapping[str, Any],
     ) -> dict[str, JsonValue]:
         definition = form.get_definition()
+        definition = definition.model_copy(update={"inputs": self.resolve_form_inputs(form)})
         try:
             return self.validate_and_normalize_submission(
                 tenant_id=form.tenant_id,

@@ -475,9 +475,10 @@ def _build_human_input_required_events(
         if expiration_time is None:
             continue
 
-        resolved_inputs = resolve_variable_select_input_options(
-            reason.inputs,
-            variable_pool=variable_pool,
+        resolved_inputs = (
+            list(reason.inputs)
+            if reason.select_options_resolved
+            else resolve_variable_select_input_options(reason.inputs, variable_pool=variable_pool)
         )
         disposition = dispositions_by_form_id.get(form_id)
 

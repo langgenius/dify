@@ -232,10 +232,16 @@ def _build_resumption_context_state(*, options: list[str], workflow_run_id: str)
     return context.dumps().encode()
 
 
+@pytest.mark.parametrize(
+    ("select_options_resolved", "expected_options"),
+    [(False, ["approve", "reject"]), (True, ["configured"])],
+)
 def test_resolve_form_inputs_uses_runtime_select_options(
     sample_form_record: HumanInputFormRecord,
     unbound_session_factory: sessionmaker[Session],
     mocker: MockerFixture,
+    select_options_resolved: bool,
+    expected_options: list[str],
 ) -> None:
     configured_input = SelectInputConfig(
         output_variable_name="decision",
@@ -247,7 +253,9 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     )
     record = dataclasses.replace(
         sample_form_record,
-        definition=sample_form_record.definition.model_copy(update={"inputs": [configured_input]}),
+        definition=sample_form_record.definition.model_copy(
+            update={"inputs": [configured_input], "select_options_resolved": select_options_resolved}
+        ),
     )
     pause = MagicMock()
     pause.resumed_at = None
@@ -268,8 +276,36 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     assert len(resolved_inputs) == 1
     resolved_input = resolved_inputs[0]
     assert isinstance(resolved_input, SelectInputConfig)
-    assert resolved_input.option_source.value == ["approve", "reject"]
-    workflow_run_repo.get_workflow_pause.assert_called_once_with(record.workflow_run_id)
+    assert resolved_input.option_source.type == ValueSourceType.CONSTANT
+    assert resolved_input.option_source.value == expected_options
+    if select_options_resolved:
+        workflow_run_repo.get_workflow_pause.assert_not_called()
+    else:
+        workflow_run_repo.get_workflow_pause.assert_called_once_with(record.workflow_run_id)
+
+
+def test_resolved_variable_select_rejects_unlisted_submission(
+    sample_form_record: HumanInputFormRecord,
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
+    configured_input = SelectInputConfig(
+        output_variable_name="decision",
+        option_source=StringListSource(
+            type=ValueSourceType.VARIABLE,
+            selector=["start", "options"],
+            value=["approve", "reject"],
+        ),
+    )
+    record = dataclasses.replace(
+        sample_form_record,
+        definition=sample_form_record.definition.model_copy(
+            update={"inputs": [configured_input], "select_options_resolved": True}
+        ),
+    )
+    service = HumanInputService(unbound_session_factory)
+
+    with pytest.raises(InvalidFormDataError, match="Invalid value for select input 'decision': forged"):
+        service._validate_submission(Form(record), selected_action_id="submit", form_data={"decision": "forged"})
 
 
 def test_submit_form_by_token_calls_repository_and_enqueue(

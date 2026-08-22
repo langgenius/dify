@@ -323,11 +323,15 @@ class TestDifyNodeFactoryInit:
         init.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
+            human_input_run_context=None,
+            containerize_workflow_tools=True,
         )
 
     def test_with_runtime_state_rebinds_factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
+        factory._human_input_run_context = None
+        factory._containerize_workflow_tools = True
 
         with patch.object(node_factory, "DifyNodeFactory", return_value=sentinel.factory) as factory_cls:
             rebound = factory.with_runtime_state(sentinel.graph_runtime_state)
@@ -336,6 +340,8 @@ class TestDifyNodeFactoryInit:
         factory_cls.assert_called_once_with(
             graph_init_params=sentinel.graph_init_params,
             graph_runtime_state=sentinel.graph_runtime_state,
+            human_input_run_context=None,
+            containerize_workflow_tools=True,
         )
 
     def test_init_builds_default_dependencies(self):
@@ -484,6 +490,7 @@ class TestDifyNodeFactoryCreateNode:
             app_type=None,
             created_by=None,
         )
+        factory._containerize_workflow_tools = True
         factory._code_executor = sentinel.code_executor
         factory._code_limits = sentinel.code_limits
         factory._jinja2_template_renderer = sentinel.jinja2_template_renderer

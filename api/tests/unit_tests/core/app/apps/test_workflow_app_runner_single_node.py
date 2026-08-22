@@ -195,7 +195,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     app_generate_entity.invoke_from = InvokeFrom.SERVICE_API
     app_generate_entity.workflow_execution_id = "execution-id"
     app_generate_entity.task_id = "task-id"
-    app_generate_entity.call_depth = 0
+    app_generate_entity.call_depth = 4
     app_generate_entity.trace_manager = None
     app_generate_entity.extras = {}
     app_generate_entity.single_iteration_run = None
@@ -239,7 +239,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
             "core.app.apps.workflow.app_runner.get_compatible_start_aliases", return_value=("legacy-start",)
         ) as aliases,
         patch("core.app.apps.workflow.app_runner.add_node_inputs_to_pool") as add_inputs,
-        patch.object(runner, "_init_graph", return_value=MagicMock()),
+        patch.object(runner, "_init_graph", return_value=MagicMock()) as init_graph,
     ):
         runner.run()
 
@@ -248,3 +248,4 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
     assert add_inputs.call_args.kwargs["node_id"] == "root-node"
     assert add_inputs.call_args.kwargs["inputs"] == {"question": "hello"}
     assert add_inputs.call_args.kwargs["aliases"] == ("legacy-start",)
+    assert init_graph.call_args.kwargs["call_depth"] == 4

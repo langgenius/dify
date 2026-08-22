@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -5,8 +6,11 @@ import pytest
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
 from core.workflow.nodes.human_input.boundary import enrich_graph_pause_reasons
+from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities.pause_reason import HitlRequired
+from graphon.runtime import VariablePool
 
 _HUMAN_INPUT_REASON = {"TYPE": DifyHITLEventType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
 
@@ -84,3 +88,41 @@ def test_enrich_graph_pause_reasons_raises_when_hitl_form_record_is_missing():
             form_repository=form_repository,
             variable_pool=None,
         )
+
+
+def test_enrich_graph_pause_reasons_keeps_options_resolved_in_child_pool():
+    form_repository = Mock(spec=HumanInputFormSubmissionRepository)
+    form_repository.get_by_form_id.return_value = SimpleNamespace(
+        form_id="form-123",
+        node_id="human-input",
+        rendered_content="Choose",
+        definition=SimpleNamespace(
+            inputs=[
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(
+                        type=ValueSourceType.VARIABLE,
+                        selector=["start", "options"],
+                        value=[],
+                    ),
+                )
+            ],
+            user_actions=[],
+            node_title="Choose",
+            default_values={},
+            select_options_resolved=True,
+        ),
+    )
+    parent_pool = VariablePool()
+    parent_pool.add(("start", "options"), ["wrong"])
+
+    [reason] = enrich_graph_pause_reasons(
+        reasons=[HitlRequired(session_id="form-123", node_id="human-input", node_title="Choose")],
+        form_repository=form_repository,
+        variable_pool=parent_pool,
+    )
+
+    assert isinstance(reason.inputs[0], SelectInputConfig)
+    assert reason.inputs[0].option_source.value == []
+    assert reason.select_options_resolved is True
+    assert "select_options_resolved" not in reason.model_dump()
