@@ -1,21 +1,44 @@
-// Contracts for the enterprise `workflow-copilot` Fix session API. There is no
-// generated contract for this endpoint yet (enterprise-only, still under active
-// design), so these mirror the backend's JSON responses by hand until one exists.
+// Contracts for the `workflow-copilot` Fix session API. `SessionView` and the
+// rest of the wire DTOs are generated from the backend contract (Slice 0
+// Task 6) — see `./contract/types` (AUTO-GENERATED, do not hand-edit). This
+// file re-exports the subset the app consumes plus the SSE/session helpers
+// that aren't part of the generated DTO surface (parsing, narrowing, and a
+// couple of values that don't come from the backend at all).
+// Re-exporting alone (`export type {...} from '...'`) does not bind these
+// names locally — `isSessionView` below needs `SessionView` as a local type,
+// so this file both imports (for local use) and re-exports (for importers).
+import type {
+  Action,
+  ActionKind,
+  AssistantTurnItem,
+  CardKind,
+  ChangeSetCard,
+  ConversationItem,
+  DecisionItem,
+  NoticeItem,
+  Phase,
+  RunContextCard,
+  RunStatus,
+  SessionView,
+  SummaryCard,
+  TestResultCard,
+} from './contract/types'
 
-export type SessionView = {
-  session_id: string
-  app_id: string
-  version: number
-  state: string
-  canvas_read_only: boolean
-  run_status: string
-  interrupted: boolean
-  conversation: {
-    seq: number
-    kind: string
-    payload: Record<string, unknown>
-    at_version: number
-  }[]
+export type {
+  Action,
+  ActionKind,
+  AssistantTurnItem,
+  CardKind,
+  ChangeSetCard,
+  ConversationItem,
+  DecisionItem,
+  NoticeItem,
+  Phase,
+  RunContextCard,
+  RunStatus,
+  SessionView,
+  SummaryCard,
+  TestResultCard,
 }
 
 export type ProgressEntry = {
@@ -44,6 +67,16 @@ export const CHECKLIST_AWAIT_RECHECK_STATE = 'checklist.await_recheck'
 
 // Fire-and-forget actions rendered as generic buttons (no computed payload
 // beyond the odd `provide_testdata` special-case in the panel).
+//
+// Slice 0 Task 7 made action rendering data-driven off `SessionView.actions`
+// (see `use-copilot-session.ts`'s `runAction`, now typed to accept any
+// backend-provided action id, and `/workflow-copilot-debug`'s button list).
+// This hardcoded list is kept only because the in-editor Workflow Copilot
+// panel (`workflow-copilot-panel/copilot-session-view.tsx`) still renders a
+// fixed action list with i18n labels rather than `view.actions`; migrating
+// that real (non-throwaway) panel to data-driven actions/labels is out of
+// scope here. Don't add new consumers of this list — new call sites should
+// use `view.actions` instead.
 export const COPILOT_MANUAL_ACTION_KINDS = [
   'approve_repair',
   'run_verify',
