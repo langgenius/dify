@@ -13,7 +13,11 @@ export const useWorkflowAgentLog = () => {
 
       setWorkflowRunningData(
         produce(workflowRunningData!, (draft) => {
-          const currentIndex = draft.tracing!.findIndex((item) => item.node_id === data.node_id)
+          const currentIndex = draft.tracing!.findIndex((item) => {
+            if (data.node_execution_id)
+              return item.id === data.node_execution_id
+            return item.node_id === data.node_id
+          })
           if (currentIndex > -1) {
             const current = draft.tracing![currentIndex]
 

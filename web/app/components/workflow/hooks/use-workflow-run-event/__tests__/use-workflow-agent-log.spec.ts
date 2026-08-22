@@ -71,6 +71,27 @@ describe('useWorkflowAgentLog', () => {
     expect((log[0] as unknown as { text: string }).text).toBe('new')
   })
 
+  it('routes by node_execution_id so parallel branches with the same node_id do not collide', () => {
+    const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
+      initialStoreState: {
+        workflowRunningData: baseRunningData({
+          tracing: [
+            { id: 'exec-a', node_id: 'n1', execution_metadata: {} },
+            { id: 'exec-b', node_id: 'n1', execution_metadata: {} },
+          ],
+        }),
+      },
+    })
+
+    result.current.handleWorkflowAgentLog({
+      data: { node_id: 'n1', node_execution_id: 'exec-b', message_id: 'm1' },
+    } as AgentLogResponse)
+
+    const tracing = store.getState().workflowRunningData!.tracing!
+    expect(tracing[0]!.execution_metadata!.agent_log).toBeUndefined()
+    expect(tracing[1]!.execution_metadata!.agent_log).toHaveLength(1)
+  })
+
   it('creates execution_metadata when it does not exist', () => {
     const { result, store } = renderWorkflowHook(() => useWorkflowAgentLog(), {
       initialStoreState: {
