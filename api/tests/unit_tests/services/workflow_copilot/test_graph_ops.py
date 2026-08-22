@@ -15,6 +15,7 @@ from services.workflow_copilot.graph_ops import (
     apply_connect,
     apply_create_node,
     apply_delete_node,
+    apply_insert_between,
     apply_set_node_config,
     validate_intent_args,
 )
@@ -278,3 +279,90 @@ def test_apply_connect_original_graph_untouched():
     apply_connect(graph, "a", "b")
 
     assert graph["edges"] == []
+
+
+# ---- apply_insert_between -------------------------------------------------------
+
+
+def test_apply_insert_between_splits_the_matched_edge_around_a_new_node():
+    graph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
+        "edges": [
+            {
+                "id": "e1",
+                "source": "a",
+                "target": "b",
+                "type": "custom",
+                "sourceHandle": "source",
+                "targetHandle": "target",
+            }
+        ],
+    }
+
+    new_graph, changed = apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
+
+    new_id = changed[0]
+    assert [n["id"] for n in new_graph["nodes"]] == ["a", "b", new_id]
+    edge_pairs = [(e["source"], e["target"]) for e in new_graph["edges"]]
+    assert ("a", "b") not in edge_pairs
+    assert ("a", new_id) in edge_pairs
+    assert (new_id, "b") in edge_pairs
+    assert len(new_graph["edges"]) == 2
+
+
+def test_apply_insert_between_preserves_original_edge_handles_at_the_ends():
+    graph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
+        "edges": [
+            {
+                "id": "e1",
+                "source": "a",
+                "target": "b",
+                "type": "custom",
+                "sourceHandle": "true",
+                "targetHandle": "target",
+            }
+        ],
+    }
+
+    new_graph, changed = apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
+
+    new_id = changed[0]
+    incoming = next(e for e in new_graph["edges"] if e["target"] == new_id)
+    outgoing = next(e for e in new_graph["edges"] if e["source"] == new_id)
+    assert incoming["sourceHandle"] == "true"
+    assert outgoing["targetHandle"] == "target"
+
+
+def test_apply_insert_between_raises_when_edge_not_found():
+    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+
+    with pytest.raises(ValueError):
+        apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
+
+
+def test_apply_insert_between_honors_explicit_node_id_and_position():
+    graph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
+        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
+    }
+
+    new_graph, changed = apply_insert_between(
+        graph, {"source": "a", "target": "b"}, "llm", {}, position={"x": 1.0, "y": 2.0}, node_id="my-llm"
+    )
+
+    assert changed == ["my-llm"]
+    new_node = next(n for n in new_graph["nodes"] if n["id"] == "my-llm")
+    assert new_node["position"] == {"x": 1.0, "y": 2.0}
+
+
+def test_apply_insert_between_original_graph_untouched():
+    graph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
+        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
+    }
+
+    apply_insert_between(graph, {"source": "a", "target": "b"}, "llm", {})
+
+    assert len(graph["edges"]) == 1
+    assert graph["edges"][0]["target"] == "b"
