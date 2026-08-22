@@ -39,6 +39,11 @@ class DifyWorkflowToolNode(ToolNode):
 
     execution_type = NodeExecutionType.CONTAINER
 
+    @classmethod
+    @override
+    def version(cls) -> str:
+        return "1"
+
     @override
     # Graphon's ToolNode currently narrows this return type even though container
     # subclasses use the broader Node contract.
