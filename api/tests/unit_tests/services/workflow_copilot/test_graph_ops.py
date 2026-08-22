@@ -10,8 +10,12 @@ intents (see core/workflow_copilot/placeholder_agent.py).
 import pytest
 
 from core.workflow_copilot.models import MutationIntent
-from services.workflow_copilot.graph_ops import MUTATION_ARG_KEYS, apply_create_node, apply_set_node_config, validate_intent_args
-
+from services.workflow_copilot.graph_ops import (
+    MUTATION_ARG_KEYS,
+    apply_create_node,
+    apply_set_node_config,
+    validate_intent_args,
+)
 
 # ---- validate_intent_args --------------------------------------------------
 
@@ -122,7 +126,8 @@ def test_apply_create_node_appends_a_graph_node_dict_shaped_node():
     assert node["data"]["title"] == node["id"]
     assert node["data"]["desc"] == ""
     assert node["data"]["selected"] is False
-    assert "x" in node["position"] and "y" in node["position"]
+    assert "x" in node["position"]
+    assert "y" in node["position"]
 
 
 def test_apply_create_node_generates_id_from_node_type_with_collision_suffix():
@@ -172,3 +177,11 @@ def test_apply_create_node_original_graph_untouched():
     apply_create_node(graph, "llm", {})
 
     assert graph["nodes"] == []
+
+
+def test_apply_create_node_explicit_empty_position_is_kept_not_defaulted():
+    graph = {"nodes": [], "edges": []}
+
+    new_graph, _changed = apply_create_node(graph, "llm", {}, position={})
+
+    assert new_graph["nodes"][0]["position"] == {}
