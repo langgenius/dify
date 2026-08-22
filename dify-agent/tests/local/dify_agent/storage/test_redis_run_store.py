@@ -23,7 +23,7 @@ from dify_agent.protocol.schemas import (
     utc_now,
 )
 from dify_agent.runtime.cancellation import RunCancellationIntent
-from dify_agent.runtime.event_sink import RunFinalizationResult
+from dify_agent.runtime.event_sink import RunEventStreamSealedError, RunFinalizationResult
 from dify_agent.storage.redis_run_store import DEFAULT_RUN_RETENTION_SECONDS, RedisRunStore, RunNotFoundError
 
 
@@ -47,14 +47,6 @@ class FakeRedis:
     async def get(self, key: str) -> object | None:
         self.commands.append(("get", key))
         return self.values.get(key)
-
-    async def xadd(self, key: str, fields: Mapping[str, object]) -> str:
-        self.commands.append(("xadd", key, dict(fields)))
-        return self._append_stream_entry(key, fields)
-
-    def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> "FakeRedisPipeline":
-        self.commands.append(("pipeline", transaction, shard_hint))
-        return FakeRedisPipeline(self)
 
     def _append_stream_entry(self, key: str, fields: Mapping[str, object]) -> str:
         entries = self.streams.setdefault(key, [])
@@ -121,35 +113,6 @@ class FakeRedis:
     def _stream_id_value(event_id: str) -> tuple[int, int]:
         timestamp, sequence = event_id.split("-", maxsplit=1)
         return int(timestamp), int(sequence)
-
-
-class FakeRedisPipeline:
-    redis: FakeRedis
-    results: list[object]
-
-    def __init__(self, redis: FakeRedis) -> None:
-        self.redis = redis
-        self.results = []
-
-    async def __aenter__(self) -> "FakeRedisPipeline":
-        return self
-
-    async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None:
-        del exc_type, exc, traceback
-
-    def xadd(self, key: str, fields: Mapping[str, object]) -> "FakeRedisPipeline":
-        self.redis.commands.append(("xadd", key, dict(fields)))
-        self.results.append(self.redis._append_stream_entry(key, fields))
-        return self
-
-    def expire(self, key: str, seconds: int) -> "FakeRedisPipeline":
-        self.redis.commands.append(("expire", key, seconds))
-        self.results.append(True)
-        return self
-
-    async def execute(self) -> list[object]:
-        self.redis.commands.append(("execute",))
-        return list(self.results)
 
 
 def _terminal_event(
@@ -331,7 +294,11 @@ def test_wait_for_cancellation_ignores_public_events() -> None:
         redis.commands.clear()
         observer = asyncio.create_task(store.wait_for_cancellation(record.run_id))
         await asyncio.sleep(0)
-        _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        started = RunStartedEvent(run_id=record.run_id)
+        _ = redis._append_stream_entry(
+            f"test:runs:{record.run_id}:events",
+            {"payload": RUN_EVENT_ADAPTER.dump_json(started, exclude={"id"}).decode()},
+        )
         await asyncio.sleep(0)
         assert observer.done() is False
         xread_commands = [command for command in redis.commands if command[0] == "xread"]
@@ -352,28 +319,62 @@ def test_wait_for_cancellation_ignores_public_events() -> None:
     assert asyncio.run(scenario()).reason == "cancelled"
 
 
-def test_append_event_serializes_typed_event_without_id_and_expires_run_keys() -> None:
+def test_append_event_maps_guarded_eval_result_and_serializes_event_without_id() -> None:
     redis = FakeRedis()
     store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
 
-    event_id = asyncio.run(store.append_event(RunStartedEvent(id="local", run_id="run-1")))
+    async def scenario() -> tuple[str, str]:
+        record = await store.create_run()
+        redis.commands.clear()
+        redis.eval_result = [1, "running", "1-0"]
+        event_id = await store.append_event(RunStartedEvent(id="local", run_id=record.run_id))
+        return record.run_id, event_id
+
+    run_id, event_id = asyncio.run(scenario())
 
     assert event_id == "1-0"
-    pipeline_commands = [command for command in redis.commands if command[0] == "pipeline"]
-    assert len(pipeline_commands) == 1
-    assert pipeline_commands[0][1] is True
-    xadd_commands = [command for command in redis.commands if command[0] == "xadd"]
-    assert len(xadd_commands) == 1
-    fields = xadd_commands[0][2]
-    assert isinstance(fields, dict)
-    assert '"id"' not in str(fields["payload"])
-    assert '"type":"run_started"' in str(fields["payload"])
-    expire_commands = {command for command in redis.commands if command[0] == "expire"}
-    assert expire_commands == {
-        ("expire", "test:runs:run-1:events", 60),
-        ("expire", "test:runs:run-1:record", 60),
-    }
-    assert ("execute",) in redis.commands
+    eval_command = redis.commands[0]
+    assert eval_command[0] == "eval"
+    assert eval_command[2] == 2
+    assert eval_command[3] == f"test:runs:{run_id}:record"
+    assert eval_command[4] == f"test:runs:{run_id}:events"
+    assert eval_command[-1] == "60"
+    payload = json.loads(cast(str, eval_command[5]))
+    assert "id" not in payload
+    assert payload["type"] == "run_started"
+
+
+@pytest.mark.parametrize(
+    "terminal_status",
+    ["succeeded", "failed", "cancelled"],
+)
+def test_append_event_maps_sealed_status_without_creating_a_stream(terminal_status: str) -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)  # pyright: ignore[reportArgumentType]
+    redis.eval_result = [0, terminal_status, ""]
+
+    async def scenario() -> RunEventStreamSealedError:
+        with pytest.raises(RunEventStreamSealedError) as captured:
+            _ = await store.append_event(RunStartedEvent(run_id="run-1"))
+        return captured.value
+
+    error = asyncio.run(scenario())
+
+    assert error.run_id == "run-1"
+    assert error.status == terminal_status
+    assert redis.streams == {}
+    assert [command[0] for command in redis.commands] == ["eval"]
+
+
+def test_append_event_rejects_missing_run_without_creating_stream() -> None:
+    redis = FakeRedis()
+    store = RedisRunStore(redis, prefix="test")  # pyright: ignore[reportArgumentType]
+    redis.eval_result = [-1, "", ""]
+
+    with pytest.raises(RunNotFoundError):
+        asyncio.run(store.append_event(RunStartedEvent(run_id="missing")))
+
+    assert redis.streams == {}
 
 
 def test_get_events_round_trips_run_succeeded_output_and_session_snapshot() -> None:
@@ -421,7 +422,11 @@ def test_iter_events_ends_after_replaying_terminal_event(terminal_type: str) -> 
 
     async def scenario() -> list[str]:
         record = await store.create_run()
-        _ = await store.append_event(RunStartedEvent(run_id=record.run_id))
+        started = RunStartedEvent(run_id=record.run_id)
+        _ = redis._append_stream_entry(
+            f"test:runs:{record.run_id}:events",
+            {"payload": RUN_EVENT_ADAPTER.dump_json(started, exclude={"id"}).decode()},
+        )
         terminal = _terminal_event(terminal_type, record.run_id)
         _ = redis._append_stream_entry(
             f"test:runs:{record.run_id}:events",

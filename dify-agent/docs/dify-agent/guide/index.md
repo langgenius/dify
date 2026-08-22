@@ -287,8 +287,15 @@ and attempts to finalize them as failed. Success and failure use an atomic Redis
 transition. Cancellation first atomically records a private intent; after the
 owner exits the runner, a second atomic transition appends `run_cancelled`,
 updates the run record, and deletes the intent. The first accepted success,
-failure, or cancellation intent wins. A hard process crash can still leave
-active runs, including runs with accepted cancellation intent, stuck as
+failure, or cancellation intent wins.
+
+Every non-terminal event write atomically verifies the same run record is still
+`running` before appending. Whichever terminal finalizer updates the record also
+seals the event stream: a later terminal or non-terminal attempt leaves both the
+record and stream unchanged. An accepted cancellation intent does not seal the
+stream by itself because the owner may still be cleaning up; sealing occurs when
+`run_cancelled` is durably finalized. A hard process crash can therefore leave
+active runs, including runs with an accepted cancellation intent, stuck as
 `running`; there is no in-service recovery or worker handoff.
 
 Horizontal scaling is possible by running multiple API processes against the same
@@ -301,17 +308,18 @@ response confirms that cancellation intent is durable; `GET /runs/{run_id}` may
 still report `running` until cleanup finishes. Retrying an accepted or completed
 cancellation is idempotent.
 
-Atomic terminal finalization currently assumes the configured Redis URL targets
-one Redis deployment that can execute all run-coordination keys in a Lua script.
-The record and event key names are unchanged, and cancellation adds a private
-cancel-intent key. These keys do not contain a shared Redis Cluster hash tag, so
-Redis Cluster is not supported for this transition. During
-a rolling upgrade, older processes can still use the former split event/status
-writes; treat the single-terminal invariant as active only after those processes
-have exited. Deploy atomic terminal finalization everywhere first, then ensure
-every process that can own a runner has the cancellation observer before relying
-on route-independent cancellation. Operators should then alert on more than one
-terminal event per run and on disagreement between the run record status and
+Atomic run coordination currently assumes the configured Redis URL targets one
+Redis deployment that can execute the record, event, and private cancellation-
+intent keys in a Lua script. These keys do not contain a shared Redis Cluster
+hash tag, so Redis Cluster is not supported for these transitions. During a
+rolling upgrade, older processes can still use split terminal writes or append
+non-terminal events without checking the durable run status. Treat both the
+single-terminal and terminal-is-last invariants as active only after those
+processes have exited. Deploy the atomic finalizers and guarded event writer
+everywhere first, then ensure every process that can own a runner has the
+cancellation observer before relying on route-independent cancellation.
+Operators should alert on more than one terminal event per run, any event cursor
+after a terminal cursor, and disagreement between the run record status and
 terminal event type.
 
 ## Run inputs and session snapshots
@@ -376,7 +384,10 @@ progress:
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
 end with `run_cancelled`. Each run can append at most one of these terminal
-events. Event envelopes retain `id`, `run_id`, `type`, `data`, and `created_at`;
+events, and that terminal is the last retained event. Accepted non-terminal
+writes refresh the record and stream retention; a late write rejected by a
+terminal does not refresh either TTL. Event envelopes retain `id`, `run_id`,
+`type`, `data`, and `created_at`;
 `data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
 terminal event may contain a `CompositorSessionSnapshot` for resumption.
