@@ -19,6 +19,7 @@ Celery worker, not a Flask request. The ``FlaskTask`` base
 """
 
 import logging
+from dataclasses import asdict
 
 from celery import shared_task
 from sqlalchemy.orm import sessionmaker
@@ -28,13 +29,13 @@ from core.workflow_copilot.errors import ConflictError
 from core.workflow_copilot.handlers_fix import fix_registry
 from core.workflow_copilot.models import Action, Actor, NodeEvent, Turn
 from core.workflow_copilot.runner import Env, Runner
-from core.workflow_copilot.state import canvas_read_only
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from services.workflow_copilot import progress_bus, session_lock
 from services.workflow_copilot.agent_factory import build_copilot_agent
 from services.workflow_copilot.dify_port import WorkflowServiceDifyPort
 from services.workflow_copilot.repository import SqlCopilotRepository
+from services.workflow_copilot.service import WorkflowCopilotService
 
 logger = logging.getLogger(__name__)
 
@@ -64,16 +65,27 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 {"kind": "node", "node_id": ne.node_id, "title": ne.title, "status": ne.status, "error": ne.error},
             )
 
+        actor = Actor(**actor_dict)
         env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit)
         runner = Runner(env, fix_registry())
-        settled = runner.advance(session_id, Turn(action=Action(**action_dict), actor=Actor(**actor_dict)))
+        runner.advance(session_id, Turn(action=Action(**action_dict), actor=actor))
+        # Project a SessionView (single source of truth for phase/run_status/
+        # actions) rather than recomputing those fields inline -- once Task 5
+        # fills in `actions`, this frame gets them for free. The no-op
+        # enqueue is never called by get_session_view; the actor is the
+        # session owner (they dispatched this action), so the owner-check
+        # inside get_session_view passes.
+        view = WorkflowCopilotService(repo, session_lock, lambda *a, **k: None).get_session_view(session_id, actor)
         progress_bus.publish(
             session_id,
             {
                 "kind": "state",
-                "version": settled.version,
-                "state": str(settled.current_state),
-                "canvas_read_only": canvas_read_only(settled.current_state),
+                "version": view.version,
+                "phase": str(view.phase),
+                "run_status": str(view.run_status),
+                "state": view.state,
+                "canvas_read_only": view.canvas_read_only,
+                "actions": [asdict(a) for a in view.actions],
             },
         )
     except ConflictError:

@@ -108,6 +108,11 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(rep
     last_state_event = state_events[-1]
     assert last_state_event["state"] == "fix.await_verify"
     assert last_state_event["canvas_read_only"] is False
+    # Task 4: the state frame widens to spec §3's full shape -- projected
+    # from a SessionView, so phase/run_status/actions come along for free.
+    assert last_state_event["phase"] == "test"
+    assert last_state_event["run_status"] == "waiting_input"
+    assert last_state_event["actions"] == []
 
     assert released == [(s.id, "tok-1")]
 
