@@ -18,6 +18,7 @@ import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/Sidebar
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
+import { getAgentAppIconImageUrl } from '@/features/agent-v2/utils/agent-icon'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
@@ -182,8 +183,13 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
 
   const navigation = getAgentDetailNavigation(agentId)
   const agent = agentQuery.data
-  const imageUrl =
-    agent?.icon_type === 'image' || agent?.icon_type === 'link' ? agent.icon : undefined
+  const imageUrl = agent
+    ? getAgentAppIconImageUrl({
+        icon_type: agent.icon_type,
+        icon: agent.icon,
+        icon_url: agent.icon_url,
+      })
+    : undefined
   const iconType = (imageUrl ? 'image' : agent?.icon_type) as AgentIconType | null | undefined
 
   return (

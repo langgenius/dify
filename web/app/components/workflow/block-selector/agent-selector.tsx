@@ -23,6 +23,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
+import { getAgentAppIconImageUrl } from '@/features/agent-v2/utils/agent-icon'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import BlockIcon from '../block-icon'
@@ -211,7 +212,7 @@ function AgentSelectorAvatar({ agent }: { agent: AgentInviteOptionResponse }) {
       iconType={agent.icon_type}
       icon={agent.icon ?? undefined}
       background={agent.icon_background}
-      imageUrl={agent.icon ?? undefined}
+      imageUrl={getAgentAppIconImageUrl(agent)}
     />
   )
 }

@@ -941,6 +941,7 @@ export const zAgentInviteOptionResponse = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: zAgentIconType.nullish(),
+  icon_url: z.string().nullish(),
   id: z.string(),
   in_current_workflow_count: z.int().optional().default(0),
   is_in_current_workflow: z.boolean().optional().default(false),
