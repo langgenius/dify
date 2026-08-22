@@ -205,3 +205,56 @@ def apply_connect(
     }
     new_graph.setdefault("edges", []).append(edge)
     return new_graph, [from_node, to_node]
+
+
+def apply_insert_between(
+    graph: Graph,
+    edge: dict[str, str],
+    node_type: str,
+    config: dict[str, Any],
+    position: dict[str, float] | None = None,
+    node_id: str | None = None,
+) -> tuple[Graph, list[str]]:
+    """Split an existing edge with a new node: remove the old edge, add
+    ``old_source -> new_node`` and ``new_node -> old_target``.
+
+    ``edge`` identifies the edge to split by ``{"source": ..., "target": ...}``
+    (matching Dify's own edge fields, not a caller-known internal edge id).
+    Raises ``ValueError`` if no edge in ``graph["edges"]`` matches (the
+    Slice 1 dangling-ref validation). Returns ``(new_graph, [new_node_id])``.
+    """
+    old_source = edge.get("source")
+    old_target = edge.get("target")
+    new_graph = copy.deepcopy(graph)
+    edges = new_graph.get("edges", [])
+    matched = next(
+        (e for e in edges if e.get("source") == old_source and e.get("target") == old_target), None
+    )
+    if matched is None:
+        raise ValueError(f"edge not found: {old_source} -> {old_target}")
+
+    node = _build_node(new_graph, node_type, config, position, node_id)
+    new_id = node["id"]
+    new_graph.setdefault("nodes", []).append(node)
+
+    remaining_edges = [e for e in edges if e is not matched]
+    existing_edge_ids = {e.get("id") for e in remaining_edges}
+    incoming = {
+        "id": _next_edge_id(old_source, new_id, existing_edge_ids),
+        "source": old_source,
+        "target": new_id,
+        "type": "custom",
+        "sourceHandle": matched.get("sourceHandle") or "source",
+        "targetHandle": "target",
+    }
+    existing_edge_ids.add(incoming["id"])
+    outgoing = {
+        "id": _next_edge_id(new_id, old_target, existing_edge_ids),
+        "source": new_id,
+        "target": old_target,
+        "type": "custom",
+        "sourceHandle": "source",
+        "targetHandle": matched.get("targetHandle") or "target",
+    }
+    new_graph["edges"] = [*remaining_edges, incoming, outgoing]
+    return new_graph, [new_id]
