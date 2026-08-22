@@ -2,10 +2,10 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from graphon.runtime import VariablePool
-from graphon.variables.variables import Variable
+from graphon.variables.variables import VariableBase
 
 
-def add_variables_to_pool(variable_pool: VariablePool, variables: Sequence[Variable]) -> None:
+def add_variables_to_pool(variable_pool: VariablePool, variables: Sequence[VariableBase]) -> None:
     for variable in variables:
         variable_pool.add(variable.selector, variable)
 

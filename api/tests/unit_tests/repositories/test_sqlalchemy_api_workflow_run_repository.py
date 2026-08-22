@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -27,7 +26,7 @@ from repositories.sqlalchemy_api_workflow_run_repository import (
 )
 
 
-def _build_form_model(*, select_options_resolved: bool = False) -> HumanInputForm:
+def _build_form_model() -> HumanInputForm:
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     definition = FormDefinition(
         form_content="content",
@@ -38,16 +37,13 @@ def _build_form_model(*, select_options_resolved: bool = False) -> HumanInputFor
         default_values={"name": "Alice"},
         node_title="Ask Name",
         display_in_ui=True,
-        select_options_resolved=select_options_resolved,
     )
-    definition_payload = definition.model_dump(mode="json")
-    definition_payload["select_options_resolved"] = definition.select_options_resolved
     form = HumanInputForm(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
         node_id="node-1",
-        form_definition=json.dumps(definition_payload),
+        form_definition=definition.model_dump_json(),
         rendered_content="rendered",
         expiration_time=expiration_time,
     )
@@ -77,7 +73,7 @@ def _recipient(recipient_type: RecipientType, access_token: str) -> HumanInputFo
 def test_build_human_input_required_reason_prefers_standalone_web_app_token() -> None:
     reason = _build_human_input_required_reason(
         _build_reason_model(),
-        _build_form_model(select_options_resolved=True),
+        _build_form_model(),
         [
             _recipient(RecipientType.BACKSTAGE, "btok"),
             _recipient(RecipientType.CONSOLE, "ctok"),
@@ -88,8 +84,6 @@ def test_build_human_input_required_reason_prefers_standalone_web_app_token() ->
     assert reason.node_title == "Ask Name"
     assert reason.form_content == "rendered"
     assert reason.resolved_default_values == {"name": "Alice"}
-    assert reason.select_options_resolved is True
-    assert "select_options_resolved" not in reason.model_dump()
     assert not hasattr(reason, "form_token")
 
 

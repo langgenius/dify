@@ -121,11 +121,8 @@ def resolve_variable_select_input_options(
 ) -> list[FormInputConfig]:
     """Resolve variable-backed select options to runtime values."""
 
-    # This function replace the SelectInputConfig.option_source.value
-    # field with acutial runtime values when option_source.type is VARIABLE.
-    #
-    # This is a dirty hacks. However it does reduces the logic leaked to callers of
-    # the api.
+    # Convert variable-backed options into a self-contained constant source so
+    # downstream callers do not need the runtime variable pool or selector.
     resolved_inputs: list[FormInputConfig] = []
 
     if variable_pool is None:
@@ -148,8 +145,13 @@ def resolve_variable_select_input_options(
         if not isinstance(option_values, ArrayStringSegment):
             raise TypeError(f"expected ArrayStringSegment, got {type(option_values)}")
 
-        updated_option_source = option_source.model_copy(update={"value": option_values.value})
-        # Ensure frontend receives concrete select options instead of unresolved selectors.
+        updated_option_source = option_source.model_copy(
+            update={
+                "type": ValueSourceType.CONSTANT,
+                "selector": (),
+                "value": option_values.value,
+            }
+        )
         resolved_inputs.append(
             form_input.model_copy(
                 update={"option_source": updated_option_source},
@@ -171,10 +173,6 @@ def resolve_human_input_pause_reason_inputs(
         if not isinstance(reason, HumanInputRequired):
             resolved_reasons.append(reason)
             continue
-        if reason.select_options_resolved:
-            resolved_reasons.append(reason)
-            continue
-
         resolved_inputs = resolve_variable_select_input_options(
             reason.inputs,
             variable_pool=variable_pool,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from functools import partial
 from types import SimpleNamespace
 from typing import cast, override
 from unittest.mock import MagicMock
@@ -14,6 +15,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,
 )
+from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
@@ -487,7 +489,6 @@ class _TestFormRepository:
 
 
 def _container_handler(
-    monkeypatch: pytest.MonkeyPatch,
     *,
     inputs: dict[str, object] | None = None,
 ) -> tuple[
@@ -495,6 +496,7 @@ def _container_handler(
     FrameRegistry,
     RuntimeState,
     CustomContainerRequest,
+    WorkflowToolSourceRepository,
 ]:
     app, workflow = _source_workflow()
     parent_pool = VariablePool()
@@ -525,10 +527,14 @@ def _container_handler(
             failure_handler=MagicMock(),
         )
     )
-    monkeypatch.setattr(
-        WorkflowToolContainerHandler,
-        "_load_source",
-        staticmethod(lambda **_: (app, workflow)),
+    source_repository = MagicMock(spec=WorkflowToolSourceRepository)
+    source_repository.get_source.return_value = WorkflowToolSource(
+        app_id=app.id,
+        workflow_id=workflow.id,
+        graph_config=workflow.graph_dict,
+        features_dict=workflow.features_dict,
+        environment_variables=workflow.environment_variables,
+        workflow_kind=workflow.kind_or_standard,
     )
     payload = WorkflowToolContainerPayload(
         source_app_id=app.id,
@@ -548,7 +554,13 @@ def _container_handler(
             request=request,
         )
     )
-    return WorkflowToolContainerHandler(frame_registry), frame_registry, parent_state, request
+    return (
+        WorkflowToolContainerHandler(frame_registry, source_repository=source_repository),
+        frame_registry,
+        parent_state,
+        request,
+        source_repository,
+    )
 
 
 def _dispatch_next_node(
@@ -573,10 +585,8 @@ def _dispatch_next_node(
         processor.dispatch(NodeEventTask(frame_id=frame.frame_id, event=event))
 
 
-def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler, frame_registry, runtime_state, request = _container_handler(monkeypatch)
+def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision() -> None:
+    handler, frame_registry, runtime_state, request, _ = _container_handler()
     handler.handle_request(invocation_id="invocation", request=request)
     frame_registry["invocation:workflow-tool"].state.variable_pool.add(
         ("__workflow_tool_container__", "failure"),
@@ -621,10 +631,8 @@ def test_workflow_tool_handler_runs_child_graph_with_internal_name_collision(
         runtime_state.get_container_frame("invocation:workflow-tool")
 
 
-def test_workflow_tool_handler_restores_child_frame(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler, frame_registry, runtime_state, request = _container_handler(monkeypatch)
+def test_workflow_tool_handler_restores_child_frame() -> None:
+    handler, frame_registry, runtime_state, request, _ = _container_handler()
     handler.handle_request(invocation_id="invocation", request=request)
     frame_id = "invocation:workflow-tool"
     original_frame = frame_registry[frame_id]
@@ -644,10 +652,8 @@ def test_workflow_tool_handler_restores_child_frame(
     assert all(node.graph_runtime_state is restored_frame.state for node in restored_frame.graph.nodes.values())
 
 
-def test_workflow_tool_handler_restores_child_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler, frame_registry, runtime_state, request = _container_handler(monkeypatch)
+def test_workflow_tool_handler_restores_child_failure() -> None:
+    handler, frame_registry, runtime_state, request, source_repository = _container_handler()
     handler.handle_request(invocation_id="invocation", request=request)
     frame_id = "invocation:workflow-tool"
     frame = frame_registry[frame_id]
@@ -673,7 +679,7 @@ def test_workflow_tool_handler_restores_child_failure(
     runtime_state.put_container_frame(frame_state)
     frame_registry.remove(frame_id)
 
-    restored_handler = WorkflowToolContainerHandler(frame_registry)
+    restored_handler = WorkflowToolContainerHandler(frame_registry, source_repository=source_repository)
     restored_handler.restore_frame(frame_state)
     restored_handler.complete_frame_if_ready(frame_registry[frame_id])
 
@@ -688,10 +694,8 @@ def test_workflow_tool_handler_restores_child_failure(
     assert resume_task.result.node_run_result.error_type == "RuntimeError"
 
 
-def test_workflow_tool_handler_isolates_child_variable_pool(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler, frame_registry, _, request = _container_handler(monkeypatch)
+def test_workflow_tool_handler_isolates_child_variable_pool() -> None:
+    handler, frame_registry, _, request, _ = _container_handler()
 
     handler.handle_request(invocation_id="invocation", request=request)
 
@@ -707,8 +711,8 @@ def test_workflow_tool_handler_isolates_child_variable_pool(
     assert child_pool.get(("source-start", "stale")) is None
 
 
-def test_workflow_tool_handler_applies_start_input_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    handler, frame_registry, _, request = _container_handler(monkeypatch, inputs={})
+def test_workflow_tool_handler_applies_start_input_defaults() -> None:
+    handler, frame_registry, _, request, _ = _container_handler(inputs={})
 
     handler.handle_request(invocation_id="invocation", request=request)
 
@@ -717,10 +721,8 @@ def test_workflow_tool_handler_applies_start_input_defaults(monkeypatch: pytest.
     assert answer.to_object() == "fallback"
 
 
-def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler, _, runtime_state, request = _container_handler(monkeypatch, inputs={"answer": 42})
+def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails() -> None:
+    handler, _, runtime_state, request, _ = _container_handler(inputs={"answer": 42})
 
     handler.handle_request(invocation_id="invocation", request=request)
 
@@ -745,7 +747,7 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
         handler_factory=lambda _: delegate,
         hidden_event_listener=hidden_event_listener,
     )
-    workflow_tool_handler = WorkflowToolContainerHandler(frame_registry)
+    workflow_tool_handler = WorkflowToolContainerHandler(frame_registry, source_repository=MagicMock())
     event = NodeRunSucceededEvent(
         id="source-execution",
         node_id="source-start",
@@ -762,10 +764,8 @@ def test_workflow_tool_nested_handler_hides_marked_child_events() -> None:
     assert nested_handler.should_emit(event=unmarked_event) is True
 
 
-def test_workflow_tool_child_failure_does_not_change_outer_exception_count(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler, frame_registry, runtime_state, request = _container_handler(monkeypatch)
+def test_workflow_tool_child_failure_does_not_change_outer_exception_count() -> None:
+    handler, frame_registry, runtime_state, request, _ = _container_handler()
     handler.handle_request(invocation_id="invocation", request=request)
     now = datetime.now(UTC).replace(tzinfo=None)
     event = NodeRunFailedEvent(
@@ -784,8 +784,8 @@ def test_workflow_tool_child_failure_does_not_change_outer_exception_count(
     assert runtime_state.graph_execution.exceptions_count == 0
 
 
-def test_workflow_tool_empty_outputs_match_direct_invocation(monkeypatch: pytest.MonkeyPatch) -> None:
-    handler, frame_registry, runtime_state, request = _container_handler(monkeypatch)
+def test_workflow_tool_empty_outputs_match_direct_invocation() -> None:
+    handler, frame_registry, runtime_state, request, _ = _container_handler()
     handler.handle_request(invocation_id="invocation", request=request)
 
     run_state = runtime_state.get_container_run("invocation")
@@ -802,11 +802,16 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source_app, source_workflow = _source_human_input_workflow()
-    monkeypatch.setattr(
-        WorkflowToolContainerHandler,
-        "_load_source",
-        staticmethod(lambda **_: (source_app, source_workflow)),
+    source_repository = MagicMock(spec=WorkflowToolSourceRepository)
+    source_repository.get_source.return_value = WorkflowToolSource(
+        app_id=source_app.id,
+        workflow_id=source_workflow.id,
+        graph_config=source_workflow.graph_dict,
+        features_dict=source_workflow.features_dict,
+        environment_variables=source_workflow.environment_variables,
+        workflow_kind=source_workflow.kind_or_standard,
     )
+    handler_factory = partial(WorkflowToolContainerHandler, source_repository=source_repository)
     form_repository = _TestFormRepository()
     human_input_app_ids: list[str] = []
 
@@ -845,7 +850,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
             graph_runtime_state=initial_state,
             command_channel=InMemoryChannel(),
             workers=1,
-            container_handler_factories=(WorkflowToolContainerHandler,),
+            container_handler_factories=(handler_factory,),
         ).run()
     )
 
@@ -884,7 +889,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
             graph_runtime_state=restored_state,
             command_channel=InMemoryChannel(),
             workers=1,
-            container_handler_factories=(WorkflowToolContainerHandler,),
+            container_handler_factories=(handler_factory,),
         ).run()
     )
 

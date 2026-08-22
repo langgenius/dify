@@ -188,7 +188,7 @@ class HumanInputService:
     def resolve_form_inputs(self, form: Form) -> Sequence[FormInputConfig]:
         definition = form.get_definition()
         inputs = list(definition.inputs)
-        if not definition.select_options_resolved and any(
+        if any(
             isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
             for form_input in inputs
         ):

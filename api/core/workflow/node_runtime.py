@@ -680,17 +680,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     ) -> WorkflowToolContainerPayload:
         """Prepare a serializable request for Engine-owned Workflow Tool execution."""
         from core.tools.workflow_as_tool.tool import WorkflowTool
-        from models.model import App
-        from models.workflow import Workflow
 
         tool = self._binding_from_handle(tool_runtime).tool
         if not isinstance(tool, WorkflowTool):
             raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool")
-
-        source_app = tool.workflow_entities.get("app")
-        source_workflow = tool.workflow_entities.get("workflow")
-        if not isinstance(source_app, App) or not isinstance(source_workflow, Workflow):
-            raise ToolRuntimeResolutionError("Workflow Tool source is unavailable")
 
         inputs, system_files = tool.prepare_container_inputs(tool_parameters)
         encoded = WorkflowRuntimeTypeConverter().to_json_encodable(
@@ -705,9 +698,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
         return WorkflowToolContainerPayload.model_validate(
             {
-                "source_app_id": str(source_app.id),
-                "source_workflow_id": str(source_workflow.id),
-                "source_workflow_version": str(source_workflow.version),
+                "source_app_id": str(tool.workflow_app_id),
+                "source_workflow_id": str(tool.workflow_id),
+                "source_workflow_version": str(tool.version),
                 "inputs": encoded["inputs"],
                 "system_files": encoded["system_files"],
                 "inputs_for_log": encoded["inputs_for_log"],

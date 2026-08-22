@@ -196,6 +196,8 @@ class RedisSubscriptionBase(Subscription):
         except queue.Empty:
             return None
 
+        if item == SIG_CLOSE:
+            raise SubscriptionClosedError(f"The Redis {self._get_subscription_type()} subscription is closed")
         return item
 
     @override
