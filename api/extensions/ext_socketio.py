@@ -1,3 +1,4 @@
+import socket
 import ssl
 from typing import Any, cast
 from urllib.parse import urlparse
@@ -27,10 +28,17 @@ def _build_redis_options(redis_url: str) -> dict[str, Any]:
     applying a read timeout there causes a reconnect storm (issue #39423).
     ``socket_connect_timeout`` still guards connection establishment.
     """
+    _keepalive_options: dict[int, Any] = {}
+    _keepalive_options[socket.TCP_KEEPIDLE] = dify_config.REDIS_KEEPALIVE_IDLE
+    _keepalive_options[socket.TCP_KEEPINTVL] = dify_config.REDIS_KEEPALIVE_INTERVAL
+    _keepalive_options[socket.TCP_KEEPCNT] = dify_config.REDIS_KEEPALIVE_COUNT
+
     options: dict[str, Any] = {
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
+        "socket_keepalive": dify_config.REDIS_KEEPALIVE,
+        "socket_keepalive_options": _keepalive_options,
     }
 
     if dify_config.REDIS_MAX_CONNECTIONS:
