@@ -47,12 +47,14 @@ from graphon.nodes.container_effects import (
     ContainerExecutionResult,
     ContainerNodeRunResult,
     CustomContainerRequest,
+    LoopFrameRequest,
     build_container_value,
 )
 from graphon.nodes.protocols import ToolFileManagerProtocol
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
+from graphon.nodes.tool.exc import ToolNodeError
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.runtime import RuntimeState, VariablePool
@@ -67,6 +69,8 @@ def _workflow_tool_node(
     runtime_state: RuntimeState | None = None,
     *,
     app_id: str = "outer-app",
+    version: str = "1",
+    tool_node_version: str | None = None,
 ) -> tuple[DifyWorkflowToolNode, MagicMock, WorkflowToolContainerPayload]:
     graph_config = {
         "nodes": [
@@ -82,6 +86,8 @@ def _workflow_tool_node(
                     "tool_label": "Nested Workflow",
                     "tool_configurations": dict[str, object](),
                     "tool_parameters": dict[str, object](),
+                    "version": version,
+                    "tool_node_version": tool_node_version,
                 },
             }
         ],
@@ -181,6 +187,89 @@ def test_workflow_tool_node_requests_child_container_and_resumes_successfully() 
         "provider_id": "workflow-provider",
         "plugin_unique_identifier": None,
     }
+
+
+def test_workflow_tool_node_returns_failure_when_runtime_cannot_be_loaded() -> None:
+    node, runtime, _ = _workflow_tool_node(version="2")
+    runtime.get_runtime.side_effect = ToolNodeError("runtime unavailable")
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    completed = events[0]
+    assert isinstance(completed, StreamCompletedEvent)
+    assert completed.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert completed.node_run_result.error == "Failed to get tool runtime: runtime unavailable"
+    runtime.get_runtime.assert_called_once_with(
+        node_id="tool",
+        node_data=node.node_data,
+        variable_pool=node.graph_runtime_state.variable_pool,
+        node_execution_id="tool-execution",
+    )
+
+
+def test_workflow_tool_node_returns_failure_when_payload_cannot_be_built() -> None:
+    node, runtime, _ = _workflow_tool_node(tool_node_version="1")
+    runtime.build_workflow_tool_container_payload.side_effect = ToolNodeError("invalid source workflow")
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    completed = events[0]
+    assert isinstance(completed, StreamCompletedEvent)
+    assert completed.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
+    assert completed.node_run_result.error == "Failed to prepare Workflow Tool: invalid source workflow"
+
+
+def test_workflow_tool_node_rejects_non_execution_result() -> None:
+    node, _, _ = _workflow_tool_node()
+    result = LoopFrameRequest(
+        inputs={},
+        outputs={},
+        loop_count=0,
+        root_node_id="loop",
+        loop_variable_selectors={},
+        loop_node_ids=frozenset(),
+        index=0,
+    )
+
+    with pytest.raises(TypeError, match="Unsupported Workflow Tool container result LoopFrameRequest"):
+        list(node._resume_container_events(result=result))
+
+
+def test_workflow_tool_node_resumes_failed_result_without_chunks() -> None:
+    node, _, _ = _workflow_tool_node()
+    result = ContainerExecutionResult(
+        metadata={},
+        steps=1,
+        node_run_result=ContainerNodeRunResult(
+            status=WorkflowNodeExecutionStatus.FAILED,
+            error="child failed",
+        ),
+    )
+
+    events = list(node._resume_container_events(result=result))
+
+    assert len(events) == 1
+    assert isinstance(events[0], StreamCompletedEvent)
+    assert events[0].node_run_result.error == "child failed"
+
+
+def test_workflow_tool_node_resumes_empty_text_with_final_chunk_only() -> None:
+    node, _, _ = _workflow_tool_node()
+    result = ContainerExecutionResult(
+        metadata={},
+        steps=0,
+        node_run_result=ContainerNodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            outputs={"text": build_container_value("")},
+        ),
+    )
+
+    events = list(node._resume_container_events(result=result))
+
+    assert events[:1] == [StreamChunkEvent(selector=["tool", "text"], chunk="", is_final=True)]
+    assert isinstance(events[1], StreamCompletedEvent)
 
 
 def test_node_factory_can_keep_workflow_tool_direct_for_single_step_debug() -> None:
