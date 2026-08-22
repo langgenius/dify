@@ -66,3 +66,35 @@ class TestTimeDuration:
         """Test None value."""
         with pytest.raises(ValueError, match="Time duration cannot be empty"):
             time_duration(None)
+
+    def test_trailing_newline_rejected(self):
+        """Trailing newline should be rejected (regression for #39730).
+
+        re.match with a '$' anchor accepts "7d\\n" because Python's '$'
+        matches at end-of-string OR just before a trailing newline.
+        re.fullmatch requires the entire string to match.
+        """
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("7d\n")
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("30m\n")
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("4h\n")
+
+    def test_trailing_carriage_return_rejected(self):
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("7d\r")
+
+    def test_trailing_crlf_rejected(self):
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("7d\r\n")
+
+    def test_leading_newline_rejected(self):
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("\n7d")
+
+    def test_embedded_whitespace_rejected(self):
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration("7 d")
+        with pytest.raises(ValueError, match="Invalid time duration format"):
+            time_duration(" 7d")

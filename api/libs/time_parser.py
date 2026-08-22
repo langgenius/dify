@@ -24,8 +24,12 @@ def parse_time_duration(duration_str: str) -> timedelta | None:
         return None
 
     # Pattern: number followed by unit (d, h, m, s)
+    # Use re.fullmatch instead of re.match to reject trailing newlines.
+    # In Python, '$' matches at end-of-string OR just before a trailing newline,
+    # so re.match accepts "7d\n". re.fullmatch requires the entire
+    # string to match. Regression for #39730 (sibling of #39234 / #39548 / #39666).
     pattern = r"^(\d+)([dhms])$"
-    match = re.match(pattern, duration_str.lower())
+    match = re.fullmatch(pattern, duration_str.lower())
 
     if not match:
         return None
