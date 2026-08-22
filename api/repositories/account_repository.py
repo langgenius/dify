@@ -135,8 +135,12 @@ class SQLAlchemyAccountRepository(AccountRepository):
                 return AccountEmailResetResult(status=AccountEmailResetStatus.ACCOUNT_NOT_FOUND)
             if account.email.lower() != expected_old_email.lower():
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_CHANGED)
+            # An identical address is not a change. Reject it as before, so the
+            # integration cleanup below never runs for a no-op reset.
+            if account.email == new_email:
+                return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
             # Exclude this account's own row so normalizing your own stored casing
-            # is not read as a collision with yourself.
+            # (Foo@X.com -> foo@x.com) is not read as a collision with yourself.
             duplicate_stmt = (
                 select(Account.id)
                 .where(func.lower(Account.email) == new_email.lower(), Account.id != account_id)

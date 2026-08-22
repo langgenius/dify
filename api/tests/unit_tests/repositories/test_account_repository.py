@@ -231,6 +231,34 @@ def test_reset_email_rejects_case_variant_of_another_account_email(
     assert result.status == AccountEmailResetStatus.EMAIL_IN_USE
 
 
+def test_reset_email_rejects_an_unchanged_address(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """An identical address is not a change, and must not run the integration cleanup."""
+    _persist_account(sqlite_session)
+    integration = AccountIntegrate(
+        account_id="account-1",
+        provider="google",
+        open_id="google-user",
+        encrypted_token="encrypted-token",
+    )
+    sqlite_session.add(integration)
+    sqlite_session.commit()
+    integration_id = integration.id
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="account@example.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.EMAIL_IN_USE
+    sqlite_session.expire_all()
+    assert sqlite_session.get(AccountIntegrate, integration_id) is not None
+
+
 def test_reset_email_allows_normalizing_the_accounts_own_address(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
