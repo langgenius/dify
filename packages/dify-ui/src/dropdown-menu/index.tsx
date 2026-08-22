@@ -12,17 +12,20 @@ import {
   floatingSeparatorClassName,
   menuItemClassName,
   menuItemDestructiveClassName,
-  menuPopupClassName,
+  menuPopupBaseClassName,
+  menuPopupSurfaceClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 
 const DropdownMenu = Menu.Root
+const DropdownMenuPortal = Menu.Portal
 const DropdownMenuTrigger = Menu.Trigger
 const DropdownMenuSub = Menu.SubmenuRoot
 const DropdownMenuGroup = Menu.Group
 
 type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
 type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
+type DropdownMenuPortalProps = Menu.Portal.Props
 type DropdownMenuSubProps = Menu.SubmenuRoot.Props
 type DropdownMenuGroupProps = Menu.Group.Props
 type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
@@ -107,62 +110,51 @@ function DropdownMenuLabel({ className, ...props }: DropdownMenuLabelProps) {
   return <Menu.GroupLabel className={cn(floatingGroupLabelClassName, className)} {...props} />
 }
 
-type DropdownMenuContentProps = {
-  children: React.ReactNode
+type DropdownMenuPositionerProps = Omit<Menu.Positioner.Props, 'className' | 'side' | 'align'> & {
+  className?: string
   placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-  popupClassName?: string
-  positionerProps?: Omit<
-    Menu.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<Menu.Popup.Props, 'children' | 'className'>
 }
 
-type DropdownMenuPopupRenderProps = Required<Pick<DropdownMenuContentProps, 'children'>> & {
-  placement: Placement
-  sideOffset: number
-  alignOffset: number
-  className?: string
-  popupClassName?: string
-  positionerProps?: DropdownMenuContentProps['positionerProps']
-  popupProps?: DropdownMenuContentProps['popupProps']
-}
-
-function renderDropdownMenuPopup({
-  children,
-  placement,
-  sideOffset,
-  alignOffset,
+function DropdownMenuPositioner({
   className,
-  popupClassName,
-  positionerProps,
-  popupProps,
-}: DropdownMenuPopupRenderProps) {
+  placement = 'bottom-end',
+  sideOffset = 4,
+  alignOffset = 0,
+  ...props
+}: DropdownMenuPositionerProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
-    <Menu.Portal>
-      <Menu.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
-      >
-        <Menu.Popup
-          className={cn(menuPopupClassName, floatingPopupAnimationClassName, popupClassName)}
-          {...popupProps}
-        >
-          {children}
-        </Menu.Popup>
-      </Menu.Positioner>
-    </Menu.Portal>
+    <Menu.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      className={cn('z-50 outline-hidden', className)}
+      {...props}
+    />
   )
 }
+
+type DropdownMenuPopupProps = Omit<Menu.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function DropdownMenuPopup({ className, ...props }: DropdownMenuPopupProps) {
+  return (
+    <Menu.Popup
+      className={cn(menuPopupBaseClassName, floatingPopupAnimationClassName, className)}
+      {...props}
+    />
+  )
+}
+
+type DropdownMenuContentProps = Omit<DropdownMenuPopupProps, 'children' | 'className'> &
+  Pick<DropdownMenuPositionerProps, 'sideOffset' | 'alignOffset'> & {
+    children: React.ReactNode
+    placement?: Placement
+    className?: string
+  }
 
 function DropdownMenuContent({
   children,
@@ -170,20 +162,21 @@ function DropdownMenuContent({
   sideOffset = 4,
   alignOffset = 0,
   className,
-  popupClassName,
-  positionerProps,
-  popupProps,
+  ...props
 }: DropdownMenuContentProps) {
-  return renderDropdownMenuPopup({
-    children,
-    placement,
-    sideOffset,
-    alignOffset,
-    className,
-    popupClassName,
-    positionerProps,
-    popupProps,
-  })
+  return (
+    <DropdownMenuPortal>
+      <DropdownMenuPositioner
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+      >
+        <DropdownMenuPopup className={cn(menuPopupSurfaceClassName, className)} {...props}>
+          {children}
+        </DropdownMenuPopup>
+      </DropdownMenuPositioner>
+    </DropdownMenuPortal>
+  )
 }
 
 type DropdownMenuSubTriggerProps = Omit<Menu.SubmenuTrigger.Props, 'className'> & {
@@ -212,16 +205,7 @@ function DropdownMenuSubTrigger({
   )
 }
 
-type DropdownMenuSubContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-  popupClassName?: string
-  positionerProps?: DropdownMenuContentProps['positionerProps']
-  popupProps?: DropdownMenuContentProps['popupProps']
-}
+type DropdownMenuSubContentProps = DropdownMenuContentProps
 
 function DropdownMenuSubContent({
   children,
@@ -229,20 +213,21 @@ function DropdownMenuSubContent({
   sideOffset = 4,
   alignOffset = 0,
   className,
-  popupClassName,
-  positionerProps,
-  popupProps,
+  ...props
 }: DropdownMenuSubContentProps) {
-  return renderDropdownMenuPopup({
-    children,
-    placement,
-    sideOffset,
-    alignOffset,
-    className,
-    popupClassName,
-    positionerProps,
-    popupProps,
-  })
+  return (
+    <DropdownMenuPortal>
+      <DropdownMenuPositioner
+        placement={placement}
+        sideOffset={sideOffset}
+        alignOffset={alignOffset}
+      >
+        <DropdownMenuPopup className={cn(menuPopupSurfaceClassName, className)} {...props}>
+          {children}
+        </DropdownMenuPopup>
+      </DropdownMenuPositioner>
+    </DropdownMenuPortal>
+  )
 }
 
 type DropdownMenuItemProps = Omit<Menu.Item.Props, 'className'> & {
@@ -298,6 +283,9 @@ export {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuLinkItem,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuRadioItemIndicator,
@@ -316,6 +304,9 @@ export type {
   DropdownMenuItemProps,
   DropdownMenuLabelProps,
   DropdownMenuLinkItemProps,
+  DropdownMenuPopupProps,
+  DropdownMenuPortalProps,
+  DropdownMenuPositionerProps,
   DropdownMenuProps,
   DropdownMenuRadioGroupProps,
   DropdownMenuRadioItemIndicatorProps,

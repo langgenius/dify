@@ -73,7 +73,7 @@ const PermissionSelector = ({ disabled, permission, onChange }: PermissionSelect
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="w-(--anchor-width) max-w-(--available-width)"
+        className="w-(--anchor-width) max-w-(--available-width)"
       >
         <DropdownMenuRadioGroup<CredentialPermission>
           value={permission}

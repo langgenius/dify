@@ -63,7 +63,7 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
         <DropdownMenuContent
           placement={placement || 'bottom-end'}
           sideOffset={4}
-          popupClassName="w-[224px]"
+          className="w-[224px]"
         >
           <div className="px-3 py-1.5 system-md-regular text-text-secondary">
             <div className="flex items-center gap-2">

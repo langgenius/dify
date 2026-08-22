@@ -43,7 +43,7 @@ const Operation: FC<Props> = ({
         <span className="system-md-semibold">{title}</span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement={placement} sideOffset={4} popupClassName="min-w-[120px]">
+      <DropdownMenuContent placement={placement} sideOffset={4} className="min-w-[120px]">
         <DropdownMenuItem className="system-md-regular" onClick={togglePin}>
           <span className="grow">
             {isPinned
