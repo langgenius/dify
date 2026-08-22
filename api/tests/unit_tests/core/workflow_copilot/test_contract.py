@@ -3,7 +3,9 @@
 Spec: docs/superpowers/specs/2026-08-21-workflow-copilot-full-flow-contract-design.md, §2/§6/§7.
 """
 
+import json
 from dataclasses import asdict
+from pathlib import Path
 
 from core.workflow_copilot.contract import (
     ActionKind,
@@ -219,3 +221,47 @@ def test_card_shapes_round_trip():
         "output": "PDF summary",
         "prefer_audited": True,
     }
+
+
+def test_schema_in_lockstep():
+    """The checked-in JSON Schema + TypeScript are DERIVED from contract.py
+    (+ EntryMode/ConversationItem/SessionView) via contract_gen.generate().
+    This byte-compares a fresh generation against the checked-in files so
+    drift/hand-edits fail CI instead of silently diverging from the FE."""
+    from core.workflow_copilot import contract_gen
+
+    schema, ts = contract_gen.generate()
+    root = next(p for p in Path(__file__).parents if (p / "web").is_dir() and (p / "api").is_dir())
+    checked_json = (root / "api/core/workflow_copilot/contract_schema.json").read_text()
+    checked_ts = (root / "web/app/components/workflow-copilot/contract/types.ts").read_text()
+    regen_hint = "run: uv run --project api python -m core.workflow_copilot.contract_gen"
+    assert json.dumps(schema, indent=2, ensure_ascii=False) + "\n" == checked_json, regen_hint
+    assert ts == checked_ts, regen_hint
+
+
+def test_sample_session_view_validates():
+    """The generated schema is itself a valid JSON Schema and accepts a
+    real (minimal) SessionView instance -- proves $defs/$ref resolution
+    round-trips, not just that generate() runs without raising."""
+    import jsonschema
+
+    from core.workflow_copilot import contract_gen
+
+    schema, _ts = contract_gen.generate()
+    jsonschema.Draft202012Validator.check_schema(schema)
+
+    sample = {
+        "session_id": "s1",
+        "app_id": "a1",
+        "version": 1,
+        "state": "fix.await_verify",
+        "canvas_read_only": False,
+        "run_status": "waiting_input",
+        "interrupted": False,
+        "conversation": [],
+        "entry_mode": "fix",
+        "phase": "test",
+        "actions": [],
+        "checkpoint": None,
+    }
+    jsonschema.validate(sample, {**schema, "$ref": "#/$defs/SessionView"})
