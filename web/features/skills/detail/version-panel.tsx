@@ -14,7 +14,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -177,7 +178,7 @@ function VersionFilter({
         placement="bottom-end"
         sideOffset={4}
         alignOffset={55}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="flex w-62 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
           {(['all', 'onlyNamed'] as const).map((filterValue) => (
@@ -403,7 +404,17 @@ function VersionRow({
       </li>
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="w-full max-w-[480px] overflow-hidden! border-none p-0 text-left align-middle">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={tCommon(($) => $['operation.close'])}
+                size="lg"
+                className="absolute top-6 right-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="px-6 pt-6 pr-14 pb-4">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {versionInfoLabel}

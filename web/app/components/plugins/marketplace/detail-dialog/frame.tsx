@@ -4,11 +4,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 
@@ -113,10 +114,17 @@ export default function MarketplaceDetailDialogFrame({
             src={src}
             title={title}
           />
-          <DialogCloseButton
-            ref={closeButtonRef}
-            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            className="top-5 right-5 size-8 rounded-lg"
+          <DialogClose
+            render={
+              <IconButton
+                ref={closeButtonRef}
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="sm"
+                className="absolute top-5 right-5 size-8 rounded-lg"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </DialogPopup>
       </DialogPortal>
