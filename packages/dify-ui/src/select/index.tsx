@@ -2,10 +2,10 @@
 
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {

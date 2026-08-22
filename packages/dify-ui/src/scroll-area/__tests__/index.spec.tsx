@@ -1,4 +1,4 @@
-import type { CSSProperties, UIEvent } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   ScrollArea,
@@ -34,9 +34,9 @@ const stubElementMetric = (
 const renderScrollArea = (
   options: {
     rootClassName?: string
-    contentStyle?: CSSProperties
+    contentStyle?: React.CSSProperties
     viewportClassName?: string
-    viewportStyle?: CSSProperties
+    viewportStyle?: React.CSSProperties
     verticalScrollbarClassName?: string
     horizontalScrollbarClassName?: string
     verticalThumbClassName?: string
@@ -134,7 +134,7 @@ describe('scroll area', () => {
       let rootElement: HTMLDivElement | null = null
       let viewportElement: HTMLDivElement | null = null
       let scrollOwner: HTMLDivElement | null = null
-      const onScroll = vi.fn((event: UIEvent<HTMLDivElement>) => {
+      const onScroll = vi.fn((event: React.UIEvent<HTMLDivElement>) => {
         scrollOwner = event.currentTarget
       })
 

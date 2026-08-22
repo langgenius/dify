@@ -1,7 +1,7 @@
 'use client'
 
-import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
+import * as React from 'react'
 import { cn } from '../cn'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
