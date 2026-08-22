@@ -372,5 +372,5 @@ def _enum_string(value: object, *, field: str) -> str | None:
     if value is None:
         return None
     if isinstance(value, str):
-        return str(value)
+        return value
     raise TypeError(f"{field} must be a string or string enum")

@@ -92,7 +92,7 @@ class AccountSessionsApi(Resource):
 
         items = [
             SessionRow(
-                id=str(r.id),
+                id=r.id,
                 prefix=r.prefix,
                 client_id=r.client_id,
                 device_label=r.device_label,

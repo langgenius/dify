@@ -364,7 +364,7 @@ def _serialize_agent_app_detail(
 
     app_model = AppService().get_app(app_model, session=session)
     if FeatureService.get_system_features().webapp_auth.enabled:
-        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+        app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_model.id)
         app_model.access_mode = app_setting.access_mode  # type: ignore[attr-defined]
 
     roster_service = _agent_roster_service(session)
@@ -382,7 +382,7 @@ def _serialize_agent_app_detail(
             )
         )
         if agent_id
-        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=app_model.id)
     )
     if not agent:
         raise AgentNotFoundError()
@@ -500,7 +500,7 @@ def _agent_api_key_count(session: Session, app_model: App) -> int:
 def _agent_app_access_ready(session: Session, app_model: App) -> bool:
     agent = _agent_roster_service(session).get_app_backing_agent(
         tenant_id=app_model.tenant_id,
-        app_id=str(app_model.id),
+        app_id=app_model.id,
     )
     return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
 
@@ -510,7 +510,7 @@ def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
     access_ready = _agent_app_access_ready(session, app_model)
     response = AgentApiAccessResponse(
         access_ready=access_ready,
-        enabled=bool(app_model.enable_api and access_ready),
+        enabled=app_model.enable_api and access_ready,
         service_api_base_url=base_url,
         chat_endpoint=f"{base_url}/chat-messages",
         stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
@@ -947,7 +947,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
     @with_session(write=False)
     def get(self, session: Session, tenant_id: str, agent_id: UUID) -> dict[str, object]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return dump_response(ApiKeyList, self._get_api_key_list(str(app_model.id), tenant_id, session=session))
+        return dump_response(ApiKeyList, self._get_api_key_list(app_model.id, tenant_id, session=session))
 
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -960,7 +960,7 @@ class AgentApiKeyListApi(BaseApiKeyListResource):
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             ApiKeyItem,
-            self._create_api_key(str(app_model.id), tenant_id, session=session),
+            self._create_api_key(app_model.id, tenant_id, session=session),
         ), 201
 
 
@@ -985,7 +985,7 @@ class AgentApiKeyApi(BaseApiKeyResource):
         api_key_id: UUID,
     ) -> tuple[str, int]:
         app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        self._delete_api_key(str(app_model.id), str(api_key_id), tenant_id, current_user, session=session)
+        self._delete_api_key(app_model.id, str(api_key_id), tenant_id, current_user, session=session)
         return "", 204
 
 

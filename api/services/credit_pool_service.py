@@ -121,11 +121,11 @@ class CreditPoolReservation:
 class CreditPoolService:
     @staticmethod
     def _normalize_pool_type(pool_type: str | ProviderQuotaType) -> str:
-        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else str(pool_type)
+        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else pool_type
 
     @staticmethod
     def _use_billing_quota() -> bool:
-        return bool(dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD)
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
 
     @staticmethod
     def _require_session(session: Session | None) -> Session:

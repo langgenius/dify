@@ -250,7 +250,7 @@ class DeviceApproveApi(Resource):
                 redis_client,
                 subject_email=account.email,
                 subject_issuer=ACCOUNT_ISSUER_SENTINEL,
-                account_id=str(account.id),
+                account_id=account.id,
                 client_id=state.client_id,
                 device_label=state.device_label,
                 prefix=profile.prefix,
@@ -263,7 +263,7 @@ class DeviceApproveApi(Resource):
                 store.approve(
                     device_code,
                     subject_email=account.email,
-                    account_id=str(account.id),
+                    account_id=account.id,
                     subject_issuer=ACCOUNT_ISSUER_SENTINEL,
                     minted_token=mint.token,
                     token_id=str(mint.token_id),

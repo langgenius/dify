@@ -188,7 +188,7 @@ class EmailCodeLoginChallengeStore:
             "state": "active",
             "token": token,
         }
-        expiry_seconds = int(dify_config.EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES * 60)
+        expiry_seconds = dify_config.EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES * 60
 
         try:
             # Overwriting this one key makes a resend invalidate the previous
