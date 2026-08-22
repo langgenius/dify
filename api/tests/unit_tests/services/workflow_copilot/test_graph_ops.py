@@ -7,6 +7,8 @@ the placeholder agent's ``set_node_config{node_id, path: "code", value}``
 intents (see core/workflow_copilot/placeholder_agent.py).
 """
 
+import copy
+
 import pytest
 
 from core.workflow_copilot.models import MutationIntent
@@ -17,6 +19,7 @@ from services.workflow_copilot.graph_ops import (
     apply_delete_node,
     apply_insert_between,
     apply_set_node_config,
+    diff_graphs,
     validate_intent_args,
 )
 
@@ -366,3 +369,49 @@ def test_apply_insert_between_original_graph_untouched():
 
     assert len(graph["edges"]) == 1
     assert graph["edges"][0]["target"] == "b"
+
+
+# ---- diff_graphs -------------------------------------------------------
+
+
+def test_diff_graphs_added_node_and_edge_is_structure_scope():
+    before = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+    after = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "knowledge-1", "data": {}}],
+        "edges": [{"source": "knowledge-1", "target": "a", "sourceHandle": "source", "targetHandle": "target"}],
+    }
+
+    changes, scope = diff_graphs(before, after)
+
+    assert scope == "structure"
+    assert "added node knowledge-1" in changes
+    assert "added knowledge-1 → a" in changes
+
+
+def test_diff_graphs_removed_node_is_structure_scope():
+    before = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+    after = {"nodes": [{"id": "b", "data": {}}], "edges": []}
+
+    changes, scope = diff_graphs(before, after)
+
+    assert scope == "structure"
+    assert changes == ["removed node a"]
+
+
+def test_diff_graphs_config_only_change_is_configuration_scope():
+    before = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "old"}}], "edges": []}
+    after = {"nodes": [{"id": "llm-1", "data": {"prompt_template": "new"}}], "edges": []}
+
+    changes, scope = diff_graphs(before, after)
+
+    assert scope == "configuration"
+    assert changes == ["llm-1: prompt_template updated"]
+
+
+def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes():
+    graph = {"nodes": [{"id": "a", "data": {"x": 1}}], "edges": []}
+
+    changes, scope = diff_graphs(graph, copy.deepcopy(graph))
+
+    assert changes == []
+    assert scope == "configuration"
