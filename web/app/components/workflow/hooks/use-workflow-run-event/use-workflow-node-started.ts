@@ -23,8 +23,7 @@ export const useWorkflowNodeStarted = () => {
       const { getNodes, setNodes, edges, setEdges, transform } = store.getState()
       const nodes = getNodes()
       const currentIndex = workflowRunningData?.tracing?.findIndex((item) => {
-        if (data.execution_metadata?.parallel_id)
-          return item.id === data.id
+        if (data.execution_metadata?.parallel_id) return item.id === data.id
         return item.node_id === data.node_id
       })
       if (currentIndex && currentIndex > -1) {
