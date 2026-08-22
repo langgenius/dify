@@ -94,7 +94,7 @@ class TestWorkflowEntryInit:
     def test_applies_execution_and_observability_layers(self):
         graph_engine = MagicMock()
         graph_runtime_state = SimpleNamespace(_execution_context=None)
-        execution_limits_layer = sentinel.execution_limits_layer
+        execution_limits_layer = MagicMock()
         observability_layer = sentinel.observability_layer
 
         with (
@@ -126,12 +126,20 @@ class TestWorkflowEntryInit:
             )
 
         assert entry.command_channel is sentinel.command_channel
+        handler_factories = graph_engine_cls.call_args.kwargs["container_handler_factories"]
         graph_engine_cls.assert_called_once_with(
             graph=sentinel.graph,
             graph_runtime_state=graph_runtime_state,
             command_channel=sentinel.command_channel,
             workers=workflow_entry.dify_config.GRAPH_ENGINE_MAX_WORKERS,
+            container_handler_factories=handler_factories,
         )
+        assert len(handler_factories) == 3
+        assert handler_factories[0](MagicMock()).node_type == BuiltinNodeTypes.LOOP
+        assert handler_factories[1](MagicMock()).node_type == BuiltinNodeTypes.ITERATION
+        handler = handler_factories[2](MagicMock())
+        assert handler.should_emit(event=sentinel.hidden_event) is False
+        execution_limits_layer.on_event.assert_called_once_with(sentinel.hidden_event)
         assert graph_runtime_state._execution_context is sentinel.execution_context
         execution_limits_layer_cls.assert_called_once_with(
             max_steps=workflow_entry.dify_config.WORKFLOW_MAX_EXECUTION_STEPS,

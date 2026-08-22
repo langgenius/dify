@@ -9,6 +9,7 @@ from typing import Any
 from configs import dify_config
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.human_input_adapter import DeliveryChannelConfig
+from core.workflow.human_input_policy import resolve_variable_select_input_options
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, HITLDecision, PauseRequested
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -160,17 +161,26 @@ class DifyHITLCallback:
         )
 
     def _create_form(self, ctx: HITLContext, *, form_id: str | None = None) -> HumanInputFormEntity:
+        form_config = self._node_data.model_copy(
+            update={
+                "inputs": resolve_variable_select_input_options(
+                    self._node_data.inputs,
+                    variable_pool=ctx.variable_pool,
+                )
+            }
+        )
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id or ctx.workflow_execution_id,
             conversation_id=self._conversation_id,
             node_id=ctx.node_id,
-            form_config=self._node_data,
+            form_config=form_config,
             rendered_content=render_form_content_before_submission(
                 self._node_data,
                 variable_pool=ctx.variable_pool,
             ),
             delivery_methods=self._delivery_methods,
             display_in_ui=self._display_in_ui,
+            select_options_resolved=True,
             resolved_default_values=dict(
                 resolve_default_values(
                     self._node_data,

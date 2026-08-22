@@ -1,6 +1,7 @@
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
+from functools import partial
 from typing import Any, TypedDict
 from uuid import uuid4
 
@@ -29,10 +30,16 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
+from core.workflow.workflow_tool_container_handler import (
+    WorkflowToolContainerHandler,
+    WorkflowToolNestedContainerHandler,
+)
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
 from graphon.engine import Engine
 from graphon.engine.command import CommandChannel, InMemoryChannel
+from graphon.engine.container_handler.builtin.iteration import IterationContainerHandler
+from graphon.engine.container_handler.builtin.loop import LoopContainerHandler
 from graphon.engine.filter import EngineEventFilterContext, ResponseStreamFilter, filter_engine_events
 from graphon.engine.layer import ExecutionLimitsLayer, Layer
 from graphon.engine_events import EngineEvent, GraphRunFailedEvent, NodeEvent, is_node_result_event
@@ -144,17 +151,30 @@ class WorkflowEntry:
         execution_context = capture_current_context()
         # ponytail: Graphon snapshots omit process-local context; use a public rebind API when Graphon exposes one.
         graph_runtime_state._execution_context = execution_context
+        limits_layer = ExecutionLimitsLayer(
+            max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
+        )
         self.graph_engine = Engine(
             graph=graph,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
             workers=dify_config.GRAPH_ENGINE_MAX_WORKERS,
+            container_handler_factories=(
+                partial(
+                    WorkflowToolNestedContainerHandler,
+                    handler_factory=LoopContainerHandler,
+                    hidden_event_listener=limits_layer.on_event,
+                ),
+                partial(
+                    WorkflowToolNestedContainerHandler,
+                    handler_factory=IterationContainerHandler,
+                    hidden_event_listener=limits_layer.on_event,
+                ),
+                partial(WorkflowToolContainerHandler, hidden_event_listener=limits_layer.on_event),
+            ),
         )
 
         # Add execution limits layer
-        limits_layer = ExecutionLimitsLayer(
-            max_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS, max_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
-        )
         self.graph_engine.add_layer(limits_layer)
 
         # Add observability layer when OTel is enabled
@@ -276,6 +296,7 @@ class WorkflowEntry:
         node_factory = DifyNodeFactory.from_graph_init_context(
             graph_init_context=graph_init_context,
             graph_runtime_state=graph_runtime_state,
+            containerize_workflow_tools=False,
         )
         node = node_factory.create_node(node_config)
 

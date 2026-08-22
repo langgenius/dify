@@ -74,6 +74,7 @@ from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeMessage,
     ToolRuntimeParameter,
 )
+from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -88,6 +89,7 @@ from .human_input_adapter import (
     parse_human_input_delivery_methods,
 )
 from .system_variables import SystemVariableKey, get_system_text
+from .workflow_tool_container_types import WorkflowToolContainerPayload
 
 
 class PollingLLMRuntimeProtocol(Protocol):
@@ -667,6 +669,51 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         if isinstance(latest, dict):
             return LLMUsage.model_validate(latest)
         return LLMUsage.empty_usage()
+
+    def build_workflow_tool_container_payload(
+        self,
+        *,
+        tool_runtime: ToolRuntimeHandle,
+        tool_parameters: Mapping[str, Any],
+        inputs_for_log: Mapping[str, Any],
+        workflow_call_depth: int,
+    ) -> WorkflowToolContainerPayload:
+        """Prepare a serializable request for Engine-owned Workflow Tool execution."""
+        from core.tools.workflow_as_tool.tool import WorkflowTool
+        from models.model import App
+        from models.workflow import Workflow
+
+        tool = self._binding_from_handle(tool_runtime).tool
+        if not isinstance(tool, WorkflowTool):
+            raise ToolRuntimeResolutionError("resolved tool is not a Workflow Tool")
+
+        source_app = tool.workflow_entities.get("app")
+        source_workflow = tool.workflow_entities.get("workflow")
+        if not isinstance(source_app, App) or not isinstance(source_workflow, Workflow):
+            raise ToolRuntimeResolutionError("Workflow Tool source is unavailable")
+
+        inputs, system_files = tool.prepare_container_inputs(tool_parameters)
+        encoded = WorkflowRuntimeTypeConverter().to_json_encodable(
+            {
+                "inputs": inputs,
+                "system_files": system_files,
+                "inputs_for_log": dict(inputs_for_log),
+            }
+        )
+        if encoded is None:
+            raise ToolRuntimeResolutionError("failed to serialize Workflow Tool inputs")
+
+        return WorkflowToolContainerPayload.model_validate(
+            {
+                "source_app_id": str(source_app.id),
+                "source_workflow_id": str(source_workflow.id),
+                "source_workflow_version": str(source_workflow.version),
+                "inputs": encoded["inputs"],
+                "system_files": encoded["system_files"],
+                "inputs_for_log": encoded["inputs_for_log"],
+                "call_depth": workflow_call_depth + 1,
+            }
+        )
 
     def resolve_provider_icons(
         self,

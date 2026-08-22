@@ -46,7 +46,6 @@ export function PublisherActionsSection({
   disabledFunctionButton,
   disabledFunctionTooltip,
   handleOpenRunConfig,
-  hasHumanInputNode = false,
   hasTriggerNode = false,
   marketplaceActionDisabled = false,
   publishedAt,
@@ -68,8 +67,7 @@ export function PublisherActionsSection({
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
   const showDeploy = Boolean(showDeployAction && appId)
-  const showWorkflowTool =
-    appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const showWorkflowTool = appDetail?.mode === AppModeEnum.WORKFLOW && !hasTriggerNode
   const navigationDisabled = !hasPublishedVersion || !appId
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)

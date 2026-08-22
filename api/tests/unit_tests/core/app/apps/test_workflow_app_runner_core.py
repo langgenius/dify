@@ -119,7 +119,9 @@ class TestWorkflowBasedAppRunner:
         captured = {}
 
         def fake_from_graph_init_context(**kwargs):
-            captured["run_context"] = kwargs["graph_init_context"].run_context
+            graph_init_context = kwargs["graph_init_context"]
+            captured["run_context"] = graph_init_context.run_context
+            captured["call_depth"] = graph_init_context.call_depth
             return SimpleNamespace()
 
         monkeypatch.setattr(
@@ -135,9 +137,11 @@ class TestWorkflowBasedAppRunner:
             invoke_from=InvokeFrom.DEBUGGER,
             root_node_id="root",
             trace_session_id="session-1",
+            call_depth=3,
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+        assert captured["call_depth"] == 3
 
     def test_init_graph_normalizes_reactflow_direct_container_ownership(self, monkeypatch: pytest.MonkeyPatch) -> None:
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")

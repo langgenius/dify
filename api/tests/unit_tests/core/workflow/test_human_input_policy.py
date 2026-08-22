@@ -9,6 +9,7 @@ from core.workflow.human_input_policy import (
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import VariablePool
+from graphon.variables import ArrayStringSegment
 from models.human_input import RecipientType
 
 
@@ -57,9 +58,10 @@ def test_preferred_form_token_skips_prioritized_type_with_empty_token() -> None:
     assert get_preferred_form_token(recipients) == "console-token"
 
 
-def test_resolve_variable_select_input_options_uses_runtime_values() -> None:
+@pytest.mark.parametrize("child_options", [["approve", "reject"], []])
+def test_resolve_variable_select_input_options_uses_runtime_values(child_options: list[str]) -> None:
     variable_pool = VariablePool()
-    variable_pool.add(("start", "options"), ["approve", "reject"])
+    variable_pool.add(("start", "options"), ArrayStringSegment(value=child_options))
     inputs: list[SelectInputConfig] = [
         SelectInputConfig(
             output_variable_name="decision",
@@ -73,7 +75,7 @@ def test_resolve_variable_select_input_options_uses_runtime_values() -> None:
 
     resolved = resolve_variable_select_input_options(inputs, variable_pool=variable_pool)
     assert isinstance(resolved[0], SelectInputConfig)
-    assert resolved[0].option_source.value == ["approve", "reject"]
+    assert resolved[0].option_source.value == child_options
 
 
 def test_resolve_variable_select_input_options_keeps_original_when_value_not_string_list() -> None:
