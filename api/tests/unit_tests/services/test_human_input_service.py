@@ -277,6 +277,7 @@ def test_resolve_form_inputs_uses_runtime_select_options(
     resolved_input = resolved_inputs[0]
     assert isinstance(resolved_input, SelectInputConfig)
     assert resolved_input.option_source.type == ValueSourceType.CONSTANT
+    assert resolved_input.option_source.selector == ()
     assert resolved_input.option_source.value == expected_options
     if select_options_resolved:
         workflow_run_repo.get_workflow_pause.assert_not_called()
