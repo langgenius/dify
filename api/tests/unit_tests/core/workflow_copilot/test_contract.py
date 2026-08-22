@@ -3,7 +3,29 @@
 Spec: docs/superpowers/specs/2026-08-21-workflow-copilot-full-flow-contract-design.md, §2/§6/§7.
 """
 
-from core.workflow_copilot.contract import ActionKind, CanvasEvent, Phase, RunStatus
+from dataclasses import asdict
+
+from core.workflow_copilot.contract import (
+    ActionKind,
+    AssistantTurnItem,
+    CanvasEvent,
+    CardKind,
+    ChangeSetCard,
+    FormCard,
+    FormField,
+    Phase,
+    PlanCard,
+    PublishCard,
+    RequirementsPayload,
+    ResourceOption,
+    ResourceSelectCard,
+    RunStatus,
+    SummaryCard,
+    TestResultCard,
+    TestStat,
+    Trace,
+    TraceStep,
+)
 from core.workflow_copilot.models import EntryMode
 from core.workflow_copilot.state import PcState
 from services.workflow_copilot.service import SessionView, _run_status
@@ -70,3 +92,130 @@ def test_run_status_terminal_states():
     assert _run_status(PcState.EDIT_PUBLISH) == RunStatus.COMPLETE
     assert _run_status(PcState.FIX_DIAGNOSE) == RunStatus.EXECUTING  # working
     assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_INPUT  # waiting
+
+
+def test_card_shapes_round_trip():
+    """Each card's asdict() is exactly its wire payload (no ``kind`` key --
+    ``kind`` is a ClassVar discriminant), and to_item() wraps it into the
+    shipped ConversationItem envelope. One representative assertion per
+    card family (spec §4.3), plus one typed submit payload (spec §5)."""
+
+    # change_set -- the brief's canonical example.
+    c = ChangeSetCard(count=2, changes=["a", "b"], scope="configuration", full_diff_open=False)
+    assert c.kind == CardKind.CHANGE_SET
+    assert "kind" not in asdict(c)
+    assert asdict(c) == {"count": 2, "changes": ["a", "b"], "scope": "configuration", "full_diff_open": False}
+    item = c.to_item(seq=5, at_version=3)
+    assert item.kind == "change_set"
+    assert item.seq == 5
+    assert item.at_version == 3
+    assert item.payload == {"count": 2, "changes": ["a", "b"], "scope": "configuration", "full_diff_open": False}
+
+    # plan
+    plan = PlanCard(title="Build plan", version_tag="v1", items=["Add start node", "Add LLM node"])
+    assert plan.kind == CardKind.PLAN
+    assert "kind" not in asdict(plan)
+    plan_item = plan.to_item(seq=1, at_version=1)
+    assert plan_item.kind == "plan"
+    assert plan_item.payload == {
+        "title": "Build plan",
+        "version_tag": "v1",
+        "items": ["Add start node", "Add LLM node"],
+        "subtitle": None,
+    }
+
+    # form -- with a FormField.
+    form = FormCard(
+        variant="build_requirements",
+        fields=[FormField(key="audience", label="Audience", type="text")],
+        values={"audience": "execs"},
+    )
+    assert form.kind == CardKind.FORM
+    assert "kind" not in asdict(form)
+    form_item = form.to_item(seq=2, at_version=1)
+    assert form_item.payload["fields"] == [{"key": "audience", "label": "Audience", "type": "text", "options": []}]
+    assert form_item.payload["values"] == {"audience": "execs"}
+    assert form_item.payload["frozen"] is False
+
+    # resource_select -- readiness must survive asdict.
+    rs = ResourceSelectCard(
+        recommended=[
+            ResourceOption(id="r1", label="Sales KB", meta="42 docs", kind="knowledge", readiness="ready"),
+        ],
+    )
+    assert rs.kind == CardKind.RESOURCE_SELECT
+    assert "kind" not in asdict(rs)
+    rs_item = rs.to_item(seq=3, at_version=1)
+    assert rs_item.payload["recommended"][0]["readiness"] == "ready"
+
+    # test_result -- with a TestStat.
+    tr = TestResultCard(
+        title="Validation passed",
+        subtitle="All checks green",
+        tone="success",
+        stats=[TestStat(value="3/3", label="Runs")],
+        run_ids=["run-1"],
+    )
+    assert tr.kind == CardKind.TEST_RESULT
+    assert "kind" not in asdict(tr)
+    tr_item = tr.to_item(seq=4, at_version=2)
+    assert tr_item.payload["stats"] == [{"value": "3/3", "label": "Runs"}]
+
+    # summary
+    summary = SummaryCard(variant="review", title="Pre-publish checklist", items=["4 nodes read", "3 var mappings"])
+    assert summary.kind == CardKind.SUMMARY
+    assert "kind" not in asdict(summary)
+    summary_item = summary.to_item(seq=6, at_version=3)
+    assert summary_item.payload == {
+        "variant": "review",
+        "title": "Pre-publish checklist",
+        "items": ["4 nodes read", "3 var mappings"],
+        "rows": [],
+    }
+
+    # publish
+    pub = PublishCard(version="v1.0")
+    assert pub.kind == CardKind.PUBLISH
+    assert "kind" not in asdict(pub)
+    pub_item = pub.to_item(seq=7, at_version=4)
+    assert pub_item.payload == {"version": "v1.0", "badge": "live"}
+
+    # assistant_turn -- trace.steps[*] carries state/tone/canvas_event.
+    turn = AssistantTurnItem(
+        turn_id="t1",
+        stage_id="build.goal_analysis",
+        trace=Trace(
+            status="running",
+            steps=[TraceStep(id="s1", label="Reading goal", state="active", tone="neutral", canvas_event=None)],
+        ),
+        reply_text="Looking at your goal...",
+        cards=["plan"],
+    )
+    assert turn.kind == CardKind.ASSISTANT_TURN
+    assert "kind" not in asdict(turn)
+    turn_item = turn.to_item(seq=8, at_version=4)
+    assert turn_item.kind == "assistant_turn"
+    step_payload = turn_item.payload["trace"]["steps"][0]
+    assert step_payload["state"] == "active"
+    assert step_payload["tone"] == "neutral"
+    assert step_payload["canvas_event"] is None
+
+    # typed submit payload -- not a card: no kind, no to_item.
+    req = RequirementsPayload(
+        report_types="quarterly",
+        audience="execs",
+        currency="USD",
+        metrics="revenue,churn",
+        output="PDF summary",
+        prefer_audited=True,
+    )
+    assert not hasattr(req, "kind")
+    assert not hasattr(req, "to_item")
+    assert asdict(req) == {
+        "report_types": "quarterly",
+        "audience": "execs",
+        "currency": "USD",
+        "metrics": "revenue,churn",
+        "output": "PDF summary",
+        "prefer_audited": True,
+    }
