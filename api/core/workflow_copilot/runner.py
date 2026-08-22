@@ -50,6 +50,12 @@ class Env:
     # usecase sets it per-Advance to publish to the session broadcaster; None
     # is treated as a no-op.
     emit: Callable[[NodeEvent], None] | None = None
+    # Emit forwards granular canvas mutations (add_*_node, apply_error_fix,
+    # ...) as each MutationIntent is applied. None is treated as a no-op --
+    # the caller (a handler) decides whether to wire it (opt-in, spec Sec 6):
+    # Build wants one event per intent, Edit suppresses these and fires one
+    # coarse apply_edit_plan itself instead.
+    emit_canvas: Callable[[dict], None] | None = None
 
 
 @dataclass

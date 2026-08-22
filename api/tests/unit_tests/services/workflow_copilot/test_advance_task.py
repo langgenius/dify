@@ -116,6 +116,10 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(rep
     # table entries are run_validation (primary) + revert (destructive).
     assert [a["id"] for a in last_state_event["actions"]] == ["run_validation", "revert"]
 
+    canvas_events = [ev for _sid, ev in events if ev["kind"] == "canvas"]
+    assert canvas_events, "advance_session must publish canvas events once the adapter emits them"
+    assert canvas_events[0]["event"] == "apply_error_fix"
+
     assert released == [(s.id, "tok-1")]
 
     # 2) continue driving: run_verify -> fix.await_testdata -> provide_testdata

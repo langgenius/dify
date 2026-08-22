@@ -349,6 +349,88 @@ def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_sess
     assert result.changes == ["node-1: code updated"]
 
 
+def test_apply_repair_invokes_on_canvas_once_per_applied_intent(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
+    events: list[dict] = []
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents, on_canvas=events.append)
+
+    assert events == [{"event": "apply_error_fix", "node_id": "node-1"}]
+
+
+@pytest.mark.parametrize(
+    ("node_type", "expected_event"),
+    [
+        ("start", "add_start_node"),
+        ("knowledge-retrieval", "add_knowledge_node"),
+        ("llm", "add_llm_node"),
+        ("end", "add_output_node"),
+        ("code", "apply_edit_plan"),  # unmapped node type falls back to the generic batch-mutate event
+    ],
+)
+def test_apply_repair_maps_create_node_by_node_type_to_the_right_add_node_event(
+    mock_session: MagicMock, node_type, expected_event
+):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    intents = [MutationIntent(op="create_node", args={"node_type": node_type, "config": {}})]
+    events: list[dict] = []
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents, on_canvas=events.append)
+
+    assert events[0]["event"] == expected_event
+
+
+def test_apply_repair_skips_on_canvas_when_not_provided(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "node-1", "data": {}}], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "x"})]
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        # must not raise even though on_canvas is omitted (default None)
+        WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+
 # ---- run_draft --------------------------------------------------------------
 
 

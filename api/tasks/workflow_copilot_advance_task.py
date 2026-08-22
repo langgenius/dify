@@ -65,8 +65,11 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 {"kind": "node", "node_id": ne.node_id, "title": ne.title, "status": ne.status, "error": ne.error},
             )
 
+        def emit_canvas(event: dict) -> None:
+            progress_bus.publish(session_id, {"kind": "canvas", **event})
+
         actor = Actor(**actor_dict)
-        env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit)
+        env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit, emit_canvas=emit_canvas)
         runner = Runner(env, fix_registry())
         runner.advance(session_id, Turn(action=Action(**action_dict), actor=actor))
         # Project a SessionView (single source of truth for phase/run_status/
