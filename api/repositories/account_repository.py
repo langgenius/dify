@@ -2,7 +2,7 @@
 
 from typing import override
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
@@ -118,7 +118,8 @@ class SQLAlchemyAccountRepository(AccountRepository):
     @override
     def email_exists(self, email: str) -> bool:
         with self._session_factory() as session:
-            return session.scalar(select(Account.id).where(Account.email == email).limit(1)) is not None
+            stmt = select(Account.id).where(func.lower(Account.email) == email.lower()).limit(1)
+            return session.scalar(stmt) is not None
 
     @override
     def reset_email(
@@ -134,7 +135,14 @@ class SQLAlchemyAccountRepository(AccountRepository):
                 return AccountEmailResetResult(status=AccountEmailResetStatus.ACCOUNT_NOT_FOUND)
             if account.email.lower() != expected_old_email.lower():
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_CHANGED)
-            if session.scalar(select(Account.id).where(Account.email == new_email).limit(1)) is not None:
+            # Exclude this account's own row so normalizing your own stored casing
+            # is not read as a collision with yourself.
+            duplicate_stmt = (
+                select(Account.id)
+                .where(func.lower(Account.email) == new_email.lower(), Account.id != account_id)
+                .limit(1)
+            )
+            if session.scalar(duplicate_stmt) is not None:
                 return AccountEmailResetResult(status=AccountEmailResetStatus.EMAIL_IN_USE)
 
             account.email = new_email

@@ -6,12 +6,22 @@ from sqlalchemy.orm import Session, sessionmaker
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
-from services.entities.account_entities import AccountInitialization, AccountPasswordDigest, AccountProfileChanges
+from services.entities.account_entities import (
+    AccountEmailResetStatus,
+    AccountInitialization,
+    AccountPasswordDigest,
+    AccountProfileChanges,
+)
 
 
-def _persist_account(session: Session) -> Account:
-    account = Account(name="Original", email="account@example.com")
-    account.id = "account-1"
+def _persist_account(
+    session: Session,
+    *,
+    account_id: str = "account-1",
+    email: str = "account@example.com",
+) -> Account:
+    account = Account(name="Original", email=email)
+    account.id = account_id
     account.interface_language = "en-US"
     account.interface_theme = "light"
     account.timezone = "UTC"
@@ -190,3 +200,51 @@ def test_account_repository_updates_email_and_removes_integrations_atomically(
     assert persisted.email == "new@example.com"
     assert persisted.normalized_email == "new@example.com"
     assert sqlite_session.get(AccountIntegrate, integration_id) is None
+
+
+def test_email_exists_matches_stored_email_case_insensitively(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Stored addresses keep the case they were registered with, so lookups must fold case."""
+    _persist_account(sqlite_session, email="Account@Example.com")
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    assert repository.email_exists("account@example.com") is True
+
+
+def test_reset_email_rejects_case_variant_of_another_account_email(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """`Account.email` carries no unique constraint, so this guard is the only duplicate check."""
+    _persist_account(sqlite_session)
+    _persist_account(sqlite_session, account_id="account-2", email="Taken@Example.com")
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="account@example.com",
+        new_email="taken@example.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.EMAIL_IN_USE
+
+
+def test_reset_email_allows_normalizing_the_accounts_own_address(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Folding case must not make an account collide with its own row."""
+    _persist_account(sqlite_session, email="Account@Example.com")
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    result = repository.reset_email(
+        "account-1",
+        expected_old_email="Account@Example.com",
+        new_email="account@example.com",
+    )
+
+    assert result.status == AccountEmailResetStatus.UPDATED
+    assert result.account is not None
+    assert result.account.email == "account@example.com"
