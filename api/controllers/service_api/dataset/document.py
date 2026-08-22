@@ -376,7 +376,7 @@ def _create_document_by_text(session: Session, tenant_id: str, dataset_id: UUID)
     args = payload.model_dump(exclude_none=True)
 
     dataset_id_str = str(dataset_id)
-    tenant_id_str = str(tenant_id)
+    tenant_id_str = tenant_id
     dataset = session.scalar(
         select(Dataset).where(Dataset.tenant_id == tenant_id_str, Dataset.id == dataset_id_str).limit(1)
     )

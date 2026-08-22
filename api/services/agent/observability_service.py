@@ -135,7 +135,7 @@ class AgentObservabilityService:
 
     @staticmethod
     def _total_tokens(message: Message) -> int:
-        return int(message.message_tokens or 0) + int(message.answer_tokens or 0)
+        return message.message_tokens or 0 + message.answer_tokens or 0
 
     @classmethod
     def serialize_log_message(
@@ -160,8 +160,8 @@ class AgentObservabilityService:
             "from_account_id": message.from_account_id,
             "feedback_enabled": True,
             "feedbacks": [cls._serialize_message_feedback(feedback) for feedback in feedbacks],
-            "message_tokens": int(message.message_tokens or 0),
-            "answer_tokens": int(message.answer_tokens or 0),
+            "message_tokens": message.message_tokens or 0,
+            "answer_tokens": message.answer_tokens or 0,
             "total_tokens": cls._total_tokens(message),
             "total_price": str(message.total_price or Decimal(0)),
             "currency": message.currency,
@@ -419,10 +419,10 @@ class AgentObservabilityService:
 
     @staticmethod
     def _positive_feedback_rate(*, like_count: int | None, total_count: int | None) -> float | None:
-        total = int(total_count or 0)
+        total = total_count or 0
         if total == 0:
             return None
-        return int(like_count or 0) / total
+        return like_count or 0 / total
 
     def _list_workflow_messages(
         self,
@@ -629,7 +629,7 @@ class AgentObservabilityService:
             "conversation_id": conversation.id,
             "title": conversation.name,
             "end_user_id": conversation.from_end_user_id,
-            "message_count": int(message_count or 0),
+            "message_count": message_count or 0,
             "user_rate": user_rate,
             "operation_rate": operation_rate,
             "unread": conversation.read_at is None,

@@ -283,13 +283,13 @@ class MessageService:
                 FeedbackCreatedEvent(
                     context=TelemetryContext(tenant_id=app_model.tenant_id),
                     payload={
-                        "message_id": str(message.id),
-                        "app_id": str(app_model.id) if app_model.id is not None else None,
+                        "message_id": message.id,
+                        "app_id": app_model.id if app_model.id is not None else None,
                         "conversation_id": (
-                            str(message.conversation_id) if message.conversation_id is not None else None
+                            message.conversation_id if message.conversation_id is not None else None
                         ),
-                        "from_end_user_id": str(user.id) if isinstance(user, EndUser) and user.id is not None else None,
-                        "from_account_id": str(user.id) if isinstance(user, Account) and user.id is not None else None,
+                        "from_end_user_id": user.id if isinstance(user, EndUser) and user.id is not None else None,
+                        "from_account_id": user.id if isinstance(user, Account) and user.id is not None else None,
                         "rating": rating.value if rating else None,
                         "from_source": (
                             FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN

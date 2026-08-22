@@ -80,7 +80,7 @@ class AppReadResource(Resource):
                 lines = [f"app name {app_id!r} is ambiguous — re-run with a UUID:\n\n"]
                 lines.append(f"  {'ID':<36}  {'MODE':<12}  NAME\n")
                 for m in matches:
-                    lines.append(f"  {str(m.id):<36}  {str(m.mode.value):<12}  {m.name}\n")
+                    lines.append(f"  {m.id:<36}  {str(m.mode.value):<12}  {m.name}\n")
                 raise Conflict("".join(lines))
             app = matches[0]
 
@@ -102,12 +102,12 @@ def build_app_describe_response(app: App, fields: set[str] | None, *, session: S
 
     info = (
         AppDescribeInfo(
-            id=str(app.id),
+            id=app.id,
             name=app.name,
             mode=app.mode,
             description=app.description,
             updated_at=app.updated_at.isoformat() if app.updated_at else None,
-            service_api_enabled=bool(app.enable_api),
+            service_api_enabled=app.enable_api,
             is_agent=app.mode in (AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT),
         )
         if want_info
@@ -185,24 +185,24 @@ class AppListApi(Resource):
         tenant_name: str | None = None
         if parsed_uuid is not None:
             app: App | None = AppService.get_visible_app_by_id(str(parsed_uuid), session)
-            if app is None or str(app.tenant_id) != workspace_id:
+            if app is None or app.tenant_id != workspace_id:
                 return empty
             if not _is_listable(app):
                 return empty
             # Apply RBAC visibility to the UUID fast-path the same way the service
             # layer does for paginated queries (id in accessible set OR own app).
             if apply_rbac_filter and not access_filter.is_app_accessible(
-                str(app.id), str(app.maintainer) if app.maintainer else None, str(auth_data.account_id)
+                app.id, app.maintainer if app.maintainer else None, str(auth_data.account_id)
             ):
                 return empty
             tenant_name = TenantService.get_tenant_name(workspace_id, session=session)
             item = AppListRow(
-                id=str(app.id),
+                id=app.id,
                 name=app.name,
                 description=app.description,
                 mode=app.mode,
                 updated_at=app.updated_at.isoformat() if app.updated_at else None,
-                workspace_id=str(workspace_id),
+                workspace_id=workspace_id,
                 workspace_name=tenant_name,
             )
             env = AppListResponse(page=1, limit=1, total=1, has_more=False, data=[item])
@@ -237,7 +237,7 @@ class AppListApi(Resource):
                 description=r.description,
                 mode=r.mode,
                 updated_at=r.updated_at.isoformat() if r.updated_at else None,
-                workspace_id=str(workspace_id),
+                workspace_id=workspace_id,
                 workspace_name=tenant_name,
             )
             for r in pagination.items

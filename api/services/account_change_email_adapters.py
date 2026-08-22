@@ -49,8 +49,8 @@ class TokenManagerChangeEmailTokenGateway(ChangeEmailTokenGateway):
             return None
         token_kwargs = {
             "account_id": token_data.account_id,
-            "email": str(token_data.email),
-            "old_email": str(token_data.old_email),
+            "email": token_data.email,
+            "old_email": token_data.old_email,
             "code": token_data.code,
         }
         if isinstance(token_data, ChangeEmailOldEmailToken):

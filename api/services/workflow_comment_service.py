@@ -47,7 +47,7 @@ class WorkflowCommentService:
             return []
 
         tenant_member_ids = {
-            str(account_id)
+            account_id
             for account_id in session.scalars(
                 select(TenantAccountJoin.account_id).where(
                     TenantAccountJoin.tenant_id == tenant_id,
@@ -167,7 +167,7 @@ class WorkflowCommentService:
 
         # Batch query all accounts
         accounts = session.scalars(select(Account).where(Account.id.in_(user_ids))).all()
-        account_map = {str(account.id): account for account in accounts}
+        account_map = {account.id: account for account in accounts}
 
         # Cache accounts on objects
         for comment in comments:
