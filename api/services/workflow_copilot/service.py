@@ -27,7 +27,7 @@ from core.workflow_copilot.models import (
     Session,
 )
 from core.workflow_copilot.ports import Repository
-from core.workflow_copilot.state import PcState, canvas_read_only, is_waiting, is_working
+from core.workflow_copilot.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 
 __all__ = ["SessionLock", "SessionView", "WorkflowCopilotService"]
 
@@ -41,7 +41,7 @@ class SessionView:
     version: int
     state: str  # str(PcState), e.g. "fix.await_verify"
     canvas_read_only: bool
-    run_status: str
+    run_status: RunStatus
     interrupted: bool
     conversation: list[ConversationItem]
     entry_mode: EntryMode = EntryMode.FIX
@@ -115,16 +115,22 @@ def _run_status(state: PcState) -> RunStatus:
     §2). Deliberate wire-value change from the old string: ``waiting-input``
     (hyphen) -> ``RunStatus.WAITING_INPUT`` = ``"waiting_input"``
     (underscore); the FE only displays ``run_status``, never branches on it.
+
+    Terminal check comes before waiting/working: ``PcState.BUILD_COMPLETE``
+    and ``PcState.EDIT_PUBLISH`` are terminal (spec §7.1/§7.2, ``run_status:
+    complete``) but are not in ``_WORKING``/``_WAITING`` and are not
+    ``SUCCESS``/``FAILED`` -- without this ordering they'd wrongly fall
+    through to EXECUTING.
     """
-    if state == PcState.SUCCESS:
-        return RunStatus.COMPLETE
     if state == PcState.FAILED:
         return RunStatus.FAILED
+    if is_terminal(state):  # SUCCESS, BUILD_COMPLETE, EDIT_PUBLISH
+        return RunStatus.COMPLETE
     if is_waiting(state):
         return RunStatus.WAITING_INPUT
     if is_working(state):
         return RunStatus.EXECUTING
-    return RunStatus.EXECUTING
+    return RunStatus.EXECUTING  # defensive; unreachable for classified states
 
 
 class WorkflowCopilotService:
