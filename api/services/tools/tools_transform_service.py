@@ -35,6 +35,17 @@ _mcp_tools_adapter: TypeAdapter[list[MCPTool]] = TypeAdapter(list[MCPTool])
 
 
 class ToolTransformService:
+    @staticmethod
+    def _merge_runtime_parameter(base_parameter: ToolParameter, runtime_parameter: ToolParameter) -> ToolParameter:
+        """Overlay runtime data without dropping declaration-only reset dependencies."""
+        if not base_parameter.reset_on_change:
+            return runtime_parameter
+
+        return runtime_parameter.model_copy(
+            update={"reset_on_change": list(base_parameter.reset_on_change)},
+            deep=True,
+        )
+
     _MCP_SCHEMA_TYPE_RESOLUTION_MAX_DEPTH = 10
 
     @classmethod
@@ -392,7 +403,9 @@ class ToolTransformService:
             for base_param in base_parameters:
                 key = (base_param.name, base_param.form)
                 if key in runtime_param_map:
-                    merged_parameters.append(runtime_param_map[key])
+                    merged_parameters.append(
+                        ToolTransformService._merge_runtime_parameter(base_param, runtime_param_map[key])
+                    )
                 else:
                     merged_parameters.append(base_param)
 

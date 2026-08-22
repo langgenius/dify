@@ -109,6 +109,8 @@ export type CredentialFormSchemaBase = {
   default?: string
   tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
+  /** Reset this field when any listed sibling parameter changes. */
+  reset_on_change?: string[]
   url?: string
   scope?: string
   input_schema?: SchemaRoot

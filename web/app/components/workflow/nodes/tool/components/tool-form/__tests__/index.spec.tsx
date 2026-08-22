@@ -89,7 +89,7 @@ describe('tool/tool-form', () => {
       nodeId: 'tool-node',
       schema: expect.objectContaining({ variable: 'api_key' }),
       value,
-      onChange: handleChange,
+      onChange: expect.any(Function),
       inPanel: true,
       showManageInputField: true,
       onManageInputField: handleManageInputField,
@@ -106,5 +106,80 @@ describe('tool/tool-form', () => {
     expect(container.firstChild)!.toHaveClass('space-y-1')
     expect(screen.queryByTestId(/tool-form-item-/)).not.toBeInTheDocument()
     expect(mockToolFormItem).not.toHaveBeenCalled()
+  })
+
+  it('should reset a dependent field in the same change as its watched sibling', () => {
+    const handleChange = vi.fn()
+    const schemas = [
+      createSchema({ name: 'source', variable: 'source' }),
+      createSchema({
+        name: 'dependent',
+        variable: 'dependent',
+        type: FormTypeEnum.select,
+        default: 'default-option',
+        reset_on_change: ['source'],
+      }),
+    ]
+    render(
+      <ToolForm
+        readOnly={false}
+        nodeId="tool-node"
+        schema={schemas}
+        value={{
+          source: { type: VarType.constant, value: 'first' },
+          dependent: { type: VarType.constant, value: 'selected' },
+        }}
+        onChange={handleChange}
+      />,
+    )
+
+    const sourceItem = mockToolFormItem.mock.calls.find(
+      ([props]) => props.schema.variable === 'source',
+    )![0]
+    sourceItem.onChange({
+      source: { type: VarType.constant, value: 'second' },
+      dependent: { type: VarType.constant, value: 'selected' },
+    })
+
+    expect(handleChange).toHaveBeenCalledOnce()
+    expect(handleChange).toHaveBeenCalledWith({
+      source: { type: VarType.constant, value: 'second' },
+      dependent: { type: VarType.constant, value: 'default-option' },
+    })
+  })
+
+  it('should not reset values when a different form with the same variables is rendered', () => {
+    const handleChange = vi.fn()
+    const schemas = [
+      createSchema({ name: 'source', variable: 'source' }),
+      createSchema({ name: 'dependent', variable: 'dependent', reset_on_change: ['source'] }),
+    ]
+    const { rerender } = render(
+      <ToolForm
+        readOnly={false}
+        nodeId="first-tool"
+        schema={schemas}
+        value={{
+          source: { type: VarType.constant, value: 'first' },
+          dependent: { type: VarType.constant, value: 'first-dependent' },
+        }}
+        onChange={handleChange}
+      />,
+    )
+
+    rerender(
+      <ToolForm
+        readOnly={false}
+        nodeId="second-tool"
+        schema={schemas}
+        value={{
+          source: { type: VarType.constant, value: 'second' },
+          dependent: { type: VarType.constant, value: 'second-dependent' },
+        }}
+        onChange={handleChange}
+      />,
+    )
+
+    expect(handleChange).not.toHaveBeenCalled()
   })
 })
