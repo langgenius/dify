@@ -28,6 +28,15 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 import uuid
 from typing import Any
 
+from core.workflow_copilot.contract import (
+    AssistantTurnItem,
+    ChangeSetCard,
+    DecisionItem,
+    NoticeItem,
+    SummaryCard,
+    TestResultCard,
+    Trace,
+)
 from core.workflow_copilot.models import (
     ChangeSet,
     ChecklistError,
@@ -45,6 +54,7 @@ from core.workflow_copilot.state import PcState
 
 __all__ = [
     "action_string",
+    "append_card",
     "append_item",
     "decode_checklist_errors",
     "first_failed_node",
@@ -76,6 +86,15 @@ def append_item(fc: FixContext, kind: str, payload: dict[str, Any]) -> list[Conv
     uniqueness guard.
     """
     item = ConversationItem(seq=fc.next_seq, kind=kind, payload=payload)
+    fc.next_seq += 1
+    return [item]
+
+
+def append_card(fc: FixContext, card) -> list[ConversationItem]:
+    """Stamp a typed card into the conversation at the next seq (mirrors
+    append_item's seq authority; at_version preserved as the prior code's 0).
+    """
+    item = card.to_item(seq=fc.next_seq, at_version=0)
     fc.next_seq += 1
     return [item]
 
@@ -114,14 +133,17 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepRes
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
 
-    items = append_item(
+    items = append_card(
         fc,
-        "diagnosis",
-        {
-            "culprit_node_id": diagnosis.culprit_node_id,
-            "root_cause": diagnosis.root_cause,
-            "severity": diagnosis.severity,
-        },
+        SummaryCard(
+            variant="context",
+            title="Diagnosis",
+            items=[
+                f"Root cause: {diagnosis.root_cause}",
+                f"Culprit node: {diagnosis.culprit_node_id}",
+                f"Severity: {diagnosis.severity}",
+            ],
+        ),
     )
     return StepResult(
         next=PcState.FIX_PROPOSE,
@@ -144,7 +166,16 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResu
     if risk.level == "high" or risk.has_external_side_effect:
         next_state = PcState.FIX_AWAIT_APPROVAL
 
-    items = append_item(fc, "assistant-turn", {"stage": "propose", "risk": risk.level, "changed": len(intents)})
+    items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="fix.propose",
+            trace=Trace(status="completed", steps=[]),
+            reply_text=f"Proposed repair (risk: {risk.level}, {len(intents)} change(s))",
+            cards=[],
+        ),
+    )
     return StepResult(next=next_state, context=fc, items=items)
 
 
@@ -156,7 +187,7 @@ def handle_await_approval(env: Env, turn: Turn, s: Session, fc: FixContext) -> S
     if kind == "approve_repair":
         return StepResult(next=PcState.FIX_APPLY, context=fc)
     if kind == "reject_repair":
-        items = append_item(fc, "notice", {"text": "repair rejected"})
+        items = append_card(fc, DecisionItem(text="Rejected the proposed repair"))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     # unknown / absent action: do not auto-apply a high-risk repair; stay at the gate.
     return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)
@@ -170,7 +201,15 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult
     result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair)
     fc.last_snapshot_hash = result.new_hash
     fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="config edit")
-    items = append_item(fc, "change-set", {"changed": result.changed_nodes})
+    items = append_card(
+        fc,
+        ChangeSetCard(
+            count=len(result.changed_nodes),
+            changes=list(result.changed_nodes),
+            scope="configuration",
+            full_diff_open=False,
+        ),
+    )
 
     next_state = PcState.FIX_AWAIT_VERIFY
     if fc.source == "checklist":
@@ -182,7 +221,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: FixContext) -> Ste
     """(waiting) The user runs verification or undoes. Port of
     ``handlers_fix.go:163``."""
     if turn.action is not None and turn.action.kind == "undo":
-        items = append_item(fc, "notice", {"text": "revert requested"})
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     # run_verify: if we have prepared inputs, go verify; else prepare test data.
     if fc.test_input_ref == "":
@@ -241,7 +280,16 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResul
         run.culprit_node_id = first_failed_node(result.per_node)
 
     fc.verify_run_id = run.id
-    items = append_item(fc, "verify-result", {"passed": result.status == "succeeded"})
+    items = append_card(
+        fc,
+        TestResultCard(
+            title="Validation",
+            subtitle="",
+            tone=("success" if result.status == "succeeded" else "error"),
+            stats=[],
+            run_ids=[run.id],
+        ),
+    )
     return StepResult(
         next=PcState.FIX_AWAIT_DECISION,
         context=fc,
@@ -269,10 +317,10 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: FixContext) -> S
         # through the adapter) is not yet implemented — this records the
         # intent only; the append-only commit + terminal transition still
         # hold.
-        items = append_item(fc, "notice", {"text": "revert requested"})
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
     # default: keep_draft
-    items = append_item(fc, "notice", {"text": "draft kept"})
+    items = append_card(fc, DecisionItem(text="Kept the draft"))
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
@@ -280,7 +328,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResu
     """(working) Publish the repaired workflow. Port of
     ``handlers_fix.go:316``."""
     env.dify.publish(s.app_id, turn.actor)
-    items = append_item(fc, "notice", {"text": "published"})
+    items = append_card(fc, DecisionItem(text="Published the fix"))
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
@@ -297,14 +345,17 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) 
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
 
-    items = append_item(
+    items = append_card(
         fc,
-        "diagnosis",
-        {
-            "culprit_node_id": diagnosis.culprit_node_id,
-            "root_cause": diagnosis.root_cause,
-            "source": "checklist",
-        },
+        SummaryCard(
+            variant="context",
+            title="Diagnosis",
+            items=[
+                f"Root cause: {diagnosis.root_cause}",
+                f"Culprit node: {diagnosis.culprit_node_id}",
+                "Source: checklist",
+            ],
+        ),
     )
     return StepResult(
         next=PcState.CHECKLIST_PROPOSE,
@@ -326,7 +377,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: FixContext) -> St
     flow loops back to ``checklist.diagnose`` to re-fix. Port of
     ``handlers_fix.go:272``."""
     if turn.action is not None and turn.action.kind == "undo":
-        items = append_item(fc, "notice", {"text": "revert requested"})
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
     passed = False
@@ -335,7 +386,9 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: FixContext) -> St
         if isinstance(value, bool):
             passed = value
     if passed:
-        items = append_item(fc, "verify-result", {"passed": True, "source": "checklist"})
+        items = append_card(
+            fc, TestResultCard(title="Validation", subtitle="checklist", tone="success", stats=[], run_ids=[])
+        )
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
 
     # residual checklist errors: reload them and loop back to re-diagnose.
@@ -344,7 +397,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: FixContext) -> St
         if isinstance(raw, list):
             fc.checklist_errors = decode_checklist_errors(raw)
     fc.diagnosis, fc.staged_repair, fc.risk, fc.change_set = None, [], None, None
-    items = append_item(fc, "notice", {"text": "checklist still failing, re-diagnosing"})
+    items = append_card(fc, NoticeItem(text="Checklist still failing, re-diagnosing", tone="neutral"))
     return StepResult(next=PcState.CHECKLIST_DIAGNOSE, context=fc, items=items)
 
 

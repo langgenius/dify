@@ -14,7 +14,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from core.workflow_copilot.contract import Action as UiAction
-from core.workflow_copilot.contract import ActionKind, CheckpointRef, Phase, RunStatus
+from core.workflow_copilot.contract import ActionKind, CheckpointRef, Phase, RunContextCard, RunStatus
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Action,
@@ -239,7 +239,10 @@ class WorkflowCopilotService:
             entry_mode=entry_mode,
             current_state=state,
         )
-        items = [ConversationItem(kind="run-context", seq=0, payload={"run_id": failed_run_id or ""})]
+        run_context = RunContextCard(
+            run_id=failed_run_id or "", title="", error_code="", message="", trace_ref=""
+        )
+        items = [run_context.to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         if failed_run is not None:
             # Persist the failed-run record BEFORE dispatch so the enqueued
