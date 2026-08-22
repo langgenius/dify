@@ -10,6 +10,7 @@ import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelFeatureEnum,
+  ModelModalModeEnum,
   ModelStatusEnum,
   ModelTypeEnum,
   PreferredProviderTypeEnum,
@@ -319,6 +320,18 @@ describe('PopupItem', () => {
       expect(mockSetShowModelModal).toHaveBeenCalled()
     })
 
+    expect(mockSetShowModelModal).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+          currentCustomConfigurationModelFixedFields: undefined,
+          isModelCredential: undefined,
+          model: undefined,
+          mode: undefined,
+        }),
+      }),
+    )
+
     const call = mockSetShowModelModal.mock.calls[0]![0] as { onSaveCallback?: () => void }
     call.onSaveCallback?.()
 
@@ -353,6 +366,45 @@ describe('PopupItem', () => {
 
     expect(mockUpdateModelProviders).toHaveBeenCalled()
     expect(mockUpdateModelList).toHaveBeenCalledTimes(1)
+  })
+
+  it('should open model credential modal for an unconfigured customizable model', async () => {
+    renderPopupItem(
+      <PopupItem
+        {...previewCardProps()}
+        model={makeModel({
+          models: [
+            makeModelItem({
+              fetch_from: ConfigurationMethodEnum.customizableModel,
+              status: ModelStatusEnum.noConfigure,
+            }),
+          ],
+        })}
+        onHide={vi.fn()}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'COMMON.OPERATION.ADD' }))
+
+    await waitFor(() => {
+      expect(mockSetShowModelModal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            currentConfigurationMethod: ConfigurationMethodEnum.customizableModel,
+            currentCustomConfigurationModelFixedFields: {
+              __model_name: 'gpt-4',
+              __model_type: ModelTypeEnum.textGeneration,
+            },
+            isModelCredential: true,
+            model: {
+              model: 'gpt-4',
+              model_type: ModelTypeEnum.textGeneration,
+            },
+            mode: ModelModalModeEnum.configModelCredential,
+          }),
+        }),
+      )
+    })
   })
 
   it('should show selected state when defaultModel matches', () => {
