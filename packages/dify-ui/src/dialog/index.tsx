@@ -54,27 +54,22 @@ function DialogPopup({ className, ...props }: DialogPopupProps) {
   )
 }
 
-type DialogContentProps = {
+type DialogContentProps = Omit<DialogPopupProps, 'children' | 'className'> & {
   children: React.ReactNode
   className?: string
-  backdropClassName?: string
-  backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
+  backdropProps?: DialogBackdropProps
 }
 
-function DialogContent({
-  children,
-  className,
-  backdropClassName,
-  backdropProps,
-}: DialogContentProps) {
+function DialogContent({ children, className, backdropProps, ...props }: DialogContentProps) {
   return (
     <DialogPortal>
-      <DialogBackdrop {...backdropProps} className={backdropClassName} />
+      <DialogBackdrop {...backdropProps} />
       <DialogPopup
         className={cn(
           'fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-6',
           className,
         )}
+        {...props}
       >
         {children}
       </DialogPopup>
