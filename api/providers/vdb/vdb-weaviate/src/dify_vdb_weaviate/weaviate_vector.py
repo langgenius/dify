@@ -377,7 +377,14 @@ class WeaviateVector(BaseVector):
     @override
     def delete_by_ids(self, ids: list[str]) -> None:
         """
-        Deletes objects by their UUID identifiers.
+        Deletes objects by their Dify segment IDs.
+
+        Objects are keyed by ``uuid5(URL_NAMESPACE, page_content)`` (see
+        :meth:`_get_uuids`), while callers pass Dify segment IDs
+        (``index_node_id``), which are stored in the ``doc_id`` property. Passing
+        them to ``delete_by_id`` as object UUIDs therefore never matches and
+        silently leaves orphan vectors behind. Delete by a batched ``doc_id``
+        property filter instead.
 
         Silently ignores 404 errors for non-existent IDs.
         """
@@ -386,12 +393,16 @@ class WeaviateVector(BaseVector):
 
         col = self._client.collections.use(self._collection_name)
 
-        for uid in ids:
-            try:
-                col.data.delete_by_id(uid)
-            except UnexpectedStatusCodeError as e:
-                if getattr(e, "status_code", None) != 404:
-                    raise
+        batch_size = 100
+        try:
+            for start in range(0, len(ids), batch_size):
+                chunk = ids[start : start + batch_size]
+                col.data.delete_many(
+                    where=Filter.any_of([Filter.by_property("doc_id").equal(i) for i in chunk])
+                )
+        except UnexpectedStatusCodeError as e:
+            if getattr(e, "status_code", None) != 404:
+                raise
 
     @override
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
