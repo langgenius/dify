@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
@@ -376,7 +377,9 @@ class ModelProviderIconApi(Resource):
         )
         if icon is None:
             raise ValueError(f"icon not found for provider {provider}, icon_type {icon_type}, lang {lang}")
-        return send_file(io.BytesIO(icon), mimetype=mimetype)
+        response = send_file(io.BytesIO(icon), mimetype=mimetype)
+        harden_served_file(response, mime_type=mimetype, filename=None)
+        return response
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
