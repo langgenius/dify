@@ -123,7 +123,7 @@ class _StubDifyPort:
     def node_outputs(self, _app_id, _actor, _run_id):
         return []
 
-    def apply_repair(self, _app_id, _actor, _intents):
+    def apply_repair(self, _app_id, _actor, _intents, _on_canvas=None):
         return ApplyResult(changed_nodes=[], new_hash="hash-2")
 
     def run_draft(self, _app_id, _actor, _inputs, _on_event):
