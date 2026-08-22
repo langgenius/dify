@@ -831,6 +831,14 @@ func (s *Service) resolveCwd(rawCwd *string) (string, error) {
 		return "", NewServerError(400, "invalid_cwd", fmt.Sprintf("cwd is not a directory: %s", cwd))
 	}
 	abs, _ := filepath.Abs(cwd)
+
+	// Constrain cwd to the trusted workspace root so a caller cannot
+	// escape the sandbox by passing an arbitrary existing directory.
+	root := filepath.Clean(s.config.WorkspaceRoot())
+	if !strings.HasPrefix(abs, root+string(os.PathSeparator)) && abs != root {
+		return "", NewServerError(403, "cwd_not_allowed",
+			fmt.Sprintf("cwd %q is outside the trusted workspace root %q", abs, root))
+	}
 	return abs, nil
 }
 

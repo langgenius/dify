@@ -45,6 +45,10 @@ type Config struct {
 	MaxWaitTimeout               time.Duration
 	IdleFlushDuration            time.Duration
 	DefaultCwd                   string
+	// TrustedWorkspaceRoot is the filesystem root that shell jobs are
+	// allowed to operate within.  resolveCwd rejects any cwd outside
+	// this tree.  When empty the DefaultCwd is used as the root.
+	TrustedWorkspaceRoot          string
 	DefaultTerminalCols          int
 	DefaultTerminalRows          int
 	DefaultListLimit             int
@@ -124,6 +128,15 @@ func (c *Config) TmuxSocket() string {
 // RunnerPath returns the path to the installed runner script.
 func (c *Config) RunnerPath() string {
 	return filepath.Join(c.RuntimeDir, "bin", "shellctl-runner")
+}
+
+// WorkspaceRoot returns the effective trusted workspace root.
+// When TrustedWorkspaceRoot is unset it falls back to DefaultCwd.
+func (c *Config) WorkspaceRoot() string {
+	if c.TrustedWorkspaceRoot != "" {
+		return c.TrustedWorkspaceRoot
+	}
+	return c.DefaultCwd
 }
 
 func defaultStateDir() string {
