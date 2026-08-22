@@ -12,6 +12,7 @@ import pytest
 from core.workflow_copilot.models import MutationIntent
 from services.workflow_copilot.graph_ops import (
     MUTATION_ARG_KEYS,
+    apply_connect,
     apply_create_node,
     apply_delete_node,
     apply_set_node_config,
@@ -228,3 +229,52 @@ def test_apply_delete_node_original_graph_untouched():
     apply_delete_node(graph, "a")
 
     assert graph["nodes"] == [{"id": "a", "data": {}}]
+
+
+# ---- apply_connect -----------------------------------------------------------
+
+
+def test_apply_connect_adds_a_graph_edge_dict_shaped_edge_with_default_handles():
+    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+
+    new_graph, changed = apply_connect(graph, "a", "b")
+
+    assert changed == ["a", "b"]
+    assert len(new_graph["edges"]) == 1
+    edge = new_graph["edges"][0]
+    assert edge["source"] == "a"
+    assert edge["target"] == "b"
+    assert edge["type"] == "custom"
+    assert edge["sourceHandle"] == "source"
+    assert edge["targetHandle"] == "target"
+    assert edge["id"]
+
+
+def test_apply_connect_honors_explicit_handles():
+    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+
+    new_graph, _changed = apply_connect(graph, "a", "b", source_handle="true", target_handle="target")
+
+    assert new_graph["edges"][0]["sourceHandle"] == "true"
+
+
+def test_apply_connect_raises_on_dangling_from_node():
+    graph = {"nodes": [{"id": "b", "data": {}}], "edges": []}
+
+    with pytest.raises(ValueError):
+        apply_connect(graph, "does-not-exist", "b")
+
+
+def test_apply_connect_raises_on_dangling_to_node():
+    graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+
+    with pytest.raises(ValueError):
+        apply_connect(graph, "a", "does-not-exist")
+
+
+def test_apply_connect_original_graph_untouched():
+    graph = {"nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}], "edges": []}
+
+    apply_connect(graph, "a", "b")
+
+    assert graph["edges"] == []
