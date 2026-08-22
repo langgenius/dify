@@ -5,7 +5,9 @@ Port of dify-enterprise/server/pkg/enterprise/biz/copilot/state.go.
 ``PcState`` is a program-counter state in the copilot state machine. Fix-flow
 states are prefixed ``fix.``; checklist states drive the pre-publish-checklist
 diagnosis source, which feeds into the same fix.propose/apply/verify/publish
-flow. Future Build/Edit slices add their own sets.
+flow. ``build.*``/``edit.*`` are the Build/Edit slices (spec: docs/superpowers
+/specs/2026-08-21-workflow-copilot-full-flow-contract-design.md, §7) — they
+reuse this same runner/CAS/handler-registry machinery (scenario-agnostic).
 """
 
 from enum import StrEnum
@@ -29,6 +31,30 @@ class PcState(StrEnum):
     SUCCESS = "success"
     FAILED = "failed"
 
+    # Build (spec §7.1) — 12 states.
+    BUILD_CAPABILITY_CHECK = "build.capability_check"
+    BUILD_GOAL_ANALYSIS = "build.goal_analysis"
+    BUILD_INITIAL_PLAN = "build.initial_plan"
+    BUILD_RESOURCE_RECOMMENDATION = "build.resource_recommendation"
+    BUILD_PLAN_APPROVAL = "build.plan_approval"
+    BUILD_EXECUTION = "build.execution"
+    BUILD_TEST_AND_REPAIR = "build.test_and_repair"
+    BUILD_REVIEW = "build.review"
+    BUILD_PUBLISH = "build.publish"
+    BUILD_GOVERNANCE_FEEDBACK = "build.governance_feedback"
+    BUILD_COMPLETE = "build.complete"
+    BUILD_REVERTED = "build.reverted"
+
+    # Edit (spec §7.2) — 8 states.
+    EDIT_CAPABILITY_CHECK = "edit.capability_check"
+    EDIT_IMPACT_ANALYSIS = "edit.impact_analysis"
+    EDIT_PLAN_APPROVAL = "edit.plan_approval"
+    EDIT_APPLY_CHANGES = "edit.apply_changes"
+    EDIT_TEST_AFFECTED_PATHS = "edit.test_affected_paths"
+    EDIT_REVIEW = "edit.review"
+    EDIT_PUBLISH = "edit.publish"
+    EDIT_REVERTED = "edit.reverted"
+
 
 _WORKING = frozenset(
     {
@@ -39,6 +65,11 @@ _WORKING = frozenset(
         PcState.FIX_PUBLISH,
         PcState.CHECKLIST_DIAGNOSE,
         PcState.CHECKLIST_PROPOSE,
+        # Build/Edit: executing/auto-advance, canvas locked (spec §7).
+        PcState.BUILD_TEST_AND_REPAIR,
+        PcState.BUILD_PUBLISH,
+        PcState.BUILD_GOVERNANCE_FEEDBACK,
+        PcState.EDIT_TEST_AFFECTED_PATHS,
     }
 )
 
@@ -49,6 +80,22 @@ _WAITING = frozenset(
         PcState.FIX_AWAIT_TESTDATA,
         PcState.FIX_AWAIT_DECISION,
         PcState.CHECKLIST_AWAIT_RECHECK,
+        # Build/Edit: awaits user, including executing->waiting_confirmation
+        # states classified by where they come to rest (spec §7).
+        PcState.BUILD_CAPABILITY_CHECK,
+        PcState.BUILD_GOAL_ANALYSIS,
+        PcState.BUILD_INITIAL_PLAN,
+        PcState.BUILD_RESOURCE_RECOMMENDATION,
+        PcState.BUILD_PLAN_APPROVAL,
+        PcState.BUILD_EXECUTION,
+        PcState.BUILD_REVIEW,
+        PcState.BUILD_REVERTED,
+        PcState.EDIT_CAPABILITY_CHECK,
+        PcState.EDIT_IMPACT_ANALYSIS,
+        PcState.EDIT_PLAN_APPROVAL,
+        PcState.EDIT_APPLY_CHANGES,
+        PcState.EDIT_REVIEW,
+        PcState.EDIT_REVERTED,
     }
 )
 
@@ -65,7 +112,7 @@ def is_waiting(s: PcState) -> bool:
 
 def is_terminal(s: PcState) -> bool:
     """Report whether the task is finished."""
-    return s in (PcState.SUCCESS, PcState.FAILED)
+    return s in (PcState.SUCCESS, PcState.FAILED, PcState.BUILD_COMPLETE, PcState.EDIT_PUBLISH)
 
 
 def canvas_read_only(s: PcState) -> bool:
