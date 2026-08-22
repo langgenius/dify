@@ -1,8 +1,8 @@
 'use client'
 
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
+import * as React from 'react'
 import { cn } from '../cn'
 import { floatingPopupAnimationClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
@@ -68,13 +68,11 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
   )
 }
 
-type PopoverContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-}
+type PopoverContentProps = Omit<PopoverPopupProps, 'children' | 'className'> &
+  Pick<PopoverPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+    children: React.ReactNode
+    className?: string
+  }
 
 function PopoverContent({
   children,
@@ -82,6 +80,7 @@ function PopoverContent({
   sideOffset = 8,
   alignOffset = 0,
   className,
+  ...props
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
@@ -91,6 +90,7 @@ function PopoverContent({
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             className,
           )}
+          {...props}
         >
           {children}
         </PopoverPopup>
@@ -113,7 +113,6 @@ export {
   PopoverTrigger,
 }
 export type {
-  Placement,
   PopoverArrowProps,
   PopoverCloseProps,
   PopoverContentProps,

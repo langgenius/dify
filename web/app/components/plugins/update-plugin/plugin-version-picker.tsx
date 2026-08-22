@@ -1,5 +1,4 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -18,7 +17,6 @@ type Props = Readonly<{
   pluginID: string
   currentVersion: string
   trigger: (open: boolean) => React.ReactNode
-  placement?: Placement
   sideOffset?: number
   alignOffset?: number
   onSelect: ({
@@ -39,7 +37,6 @@ const PluginVersionPicker: FC<Props> = ({
   pluginID,
   currentVersion,
   trigger,
-  placement = 'bottom-start',
   sideOffset = 4,
   alignOffset = 0,
   onSelect,
@@ -91,7 +88,7 @@ const PluginVersionPicker: FC<Props> = ({
       />
 
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={sideOffset}
         alignOffset={alignOffset}
         className="relative w-[209px] bg-components-panel-bg-blur p-1 backdrop-blur-[5px]"
