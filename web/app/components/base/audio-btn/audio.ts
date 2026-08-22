@@ -28,6 +28,7 @@ export class AudioPlayer {
   private playbackPending = false
   private playWhenReady = false
   private sourceOpenListener?: () => void
+  private currentContentType = AUDIO_CONTENT_TYPE
   constructor(
     streamUrl: string,
     isPublic: boolean,
@@ -71,10 +72,11 @@ export class AudioPlayer {
   }
 
   private listenMediaSource(contentType: string) {
+    this.currentContentType = contentType
     this.sourceOpenListener = () => {
       if (this.destroyed || this.sourceBuffer) return
       try {
-        this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
+        this.sourceBuffer = this.mediaSource?.addSourceBuffer(this.currentContentType)
         this.sourceBuffer?.addEventListener('updateend', this.flushBuffers)
         this.flushBuffers()
       } catch {
@@ -85,6 +87,15 @@ export class AudioPlayer {
       }
     }
     this.mediaSource?.addEventListener('sourceopen', this.sourceOpenListener)
+  }
+
+  private updateContentType(contentType: string) {
+    if (this.destroyed || this.sourceBuffer || contentType === this.currentContentType) return
+    const supports = Boolean(
+      (window.ManagedMediaSource || window.MediaSource)?.isTypeSupported?.(contentType),
+    )
+    if (!supports) return
+    this.currentContentType = contentType
   }
 
   private flushBuffers = () => {
@@ -217,6 +228,12 @@ export class AudioPlayer {
         this.callback?.('error')
         return
       }
+      // Honor the Content-Type advertised by the backend; some TTS providers
+      // (e.g. Tongyi qwen-tts) return WAV/PCM data, and playing it as MP3 fails.
+      const responseContentType =
+        audioResponse.headers.get('Content-Type') || audioResponse.headers.get('content-type')
+      const detectedType = responseContentType?.split(';')[0]?.trim()
+      if (detectedType) this.updateContentType(detectedType)
       if (!audioResponse.body) throw new Error('Audio response body is missing')
       const reader = audioResponse.body.getReader()
       while (true) {
@@ -327,7 +344,7 @@ export class AudioPlayer {
       return
     }
 
-    const audioBlob = new Blob(this.cacheBuffers, { type: AUDIO_CONTENT_TYPE })
+    const audioBlob = new Blob(this.cacheBuffers, { type: this.currentContentType })
     this.cacheBuffers = []
     this.releaseObjectUrl()
     this.objectUrl = URL.createObjectURL(audioBlob)

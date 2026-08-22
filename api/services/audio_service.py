@@ -11,6 +11,7 @@ from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
+from core.helper.audio_format import detect_audio_content_type
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.agent_config_entities import AgentSoulConfig
@@ -226,16 +227,27 @@ class AudioService:
 
             else:
                 response = invoke_tts(text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft)
-                if isinstance(response, Generator):
-                    return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
-                return response
+                return cls._build_tts_response(response)
         else:
             if text is None:
                 raise ValueError("Text is required")
             response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
-            if isinstance(response, Generator):
-                return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
+            return cls._build_tts_response(response)
+
+    @staticmethod
+    def _build_tts_response(response: Generator[bytes] | object) -> Response | object:
+        """Wrap a TTS model response in a Flask ``Response`` with the right content type.
+
+        Streaming TTS responses are sniffed for their actual audio format so the
+        ``Content-Type`` header matches the bytes (e.g. ``audio/wav`` for providers
+        that return WAV instead of MP3). Non-streaming responses are returned
+        unchanged, preserving the prior behaviour for providers that return a
+        single blob.
+        """
+        if not isinstance(response, Generator):
             return response
+        sniffed_stream, content_type = detect_audio_content_type(response)
+        return Response(stream_with_context(sniffed_stream), content_type=content_type)  # type: ignore
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):
