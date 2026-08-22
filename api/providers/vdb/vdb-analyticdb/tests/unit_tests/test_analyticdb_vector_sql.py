@@ -227,6 +227,26 @@ def test_search_by_vector_returns_documents_above_threshold():
     assert docs[0].metadata["score"] == 0.8
 
 
+def test_search_by_vector_emits_well_formed_where_clause_with_filter():
+    vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
+    vector.table_name = "dify.collection"
+    cursor = MagicMock()
+    cursor.__iter__.return_value = iter([])
+
+    @contextmanager
+    def _cursor_context():
+        yield cursor
+
+    vector._get_cursor = _cursor_context
+
+    vector.search_by_vector([0.1, 0.2], top_k=1, document_ids_filter=["doc-1"])
+
+    executed_sql = cursor.execute.call_args.args[0]
+    assert "WHERE 1=1 AND" in executed_sql
+    assert "1=1AND" not in executed_sql
+    assert "metadata_->>'document_id' IN ('doc-1')" in executed_sql
+
+
 @pytest.mark.parametrize("invalid_top_k", [0, "x", -1])
 def test_search_by_full_text_validates_top_k(invalid_top_k):
     vector = AnalyticdbVectorBySql.__new__(AnalyticdbVectorBySql)
