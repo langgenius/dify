@@ -138,10 +138,6 @@ const FeaturesTrigger = () => {
     return isFetchedPlan && plan.type === 'sandbox' && entryCount > 2
   }, [nodes, plan.type, isFetchedPlan])
 
-  const hasHumanInputNode = useMemo(() => {
-    return nodes.some((node) => node.data.type === BlockEnum.HumanInput)
-  }, [nodes])
-
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
 
@@ -283,7 +279,6 @@ const FeaturesTrigger = () => {
           hasTriggerNode,
           startNodeLimitExceeded,
           publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
-          hasHumanInputNode,
         }}
       />
     </>

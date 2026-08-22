@@ -55,9 +55,8 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment
 from models.base import TypeBase
 from models.dataset import SegmentAttachmentBinding
 from models.enums import CreatorUserRole
-from models.model import App, StorageType, UploadFile
+from models.model import StorageType, UploadFile
 from models.tools import ToolFile
-from models.workflow import Workflow
 from tests.workflow_test_utils import build_test_run_context
 
 
@@ -896,13 +895,10 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
 def test_dify_tool_node_runtime_builds_workflow_tool_container_payload() -> None:
     from core.tools.workflow_as_tool.tool import WorkflowTool
 
-    source_app = MagicMock(spec=App)
-    source_app.id = uuid4()
-    source_workflow = MagicMock(spec=Workflow)
-    source_workflow.id = uuid4()
-    source_workflow.version = "published-version"
     tool = MagicMock(spec=WorkflowTool)
-    tool.workflow_entities = {"app": source_app, "workflow": source_workflow}
+    tool.workflow_app_id = uuid4()
+    tool.workflow_id = uuid4()
+    tool.version = "published-version"
     tool.prepare_container_inputs.return_value = (
         {"amount": Decimal("1.25")},
         [{"id": "file-id", "name": "input.txt"}],
@@ -918,8 +914,8 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload() -> None
 
     assert payload.model_dump() == {
         "version": "1",
-        "source_app_id": str(source_app.id),
-        "source_workflow_id": str(source_workflow.id),
+        "source_app_id": str(tool.workflow_app_id),
+        "source_workflow_id": str(tool.workflow_id),
         "source_workflow_version": "published-version",
         "inputs": {"amount": 1.25},
         "system_files": [{"id": "file-id", "name": "input.txt"}],
@@ -944,16 +940,9 @@ def test_dify_tool_node_runtime_rejects_invalid_workflow_tool_container_payloads
         )
 
     tool = MagicMock(spec=WorkflowTool)
-    tool.workflow_entities = dict[str, object]()
-    with pytest.raises(ToolRuntimeResolutionError, match="Workflow Tool source is unavailable"):
-        runtime.build_workflow_tool_container_payload(
-            tool_runtime=ToolRuntimeHandle(raw=tool),
-            tool_parameters={},
-            inputs_for_log={},
-            workflow_call_depth=0,
-        )
-
-    tool.workflow_entities = {"app": MagicMock(spec=App), "workflow": MagicMock(spec=Workflow)}
+    tool.workflow_app_id = uuid4()
+    tool.workflow_id = uuid4()
+    tool.version = "published-version"
     tool.prepare_container_inputs.return_value = (dict[str, object](), list[dict[str, str | None]]())
     converter = MagicMock()
     converter.to_json_encodable.return_value = None

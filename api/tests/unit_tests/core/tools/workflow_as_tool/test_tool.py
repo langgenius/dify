@@ -162,9 +162,9 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
     runtime = ToolRuntime(tenant_id=tenant_id, invoke_from=InvokeFrom.EXPLORE)
     return WorkflowTool(
         workflow_app_id=workflow_app_id,
+        workflow_id="workflow-1",
         workflow_as_tool_id="wf-tool-1",
         version=version,
-        workflow_entities={},
         workflow_call_depth=1,
         entity=entity,
         runtime=runtime,

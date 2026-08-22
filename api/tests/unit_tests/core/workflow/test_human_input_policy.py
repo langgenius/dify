@@ -75,6 +75,8 @@ def test_resolve_variable_select_input_options_uses_runtime_values(child_options
 
     resolved = resolve_variable_select_input_options(inputs, variable_pool=variable_pool)
     assert isinstance(resolved[0], SelectInputConfig)
+    assert resolved[0].option_source.type == ValueSourceType.CONSTANT
+    assert resolved[0].option_source.selector == ()
     assert resolved[0].option_source.value == child_options
 
 

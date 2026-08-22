@@ -180,7 +180,6 @@ class DifyHITLCallback:
             ),
             delivery_methods=self._delivery_methods,
             display_in_ui=self._display_in_ui,
-            select_options_resolved=True,
             resolved_default_values=dict(
                 resolve_default_values(
                     self._node_data,

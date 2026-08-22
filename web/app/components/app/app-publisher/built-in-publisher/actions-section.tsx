@@ -2,26 +2,14 @@ import type { AppPublisherProps } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { AppModeEnum } from '@/types/app'
 import SuggestedAction from '../suggested-action'
 import WorkflowToolAction from '../workflow-tool-action'
 
 type PublisherActionsSectionProps = Pick<
   AppPublisherProps,
-  'hasHumanInputNode' | 'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
+  'hasTriggerNode' | 'publishedAt' | 'toolPublished' | 'workflowToolAvailable'
 > & {
-  appDetail:
-    | {
-        id?: string
-        icon?: string
-        icon_type?: string | null
-        icon_background?: string | null
-        description?: string
-        mode?: AppModeEnum
-        name?: string
-      }
-    | null
-    | undefined
+  appId?: string
   appURL: string
   canViewAccessPoint: boolean
   disabledFunctionButton: boolean
@@ -32,6 +20,7 @@ type PublisherActionsSectionProps = Pick<
   showDeployAction?: boolean
   showMarketplaceAction?: boolean
   showRunConfig?: boolean
+  showWorkflowTool: boolean
   workflowToolIsLoading: boolean
   workflowToolMessage?: string
   workflowToolOutdated?: boolean
@@ -40,7 +29,7 @@ type PublisherActionsSectionProps = Pick<
 }
 
 export function PublisherActionsSection({
-  appDetail,
+  appId,
   appURL,
   canViewAccessPoint,
   disabledFunctionButton,
@@ -53,6 +42,7 @@ export function PublisherActionsSection({
   showDeployAction = false,
   showMarketplaceAction = false,
   showRunConfig = false,
+  showWorkflowTool,
   toolPublished = false,
   workflowToolAvailable = true,
   workflowToolIsLoading,
@@ -63,11 +53,9 @@ export function PublisherActionsSection({
 }: PublisherActionsSectionProps) {
   const { t } = useTranslation()
 
-  const appId = appDetail?.id
   const hasPublishedVersion = Boolean(publishedAt)
   const showOpenWebApp = !hasTriggerNode
   const showDeploy = Boolean(showDeployAction && appId)
-  const showWorkflowTool = appDetail?.mode === AppModeEnum.WORKFLOW && !hasTriggerNode
   const navigationDisabled = !hasPublishedVersion || !appId
   const workflowToolDisabled =
     !hasPublishedVersion || !workflowToolAvailable || (toolPublished && workflowToolIsLoading)

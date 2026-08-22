@@ -34,6 +34,7 @@ from core.db.session_factory import create_session, session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.system_variables import (
@@ -80,6 +81,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         app: App,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_tool_source_repository: WorkflowToolSourceRepository,
         graph_engine_layers: Sequence[Layer] = (),
         graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -99,6 +101,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._app = app
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_tool_source_repository = workflow_tool_source_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
 
@@ -260,6 +263,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
+            workflow_tool_source_repository=self._workflow_tool_source_repository,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
         )

@@ -16,6 +16,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.credit_usage import CreditUsageAppType
+from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -115,6 +116,7 @@ class WorkflowEntry:
         call_depth: int,
         variable_pool: VariablePool,
         graph_runtime_state: RuntimeState,
+        workflow_tool_source_repository: WorkflowToolSourceRepository,
         command_channel: CommandChannel | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
@@ -132,6 +134,7 @@ class WorkflowEntry:
         :param call_depth: call depth
         :param variable_pool: variable pool
         :param graph_runtime_state: pre-created graph runtime state
+        :param workflow_tool_source_repository: loads pinned Workflow Tool sources
         :param command_channel: command channel for external control (optional, defaults to InMemoryChannel)
         :param response_stream_filter: pre-restored filter for resumed runs (optional, defaults to a fresh
             ResponseStreamFilter for runs with no prior pause)
@@ -170,7 +173,11 @@ class WorkflowEntry:
                     handler_factory=IterationContainerHandler,
                     hidden_event_listener=limits_layer.on_event,
                 ),
-                partial(WorkflowToolContainerHandler, hidden_event_listener=limits_layer.on_event),
+                partial(
+                    WorkflowToolContainerHandler,
+                    source_repository=workflow_tool_source_repository,
+                    hidden_event_listener=limits_layer.on_event,
+                ),
             ),
         )
 

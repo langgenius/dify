@@ -49,18 +49,18 @@ class WorkflowTool(Tool):
     def __init__(
         self,
         workflow_app_id: str,
+        workflow_id: str,
         workflow_as_tool_id: str,
         version: str,
-        workflow_entities: dict[str, Any],
         workflow_call_depth: int,
         entity: ToolEntity,
         runtime: ToolRuntime,
         label: str = "Workflow",
     ):
         self.workflow_app_id = workflow_app_id
+        self.workflow_id = workflow_id
         self.workflow_as_tool_id = workflow_as_tool_id
         self.version = version
-        self.workflow_entities = workflow_entities
         self.workflow_call_depth = workflow_call_depth
         self.label = label
         self._latest_usage = LLMUsage.empty_usage()
@@ -251,8 +251,8 @@ class WorkflowTool(Tool):
             entity=self.entity.model_copy(),
             runtime=runtime,
             workflow_app_id=self.workflow_app_id,
+            workflow_id=self.workflow_id,
             workflow_as_tool_id=self.workflow_as_tool_id,
-            workflow_entities=self.workflow_entities,
             workflow_call_depth=self.workflow_call_depth,
             version=self.version,
             label=self.label,

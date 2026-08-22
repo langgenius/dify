@@ -81,6 +81,7 @@ def test_run_uses_single_node_execution_branch(
         system_user_id="system-user",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     graph, variable_pool, graph_runtime_state = _make_graph_state()
@@ -220,6 +221,7 @@ def test_run_adds_inputs_with_snippet_compatible_start_aliases() -> None:
         system_user_id="system-user",
         workflow_execution_repository=MagicMock(),
         workflow_node_execution_repository=MagicMock(),
+        workflow_tool_source_repository=MagicMock(),
     )
 
     mock_workflow_entry = MagicMock()

@@ -28,6 +28,7 @@ from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
+from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
@@ -716,6 +717,17 @@ def test_start_buffering_should_set_done_event_when_subscription_raises() -> Non
 
     # Assert
     assert finished is True
+
+
+def test_start_buffering_should_treat_closed_subscription_as_done(caplog: pytest.LogCaptureFixture) -> None:
+    class Subscription:
+        def receive(self, timeout: int = 1) -> bytes | None:
+            raise SubscriptionClosedError("closed")
+
+    buffer_state = service_module._start_buffering(Subscription())
+
+    assert buffer_state.done_event.wait(timeout=1) is True
+    assert "Failed while buffering workflow events" not in caplog.text
 
 
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(

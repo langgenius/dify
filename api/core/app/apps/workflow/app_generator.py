@@ -53,6 +53,7 @@ from models.account import Account
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App, EndUser
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolSourceRepository
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 if TYPE_CHECKING:
@@ -677,6 +678,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 system_user_id=system_user_id,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
+                workflow_tool_source_repository=SQLAlchemyWorkflowToolSourceRepository(
+                    session_maker=session_factory.get_session_maker()
+                ),
                 root_node_id=root_node_id,
                 graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,

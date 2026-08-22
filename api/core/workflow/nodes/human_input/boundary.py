@@ -51,18 +51,12 @@ def _enrich_hitl_required(
         )
 
     definition = record.definition
-    inputs = (
-        list(definition.inputs)
-        if definition.select_options_resolved
-        else resolve_variable_select_input_options(definition.inputs, variable_pool=variable_pool)
-    )
     return HumanInputRequired(
         form_id=record.form_id,
         form_content=record.rendered_content,
-        inputs=inputs,
+        inputs=resolve_variable_select_input_options(definition.inputs, variable_pool=variable_pool),
         actions=list(definition.user_actions),
         node_id=reason.node_id,
         node_title=reason.node_title or definition.node_title or record.node_id,
-        select_options_resolved=definition.select_options_resolved,
         resolved_default_values=dict(definition.default_values),
     )
