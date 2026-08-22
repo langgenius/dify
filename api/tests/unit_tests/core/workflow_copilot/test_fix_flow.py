@@ -148,6 +148,15 @@ def test_full_fix_flow_request_fix_to_publish_success():
     assert fc.test_input_ref, "mock mode must stage a TestInput"
     assert dify.run_draft_inputs == {"query": "mock"}, "PlaceholderAgent.generate_mock_inputs' canned inputs"
 
+    # the re-expressed card vocabulary: apply's change-set and verify's
+    # result must be emitted as "change_set"/"test_result" typed-card kinds
+    # (the card vocabulary), not the old "change-set"/"verify-result" strings.
+    conv_kinds = {item.kind for item in repo.list_conversation(s.id)}
+    assert "change_set" in conv_kinds
+    assert "test_result" in conv_kinds
+    assert "change-set" not in conv_kinds
+    assert "verify-result" not in conv_kinds
+
     # run-immutability: verify minted a brand NEW run id, distinct from the
     # original failed run, and it is marked immutable.
     assert fc.verify_run_id

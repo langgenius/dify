@@ -352,10 +352,10 @@ def test_checklist_fix_diagnose_to_apply_reaches_await_recheck():
     items = repo.list_conversation(s.id)
     found = False
     for item in items:
-        if item.kind == "diagnosis":
-            assert item.payload["source"] == "checklist"
+        if item.kind == "summary" and item.payload.get("variant") == "context":
+            assert "Source: checklist" in item.payload["items"]
             found = True
-    assert found, "diagnosis item must be recorded with source=checklist"
+    assert found, "checklist diagnosis must be recorded as a context summary card"
 
 
 def test_checklist_fix_recheck_passed_reaches_success_via_publish():
