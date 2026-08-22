@@ -134,7 +134,9 @@ class TestInput:
 @dataclass(kw_only=True)
 class ConversationItem:
     seq: int = 0
-    kind: str = ""  # run-context | assistant-turn | user | notice | diagnosis | change-set | verify-result
+    kind: str = ""  # user | decision | notice | run_context | preflight_context | assistant_turn | plan
+    # | form | challenge | resource_select | checkpoint | change_set | test_result | error | summary
+    # | publish | build_learning
     payload: dict[str, Any] = field(default_factory=dict)
     at_version: int = 0
 
