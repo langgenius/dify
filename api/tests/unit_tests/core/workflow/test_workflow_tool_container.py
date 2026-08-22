@@ -410,7 +410,7 @@ def _container_handler(
             app_id="outer-app",
         ),
     )
-    parent_graph = SimpleNamespace(nodes={"tool": parent_node})
+    parent_graph = SimpleNamespace(nodes={"tool": parent_node}, node_factory=None)
     frame_registry = FrameRegistry()
     frame_registry.register(
         ExecutionFrame(
@@ -748,7 +748,10 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     assert isinstance(reason, HitlRequired)
     assert reason.node_id == "tool"
     assert reason.node_title == "Approval"
-    assert all(getattr(event, "node_id", None) not in {"source-start", "source-human"} for event in initial_events)
+    assert all(
+        not isinstance(event, NodeEvent) or event.node_id not in {"source-start", "source-human"}
+        for event in initial_events
+    )
     assert len(form_repository.create_params) == 1
     create_params = form_repository.create_params[0]
     assert create_params.node_id == "source-human"
@@ -785,6 +788,9 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
     assert json.loads(tool_succeeded.node_run_result.outputs["text"]) == {"decision": "approve"}
     assert len(form_repository.create_params) == 1
     assert human_input_app_ids == ["outer-app", "outer-app"]
-    assert all(getattr(event, "node_id", None) not in {"source-human", "source-end"} for event in resumed_events)
+    assert all(
+        not isinstance(event, NodeEvent) or event.node_id not in {"source-human", "source-end"}
+        for event in resumed_events
+    )
     assert list(restored_state.container_frames()) == []
     assert list(restored_state.container_runs()) == []

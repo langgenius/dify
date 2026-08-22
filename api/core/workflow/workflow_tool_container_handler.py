@@ -277,7 +277,7 @@ class WorkflowToolContainerHandler:
             run_context=source_run_context,
             call_depth=payload.call_depth,
         )
-        parent_factory = getattr(parent_frame.graph, "node_factory", None)
+        parent_factory = parent_frame.graph.node_factory
         human_input_run_context = (
             parent_factory.human_input_run_context
             if isinstance(parent_factory, DifyNodeFactory)
