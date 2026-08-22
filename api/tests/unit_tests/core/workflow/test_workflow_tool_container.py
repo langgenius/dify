@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from typing import cast
+from typing import cast, override
 from unittest.mock import MagicMock
 
 import pytest
 
-from core.repositories.human_input_repository import FormCreateParams, HumanInputFormEntity
+from core.repositories.human_input_repository import (
+    FormCreateParams,
+    HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
+)
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
@@ -51,7 +56,7 @@ from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.runtime import RuntimeState, VariablePool
-from graphon.runtime.container_state import create_container_run_state
+from graphon.runtime.container_state import CustomContainerRunState, create_container_run_state
 from graphon.runtime.execution import ROOT_FRAME_ID
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -75,12 +80,12 @@ def _workflow_tool_node(
                     "provider_name": "workflow-provider",
                     "tool_name": "nested-workflow",
                     "tool_label": "Nested Workflow",
-                    "tool_configurations": {},
-                    "tool_parameters": {},
+                    "tool_configurations": dict[str, object](),
+                    "tool_parameters": dict[str, object](),
                 },
             }
         ],
-        "edges": [],
+        "edges": list[dict[str, object]](),
     }
     init_params = build_test_graph_init_params(
         workflow_id="outer-workflow",
@@ -104,7 +109,7 @@ def _workflow_tool_node(
     )
     runtime = MagicMock()
     runtime.get_runtime.return_value = ToolRuntimeHandle(raw=object())
-    runtime.get_runtime_parameters.return_value = []
+    runtime.get_runtime_parameters.return_value = list[object]()
     runtime.build_workflow_tool_container_payload.return_value = payload
     node = DifyWorkflowToolNode(
         node_id="tool",
@@ -279,7 +284,7 @@ def _source_human_input_workflow() -> tuple[App, Workflow]:
         "nodes": [
             {
                 "id": "source-start",
-                "data": {"type": "start", "title": "Start", "variables": []},
+                "data": {"type": "start", "title": "Start", "variables": list[object]()},
             },
             {
                 "id": "source-human",
@@ -324,42 +329,52 @@ class _TestForm(HumanInputFormEntity):
         self.is_submitted = False
 
     @property
+    @override
     def id(self) -> str:
         return self.form_id
 
     @property
+    @override
     def submission_token(self) -> str | None:
         return "submission-token"
 
     @property
-    def recipients(self) -> list:
+    @override
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return []
 
     @property
+    @override
     def rendered_content(self) -> str:
         return "Approve this run?"
 
     @property
+    @override
     def selected_action_id(self) -> str | None:
         return "approve" if self.is_submitted else None
 
     @property
+    @override
     def created_at(self) -> datetime:
         return datetime.now(UTC).replace(tzinfo=None)
 
     @property
+    @override
     def submitted_data(self) -> dict[str, object] | None:
         return {} if self.is_submitted else None
 
     @property
+    @override
     def submitted(self) -> bool:
         return self.is_submitted
 
     @property
+    @override
     def status(self) -> HumanInputFormStatus:
         return HumanInputFormStatus.SUBMITTED if self.is_submitted else HumanInputFormStatus.WAITING
 
     @property
+    @override
     def expiration_time(self) -> datetime:
         return datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1)
 
@@ -575,6 +590,7 @@ def test_workflow_tool_handler_restores_child_failure(
 
     tasks = [runtime_state.ready_queue.get(timeout=0.01) for _ in range(2)]
     resume_task = next(task for task in tasks if isinstance(task, ResumeTask))
+    assert isinstance(resume_task.result, ContainerExecutionResult)
     assert resume_task.result.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
     assert {key: value.to_object() for key, value in resume_task.result.node_run_result.inputs.items()} == {
         "answer": "ok"
@@ -621,6 +637,7 @@ def test_workflow_tool_handler_preserves_inputs_when_start_validation_fails(
 
     resume_task = runtime_state.ready_queue.get(timeout=0.01)
     assert isinstance(resume_task, ResumeTask)
+    assert isinstance(resume_task.result, ContainerExecutionResult)
     assert resume_task.result.node_run_result.status == WorkflowNodeExecutionStatus.FAILED
     assert {key: value.to_object() for key, value in resume_task.result.node_run_result.inputs.items()} == {
         "answer": 42
@@ -682,9 +699,11 @@ def test_workflow_tool_empty_outputs_match_direct_invocation(monkeypatch: pytest
     handler, frame_registry, runtime_state, request = _container_handler(monkeypatch)
     handler.handle_request(invocation_id="invocation", request=request)
 
+    run_state = runtime_state.get_container_run("invocation")
+    assert isinstance(run_state, CustomContainerRunState)
     result = handler._build_success_result(
         frame=frame_registry["invocation:workflow-tool"],
-        run_state=runtime_state.get_container_run("invocation"),
+        run_state=run_state,
     )
 
     assert result.node_run_result.outputs["json"].to_object() == [{}]
@@ -706,7 +725,7 @@ def test_workflow_tool_human_input_pauses_and_resumes_without_duplicate_form(
         factory: DifyNodeFactory,
         *,
         node_data: HumanInputNodeData,
-        execution_id_getter,
+        execution_id_getter: Callable[[], str | None],
     ) -> DifyHITLCallback:
         human_input_app_ids.append(factory._human_input_runtime._run_context.app_id)
         return DifyHITLCallback(
