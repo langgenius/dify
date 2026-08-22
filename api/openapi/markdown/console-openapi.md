@@ -21983,7 +21983,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
-| text | string | Speech content to convert. | No |
+| text | string | Speech content to convert. Maximum 4096 characters per request. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### TextToSpeechPayload
@@ -21992,7 +21992,7 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | message_id | string | Message ID | No |
 | streaming | boolean | Whether to stream audio | No |
-| text | string | Text to convert | Yes |
+| text | string | Text to convert. Maximum 4096 characters per request. | Yes |
 | voice | string | Voice name | No |
 
 #### TextToSpeechRequest

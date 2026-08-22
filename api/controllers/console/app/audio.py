@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import HTTPException, InternalServerError
 
 import services
+from controllers.common.controller_schemas import TTS_MAX_TEXT_LENGTH
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.wraps import enforce_rbac_access
 from controllers.console import console_ns
@@ -62,7 +63,11 @@ logger = logging.getLogger(__name__)
 
 class TextToSpeechPayload(BaseModel):
     message_id: str | None = Field(default=None, description="Message ID")
-    text: str = Field(..., description="Text to convert")
+    text: str = Field(
+        ...,
+        max_length=TTS_MAX_TEXT_LENGTH,
+        description=(f"Text to convert. Maximum {TTS_MAX_TEXT_LENGTH} characters per request."),
+    )
     voice: str | None = Field(default=None, description="Voice name")
     streaming: bool | None = Field(default=None, description="Whether to stream audio")
 

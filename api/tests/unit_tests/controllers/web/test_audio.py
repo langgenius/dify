@@ -184,3 +184,29 @@ class TestTextApi:
         with app.test_request_context("/text-to-audio", method="POST"):
             with pytest.raises(CompletionRequestError):
                 TextApi().post(_app_model(), _end_user())
+
+
+def test_text_to_audio_payload_max_length() -> None:
+    """Regression for #39825: TTS text input is bounded at TTS_MAX_TEXT_LENGTH.
+
+    The webapp / service-api / installed-apps surfaces share the
+    TextToAudioPayload in controllers.common.controller_schemas. The
+    console surface (tested in test_console/app/test_audio.py) has its
+    own TextToSpeechPayload but the cap is the same constant.
+    """
+    from controllers.common.controller_schemas import (
+        TTS_MAX_TEXT_LENGTH,
+        TextToAudioPayload,
+    )
+
+    # At the limit, validation succeeds.
+    TextToAudioPayload.model_validate({"text": "A" * TTS_MAX_TEXT_LENGTH})
+
+    # One character over, validation raises.
+    with pytest.raises(ValueError):
+        TextToAudioPayload.model_validate({"text": "A" * (TTS_MAX_TEXT_LENGTH + 1)})
+
+    # None and empty remain valid (preserves existing behavior for
+    # message_id-driven requests that don't send a text field).
+    assert TextToAudioPayload.model_validate({"text": None}).text is None
+    assert TextToAudioPayload.model_validate({"text": ""}).text == ""

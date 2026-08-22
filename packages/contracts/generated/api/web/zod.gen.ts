@@ -641,7 +641,7 @@ export const zParameters = z.object({
 export const zTextToAudioPayload = z.object({
   message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
-  text: z.string().nullish(),
+  text: z.string().max(4096).nullish(),
   voice: z.string().nullish(),
 })
 

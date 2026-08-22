@@ -458,6 +458,35 @@ def test_text_to_audio_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> N
     assert response == {"audio": "ok"}
 
 
+def test_text_to_audio_rejects_oversized_text(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression for #39825: text above TTS_MAX_TEXT_LENGTH is rejected at the API boundary."""
+    from controllers.common.controller_schemas import TTS_MAX_TEXT_LENGTH
+    from controllers.console.app.audio import TextToSpeechPayload
+
+    # At the limit, validation succeeds.
+    TextToSpeechPayload.model_validate({"text": "A" * TTS_MAX_TEXT_LENGTH})
+
+    # One character over, validation raises.
+    with pytest.raises(ValueError):
+        TextToSpeechPayload.model_validate({"text": "A" * (TTS_MAX_TEXT_LENGTH + 1)})
+
+    # The endpoint path also rejects: an oversized text never reaches the service.
+    api = ChatMessageTextApi()
+    method = unwrap(api.post)
+
+    monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
+
+    app_model = SimpleNamespace(id="app-1")
+
+    with app.test_request_context(
+        "/console/api/apps/app-1/text-to-audio",
+        method="POST",
+        json={"text": "A" * (TTS_MAX_TEXT_LENGTH + 1)},
+    ):
+        with pytest.raises(ValueError):
+            method(api, app_model=app_model)
+
+
 def test_text_to_audio_voices_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = TextModesApi()
     method = unwrap(api.get)
