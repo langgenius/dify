@@ -10,7 +10,7 @@ intents (see core/workflow_copilot/placeholder_agent.py).
 import pytest
 
 from core.workflow_copilot.models import MutationIntent
-from services.workflow_copilot.graph_ops import MUTATION_ARG_KEYS, apply_set_node_config, validate_intent_args
+from services.workflow_copilot.graph_ops import MUTATION_ARG_KEYS, apply_create_node, apply_set_node_config, validate_intent_args
 
 
 # ---- validate_intent_args --------------------------------------------------
@@ -103,3 +103,72 @@ def test_missing_node_id_raises_value_error():
 
     with pytest.raises(ValueError):
         apply_set_node_config(graph, "does-not-exist", "code", "new code")
+
+
+# ---- apply_create_node ------------------------------------------------------
+
+
+def test_apply_create_node_appends_a_graph_node_dict_shaped_node():
+    graph = {"nodes": [], "edges": []}
+
+    new_graph, changed = apply_create_node(graph, "start", {"variables": []})
+
+    assert len(new_graph["nodes"]) == 1
+    node = new_graph["nodes"][0]
+    assert changed == [node["id"]]
+    assert node["type"] == "custom"
+    assert node["data"]["type"] == "start"
+    assert node["data"]["variables"] == []
+    assert node["data"]["title"] == node["id"]
+    assert node["data"]["desc"] == ""
+    assert node["data"]["selected"] is False
+    assert "x" in node["position"] and "y" in node["position"]
+
+
+def test_apply_create_node_generates_id_from_node_type_with_collision_suffix():
+    graph = {"nodes": [{"id": "llm", "data": {"type": "llm"}}], "edges": []}
+
+    new_graph, changed = apply_create_node(graph, "llm", {})
+
+    assert changed == ["llm_2"]
+    assert new_graph["nodes"][-1]["id"] == "llm_2"
+
+
+def test_apply_create_node_honors_explicit_node_id():
+    graph = {"nodes": [], "edges": []}
+
+    new_graph, changed = apply_create_node(graph, "llm", {}, node_id="my-llm")
+
+    assert changed == ["my-llm"]
+    assert new_graph["nodes"][0]["id"] == "my-llm"
+
+
+def test_apply_create_node_raises_on_duplicate_explicit_node_id():
+    graph = {"nodes": [{"id": "my-llm", "data": {}}], "edges": []}
+
+    with pytest.raises(ValueError):
+        apply_create_node(graph, "llm", {}, node_id="my-llm")
+
+
+def test_apply_create_node_uses_given_position_when_supplied():
+    graph = {"nodes": [], "edges": []}
+
+    new_graph, _changed = apply_create_node(graph, "llm", {}, position={"x": 42.0, "y": 7.0})
+
+    assert new_graph["nodes"][0]["position"] == {"x": 42.0, "y": 7.0}
+
+
+def test_apply_create_node_default_position_is_right_of_existing_nodes():
+    graph = {"nodes": [{"id": "a", "position": {"x": 100.0, "y": 100.0}}], "edges": []}
+
+    new_graph, _changed = apply_create_node(graph, "llm", {})
+
+    assert new_graph["nodes"][-1]["position"]["x"] > 100.0
+
+
+def test_apply_create_node_original_graph_untouched():
+    graph = {"nodes": [], "edges": []}
+
+    apply_create_node(graph, "llm", {})
+
+    assert graph["nodes"] == []
