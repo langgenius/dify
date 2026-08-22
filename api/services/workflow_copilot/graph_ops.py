@@ -10,7 +10,29 @@ mutation only — no DB, no services, no I/O.
 import copy
 from typing import Any
 
-from core.workflow_copilot.models import Graph
+from core.workflow_copilot.models import Graph, MutationIntent
+
+MUTATION_ARG_KEYS: dict[str, tuple[str, ...]] = {
+    "set_node_config": ("node_id", "path", "value"),
+    "create_node": ("node_type", "config"),
+    "delete_node": ("node_id",),
+    "connect": ("from_node", "to_node"),
+    "insert_between": ("edge", "node_type", "config"),
+}
+
+
+def validate_intent_args(intent: MutationIntent) -> None:
+    """Raise ``ValueError`` if ``intent.args`` is missing a required key for
+    ``intent.op``, or if ``intent.op`` isn't one of ``MUTATION_ARG_KEYS``'s
+    five recognized verbs. Optional keys (marked ``?`` on ``MutationIntent``)
+    are not checked here -- each ``apply_*`` function defaults them itself.
+    """
+    required = MUTATION_ARG_KEYS.get(intent.op)
+    if required is None:
+        raise ValueError(f"unknown mutation op: {intent.op!r}")
+    missing = [key for key in required if key not in intent.args]
+    if missing:
+        raise ValueError(f"missing required arg(s) {missing} for op {intent.op!r}")
 
 
 def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> tuple[Graph, list[str]]:

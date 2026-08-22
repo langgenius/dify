@@ -9,7 +9,55 @@ intents (see core/workflow_copilot/placeholder_agent.py).
 
 import pytest
 
-from services.workflow_copilot.graph_ops import apply_set_node_config
+from core.workflow_copilot.models import MutationIntent
+from services.workflow_copilot.graph_ops import MUTATION_ARG_KEYS, apply_set_node_config, validate_intent_args
+
+
+# ---- validate_intent_args --------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("op", "args"),
+    [
+        ("set_node_config", {"node_id": "n1", "path": "code", "value": "x"}),
+        ("create_node", {"node_type": "llm", "config": {}}),
+        ("delete_node", {"node_id": "n1"}),
+        ("connect", {"from_node": "n1", "to_node": "n2"}),
+        ("insert_between", {"edge": {"source": "n1", "target": "n2"}, "node_type": "llm", "config": {}}),
+    ],
+)
+def test_validate_intent_args_accepts_each_op_with_its_required_keys(op, args):
+    validate_intent_args(MutationIntent(op=op, args=args))  # must not raise
+
+
+@pytest.mark.parametrize(
+    ("op", "args", "missing_key"),
+    [
+        ("set_node_config", {"node_id": "n1", "path": "code"}, "value"),
+        ("create_node", {"config": {}}, "node_type"),
+        ("delete_node", {}, "node_id"),
+        ("connect", {"from_node": "n1"}, "to_node"),
+        ("insert_between", {"node_type": "llm", "config": {}}, "edge"),
+    ],
+)
+def test_validate_intent_args_raises_on_missing_required_key(op, args, missing_key):
+    with pytest.raises(ValueError, match=missing_key):
+        validate_intent_args(MutationIntent(op=op, args=args))
+
+
+def test_validate_intent_args_raises_on_unknown_op():
+    with pytest.raises(ValueError, match="unknown mutation op"):
+        validate_intent_args(MutationIntent(op="not_a_real_verb", args={}))
+
+
+def test_mutation_arg_keys_covers_all_five_verbs():
+    assert set(MUTATION_ARG_KEYS) == {
+        "set_node_config",
+        "create_node",
+        "delete_node",
+        "connect",
+        "insert_between",
+    }
 
 
 def _two_node_graph() -> dict:
