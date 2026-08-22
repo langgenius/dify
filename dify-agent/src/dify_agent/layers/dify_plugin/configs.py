@@ -28,6 +28,12 @@ DifyPluginToolCredentialType: TypeAlias = Literal["api-key", "oauth2", "unauthor
 DifyPluginToolValue: TypeAlias = JsonValue
 DIFY_PLUGIN_LLM_LAYER_TYPE_ID: Final[str] = "dify.plugin.llm"
 DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID: Final[str] = "dify.plugin.tools"
+# Key under ToolReturnPart.metadata carrying file references produced by a plugin
+# tool. The metadata channel is application-facing only and never reaches the
+# LLM; the Dify API reads this key off the tool-result stream event to persist
+# and render tool-generated files (dify issue #40425). Client-safe by design so
+# API-side consumers can import it without server-only dependencies.
+DIFY_PLUGIN_TOOL_FILES_METADATA_KEY: Final[str] = "dify_tool_files"
 
 
 class DifyPluginToolOption(BaseModel):
@@ -172,6 +178,7 @@ class DifyPluginToolsLayerConfig(LayerConfig):
 
 __all__ = [
     "DIFY_PLUGIN_LLM_LAYER_TYPE_ID",
+    "DIFY_PLUGIN_TOOL_FILES_METADATA_KEY",
     "DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID",
     "DifyPluginCredentialValue",
     "DifyPluginLLMLayerConfig",

@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Any, Literal
 
 from dify_agent.layers.ask_human import AskHumanToolArgs
+from dify_agent.layers.dify_plugin import DIFY_PLUGIN_TOOL_FILES_METADATA_KEY
 from dify_agent.protocol import DeferredToolResultsPayload
 from pydantic import JsonValue
 
@@ -50,8 +51,12 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueMessageFileEvent,
 )
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool_engine import ToolEngine
+from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
@@ -435,9 +440,21 @@ class _AgentProcessRecorder:
         content = part.get("content")
         if content is None:
             content = part
-        self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
+        self._record_tool_observation(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            observation=content,
+            file_references=_tool_file_references(part.get("metadata")),
+        )
 
-    def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+    def _record_tool_observation(
+        self,
+        *,
+        tool_call_id: str | None,
+        tool_name: str | None,
+        observation: Any,
+        file_references: list[dict[str, Any]] | None = None,
+    ) -> None:
         self._close_thinking_segments()
         thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
         if thought_id is None:
@@ -445,6 +462,67 @@ class _AgentProcessRecorder:
         else:
             self._mark_tool_observed(thought_id)
         self._update_thought(thought_id, observation=_json_or_text(observation))
+        if file_references:
+            self._persist_tool_files(thought_id, file_references)
+
+    def _persist_tool_files(self, thought_id: str, file_references: list[dict[str, Any]]) -> None:
+        """Replay the legacy tool-file chain for backend-reported tool files.
+
+        Mirrors ``ToolEngine.agent_invoke``: download each reported URL into a
+        ``ToolFile``, create ``MessageFile`` rows, and publish
+        ``QueueMessageFileEvent`` so the chat pipeline streams ``message_file``
+        events and ``message_end.files`` is populated. Failures degrade to the
+        text-only observation instead of failing the run.
+        """
+        try:
+            message = db.session.get(Message, self._message_id)
+            if message is None:
+                logger.warning("Agent App tool files skipped: message %s not found", self._message_id)
+                return
+            invoke_messages = [
+                ToolInvokeMessage(
+                    type=ToolInvokeMessage.MessageType.IMAGE,
+                    message=ToolInvokeMessage.TextMessage(text=url),
+                    meta={"mime_type": reference["mime_type"]} if reference.get("mime_type") else {},
+                )
+                for reference in file_references
+                if (url := reference.get("url"))
+            ]
+            if not invoke_messages:
+                return
+            transformed = list(
+                ToolFileMessageTransformer.transform_tool_invoke_messages(
+                    messages=(invoke_message for invoke_message in invoke_messages),
+                    user_id=self._dify_context.user_id,
+                    tenant_id=self._dify_context.tenant_id,
+                    conversation_id=message.conversation_id,
+                )
+            )
+            binary_files = ToolEngine._extract_tool_response_binary_and_text(transformed)
+            message_file_ids = ToolEngine._create_message_files(
+                tool_messages=binary_files,
+                agent_message=message,
+                invoke_from=self._dify_context.invoke_from,
+                user_id=self._dify_context.user_id,
+            )
+            if not message_file_ids:
+                return
+            thought = db.session.get(MessageAgentThought, thought_id)
+            if thought is not None:
+                thought.message_files = json.dumps(message_file_ids)
+                db.session.commit()
+            for message_file_id in message_file_ids:
+                self._queue_manager.publish(
+                    QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
+                )
+        except Exception:
+            db.session.rollback()
+            logger.warning(
+                "Failed to persist Agent App tool files: message_id=%s thought_id=%s",
+                self._message_id,
+                thought_id,
+                exc_info=True,
+            )
 
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
         if tool_call_id and tool_call_id in self._tool_by_call_id:
@@ -597,6 +675,20 @@ def _tool_labels(tool: str | None) -> str:
     if not tool:
         return "{}"
     return json.dumps({tool: {"en_US": tool, "zh_Hans": tool}}, ensure_ascii=False)
+
+
+def _tool_file_references(metadata: Any) -> list[dict[str, Any]]:
+    """Extract SDK-reported tool file references from ToolReturnPart metadata."""
+    if not isinstance(metadata, dict):
+        return []
+    references = metadata.get(DIFY_PLUGIN_TOOL_FILES_METADATA_KEY)
+    if not isinstance(references, list):
+        return []
+    return [
+        reference
+        for reference in references
+        if isinstance(reference, dict) and isinstance(reference.get("url"), str) and reference["url"]
+    ]
 
 
 def _suffix_prefix_overlap_length(text: str, prefix_source: str) -> int:
