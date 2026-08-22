@@ -198,7 +198,11 @@ class HumanInputService:
             )
         return [
             form_input.model_copy(
-                update={"option_source": form_input.option_source.model_copy(update={"type": ValueSourceType.CONSTANT})}
+                update={
+                    "option_source": form_input.option_source.model_copy(
+                        update={"type": ValueSourceType.CONSTANT, "selector": ()}
+                    )
+                }
             )
             if isinstance(form_input, SelectInputConfig) and form_input.option_source.type == ValueSourceType.VARIABLE
             else form_input
