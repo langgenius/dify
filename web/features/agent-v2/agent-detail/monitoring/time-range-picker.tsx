@@ -218,7 +218,7 @@ export function AgentMonitoringTimeRangePicker({
               ? t(($) => $[selectedOption.nameKey])
               : value.name}
         </SelectTrigger>
-        <SelectContent popupClassName="w-50">
+        <SelectContent className="w-50">
           {timeRangeOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <SelectItemText>{t(($) => $[option.nameKey])}</SelectItemText>
