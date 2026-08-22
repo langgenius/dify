@@ -1383,6 +1383,8 @@ dependencies = [
     { name = "opentelemetry-propagator-b3" },
     { name = "psycogreen" },
     { name = "psycopg2-binary" },
+    { name = "pypandoc" },
+    { name = "pypandoc-binary" },
     { name = "python-socketio" },
     { name = "readabilipy" },
     { name = "redis", extra = ["hiredis"] },
@@ -1659,7 +1661,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.198.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.164.0,<2.0.0" },
-    { name = "graphon", specifier = "==0.7.0" },
+    { name = "graphon", git = "https://github.com/hpiclaranet/graphon?rev=b27300f8208a36ec32e7d81639f5f3f19fc9df8c" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -1673,6 +1675,8 @@ requires-dist = [
     { name = "opentelemetry-propagator-b3", specifier = ">=1.41.1,<2.0.0" },
     { name = "psycogreen", specifier = ">=1.0.2,<2.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.12,<3.0.0" },
+    { name = "pypandoc", specifier = ">=1.17,<2.0.0" },
+    { name = "pypandoc-binary", specifier = ">=1.17,<2.0.0" },
     { name = "python-socketio", specifier = ">=5.13.0,<6.0.0" },
     { name = "readabilipy", specifier = "==0.3.0" },
     { name = "redis", extras = ["hiredis"], specifier = ">=7.4.0,<8.0.0" },
@@ -3017,7 +3021,7 @@ httpx = [
 [[package]]
 name = "graphon"
 version = "0.7.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/hpiclaranet/graphon?rev=b27300f8208a36ec32e7d81639f5f3f19fc9df8c#b27300f8208a36ec32e7d81639f5f3f19fc9df8c" }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "httpx" },
@@ -3037,10 +3041,6 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/c6/6f16398e28bceb11304f8dd743d5f4f2c1e1aedf20eef6531764edb40a7e/graphon-0.7.0.tar.gz", hash = "sha256:e3f19284432d6e4a947fb285ef36bc79eb48c41af36867b03c0d70f062fe8563", size = 266715, upload-time = "2026-07-29T10:00:51.303Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/9b/3b02d944a20b3693bb5bb77cbb16b3afed44a965096970c47625560c0235/graphon-0.7.0-py3-none-any.whl", hash = "sha256:6f7608aaaa65607c4935735137ed4b7029b1e6ca80202cbe829af3370cf4404e", size = 380138, upload-time = "2026-07-29T10:00:49.654Z" },
 ]
 
 [[package]]

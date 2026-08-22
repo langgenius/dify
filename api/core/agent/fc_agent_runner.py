@@ -5,6 +5,7 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import Any, Union
 
+from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -188,6 +189,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             current_llm_usage = None
 
+            # Provider round-trip state (e.g. signed thinking blocks) that must
+            # be replayed in the assistant message of the next iteration.
+            # Plugins expose it on the LLM result message as a complete
+            # snapshot, so the last non-None value wins.
+            opaque_body: JsonValue | None = None
+
             if isinstance(chunks, Generator):
                 is_first_chunk = True
                 for chunk in chunks:
@@ -220,6 +227,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         increase_usage(llm_usage, chunk.delta.usage)
                         current_llm_usage = chunk.delta.usage
 
+                    if chunk.delta.message and chunk.delta.message.opaque_body is not None:
+                        opaque_body = chunk.delta.message.opaque_body
+
                     yield chunk
             else:
                 result = chunks
@@ -250,6 +260,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 if not result.message.content:
                     result.message.content = ""
 
+                if result.message and result.message.opaque_body is not None:
+                    opaque_body = result.message.opaque_body
+
                 self.queue_manager.publish(
                     QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                 )
@@ -265,7 +278,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     ),
                 )
 
-            assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
+            assistant_message = AssistantPromptMessage(content=response, tool_calls=[], opaque_body=opaque_body)
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
