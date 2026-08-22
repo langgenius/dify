@@ -200,7 +200,7 @@ def test_apply_repair_syncs_mutated_graph_with_graph_only_and_no_agent_binding_s
     assert original_graph["nodes"][0]["data"]["code"] == "old"
 
 
-def test_apply_repair_ignores_non_set_node_config_intents(mock_session: MagicMock):
+def test_apply_repair_ignores_unknown_op_intents(mock_session: MagicMock):
     account = SimpleNamespace(id="acc-1")
     app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
     _configure_session_get(mock_session, account=account, app=app)
@@ -211,7 +211,11 @@ def test_apply_repair_ignores_non_set_node_config_intents(mock_session: MagicMoc
         features_dict={},
         conversation_variables=[],
     )
-    intents = [MutationIntent(op="connect", args={"from": "node-1", "to": "node-2"})]
+    # Ops the dispatch table doesn't recognize are silently skipped -- this
+    # is forward-compat for future verbs, distinct from a *recognized* op
+    # with bad args (which raises, see test_apply_repair_dispatches_connect_
+    # and_reports_dangling_ref_as_value_error below).
+    intents = [MutationIntent(op="some_future_verb", args={"from": "node-1", "to": "node-2"})]
 
     with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
         mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
@@ -245,6 +249,104 @@ def test_apply_repair_maps_hash_mismatch_to_domain_error(mock_session: MagicMock
 
         with pytest.raises(HashMismatchError):
             WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+
+def test_apply_repair_dispatches_create_node(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    intents = [MutationIntent(op="create_node", args={"node_type": "llm", "config": {}})]
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+    assert len(result.changed_nodes) == 1
+    _, kwargs = mock_ws_cls.return_value.sync_draft_workflow.call_args
+    assert len(kwargs["graph"]["nodes"]) == 1
+    assert kwargs["graph"]["nodes"][0]["data"]["type"] == "llm"
+
+
+def test_apply_repair_dispatches_connect_and_reports_dangling_ref_as_value_error(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "a", "data": {}}], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    intents = [MutationIntent(op="connect", args={"from_node": "a", "to_node": "missing"})]
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+
+        with pytest.raises(ValueError):
+            WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+
+def test_apply_repair_computes_real_diff_changes_and_scope_for_structural_edit(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "a", "data": {}}], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    intents = [
+        MutationIntent(op="create_node", args={"node_type": "llm", "config": {}, "node_id": "llm-1"}),
+        MutationIntent(op="connect", args={"from_node": "a", "to_node": "llm-1"}),
+    ]
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+    assert result.scope == "structure"
+    assert "added node llm-1" in result.changes
+    assert "added a → llm-1" in result.changes
+
+
+def test_apply_repair_computes_configuration_scope_for_set_node_config(mock_session: MagicMock):
+    account = SimpleNamespace(id="acc-1")
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    _configure_session_get(mock_session, account=account, app=app)
+
+    workflow = SimpleNamespace(
+        graph_dict={"nodes": [{"id": "node-1", "data": {"code": "old"}}], "edges": []},
+        unique_hash="hash-1",
+        features_dict={},
+        conversation_variables=[],
+    )
+    updated_workflow = SimpleNamespace(unique_hash="hash-2")
+    intents = [MutationIntent(op="set_node_config", args={"node_id": "node-1", "path": "code", "value": "new"})]
+
+    with patch("services.workflow_copilot.dify_port.WorkflowService") as mock_ws_cls:
+        mock_ws_cls.return_value.get_draft_workflow.return_value = workflow
+        mock_ws_cls.return_value.sync_draft_workflow.return_value = updated_workflow
+
+        result = WorkflowServiceDifyPort().apply_repair("app-1", _actor(), intents)
+
+    assert result.scope == "configuration"
+    assert result.changes == ["node-1: code updated"]
 
 
 # ---- run_draft --------------------------------------------------------------
