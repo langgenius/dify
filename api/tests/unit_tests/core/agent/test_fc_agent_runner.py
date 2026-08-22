@@ -6,6 +6,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import JsonValue
 from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -17,6 +18,7 @@ from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessageContentType,
@@ -73,9 +75,15 @@ def _make_message(*, message_id: str = "m1", conversation_id: str = "conv1") -> 
 
 
 class DummyMessage:
-    def __init__(self, content: str | None = None, tool_calls: list[Any] | None = None):
+    def __init__(
+        self,
+        content: str | None = None,
+        tool_calls: list[Any] | None = None,
+        opaque_body: JsonValue | None = None,
+    ):
         self.content: str | None = content
         self.tool_calls: list[Any] = tool_calls or []
+        self.opaque_body: JsonValue | None = opaque_body
 
 
 class DummyDelta:
@@ -606,3 +614,118 @@ class TestRunMethod:
 
         with pytest.raises(AgentMaxIterationError):
             list(runner.run(runner.session, message, "query"))
+
+
+# ==============================
+# Provider Opaque Body Round Trip
+# ==============================
+
+
+class TestOpaqueBodyRoundTrip:
+    OPAQUE_BODY = {
+        "assistant_blocks": [
+            {"type": "thinking", "thinking": "reasoning", "signature": "sig-1"},
+            {"type": "redacted_thinking", "data": "enc-1"},
+        ],
+    }
+
+    def test_run_non_streaming_captures_opaque_body(self, runner: FunctionCallAgentRunner):
+        message = _make_message()
+        result = DummyResult(
+            message=DummyMessage(content="hello", opaque_body=self.OPAQUE_BODY),
+            usage=build_usage(),
+        )
+        runner.model_instance.invoke_llm.return_value = result
+
+        list(runner.run(runner.session, message, "query"))
+
+        assert runner._current_thoughts[0].opaque_body == self.OPAQUE_BODY
+
+    def test_run_non_streaming_opaque_body_defaults_to_none(self, runner: FunctionCallAgentRunner):
+        message = _make_message()
+        result = DummyResult(message=DummyMessage(content="hello"), usage=build_usage())
+        runner.model_instance.invoke_llm.return_value = result
+
+        list(runner.run(runner.session, message, "query"))
+
+        assert runner._current_thoughts[0].opaque_body is None
+
+    def test_run_streaming_captures_last_opaque_body_snapshot(self, runner: FunctionCallAgentRunner):
+        runner.stream_tool_call = True
+        message = _make_message()
+
+        chunks = [
+            DummyChunk(message=DummyMessage(content="hi"), usage=build_usage()),
+            DummyChunk(
+                message=DummyMessage(content="...", opaque_body=self.OPAQUE_BODY),
+                usage=build_usage(),
+            ),
+            # A later chunk without a snapshot must not clobber the captured one.
+            DummyChunk(message=DummyMessage(content="done"), usage=build_usage()),
+        ]
+
+        def generator():
+            yield from chunks
+
+        runner.model_instance.invoke_llm.return_value = generator()
+
+        list(runner.run(runner.session, message, "query"))
+
+        assert runner._current_thoughts[0].opaque_body == self.OPAQUE_BODY
+
+    def test_run_second_iteration_prompt_carries_opaque_body(self, runner: FunctionCallAgentRunner):
+        """The in-memory agent loop must replay provider state on the next LLM call."""
+        message = _make_message()
+
+        tool_call = MagicMock()
+        tool_call.id = "1"
+        tool_call.function.name = "missing_tool"
+        tool_call.function.arguments = json.dumps({})
+
+        first = DummyResult(
+            message=DummyMessage(content="", tool_calls=[tool_call], opaque_body=self.OPAQUE_BODY),
+            usage=build_usage(),
+        )
+        final = DummyResult(message=DummyMessage(content="done"), usage=build_usage())
+        runner.model_instance.invoke_llm.side_effect = [first, final]
+
+        list(runner.run(runner.session, message, "query"))
+
+        assert runner.model_instance.invoke_llm.call_count == 2
+        second_prompt = runner.model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"]
+        assistant_messages = [
+            prompt_message for prompt_message in second_prompt if isinstance(prompt_message, AssistantPromptMessage)
+        ]
+        assert assistant_messages
+        assert assistant_messages[0].opaque_body == self.OPAQUE_BODY
+
+    def test_run_streaming_tool_call_round_trip_carries_opaque_body(self, runner: FunctionCallAgentRunner):
+        """Streaming tool-call turns must also replay provider state on the next LLM call."""
+        runner.stream_tool_call = True
+        message = _make_message()
+
+        tool_call = MagicMock()
+        tool_call.id = "1"
+        tool_call.function.name = "missing_tool"
+        tool_call.function.arguments = json.dumps({})
+
+        chunk = DummyChunk(
+            message=DummyMessage(content="", tool_calls=[tool_call], opaque_body=self.OPAQUE_BODY),
+            usage=build_usage(),
+        )
+
+        def generator():
+            yield chunk
+
+        final = DummyResult(message=DummyMessage(content="done"), usage=build_usage())
+        runner.model_instance.invoke_llm.side_effect = [generator(), final]
+
+        list(runner.run(runner.session, message, "query"))
+
+        assert runner.model_instance.invoke_llm.call_count == 2
+        second_prompt = runner.model_instance.invoke_llm.call_args_list[1].kwargs["prompt_messages"]
+        assistant_messages = [
+            prompt_message for prompt_message in second_prompt if isinstance(prompt_message, AssistantPromptMessage)
+        ]
+        assert assistant_messages
+        assert assistant_messages[0].opaque_body == self.OPAQUE_BODY

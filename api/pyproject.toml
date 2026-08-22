@@ -70,6 +70,12 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
+# TEMPORARY: point graphon at the opaque_body change (cherry-picked onto
+# v0.7.0, zero drift from the current pin) until the release containing
+# langgenius/graphon#261 is published to PyPI; switch back to a plain
+# version pin (graphon==0.7.1) once that happens. Pinned by rev for
+# reproducibility; update the rev if the cherry-picked commit changes.
+graphon = { git = "https://github.com/hpiclaranet/graphon", rev = "b27300f8208a36ec32e7d81639f5f3f19fc9df8c" }
 flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "27758e26f8f740d7525d5039c51a9e524b6e2b68" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
