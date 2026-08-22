@@ -118,6 +118,15 @@ class TestTraceIdHelper:
             ("abc!@#", False),
             ("空格", False),
             ("with space", False),
+            # Trailing newlines and other whitespace must be rejected so the
+            # value is safe to embed in log lines and the traceparent header.
+            # Regression for #39880 (sibling of #39234 / #39548 / #39666 / #39730).
+            ("abc123\n", False),
+            ("abc123\r", False),
+            ("abc123\r\n", False),
+            ("abc123\nfoo", False),
+            ("\nabc123", False),
+            ("abc 123", False),
         ],
     )
     def test_is_valid_trace_id(self, trace_id, expected):
@@ -164,6 +173,18 @@ class TestTraceIdHelper:
     )
     def test_get_external_trace_id_invalid(self, req):
         """Should return None for invalid or missing trace_id"""
+        assert get_external_trace_id(req) is None
+
+    @pytest.mark.parametrize(
+        "req",
+        [
+            DummyRequest(headers={"X-Trace-Id": "abc123\n"}),
+            DummyRequest(args={"trace_id": "abc123\n"}),
+            DummyRequest(is_json=True, json={"trace_id": "abc123\nfoo"}),
+        ],
+    )
+    def test_get_external_trace_id_rejects_trailing_newline(self, req):
+        """Trailing-newline trace_id is rejected at every entry point. Regression for #39880."""
         assert get_external_trace_id(req) is None
 
     @pytest.mark.parametrize(
