@@ -160,6 +160,32 @@ def test_apply_writes_graph_locks_during_work_unlocks_at_await_verify():
     assert "output" in fc.change_set.changed_nodes
 
 
+def test_apply_emits_change_set_card_with_fallback_scope_and_changes_when_adapter_omits_them():
+    # NOTE: this assertion already holds against the OLD hardcoded handle_apply
+    # (scope="configuration", changes=changed_nodes) -- Task 8's fallback branch
+    # is *designed* to reproduce that exact old behavior for any adapter (like
+    # FakeDifyPort) that doesn't populate changes/scope, so this is a
+    # same-behavior regression pin, not a red-first TDD test. It stays green
+    # through Step 2 below; the real red/green for Task 8's behavior change
+    # lives in the test_dify_port.py additions above (only WorkflowServiceDifyPort
+    # computes a real diff).
+    env, repo = _new_env()
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    runner.advance(s.id, turn)
+
+    items = repo.list_conversation(s.id)
+    change_set_item = next(i for i in items if i.kind == "change_set")
+    # FakeDifyPort's ApplyResult never populates changes/scope (Slice 1's
+    # real diff only exists in WorkflowServiceDifyPort) -- handle_apply must
+    # fall back to changed_nodes / "configuration" so Fix stays green.
+    assert change_set_item.payload["scope"] == "configuration"
+    assert change_set_item.payload["changes"] == ["output"]
+    assert change_set_item.payload["count"] == 1
+
+
 # ---- await_approval ------------------------------------------------------
 
 
