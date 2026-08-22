@@ -139,3 +139,23 @@ def apply_create_node(
     node = _build_node(new_graph, node_type, config, position, node_id)
     new_graph.setdefault("nodes", []).append(node)
     return new_graph, [node["id"]]
+
+
+def apply_delete_node(graph: Graph, node_id: str) -> tuple[Graph, list[str]]:
+    """Remove the node with ``id == node_id`` and every edge touching it.
+
+    Raises ``ValueError`` if no node in ``graph["nodes"]`` has a matching
+    ``id`` (mirrors ``apply_set_node_config``'s not-found behavior).
+    Returns ``(new_graph, [node_id])``.
+    """
+    new_graph = copy.deepcopy(graph)
+    nodes = new_graph.get("nodes", [])
+    if not any(n.get("id") == node_id for n in nodes):
+        raise ValueError(f"node not found: {node_id}")
+
+    new_graph["nodes"] = [n for n in nodes if n.get("id") != node_id]
+    new_graph["edges"] = [
+        e for e in new_graph.get("edges", [])
+        if e.get("source") != node_id and e.get("target") != node_id
+    ]
+    return new_graph, [node_id]

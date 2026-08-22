@@ -13,6 +13,7 @@ from core.workflow_copilot.models import MutationIntent
 from services.workflow_copilot.graph_ops import (
     MUTATION_ARG_KEYS,
     apply_create_node,
+    apply_delete_node,
     apply_set_node_config,
     validate_intent_args,
 )
@@ -185,3 +186,45 @@ def test_apply_create_node_explicit_empty_position_is_kept_not_defaulted():
     new_graph, _changed = apply_create_node(graph, "llm", {}, position={})
 
     assert new_graph["nodes"][0]["position"] == {}
+
+
+# ---- apply_delete_node ------------------------------------------------------
+
+
+def test_apply_delete_node_removes_node_and_its_edges():
+    graph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}],
+        "edges": [{"id": "e1", "source": "a", "target": "b", "type": "custom"}],
+    }
+
+    new_graph, changed = apply_delete_node(graph, "a")
+
+    assert changed == ["a"]
+    assert [n["id"] for n in new_graph["nodes"]] == ["b"]
+    assert new_graph["edges"] == []
+
+
+def test_apply_delete_node_leaves_unrelated_edges():
+    graph = {
+        "nodes": [{"id": "a", "data": {}}, {"id": "b", "data": {}}, {"id": "c", "data": {}}],
+        "edges": [{"id": "e1", "source": "b", "target": "c", "type": "custom"}],
+    }
+
+    new_graph, _changed = apply_delete_node(graph, "a")
+
+    assert len(new_graph["edges"]) == 1
+
+
+def test_apply_delete_node_missing_id_raises_value_error():
+    graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+
+    with pytest.raises(ValueError):
+        apply_delete_node(graph, "does-not-exist")
+
+
+def test_apply_delete_node_original_graph_untouched():
+    graph = {"nodes": [{"id": "a", "data": {}}], "edges": []}
+
+    apply_delete_node(graph, "a")
+
+    assert graph["nodes"] == [{"id": "a", "data": {}}]
