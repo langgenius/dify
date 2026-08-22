@@ -258,3 +258,53 @@ def apply_insert_between(
     }
     new_graph["edges"] = [*remaining_edges, incoming, outgoing]
     return new_graph, [new_id]
+
+
+def diff_graphs(before: Graph, after: Graph) -> tuple[list[str], str]:
+    """Compare two graphs and return ``(changes, scope)``.
+
+    ``scope`` is ``"structure"`` if any node or edge was added or removed,
+    else ``"configuration"`` if any surviving node's ``data`` changed, else
+    ``"configuration"`` with an empty ``changes`` list if nothing differs.
+    ``changes`` is human-readable lines (e.g. ``"added node knowledge-1"``,
+    ``"added knowledge-1 → llm-1"``, ``"llm-1: prompt_template updated"``)
+    -- not bare ids.
+    """
+    before_nodes = {n.get("id"): n for n in before.get("nodes", []) if n.get("id")}
+    after_nodes = {n.get("id"): n for n in after.get("nodes", []) if n.get("id")}
+
+    def _edge_key(e: dict[str, Any]) -> tuple[str, str, str, str]:
+        return (
+            str(e.get("source")),
+            str(e.get("target")),
+            str(e.get("sourceHandle") or "source"),
+            str(e.get("targetHandle") or "target"),
+        )
+
+    before_edges = {_edge_key(e) for e in before.get("edges", [])}
+    after_edges = {_edge_key(e) for e in after.get("edges", [])}
+
+    added_nodes = sorted(after_nodes.keys() - before_nodes.keys())
+    removed_nodes = sorted(before_nodes.keys() - after_nodes.keys())
+    added_edges = sorted(after_edges - before_edges)
+    removed_edges = sorted(before_edges - after_edges)
+
+    changes: list[str] = []
+    changes.extend(f"added node {node_id}" for node_id in added_nodes)
+    changes.extend(f"removed node {node_id}" for node_id in removed_nodes)
+    changes.extend(f"added {source} → {target}" for source, target, _sh, _th in added_edges)
+    changes.extend(
+        f"removed {source} → {target}" for source, target, _sh, _th in removed_edges
+    )
+
+    for node_id in sorted(before_nodes.keys() & after_nodes.keys()):
+        before_data = before_nodes[node_id].get("data", {})
+        after_data = after_nodes[node_id].get("data", {})
+        changed_keys = sorted(
+            key for key in set(before_data) | set(after_data)
+            if before_data.get(key) != after_data.get(key)
+        )
+        changes.extend(f"{node_id}: {key} updated" for key in changed_keys)
+
+    structural = bool(added_nodes or removed_nodes or added_edges or removed_edges)
+    return changes, "structure" if structural else "configuration"
