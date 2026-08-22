@@ -277,6 +277,9 @@ class TestOrganizeUserQuery:
         assert len(result) == 1
 
     def test_with_files_uses_image_detail_config(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
+        from graphon.file.enums import FileTransferMethod, FileType
+        from graphon.file.models import File
+
         file_content = TextPromptMessageContent(data="file-content")
         mock_to_prompt = mocker.patch(
             "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
@@ -285,13 +288,19 @@ class TestOrganizeUserQuery:
 
         image_config = MagicMock(detail=ImagePromptMessageContent.DETAIL.HIGH)
         runner.application_generate_entity.file_upload_config = MagicMock(image_config=image_config)
-        runner.files = ["file1"]
+        test_file = File(
+            file_type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/file1.png",
+            filename="file1.png",
+        )
+        runner.files = [test_file]
 
         result = runner._organize_user_query("query", [])
 
         assert len(result) == 1
         assert isinstance(result[0].content, list)
-        mock_to_prompt.assert_called_once_with("file1", image_detail_config=ImagePromptMessageContent.DETAIL.HIGH)
+        mock_to_prompt.assert_called_once_with(test_file, image_detail_config=ImagePromptMessageContent.DETAIL.HIGH)
 
 
 # ==============================
