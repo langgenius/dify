@@ -211,6 +211,24 @@ class TestCurrentContextInjection:
         assert admission_context.active_workspace_id == "tenant-123"
         assert route_value == "route-value"
 
+    def test_console_account_admission_enforces_declared_edition_first(self):
+        class Handler:
+            @flask_admission.console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+            def get(self, request_context: RequestContext):
+                return request_context
+
+        with (
+            patch(
+                "controllers.console.flask_admission.dify_config.DEPLOYMENT_EDITION",
+                DeploymentEdition.COMMUNITY,
+            ),
+            Flask(__name__).test_request_context(),
+            pytest.raises(HTTPException) as exc_info,
+        ):
+            Handler().get()
+
+        assert exc_info.value.code == 404
+
     def test_console_account_admission_enforces_legacy_workspace_roles(self):
         current_user = make_account()
         current_user.role = TenantAccountRole.NORMAL

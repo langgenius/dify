@@ -15,10 +15,10 @@ from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account
 from services.billing_portal_service import BillingPortalLink
+from services.compliance_download_service import ComplianceDownloadLink
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
-    ComplianceRateLimitExceededError,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,10 +49,6 @@ class SubscriptionPlan(TypedDict):
 
 
 _billing_portal_link_adapter = TypeAdapter(BillingPortalLink)
-
-
-class ComplianceDownloadLink(TypedDict):
-    url: str
 
 
 _compliance_download_link_adapter = TypeAdapter(ComplianceDownloadLink)
@@ -215,8 +211,6 @@ class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
-    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
 
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
@@ -586,10 +580,6 @@ class BillingService:
         ip: str,
         device_info: str,
     ) -> ComplianceDownloadLink:
-        limiter_key = f"{account_id}:{tenant_id}"
-        if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
-            raise ComplianceRateLimitExceededError
-
         payload = {
             "doc_name": doc_name,
             "account_id": account_id,
@@ -613,7 +603,6 @@ class BillingService:
         except ValueError as error:
             raise RuntimeError("Unexpected billing service value error") from error
 
-        cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
         return result
 
     @classmethod
