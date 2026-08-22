@@ -26,7 +26,7 @@ DELETE_BATCH_SIZE = 500
 @app.celery.task(queue="retention")
 def clean_oauth_access_tokens_task():
     click.echo(click.style("Start clean oauth_access_tokens.", fg="green"))
-    retention_days = int(dify_config.OAUTH_ACCESS_TOKEN_RETENTION_DAYS)
+    retention_days = dify_config.OAUTH_ACCESS_TOKEN_RETENTION_DAYS
     cutoff = datetime.now(UTC) - timedelta(days=retention_days)
     start_at = time.perf_counter()
 

@@ -418,7 +418,7 @@ class DifyNodeFactory(NodeFactory):
         node_data = typed_node_config["data"]
         node_class = self._resolve_node_class(
             node_type=node_data.type,
-            node_version=str(node_data.version),
+            node_version=node_data.version,
             node_data=node_data,
         )
         # Graph configs are initially validated against permissive shared node data.
@@ -697,7 +697,7 @@ class DifyNodeFactory(NodeFactory):
                 metadata = item.get("metadata")
                 if not isinstance(metadata, Mapping):
                     continue
-                if metadata.get("_source") == "knowledge" and str(metadata.get("segment_id")) == str(segment_id):
+                if metadata.get("_source") == "knowledge" and str(metadata.get("segment_id")) == segment_id:
                     return True
             return False
 

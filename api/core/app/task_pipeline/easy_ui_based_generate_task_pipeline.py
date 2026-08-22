@@ -445,7 +445,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if not isinstance(existing_metadata, dict):
             existing_metadata = {}
         has_persisted_usage = preserve_existing_usage and (
-            int(message.message_tokens or 0) + int(message.answer_tokens or 0) > 0 or bool(message.total_price)
+            message.message_tokens or 0 + message.answer_tokens or 0 > 0 or bool(message.total_price)
         )
         if not has_persisted_usage:
             message.message_tokens = usage.prompt_tokens
