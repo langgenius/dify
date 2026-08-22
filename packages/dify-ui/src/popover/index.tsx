@@ -68,13 +68,12 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
   )
 }
 
-type PopoverContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  className?: string
-}
+type PopoverContentProps = Omit<PopoverPopupProps, 'children' | 'className'> &
+  Pick<PopoverPositionerProps, 'sideOffset' | 'alignOffset'> & {
+    children: React.ReactNode
+    placement?: Placement
+    className?: string
+  }
 
 function PopoverContent({
   children,
@@ -82,6 +81,7 @@ function PopoverContent({
   sideOffset = 8,
   alignOffset = 0,
   className,
+  ...props
 }: PopoverContentProps) {
   return (
     <PopoverPortal>
@@ -91,6 +91,7 @@ function PopoverContent({
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
             className,
           )}
+          {...props}
         >
           {children}
         </PopoverPopup>
