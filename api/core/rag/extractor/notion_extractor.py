@@ -94,8 +94,9 @@ class NotionExtractor(BaseExtractor):
 
         return docs
 
-    def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] = {}) -> list[Document]:
+    def _get_notion_database_data(self, database_id: str, query_dict: dict[str, Any] | None = None) -> list[Document]:
         """Get all the pages from a Notion database."""
+        query_dict = query_dict or {}
         assert self._notion_access_token is not None, "Notion access token is required"
 
         database_content = []

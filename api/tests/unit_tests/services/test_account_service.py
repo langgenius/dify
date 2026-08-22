@@ -2941,3 +2941,69 @@ class TestIsEmailSendIpLimit:
             patch.object(dify_config, "EMAIL_SEND_IP_LIMIT_PER_MINUTE", 60),
         ):
             assert AccountService.is_email_send_ip_limit("1.2.3.4") is False
+
+
+class TestTokenGeneratorsDoNotShareState:
+    """The token generators must not use a mutable default for `additional_data`.
+
+    A `dict` default is created once when the function is defined and shared by
+    every call that omits the argument. These generators wrote `additional_data["code"]`
+    into it, so concurrent requests inside one gevent worker mutated the same dict
+    between the write and `TokenManager.generate_token` reading it.
+    """
+
+    GENERATORS = [
+        pytest.param(
+            AccountService.generate_reset_password_token,
+            id="generate_reset_password_token",
+        ),
+        pytest.param(
+            AccountService.generate_email_register_token,
+            id="generate_email_register_token",
+        ),
+        pytest.param(
+            AccountService.generate_owner_transfer_token,
+            id="generate_owner_transfer_token",
+        ),
+    ]
+    EMAIL = "a@example.com"
+
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_consecutive_calls_do_not_share_a_dict(self, generator) -> None:
+        handed_over = []
+
+        def capture(**kwargs):
+            handed_over.append(kwargs["additional_data"])
+            return "tok"
+
+        with patch("services.account_service.TokenManager.generate_token", side_effect=capture):
+            generator(email=self.EMAIL, code="111111")
+            generator(email=self.EMAIL, code="222222")
+
+        # Scribble on what the first call handed over. If the generator reuses one
+        # dict across calls, the second call is holding the very same object and
+        # the scribble shows up there too.
+        handed_over[0]["scribble"] = True
+
+        assert "scribble" not in handed_over[1], (
+            f"{generator.__name__} hands the same dict to every call; "
+            f"one request can overwrite another's additional_data"
+        )
+
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_caller_dict_is_not_mutated(self, generator) -> None:
+        caller_data = {"origin": "web"}
+
+        with patch("services.account_service.TokenManager.generate_token", return_value="tok"):
+            generator(email=self.EMAIL, code="222222", additional_data=caller_data)
+
+        assert caller_data == {"origin": "web"}, f"{generator.__name__} wrote into the caller's dict"
+
+    @pytest.mark.parametrize("generator", GENERATORS)
+    def test_code_still_reaches_the_token(self, generator) -> None:
+        with patch("services.account_service.TokenManager.generate_token", return_value="tok") as generate:
+            code, token = generator(email=self.EMAIL, code="333333")
+
+        assert code == "333333"
+        assert token == "tok"
+        assert generate.call_args.kwargs["additional_data"]["code"] == "333333"
