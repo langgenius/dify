@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
+from shellctl.shared import MAX_OUTPUT_LIMIT_BYTES
 
 from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
@@ -332,7 +333,12 @@ class E2BExecutionBindingBackend:
                 ShellctlClientProtocol,
                 cast(
                     object,
-                    ShellctlClient(entrypoint, token="", client=http_client),
+                    ShellctlClient(
+                        entrypoint,
+                        output_limit=MAX_OUTPUT_LIMIT_BYTES,
+                        token="",
+                        client=http_client,
+                    ),
                 ),
             )
 

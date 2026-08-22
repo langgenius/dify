@@ -1,0 +1,40 @@
+provider: dify_agent_benchmark
+label:
+  en_US: Dify Agent Benchmark
+  zh_Hans: Dify Agent Benchmark
+description:
+  en_US: Deterministic provider reserved for controlled staging benchmarks.
+  zh_Hans: 仅用于受控 Staging 性能测试的确定性 Provider。
+icon_small:
+  en_US: icon.svg
+icon_large:
+  en_US: icon.svg
+background: "#155EEF"
+configurate_methods:
+  - predefined-model
+supported_model_types:
+  - llm
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: benchmark_enabled
+      label:
+        en_US: Benchmark provider
+        zh_Hans: Benchmark Provider
+      type: select
+      required: true
+      default: enabled
+      options:
+        - value: enabled
+          label:
+            en_US: Enabled
+            zh_Hans: 已启用
+models:
+  llm:
+    position: models/llm/_position.yaml
+    predefined:
+      - models/llm/*.yaml
+extra:
+  python:
+    provider_source: provider/dify_agent_benchmark.py
+    model_sources:
+      - models/llm/llm.py

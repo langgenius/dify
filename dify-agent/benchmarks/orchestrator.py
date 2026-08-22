@@ -1,0 +1,979 @@
+"""Build and run the two local Docker capacity modes."""
+
+from __future__ import annotations
+
+import argparse
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import hashlib
+import json
+import logging
+import math
+import os
+from pathlib import Path
+import platform
+import re
+import subprocess
+from typing import Iterable, Sequence, cast
+
+from pydantic import BaseModel
+
+from benchmarks.capacity import (
+    CONCURRENCY_LEVELS,
+    CapacityMatrixPoint,
+    aggregate_capacity_point,
+    build_capacity_matrix,
+    render_capacity_markdown,
+)
+from benchmarks.docker_stats import DockerStatsSampler, summarize_resource_window
+from benchmarks.e2b_config_stub import E2B_CONFIG_STUB_DEFAULT_HOST, E2B_CONFIG_STUB_DEFAULT_PORT
+from benchmarks.scenario import BenchmarkMode, CapacityWorkload, load_scenario_manifest
+from benchmarks.schemas import (
+    BlockResult,
+    CapacityPoint,
+    CapacityResult,
+    EnvironmentFingerprint,
+    TargetIdentity,
+)
+
+
+logger = logging.getLogger(__name__)
+
+_HARNESS_VERSION = 1
+_REDIS_IMAGE = "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
+_COMPOSE_FILE = "docker-compose.capacity.yml"
+_E2B_ALLOCATION_JOURNAL = ".e2b-allocations.jsonl"
+_LOCUST_DRAIN_TIMEOUT_SECONDS = 180
+_LOCUST_PROCESS_BUFFER_SECONDS = 30
+_DRIVER_LIFECYCLE_BUFFER_SECONDS = 180
+_AGENT_INPUTS = (
+    "dify-agent/src",
+    "dify-agent/pyproject.toml",
+    "dify-agent/uv.lock",
+    "dify-agent/Dockerfile",
+)
+_RUNTIME_INPUTS = (
+    "dify-agent-runtime/cmd",
+    "dify-agent-runtime/gen",
+    "dify-agent-runtime/internal",
+    "dify-agent-runtime/go.mod",
+    "dify-agent-runtime/go.sum",
+    "dify-agent-runtime/docker/Dockerfile",
+)
+_RESOURCE_LIMITS = {
+    "agent": "2 CPU/2 GiB",
+    "runtime": "2 CPU/1 GiB",
+    "redis": "2 CPU/512 MiB",
+    "fake-deps": "2 CPU/512 MiB",
+    "driver": "2 CPU/1 GiB",
+}
+
+
+@dataclass(slots=True, frozen=True)
+class CapacityOptions:
+    """User-facing options for one mode."""
+
+    mode: BenchmarkMode
+    keep_containers: bool = False
+    scenario_id: str | None = None
+    concurrency: int | None = None
+    results_root: Path | None = None
+    e2b_api_key: str | None = field(default=None, repr=False)
+    e2b_template: str | None = None
+    e2b_max_concurrency: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.concurrency is not None and self.concurrency < 1:
+            raise ValueError("BENCH_CONCURRENCY must be positive")
+        if self.mode == "local-e2b":
+            if not self.e2b_api_key or not self.e2b_template:
+                raise ValueError("BENCH_E2B_API_KEY and BENCH_E2B_TEMPLATE are required")
+            required = self.concurrency or max(CONCURRENCY_LEVELS)
+            if self.e2b_max_concurrency is None or self.e2b_max_concurrency < required:
+                raise ValueError(f"BENCH_E2B_MAX_CONCURRENCY must be at least {required} for the selected matrix")
+
+
+class BenchmarkCommandError(RuntimeError):
+    """An environment or correctness failure that prevents a trustworthy block."""
+
+
+def repository_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def run_capacity(options: CapacityOptions) -> tuple[Path, bool]:
+    """Execute one complete local Runtime backend matrix."""
+    root = repository_root()
+    _verify_docker_environment(options.mode)
+    manifest = load_scenario_manifest()
+    matrix = build_capacity_matrix(
+        mode=options.mode,
+        manifest=manifest,
+        scenario_id=options.scenario_id,
+        concurrency=options.concurrency,
+    )
+    run_id = _new_run_id()
+    results_root = options.results_root or root / "dify-agent" / "benchmarks" / "results"
+    invocation_dir = (results_root / f"{run_id}-{options.mode}").resolve()
+    blocks_dir = invocation_dir / "blocks"
+    logs_dir = invocation_dir / "logs"
+    blocks_dir.mkdir(parents=True)
+    logs_dir.mkdir()
+
+    harness_image = _build_harness_image(root)
+    target = _build_target_images(root, mode=options.mode)
+    environment = _capture_environment(
+        root,
+        mode=options.mode,
+        e2b_template=options.e2b_template,
+    )
+    _write_json(invocation_dir / "environment.json", environment)
+    points: list[CapacityPoint] = []
+    blocks: list[BlockResult] = []
+    command_failed = False
+    for position, matrix_point in enumerate(matrix):
+        logger.info(
+            "running %s %s c%s",
+            options.mode,
+            matrix_point.scenario.id,
+            matrix_point.requested_concurrency,
+        )
+        try:
+            block = _run_compose_block(
+                root=root,
+                invocation_id=run_id,
+                position=position,
+                point=matrix_point,
+                target=target,
+                harness_image=harness_image,
+                invocation_dir=invocation_dir,
+                logs_dir=logs_dir,
+                keep_containers=options.keep_containers,
+                e2b_api_key=options.e2b_api_key,
+                e2b_template=options.e2b_template,
+            )
+        except Exception as exc:
+            command_failed = True
+            points.append(_invalid_point(matrix_point, f"{type(exc).__name__}: {exc}"))
+            logger.error("capacity point failed: %s", exc)
+            continue
+        blocks.append(block)
+        point = aggregate_capacity_point(block)
+        points.append(point)
+        if point.status == "invalid":
+            command_failed = True
+
+    full_matrix = options.scenario_id is None and options.concurrency is None
+    result = CapacityResult(
+        harness_version=_HARNESS_VERSION,
+        mode=options.mode,
+        matrix_complete=full_matrix and len(points) == len(manifest.scenarios) * len(CONCURRENCY_LEVELS),
+        agent_capacity_unit={"cpu_cores": 2.0, "memory_mib": 2048, "workers": 2},
+        target=target,
+        environment=environment,
+        points=points,
+    )
+    _write_json(invocation_dir / "result.json", result)
+    (invocation_dir / "report.md").write_text(render_capacity_markdown(result))
+    _write_combined_artifacts(invocation_dir, blocks)
+    if options.e2b_api_key:
+        _redact_secret_in_directory(invocation_dir, options.e2b_api_key)
+    return invocation_dir, not command_failed
+
+
+def _run_compose_block(
+    *,
+    root: Path,
+    invocation_id: str,
+    position: int,
+    point: CapacityMatrixPoint,
+    target: TargetIdentity,
+    harness_image: str,
+    invocation_dir: Path,
+    logs_dir: Path,
+    keep_containers: bool,
+    e2b_api_key: str | None,
+    e2b_template: str | None,
+) -> BlockResult:
+    block_name = f"{point.scenario.id}-c{point.requested_concurrency}"
+    block_dir = invocation_dir / "blocks" / block_name
+    block_dir.mkdir()
+    project = _compose_project_name(invocation_id, block_name)
+    compose_file = root / "dify-agent" / "benchmarks" / _COMPOSE_FILE
+    environment = {
+        **os.environ,
+        "BENCH_MODE": point.mode,
+        "BENCH_HARNESS_IMAGE": harness_image,
+        "BENCH_AGENT_IMAGE": _image_tag_from_id(target.agent_image_id),
+        "BENCH_RUNTIME_IMAGE": (
+            _image_tag_from_id(target.runtime_image_id) if target.runtime_image_id is not None else ""
+        ),
+        "BENCH_RESULTS_DIR": str(block_dir),
+        "BENCH_SCENARIO_ID": point.scenario.id,
+        "BENCH_BLOCK_ID": f"{invocation_id}-{block_name}",
+        "BENCH_CONCURRENCY": str(point.requested_concurrency),
+        "BENCH_WARMUP_SECONDS": str(point.warmup_seconds),
+        "BENCH_MEASUREMENT_SECONDS": str(point.measurement_seconds),
+        "BENCH_MINIMUM_MEASUREMENT_RUNS": str(point.minimum_measurement_runs),
+        "BENCH_MAXIMUM_MEASUREMENT_SECONDS": str(point.maximum_measurement_seconds),
+        "BENCH_RUNTIME_BACKEND": "e2b" if point.mode == "local-e2b" else "local",
+        "BENCH_E2B_API_KEY": e2b_api_key or "",
+        "BENCH_E2B_TEMPLATE": e2b_template or "",
+        "BENCH_AGENT_STUB_API_BASE_URL": _agent_stub_api_base_url(point),
+        "BENCH_SANDBOX_FILES_BASE_URL": "http://fake-deps:5002",
+        "BENCH_PUBLIC_DATA_BASE_URL": "http://fake-deps:5002/__bench",
+    }
+    compose = ["docker", "compose", "-f", str(compose_file), "-p", project]
+    services = _services_for_point(point)
+    sampler: DockerStatsSampler | None = None
+    sampler_stopped = False
+    result: BlockResult | None = None
+    driver_finished = False
+    try:
+        _run_command([*compose, "up", "-d", "--wait", "--wait-timeout", "240", *services], env=environment)
+        container_ids = {
+            service: _run_command([*compose, "ps", "-q", service], env=environment).stdout.strip()
+            for service in services
+        }
+        if any(not container_id for container_id in container_ids.values()):
+            raise BenchmarkCommandError(f"Compose project {project} did not expose all container ids")
+        sampler = DockerStatsSampler(container_ids)
+        sampler.start()
+        try:
+            driver = _run_command(
+                [*compose, "run", "--rm", "-T", "--no-deps", "driver"],
+                env=environment,
+                check=False,
+                timeout_seconds=_driver_timeout_seconds(point),
+            )
+        except BenchmarkCommandError as exc:
+            (logs_dir / f"{block_name}-driver.log").write_text(f"{exc}\n")
+            raise
+        driver_finished = True
+        (logs_dir / f"{block_name}-driver.log").write_text(driver.stdout + driver.stderr)
+        sampler.stop()
+        sampler_stopped = True
+        sampler.write_jsonl(block_dir / "docker-stats.jsonl")
+        result_path = block_dir / "block-result.json"
+        if not result_path.exists():
+            raise BenchmarkCommandError(f"capacity driver did not write {result_path}\n{driver.stdout}{driver.stderr}")
+        result = BlockResult.model_validate_json(result_path.read_text())
+        redis_commands_per_run = result.resources.redis_commands_per_run
+        result.resources = summarize_resource_window(
+            samples=sampler.samples,
+            measurement_started_at_ns=result.measurement_started_at_ns,
+            measurement_ended_at_ns=result.measurement_ended_at_ns,
+            completed_runs=result.outcomes.successful_runs,
+            measured_services=services,
+        )
+        result.resources.redis_commands_per_run = redis_commands_per_run
+        if sampler.errors:
+            result.invalid_reasons.extend(f"Docker stats error: {error}" for error in sampler.errors)
+        for service in ("agent", "redis"):
+            resource = result.resources.components.get(service)
+            if resource is None or not resource.stats_coverage.window_covered:
+                result.invalid_reasons.append(f"Docker stats did not cover {service} measurement boundaries")
+        fake = result.resources.components.get("fake-deps")
+        if (
+            result.resources.fake_cpu_p95_percent is not None
+            and result.resources.fake_cpu_p95_percent > 50
+            and fake is not None
+            and fake.stats_coverage.in_window_sample_count >= 10
+        ):
+            result.invalid_reasons.append("fake dependency sustained CPU p95 exceeded 50%")
+        if point.mode == "local-runtime":
+            cleanup_valid, cleanup_output = _check_runtime_cleanup(compose, environment)
+            (block_dir / "runtime-cleanup.txt").write_text(cleanup_output)
+            result.cleanup["runtime_state_empty"] = cleanup_valid
+            if not cleanup_valid:
+                result.invalid_reasons.append("Runtime jobs, SQLite rows, or workspace state remained")
+        if driver.returncode != 0 and not result.invalid_reasons:
+            result.invalid_reasons.append(f"capacity driver exited with status {driver.returncode}")
+        result.invalid_reasons = list(dict.fromkeys(result.invalid_reasons))
+        result.valid = not result.invalid_reasons
+        result_path.write_text(result.model_dump_json(indent=2))
+        return result
+    except Exception as exc:
+        if result is None:
+            raise
+        result.invalid_reasons.append(f"orchestrator post-processing failed: {type(exc).__name__}: {exc}")
+        result.invalid_reasons = list(dict.fromkeys(result.invalid_reasons))
+        result.valid = False
+        (block_dir / "block-result.json").write_text(result.model_dump_json(indent=2))
+        return result
+    finally:
+        finalization_errors: list[str] = []
+        if sampler is not None and not sampler_stopped:
+            try:
+                sampler.stop()
+                sampler.write_jsonl(block_dir / "docker-stats.jsonl")
+            except Exception as exc:
+                finalization_errors.append(f"Docker stats finalization raised {type(exc).__name__}: {exc}")
+        if not driver_finished:
+            try:
+                _stop_compose_service_containers(
+                    project=project,
+                    service="driver",
+                    environment=environment,
+                )
+            except BenchmarkCommandError as exc:
+                finalization_errors.append(str(exc))
+        try:
+            logs = _run_command(
+                [*compose, "logs", "--no-color", "--timestamps", *services],
+                env=environment,
+                check=False,
+            )
+            (logs_dir / f"{block_name}.log").write_text(logs.stdout + logs.stderr)
+        except Exception as exc:
+            finalization_errors.append(f"Compose log capture raised {type(exc).__name__}: {exc}")
+        keep_failed_project = _should_keep_failed_compose_project(
+            mode=point.mode,
+            keep_containers=keep_containers,
+            block_valid=result.valid if result is not None else None,
+        )
+        if keep_failed_project:
+            logger.warning("keeping failed benchmark Compose project %s", project)
+        else:
+            if keep_containers and point.mode == "local-e2b" and (result is None or not result.valid):
+                logger.warning(
+                    "ignoring KEEP_CONTAINERS for local-e2b project %s to avoid retaining credentials", project
+                )
+            try:
+                _teardown_compose_project(compose=compose, project=project, environment=environment)
+            except BenchmarkCommandError as exc:
+                finalization_errors.append(str(exc))
+        if point.mode == "local-e2b":
+            allocation_journal = block_dir / _E2B_ALLOCATION_JOURNAL
+            if e2b_api_key is None:
+                cleanup_valid = False
+                cleanup_evidence = _empty_e2b_cleanup_evidence(journal_found=allocation_journal.exists())
+                cleanup_evidence["orchestration_errors"] = 1
+                finalization_errors.append("host E2B allocation cleanup lacked an API key")
+            else:
+                try:
+                    cleanup_valid, cleanup_evidence = _cleanup_e2b_allocation_journal(
+                        allocation_journal,
+                        api_key=e2b_api_key,
+                    )
+                except Exception as exc:
+                    cleanup_valid = False
+                    cleanup_evidence = _empty_e2b_cleanup_evidence(journal_found=allocation_journal.exists())
+                    cleanup_evidence["orchestration_errors"] = 1
+                    finalization_errors.append(f"host E2B allocation cleanup raised {type(exc).__name__}: {exc}")
+            try:
+                _write_json(block_dir / "e2b-allocation-cleanup.json", cleanup_evidence)
+            except Exception as exc:
+                finalization_errors.append(f"E2B cleanup evidence write raised {type(exc).__name__}: {exc}")
+            if result is not None:
+                result.cleanup["host_e2b_allocations_destroyed"] = cleanup_valid
+            if not cleanup_valid:
+                finalization_errors.append("host E2B allocation cleanup failed")
+        if e2b_api_key:
+            for directory in (block_dir, logs_dir):
+                try:
+                    _redact_secret_in_directory(directory, e2b_api_key)
+                except Exception as exc:
+                    finalization_errors.append(
+                        f"secret redaction for {directory.name} raised {type(exc).__name__}: {exc}"
+                    )
+        _finalize_block_result(result=result, block_dir=block_dir, errors=finalization_errors)
+
+
+def _driver_timeout_seconds(point: CapacityMatrixPoint) -> float:
+    """Bound the parent Driver while allowing every Locust phase to drain."""
+    load_phase_count = 2
+    if point.scenario.workload == "resume":
+        load_phase_count += 2 if point.mode == "local-runtime" and point.requested_concurrency > 1 else 1
+    per_phase_overhead = _LOCUST_DRAIN_TIMEOUT_SECONDS + _LOCUST_PROCESS_BUFFER_SECONDS
+    return math.ceil(
+        point.warmup_seconds
+        + point.maximum_measurement_seconds
+        + load_phase_count * per_phase_overhead
+        + _DRIVER_LIFECYCLE_BUFFER_SECONDS
+    )
+
+
+def _finalize_block_result(
+    *,
+    result: BlockResult | None,
+    block_dir: Path,
+    errors: Sequence[str],
+) -> None:
+    if result is None:
+        if errors:
+            raise BenchmarkCommandError("; ".join(errors))
+        return
+    if errors:
+        result.invalid_reasons.extend(errors)
+        result.invalid_reasons = list(dict.fromkeys(result.invalid_reasons))
+        result.valid = False
+    (block_dir / "block-result.json").write_text(result.model_dump_json(indent=2))
+
+
+def _should_keep_failed_compose_project(
+    *,
+    mode: BenchmarkMode,
+    keep_containers: bool,
+    block_valid: bool | None,
+) -> bool:
+    return keep_containers and mode == "local-runtime" and block_valid is not True
+
+
+def _cleanup_e2b_allocation_journal(path: Path, *, api_key: str) -> tuple[bool, dict[str, object]]:
+    """Kill unresolved E2B allocations recorded by the disposable Driver."""
+    evidence = _empty_e2b_cleanup_evidence(journal_found=path.exists())
+    if not path.exists():
+        return True, evidence
+
+    unresolved: dict[str, None] = {}
+    parse_errors = 0
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except (TypeError, ValueError):
+            parse_errors += 1
+            continue
+        if not isinstance(event, dict):
+            parse_errors += 1
+            continue
+        binding_ref = event.get("binding_ref")
+        workspace_ref = event.get("workspace_ref")
+        state = event.get("state")
+        if not isinstance(binding_ref, str) or not isinstance(workspace_ref, str):
+            parse_errors += 1
+            continue
+        if state == "allocated":
+            evidence["allocated_events"] = cast(int, evidence["allocated_events"]) + 1
+            unresolved[binding_ref] = None
+        elif state == "destroyed":
+            evidence["destroyed_events"] = cast(int, evidence["destroyed_events"]) + 1
+            unresolved.pop(binding_ref, None)
+        else:
+            parse_errors += 1
+
+    evidence["parse_errors"] = parse_errors
+    evidence["unresolved_allocations"] = len(unresolved)
+    killed = 0
+    kill_errors = 0
+    for binding_ref in unresolved:
+        try:
+            _kill_e2b_sandbox(binding_ref, api_key=api_key)
+        except Exception:
+            kill_errors += 1
+        else:
+            killed += 1
+    evidence["killed_allocations"] = killed
+    evidence["kill_errors"] = kill_errors
+    cleanup_valid = parse_errors == 0 and kill_errors == 0
+    if cleanup_valid:
+        path.unlink()
+    else:
+        path.chmod(0o600)
+    return cleanup_valid, evidence
+
+
+def _empty_e2b_cleanup_evidence(*, journal_found: bool) -> dict[str, object]:
+    return {
+        "journal_found": journal_found,
+        "allocated_events": 0,
+        "destroyed_events": 0,
+        "unresolved_allocations": 0,
+        "killed_allocations": 0,
+        "parse_errors": 0,
+        "kill_errors": 0,
+        "orchestration_errors": 0,
+    }
+
+
+def _kill_e2b_sandbox(sandbox_id: str, *, api_key: str) -> None:
+    from e2b import NotFoundException, Sandbox, SandboxNotFoundException
+
+    try:
+        _ = Sandbox.kill(sandbox_id, api_key=api_key)
+    except (NotFoundException, SandboxNotFoundException):
+        pass
+
+
+def _teardown_compose_project(
+    *,
+    compose: Sequence[str],
+    project: str,
+    environment: dict[str, str],
+) -> None:
+    errors: list[str] = []
+    down = _run_command([*compose, "down", "-v", "--remove-orphans"], env=environment, check=False)
+    if down.returncode != 0:
+        errors.append(f"docker compose down exited with status {down.returncode}")
+
+    label = f"label=com.docker.compose.project={project}"
+    residual_commands = {
+        "containers": (
+            ["docker", "container", "ls", "--all", "--quiet", "--filter", label],
+            ["docker", "container", "rm", "--force"],
+        ),
+        "volumes": (
+            ["docker", "volume", "ls", "--quiet", "--filter", label],
+            ["docker", "volume", "rm", "--force"],
+        ),
+        "networks": (
+            ["docker", "network", "ls", "--quiet", "--filter", label],
+            ["docker", "network", "rm"],
+        ),
+    }
+    for resource, (list_command, remove_command) in residual_commands.items():
+        listing = _run_command(list_command, env=environment, check=False)
+        if listing.returncode != 0:
+            errors.append(f"failed to inspect residual Compose {resource}: status {listing.returncode}")
+            continue
+        residual_ids = [line.strip() for line in listing.stdout.splitlines() if line.strip()]
+        if not residual_ids:
+            continue
+        removal = _run_command([*remove_command, *residual_ids], env=environment, check=False)
+        if removal.returncode != 0:
+            errors.append(f"failed to force-remove residual Compose {resource}: status {removal.returncode}")
+        verification = _run_command(list_command, env=environment, check=False)
+        if verification.returncode != 0:
+            errors.append(f"failed to verify residual Compose {resource}: status {verification.returncode}")
+            continue
+        remaining = len([line for line in verification.stdout.splitlines() if line.strip()])
+        if remaining:
+            errors.append(f"Compose project retained {remaining} {resource} after force removal")
+    if errors:
+        raise BenchmarkCommandError("Compose teardown failed: " + "; ".join(errors))
+
+
+def _stop_compose_service_containers(
+    *,
+    project: str,
+    service: str,
+    environment: dict[str, str],
+) -> None:
+    containers = _run_command(
+        [
+            "docker",
+            "container",
+            "ls",
+            "--all",
+            "--quiet",
+            "--filter",
+            f"label=com.docker.compose.project={project}",
+            "--filter",
+            f"label=com.docker.compose.service={service}",
+        ],
+        env=environment,
+        check=False,
+    )
+    if containers.returncode != 0:
+        raise BenchmarkCommandError(f"failed to inspect {service} containers: status {containers.returncode}")
+    container_ids = [line.strip() for line in containers.stdout.splitlines() if line.strip()]
+    if not container_ids:
+        return
+    killed = _run_command(
+        ["docker", "container", "kill", *container_ids],
+        env=environment,
+        check=False,
+    )
+    if killed.returncode != 0:
+        raise BenchmarkCommandError(
+            f"failed to stop {len(container_ids)} {service} containers: status {killed.returncode}"
+        )
+
+
+def _build_harness_image(root: Path) -> str:
+    content_hash = _hash_paths(
+        root,
+        ("dify-agent/benchmarks", "dify-agent/pyproject.toml", "dify-agent/uv.lock"),
+    )
+    tag = f"dify-agent-bench-harness:{content_hash[:16]}"
+    _run_command(
+        [
+            "docker",
+            "build",
+            "--progress=plain",
+            "-f",
+            "dify-agent/benchmarks/Dockerfile",
+            "-t",
+            tag,
+            ".",
+        ],
+        cwd=root,
+    )
+    return tag
+
+
+def _build_target_images(root: Path, *, mode: BenchmarkMode) -> TargetIdentity:
+    commit = _run_command(["git", "rev-parse", "HEAD"], cwd=root).stdout.strip()
+    dirty_paths = [*_AGENT_INPUTS, "dify-agent/benchmarks"]
+    if mode == "local-runtime":
+        dirty_paths.extend(_RUNTIME_INPUTS)
+    dirty = bool(_run_command(["git", "status", "--porcelain", "--", *dirty_paths], cwd=root).stdout.strip())
+    content_hash = _hash_paths(root, _AGENT_INPUTS)
+    agent_tag = f"dify-agent-bench:{commit[:12]}-{content_hash[:12]}"
+    _run_command(
+        [
+            "docker",
+            "build",
+            "--progress=plain",
+            "-f",
+            "dify-agent/Dockerfile",
+            "--build-arg",
+            f"COMMIT_SHA={commit}",
+            "-t",
+            agent_tag,
+            ".",
+        ],
+        cwd=root,
+    )
+    agent_id = _image_id(agent_tag)
+    _pin_target_image(agent_id, prefix="dify-agent-bench-frozen")
+    runtime_id: str | None = None
+    if mode == "local-runtime":
+        runtime_hash = _hash_paths(root, _RUNTIME_INPUTS)
+        runtime_base_tag = f"dify-agent-runtime-bench-base:{runtime_hash[:16]}"
+        runtime_tag = f"dify-agent-runtime-bench:{runtime_hash[:16]}"
+        _run_command(
+            [
+                "docker",
+                "build",
+                "--progress=plain",
+                "-f",
+                "docker/Dockerfile",
+                "-t",
+                runtime_base_tag,
+                ".",
+            ],
+            cwd=root / "dify-agent-runtime",
+        )
+        _run_command(
+            [
+                "docker",
+                "build",
+                "--progress=plain",
+                "-f",
+                "dify-agent/benchmarks/runtime.Dockerfile",
+                "--build-arg",
+                f"BENCH_RUNTIME_BASE_IMAGE={runtime_base_tag}",
+                "-t",
+                runtime_tag,
+                ".",
+            ],
+            cwd=root,
+        )
+        runtime_id = _image_id(runtime_tag)
+        _pin_target_image(runtime_id, prefix="dify-agent-runtime-bench-frozen")
+        content_hash = hashlib.sha256(f"{content_hash}:{runtime_hash}".encode()).hexdigest()
+    return TargetIdentity(
+        commit=commit,
+        dirty=dirty,
+        content_hash=content_hash,
+        agent_image_id=agent_id,
+        runtime_image_id=runtime_id,
+    )
+
+
+def _pin_target_image(image_id: str, *, prefix: str) -> str:
+    """Give an immutable image ID its own local tag so later builds cannot orphan it."""
+    frozen_tag = f"{prefix}:{image_id.removeprefix('sha256:')}"
+    _run_command(["docker", "image", "tag", image_id, frozen_tag])
+    _remember_image_tag(image_id, frozen_tag)
+    return frozen_tag
+
+
+_IMAGE_TAGS: dict[str, str] = {}
+
+
+def _remember_image_tag(image_id: str, tag: str) -> None:
+    _IMAGE_TAGS[image_id] = tag
+
+
+def _image_tag_from_id(image_id: str | None) -> str:
+    if image_id is None:
+        return ""
+    try:
+        return _IMAGE_TAGS[image_id]
+    except KeyError as exc:
+        raise BenchmarkCommandError(f"no local image tag was registered for {image_id}") from exc
+
+
+def _image_id(tag: str) -> str:
+    payload = json.loads(_run_command(["docker", "image", "inspect", tag]).stdout)
+    return str(payload[0]["Id"])
+
+
+def _capture_environment(
+    root: Path,
+    *,
+    mode: BenchmarkMode,
+    e2b_template: str | None,
+) -> EnvironmentFingerprint:
+    docker_info = json.loads(_run_command(["docker", "info", "--format", "{{json .}}"]).stdout)
+    server = json.loads(_run_command(["docker", "version", "--format", "{{json .Server}}"]).stdout)
+    compose_file = root / "dify-agent" / "benchmarks" / _COMPOSE_FILE
+    limits = {name: value for name, value in _RESOURCE_LIMITS.items() if name != "runtime" or mode != "local-e2b"}
+    return EnvironmentFingerprint(
+        captured_at=datetime.now(timezone.utc).isoformat(),
+        os=str(docker_info.get("OperatingSystem", "")),
+        architecture=str(docker_info.get("Architecture", "")),
+        kernel=str(docker_info.get("KernelVersion", "")),
+        cpu_model=_cpu_model(),
+        docker_engine=str(server.get("Version", "")),
+        docker_compose=_run_command(["docker", "compose", "version", "--short"]).stdout.strip(),
+        docker_cpus=int(docker_info.get("NCPU", 0)),
+        docker_memory_bytes=int(docker_info.get("MemTotal", 0)),
+        compose_hash=_hash_file(compose_file),
+        harness_hash=_hash_paths(
+            root,
+            ("dify-agent/benchmarks", "dify-agent/pyproject.toml", "dify-agent/uv.lock"),
+        ),
+        scenario_manifest_hash=_hash_file(root / "dify-agent" / "benchmarks" / "capacity_scenarios.json"),
+        redis_image=_REDIS_IMAGE,
+        e2b_template=e2b_template,
+        resource_limits=limits,
+    )
+
+
+def _invalid_point(matrix_point: CapacityMatrixPoint, reason: str) -> CapacityPoint:
+    return CapacityPoint(
+        mode=matrix_point.mode,
+        scenario_id=matrix_point.scenario.id,
+        workload=cast(CapacityWorkload, matrix_point.scenario.workload),
+        requested_concurrency=matrix_point.requested_concurrency,
+        observed_max_active=0,
+        attempted_runs=0,
+        successful_runs=0,
+        timeout_runs=0,
+        throttle_runs=0,
+        success_rate=0,
+        runs_per_second=0,
+        status="invalid",
+        reasons=[reason],
+    )
+
+
+def _write_combined_artifacts(invocation_dir: Path, blocks: Sequence[BlockResult]) -> None:
+    with (invocation_dir / "samples.jsonl").open("w") as output:
+        for block in blocks:
+            for sample in block.samples:
+                output.write(sample.model_dump_json())
+                output.write("\n")
+    with (invocation_dir / "docker-stats.jsonl").open("w") as output:
+        for block in blocks:
+            path = (
+                invocation_dir / "blocks" / f"{block.scenario_id}-c{block.requested_concurrency}" / "docker-stats.jsonl"
+            )
+            if path.exists():
+                output.write(path.read_text())
+    _write_json(
+        invocation_dir / "redis-stats.json",
+        [
+            {
+                "scenario_id": block.scenario_id,
+                "concurrency": block.requested_concurrency,
+                "before": block.redis_before,
+                "after": block.redis_after,
+            }
+            for block in blocks
+        ],
+    )
+
+
+def _check_runtime_cleanup(
+    compose: Sequence[str],
+    environment: dict[str, str],
+) -> tuple[bool, str]:
+    script = "\n".join(
+        [
+            "set -eu",
+            "python - <<'PY'",
+            "import pathlib, sqlite3",
+            "db = pathlib.Path('/state/shellctl.db')",
+            "if db.exists():",
+            "    with sqlite3.connect(db) as connection:",
+            "        count = connection.execute('select count(*) from jobs').fetchone()[0]",
+            "    assert count == 0, f'{count} SQLite job rows remain'",
+            "PY",
+            "for path in /state/jobs /state/materialized-homes /state/workspaces /state/home-snapshots; do",
+            '  test ! -d "$path" || test -z "$(find "$path" -mindepth 1 -print -quit)"',
+            "done",
+        ]
+    )
+    result = _run_command(
+        [*compose, "exec", "-T", "runtime", "sh", "-c", script],
+        env=environment,
+        check=False,
+    )
+    return result.returncode == 0, result.stdout + result.stderr
+
+
+def _services_for_point(point: CapacityMatrixPoint) -> tuple[str, ...]:
+    if point.mode == "local-runtime":
+        return ("redis", "fake-deps", "runtime", "agent")
+    return ("redis", "fake-deps", "agent")
+
+
+def _agent_stub_api_base_url(point: CapacityMatrixPoint) -> str:
+    if point.mode == "local-e2b" and point.scenario.workload == "config":
+        return f"http://{E2B_CONFIG_STUB_DEFAULT_HOST}:{E2B_CONFIG_STUB_DEFAULT_PORT}/agent-stub"
+    return "http://agent:5050/agent-stub"
+
+
+def _redact_secret_in_directory(directory: Path, secret: str) -> None:
+    if not secret:
+        return
+    for path in directory.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            content = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        if secret in content:
+            path.write_text(content.replace(secret, "[redacted]"))
+
+
+def _verify_docker_environment(mode: BenchmarkMode) -> None:
+    del mode
+    _run_command(["docker", "info"])
+    _run_command(["docker", "compose", "version"])
+
+
+def _hash_paths(root: Path, relative_paths: Iterable[str]) -> str:
+    digest = hashlib.sha256()
+    for relative in sorted(relative_paths):
+        path = root / relative
+        if path.is_file():
+            paths = [path]
+        elif path.is_dir():
+            paths = sorted(candidate for candidate in path.rglob("*") if candidate.is_file())
+        else:
+            continue
+        for candidate in paths:
+            digest.update(str(candidate.relative_to(root)).encode())
+            digest.update(b"\0")
+            digest.update(candidate.read_bytes())
+            digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _hash_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _compose_project_name(invocation_id: str, block_name: str) -> str:
+    raw = f"dify-agent-bench-{invocation_id[-10:]}-{block_name}"
+    return re.sub(r"[^a-z0-9_-]", "-", raw.lower())[:63]
+
+
+def _new_run_id() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+
+
+def _cpu_model() -> str:
+    if platform.system() == "Darwin":
+        result = _run_command(["sysctl", "-n", "machdep.cpu.brand_string"], check=False)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    return platform.processor()
+
+
+def _write_json(path: Path, value: object) -> None:
+    path.write_text(json.dumps(_json_value(value), indent=2, sort_keys=True))
+
+
+def _json_value(value: object) -> object:
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if isinstance(value, dict):
+        return {str(key): _json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    return value
+
+
+def _run_command(
+    command: Sequence[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+    check: bool = True,
+    timeout_seconds: float | None = None,
+) -> subprocess.CompletedProcess[str]:
+    try:
+        result = subprocess.run(
+            list(command),
+            cwd=cwd,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = _subprocess_output_text(exc.stdout)
+        stderr = _subprocess_output_text(exc.stderr)
+        timeout_label = f"{timeout_seconds:.0f}s" if timeout_seconds is not None else "configured timeout"
+        raise BenchmarkCommandError(
+            f"command timed out after {timeout_label}: {' '.join(command)}\n{stdout}{stderr}"
+        ) from exc
+    if check and result.returncode != 0:
+        raise BenchmarkCommandError(
+            f"command failed ({result.returncode}): {' '.join(command)}\n{result.stdout}{result.stderr}"
+        )
+    return result
+
+
+def _subprocess_output_text(value: object) -> str:
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value if isinstance(value, str) else ""
+
+
+def _parse_args(argv: Sequence[str] | None = None) -> CapacityOptions:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("mode", choices=("local-runtime", "local-e2b"))
+    parser.add_argument("--scenario", choices=("basic", "shell", "resume", "config", "file"))
+    parser.add_argument("--concurrency", type=int)
+    parser.add_argument("--keep-containers", action="store_true")
+    parser.add_argument("--results-root", type=Path)
+    args = parser.parse_args(argv)
+    mode = cast(BenchmarkMode, args.mode)
+    return CapacityOptions(
+        mode=mode,
+        keep_containers=cast(bool, args.keep_containers),
+        scenario_id=cast(str | None, args.scenario),
+        concurrency=cast(int | None, args.concurrency),
+        results_root=cast(Path | None, args.results_root),
+        e2b_api_key=os.environ.get("BENCH_E2B_API_KEY") if mode == "local-e2b" else None,
+        e2b_template=os.environ.get("BENCH_E2B_TEMPLATE") if mode == "local-e2b" else None,
+        e2b_max_concurrency=(
+            int(os.environ["BENCH_E2B_MAX_CONCURRENCY"])
+            if mode == "local-e2b" and os.environ.get("BENCH_E2B_MAX_CONCURRENCY")
+            else None
+        ),
+    )
+
+
+def main() -> int:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    try:
+        results_dir, success = run_capacity(_parse_args())
+    except (BenchmarkCommandError, ValueError) as exc:
+        logger.error("%s", exc)
+        return 1
+    print(results_dir)
+    return 0 if success else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
+
+__all__ = [
+    "BenchmarkCommandError",
+    "CapacityOptions",
+    "repository_root",
+    "run_capacity",
+]
