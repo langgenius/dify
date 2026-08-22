@@ -539,6 +539,19 @@ def test_agent_node_structured_output_type_failure_stops_the_node():
     assert agent_log["output_failure_decision"] == "fail_node"
 
 
+def test_agent_node_does_not_allocate_participant_after_caller_persistence_failure():
+    resolver = FakeBindingResolver()
+    session_store = FakeSessionStore()
+    node = _node(binding_resolver=resolver, session_store=session_store)
+    node.mark_caller_persistence(error=RuntimeError("caller commit failed"))
+
+    with pytest.raises(RuntimeError, match="caller commit failed"):
+        list(node._run())
+
+    assert resolver.calls == []
+    assert session_store.existing_scope_lookups == []
+
+
 def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() -> None:
     client = FakeAgentBackendRunClient()
     store = FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
