@@ -157,7 +157,24 @@ class Risk:
 
 @dataclass(kw_only=True)
 class MutationIntent:
-    op: str = ""  # set_node_config | connect | insert_between
+    """A single graph mutation the copilot applies to the draft.
+
+    ``op`` selects one of five verbs (Slice 1: mutation verbs); ``args`` is
+    the verb's untyped wire-shaped payload -- ``services.workflow_copilot
+    .graph_ops`` unpacks it as keyword arguments (``apply_fn(graph,
+    **intent.args)``), so each verb's arg-dict keys below are exactly that
+    verb's ``apply_*`` function's parameter names. Required keys are
+    enforced by ``graph_ops.validate_intent_args``; ``?`` marks an optional
+    key.
+
+    - ``set_node_config``: ``{node_id, path, value}``
+    - ``create_node``: ``{node_type, config, position?, node_id?}``
+    - ``delete_node``: ``{node_id}``
+    - ``connect``: ``{from_node, to_node, source_handle?, target_handle?}``
+    - ``insert_between``: ``{edge, node_type, config, position?, node_id?}``
+    """
+
+    op: str = ""
     args: dict[str, Any] = field(default_factory=dict)
 
 
