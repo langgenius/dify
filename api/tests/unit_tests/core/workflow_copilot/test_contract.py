@@ -6,7 +6,7 @@ Spec: docs/superpowers/specs/2026-08-21-workflow-copilot-full-flow-contract-desi
 from core.workflow_copilot.contract import ActionKind, CanvasEvent, Phase, RunStatus
 from core.workflow_copilot.models import EntryMode
 from core.workflow_copilot.state import PcState
-from services.workflow_copilot.service import SessionView
+from services.workflow_copilot.service import SessionView, _run_status
 from services.workflow_copilot.wiring import session_view_to_dict
 
 
@@ -56,3 +56,17 @@ def test_sessionview_has_new_fields():
     assert d["phase"] in {p.value for p in Phase}
     assert isinstance(d["actions"], list)
     assert "checkpoint" in d
+
+
+def test_run_status_terminal_states():
+    """Regression for the reviewer-found defect: PcState.BUILD_COMPLETE and
+    PcState.EDIT_PUBLISH are terminal (spec §7.1/§7.2, run_status: complete)
+    but are absent from both _WORKING and _WAITING and aren't SUCCESS/FAILED
+    -- _run_status must special-case is_terminal() before the waiting/working
+    checks, or these fall through to EXECUTING."""
+    assert _run_status(PcState.SUCCESS) == RunStatus.COMPLETE
+    assert _run_status(PcState.FAILED) == RunStatus.FAILED
+    assert _run_status(PcState.BUILD_COMPLETE) == RunStatus.COMPLETE
+    assert _run_status(PcState.EDIT_PUBLISH) == RunStatus.COMPLETE
+    assert _run_status(PcState.FIX_DIAGNOSE) == RunStatus.EXECUTING  # working
+    assert _run_status(PcState.FIX_AWAIT_DECISION) == RunStatus.WAITING_INPUT  # waiting
