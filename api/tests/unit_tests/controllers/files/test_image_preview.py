@@ -7,6 +7,7 @@ import pytest
 from werkzeug.exceptions import NotFound
 
 import controllers.files.image_preview as module
+from controllers.common.file_response import INERT_DOCUMENT_CSP
 from extensions.storage.storage_type import StorageType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -70,6 +71,26 @@ class TestImagePreviewApi:
         response = get_fn("file-id")
 
         assert response.mimetype == "image/png"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "FileService")
+    def test_svg_is_served_inert(self, mock_file_service):
+        """A stored SVG must not be renderable as a document in the app origin."""
+        module.request = fake_request({"timestamp": "123", "nonce": "abc", "sign": "sig"})
+
+        mock_file_service.return_value.get_image_preview.return_value = (
+            iter([b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"]),
+            "image/svg+xml",
+        )
+
+        api = module.ImagePreviewApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("file-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
@@ -93,9 +114,9 @@ class TestImagePreviewApi:
 
 
 class TestFilePreviewApi:
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_served_file")
     @patch.object(module, "FileService")
-    def test_inline_preview_uses_upload_file_mimetype(self, mock_file_service, mock_enforce):
+    def test_inline_preview_uses_upload_file_mimetype(self, mock_file_service, mock_harden):
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -127,7 +148,7 @@ class TestFilePreviewApi:
         assert response.headers["Content-Type"] == "application/pdf"
         assert response.headers["Content-Length"] == "100"
         assert "Accept-Ranges" not in response.headers
-        mock_enforce.assert_called_once()
+        mock_harden.assert_called_once()
 
     @pytest.mark.parametrize(
         ("mime_type", "name", "extension"),
@@ -139,7 +160,8 @@ class TestFilePreviewApi:
         ids=("mime-type", "filename", "extension"),
     )
     @patch.object(module, "FileService")
-    def test_svg_preview_forces_download(self, mock_file_service, mime_type, name, extension):
+    def test_svg_preview_is_served_inert(self, mock_file_service, mime_type, name, extension):
+        """SVG must keep its image Content-Type (so <img> renders) but be inert top-level."""
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -168,7 +190,7 @@ class TestFilePreviewApi:
         response = get_fn("file-id")
 
         assert response.headers["Content-Disposition"].startswith("attachment")
-        assert response.headers["Content-Type"] == "application/octet-stream"
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module, "FileService")
@@ -204,9 +226,9 @@ class TestFilePreviewApi:
         assert response.headers["Content-Type"] == "application/octet-stream"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_served_file")
     @patch.object(module, "FileService")
-    def test_as_attachment(self, mock_file_service, mock_enforce):
+    def test_as_attachment(self, mock_file_service, mock_harden):
         module.request = fake_request(
             {
                 "timestamp": "123",
@@ -234,8 +256,9 @@ class TestFilePreviewApi:
         response = get_fn("file-id")
 
         assert response.headers["Content-Disposition"].startswith("attachment")
+        # as_attachment keeps the old octet-stream behaviour for non-HTML, non-SVG files.
         assert response.headers["Content-Type"] == "application/octet-stream"
-        mock_enforce.assert_called_once()
+        mock_harden.assert_called_once()
 
     @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
@@ -277,6 +300,25 @@ class TestWorkspaceWebappLogoApi:
         response = get_fn("workspace-id")
 
         assert response.mimetype == "image/png"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "FileService")
+    @patch.object(module.TenantService, "get_custom_config")
+    def test_svg_logo_is_served_inert(self, mock_config, mock_file_service):
+        mock_config.return_value = {"replace_webapp_logo": "logo-id"}
+        mock_file_service.return_value.get_public_image_preview.return_value = (
+            iter([b"<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>"]),
+            "image/svg+xml",
+        )
+
+        api = module.WorkspaceWebappLogoApi()
+        get_fn = unwrap(api.get)
+
+        response = get_fn("workspace-id")
+
+        assert response.headers["Content-Disposition"].startswith("attachment")
+        assert response.headers["Content-Security-Policy"] == INERT_DOCUMENT_CSP
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
 
     @patch.object(module.TenantService, "get_custom_config")
     def test_logo_not_configured(self, mock_config):

@@ -20,6 +20,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -679,7 +680,9 @@ class ToolBuiltinProviderIconApi(Resource):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         # response-contract:ignore binary send_file response
-        return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
+        response = send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
+        harden_served_file(response, mime_type=mimetype, filename=None)
+        return response
 
 
 @console_ns.route("/workspaces/current/tool-provider/api/add")

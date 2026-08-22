@@ -11,6 +11,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.fields import BinaryFileResponse, SuccessResponse
+from controllers.common.file_response import harden_served_file
 from controllers.common.schema import (
     query_params_from_model,
     register_enum_models,
@@ -722,7 +723,9 @@ class PluginIconApi(Resource):
             return {"code": "plugin_error", "message": e.description}, 400
 
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
-        return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
+        response = send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
+        harden_served_file(response, mime_type=mimetype, filename=None)
+        return response
 
 
 @console_ns.route("/workspaces/current/plugin/asset")
