@@ -59,12 +59,29 @@ from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_copilot.errors import HashMismatchError, WorkflowNotInitializedError
-from services.workflow_copilot.graph_ops import apply_set_node_config
+from services.workflow_copilot.graph_ops import (
+    apply_connect,
+    apply_create_node,
+    apply_delete_node,
+    apply_insert_between,
+    apply_set_node_config,
+    diff_graphs,
+    validate_intent_args,
+)
 from services.workflow_copilot.identity import load_app, resolve_account
 from services.workflow_copilot.run_mapping import map_run_result, to_node_event
 from services.workflow_service import WorkflowService
 
 __all__ = ["WorkflowServiceDifyPort"]
+
+
+_APPLY_FNS: dict[str, Callable[..., tuple[Graph, list[str]]]] = {
+    "set_node_config": apply_set_node_config,
+    "create_node": apply_create_node,
+    "delete_node": apply_delete_node,
+    "connect": apply_connect,
+    "insert_between": apply_insert_between,
+}
 
 
 def _session_factory() -> sessionmaker[Session]:
@@ -124,19 +141,22 @@ class WorkflowServiceDifyPort:
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
 
-            graph: Graph = dict(workflow.graph_dict)
+            before_graph: Graph = dict(workflow.graph_dict)
+            graph: Graph = before_graph
             unique_hash = workflow.unique_hash
             changed_nodes: list[str] = []
             for intent in intents:
-                if intent.op != "set_node_config":
+                apply_fn = _APPLY_FNS.get(intent.op)
+                if apply_fn is None:
                     continue
-                graph, changed = apply_set_node_config(
-                    graph, intent.args["node_id"], intent.args["path"], intent.args["value"]
-                )
+                validate_intent_args(intent)
+                graph, changed = apply_fn(graph, **intent.args)
                 changed_nodes.extend(changed)
 
             if not changed_nodes:
-                return ApplyResult(changed_nodes=[], new_hash=unique_hash)
+                return ApplyResult(changed_nodes=[], new_hash=unique_hash, changes=[], scope="")
+
+            changes, scope = diff_graphs(before_graph, graph)
 
             try:
                 updated = WorkflowService().sync_draft_workflow(
@@ -156,7 +176,9 @@ class WorkflowServiceDifyPort:
             except WorkflowHashNotEqualError as exc:
                 raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
 
-            return ApplyResult(changed_nodes=changed_nodes, new_hash=updated.unique_hash)
+            return ApplyResult(
+                changed_nodes=changed_nodes, new_hash=updated.unique_hash, changes=changes, scope=scope
+            )
 
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
         with _session_factory()() as session:

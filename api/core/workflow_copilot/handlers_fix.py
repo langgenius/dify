@@ -200,13 +200,18 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult
     ``checklist.await_recheck``. Port of ``handlers_fix.go:146``."""
     result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair)
     fc.last_snapshot_hash = result.new_hash
-    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="config edit")
+    # Adapters that don't compute a real diff (e.g. FakeDifyPort in tests)
+    # leave changes/scope empty -- fall back to the old changed_nodes/
+    # "configuration" behavior so those callers stay green.
+    changes = list(result.changes) if result.changes else list(result.changed_nodes)
+    scope = result.scope or "configuration"
+    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "config edit")
     items = append_card(
         fc,
         ChangeSetCard(
-            count=len(result.changed_nodes),
-            changes=list(result.changed_nodes),
-            scope="configuration",
+            count=len(changes),
+            changes=changes,
+            scope=scope,
             full_diff_open=False,
         ),
     )
