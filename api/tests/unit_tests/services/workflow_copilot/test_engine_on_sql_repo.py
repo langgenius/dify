@@ -201,9 +201,9 @@ def test_full_fix_flow_request_fix_to_publish_success_on_sql_repo(repo: SqlCopil
     conv = repo.list_conversation(s.id)
     assert [item.seq for item in conv] == list(range(len(conv)))
     assert conv[0].kind == "run-context"
-    assert any(item.kind == "diagnosis" for item in conv)
-    assert any(item.kind == "verify-result" for item in conv)
-    assert conv[-1].payload == {"text": "published"}
+    assert any(item.kind == "summary" and item.payload.get("variant") == "context" for item in conv)
+    assert any(item.kind == "test_result" for item in conv)
+    assert conv[-1].payload == {"text": "Published the fix"}
 
 
 def test_full_fix_flow_stale_base_version_raises_conflict_on_sql_repo(repo: SqlCopilotRepository) -> None:
