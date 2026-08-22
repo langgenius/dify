@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from core.plugin.entities.plugin_daemon import TTSAudioChunk
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -38,14 +39,6 @@ _AUDIO_MIME_TYPE_ALIASES = {
 }
 
 
-class TTSMIMETypeError(ValueError):
-    """Raised when a TTS provider returns unusable audio MIME metadata."""
-
-
-class TTSMIMETypeMismatchError(TTSMIMETypeError):
-    """Raised when TTS MIME metadata does not match the returned audio bytes."""
-
-
 def normalize_audio_mime_type(audio_type: object | None) -> str | None:
     """Convert provider audio-type metadata into a browser MIME type."""
     if not isinstance(audio_type, str):
@@ -72,8 +65,6 @@ def sniff_audio_mime_type(audio: bytes | bytearray | memoryview) -> str | None:
     signature = bytes(audio[:_SIGNATURE_SIZE])
     if len(signature) >= 12 and signature[:4] == b"RIFF" and signature[8:12] == b"WAVE":
         return "audio/wav"
-    if signature.startswith(b"ID3"):
-        return "audio/mpeg"
     if signature.startswith(b"OggS"):
         return "audio/ogg"
     if signature.startswith(b"fLaC"):
@@ -96,7 +87,7 @@ def _normalize_reported_mime_type(mime_type: object | None, source: str) -> str 
 
     normalized_mime_type = normalize_audio_mime_type(mime_type)
     if normalized_mime_type is None:
-        raise TTSMIMETypeError(f"TTS provider returned an unsupported {source} MIME type: {mime_type!r}")
+        raise InvokeBadRequestError(f"TTS provider returned an unsupported {source} MIME type: {mime_type!r}")
     return normalized_mime_type
 
 
@@ -108,7 +99,7 @@ def _extract_audio_chunk(chunk: bytes | bytearray | memoryview | TTSAudioChunk) 
     if isinstance(chunk, (bytes, bytearray, memoryview)):
         return bytes(chunk), None
 
-    raise TTSMIMETypeError("TTS provider returned a chunk that is not audio bytes")
+    raise InvokeBadRequestError("TTS provider returned a chunk that is not audio bytes")
 
 
 def resolve_audio_mime_type(
@@ -128,7 +119,7 @@ def resolve_audio_mime_type(
 
     expected_mime_type = normalized_reported_mime_type or normalized_declared_mime_type
     if expected_mime_type and detected_mime_type and expected_mime_type != detected_mime_type:
-        raise TTSMIMETypeMismatchError(
+        raise InvokeBadRequestError(
             "TTS provider output MIME does not match its audio bytes: "
             f"declared {expected_mime_type}, detected {detected_mime_type}"
         )
@@ -165,7 +156,7 @@ def inspect_audio_stream(
         normalized_chunk_mime_type = _normalize_reported_mime_type(chunk_mime_type, "chunk")
         if normalized_chunk_mime_type:
             if reported_mime_type and reported_mime_type != normalized_chunk_mime_type:
-                raise TTSMIMETypeMismatchError(
+                raise InvokeBadRequestError(
                     "TTS provider changed MIME type within one audio response: "
                     f"{reported_mime_type} then {normalized_chunk_mime_type}"
                 )
@@ -180,15 +171,10 @@ def inspect_audio_stream(
             audio, chunk_mime_type = _extract_audio_chunk(chunk)
             normalized_chunk_mime_type = _normalize_reported_mime_type(chunk_mime_type, "chunk")
             if normalized_chunk_mime_type and normalized_chunk_mime_type != mime_type:
-                raise TTSMIMETypeMismatchError(
+                raise InvokeBadRequestError(
                     "TTS provider changed MIME type within one audio response: "
                     f"{mime_type} then {normalized_chunk_mime_type}"
                 )
             yield audio
 
     return validated_stream(), mime_type
-
-
-def supports_incremental_tts_playback(mime_type: str | None) -> bool:
-    """Only MP3 can safely join independent sentence-level TTS outputs."""
-    return mime_type == "audio/mpeg"

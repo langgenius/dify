@@ -166,8 +166,7 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    # The provider chooses the actual audio MIME type at runtime. Document a generic binary body so that generated
-    # SDKs can represent it without treating every error response as audio; the description above lists the types.
+    # OpenAPI 2 cannot express a runtime-selected response MIME type, so document the body as generic binary.
     @binary_response(service_api_ns, "application/octet-stream")
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")

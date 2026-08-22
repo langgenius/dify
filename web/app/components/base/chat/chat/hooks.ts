@@ -903,17 +903,13 @@ export const useChat = (
           if (!audio || audio === '') return
           const audioPlayer = getOrCreatePlayer()
           if (audioPlayer) {
-            if (audioType) audioPlayer.playAudioWithAudio(audio, true, audioType)
-            else audioPlayer.playAudioWithAudio(audio, true)
+            audioPlayer.playAudioWithAudio(audio, true, audioType)
             AudioPlayerManager.getInstance().resetMsgId(messageId)
           }
         },
-        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
+        onTTSEnd: (messageId: string, audio: string) => {
           const audioPlayer = getOrCreatePlayer()
-          if (audioPlayer) {
-            if (audioType) audioPlayer.playAudioWithAudio(audio, false, audioType)
-            else audioPlayer.playAudioWithAudio(audio, false)
-          }
+          if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
         },
         onLoopStart: ({ data: loopStartedData }) => {
           updateChatTreeNode(messageId, (responseItem) => {
@@ -1644,17 +1640,13 @@ export const useChat = (
           if (!audio || audio === '') return
           const audioPlayer = getOrCreatePlayer()
           if (audioPlayer) {
-            if (audioType) audioPlayer.playAudioWithAudio(audio, true, audioType)
-            else audioPlayer.playAudioWithAudio(audio, true)
+            audioPlayer.playAudioWithAudio(audio, true, audioType)
             AudioPlayerManager.getInstance().resetMsgId(messageId)
           }
         },
-        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
+        onTTSEnd: (messageId: string, audio: string) => {
           const audioPlayer = getOrCreatePlayer()
-          if (audioPlayer) {
-            if (audioType) audioPlayer.playAudioWithAudio(audio, false, audioType)
-            else audioPlayer.playAudioWithAudio(audio, false)
-          }
+          if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
         },
         onLoopStart: ({ data: loopStartedData }) => {
           responseItem.workflowProcess!.tracing!.push({

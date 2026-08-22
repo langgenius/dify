@@ -249,17 +249,13 @@ export const createBaseWorkflowRunCallbacks = ({
       if (!audio || audio === '') return
       const audioPlayer = getOrCreatePlayer()
       if (audioPlayer) {
-        if (audioType) audioPlayer.playAudioWithAudio(audio, true, audioType)
-        else audioPlayer.playAudioWithAudio(audio, true)
+        audioPlayer.playAudioWithAudio(audio, true, audioType)
         AudioPlayerManager.getInstance().resetMsgId(messageId)
       }
     },
-    onTTSEnd: (_messageId: string, audio: string, audioType?: string) => {
+    onTTSEnd: (_messageId: string, audio: string) => {
       const audioPlayer = getOrCreatePlayer()
-      if (audioPlayer) {
-        if (audioType) audioPlayer.playAudioWithAudio(audio, false, audioType)
-        else audioPlayer.playAudioWithAudio(audio, false)
-      }
+      if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
@@ -436,13 +432,11 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
       if (!audio || audio === '') return
-      if (audioType) player?.playAudioWithAudio(audio, true, audioType)
-      else player?.playAudioWithAudio(audio, true)
+      player?.playAudioWithAudio(audio, true, audioType)
       AudioPlayerManager.getInstance().resetMsgId(messageId)
     },
-    onTTSEnd: (_messageId: string, audio: string, audioType?: string) => {
-      if (audioType) player?.playAudioWithAudio(audio, false, audioType)
-      else player?.playAudioWithAudio(audio, false)
+    onTTSEnd: (_messageId: string, audio: string) => {
+      player?.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()

@@ -116,7 +116,7 @@ type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinished
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
 type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
 type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
+type IOnTTSEnd = (messageId: string, audioStr: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
@@ -431,7 +431,7 @@ export const handleStream = (
               } else if (bufferObj.event === 'tts_message') {
                 onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
               } else if (bufferObj.event === 'tts_message_end') {
-                onTTSEnd?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
+                onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
               } else if (bufferObj.event === 'human_input_required') {
                 onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
               } else if (bufferObj.event === 'human_input_form_filled') {

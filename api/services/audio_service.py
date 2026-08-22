@@ -11,15 +11,9 @@ from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
-from core.base.tts.audio_mime import (
-    TTSMIMETypeError,
-    get_model_audio_mime_type,
-    inspect_audio_stream,
-    resolve_audio_mime_type,
-)
+from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream, resolve_audio_mime_type
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message, load_annotation_reply_config
@@ -48,18 +42,15 @@ def _create_tts_response(
     audio: Iterable[bytes] | bytes | bytearray | memoryview, declared_mime_type: str | None
 ) -> Response:
     """Create a response whose Content-Type matches the returned audio container."""
-    try:
-        if isinstance(audio, (bytes, bytearray, memoryview)):
-            audio_bytes = bytes(audio)
-            return Response(audio_bytes, content_type=resolve_audio_mime_type(audio_bytes, declared_mime_type))
+    if isinstance(audio, (bytes, bytearray, memoryview)):
+        audio_bytes = bytes(audio)
+        return Response(audio_bytes, content_type=resolve_audio_mime_type(audio_bytes, declared_mime_type))
 
-        audio_stream, mime_type = inspect_audio_stream(audio, declared_mime_type)
-        return Response(
-            stream_with_context(audio_stream),  # pyrefly: ignore[no-matching-overload]
-            content_type=mime_type,
-        )
-    except TTSMIMETypeError as e:
-        raise InvokeBadRequestError(f"Invalid TTS provider audio output: {e}") from e
+    audio_stream, mime_type = inspect_audio_stream(audio, declared_mime_type)
+    return Response(
+        stream_with_context(audio_stream),  # pyrefly: ignore[no-matching-overload]
+        content_type=mime_type,
+    )
 
 
 class AudioService:

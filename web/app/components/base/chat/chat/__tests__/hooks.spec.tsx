@@ -71,7 +71,7 @@ type HookCallbacks = {
   onHumanInputFormTimeout: (timeout: Record<string, unknown>) => void
   onWorkflowPaused: (workflowPaused: Record<string, unknown>) => void
   onTTSChunk: (messageId: string, audio: string, audioType?: string) => void
-  onTTSEnd: (messageId: string, audio: string, audioType?: string) => void
+  onTTSEnd: (messageId: string, audio: string) => void
   onReasoning: (chunk: {
     data: { message_id?: string; reasoning: string; node_id?: string; is_final?: boolean }
   }) => void

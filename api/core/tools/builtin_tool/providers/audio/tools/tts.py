@@ -1,4 +1,3 @@
-import io
 from collections.abc import Generator
 from typing import Any, override
 
@@ -47,11 +46,7 @@ class TTSTool(BuiltinTool):
                 raise ValueError("Sorry, no voice available.")
         tts = model_instance.invoke_tts(content_text=tool_parameters.get("text"), voice=voice)  # type: ignore[arg-type]
         audio_stream, mime_type = inspect_audio_stream(tts, get_model_audio_mime_type(model_instance))
-        buffer = io.BytesIO()
-        for chunk in audio_stream:
-            buffer.write(chunk)
-
-        audio_bytes = buffer.getvalue()
+        audio_bytes = b"".join(audio_stream)
         yield self.create_text_message("Audio generated successfully")
         yield self.create_blob_message(
             blob=audio_bytes,

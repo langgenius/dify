@@ -824,7 +824,7 @@ class TestAudioServiceTTS:
         mock_model_manager_class.return_value.get_default_model_instance.return_value = mock_model_instance
 
         with app.test_request_context("/text-to-audio", method="POST"):
-            with pytest.raises(InvokeBadRequestError, match="Invalid TTS provider audio output"):
+            with pytest.raises(InvokeBadRequestError, match="output MIME does not match"):
                 AudioService.transcript_tts(
                     app_model=app_model,
                     session=sqlite_session,
