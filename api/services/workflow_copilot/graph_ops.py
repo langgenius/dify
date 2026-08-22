@@ -107,7 +107,7 @@ def _build_node(
     else:
         new_id = _next_node_id(node_type, existing_ids)
 
-    data = dict(config)
+    data = copy.deepcopy(config)
     data["type"] = node_type  # data.type is the real node type -- never overridden by config
     data.setdefault("title", new_id)
     data.setdefault("desc", "")
@@ -116,7 +116,7 @@ def _build_node(
     return {
         "id": new_id,
         "type": "custom",
-        "position": position or _default_position(graph),
+        "position": position if position is not None else _default_position(graph),
         "data": data,
     }
 
