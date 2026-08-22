@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow_copilot.contract import ActionKind
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Action,
@@ -27,7 +28,7 @@ from core.workflow_copilot.models import (
 from core.workflow_copilot.state import PcState
 from models.base import Base
 from services.workflow_copilot.repository import SqlCopilotRepository
-from services.workflow_copilot.service import WorkflowCopilotService
+from services.workflow_copilot.service import WorkflowCopilotService, resolve_action_kind
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -251,6 +252,89 @@ def _seed_free_session(repo: SqlCopilotRepository) -> Session:
     )
     repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
     return s
+
+
+def _seed_session_at(repo: SqlCopilotRepository, state: PcState) -> Session:
+    """Create a session directly via the repo (bypassing ``create_fix_session``)
+    at an arbitrary ``PcState``, so ``get_session_view``'s actions-table lookup
+    can be tested without driving the whole flow through it."""
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.FIX,
+        current_state=state,
+    )
+    repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    return s
+
+
+def test_get_session_view_actions_for_fix_await_decision(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_DECISION)
+    actor = _actor()
+
+    view = service.get_session_view(s.id, actor)
+
+    assert [(a.id, a.kind) for a in view.actions] == [
+        ("publish_fix", ActionKind.PRIMARY),
+        ("view_changes", ActionKind.SECONDARY),
+        ("revert", ActionKind.DESTRUCTIVE),
+    ]
+
+
+def test_get_session_view_actions_for_fix_await_verify(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.FIX_AWAIT_VERIFY)
+    actor = _actor()
+
+    view = service.get_session_view(s.id, actor)
+
+    assert [(a.id, a.kind) for a in view.actions] == [
+        ("run_validation", ActionKind.PRIMARY),
+        ("revert", ActionKind.DESTRUCTIVE),
+    ]
+
+
+def test_get_session_view_actions_empty_for_working_state(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.FIX_DIAGNOSE)
+    actor = _actor()
+
+    view = service.get_session_view(s.id, actor)
+
+    assert view.actions == []
+
+
+def test_get_session_view_actions_empty_for_terminal_state(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = _seed_session_at(repo, PcState.SUCCESS)
+    actor = _actor()
+
+    view = service.get_session_view(s.id, actor)
+
+    assert view.actions == []
+
+
+def test_resolve_action_kind_maps_new_ids_to_handler_kinds() -> None:
+    assert resolve_action_kind("run_validation") == "run_verify"
+    assert resolve_action_kind("publish_fix") == "publish"
+    assert resolve_action_kind("approve_plan") == "approve_repair"
+    assert resolve_action_kind("continue_adjusting") == "re_fix"
+    assert resolve_action_kind("revert") == "undo"
+    assert resolve_action_kind("retry_after_revert") == "re_fix"
+
+
+def test_resolve_action_kind_passes_through_legacy_and_unmapped_kinds() -> None:
+    # already a handler kind (legacy {kind: ...} back-compat)
+    assert resolve_action_kind("run_verify") == "run_verify"
+    assert resolve_action_kind("recheck") == "recheck"
+    assert resolve_action_kind("provide_testdata") == "provide_testdata"
+    assert resolve_action_kind("keep_draft") == "keep_draft"
 
 
 def test_dispatch_releases_lock_when_enqueue_fails(repo: SqlCopilotRepository) -> None:

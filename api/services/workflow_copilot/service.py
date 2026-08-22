@@ -14,7 +14,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from core.workflow_copilot.contract import Action as UiAction
-from core.workflow_copilot.contract import CheckpointRef, Phase, RunStatus
+from core.workflow_copilot.contract import ActionKind, CheckpointRef, Phase, RunStatus
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Action,
@@ -29,7 +29,7 @@ from core.workflow_copilot.models import (
 from core.workflow_copilot.ports import Repository
 from core.workflow_copilot.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 
-__all__ = ["SessionLock", "SessionView", "WorkflowCopilotService"]
+__all__ = ["SessionLock", "SessionView", "WorkflowCopilotService", "resolve_action_kind"]
 
 
 @dataclass
@@ -108,6 +108,57 @@ def _phase_for(state: PcState) -> Phase:
     """Map a ``PcState`` to the coarse UX ``Phase`` shown in the panel
     header (spec §2, §7). Defensive fallback for any unmapped state."""
     return _PHASE_FOR.get(state, Phase.UNDERSTAND)
+
+
+_ACTIONS_FOR: dict[PcState, list[UiAction]] = {
+    PcState.FIX_AWAIT_APPROVAL: [
+        UiAction(id="approve_plan", label="Approve fix", kind=ActionKind.PRIMARY),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+    ],
+    PcState.FIX_AWAIT_VERIFY: [
+        UiAction(id="run_validation", label="Run validation", kind=ActionKind.PRIMARY),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+    ],
+    PcState.FIX_AWAIT_TESTDATA: [
+        UiAction(id="provide_testdata", label="Provide test data", kind=ActionKind.PRIMARY),
+    ],
+    PcState.FIX_AWAIT_DECISION: [
+        UiAction(id="publish_fix", label="Publish fix", kind=ActionKind.PRIMARY),
+        UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE),
+    ],
+    PcState.CHECKLIST_AWAIT_RECHECK: [
+        UiAction(id="recheck", label="Re-check", kind=ActionKind.PRIMARY),
+    ],
+}
+
+
+def _actions_for(state: PcState) -> list[UiAction]:
+    return list(_ACTIONS_FOR.get(state, []))  # copy; non-waiting/working/terminal states → []
+
+
+_ACTION_ID_TO_KIND: dict[str, str] = {
+    "approve_plan": "approve_repair",
+    "run_validation": "run_verify",
+    "publish_fix": "publish",
+    "continue_adjusting": "re_fix",
+    "revert": "undo",
+    "retry_after_revert": "re_fix",
+    # provide_testdata / recheck / keep_draft already match handler kinds → passthrough
+}
+
+
+def resolve_action_kind(raw: str) -> str:
+    """Map a new FE action_id to the engine handler kind; pass through anything
+    already a handler kind (legacy {kind:...} back-compat).
+
+    ``view_changes`` is intentionally NOT in the map and must never reach the
+    backend -- it is a client-side card toggle (forces
+    ``change_set.full_diff_open``). If it were posted at ``fix.await_decision``,
+    the handler's default branch (``keep_draft``) would terminate the
+    session. The FE handles ``view_changes`` locally.
+    """
+    return _ACTION_ID_TO_KIND.get(raw, raw)
 
 
 def _run_status(state: PcState) -> RunStatus:
@@ -216,7 +267,7 @@ class WorkflowCopilotService:
             conversation=items,
             entry_mode=s.entry_mode,
             phase=_phase_for(st),
-            actions=[],  # Task 5 fills these per waiting state.
+            actions=_actions_for(st),
             checkpoint=None,
         )
 

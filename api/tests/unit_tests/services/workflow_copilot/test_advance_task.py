@@ -112,7 +112,9 @@ def test_advance_session_drives_state_forward_emits_events_and_releases_lock(rep
     # from a SessionView, so phase/run_status/actions come along for free.
     assert last_state_event["phase"] == "test"
     assert last_state_event["run_status"] == "waiting_input"
-    assert last_state_event["actions"] == []
+    # Task 5a: actions are now data-driven per PcState; fix.await_verify's
+    # table entries are run_validation (primary) + revert (destructive).
+    assert [a["id"] for a in last_state_event["actions"]] == ["run_validation", "revert"]
 
     assert released == [(s.id, "tok-1")]
 
