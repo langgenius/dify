@@ -41,6 +41,7 @@ from typing import Any
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow_copilot.contract import CanvasEvent
 from core.workflow_copilot.models import (
     Actor,
     ApplyResult,
@@ -52,6 +53,7 @@ from core.workflow_copilot.models import (
     Run,
 )
 from extensions.ext_database import db
+from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
 from models.model import App
 from models.workflow import Workflow
@@ -82,6 +84,40 @@ _APPLY_FNS: dict[str, Callable[..., tuple[Graph, list[str]]]] = {
     "connect": apply_connect,
     "insert_between": apply_insert_between,
 }
+
+_CREATE_NODE_CANVAS_EVENTS: dict[str, CanvasEvent] = {
+    BuiltinNodeTypes.START: CanvasEvent.ADD_START_NODE,
+    BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL: CanvasEvent.ADD_KNOWLEDGE_NODE,
+    BuiltinNodeTypes.LLM: CanvasEvent.ADD_LLM_NODE,
+    BuiltinNodeTypes.END: CanvasEvent.ADD_OUTPUT_NODE,
+}
+
+
+def _canvas_event_for_intent(intent: MutationIntent) -> CanvasEvent:
+    """Map an applied ``MutationIntent`` to the canvas event that narrates it
+    (spec Sec 6). ``create_node`` dispatches by ``node_type`` to the matching
+    ``add_*_node`` event; ``set_node_config`` (Fix's only verb today) maps to
+    ``apply_error_fix``; every other verb (``delete_node``/``connect``/
+    ``insert_between``) and any unmapped ``node_type`` default to the
+    generic ``apply_edit_plan`` batch-mutation event.
+    """
+    if intent.op == "create_node":
+        return _CREATE_NODE_CANVAS_EVENTS.get(intent.args.get("node_type", ""), CanvasEvent.APPLY_EDIT_PLAN)
+    if intent.op == "set_node_config":
+        return CanvasEvent.APPLY_ERROR_FIX
+    return CanvasEvent.APPLY_EDIT_PLAN
+
+
+def _canvas_payload(intent: MutationIntent, changed: list[str]) -> dict[str, Any]:
+    """Build the ``{"event": ..., "node_id"?/"edge"?}`` dict passed to ``on_canvas``."""
+    payload: dict[str, Any] = {"event": str(_canvas_event_for_intent(intent))}
+    if intent.op == "connect":
+        payload["edge"] = {"source": intent.args.get("from_node"), "target": intent.args.get("to_node")}
+    elif intent.op == "delete_node":
+        payload["node_id"] = intent.args.get("node_id")
+    else:  # create_node | insert_between | set_node_config
+        payload["node_id"] = changed[0] if changed else None
+    return payload
 
 
 def _session_factory() -> sessionmaker[Session]:
@@ -135,7 +171,13 @@ class WorkflowServiceDifyPort:
             for node_exec in node_execs
         ]
 
-    def apply_repair(self, app_id: str, actor: Actor, intents: list[MutationIntent]) -> ApplyResult:
+    def apply_repair(
+        self,
+        app_id: str,
+        actor: Actor,
+        intents: list[MutationIntent],
+        on_canvas: Callable[[dict], None] | None = None,
+    ) -> ApplyResult:
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
@@ -152,6 +194,8 @@ class WorkflowServiceDifyPort:
                 validate_intent_args(intent)
                 graph, changed = apply_fn(graph, **intent.args)
                 changed_nodes.extend(changed)
+                if on_canvas is not None:
+                    on_canvas(_canvas_payload(intent, changed))
 
             if not changed_nodes:
                 return ApplyResult(changed_nodes=[], new_hash=unique_hash, changes=[], scope="")

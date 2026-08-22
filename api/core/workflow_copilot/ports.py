@@ -87,7 +87,13 @@ class DifyPort(Protocol):
 
     def node_outputs(self, app_id: str, actor: Actor, run_id: str) -> list[NodeOutput]: ...
 
-    def apply_repair(self, app_id: str, actor: Actor, intents: list[MutationIntent]) -> ApplyResult: ...
+    def apply_repair(
+        self,
+        app_id: str,
+        actor: Actor,
+        intents: list[MutationIntent],
+        on_canvas: Callable[[dict], None] | None = None,
+    ) -> ApplyResult: ...
 
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run: ...
 

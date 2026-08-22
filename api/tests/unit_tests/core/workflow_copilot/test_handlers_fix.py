@@ -160,6 +160,36 @@ def test_apply_writes_graph_locks_during_work_unlocks_at_await_verify():
     assert "output" in fc.change_set.changed_nodes
 
 
+def test_apply_forwards_env_emit_canvas_to_the_adapters_on_canvas_callback():
+    events: list[dict] = []
+    repo = InMemoryRepository()
+    env = Env(
+        dify=FakeDifyPort(),
+        agent=StubAgent(),
+        repo=repo,
+        now=lambda: datetime.min,
+        emit_canvas=events.append,
+    )
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    runner.advance(s.id, turn)
+
+    assert events == [{"event": "apply_error_fix", "node_id": "output"}]
+
+
+def test_apply_without_env_emit_canvas_does_not_error():
+    env, repo = _new_env()  # emit_canvas defaults to None
+    s = _seed_diagnose_session(repo)
+
+    runner = Runner(env, _run_fix_registry())
+    turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
+    out = runner.advance(s.id, turn)
+
+    assert out.current_state == PcState.FIX_AWAIT_VERIFY
+
+
 def test_apply_emits_change_set_card_with_fallback_scope_and_changes_when_adapter_omits_them():
     # NOTE: this assertion already holds against the OLD hardcoded handle_apply
     # (scope="configuration", changes=changed_nodes) -- Task 8's fallback branch

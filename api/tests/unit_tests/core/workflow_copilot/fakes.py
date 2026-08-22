@@ -235,10 +235,19 @@ class FakeDifyPort:
     def node_outputs(self, _app_id: str, _actor: Actor, _run_id: str) -> list[NodeOutput]:
         return [NodeOutput(node_id="output", status="failed", error="missing metrics")]
 
-    def apply_repair(self, _app_id: str, _actor: Actor, intents: list[MutationIntent]) -> ApplyResult:
+    def apply_repair(
+        self,
+        _app_id: str,
+        _actor: Actor,
+        intents: list[MutationIntent],
+        on_canvas: Callable[[dict], None] | None = None,
+    ) -> ApplyResult:
         self.applied = copy.deepcopy(intents)
         self.hash = "h1"
         changed = [intent.args["node_id"] for intent in intents if isinstance(intent.args.get("node_id"), str)]
+        if on_canvas is not None:
+            for node_id in changed:
+                on_canvas({"event": "apply_error_fix", "node_id": node_id})
         return ApplyResult(changed_nodes=changed, new_hash=self.hash)
 
     def run_draft(

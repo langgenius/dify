@@ -198,7 +198,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult
     branches on ``fc.source``: the run-fix path always lands at
     ``fix.await_verify``; the checklist-fix path lands at
     ``checklist.await_recheck``. Port of ``handlers_fix.go:146``."""
-    result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair)
+    result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
     # Adapters that don't compute a real diff (e.g. FakeDifyPort in tests)
     # leave changes/scope empty -- fall back to the old changed_nodes/
