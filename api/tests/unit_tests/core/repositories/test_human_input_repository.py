@@ -29,7 +29,7 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountJoin, TenantAccountRole
@@ -402,6 +402,7 @@ def test_create_form_adds_console_and_backstage_recipients(
         delivery_methods=[WebAppDeliveryMethod()],
         display_in_ui=True,
         resolved_default_values={},
+        select_options_resolved=True,
         form_kind=HumanInputFormKind.RUNTIME,
     )
 
@@ -415,6 +416,8 @@ def test_create_form_adds_console_and_backstage_recipients(
     persisted_form = repository_session.get(HumanInputForm, "form-id")
     assert persisted_form is not None
     assert persisted_form.status == HumanInputFormStatus.WAITING
+    assert json.loads(persisted_form.form_definition)["select_options_resolved"] is True
+    assert FormDefinition.model_validate_json(persisted_form.form_definition).select_options_resolved is True
     recipients = repository_session.scalars(
         select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == "form-id")
     ).all()

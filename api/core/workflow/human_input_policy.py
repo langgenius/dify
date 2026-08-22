@@ -171,6 +171,9 @@ def resolve_human_input_pause_reason_inputs(
         if not isinstance(reason, HumanInputRequired):
             resolved_reasons.append(reason)
             continue
+        if reason.select_options_resolved:
+            resolved_reasons.append(reason)
+            continue
 
         resolved_inputs = resolve_variable_select_input_options(
             reason.inputs,

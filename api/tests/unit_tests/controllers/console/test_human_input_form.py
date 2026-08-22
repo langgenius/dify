@@ -103,6 +103,7 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
     definition = SimpleNamespace(model_dump=lambda: {"fields": ["a"]})
     form = SimpleNamespace(tenant_id="tenant-1", get_definition=lambda: definition, expiration_time=expiration)
+    resolved_input = SimpleNamespace(model_dump=lambda **_kwargs: {"id": "choice", "options": ["a"]})
 
     class _ServiceStub:
         def __init__(self, *_args, **_kwargs):
@@ -110,6 +111,10 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
 
         def get_form_definition_by_token_for_console(self, _token):
             return form
+
+        def resolve_form_inputs(self, resolved_form):
+            assert resolved_form is form
+            return [resolved_input]
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
 
@@ -121,6 +126,7 @@ def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch
 
     payload = json.loads(response.get_data(as_text=True))
     assert payload["fields"] == ["a"]
+    assert payload["inputs"] == [{"id": "choice", "options": ["a"]}]
 
 
 def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

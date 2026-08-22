@@ -25,6 +25,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolInvokeError
 from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import TypeBase
@@ -170,6 +171,10 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
     )
 
 
+def _workflow_stub(*, nodes: list[dict[str, Any]] | None = None) -> SimpleNamespace:
+    return SimpleNamespace(graph_dict={"nodes": nodes or []})
+
+
 def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_tool_db: SqliteToolDb,
@@ -182,7 +187,7 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     # Resolve a persisted account without exercising the lookup in this behavior test.
     user = _persist_account(sqlite_tool_db)
@@ -201,6 +206,50 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     assert exc_info.value.args == ("oops",)
 
 
+def test_workflow_tool_rejects_human_input_before_invoking_generator(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
+    tool = _build_tool()
+    workflow = _workflow_stub(nodes=[{"data": {"type": BuiltinNodeTypes.HUMAN_INPUT}}])
+    generate_mock = MagicMock()
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: workflow)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+
+    with pytest.raises(ToolInvokeError, match="require Engine-managed container execution"):
+        list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
+
+    generate_mock.assert_not_called()
+
+
+def test_workflow_tool_rejects_paused_generator_result(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
+    tool = _build_tool()
+    user = _persist_account(sqlite_tool_db)
+    generate_mock = MagicMock(
+        return_value={
+            "data": {
+                "status": WorkflowExecutionStatus.PAUSED,
+                "outputs": {},
+            }
+        }
+    )
+
+    monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
+    monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
+
+    with pytest.raises(ToolInvokeError, match="requires Engine-managed container execution"):
+        list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
+
+    generate_mock.assert_called_once()
+
+
 def test_workflow_tool_does_not_use_pause_state_config(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_tool_db: SqliteToolDb,
@@ -209,7 +258,7 @@ def test_workflow_tool_does_not_use_pause_state_config(
     tool = _build_tool()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -237,7 +286,7 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -272,7 +321,7 @@ def test_workflow_tool_passes_parent_trace_session_id(
     tool.set_trace_session_id("session-1")
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -314,7 +363,7 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -356,7 +405,7 @@ def test_workflow_tool_can_clear_parent_trace_context(
     tool.clear_parent_trace_context()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -381,7 +430,7 @@ def test_workflow_tool_can_clear_trace_session_id(
     tool.clear_trace_session_id()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -415,7 +464,7 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     tool.runtime.runtime_parameters = runtime_parameters
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -442,7 +491,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     # Resolve a persisted account without exercising the lookup in this behavior test.
     user = _persist_account(sqlite_tool_db)
@@ -488,7 +537,7 @@ def test_workflow_tool_should_handle_empty_outputs(
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
 
     # Resolve a persisted account without exercising the lookup in this behavior test.
     user = _persist_account(sqlite_tool_db)
@@ -642,7 +691,7 @@ def test_invoke_raises_when_user_not_found(
     """Raise ToolInvokeError when user resolution fails."""
     tool = _build_tool()
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: None)
 
     with pytest.raises(ToolInvokeError, match="User not found"):
@@ -819,7 +868,7 @@ def test_workflow_tool_invocation_normalizes_optional_files_parameter(
     tool.entity.parameters = [images_param]
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
     user = _persist_account(sqlite_tool_db)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 

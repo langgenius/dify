@@ -55,6 +55,7 @@ from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
+from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -71,6 +72,7 @@ from graphon.nodes.http_request import build_http_request_config
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
@@ -310,21 +312,38 @@ class DifyNodeFactory(NodeFactory):
         *,
         graph_init_context: DifyGraphInitContext,
         graph_runtime_state: "RuntimeState",
+        human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
+        containerize_workflow_tools: bool = True,
     ) -> "DifyNodeFactory":
         """Bridge Dify's explicit init context into the current `graphon` API."""
         return cls(
             graph_init_params=graph_init_context.to_graph_init_params(),
             graph_runtime_state=graph_runtime_state,
+            human_input_run_context=human_input_run_context,
+            containerize_workflow_tools=containerize_workflow_tools,
         )
 
     def __init__(
         self,
         graph_init_params: "InitParams",
         graph_runtime_state: "RuntimeState",
+        human_input_run_context: Mapping[str, Any] | DifyRunContext | None = None,
+        containerize_workflow_tools: bool = True,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
+        self._human_input_run_context = human_input_run_context
+        self._containerize_workflow_tools = containerize_workflow_tools
+        human_input_context = (
+            self._dify_context
+            if human_input_run_context is None
+            else (
+                human_input_run_context
+                if isinstance(human_input_run_context, DifyRunContext)
+                else self._resolve_dify_context(human_input_run_context)
+            )
+        )
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -355,7 +374,7 @@ class DifyNodeFactory(NodeFactory):
             conversation_id_getter=self._conversation_id,
         )
         self._human_input_runtime = DifyHumanInputNodeRuntime(
-            self._dify_context,
+            human_input_context,
             workflow_execution_id_getter=lambda: get_system_text(
                 self.graph_runtime_state.variable_pool,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID,
@@ -388,7 +407,17 @@ class DifyNodeFactory(NodeFactory):
         return DifyNodeFactory(
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,
+            human_input_run_context=self._human_input_run_context,
+            containerize_workflow_tools=self._containerize_workflow_tools,
         )
+
+    @property
+    def human_input_run_context(self) -> DifyRunContext:
+        if self._human_input_run_context is None:
+            return self._dify_context
+        if isinstance(self._human_input_run_context, DifyRunContext):
+            return self._human_input_run_context
+        return self._resolve_dify_context(self._human_input_run_context)
 
     @staticmethod
     def _resolve_dify_context(run_context: Mapping[str, Any]) -> DifyRunContext:
@@ -417,7 +446,7 @@ class DifyNodeFactory(NodeFactory):
         typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class(
+        node_class = self._resolve_node_class_for_factory(
             node_type=node_data.type,
             node_version=str(node_data.version),
             node_data=node_data,
@@ -512,6 +541,25 @@ class DifyNodeFactory(NodeFactory):
         if callable(validate_node_data):
             return cast("BaseNodeData", validate_node_data(node_data))
         return node_data
+
+    def _resolve_node_class_for_factory(
+        self,
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
+        if (
+            self._containerize_workflow_tools
+            and node_type == BuiltinNodeTypes.TOOL
+            and getattr(node_data, "provider_type", None) == ToolProviderType.WORKFLOW
+        ):
+            return DifyWorkflowToolNode
+        return self._resolve_node_class(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
+        )
 
     @staticmethod
     def _resolve_node_class(
