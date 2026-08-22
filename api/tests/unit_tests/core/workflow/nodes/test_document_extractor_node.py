@@ -458,20 +458,15 @@ def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
     file.extension = extension
     file.mime_type = mime_type
 
-    def fake_partition(file_content, *, suffix, unstructured_api_config, load_local_partition, render_element):
-        assert file_content == b"odt content"
-        assert suffix == ".odt"
-        assert unstructured_api_config == document_extractor_node._unstructured_api_config
-        assert load_local_partition.__name__ == "_load_partition_odt"
-        assert render_element is not None
-        return f"extracted through {route_label}"
+    document = Mock()
+    document.get_formatted_text.return_value = f"extracted through {route_label}"
 
     with (
         patch(
             "graphon.nodes.document_extractor.node._download_file_content",
             return_value=b"odt content",
         ) as mock_download,
-        patch("graphon.nodes.document_extractor.node._partition_unstructured_file", side_effect=fake_partition),
+        patch("graphon.nodes.document_extractor.node.OdfDocument", return_value=document) as mock_odf_document,
     ):
         text = _extract_text_from_file(
             document_extractor_node.http_client,
@@ -481,6 +476,7 @@ def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
 
     assert text == f"extracted through {route_label}"
     mock_download.assert_called_once_with(document_extractor_node.http_client, file)
+    assert isinstance(mock_odf_document.call_args.args[0], io.BytesIO)
 
 
 @pytest.mark.parametrize(
