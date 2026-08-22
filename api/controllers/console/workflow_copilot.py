@@ -43,6 +43,7 @@ from core.workflow_copilot.models import Action, Actor
 from libs.login import login_required
 from services.feature_service import FeatureService
 from services.workflow_copilot import progress_bus
+from services.workflow_copilot.service import resolve_action_kind
 from services.workflow_copilot.wiring import (
     build_service,
     copilot_error_response,
@@ -101,8 +102,9 @@ def _view(session_id: str, actor: Actor) -> tuple[dict, int]:
 def _action(session_id: str, body, actor: Actor) -> tuple[dict, int]:
     if not isinstance(body, dict):
         return {"code": "bad_request"}, 400
+    raw = body.get("action_id") or body.get("kind", "")
     action = Action(
-        kind=body.get("kind", ""),
+        kind=resolve_action_kind(raw),
         payload=body.get("payload") or {},
         base_version=int(body.get("base_version", 0)),
     )
