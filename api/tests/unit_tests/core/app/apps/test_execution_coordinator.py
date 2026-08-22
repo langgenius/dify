@@ -14,7 +14,7 @@ def test_listener_close_does_not_abort_running_attempt() -> None:
     on_timeout = Mock()
     with (
         patch("core.app.apps.execution_coordinator.redis_client") as redis_client,
-        patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+        patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
     ):
         coordinator = AppExecutionCoordinator(task_id="task", on_timeout=on_timeout, timeout_seconds=1200)
 
@@ -23,7 +23,7 @@ def test_listener_close_does_not_abort_running_attempt() -> None:
 
     assert coordinator.state is AppExecutionState.RUNNING
     redis_client.setex.assert_not_called()
-    graph_engine_manager.return_value.send_stop_command.assert_not_called()
+    send_abort_command.assert_not_called()
     on_timeout.assert_not_called()
 
 
@@ -31,7 +31,7 @@ def test_paused_attempt_ignores_listener_close_and_timeout() -> None:
     on_timeout = Mock()
     with (
         patch("core.app.apps.execution_coordinator.redis_client") as redis_client,
-        patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+        patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
     ):
         coordinator = AppExecutionCoordinator(task_id="task", on_timeout=on_timeout, timeout_seconds=0)
         coordinator.mark_paused()
@@ -41,7 +41,7 @@ def test_paused_attempt_ignores_listener_close_and_timeout() -> None:
 
     assert coordinator.state is AppExecutionState.PAUSED
     redis_client.setex.assert_not_called()
-    graph_engine_manager.return_value.send_stop_command.assert_not_called()
+    send_abort_command.assert_not_called()
     on_timeout.assert_not_called()
 
 
@@ -49,7 +49,7 @@ def test_watchdog_aborts_and_notifies_response_pipeline() -> None:
     on_timeout = Mock()
     with (
         patch("core.app.apps.execution_coordinator.redis_client") as redis_client,
-        patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+        patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
     ):
         coordinator = AppExecutionCoordinator(task_id="task", on_timeout=on_timeout, timeout_seconds=0)
 
@@ -58,7 +58,7 @@ def test_watchdog_aborts_and_notifies_response_pipeline() -> None:
 
     assert coordinator.state is AppExecutionState.ABORTING
     redis_client.setex.assert_called_once_with("generate_task_stopped:task", 600, 1)
-    graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+    send_abort_command.assert_called_once_with(
         "task",
         reason="App execution exceeded 0 seconds",
     )
@@ -131,14 +131,14 @@ def test_stop_flag_failure_does_not_block_graph_stop(caplog: pytest.LogCaptureFi
     on_timeout = Mock()
     with (
         patch("core.app.apps.execution_coordinator.redis_client") as redis_client,
-        patch("core.app.apps.execution_coordinator.GraphEngineManager") as graph_engine_manager,
+        patch("core.app.apps.execution_coordinator.send_abort_command") as send_abort_command,
     ):
         redis_client.setex.side_effect = RuntimeError("redis write failed")
         coordinator = AppExecutionCoordinator(task_id="task", on_timeout=on_timeout, timeout_seconds=1200)
 
         coordinator.request_abort("test abort")
 
-    graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+    send_abort_command.assert_called_once_with(
         "task",
         reason="test abort",
     )

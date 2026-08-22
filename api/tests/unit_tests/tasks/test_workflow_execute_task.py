@@ -858,7 +858,7 @@ def test_resume_app_execution_queries_message_by_conversation_and_workflow_run(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
 
@@ -906,7 +906,7 @@ def test_resume_app_execution_returns_early_when_advanced_chat_missing_conversat
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
 
@@ -957,7 +957,7 @@ def test_resume_app_execution_clears_stale_cancellation_signals_before_resuming(
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(
@@ -1008,7 +1008,7 @@ def test_resume_app_execution_keeps_cancellation_signals_when_resume_is_abandone
         lambda *_args, **_kwargs: resumption_context,
     )
     monkeypatch.setattr(
-        "tasks.app_generate.workflow_execute_task.GraphRuntimeState.from_snapshot",
+        "tasks.app_generate.workflow_execute_task.RuntimeState.from_snapshot",
         lambda *_args, **_kwargs: MagicMock(),
     )
     monkeypatch.setattr(

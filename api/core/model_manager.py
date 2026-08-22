@@ -360,21 +360,22 @@ class ModelInstance:
 
     def invoke_tts(self, content_text: str, voice: str = "") -> Iterable[bytes]:
         """
-        Invoke large language tts model
+        Invoke a text-to-speech model.
 
         :param content_text: text content to be translated
         :param voice: model timbre
-        :return: text for given audio file
+        :return: audio byte stream
         """
         if not isinstance(self.model_type_instance, TTSModel):
             raise Exception("Model type instance is not TTSModel")
-        return self._round_robin_invoke(
+        chunks = self._round_robin_invoke(
             self.model_type_instance.invoke,
             model=self.model_name,
             credentials=self.credentials,
             content_text=content_text,
             voice=voice,
         )
+        return (chunk.data for chunk in chunks)
 
     def _round_robin_invoke(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """

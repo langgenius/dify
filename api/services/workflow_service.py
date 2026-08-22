@@ -55,6 +55,7 @@ from events.app_event import app_draft_workflow_was_synced, app_published_workfl
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
 from graphon.enums import (
@@ -65,7 +66,6 @@ from graphon.enums import (
 )
 from graphon.errors import WorkflowNodeRunFailedError
 from graphon.file import File
-from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
@@ -1636,7 +1636,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest, None, None]],
         ],
         start_at: float,
         node_id: str,
@@ -1676,7 +1676,7 @@ class WorkflowService:
         self,
         invoke_node_fn: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[NodeEvent | ContainerAwaitRequest, None, None]],
         ],
     ) -> tuple[Node, NodeRunResult | None, bool, str | None]:
         """

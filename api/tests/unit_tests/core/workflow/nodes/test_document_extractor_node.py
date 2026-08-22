@@ -6,7 +6,7 @@ import pytest
 from docx.oxml.text.paragraph import CT_P
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod
 from graphon.node_events import NodeRunResult
@@ -27,7 +27,7 @@ from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
-def graph_init_params() -> GraphInitParams:
+def graph_init_params() -> InitParams:
     return build_test_graph_init_params(
         workflow_id="test_workflow",
         graph_config={},
@@ -458,20 +458,15 @@ def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
     file.extension = extension
     file.mime_type = mime_type
 
-    def fake_partition(file_content, *, suffix, unstructured_api_config, load_local_partition, render_element):
-        assert file_content == b"odt content"
-        assert suffix == ".odt"
-        assert unstructured_api_config == document_extractor_node._unstructured_api_config
-        assert load_local_partition.__name__ == "_load_partition_odt"
-        assert render_element is not None
-        return f"extracted through {route_label}"
+    document = Mock()
+    document.get_formatted_text.return_value = f"extracted through {route_label}"
 
     with (
         patch(
             "graphon.nodes.document_extractor.node._download_file_content",
             return_value=b"odt content",
         ) as mock_download,
-        patch("graphon.nodes.document_extractor.node._partition_unstructured_file", side_effect=fake_partition),
+        patch("graphon.nodes.document_extractor.node.OdfDocument", return_value=document) as mock_odf_document,
     ):
         text = _extract_text_from_file(
             document_extractor_node.http_client,
@@ -481,6 +476,7 @@ def test_extract_text_from_file_routes_odt_inputs_to_graphon_odt_extractor(
 
     assert text == f"extracted through {route_label}"
     mock_download.assert_called_once_with(document_extractor_node.http_client, file)
+    assert isinstance(mock_odf_document.call_args.args[0], io.BytesIO)
 
 
 @pytest.mark.parametrize(

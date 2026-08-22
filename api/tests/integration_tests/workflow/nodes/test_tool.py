@@ -15,7 +15,7 @@ from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.protocols import ToolFileManagerProtocol
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool.tool_node import ToolNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -50,7 +50,9 @@ def init_tool_node(config: dict):
         conversation_variables=[],
     )
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
 
     # Create node factory
     node_factory = DifyNodeFactory(

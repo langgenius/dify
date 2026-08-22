@@ -3,11 +3,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
-from graphon.entities import GraphInitParams
+from graphon.entities import InitParams
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.nodes.list_operator.entities import ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment
 
 
@@ -32,16 +32,16 @@ class TestListOperatorNode:
 
     @pytest.fixture
     def mock_graph_runtime_state(self):
-        """Create mock GraphRuntimeState."""
-        mock_state = MagicMock(spec=GraphRuntimeState)
+        """Create mock RuntimeState."""
+        mock_state = MagicMock(spec=RuntimeState)
         mock_variable_pool = MagicMock()
         mock_state.variable_pool = mock_variable_pool
         return mock_state
 
     @pytest.fixture
     def graph_init_params(self):
-        """Create GraphInitParams fixture."""
-        return GraphInitParams(
+        """Create InitParams fixture."""
+        return InitParams(
             workflow_id="test",
             graph_config={},
             run_context={

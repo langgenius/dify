@@ -2154,7 +2154,7 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
     )
 
     # state_object_key stores the object key referencing the serialized runtime state
-    # of the `GraphEngine`. This object captures the complete execution context of the
+    # of the `Engine`. This object captures the complete execution context of the
     # workflow at the moment it was paused, enabling accurate resumption.
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 

@@ -19,7 +19,7 @@ from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.protocols import CredentialsProvider, ModelFactory
 from graphon.nodes.llm.runtime_protocols import PromptMessageSerializerProtocol
 from graphon.nodes.protocols import HttpClientProtocol
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
@@ -70,7 +70,9 @@ def init_llm_node(config: dict) -> LLMNode:
     )
     variable_pool.add(["abc", "output"], "sunny")
 
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter()
+    )
     prompt_message_serializer = MagicMock(spec=PromptMessageSerializerProtocol)
     prompt_message_serializer.serialize.side_effect = lambda *, model_mode, prompt_messages: [
         message.model_dump(mode="json") for message in prompt_messages
@@ -184,7 +186,7 @@ def test_execute_llm(monkeypatch: pytest.MonkeyPatch):
 
     node._model_instance = build_mock_model_instance()
 
-    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_1):
+    with patch("graphon.nodes.llm.llm_utils.fetch_prompt_messages", mock_fetch_prompt_messages_1):
         # execute node
         result = node._run()
         assert isinstance(result, Generator)
@@ -299,7 +301,7 @@ def test_execute_llm_with_jinja2(monkeypatch: pytest.MonkeyPatch):
 
     node._model_instance = build_mock_model_instance()
 
-    with patch.object(LLMNode, "fetch_prompt_messages", mock_fetch_prompt_messages_2):
+    with patch("graphon.nodes.llm.llm_utils.fetch_prompt_messages", mock_fetch_prompt_messages_2):
         # execute node
         result = node._run()
 

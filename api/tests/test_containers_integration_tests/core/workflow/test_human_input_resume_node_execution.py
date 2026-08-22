@@ -19,16 +19,16 @@ from core.workflow.nodes.human_input.callback import (
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.system_variables import build_system_variables
+from graphon.engine import Engine
+from graphon.engine.command import InMemoryChannel
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
-from graphon.graph_engine import GraphEngine
-from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import Account
 from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -67,7 +67,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     return repo
 
 
-def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> GraphRuntimeState:
+def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: str, user_id: str) -> RuntimeState:
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(
             workflow_execution_id=workflow_execution_id,
@@ -78,11 +78,11 @@ def _build_runtime_state(workflow_execution_id: str, app_id: str, workflow_id: s
         user_inputs={},
         conversation_variables=[],
     )
-    return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
 def _build_graph(
-    runtime_state: GraphRuntimeState,
+    runtime_state: RuntimeState,
     tenant_id: str,
     app_id: str,
     workflow_id: str,
@@ -291,14 +291,13 @@ class TestHumanInputResumeNodeExecutionIntegration:
             workflow_node_execution_repository=node_execution_repo,
         )
 
-    def _run_graph(self, graph: Graph, runtime_state: GraphRuntimeState, execution_id: str) -> None:
-        engine = GraphEngine(
-            workflow_id=self.workflow.id,
+    def _run_graph(self, graph: Graph, runtime_state: RuntimeState, execution_id: str) -> None:
+        engine = Engine(
             graph=graph,
             graph_runtime_state=runtime_state,
             command_channel=InMemoryChannel(),
         )
-        engine.layer(self._build_persistence_layer(execution_id))
+        engine.add_layer(self._build_persistence_layer(execution_id))
         for _ in engine.run():
             continue
 
@@ -322,7 +321,7 @@ class TestHumanInputResumeNodeExecutionIntegration:
         self._run_graph(paused_graph, runtime_state, execution_id)
 
         snapshot = runtime_state.dumps()
-        resumed_state = GraphRuntimeState.from_snapshot(snapshot)
+        resumed_state = RuntimeState.from_snapshot(snapshot)
         resume_repo = _mock_form_repository_with_submission(action_id="continue")
         resumed_graph = _build_graph(
             resumed_state,
