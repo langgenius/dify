@@ -24,11 +24,11 @@ def _build_due_filter(now_ts: int):
     credential_due: ColumnElement[bool] = and_(
         TriggerSubscription.credential_expires_at != -1,
         TriggerSubscription.credential_expires_at
-        <= now_ts + int(dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS),
+        <= now_ts + dify_config.TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS,
     )
     subscription_due: ColumnElement[bool] = and_(
         TriggerSubscription.expires_at != -1,
-        TriggerSubscription.expires_at <= now_ts + int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS),
+        TriggerSubscription.expires_at <= now_ts + dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS,
     )
     return or_(credential_due, subscription_due)
 
@@ -52,12 +52,12 @@ def trigger_provider_refresh() -> None:
     """
     now: int = current_timestamp()
 
-    batch_size: int = int(dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE)
-    lock_ttl: int = max(300, int(dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS))
+    batch_size: int = dify_config.TRIGGER_PROVIDER_REFRESH_BATCH_SIZE
+    lock_ttl: int = max(300, dify_config.TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS)
 
     with Session(db.engine, expire_on_commit=False) as session:
         filter: ColumnElement[bool] = _build_due_filter(now_ts=now)
-        total_due: int = int(session.scalar(statement=select(func.count()).where(filter)) or 0)
+        total_due: int = session.scalar(statement=select(func.count()).where(filter)) or 0
         logger.info("Trigger refresh scan start: due=%d", total_due)
         if total_due == 0:
             return

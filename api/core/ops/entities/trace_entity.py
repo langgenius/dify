@@ -48,7 +48,7 @@ class BaseTraceInfo(BaseModel):
             return workflow_run_id
 
         # Final fallback to message_id
-        return str(self.message_id) if self.message_id else None
+        return self.message_id if self.message_id else None
 
     @property
     def resolved_parent_context(self) -> tuple[str | None, str | None]:

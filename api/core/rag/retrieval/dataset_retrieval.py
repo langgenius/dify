@@ -333,7 +333,7 @@ class DatasetRetrieval:
                         if record.summary:
                             source.summary = record.summary
 
-                        grant_retriever_segment_access([str(segment.id)])
+                        grant_retriever_segment_access([segment.id])
                         retrieval_resource_list.append(source)
 
         if retrieval_resource_list:
@@ -963,7 +963,7 @@ class DatasetRetrieval:
                             if doc.metadata:
                                 segment_id = child_chunk_map.get(doc.metadata["doc_id"])
                                 if segment_id:
-                                    segment_ids_to_update.add(str(segment_id))
+                                    segment_ids_to_update.add(segment_id)
 
                 # Process non-PARENT_CHILD_INDEX text documents - batch fetch DocumentSegments
                 if normal_text_docs:
@@ -976,7 +976,7 @@ class DatasetRetrieval:
                             if doc.metadata:
                                 segment_id = segment_map.get(doc.metadata["doc_id"])
                                 if segment_id:
-                                    segment_ids_to_update.add(str(segment_id))
+                                    segment_ids_to_update.add(segment_id)
 
                 # Process IMAGE documents - batch fetch SegmentAttachmentBindings
                 all_image_docs = parent_child_image_docs + normal_image_docs
@@ -991,7 +991,7 @@ class DatasetRetrieval:
                             SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
                         )
                         bindings = session.scalars(bindings_stmt).all()
-                        segment_ids_to_update.update(str(binding.segment_id) for binding in bindings)
+                        segment_ids_to_update.update(binding.segment_id for binding in bindings)
 
                 # Batch update hit_count for all segments
                 if segment_ids_to_update:
@@ -1025,7 +1025,7 @@ class DatasetRetrieval:
         ``CreatorUserRole.END_USER`` enum. Query logging is a side effect, so an
         unsupported value should be skipped instead of aborting retrieval.
         """
-        normalized_user_from = str(user_from).strip().lower().replace("-", "_")
+        normalized_user_from = user_from.strip().lower().replace("-", "_")
         if normalized_user_from == CreatorUserRole.ACCOUNT.value:
             return CreatorUserRole.ACCOUNT
         if normalized_user_from == CreatorUserRole.END_USER.value:

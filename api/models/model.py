@@ -1993,15 +1993,15 @@ class MessageFeedback(TypeBase):
 
     def to_dict(self) -> MessageFeedbackDict:
         return {
-            "id": str(self.id),
-            "app_id": str(self.app_id),
-            "conversation_id": str(self.conversation_id),
-            "message_id": str(self.message_id),
+            "id": self.id,
+            "app_id": self.app_id,
+            "conversation_id": self.conversation_id,
+            "message_id": self.message_id,
             "rating": self.rating,
             "content": self.content,
             "from_source": self.from_source,
-            "from_end_user_id": str(self.from_end_user_id) if self.from_end_user_id else None,
-            "from_account_id": str(self.from_account_id) if self.from_account_id else None,
+            "from_end_user_id": self.from_end_user_id if self.from_end_user_id else None,
+            "from_account_id": self.from_account_id if self.from_account_id else None,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }

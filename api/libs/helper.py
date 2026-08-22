@@ -267,9 +267,9 @@ def parse_uuid_str_or_none(value: str | None) -> str | None:
     Keep non-empty values unchanged to avoid changing behavior in paths that
     currently pass placeholder IDs in tests/mocks.
     """
-    if value is None or not str(value).strip():
+    if value is None or not value.strip():
         return None
-    return str(value)
+    return value
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
@@ -405,7 +405,7 @@ def extract_remote_ip(request: Request) -> str:
 
 
 def generate_text_hash(text: str) -> str:
-    hash_text = str(text) + "None"
+    hash_text = text + "None"
     return sha256(hash_text.encode()).hexdigest()
 
 
@@ -607,7 +607,7 @@ class RateLimiter:
         self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
         attempts = self._redis_client.zcard(key)
 
-        if attempts and int(attempts) >= self.max_attempts:
+        if attempts and attempts >= self.max_attempts:
             return True
         return False
 

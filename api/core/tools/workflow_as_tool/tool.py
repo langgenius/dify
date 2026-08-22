@@ -346,7 +346,7 @@ class WorkflowTool(Tool):
                         file_var_list = [
                             build_file_from_stored_mapping(
                                 file_mapping=cast(Mapping[str, Any], f),
-                                tenant_id=str(self.runtime.tenant_id),
+                                tenant_id=self.runtime.tenant_id,
                             )
                             for f in file
                             if isinstance(f, Mapping)
@@ -403,7 +403,7 @@ class WorkflowTool(Tool):
                             item = self._update_file_mapping(item)
                             file = build_from_mapping(
                                 mapping=item,
-                                tenant_id=str(self.runtime.tenant_id),
+                                tenant_id=self.runtime.tenant_id,
                                 access_controller=_file_access_controller,
                             )
                             files.append(file)
@@ -411,7 +411,7 @@ class WorkflowTool(Tool):
                     value = self._update_file_mapping(value)
                     file = build_from_mapping(
                         mapping=value,
-                        tenant_id=str(self.runtime.tenant_id),
+                        tenant_id=self.runtime.tenant_id,
                         access_controller=_file_access_controller,
                     )
                     files.append(file)

@@ -522,7 +522,7 @@ class _AgentProcessRecorder:
         self._next_position += 1
         db.session.add(row)
         db.session.commit()
-        thought_id = str(row.id)
+        thought_id = row.id
         self._queue_manager.publish(
             QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
         )
