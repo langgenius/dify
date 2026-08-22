@@ -730,6 +730,11 @@ services:
   # for more information, please refer to
   # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
   ssrf_proxy:
+    env_file:
+      - path: ./envs/infrastructure/ssrf-proxy.env
+        required: false
+      - path: ./.env
+        required: false
     image: ubuntu/squid:latest
     restart: always
     volumes:
@@ -746,8 +751,6 @@ services:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-      SSRF_PROXY_ALLOW_PRIVATE_IPS: ${SSRF_PROXY_ALLOW_PRIVATE_IPS:-}
-      SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ${SSRF_PROXY_ALLOW_PRIVATE_DOMAINS:-}
     networks:
       - ssrf_proxy_network
       - default
