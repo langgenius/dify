@@ -4,15 +4,14 @@ import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, final
 
-from sqlalchemy import select
-
 from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
-from core.db.session_factory import session_factory
+from core.tools.workflow_as_tool.repository import WorkflowToolSource, WorkflowToolSourceRepository
 from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory, get_default_root_node_id
+from core.workflow.node_runtime import resolve_dify_run_context
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import (
     SystemVariableKey,
@@ -47,8 +46,6 @@ from graphon.runtime.container_state import (
 )
 from graphon.runtime.execution import ROOT_FRAME_ID
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from models.model import App
-from models.workflow import Workflow
 
 from .workflow_tool_container_types import WorkflowToolContainerPayload
 
@@ -106,9 +103,12 @@ class WorkflowToolContainerHandler:
     def __init__(
         self,
         frame_registry: FrameRegistry,
+        *,
+        source_repository: WorkflowToolSourceRepository,
         hidden_event_listener: Callable[[NodeEvent], None] | None = None,
     ) -> None:
         self._frame_registry = frame_registry
+        self._source_repository = source_repository
         self._hidden_event_listener = hidden_event_listener
 
     def restore_frame(self, frame_state: ContainerFrameState) -> None:
@@ -193,7 +193,7 @@ class WorkflowToolContainerHandler:
         # ponytail: Graphon custom frames have no metadata slot; scope the pool key to this invocation.
         frame.state.variable_pool.add(
             self._failure_selector(frame.frame_id),
-            json.dumps([event.error, event.node_run_result.error_type]),
+            [event.error, event.node_run_result.error_type],
         )
 
     def complete_frame_if_ready(self, frame: ExecutionFrame) -> None:
@@ -208,10 +208,7 @@ class WorkflowToolContainerHandler:
         if failure_variable is None:
             result = self._build_success_result(frame=frame, run_state=run_state)
         else:
-            failure_payload = failure_variable.to_object()
-            if not isinstance(failure_payload, str):
-                raise TypeError("Workflow Tool failure state must be a string")
-            failure = json.loads(failure_payload)
+            failure = failure_variable.to_object()
             if (
                 not isinstance(failure, list)
                 or len(failure) != 2
@@ -250,16 +247,22 @@ class WorkflowToolContainerHandler:
 
         parent_frame = self._frame_registry[run_state.frame_id]
         parent_node = parent_frame.graph.nodes[run_state.node_id]
-        run_context = self._resolve_run_context(parent_node.run_context)
-        source_app, source_workflow = self._load_source(payload=payload, tenant_id=run_context.tenant_id)
-        graph_config = source_workflow.graph_dict
+        run_context = resolve_dify_run_context(parent_node.run_context)
+        source = self._source_repository.get_source(
+            tenant_id=run_context.tenant_id,
+            app_id=payload.source_app_id,
+            workflow_id=payload.source_workflow_id,
+            version=payload.source_workflow_version,
+        )
+        if source is None:
+            raise ValueError("Workflow Tool source was not found")
+        graph_config = source.graph_config
         root_node_id = get_default_root_node_id(graph_config)
 
         if variable_pool is None:
             variable_pool = self._build_variable_pool(
                 parent_frame=parent_frame,
-                source_app=source_app,
-                source_workflow=source_workflow,
+                source=source,
                 root_node_id=root_node_id,
                 payload=payload,
                 run_context=run_context,
@@ -270,9 +273,9 @@ class WorkflowToolContainerHandler:
             runtime_data=runtime_data,
         )
         source_run_context = dict(parent_node.run_context)
-        source_run_context[DIFY_RUN_CONTEXT_KEY] = run_context.model_copy(update={"app_id": str(source_app.id)})
+        source_run_context[DIFY_RUN_CONTEXT_KEY] = run_context.model_copy(update={"app_id": source.app_id})
         graph_init_context = DifyGraphInitContext(
-            workflow_id=str(source_workflow.id),
+            workflow_id=source.workflow_id,
             graph_config=graph_config,
             run_context=source_run_context,
             call_depth=payload.call_depth,
@@ -329,8 +332,7 @@ class WorkflowToolContainerHandler:
         self,
         *,
         parent_frame: ExecutionFrame,
-        source_app: App,
-        source_workflow: Workflow,
+        source: WorkflowToolSource,
         root_node_id: str,
         payload: WorkflowToolContainerPayload,
         run_context: DifyRunContext,
@@ -338,23 +340,23 @@ class WorkflowToolContainerHandler:
         variable_pool = VariablePool()
         for name, value in get_all_system_variables(parent_frame.state.variable_pool).items():
             variable_pool.add(system_variable_selector(name), value)
-        add_variables_to_pool(variable_pool, source_workflow.environment_variables)
+        add_variables_to_pool(variable_pool, source.environment_variables)
 
         system_files = file_factory.build_from_mappings(
             mappings=payload.system_files,
             tenant_id=run_context.tenant_id,
-            config=FileUploadConfigManager.convert(source_workflow.features_dict, is_vision=False),
+            config=FileUploadConfigManager.convert(source.features_dict, is_vision=False),
             strict_type_validation=run_context.invoke_from == InvokeFrom.SERVICE_API,
             access_controller=_file_access_controller,
         )
-        variable_pool.add(system_variable_selector(SystemVariableKey.APP_ID), str(source_app.id))
-        variable_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_ID), str(source_workflow.id))
+        variable_pool.add(system_variable_selector(SystemVariableKey.APP_ID), source.app_id)
+        variable_pool.add(system_variable_selector(SystemVariableKey.WORKFLOW_ID), source.workflow_id)
         variable_pool.add(system_variable_selector(SystemVariableKey.FILES), list(system_files))
 
         root_config = next(
             (
                 node
-                for node in source_workflow.graph_dict.get("nodes", [])
+                for node in source.graph_config.get("nodes", [])
                 if isinstance(node, Mapping) and node.get("id") == root_node_id
             ),
             None,
@@ -374,41 +376,11 @@ class WorkflowToolContainerHandler:
             node_id=root_node_id,
             inputs=inputs,
             aliases=get_compatible_start_aliases(
-                workflow_kind=source_workflow.kind_or_standard,
+                workflow_kind=source.workflow_kind,
                 root_node_id=root_node_id,
             ),
         )
         return variable_pool
-
-    @staticmethod
-    def _resolve_run_context(run_context: Mapping[str, Any]) -> DifyRunContext:
-        value = run_context.get(DIFY_RUN_CONTEXT_KEY)
-        if isinstance(value, DifyRunContext):
-            return value
-        return DifyRunContext.model_validate(value)
-
-    @staticmethod
-    def _load_source(*, payload: WorkflowToolContainerPayload, tenant_id: str) -> tuple[App, Workflow]:
-        stmt = (
-            select(App, Workflow)
-            .join(Workflow, Workflow.app_id == App.id)
-            .where(
-                App.id == payload.source_app_id,
-                App.tenant_id == tenant_id,
-                Workflow.id == payload.source_workflow_id,
-                Workflow.app_id == payload.source_app_id,
-                Workflow.version == payload.source_workflow_version,
-                Workflow.tenant_id == tenant_id,
-            )
-        )
-        with session_factory.create_session() as session:
-            row = session.execute(stmt).one_or_none()
-            if row is None:
-                raise ValueError("Workflow Tool source was not found")
-            source_app, source_workflow = row
-            session.expunge(source_app)
-            session.expunge(source_workflow)
-        return source_app, source_workflow
 
     @staticmethod
     def _build_success_result(
