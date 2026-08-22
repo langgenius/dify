@@ -2,10 +2,13 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import type { HumanInputFormValue } from '@/types/workflow'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -71,14 +74,20 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-            {field.option_source.value.map((option) => (
-              <SelectItem key={option} value={option}>
-                <SelectItemText>{option}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <SelectPortal>
+            <SelectPositioner>
+              <SelectPopup>
+                <SelectList className="max-h-[140px] overflow-y-auto">
+                  {field.option_source.value.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
         </Select>
       </div>
     )

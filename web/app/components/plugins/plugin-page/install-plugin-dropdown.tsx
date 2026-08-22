@@ -185,7 +185,7 @@ const InstallPluginDropdown = ({
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName={cn('w-50 pb-2', popupClassName)}
+          className={cn('w-50 pb-2', popupClassName)}
         >
           <span className="flex items-start self-stretch px-3 pt-1 pb-0.5 system-xs-medium-uppercase text-text-tertiary">
             {t(($) => $.installFrom, { ns: 'plugin' })}

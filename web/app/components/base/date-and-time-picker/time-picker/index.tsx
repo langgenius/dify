@@ -29,7 +29,6 @@ const TimePicker = ({
   notClearable = false,
   triggerFullWidth = false,
   showTimezone = false,
-  placement = 'bottom-start',
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -267,7 +266,7 @@ const TimePicker = ({
         }}
       />
       <PopoverContent
-        placement={placement}
+        placement="bottom-start"
         sideOffset={0}
         className="border-none bg-transparent shadow-none"
       >
