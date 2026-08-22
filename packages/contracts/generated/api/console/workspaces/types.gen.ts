@@ -560,6 +560,7 @@ export type AppAccessMatrix = {
 
 export type ResourceUserAccessPoliciesResponse = {
   data?: Array<ResourceUserAccessPolicies>
+  pagination?: Pagination | null
   scope: RbacResourceWhitelistScope
 }
 
@@ -4209,6 +4210,9 @@ export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesData = {
   }
   query?: {
     language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
   }
   url: '/workspaces/current/rbac/apps/{app_id}/user-access-policies'
 }
@@ -4350,6 +4354,9 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesData = 
   }
   query?: {
     language?: 'en' | 'ja' | 'zh'
+    limit?: number
+    page?: number
+    reverse?: boolean
   }
   url: '/workspaces/current/rbac/datasets/{dataset_id}/user-access-policies'
 }
