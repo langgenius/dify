@@ -78,15 +78,6 @@ export type ApiKeyItem = {
   type: string
 }
 
-export type SegmentBatchImportStatusResponse = {
-  job_id: string
-  job_status: string
-}
-
-export type BatchImportPayload = {
-  upload_file_id: string
-}
-
 export type ExternalDatasetCreatePayload = {
   description?: string | null
   external_knowledge_api_id: string
@@ -293,6 +284,11 @@ export type DocumentStatusListResponse = {
   data: Array<DocumentStatusResponse>
 }
 
+export type SegmentBatchImportStatusResponse = {
+  job_id: string
+  job_status: string
+}
+
 export type DocumentWithSegmentsListResponse = {
   data: Array<DocumentWithSegmentsResponse>
   has_more: boolean
@@ -432,6 +428,10 @@ export type ConsoleSegmentListResponse = {
   page: number
   total: number
   total_pages: number
+}
+
+export type BatchImportPayload = {
+  upload_file_id: string
 }
 
 export type SegmentUpdatePayload = {
@@ -1180,38 +1180,6 @@ export type DeleteDatasetsApiKeysByApiKeyIdResponses = {
 export type DeleteDatasetsApiKeysByApiKeyIdResponse =
   DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
 
-export type GetDatasetsBatchImportStatusByJobIdData = {
-  body?: never
-  path: {
-    job_id: string
-  }
-  query?: never
-  url: '/datasets/batch_import_status/{job_id}'
-}
-
-export type GetDatasetsBatchImportStatusByJobIdResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type GetDatasetsBatchImportStatusByJobIdResponse =
-  GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
-
-export type PostDatasetsBatchImportStatusByJobIdData = {
-  body: BatchImportPayload
-  path: {
-    job_id: string
-  }
-  query?: never
-  url: '/datasets/batch_import_status/{job_id}'
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type PostDatasetsBatchImportStatusByJobIdResponse =
-  PostDatasetsBatchImportStatusByJobIdResponses[keyof PostDatasetsBatchImportStatusByJobIdResponses]
-
 export type PostDatasetsExternalData = {
   body: ExternalDatasetCreatePayload
   path?: never
@@ -1572,6 +1540,23 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse =
   GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
+
+export type GetDatasetsByDatasetIdBatchImportStatusByJobIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/batch_import_status/{job_id}'
+}
+
+export type GetDatasetsByDatasetIdBatchImportStatusByJobIdResponses = {
+  200: SegmentBatchImportStatusResponse
+}
+
+export type GetDatasetsByDatasetIdBatchImportStatusByJobIdResponse =
+  GetDatasetsByDatasetIdBatchImportStatusByJobIdResponses[keyof GetDatasetsByDatasetIdBatchImportStatusByJobIdResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsData = {
   body?: never
@@ -2014,23 +1999,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
   GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses]
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
-  body?: never
-  path: {
-    dataset_id: string
-    document_id: string
-  }
-  query?: never
-  url: '/datasets/{dataset_id}/documents/{document_id}/segments/batch_import'
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
-  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData = {
   body: BatchImportPayload
