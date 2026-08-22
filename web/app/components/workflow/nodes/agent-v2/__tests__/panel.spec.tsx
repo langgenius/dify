@@ -447,11 +447,8 @@ describe('agent/panel', () => {
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage')).not.toBeInTheDocument()
-    expect(screen.getByText('files')).toBeInTheDocument()
-    expect(screen.getByText('array[file]')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json')).toBeInTheDocument()
-    expect(screen.getByText('object')).toBeInTheDocument()
+    expect(screen.queryByText('files')).not.toBeInTheDocument()
+    expect(screen.queryByText('json')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     ).toBeInTheDocument()
@@ -1756,58 +1753,65 @@ describe('agent/panel', () => {
     )
 
     expect(screen.getByText('summary')).toBeInTheDocument()
-    expect(screen.getByText('string')).toBeInTheDocument()
     expect(screen.getByText('Short summary')).toBeInTheDocument()
     expect(screen.getByText('attachments')).toBeInTheDocument()
     expect(screen.getByText('array[file]')).toBeInTheDocument()
     expect(screen.getByText('Generated files')).toBeInTheDocument()
-    expect(screen.queryByText('workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
   })
 
-  it('adds a declared output to workflow draft node data', () => {
-    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+  it.each(['summary', 'files', 'json'])(
+    'adds custom output %s to workflow draft node data',
+    (outputName) => {
+      render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
-    )
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
-      {
-        target: {
-          value: 'summary',
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+      )
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+        {
+          target: {
+            value: outputName,
+          },
         },
-      },
-    )
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }),
-      {
-        target: {
-          value: 'Short summary',
+      )
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }),
+        {
+          target: {
+            value: 'Short summary',
+          },
         },
-      },
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
+      )
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }),
+      )
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
-      {
-        id: 'agent-node',
-        data: expect.objectContaining({
-          agent_declared_outputs: expect.arrayContaining([
-            expect.objectContaining({
-              name: 'summary',
-              type: 'string',
-              required: false,
-              description: 'Short summary',
-            }),
-          ]),
+      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+        {
+          id: 'agent-node',
+          data: expect.objectContaining({
+            agent_declared_outputs: expect.arrayContaining([
+              expect.objectContaining({
+                name: outputName,
+                type: 'string',
+                required: false,
+                description: 'Short summary',
+              }),
+            ]),
+          }),
+        },
+        expect.objectContaining({
+          sync: true,
+          notRefreshWhenSyncError: true,
         }),
-      },
-      expect.objectContaining({
-        sync: true,
-        notRefreshWhenSyncError: true,
-      }),
-    )
-  })
+      )
+      const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0]
+        .data as AgentV2NodeType
+      expect(updatedData.agent_declared_outputs?.map((output) => output.name)).toEqual([outputName])
+    },
+  )
 
   it('submits the output editor with a scoped Mod+Enter shortcut', () => {
     render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)

@@ -216,7 +216,7 @@ function ToolPicker({
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">
           {t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}

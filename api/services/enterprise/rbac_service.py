@@ -251,6 +251,7 @@ class ResourceUserAccessPolicies(_RBACModel):
 class ResourceUserAccessPoliciesResponse(_RBACModel):
     scope: RBACResourceWhitelistScope
     data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
+    pagination: Pagination | None = None
 
 
 class ReplaceUserAccessPolicies(_RBACModel):
@@ -1118,14 +1119,19 @@ class RBACService:
 
         @staticmethod
         def user_access_policies(
-            tenant_id: str, account_id: str | None, app_id: str
+            tenant_id: str,
+            account_id: str | None,
+            app_id: str,
+            *,
+            options: ListOption | None = None,
         ) -> ResourceUserAccessPoliciesResponse:
+            params = (options or ListOption()).to_params({"app_id": app_id})
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/apps/user-access-policies",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"app_id": app_id},
+                params=params,
             )
             return ResourceUserAccessPoliciesResponse.model_validate(data or {})
 
@@ -1288,14 +1294,19 @@ class RBACService:
 
         @staticmethod
         def user_access_policies(
-            tenant_id: str, account_id: str | None, dataset_id: str
+            tenant_id: str,
+            account_id: str | None,
+            dataset_id: str,
+            *,
+            options: ListOption | None = None,
         ) -> ResourceUserAccessPoliciesResponse:
+            params = (options or ListOption()).to_params({"dataset_id": dataset_id})
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/datasets/user-access-policies",
                 tenant_id=tenant_id,
                 account_id=account_id,
-                params={"dataset_id": dataset_id},
+                params=params,
             )
             return ResourceUserAccessPoliciesResponse.model_validate(data or {})
 

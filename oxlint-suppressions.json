@@ -2460,11 +2460,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/external-api/external-api-modal/Form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -3031,11 +3026,6 @@
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

@@ -11311,6 +11311,9 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | app_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -11439,6 +11442,9 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
+| limit | query |  | No | integer |
+| page | query |  | No | integer |
+| reverse | query |  | No | boolean |
 | dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -21342,6 +21348,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
 | scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
 
 #### ResourceWhitelist
@@ -24929,6 +24936,15 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
+
+#### _ResourceUserAccessPoliciesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string | Localized policy label language | No |
+| limit | integer |  | No |
+| page | integer |  | No |
+| reverse | boolean |  | No |
 
 #### core__tools__entities__common_entities__I18nObject
 

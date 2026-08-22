@@ -242,7 +242,7 @@ export function ToolItem({
             >
               <span className="i-ri-error-warning-fill size-4 text-text-destructive" />
             </PopoverTrigger>
-            <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+            <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
               {errorTip}
             </PopoverContent>
           </Popover>

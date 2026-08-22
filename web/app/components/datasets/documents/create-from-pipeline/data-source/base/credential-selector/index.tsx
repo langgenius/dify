@@ -52,7 +52,7 @@ const CredentialSelector = ({
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <List
           currentCredentialId={currentCredentialId}

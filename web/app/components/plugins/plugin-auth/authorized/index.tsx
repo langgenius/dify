@@ -199,9 +199,6 @@ const Authorized = ({
     typeof offset === 'number'
       ? 0
       : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
-  const popupProps = triggerPopupSameWidth
-    ? { style: { width: 'var(--anchor-width, auto)' } }
-    : undefined
 
   return (
     <>
@@ -236,8 +233,10 @@ const Authorized = ({
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupProps={popupProps}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          className={cn(
+            'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
+            triggerPopupSameWidth && 'w-(--anchor-width)',
+          )}
         >
           <div
             className={cn(

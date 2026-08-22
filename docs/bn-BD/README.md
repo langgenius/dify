@@ -190,6 +190,10 @@ Dify-এর PostgreSQL ডাটাবেসকে ডেটা সোর্স 
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) ব্যবহার করে Dify কে AKS-এ এক ক্লিকে ডিপ্লয় করুন
 
+#### Sealos ব্যবহার করে ডিপ্লয়
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/) ব্যবহার করে Dify-কে এক ক্লিকে ডিপ্লয় করুন
+
 ## Contributing
 
 যারা কোড অবদান রাখতে চান, তাদের জন্য আমাদের [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) দেখুন।
