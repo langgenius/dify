@@ -90,7 +90,7 @@ def test_enrich_graph_pause_reasons_raises_when_hitl_form_record_is_missing():
         )
 
 
-def test_enrich_graph_pause_reasons_keeps_options_resolved_in_child_pool():
+def test_enrich_graph_pause_reasons_keeps_constant_options_from_child_form():
     form_repository = Mock(spec=HumanInputFormSubmissionRepository)
     form_repository.get_by_form_id.return_value = SimpleNamespace(
         form_id="form-123",
@@ -101,8 +101,7 @@ def test_enrich_graph_pause_reasons_keeps_options_resolved_in_child_pool():
                 SelectInputConfig(
                     output_variable_name="decision",
                     option_source=StringListSource(
-                        type=ValueSourceType.VARIABLE,
-                        selector=["start", "options"],
+                        type=ValueSourceType.CONSTANT,
                         value=[],
                     ),
                 )
@@ -110,7 +109,6 @@ def test_enrich_graph_pause_reasons_keeps_options_resolved_in_child_pool():
             user_actions=[],
             node_title="Choose",
             default_values={},
-            select_options_resolved=True,
         ),
     )
     parent_pool = VariablePool()
@@ -123,6 +121,5 @@ def test_enrich_graph_pause_reasons_keeps_options_resolved_in_child_pool():
     )
 
     assert isinstance(reason.inputs[0], SelectInputConfig)
+    assert reason.inputs[0].option_source.type == ValueSourceType.CONSTANT
     assert reason.inputs[0].option_source.value == []
-    assert reason.select_options_resolved is True
-    assert "select_options_resolved" not in reason.model_dump()

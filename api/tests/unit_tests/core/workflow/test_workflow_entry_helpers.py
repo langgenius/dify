@@ -59,6 +59,7 @@ def _build_minimal_workflow_entry(
         call_depth=0,
         variable_pool=sentinel.variable_pool,
         graph_runtime_state=graph_runtime_state,
+        workflow_tool_source_repository=sentinel.workflow_tool_source_repository,
         response_stream_filter=response_stream_filter,
     )
 
@@ -80,6 +81,7 @@ class TestWorkflowEntryInit:
                 call_depth=call_depth,
                 variable_pool=sentinel.variable_pool,
                 graph_runtime_state=sentinel.graph_runtime_state,
+                workflow_tool_source_repository=sentinel.workflow_tool_source_repository,
             )
 
     def test_applies_execution_and_observability_layers(self):
@@ -113,6 +115,7 @@ class TestWorkflowEntryInit:
                 call_depth=0,
                 variable_pool=sentinel.variable_pool,
                 graph_runtime_state=graph_runtime_state,
+                workflow_tool_source_repository=sentinel.workflow_tool_source_repository,
                 command_channel=None,
             )
 

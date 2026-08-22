@@ -21,6 +21,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
+from core.tools.workflow_as_tool.repository import WorkflowToolSourceRepository
 from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
@@ -58,6 +59,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        workflow_tool_source_repository: WorkflowToolSourceRepository,
         graph_engine_layers: Sequence[Layer] = (),
         graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
@@ -74,6 +76,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_tool_source_repository = workflow_tool_source_repository
         self._resume_graph_runtime_state = graph_runtime_state
         self._response_stream_filter = response_stream_filter
 
@@ -196,6 +199,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
+            workflow_tool_source_repository=self._workflow_tool_source_repository,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,
         )

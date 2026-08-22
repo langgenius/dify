@@ -137,7 +137,6 @@ def _build_human_input_required_reason(
     inputs = []
     actions = []
     resolved_default_values: dict[str, Any] = {}
-    select_options_resolved = False
     node_title = "Human Input"
     form_id = reason_model.form_id
     node_id = reason_model.node_id
@@ -157,7 +156,6 @@ def _build_human_input_required_reason(
             inputs = list(definition.inputs)
             actions = list(definition.user_actions)
             resolved_default_values = dict(definition.default_values)
-            select_options_resolved = definition.select_options_resolved
             node_title = definition.node_title or node_title
 
     reason = HumanInputRequired(
@@ -167,7 +165,6 @@ def _build_human_input_required_reason(
         actions=actions,
         node_id=node_id,
         node_title=node_title,
-        select_options_resolved=select_options_resolved,
         resolved_default_values=resolved_default_values,
     )
     return reason

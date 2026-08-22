@@ -92,8 +92,9 @@ def test_dify_hitl_callback_persists_variable_select_options() -> None:
     params: FormCreateParams = repository.create_form.call_args.args[0]
     select_input = params.form_config.inputs[0]
     assert isinstance(select_input, SelectInputConfig)
+    assert select_input.option_source.type == ValueSourceType.CONSTANT
+    assert select_input.option_source.selector == ()
     assert select_input.option_source.value == ["approve", "reject"]
-    assert params.select_options_resolved is True
 
 
 def test_dify_hitl_callback_scopes_form_to_node_execution() -> None:

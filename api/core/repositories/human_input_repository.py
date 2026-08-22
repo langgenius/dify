@@ -62,7 +62,6 @@ class FormCreateParams:
     delivery_methods: Sequence[DeliveryChannelConfig]
     display_in_ui: bool
     resolved_default_values: Mapping[str, Any]
-    select_options_resolved: bool = False
     form_kind: HumanInputFormKind = HumanInputFormKind.RUNTIME
     # ENG-635: the conversation this form belongs to. Set together with
     # workflow_execution_id for chatflow runs; set alone (workflow_execution_id None)
@@ -474,10 +473,7 @@ class HumanInputFormRepositoryImpl:
                 default_values=dict(params.resolved_default_values),
                 display_in_ui=params.display_in_ui,
                 node_title=form_config.title,
-                select_options_resolved=params.select_options_resolved,
             )
-            form_definition_payload = form_definition.model_dump(mode="json")
-            form_definition_payload["select_options_resolved"] = form_definition.select_options_resolved
             form_model = HumanInputForm(
                 id=form_id,
                 tenant_id=self._tenant_id,
@@ -486,7 +482,7 @@ class HumanInputFormRepositoryImpl:
                 conversation_id=params.conversation_id,
                 form_kind=params.form_kind,
                 node_id=params.node_id,
-                form_definition=json.dumps(form_definition_payload),
+                form_definition=form_definition.model_dump_json(),
                 rendered_content=params.rendered_content,
                 expiration_time=node_expiration,
                 created_at=start_time,
