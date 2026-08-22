@@ -2150,6 +2150,7 @@ export const zResourceUserAccessPolicies = z.object({
  */
 export const zResourceUserAccessPoliciesResponse = z.object({
   data: z.array(zResourceUserAccessPolicies).optional(),
+  pagination: zPagination.nullish(),
   scope: zRbacResourceWhitelistScope,
 })
 
@@ -4501,6 +4502,9 @@ export const zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesPath = z.obje
 
 export const zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesQuery = z.object({
   language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
 })
 
 /**
@@ -4602,6 +4606,9 @@ export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesPath 
 
 export const zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesQuery = z.object({
   language: z.enum(['en', 'ja', 'zh']).optional(),
+  limit: z.int().gte(1).lte(99999).optional(),
+  page: z.int().gte(1).optional(),
+  reverse: z.boolean().optional(),
 })
 
 /**
