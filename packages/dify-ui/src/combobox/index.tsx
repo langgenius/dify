@@ -568,5 +568,4 @@ export type {
   ComboboxStatusProps,
   ComboboxTriggerProps,
   ComboboxValueProps,
-  Placement,
 }

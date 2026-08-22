@@ -1,5 +1,5 @@
 import type { OffsetOptions } from '@floating-ui/react'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
@@ -27,7 +27,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
@@ -36,7 +36,6 @@ type AuthorizedProps = {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: number | OffsetOptions
-  placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean

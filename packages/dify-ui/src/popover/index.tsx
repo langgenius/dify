@@ -69,9 +69,8 @@ function PopoverPopup({ className, ...props }: PopoverPopupProps) {
 }
 
 type PopoverContentProps = Omit<PopoverPopupProps, 'children' | 'className'> &
-  Pick<PopoverPositionerProps, 'sideOffset' | 'alignOffset'> & {
+  Pick<PopoverPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
     children: React.ReactNode
-    placement?: Placement
     className?: string
   }
 
@@ -114,7 +113,6 @@ export {
   PopoverTrigger,
 }
 export type {
-  Placement,
   PopoverArrowProps,
   PopoverCloseProps,
   PopoverContentProps,

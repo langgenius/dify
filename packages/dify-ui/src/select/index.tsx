@@ -183,9 +183,8 @@ function SelectList({ className, ...props }: SelectListProps) {
 }
 
 type SelectContentProps = Omit<SelectPopupProps, 'children' | 'className'> &
-  Pick<SelectPositionerProps, 'sideOffset' | 'alignOffset'> & {
+  Pick<SelectPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
     children: React.ReactNode
-    placement?: Placement
     className?: string
   }
 

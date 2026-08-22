@@ -71,9 +71,8 @@ function PreviewCardPopup({ className, ...props }: PreviewCardPopupProps) {
 }
 
 type PreviewCardContentProps = Omit<PreviewCardPopupProps, 'children' | 'className'> &
-  Pick<PreviewCardPositionerProps, 'sideOffset' | 'alignOffset'> & {
+  Pick<PreviewCardPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
     children: React.ReactNode
-    placement?: Placement
     className?: string
   }
 

@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { DropdownMenuPositionerProps } from '@langgenius/dify-ui/dropdown-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -17,7 +17,7 @@ import { usePluginTaskStatus } from './hooks'
 type PluginTasksProps = {
   animatedSlot?: boolean
   dropdownAnchor?: () => Element | null
-  dropdownPlacement?: Placement
+  dropdownPlacement?: DropdownMenuPositionerProps['placement']
 }
 
 const PluginTasks = ({

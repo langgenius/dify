@@ -150,9 +150,8 @@ function DropdownMenuPopup({ className, ...props }: DropdownMenuPopupProps) {
 }
 
 type DropdownMenuContentProps = Omit<DropdownMenuPopupProps, 'children' | 'className'> &
-  Pick<DropdownMenuPositionerProps, 'sideOffset' | 'alignOffset'> & {
+  Pick<DropdownMenuPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
     children: React.ReactNode
-    placement?: Placement
     className?: string
   }
 
@@ -316,5 +315,4 @@ export type {
   DropdownMenuSubProps,
   DropdownMenuSubTriggerProps,
   DropdownMenuTriggerProps,
-  Placement,
 }
