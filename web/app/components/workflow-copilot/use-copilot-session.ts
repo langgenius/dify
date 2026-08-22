@@ -1,6 +1,6 @@
 'use client'
 
-import type { ChecklistErrorPayload, CopilotActionKind, ProgressEntry, SessionView } from './types'
+import type { ChecklistErrorPayload, ProgressEntry, SessionView } from './types'
 import Cookies from 'js-cookie'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
@@ -28,7 +28,7 @@ export type UseCopilotSessionResult = {
   /** Re-fetches the current session (GET). No-op if no session has been created yet. */
   refresh: () => Promise<boolean>
   /** Posts an action (`approve_repair`, `run_verify`, ...) against the current session. */
-  runAction: (kind: CopilotActionKind, payload?: Record<string, unknown>) => Promise<boolean>
+  runAction: (actionId: string, payload?: Record<string, unknown>) => Promise<boolean>
   /** Posts a free-text message against the current session. */
   sendMessage: (text: string) => Promise<boolean>
 }
@@ -73,7 +73,7 @@ function useCopilotApi(baseUrl: string, workspaceId: string) {
 
     const action = (
       id: string,
-      kind: string,
+      actionId: string,
       baseVersion: number,
       payload: Record<string, unknown> = {},
     ) =>
@@ -81,7 +81,10 @@ function useCopilotApi(baseUrl: string, workspaceId: string) {
         method: 'POST',
         credentials: 'include',
         headers: headers(true, true),
-        body: JSON.stringify({ kind, payload, base_version: baseVersion }),
+        // Data-driven action id (Slice 0 Task 5a/7): the backend accepts
+        // `action_id` (and, for back-compat, legacy `kind`); the FE now only
+        // ever sends the id it got from `view.actions[].id`.
+        body: JSON.stringify({ action_id: actionId, payload, base_version: baseVersion }),
       })
 
     const message = (id: string, text: string, baseVersion: number) =>
@@ -134,9 +137,11 @@ export function useCopilotSession({
 
   // Keep `view` in sync with the live session via the SSE stream. The `snapshot`
   // frame carries a full SessionView; `state` frames carry an incremental
-  // { version, state, canvas_read_only }. Without this the held `view.version`
-  // stays frozen at the create-time value, so the next action's base_version CAS
-  // 409s the moment the engine has auto-advanced (diagnose→propose→apply→await_verify).
+  // { version, phase, run_status, state, canvas_read_only, actions }. Without
+  // this the held `view.version` stays frozen at the create-time value, so
+  // the next action's base_version CAS 409s the moment the engine has
+  // auto-advanced (diagnose→propose→apply→await_verify), and the rendered
+  // action buttons (data-driven off `view.actions`) go stale.
   const reconcileView = useCallback((data: unknown) => {
     if (!data || typeof data !== 'object') return
     const d = data as Partial<SessionView>
@@ -150,6 +155,8 @@ export function useCopilotSession({
       if (typeof d.state === 'string') next.state = d.state
       if (typeof d.canvas_read_only === 'boolean') next.canvas_read_only = d.canvas_read_only
       if (typeof d.run_status === 'string') next.run_status = d.run_status
+      if (typeof d.phase === 'string') next.phase = d.phase
+      if (Array.isArray(d.actions)) next.actions = d.actions
       return next
     })
   }, [])
@@ -245,10 +252,10 @@ export function useCopilotSession({
   }, [api, applyResponse, view])
 
   const runAction = useCallback(
-    async (kind: CopilotActionKind, payload: Record<string, unknown> = {}) => {
+    async (actionId: string, payload: Record<string, unknown> = {}) => {
       if (!view) return false
       try {
-        const res = await api.action(view.session_id, kind, view.version, payload)
+        const res = await api.action(view.session_id, actionId, view.version, payload)
         await applyResponse(res)
         return true
       } catch (err) {
