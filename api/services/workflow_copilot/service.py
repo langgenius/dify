@@ -9,10 +9,12 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 from uuid import uuid4
 
+from core.workflow_copilot.contract import Action as UiAction
+from core.workflow_copilot.contract import CheckpointRef, Phase, RunStatus
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Action,
@@ -42,6 +44,10 @@ class SessionView:
     run_status: str
     interrupted: bool
     conversation: list[ConversationItem]
+    entry_mode: EntryMode = EntryMode.FIX
+    phase: Phase = Phase.UNDERSTAND
+    actions: list[UiAction] = field(default_factory=list)
+    checkpoint: CheckpointRef | None = None
 
 
 class SessionLock(Protocol):
@@ -55,17 +61,70 @@ class SessionLock(Protocol):
     def exists(self, session_id: str) -> bool: ...
 
 
-def _run_status(state: PcState) -> str:
-    """Port of Go ``runStatusFor``."""
+_PHASE_FOR: dict[PcState, Phase] = {
+    # Fix.
+    PcState.FIX_DIAGNOSE: Phase.UNDERSTAND,
+    PcState.FIX_PROPOSE: Phase.PLAN,
+    PcState.FIX_AWAIT_APPROVAL: Phase.PLAN,
+    PcState.FIX_APPLY: Phase.MODIFY,
+    PcState.FIX_AWAIT_VERIFY: Phase.TEST,
+    PcState.FIX_AWAIT_TESTDATA: Phase.TEST,
+    PcState.FIX_VERIFY: Phase.TEST,
+    PcState.FIX_AWAIT_DECISION: Phase.REVIEW,
+    PcState.FIX_PUBLISH: Phase.PUBLISH,
+    # Checklist.
+    PcState.CHECKLIST_DIAGNOSE: Phase.UNDERSTAND,
+    PcState.CHECKLIST_PROPOSE: Phase.PLAN,
+    PcState.CHECKLIST_AWAIT_RECHECK: Phase.TEST,
+    # Terminal.
+    PcState.SUCCESS: Phase.COMPLETE,
+    PcState.FAILED: Phase.COMPLETE,
+    # Build.
+    PcState.BUILD_CAPABILITY_CHECK: Phase.UNDERSTAND,
+    PcState.BUILD_GOAL_ANALYSIS: Phase.CLARIFY,
+    PcState.BUILD_INITIAL_PLAN: Phase.PLAN,
+    PcState.BUILD_RESOURCE_RECOMMENDATION: Phase.RESOURCES,
+    PcState.BUILD_PLAN_APPROVAL: Phase.PLAN,
+    PcState.BUILD_EXECUTION: Phase.MODIFY,
+    PcState.BUILD_TEST_AND_REPAIR: Phase.TEST,
+    PcState.BUILD_REVIEW: Phase.REVIEW,
+    PcState.BUILD_PUBLISH: Phase.PUBLISH,
+    PcState.BUILD_GOVERNANCE_FEEDBACK: Phase.COMPLETE,
+    PcState.BUILD_COMPLETE: Phase.COMPLETE,
+    PcState.BUILD_REVERTED: Phase.PLAN,
+    # Edit.
+    PcState.EDIT_CAPABILITY_CHECK: Phase.UNDERSTAND,
+    PcState.EDIT_IMPACT_ANALYSIS: Phase.CLARIFY,
+    PcState.EDIT_PLAN_APPROVAL: Phase.PLAN,
+    PcState.EDIT_APPLY_CHANGES: Phase.MODIFY,
+    PcState.EDIT_TEST_AFFECTED_PATHS: Phase.TEST,
+    PcState.EDIT_REVIEW: Phase.REVIEW,
+    PcState.EDIT_PUBLISH: Phase.PUBLISH,
+    PcState.EDIT_REVERTED: Phase.PLAN,
+}
+
+
+def _phase_for(state: PcState) -> Phase:
+    """Map a ``PcState`` to the coarse UX ``Phase`` shown in the panel
+    header (spec §2, §7). Defensive fallback for any unmapped state."""
+    return _PHASE_FOR.get(state, Phase.UNDERSTAND)
+
+
+def _run_status(state: PcState) -> RunStatus:
+    """Port of Go ``runStatusFor``, widened to the ``RunStatus`` enum (spec
+    §2). Deliberate wire-value change from the old string: ``waiting-input``
+    (hyphen) -> ``RunStatus.WAITING_INPUT`` = ``"waiting_input"``
+    (underscore); the FE only displays ``run_status``, never branches on it.
+    """
     if state == PcState.SUCCESS:
-        return "complete"
+        return RunStatus.COMPLETE
     if state == PcState.FAILED:
-        return "failed"
+        return RunStatus.FAILED
     if is_waiting(state):
-        return "waiting-input"
+        return RunStatus.WAITING_INPUT
     if is_working(state):
-        return "executing"
-    return "unknown"
+        return RunStatus.EXECUTING
+    return RunStatus.EXECUTING
 
 
 class WorkflowCopilotService:
@@ -149,6 +208,10 @@ class WorkflowCopilotService:
             run_status=_run_status(st),
             interrupted=is_working(st) and not self._session_lock.exists(session_id),
             conversation=items,
+            entry_mode=s.entry_mode,
+            phase=_phase_for(st),
+            actions=[],  # Task 5 fills these per waiting state.
+            checkpoint=None,
         )
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
