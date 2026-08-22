@@ -11,6 +11,7 @@ snake_case wire value directly; the member name is just the UPPER_SNAKE of
 that value.
 """
 
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -126,3 +127,28 @@ class SkillLearningPolicy(StrEnum):
     ASK = "ask"
     AUTOMATIC = "automatic"
     DISABLED = "disabled"
+
+
+@dataclass
+class Action:
+    """A UI action the FE renders (spec §5).
+
+    DISTINCT from ``core.workflow_copilot.models.Action`` (the submit DTO
+    the FE POSTs back) -- this one is what the server *sends* describing a
+    renderable button.
+    """
+
+    id: str
+    label: str
+    kind: ActionKind
+    next_state: str | None = None
+    canvas_event: str | None = None
+
+
+@dataclass
+class CheckpointRef:
+    """Active restore point on the SessionView (spec §8)."""
+
+    checkpoint_id: str
+    label: str
+    created_at: str
