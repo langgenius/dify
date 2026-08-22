@@ -9,8 +9,14 @@ import pytest
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
-from core.workflow.nodes.human_input.entities import HumanInputNodeData, ParagraphInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import (
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.session_binding import SessionBinding
 from graphon.runtime import VariablePool
 from graphon.variables.factory import build_segment
@@ -57,6 +63,37 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form() -> None:
     params: FormCreateParams = repository.create_form.call_args.args[0]
     assert params.workflow_execution_id == "run-1"
     assert params.node_id == "node-1"
+
+
+def test_dify_hitl_callback_persists_variable_select_options() -> None:
+    repository = MagicMock(spec=HumanInputFormRepository)
+    repository.get_form.return_value = None
+    repository.create_form.return_value = SimpleNamespace(id="form-1")
+    variable_pool = VariablePool()
+    variable_pool.add(("source", "options"), ["approve", "reject"])
+    callback = DifyHITLCallback(
+        form_repository=repository,
+        node_data=HumanInputNodeData(
+            title="Approval",
+            inputs=[
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(
+                        type=ValueSourceType.VARIABLE,
+                        selector=("source", "options"),
+                    ),
+                )
+            ],
+        ),
+    )
+
+    callback(_Context(workflow_execution_id="run-1", node_id="node-1", variable_pool=variable_pool))
+
+    params: FormCreateParams = repository.create_form.call_args.args[0]
+    select_input = params.form_config.inputs[0]
+    assert isinstance(select_input, SelectInputConfig)
+    assert select_input.option_source.value == ["approve", "reject"]
+    assert params.select_options_resolved is True
 
 
 def test_dify_hitl_callback_scopes_form_to_node_execution() -> None:

@@ -26,6 +26,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.errors import ToolInvokeError
 from core.workflow.file_reference import resolve_file_record_id
 from factories.file_factory import build_from_mapping
+from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from models import Account, Tenant
@@ -92,6 +93,8 @@ class WorkflowTool(Tool):
         """
         app = self._get_app(app_id=self.workflow_app_id)
         workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
+        if self._contains_human_input_node(workflow.graph_dict):
+            raise ToolInvokeError("Human Input Workflow Tools require Engine-managed container execution.")
 
         # transform the tool parameters
         tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
@@ -132,6 +135,9 @@ class WorkflowTool(Tool):
         assert isinstance(result, dict)
         data = result.get("data", {})
 
+        if data.get("status") == WorkflowExecutionStatus.PAUSED:
+            raise ToolInvokeError("Paused Workflow Tool execution requires Engine-managed container execution.")
+
         if err := data.get("error"):
             raise ToolInvokeError(err)
 
@@ -153,9 +159,32 @@ class WorkflowTool(Tool):
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs, suppress_output=True)
 
+    @staticmethod
+    def _contains_human_input_node(graph: Mapping[str, Any]) -> bool:
+        nodes = graph.get("nodes", [])
+        return any(
+            isinstance(node, Mapping)
+            and isinstance((data := node.get("data")), Mapping)
+            and data.get("type") == BuiltinNodeTypes.HUMAN_INPUT
+            for node in nodes
+        )
+
     @property
     def latest_usage(self) -> LLMUsage:
         return self._latest_usage
+
+    def prepare_container_inputs(
+        self,
+        tool_parameters: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
+        """Merge configured parameters and convert them into workflow inputs."""
+        runtime_parameters = self.runtime.runtime_parameters if self.runtime else None
+        merged_parameters = {
+            **tool_parameters,
+            **(runtime_parameters or {}),
+        }
+        typed_parameters = self._transform_tool_parameters_type(merged_parameters)
+        return self._transform_args(tool_parameters=typed_parameters)
 
     @classmethod
     def _derive_usage_from_result(cls, data: Mapping[str, Any]) -> LLMUsage:

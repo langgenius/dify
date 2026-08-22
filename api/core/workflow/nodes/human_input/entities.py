@@ -363,6 +363,9 @@ class FormDefinition(BaseModel):
     # display_in_ui controls whether the form should be displayed in UI surfaces.
     display_in_ui: bool | None = None
 
+    # Stored internally so responses can trust options resolved at form creation.
+    select_options_resolved: bool = Field(default=False, exclude=True)
+
 
 class HumanInputSubmissionValidationError(ValueError):
     pass
