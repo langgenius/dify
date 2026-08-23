@@ -1,16 +1,16 @@
 'use client'
-
 import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useHotkey } from '@tanstack/react-hotkeys'
@@ -112,7 +112,17 @@ export function CreateSnippetDialog({
             initialFocus={nameInputRef}
             className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-120 -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-0"
           >
-            <DialogCloseButton />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
 
             <div className="px-6 pt-6 pb-3">
               <DialogTitle className="title-2xl-semi-bold text-text-primary">

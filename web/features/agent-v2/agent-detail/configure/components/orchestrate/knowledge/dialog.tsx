@@ -1,5 +1,4 @@
 'use client'
-
 import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type {
@@ -12,9 +11,10 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import type { DataSet, MetadataInDoc } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
@@ -454,7 +454,17 @@ function AgentKnowledgeRetrievalDialogContent({
           name={name}
           onCommit={(nextName) => applyDialogStatePatch({ name: nextName })}
         />
-        <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="sm"
+              className="static size-7 shrink-0 rounded-md"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
       </div>
       {nameError && (
         <div role="alert" className="px-4 pt-1 system-xs-regular text-text-destructive">

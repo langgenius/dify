@@ -37,6 +37,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
     WorkflowPreviousNodeOutputRef,
+    effective_declared_outputs,
 )
 
 
@@ -300,7 +301,7 @@ def build_node_job_mention_resolver(node_job: WorkflowNodeJobConfig) -> MentionR
                     if selector and f"{selector[0]}.{selector[1]}" == mention.ref_id:
                         return ref.name or mention.label or mention.ref_id
             case MentionKind.OUTPUT:
-                for output in node_job.declared_outputs:
+                for output in effective_declared_outputs(node_job.declared_outputs):
                     if output.name == mention.ref_id:
                         return _format_output_mention(output)
             case MentionKind.HUMAN:

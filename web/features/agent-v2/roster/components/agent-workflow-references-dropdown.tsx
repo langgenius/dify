@@ -60,7 +60,7 @@ export function AgentWorkflowReferencesDropdown({
         />
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[264px] p-1">
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-[264px] p-1">
         <div className="flex h-7.5 items-center px-2 system-xs-medium text-text-tertiary">
           {t(($) => $['roster.references.label'], { name: agentName })}
         </div>

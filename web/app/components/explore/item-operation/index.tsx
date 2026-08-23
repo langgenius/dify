@@ -50,7 +50,7 @@ function ItemOperation({
           className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[120px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[120px]">
         <DropdownMenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
           onClick={(e) => {

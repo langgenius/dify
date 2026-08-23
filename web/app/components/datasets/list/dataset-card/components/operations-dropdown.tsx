@@ -105,10 +105,10 @@ const OperationsDropdown = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-end"
-          popupClassName="min-w-[186px]"
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
+            className: 'min-w-[186px]',
           })}
         >
           <Operations

@@ -7,6 +7,8 @@ from models.agent_config_entities import (
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
+    WorkflowNodeJobConfig,
+    effective_declared_outputs,
 )
 
 
@@ -218,3 +220,29 @@ def test_declared_output_validates_shape_and_defaults() -> None:
                 },
             }
         )
+
+
+def test_workflow_node_job_reserves_system_output_names() -> None:
+    for name in ("text", "switch", "_session"):
+        with pytest.raises(ValueError, match=f"declared output name '{name}' is reserved"):
+            WorkflowNodeJobConfig.model_validate({"declared_outputs": [{"name": name, "type": "string"}]})
+
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {"name": "files", "type": "string"},
+                {"name": "json", "type": "string"},
+            ]
+        }
+    )
+    assert [output.name for output in node_job.declared_outputs] == ["files", "json"]
+
+
+def test_effective_declared_outputs_prepends_optional_system_text() -> None:
+    custom = DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)
+
+    effective = effective_declared_outputs([custom])
+
+    assert [output.name for output in effective] == ["text", "summary"]
+    assert effective[0].type == DeclaredOutputType.STRING
+    assert effective[0].required is False

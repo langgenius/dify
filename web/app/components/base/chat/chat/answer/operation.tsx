@@ -4,7 +4,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -479,7 +479,17 @@ function Operation({
                   {t(($) => $['feedback.subtitle'], { ns: 'common' }) ||
                     'Please tell us what went wrong with this response'}
                 </DialogDescription>
-                <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+                <DialogClose
+                  render={
+                    <IconButton
+                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                      size="lg"
+                      className="absolute top-5 right-5"
+                    >
+                      <span aria-hidden className="i-ri-close-line size-4" />
+                    </IconButton>
+                  }
+                />
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
                 <label

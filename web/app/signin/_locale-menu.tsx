@@ -43,7 +43,7 @@ export default function LocaleMenu<T extends string>({
             </DropdownMenuTrigger>
           </div>
         </div>
-        <DropdownMenuContent placement="bottom-end" sideOffset={8} popupClassName="w-[200px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={8} className="w-[200px]">
           <DropdownMenuRadioGroup<T>
             value={value}
             onValueChange={(nextValue) => onChange?.(nextValue)}

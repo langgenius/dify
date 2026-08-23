@@ -6,7 +6,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -60,6 +60,7 @@ function AddAccessSubjectPopover({
   }, [])
 
   const addExceptionLabel = t(($) => $['accessRule.addException'], { ns: 'permission' })
+  const addMembersTitle = t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })
   const addLabel = t(($) => $['operation.add'], { ns: 'common' })
   const addedLabel = t(($) => $['operation.added'], { ns: 'common' })
 
@@ -76,12 +77,9 @@ function AddAccessSubjectPopover({
       <PopoverContent
         placement="bottom-end"
         sideOffset={8}
-        popupClassName="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
-        popupProps={{
-          role: 'dialog',
-          'aria-label': t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' }),
-        }}
+        className="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
       >
+        <PopoverTitle className="sr-only">{addMembersTitle}</PopoverTitle>
         <div className="p-2 pb-1">
           <InputGroup>
             <InputGroupInput
