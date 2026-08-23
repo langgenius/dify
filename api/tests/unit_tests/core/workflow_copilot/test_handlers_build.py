@@ -308,3 +308,67 @@ def test_review_revert_records_intent_only():
     res = handle_review(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.BUILD_REVERTED
     assert {"event": "revert_checkpoint"} in events
+
+
+def test_publish_calls_dify_and_advances_to_governance_feedback():
+    from core.workflow_copilot.handlers_build import handle_publish
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    events: list[dict] = []
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_PUBLISH, built_node_ids=["start", "llm", "end"])
+    res = handle_publish(env, Turn(actor=_actor()), *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_GOVERNANCE_FEEDBACK
+    assert dify.published is True
+    publish = next(i for i in res.items if i.kind == "publish")
+    assert publish.payload["version"] == "1.0"
+    assert {"event": "publish_workflow"} in events
+
+
+def test_governance_feedback_emits_completion_summary_and_reaches_complete():
+    from core.workflow_copilot.handlers_build import handle_governance_feedback
+
+    env, repo = _new_env()
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_GOVERNANCE_FEEDBACK,
+        built_node_ids=["start", "knowledge_retrieval", "llm", "end"],
+    )
+    res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_COMPLETE
+    summary = next(i for i in res.items if i.kind == "summary")
+    assert summary.payload["variant"] == "completion"
+    assert summary.payload["rows"]
+
+
+def test_reverted_retry_returns_to_initial_plan():
+    from core.workflow_copilot.handlers_build import handle_reverted
+
+    env, repo = _new_env()
+    s = _seed_build_session(repo, PcState.BUILD_REVERTED, requirements={"currency": "USD"})
+    res = handle_reverted(
+        env, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.BUILD_INITIAL_PLAN
+    assert res.context.plan_version_tag == "v1"
+    assert any(i.kind == "plan" for i in res.items)
+
+
+def test_build_registry_covers_all_non_terminal_build_states():
+    from core.workflow_copilot.handlers_build import build_registry
+
+    assert set(build_registry().keys()) == {
+        PcState.BUILD_CAPABILITY_CHECK,
+        PcState.BUILD_GOAL_ANALYSIS,
+        PcState.BUILD_INITIAL_PLAN,
+        PcState.BUILD_RESOURCE_RECOMMENDATION,
+        PcState.BUILD_PLAN_APPROVAL,
+        PcState.BUILD_EXECUTION,
+        PcState.BUILD_TEST_AND_REPAIR,
+        PcState.BUILD_REVIEW,
+        PcState.BUILD_PUBLISH,
+        PcState.BUILD_GOVERNANCE_FEEDBACK,
+        PcState.BUILD_REVERTED,
+    }
+    assert PcState.BUILD_COMPLETE not in build_registry()  # terminal: no handler
