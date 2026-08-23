@@ -5,7 +5,9 @@ specs/2026-08-22-dify-builder-slice2-build-design.md). Cards for a state
 are emitted by the handler transitioning INTO it; working states auto-advance;
 the build itself rides on ``handle_plan_approval`` (approve_plan) because
 ``build.execution`` is a waiting state. ``build.complete`` is terminal and has
-no handler -- its completion summary is emitted by ``handle_governance_feedback``.
+no handler -- its completion summary is emitted by the governance-tail handlers
+(``handle_governance_feedback`` for automatic/disabled policies, or
+``handle_await_learning`` for the ask policy).
 """
 
 import uuid
