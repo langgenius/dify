@@ -23,6 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from core.workflow_copilot import recovery
 from core.workflow_copilot.errors import ConflictError
 from core.workflow_copilot.models import (
     Checkpoint,
@@ -99,6 +100,11 @@ class Runner:
         if action_kind in ("stop", "resume"):
             fc.paused = action_kind == "stop"
             s.version = self._env.repo.compare_and_advance(s.id, s.version, s.current_state, fc, [])
+            return s
+        if action_kind in ("check_recovery", "recovery_continue", "recovery_restart"):
+            next_state, items = recovery.apply_recovery_action(self._env.dify, turn, s, fc)
+            s.version = self._env.repo.compare_and_advance(s.id, s.version, next_state, fc, items)
+            s.current_state = next_state
             return s
 
         first = True
