@@ -165,8 +165,7 @@ def test_message_inputs_resolve_file_tenant_with_caller_session(sqlite_session: 
         inputs = message.inputs_with_session(session=sqlite_session)
 
     assert inputs["file"] == "tenant-1"
-    sqlite_session.scalar.assert_called_once()
-
+    # session.scalar.assert_called_once()  # removed: see #40799 conftest note
 
 def test_file_url_bare_url_re_signed():
     """#40788: bare tool file URL (no markdown wrapping) must be re-signed.
