@@ -434,6 +434,30 @@ def test_submit_message_constructs_message_action(repo: SqlDifyBuilderRepository
     assert action.base_version == 1
 
 
+def test_actions_for_await_learning() -> None:
+    ids = [a.id for a in service_module._actions_for(PcState.BUILD_AWAIT_LEARNING)]
+    assert ids == ["accept_learning", "skip_learning"]
+
+
+def test_create_build_session_stamps_policy(
+    service: DifyBuilderService, repo: SqlDifyBuilderRepository, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``create_build_session`` reads
+    ``FeatureService.get_features(actor.tenant_id).skill_learning_policy`` and
+    stamps it onto ``fc`` at creation. Monkeypatched to a non-default value
+    ("automatic", not the ``DifyBuilderContext`` field default "ask") so this
+    only passes if the value genuinely round-trips through FeatureService --
+    not merely because it matches the field's own default."""
+    from services import feature_service as feature_service_module
+
+    monkeypatch.setattr(feature_service_module.dify_config, "DIFY_BUILDER_SKILL_LEARNING_POLICY", "automatic")
+
+    view = service.create_build_session(APP_ID, _actor(), goal_text="Build a report workflow")
+
+    _session, fc = repo.get_session(view.session_id)
+    assert fc.skill_learning_policy == "automatic"
+
+
 def test_create_build_session_bootstraps_at_capability_check_and_dispatches_send_goal(
     service: DifyBuilderService, enqueued: list[tuple]
 ) -> None:
