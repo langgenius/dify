@@ -73,3 +73,54 @@ def test_build_registry_maps_capability_check():
     from core.workflow_copilot.handlers_build import build_registry, handle_capability_check
 
     assert build_registry()[PcState.BUILD_CAPABILITY_CHECK] is handle_capability_check
+
+
+def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1():
+    from core.workflow_copilot.handlers_build import handle_goal_analysis
+
+    env, repo = _new_env()
+    s = _seed_build_session(
+        repo, PcState.BUILD_GOAL_ANALYSIS, requirements={"currency": "USD"}
+    )
+    turn = Turn(
+        action=Action(
+            kind="submit_requirements",
+            payload={"currency": "EUR", "audience": "board"},
+            base_version=1,
+        ),
+        actor=_actor(),
+    )
+    res = handle_goal_analysis(
+        env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1]
+    )
+
+    assert res.next == PcState.BUILD_INITIAL_PLAN
+    assert res.context.requirements["currency"] == "EUR"
+    assert res.context.requirements["audience"] == "board"
+    assert res.context.plan_version_tag == "v1"
+    assert res.context.plan_items
+    kinds = [i.kind for i in res.items]
+    assert "decision" in kinds
+    assert "plan" in kinds
+    assert "assistant_turn" in kinds
+
+
+def test_initial_plan_find_resources_advances_to_resource_recommendation():
+    from core.workflow_copilot.handlers_build import handle_initial_plan
+
+    env, repo = _new_env()
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_INITIAL_PLAN,
+        plan_items=["Retrieve", "Summarize"],
+        plan_version_tag="v1",
+    )
+    turn = Turn(action=Action(kind="find_resources", base_version=1), actor=_actor())
+    res = handle_initial_plan(
+        env, turn, repo.get_session(s.id)[0], repo.get_session(s.id)[1]
+    )
+
+    assert res.next == PcState.BUILD_RESOURCE_RECOMMENDATION
+    rs = next(i for i in res.items if i.kind == "resource_select")
+    assert rs.payload["recommended"][0]["readiness"] == "ready"
+    assert len(rs.payload["conflict_policy_options"]) == 2
