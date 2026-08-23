@@ -68,6 +68,12 @@ from services.workflow_copilot.graph_ops import (
     diff_graphs,
     validate_intent_args,
 )
+from services.workflow_copilot.graph_ops import (
+    node_ids as _graph_node_ids,
+)
+from services.workflow_copilot.graph_ops import (
+    structural_fingerprint as _structural_fingerprint,
+)
 
 __all__ = ["FakeBuildDifyPort", "FakeDifyPort", "FakeEditDifyPort", "InMemoryRepository", "StubAgent"]
 
@@ -265,7 +271,10 @@ class FakeDifyPort:
         if on_canvas is not None:
             for node_id in changed:
                 on_canvas({"event": "apply_error_fix", "node_id": node_id})
-        return ApplyResult(changed_nodes=changed, new_hash=self.hash)
+        return ApplyResult(
+            changed_nodes=changed, new_hash=self.hash,
+            structure_fingerprint=_structural_fingerprint(self.graph),
+        )
 
     def run_draft(
         self,
@@ -297,6 +306,12 @@ class FakeDifyPort:
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
+
+    def structural_fingerprint(self, graph: Graph) -> str:
+        return _structural_fingerprint(graph)
+
+    def graph_node_ids(self, graph: Graph) -> list[str]:
+        return _graph_node_ids(graph)
 
 
 # ---- stub CopilotAgent ----------------------------------------------------
@@ -438,9 +453,15 @@ class FakeBuildDifyPort:
         self.graph = graph
         self.hash = "h1"
         if not changed_nodes:
-            return ApplyResult(changed_nodes=[], new_hash=self.hash, changes=[], scope="")
+            return ApplyResult(
+                changed_nodes=[], new_hash=self.hash, changes=[], scope="",
+                structure_fingerprint=_structural_fingerprint(self.graph),
+            )
         changes, scope = diff_graphs(before, graph)
-        return ApplyResult(changed_nodes=changed_nodes, new_hash=self.hash, changes=changes, scope=scope)
+        return ApplyResult(
+            changed_nodes=changed_nodes, new_hash=self.hash, changes=changes, scope=scope,
+            structure_fingerprint=_structural_fingerprint(self.graph),
+        )
 
     def run_draft(
         self, _app_id: str, _actor: Actor, _inputs: Inputs, _on_event: Callable[[NodeEvent], None]
@@ -454,6 +475,12 @@ class FakeBuildDifyPort:
         self.graph = copy.deepcopy(graph)
         self.hash = "h-restored"
         return self.hash
+
+    def structural_fingerprint(self, graph: Graph) -> str:
+        return _structural_fingerprint(graph)
+
+    def graph_node_ids(self, graph: Graph) -> list[str]:
+        return _graph_node_ids(graph)
 
 
 # ---- fake DifyPort pre-seeded with an existing graph (for Edit) -----------

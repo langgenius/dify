@@ -68,6 +68,8 @@ from services.workflow_copilot.graph_ops import (
     apply_insert_between,
     apply_set_node_config,
     diff_graphs,
+    node_ids,
+    structural_fingerprint,
     validate_intent_args,
 )
 from services.workflow_copilot.identity import load_app, resolve_account
@@ -198,7 +200,13 @@ class WorkflowServiceDifyPort:
                     on_canvas(_canvas_payload(intent, changed))
 
             if not changed_nodes:
-                return ApplyResult(changed_nodes=[], new_hash=unique_hash, changes=[], scope="")
+                return ApplyResult(
+                    changed_nodes=[],
+                    new_hash=unique_hash,
+                    changes=[],
+                    scope="",
+                    structure_fingerprint=structural_fingerprint(before_graph),
+                )
 
             changes, scope = diff_graphs(before_graph, graph)
 
@@ -221,8 +229,18 @@ class WorkflowServiceDifyPort:
                 raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
 
             return ApplyResult(
-                changed_nodes=changed_nodes, new_hash=updated.unique_hash, changes=changes, scope=scope
+                changed_nodes=changed_nodes,
+                new_hash=updated.unique_hash,
+                changes=changes,
+                scope=scope,
+                structure_fingerprint=structural_fingerprint(graph),
             )
+
+    def structural_fingerprint(self, graph: Graph) -> str:
+        return structural_fingerprint(graph)
+
+    def graph_node_ids(self, graph: Graph) -> list[str]:
+        return node_ids(graph)
 
     def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str:
         """Restore the draft to a prior snapshot graph (Slice 4 revert): write

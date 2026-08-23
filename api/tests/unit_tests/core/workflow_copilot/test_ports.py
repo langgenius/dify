@@ -162,6 +162,12 @@ class _StubDifyPort:
     def restore_graph(self, _app_id, _actor, _graph):
         return "hash-restored"
 
+    def structural_fingerprint(self, _graph):
+        return "fp-stub"
+
+    def graph_node_ids(self, _graph):
+        return []
+
 
 class _StubRepository:
     """A trivial conforming Repository."""
@@ -208,6 +214,30 @@ def test_stub_agent_satisfies_copilot_agent_protocol():
 
 def test_stub_dify_port_satisfies_dify_port_protocol():
     assert isinstance(_StubDifyPort(), DifyPort)
+
+
+def test_dify_port_has_graph_primitive_methods():
+    # Protocol conformance: a stub missing these two methods is NOT a DifyPort.
+    class _MissingPrimitives:
+        def read_graph(self, _a, _b):
+            return {}, "h"
+
+        def node_outputs(self, _a, _b, _c):
+            return []
+
+        def apply_repair(self, _a, _b, _c, _d=None):
+            return None
+
+        def run_draft(self, _a, _b, _c, _d):
+            return None
+
+        def publish(self, _a, _b):
+            return None
+
+        def restore_graph(self, _a, _b, _c):
+            return "h"
+
+    assert not isinstance(_MissingPrimitives(), DifyPort)
 
 
 def test_stub_repository_satisfies_repository_protocol():

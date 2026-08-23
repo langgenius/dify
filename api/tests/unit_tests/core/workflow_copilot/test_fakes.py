@@ -427,3 +427,35 @@ def test_stub_agent_generate_mock_inputs_returns_canned_inputs():
     agent = StubAgent()
 
     assert agent.generate_mock_inputs({}, {}) == {"report_pdf": "mock.pdf"}
+
+
+# ---- graph primitives (C-1 structural fingerprint) -------------------------
+
+
+def test_fake_dify_port_exposes_graph_primitives():
+    from services.workflow_copilot.graph_ops import node_ids, structural_fingerprint
+
+    port = FakeDifyPort()
+    port.graph = {"nodes": [{"id": "a", "data": {"type": "llm"}}], "edges": []}
+    assert port.structural_fingerprint(port.graph) == structural_fingerprint(port.graph)
+    assert port.graph_node_ids(port.graph) == node_ids(port.graph)
+
+
+def test_fake_build_dify_port_apply_repair_sets_structure_fingerprint():
+    from services.workflow_copilot import node_defaults
+    from services.workflow_copilot.graph_ops import structural_fingerprint
+    from tests.unit_tests.core.workflow_copilot.fakes import BuiltinNodeTypes, FakeBuildDifyPort
+
+    port = FakeBuildDifyPort()
+    # Build a single Start node via the same verb Build uses.
+    intent = MutationIntent(
+        op="create_node",
+        args={
+            "node_type": BuiltinNodeTypes.START,
+            "config": node_defaults.default_config(BuiltinNodeTypes.START),
+            "node_id": "start",
+        },
+    )
+    result = port.apply_repair("app", _actor(), [intent])
+    assert result.structure_fingerprint == structural_fingerprint(port.graph)
+    assert result.structure_fingerprint != ""
