@@ -591,9 +591,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
             get_model_provider_payment_link = (
                 application_services.return_value.billing_portal.get_model_provider_payment_link
             )
-            get_model_provider_payment_link.return_value = {
-                "payment_link": "https://payment.example.com/provider"
-            }
+            get_model_provider_payment_link.return_value = {"payment_link": "https://payment.example.com/provider"}
             result = method(api, make_request_context(), provider="anthropic")
 
         get_model_provider_payment_link.assert_called_once_with(
