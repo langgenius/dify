@@ -223,6 +223,8 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph():
     assert dify.read_graph("app", _actor())[0] == pre_edit  # config edit undone
     assert res.context.checkpoint_id == ""
     assert {"event": "revert_checkpoint"} in events
+    by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
+    assert by_seq[0].payload["card_state"] == "invalidated"
 
 
 def test_runner_stop_sets_paused_same_state_and_bumps_version():
