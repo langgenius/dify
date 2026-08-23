@@ -265,14 +265,39 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
     """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
     builds: drive apply_repair once with all create_node/connect intents
     (node-by-node canvas reveal via env.emit_canvas), emit the change_set +
-    plan v2.x + assistant_turn(with Trace.steps), transition to build.execution."""
+    plan v2.x + assistant_turn(with Trace.steps), transition to build.execution.
+
+    Idempotent by construction (final-review fix, Important #1): a loop-back
+    from build.review/build.reverted (continue_adjusting/revert/retry_after_
+    revert) returns to build.initial_plan WITHOUT resetting the already-built
+    graph. Re-walking find_resources -> confirm_resources -> approve_plan then
+    calls build_nodes() again, which always proposes the SAME fixed node ids
+    -- so before applying, drop any create_node/connect intent that already
+    exists in the current draft graph. Everything survives the first build
+    (nothing exists yet); a re-approve after a loop-back filters everything
+    out (it all already exists), so apply_repair([]) is a no-op rather than
+    raising on a colliding node id."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind != "approve_repair":
         return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
 
     _emit_canvas(env, "create_checkpoint")
     intents = env.agent.build_nodes(list(fc.plan_items))
-    result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=env.emit_canvas)
+
+    current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
+    existing_node_ids = {n.get("id") for n in current_graph.get("nodes", [])}
+    existing_edges = {(e.get("source"), e.get("target")) for e in current_graph.get("edges", [])}
+
+    def _already_present(intent) -> bool:
+        if intent.op == "create_node":
+            return intent.args.get("node_id") in existing_node_ids
+        if intent.op == "connect":
+            return (intent.args.get("from_node"), intent.args.get("to_node")) in existing_edges
+        return False
+
+    to_apply = [intent for intent in intents if not _already_present(intent)]
+
+    result = env.dify.apply_repair(s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
     fc.built_node_ids = [
         intent.args["node_id"]
