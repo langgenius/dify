@@ -7,12 +7,12 @@ import type {
   ConversationItem,
 } from '@/app/components/dify-builder/types'
 import { useState } from 'react'
-import { useDifyBuilderSession } from '@/app/components/dify-builder/use-difyBuilder-session'
+import { useDifyBuilderSession } from '@/app/components/dify-builder/use-dify-builder-session'
 import { API_PREFIX } from '@/config'
 
 // Throwaway developer tool for driving the dify-builder Fix backend by hand.
 // No i18n, no design polish, no reusable UI components on purpose.
-// Session/stream request logic lives in `app/components/dify-builder/use-difyBuilder-session.ts`,
+// Session/stream request logic lives in `app/components/dify-builder/use-dify-builder-session.ts`,
 // shared with the in-editor Dify Builder panel (see `app/components/workflow/panel/dify-builder-panel`).
 //
 // Slice 0 Task 7: action buttons are data-driven off `view.actions` (backend-provided
