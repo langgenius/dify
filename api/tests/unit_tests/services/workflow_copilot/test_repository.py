@@ -19,8 +19,8 @@ from core.workflow_copilot.errors import ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Checkpoint,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     MutationIntent,
     NodeOutput,
     Run,
@@ -67,7 +67,7 @@ def _make_domain_session(**overrides) -> DomainSession:
 
 def test_create_session_then_get_session_round_trips(repo: SqlCopilotRepository) -> None:
     domain_session = _make_domain_session()
-    fc = FixContext(failed_run_id="TR-1")
+    fc = CopilotContext(failed_run_id="TR-1")
     items = [
         ConversationItem(seq=0, kind="run-context", payload={"a": 1}, at_version=1),
         ConversationItem(seq=1, kind="assistant-turn", payload={"b": 2}, at_version=1),
@@ -90,7 +90,7 @@ def test_create_session_then_get_session_round_trips(repo: SqlCopilotRepository)
     assert loaded_session.entry_mode == EntryMode.FIX
     assert loaded_session.current_state == PcState.FIX_DIAGNOSE
     assert loaded_session.version == 1
-    assert loaded_fc == FixContext(failed_run_id="TR-1", next_seq=2)
+    assert loaded_fc == CopilotContext(failed_run_id="TR-1", next_seq=2)
 
 
 def test_get_session_missing_id_raises_not_found(repo: SqlCopilotRepository) -> None:
@@ -100,10 +100,10 @@ def test_get_session_missing_id_raises_not_found(repo: SqlCopilotRepository) -> 
 
 def test_compare_and_advance_bumps_version_and_appends_commit_and_items(repo: SqlCopilotRepository) -> None:
     domain_session = _make_domain_session()
-    fc = FixContext(failed_run_id="TR-1")
+    fc = CopilotContext(failed_run_id="TR-1")
     repo.create_session(domain_session, fc, [])
 
-    next_fc = FixContext(failed_run_id="TR-1", staged_repair=[MutationIntent(op="set_node_config")])
+    next_fc = CopilotContext(failed_run_id="TR-1", staged_repair=[MutationIntent(op="set_node_config")])
     new_items = [ConversationItem(seq=0, kind="diagnosis", payload={"x": 1}, at_version=2)]
 
     new_version = repo.compare_and_advance(
@@ -122,7 +122,7 @@ def test_compare_and_advance_stale_version_raises_conflict_and_leaves_row_unchan
     repo: SqlCopilotRepository,
 ) -> None:
     domain_session = _make_domain_session()
-    fc = FixContext(failed_run_id="TR-1")
+    fc = CopilotContext(failed_run_id="TR-1")
     repo.create_session(domain_session, fc, [])
 
     with pytest.raises(ConflictError):
@@ -130,7 +130,7 @@ def test_compare_and_advance_stale_version_raises_conflict_and_leaves_row_unchan
             domain_session.id,
             base_version=999,
             next=PcState.FIX_PROPOSE,
-            fc=FixContext(),
+            fc=CopilotContext(),
             items=[],
         )
 
@@ -146,14 +146,14 @@ def test_compare_and_advance_missing_session_raises_not_found(repo: SqlCopilotRe
             "does-not-exist",
             base_version=1,
             next=PcState.FIX_PROPOSE,
-            fc=FixContext(),
+            fc=CopilotContext(),
             items=[],
         )
 
 
 def test_compare_and_advance_duplicate_seq_raises_conflict(repo: SqlCopilotRepository) -> None:
     domain_session = _make_domain_session()
-    fc = FixContext(failed_run_id="TR-1")
+    fc = CopilotContext(failed_run_id="TR-1")
     seed_items = [ConversationItem(seq=0, kind="run-context", payload={}, at_version=1)]
     repo.create_session(domain_session, fc, seed_items)
 
@@ -162,7 +162,7 @@ def test_compare_and_advance_duplicate_seq_raises_conflict(repo: SqlCopilotRepos
             domain_session.id,
             base_version=1,
             next=PcState.FIX_PROPOSE,
-            fc=FixContext(),
+            fc=CopilotContext(),
             items=[ConversationItem(seq=0, kind="diagnosis", payload={}, at_version=2)],
         )
 
@@ -177,7 +177,7 @@ def test_compare_and_advance_duplicate_seq_raises_conflict(repo: SqlCopilotRepos
 
 def test_create_checkpoint_then_get_checkpoint_round_trips(repo: SqlCopilotRepository) -> None:
     domain_session = _make_domain_session()
-    fc = FixContext(failed_run_id="TR-1")
+    fc = CopilotContext(failed_run_id="TR-1")
     repo.create_session(domain_session, fc, [])
 
     snap = Snapshot(session_id=domain_session.id, hash="h1", graph={"nodes": [1, 2, 3]})
@@ -290,7 +290,7 @@ def test_get_test_input_missing_id_raises_not_found(repo: SqlCopilotRepository) 
 
 def test_list_conversation_returns_items_ordered_by_seq(repo: SqlCopilotRepository) -> None:
     domain_session = _make_domain_session()
-    fc = FixContext(failed_run_id="TR-1")
+    fc = CopilotContext(failed_run_id="TR-1")
     items = [
         ConversationItem(seq=0, kind="run-context", payload={"a": 1}, at_version=1),
         ConversationItem(seq=1, kind="assistant-turn", payload={"b": 2}, at_version=1),
@@ -299,7 +299,7 @@ def test_list_conversation_returns_items_ordered_by_seq(repo: SqlCopilotReposito
 
     more_items = [ConversationItem(seq=2, kind="diagnosis", payload={"c": 3}, at_version=2)]
     repo.compare_and_advance(
-        domain_session.id, base_version=1, next=PcState.FIX_PROPOSE, fc=FixContext(), items=more_items
+        domain_session.id, base_version=1, next=PcState.FIX_PROPOSE, fc=CopilotContext(), items=more_items
     )
 
     conv = repo.list_conversation(domain_session.id)

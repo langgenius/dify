@@ -21,8 +21,8 @@ from core.workflow_copilot.models import (
     Actor,
     ChecklistError,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     Run,
     Session,
 )
@@ -223,7 +223,7 @@ class WorkflowCopilotService:
         failed_run: Run | None = None
         if checklist_errors:
             entry_mode, state = EntryMode.FIX_CHECKLIST, PcState.CHECKLIST_DIAGNOSE
-            fc = FixContext(source="checklist", checklist_errors=checklist_errors)
+            fc = CopilotContext(source="checklist", checklist_errors=checklist_errors)
         else:
             entry_mode, state = EntryMode.FIX, PcState.FIX_DIAGNOSE
             failed_run = Run(
@@ -233,7 +233,7 @@ class WorkflowCopilotService:
                 status="failed",
                 immutable=True,
             )
-            fc = FixContext(failed_run_id=failed_run.id, source="run")
+            fc = CopilotContext(failed_run_id=failed_run.id, source="run")
 
         s = Session(
             app_id=app_id,

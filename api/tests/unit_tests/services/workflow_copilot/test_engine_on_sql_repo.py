@@ -28,8 +28,8 @@ from core.workflow_copilot.models import (
     Actor,
     ChecklistError,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     Run,
     Session,
     Turn,
@@ -87,13 +87,13 @@ def _fix_session(**overrides) -> Session:
 
 def _seed_fix_session(repo: SqlCopilotRepository) -> Session:
     """Seed a session at fix.diagnose with a run-context item and a
-    FixContext pointing at a pre-existing failed run -- mirrors the P1
+    CopilotContext pointing at a pre-existing failed run -- mirrors the P1
     full-flow acceptance's seed, persisted through the SQL repo instead of
     the in-memory fake."""
     s = _fix_session()
     repo.create_session(
         s,
-        FixContext(failed_run_id="TR-1"),
+        CopilotContext(failed_run_id="TR-1"),
         [ConversationItem(kind="run-context", seq=0, payload={"failed_run_id": "TR-1"})],
     )
     repo.save_run(s.id, Run(id="TR-1", kind="original-failed", status="failed", immutable=True))
@@ -244,7 +244,7 @@ def _seed_checklist_session(repo: SqlCopilotRepository, errors: list[ChecklistEr
     s = _fix_session(entry_mode=EntryMode.FIX_CHECKLIST, current_state=PcState.CHECKLIST_DIAGNOSE)
     repo.create_session(
         s,
-        FixContext(source="checklist", checklist_errors=errors),
+        CopilotContext(source="checklist", checklist_errors=errors),
         [ConversationItem(kind="run-context", seq=0)],
     )
     return s

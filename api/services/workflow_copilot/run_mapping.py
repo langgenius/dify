@@ -47,7 +47,7 @@ def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
     """Map a blocking ``AppGenerateService.generate`` result into a ``Run``.
 
     ``Run.id`` is deliberately left ``""`` — the caller (``handle_verify``)
-    assigns the id and sets ``FixContext.verify_run_id``, not this function.
+    assigns the id and sets ``CopilotContext.verify_run_id``, not this function.
     """
     if _is_paused_shape(data):
         status = "failed"

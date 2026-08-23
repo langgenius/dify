@@ -41,7 +41,7 @@ from core.workflow_copilot.models import (
     ChangeSet,
     ChecklistError,
     ConversationItem,
-    FixContext,
+    CopilotContext,
     NodeOutput,
     Run,
     Session,
@@ -76,7 +76,7 @@ __all__ = [
 # ---- helpers ---------------------------------------------------------------
 
 
-def append_item(fc: FixContext, kind: str, payload: dict[str, Any]) -> list[ConversationItem]:
+def append_item(fc: CopilotContext, kind: str, payload: dict[str, Any]) -> list[ConversationItem]:
     """Append a conversation item stamped with the next sequence number.
 
     ``fc.next_seq`` is the seq authority (port of ``handlers_fix.go:9-13``):
@@ -90,7 +90,7 @@ def append_item(fc: FixContext, kind: str, payload: dict[str, Any]) -> list[Conv
     return [item]
 
 
-def append_card(fc: FixContext, card) -> list[ConversationItem]:
+def append_card(fc: CopilotContext, card) -> list[ConversationItem]:
     """Stamp a typed card into the conversation at the next seq (mirrors
     append_item's seq authority; at_version preserved as the prior code's 0).
     """
@@ -123,7 +123,7 @@ def _mode_or_default(mode: str) -> str:
 # ---- handlers ---------------------------------------------------------------
 
 
-def handle_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_diagnose(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Read the failed run's node outputs, diagnose, capture the
     pre-repair checkpoint. Port of ``handlers_fix.go:38``."""
     failed = env.repo.get_run(fc.failed_run_id)
@@ -153,7 +153,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepRes
     )
 
 
-def handle_propose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_propose(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Ask the agent for repair intents + risk, stage them, branch
     on risk. Port of ``handlers_fix.go:97``. Also serves as
     ``checklist.propose`` (Task 7 reuses this handler, as Go does)."""
@@ -179,7 +179,7 @@ def handle_propose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResu
     return StepResult(next=next_state, context=fc, items=items)
 
 
-def handle_await_approval(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_await_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) High-risk gate. Only an explicit ``approve_repair`` advances
     to ``fix.apply``; any other/absent action kind is a no-op that stays at
     the gate. Port of ``handlers_fix.go:123``."""
@@ -193,7 +193,7 @@ def handle_await_approval(env: Env, turn: Turn, s: Session, fc: FixContext) -> S
     return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)
 
 
-def handle_apply(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_apply(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Apply the staged repair to the real draft. The next state
     branches on ``fc.source``: the run-fix path always lands at
     ``fix.await_verify``; the checklist-fix path lands at
@@ -222,7 +222,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult
     return StepResult(next=next_state, context=fc, items=items)
 
 
-def handle_await_verify(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_await_verify(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) The user runs verification or undoes. Port of
     ``handlers_fix.go:163``."""
     if turn.action is not None and turn.action.kind == "undo":
@@ -234,7 +234,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: FixContext) -> Ste
     return StepResult(next=PcState.FIX_VERIFY, context=fc)
 
 
-def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) Prepare inputs for the verify run. Port of
     ``handlers_fix.go:176``."""
     mode, _ = action_string(turn, "mode")
@@ -254,7 +254,7 @@ def handle_await_testdata(env: Env, turn: Turn, s: Session, fc: FixContext) -> S
     return StepResult(next=PcState.FIX_VERIFY, context=fc)
 
 
-def handle_verify(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_verify(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Run the repaired draft, mint a NEW immutable Run. Advances
     to ``fix.await_decision`` on both pass and fail; never touches the
     original failed run. Port of ``handlers_fix.go:206``."""
@@ -304,7 +304,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResul
     )
 
 
-def handle_await_decision(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_await_decision(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) Terminal choice. Port of ``handlers_fix.go:239``."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "publish":
@@ -329,7 +329,7 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: FixContext) -> S
     return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
 
-def handle_publish(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_publish(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Publish the repaired workflow. Port of
     ``handlers_fix.go:316``."""
     env.dify.publish(s.app_id, turn.actor)
@@ -340,7 +340,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResu
 # ---- checklist handlers -----------------------------------------------------
 
 
-def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Mirrors ``handle_diagnose`` but diagnoses from the
     pre-publish checklist's config errors instead of a failed run's node
     outputs — there is no ``fc.failed_run_id`` on this path, so no run
@@ -370,7 +370,7 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: FixContext) 
     )
 
 
-def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: FixContext) -> StepResult:
+def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) The checklist-fix counterpart of ``handle_await_verify``:
     instead of running the workflow, the caller re-runs the pre-publish
     checklist and reports the result via a ``"recheck"`` action. On ``undo``

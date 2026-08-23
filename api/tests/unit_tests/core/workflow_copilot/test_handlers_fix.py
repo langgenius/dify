@@ -24,8 +24,8 @@ from core.workflow_copilot.models import (
     Actor,
     ChecklistError,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     Run,
     Session,
     Turn,
@@ -81,7 +81,7 @@ def _run_fix_registry() -> dict[PcState, object]:
 
 def _seed_diagnose_session(repo: InMemoryRepository) -> Session:
     s = _session()
-    repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    repo.create_session(s, CopilotContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
     repo.save_run(s.id, Run(id="TR-1", kind="original-failed", status="failed", immutable=True))
     return s
 
@@ -374,7 +374,7 @@ def _seed_checklist_session(repo: InMemoryRepository, errors: list[ChecklistErro
     s = _session(entry_mode=EntryMode.FIX_CHECKLIST, current_state=PcState.CHECKLIST_DIAGNOSE)
     repo.create_session(
         s,
-        FixContext(source="checklist", checklist_errors=errors),
+        CopilotContext(source="checklist", checklist_errors=errors),
         [ConversationItem(kind="run-context", seq=0)],
     )
     return s
