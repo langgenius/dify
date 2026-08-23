@@ -942,6 +942,11 @@ class WorkflowConfig(BaseSettings):
         default=False,
     )
 
+    DIFY_BUILDER_SKILL_LEARNING_POLICY: str = Field(
+        description="Dify Builder governance tail policy: ask | automatic | disabled.",
+        default="ask",
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """

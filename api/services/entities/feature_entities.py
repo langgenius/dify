@@ -163,6 +163,7 @@ class FeatureModel(FeatureResponseModel):
     dataset_operator_enabled: bool = False
     webapp_copyright_enabled: bool = False
     dify_builder_enabled: bool = False
+    skill_learning_policy: str = "ask"
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     is_allow_transfer_workspace: bool = True
     trigger_event: Quota = Quota(usage=0, limit=3000, reset_date=0)

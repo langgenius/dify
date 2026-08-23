@@ -197,6 +197,7 @@ class FeatureService:
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
         features.education.enabled = dify_config.EDUCATION_ENABLED
         features.dify_builder_enabled = dify_config.DIFY_BUILDER_ENABLED
+        features.skill_learning_policy = dify_config.DIFY_BUILDER_SKILL_LEARNING_POLICY
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):
