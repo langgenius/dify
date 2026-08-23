@@ -649,8 +649,8 @@ def test_get_session_view_run_status_paused(
 def test_recovery_ref_for():
     # A session whose fc has a recovery_class surfaces a RecoveryRef;
     # can_continue/can_restart follow the class.
-    from core.workflow_copilot.contract import RecoveryClass
     from core.workflow_copilot import recovery
+    from core.workflow_copilot.contract import RecoveryClass
 
     ref = recovery.recovery_ref_for(str(RecoveryClass.STRUCTURAL_INVALIDATING))
     assert ref is not None
@@ -664,6 +664,17 @@ def test_recovery_ref_for():
     assert ref2.can_restart is False  # nothing to restart from when unchanged
 
     assert recovery.recovery_ref_for("") is None
+
+    # the two "keep going either way" classes: both continuing and restarting
+    # are offered, and .message comes from the dict-lookup path (recovery.
+    # _RECOVERY_MESSAGE), not the RecoveryRef.get(..., "") fallback.
+    for cls in (RecoveryClass.CONFIG_ONLY, RecoveryClass.STRUCTURAL_COMPATIBLE):
+        ref3 = recovery.recovery_ref_for(str(cls))
+        assert ref3 is not None
+        assert ref3.can_continue is True
+        assert ref3.can_restart is True
+        assert ref3.message
+        assert ref3.message == recovery._RECOVERY_MESSAGE[cls]
 
 
 def test_get_session_view_surfaces_recovery_when_set(
