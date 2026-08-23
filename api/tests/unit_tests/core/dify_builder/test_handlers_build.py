@@ -344,6 +344,7 @@ def test_governance_automatic_learns_and_reaches_complete():
     assert res.next == PcState.BUILD_COMPLETE
     kinds = [i.kind for i in res.items]
     assert "build_learning" in kinds and "summary" in kinds
+    assert "notice" in kinds
     assert env.agent.learn_calls == 1  # seam called for automatic
 
 
@@ -401,6 +402,7 @@ def test_await_learning_accept_learns_and_completes():
     assert res.next == PcState.BUILD_COMPLETE
     kinds = [i.kind for i in res.items]
     assert "decision" in kinds and "summary" in kinds
+    assert "notice" in kinds
     assert env.agent.learn_calls == 1
 
 
