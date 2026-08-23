@@ -21,11 +21,11 @@ def _actor() -> Actor:
     return Actor(account_id="acc-1", tenant_id="tenant-1")
 
 
-def _new_env(dify=None, emit_canvas=None) -> tuple[Env, InMemoryRepository]:
+def _new_env(dify=None, emit_canvas=None, agent=None) -> tuple[Env, InMemoryRepository]:
     repo = InMemoryRepository()
     env = Env(
         dify=dify or FakeDifyPort(),
-        agent=PlaceholderAgent(),
+        agent=agent or PlaceholderAgent(),
         repo=repo,
         now=lambda: datetime.min,
         emit_canvas=emit_canvas,
@@ -329,20 +329,97 @@ def test_publish_calls_dify_and_advances_to_governance_feedback():
     assert {"event": "publish_workflow"} in events
 
 
-def test_governance_feedback_emits_completion_summary_and_reaches_complete():
+def test_governance_automatic_learns_and_reaches_complete():
     from core.dify_builder.handlers_build import handle_governance_feedback
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
 
-    env, repo = _new_env()
+    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
     s = _seed_build_session(
         repo,
         PcState.BUILD_GOVERNANCE_FEEDBACK,
-        built_node_ids=["start", "knowledge_retrieval", "llm", "end"],
+        skill_learning_policy="automatic",
+        built_node_ids=["a", "b"],
     )
     res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
     assert res.next == PcState.BUILD_COMPLETE
-    summary = next(i for i in res.items if i.kind == "summary")
-    assert summary.payload["variant"] == "completion"
-    assert summary.payload["rows"]
+    kinds = [i.kind for i in res.items]
+    assert "build_learning" in kinds and "summary" in kinds
+    assert env.agent.learn_calls == 1  # seam called for automatic
+
+
+def test_governance_disabled_skips_and_reaches_complete():
+    from core.dify_builder.handlers_build import handle_governance_feedback
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_GOVERNANCE_FEEDBACK,
+        skill_learning_policy="disabled",
+        built_node_ids=["a"],
+    )
+    res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_COMPLETE
+    # build_learning present with state skipped; seam NOT called
+    bl = [i for i in res.items if i.kind == "build_learning"][0]
+    assert bl.payload["state"] == "skipped"
+    assert getattr(env.agent, "learn_calls", 0) == 0
+
+
+def test_governance_ask_rests_at_await_learning_with_pending_card():
+    from core.dify_builder.handlers_build import handle_governance_feedback
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_GOVERNANCE_FEEDBACK,
+        skill_learning_policy="ask",
+        built_node_ids=["a"],
+    )
+    res = handle_governance_feedback(env, Turn(actor=_actor()), *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_AWAIT_LEARNING
+    bl = [i for i in res.items if i.kind == "build_learning"][0]
+    assert bl.payload["policy"] == "ask" and bl.payload["state"] == "pending"
+    assert getattr(env.agent, "learn_calls", 0) == 0  # not learned until accepted
+
+
+def test_await_learning_accept_learns_and_completes():
+    from core.dify_builder.handlers_build import handle_await_learning
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_AWAIT_LEARNING,
+        skill_learning_policy="ask",
+        built_node_ids=["a"],
+    )
+    res = handle_await_learning(
+        env, Turn(action=Action(kind="accept_learning", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.BUILD_COMPLETE
+    kinds = [i.kind for i in res.items]
+    assert "decision" in kinds and "summary" in kinds
+    assert env.agent.learn_calls == 1
+
+
+def test_await_learning_skip_completes_without_learning():
+    from core.dify_builder.handlers_build import handle_await_learning
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    env, repo = _new_env(dify=FakeBuildDifyPort(), agent=StubAgent())
+    s = _seed_build_session(
+        repo,
+        PcState.BUILD_AWAIT_LEARNING,
+        skill_learning_policy="ask",
+        built_node_ids=["a"],
+    )
+    res = handle_await_learning(
+        env, Turn(action=Action(kind="skip_learning", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.BUILD_COMPLETE
+    assert getattr(env.agent, "learn_calls", 0) == 0
 
 
 def test_reverted_retry_returns_to_initial_plan():
@@ -372,6 +449,7 @@ def test_build_registry_covers_all_non_terminal_build_states():
         PcState.BUILD_REVIEW,
         PcState.BUILD_PUBLISH,
         PcState.BUILD_GOVERNANCE_FEEDBACK,
+        PcState.BUILD_AWAIT_LEARNING,
         PcState.BUILD_REVERTED,
     }
     assert PcState.BUILD_COMPLETE not in build_registry()  # terminal: no handler
@@ -418,11 +496,16 @@ def test_full_build_flow_goal_to_complete():
     out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_REVIEW
 
-    # 7) publish_workflow -> build.publish (auto) -> governance_feedback (auto) -> build.complete
+    # 7) publish_workflow -> build.publish (auto) -> governance_feedback (auto)
+    # -> rests at build.await_learning (default policy "ask")
     publish_action = Action(kind="publish_workflow", base_version=out.version)
     out = runner.advance(s.id, Turn(action=publish_action, actor=_actor()))
-    assert out.current_state == PcState.BUILD_COMPLETE
+    assert out.current_state == PcState.BUILD_AWAIT_LEARNING
     assert dify.published is True
+
+    # 8) skip_learning -> build.complete
+    out = runner.advance(s.id, Turn(action=Action(kind="skip_learning", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_COMPLETE
 
     # ordered card stream: every Build card kind appears, seq-ordered.
     items = repo.list_conversation(s.id)
@@ -470,6 +553,9 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     assert out.current_state == PcState.BUILD_REVIEW
 
     out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_AWAIT_LEARNING  # default policy "ask"
+
+    out = runner.advance(s.id, Turn(action=Action(kind="skip_learning", base_version=out.version), actor=_actor()))
     assert out.current_state == PcState.BUILD_COMPLETE
     assert dify.published is False  # keep_draft skips publish
     assert not any(i.kind == "publish" for i in repo.list_conversation(s.id))
