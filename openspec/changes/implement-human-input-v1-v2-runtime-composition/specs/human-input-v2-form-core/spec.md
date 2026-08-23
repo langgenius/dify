@@ -2,7 +2,7 @@
 
 ### Requirement: HumanInputForm MUST own local lifecycle invariants
 
-`HumanInputForm` MUST directly own waiting, submitted, timed-out and expired state checks, global expiry, grant membership, selected-action validation and transition decisions. A runtime form MUST be owned by its `workflow_run_id` and `workflow_node_execution_id`; it MUST NOT require or persist a `workflow_pause_id`. The design MUST NOT introduce a pass-through lifecycle object.
+`HumanInputForm` MUST directly own waiting, submitted, timed-out and expired state checks, global expiry, grant membership, selected-action validation and transition decisions. A runtime form MUST contain one immutable `RuntimeFormOwner` with `workflow_run_id` and `workflow_node_execution_id`; it MUST NOT require or persist a `workflow_pause_id`. A delivery-test form MUST NOT contain a `RuntimeFormOwner`. The design MUST NOT introduce a pass-through lifecycle object.
 
 #### Scenario: Active form accepts a valid transition decision
 
@@ -24,7 +24,8 @@
 #### Scenario: Delivery-test form has no workflow owner
 
 - **WHEN** a delivery-test v2 form is created outside workflow execution
-- **THEN** both workflow owner fields MAY be absent
+- **THEN** its domain form MUST have no `RuntimeFormOwner`
+- **AND** both persisted workflow owner columns MUST be absent
 - **AND** the form MUST NOT acquire a synthetic workflow pause or node execution identity
 
 #### Scenario: Form is no longer active
@@ -39,22 +40,32 @@
 
 ### Requirement: Form persistence MUST expose aggregate-oriented operations
 
-Form persistence ports MUST own atomic form creation and append-oriented delivery writes, use explicit mappers and load only the graph required by each operation. Runtime form creation MUST expose an atomic owner-scoped create-once operation covering the form, grants, endpoints and initial delivery attempts.
+Form persistence ports MUST own form graph creation and append-oriented delivery writes, use explicit mappers and load only the graph required by each operation. Runtime form creation MUST expose an owner-scoped create-once operation that establishes one complete form, grant and endpoint graph before returning a ready result. A persistence adapter MAY commit the complete graph in one transaction. An adapter that uses multiple commits MUST idempotently complete or reject a partial graph without creating duplicate records. Initial delivery attempts and provider outcomes MUST remain append-oriented operational facts owned behind `FormSending`; they MUST NOT extend the Form lifecycle state.
 
 #### Scenario: Form and approval plan are persisted
 
 - **WHEN** a new non-runtime form is created from a resolved plan
-- **THEN** one transaction MUST persist the form, grants and endpoints or roll back all of them
+- **THEN** persistence MUST return success only after the form, grants and endpoints are complete
+- **AND** repeated execution MUST NOT create duplicate form, grant or endpoint records
 
 #### Scenario: Runtime form graph is first created
 
 - **WHEN** no form exists for one tenant and workflow node execution owner
-- **THEN** one transaction MUST persist the form, grants, endpoints and initial attempts or roll back all of them
+- **THEN** persistence MUST establish one complete form, grant and endpoint graph for that owner
+- **AND** it MUST NOT require all three record kinds to commit in one transaction
 
 #### Scenario: Runtime form graph already exists
 
 - **WHEN** create-once is repeated for the same workflow node execution owner
-- **THEN** the operation MUST return the existing form graph without creating any child or attempt again
+- **THEN** the operation MUST return the complete existing graph without creating duplicate form, grant or endpoint records
+- **AND** it MUST complete or reject an existing partial graph rather than returning it as ready
+
+#### Scenario: Initial delivery fails after form creation
+
+- **WHEN** `FormSending` cannot deliver one or more sender operations after the create-once winner commits
+- **THEN** the form MUST remain waiting
+- **AND** each attempted sender outcome MUST be recorded as an append-oriented delivery fact
+- **AND** the system MUST NOT add a Form sending status
 
 #### Scenario: Two forms share a workflow run
 

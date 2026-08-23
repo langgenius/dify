@@ -43,33 +43,63 @@ The Human Input v2 node MUST register under `type: human-input` with exact versi
 
 ### Requirement: Node and HITL callback external effects MUST be injected through ports
 
-The Human Input v2 Node MUST perform external work only through its injected HITL callback. The v2 callback MUST perform external reads and writes only through injected runtime application protocols and narrow ports. Neither layer MAY directly construct or access ORM records, SQLAlchemy sessions, controller state, Celery tasks, global database handles, repository implementations or service locators.
+The Human Input v2 Node MUST perform external work only through its injected HITL callback. The v2 callback MUST convert strict v2 node data and callback runtime context into one runtime entry request and call only the injected `HumanInputV2Runtime` protocol. Neither layer MAY directly construct or access ORM records, SQLAlchemy sessions, controller state, recipient snapshots, provider capabilities, sender lists, Celery tasks, global database handles, repository implementations or service locators.
 
 #### Scenario: V2 node executes
 
 - **WHEN** the Human Input v2 node evaluates its HITL state
 - **THEN** the node MUST call only the injected version-neutral HITL callback protocol
 
-#### Scenario: V2 callback needs runtime state
+#### Scenario: V2 callback enters runtime state
 
-- **WHEN** the callback loads or creates a form, reads recipient snapshots or evaluates frozen lifecycle state
-- **THEN** those capabilities MUST be supplied through injected protocols whose implementations are selected by the composition root
+- **WHEN** the callback needs to create or reload one runtime form
+- **THEN** it MUST call the injected `HumanInputV2Runtime` protocol once
+- **AND** it MUST NOT receive a persistence create result, recipient snapshot, delivery capability or sender list
+
+### Requirement: FormSending MUST hide recipient resolution and delivery fanout
+
+The v2 runtime application MUST expose delivery through one injected `FormSending` interface. `FormSending` MUST own recipient snapshot reads, `ResolvedApprovalPlan` construction, owner-scoped form graph create-once, internal sender selection, sender fanout and Email/IM delivery policy. It MUST return the winning persisted runtime form without returning sender objects, Provider adapters, credentials or Provider-specific outcomes to the callback.
+
+#### Scenario: A new runtime form is sent
+
+- **WHEN** no form exists for the runtime owner and `HumanInputV2Runtime` invokes `FormSending`
+- **THEN** `FormSending` MUST establish one complete form, grant and endpoint graph for that owner
+- **AND** only a create-once winner with a complete graph MUST execute internal sender fanout
+
+#### Scenario: Form graph persistence uses multiple commits
+
+- **WHEN** a persistence adapter does not commit the form, grants and endpoints in one transaction
+- **THEN** repeated execution MUST complete or reject the partial graph without creating duplicate form, grant or endpoint records
+- **AND** `FormSending` MUST NOT execute sender fanout until the graph is complete
+
+#### Scenario: IM form delivery selects a surface
+
+- **WHEN** `FormSending` delivers one IM endpoint
+- **THEN** it MUST keep dynamic-card assessment, card selection and Message Template text fallback behind its interface
+- **AND** the callback and runtime application MUST NOT branch on Provider-specific capabilities or outcomes
+
+#### Scenario: Delivery fails after form creation
+
+- **WHEN** one sender fails after the runtime form graph commits
+- **THEN** `FormSending` MUST retain the failure as a delivery fact when available
+- **AND** the waiting Form lifecycle and callback pause decision MUST remain unchanged
 
 ### Requirement: V2 callback reload MUST be create-once for one node execution
 
-For one tenant, workflow run and workflow node execution, the v2 callback MUST atomically load or create one runtime form graph. Re-entry or concurrent execution MUST reuse the winning form and MUST NOT recreate grants, endpoints, endpoint capabilities or initial delivery attempts.
+For one tenant, workflow run and workflow node execution, `HumanInputV2Runtime` MUST first reload by owner. It MUST invoke `FormSending` only when no runtime form exists. `FormSending` MUST use owner-scoped create-once persistence so concurrent invocations reuse the winning form and only the create-once winner executes sender fanout.
 
 #### Scenario: Waiting callback is entered again
 
 - **WHEN** the callback is invoked again for a node execution whose v2 form already exists and remains waiting
 - **THEN** it MUST return `PauseRequested` with the same form-backed session identity
-- **AND** no form, grant, endpoint or initial delivery attempt creation operation may run again
+- **AND** `HumanInputV2Runtime` MUST NOT invoke `FormSending`
 
 #### Scenario: Concurrent callback creation races
 
 - **WHEN** two callback invocations concurrently observe the same new workflow node execution
 - **THEN** exactly one form graph MUST be committed
 - **AND** both invocations MUST resolve to the same form identity
+- **AND** only the create-once winner MUST execute sender fanout
 
 ### Requirement: Frozen v2 lifecycle state MUST determine the callback outcome
 
