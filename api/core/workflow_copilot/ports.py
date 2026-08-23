@@ -126,6 +126,17 @@ class DifyPort(Protocol):
 
     def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str: ...
 
+    def structural_fingerprint(self, graph: Graph) -> str:
+        """Stable hash of the graph's structure (node identity+type + edges),
+        excluding config -- the core-visible primitive backing recovery (C-1).
+        The adapter delegates to ``graph_ops.structural_fingerprint``."""
+        ...
+
+    def graph_node_ids(self, graph: Graph) -> list[str]:
+        """The ids of every node in ``graph`` -- backs recovery's
+        target-presence check. Delegates to ``graph_ops.node_ids``."""
+        ...
+
 
 @runtime_checkable
 class Repository(Protocol):
