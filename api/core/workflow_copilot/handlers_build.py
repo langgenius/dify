@@ -13,6 +13,8 @@ import uuid
 from core.workflow_copilot.contract import (
     AssistantTurnItem,
     ChallengeCard,
+    ChangeSetCard,
+    CheckpointCard,
     ConflictPolicyOption,
     DecisionItem,
     FormCard,
@@ -20,13 +22,22 @@ from core.workflow_copilot.contract import (
     PlanCard,
     ResourceSelectCard,
     Trace,
+    TraceStep,
 )
 from core.workflow_copilot.handlers_fix import action_string, append_card
-from core.workflow_copilot.models import CopilotContext, Session, Turn
+from core.workflow_copilot.models import ChangeSet, Checkpoint, CopilotContext, Session, Snapshot, Turn
 from core.workflow_copilot.runner import Env, Handler, StepResult
 from core.workflow_copilot.state import PcState
 
-__all__ = ["build_registry", "handle_capability_check", "handle_goal_analysis", "handle_initial_plan"]
+__all__ = [
+    "build_registry",
+    "handle_capability_check",
+    "handle_execution",
+    "handle_goal_analysis",
+    "handle_initial_plan",
+    "handle_plan_approval",
+    "handle_resource_recommendation",
+]
 
 
 def _emit_canvas(env: Env, event: str, **extra) -> None:
@@ -175,6 +186,138 @@ def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: CopilotContext) ->
     )
 
 
+def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) On ``confirm_resources`` bind resources into plan v2 and
+    snapshot the pre-build graph as the restore checkpoint (self-minted id so
+    the CheckpointCard shown at plan_approval carries a real id -- mirrors
+    handle_verify's self-minted run id). Transition to build.plan_approval."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind != "confirm_resources":
+        return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
+
+    resource_ids: list[str] = []
+    conflict_policy = ""
+    if turn.action is not None and isinstance(turn.action.payload, dict):
+        raw_ids = turn.action.payload.get("resource_ids")
+        if isinstance(raw_ids, list):
+            resource_ids = [r for r in raw_ids if isinstance(r, str)]
+        cp = turn.action.payload.get("conflict_policy")
+        if isinstance(cp, str):
+            conflict_policy = cp
+    fc.resource_selection = {"resource_ids": resource_ids, "conflict_policy": conflict_policy}
+    fc.plan_items = env.agent.bind_resources(list(fc.plan_items), resource_ids, conflict_policy)
+    fc.plan_version_tag = "v2"
+
+    graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
+    checkpoint = Checkpoint(id=str(uuid.uuid4()), session_id=s.id, state=PcState.BUILD_PLAN_APPROVAL)
+    env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
+    fc.checkpoint_id = checkpoint.id
+    fc.last_snapshot_hash = graph_hash
+
+    decision_items = append_card(fc, DecisionItem(text="Confirmed resources"))
+    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2", items=list(fc.plan_items)))
+    checkpoint_items = append_card(
+        fc, CheckpointCard(checkpoint_id=checkpoint.id, label="Pre-build checkpoint", created_at="")
+    )
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="build.plan_approval",
+            trace=Trace(status="completed", steps=[]),
+            reply_text="Plan v2 ready for approval.",
+            cards=["plan", "checkpoint"],
+        ),
+    )
+    return StepResult(
+        next=PcState.BUILD_PLAN_APPROVAL,
+        context=fc,
+        items=[*decision_items, *plan_items, *checkpoint_items, *turn_items],
+    )
+
+
+_BUILD_TRACE_STEPS = [
+    TraceStep(id="build-start", label="Create Start node", state="done", tone="success", canvas_event="add_start_node"),
+    TraceStep(
+        id="build-knowledge",
+        label="Create Knowledge Retrieval node",
+        state="done",
+        tone="success",
+        canvas_event="add_knowledge_node",
+    ),
+    TraceStep(id="build-llm", label="Create LLM node", state="done", tone="success", canvas_event="add_llm_node"),
+    TraceStep(id="build-end", label="Create End node", state="done", tone="success", canvas_event="add_output_node"),
+]
+
+
+def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) THE BUILD. Only ``approve_repair`` (resolved from approve_plan)
+    builds: drive apply_repair once with all create_node/connect intents
+    (node-by-node canvas reveal via env.emit_canvas), emit the change_set +
+    plan v2.x + assistant_turn(with Trace.steps), transition to build.execution."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind != "approve_repair":
+        return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
+
+    _emit_canvas(env, "create_checkpoint")
+    intents = env.agent.build_nodes(list(fc.plan_items))
+    result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=env.emit_canvas)
+    fc.last_snapshot_hash = result.new_hash
+    fc.built_node_ids = [
+        intent.args["node_id"]
+        for intent in intents
+        if intent.op == "create_node" and isinstance(intent.args.get("node_id"), str)
+    ]
+    changes = list(result.changes) if result.changes else list(result.changed_nodes)
+    scope = result.scope or "structure"
+    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "graph built")
+
+    change_set_items = append_card(
+        fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+    )
+    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2.1", items=list(fc.plan_items)))
+    decision_items = append_card(fc, DecisionItem(text="Approved the plan"))
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="build.execution",
+            trace=Trace(status="completed", steps=list(_BUILD_TRACE_STEPS)),
+            reply_text="Workflow built on the canvas.",
+            cards=["change_set", "plan"],
+        ),
+    )
+    return StepResult(
+        next=PcState.BUILD_EXECUTION,
+        context=fc,
+        items=[*change_set_items, *plan_items, *decision_items, *turn_items],
+    )
+
+
+def handle_execution(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) At rest after the build. ``run_test`` -> build.test_and_repair;
+    ``revert`` (resolved to ``undo``) -> build.reverted (intent only)."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind == "undo":
+        _emit_canvas(env, "revert_checkpoint")
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
+    if kind == "run_test":
+        _emit_canvas(env, "start_test_run")
+        items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="build.test_and_repair",
+                trace=Trace(status="running", steps=[]),
+                reply_text="Running tests.",
+                cards=[],
+            ),
+        )
+        return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
+    return StepResult(next=PcState.BUILD_EXECUTION, context=fc)
+
+
 def build_registry() -> dict[PcState, Handler]:
     """The Build handler table. Grows across Slice 2 tasks; ``build.complete``
     is terminal and intentionally absent (the loop returns before lookup)."""
@@ -182,4 +325,7 @@ def build_registry() -> dict[PcState, Handler]:
         PcState.BUILD_CAPABILITY_CHECK: handle_capability_check,
         PcState.BUILD_GOAL_ANALYSIS: handle_goal_analysis,
         PcState.BUILD_INITIAL_PLAN: handle_initial_plan,
+        PcState.BUILD_RESOURCE_RECOMMENDATION: handle_resource_recommendation,
+        PcState.BUILD_PLAN_APPROVAL: handle_plan_approval,
+        PcState.BUILD_EXECUTION: handle_execution,
     }

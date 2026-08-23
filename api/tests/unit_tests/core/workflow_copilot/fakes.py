@@ -57,8 +57,17 @@ from core.workflow_copilot.models import (
     TestInput,
 )
 from core.workflow_copilot.state import PcState
+from services.workflow_copilot.graph_ops import (
+    apply_connect,
+    apply_create_node,
+    apply_delete_node,
+    apply_insert_between,
+    apply_set_node_config,
+    diff_graphs,
+    validate_intent_args,
+)
 
-__all__ = ["FakeDifyPort", "InMemoryRepository", "StubAgent"]
+__all__ = ["FakeBuildDifyPort", "FakeDifyPort", "InMemoryRepository", "StubAgent"]
 
 
 # ---- in-memory Repository ----------------------------------------------
@@ -329,3 +338,92 @@ class StubAgent:
 
     def propose_build_repair(self, _built_node_ids):
         return []
+
+
+# ---- fake DifyPort that actually builds the graph -------------------------
+
+_BUILD_APPLY_FNS = {
+    "set_node_config": apply_set_node_config,
+    "create_node": apply_create_node,
+    "delete_node": apply_delete_node,
+    "connect": apply_connect,
+    "insert_between": apply_insert_between,
+}
+
+_ADD_NODE_EVENTS = {
+    "start": "add_start_node",
+    "knowledge-retrieval": "add_knowledge_node",
+    "llm": "add_llm_node",
+    "end": "add_output_node",
+}
+
+
+def _fake_canvas_payload(intent: MutationIntent, changed: list[str]) -> dict:
+    """Replicate services.workflow_copilot.dify_port._canvas_payload without
+    importing that (SQLAlchemy-heavy) module into the core test fakes."""
+    if intent.op == "create_node":
+        event = _ADD_NODE_EVENTS.get(str(intent.args.get("node_type", "")), "apply_edit_plan")
+        return {"event": event, "node_id": changed[0] if changed else None}
+    if intent.op == "connect":
+        return {
+            "event": "apply_edit_plan",
+            "edge": {"source": intent.args.get("from_node"), "target": intent.args.get("to_node")},
+        }
+    if intent.op == "set_node_config":
+        return {"event": "apply_error_fix", "node_id": intent.args.get("node_id")}
+    if intent.op == "delete_node":
+        return {"event": "apply_edit_plan", "node_id": intent.args.get("node_id")}
+    return {"event": "apply_edit_plan", "node_id": changed[0] if changed else None}
+
+
+class FakeBuildDifyPort:
+    """A ``DifyPort`` that genuinely applies Build's verbs to an accumulating
+    in-memory graph via the pure ``graph_ops`` helpers and emits the same
+    per-intent canvas payloads the real adapter does. Distinct from
+    ``FakeDifyPort`` (which records intents without applying them) so Build
+    tests can assert the graph was actually built and the reveal fired."""
+
+    def __init__(self) -> None:
+        self.graph: Graph = {"nodes": [], "edges": []}
+        self.hash: str = "h0"
+        self.applied: list[MutationIntent] = []
+        self.published: bool = False
+
+    def read_graph(self, _app_id: str, _actor: Actor) -> tuple[Graph, str]:
+        return copy.deepcopy(self.graph), self.hash
+
+    def node_outputs(self, _app_id: str, _actor: Actor, _run_id: str) -> list[NodeOutput]:
+        return []
+
+    def apply_repair(
+        self,
+        _app_id: str,
+        _actor: Actor,
+        intents: list[MutationIntent],
+        on_canvas: Callable[[dict], None] | None = None,
+    ) -> ApplyResult:
+        self.applied.extend(copy.deepcopy(intents))
+        before = copy.deepcopy(self.graph)
+        graph = self.graph
+        changed_nodes: list[str] = []
+        for intent in intents:
+            validate_intent_args(intent)
+            apply_fn = _BUILD_APPLY_FNS[intent.op]
+            graph, changed = apply_fn(graph, **intent.args)
+            changed_nodes.extend(changed)
+            if on_canvas is not None:
+                on_canvas(_fake_canvas_payload(intent, changed))
+        self.graph = graph
+        self.hash = "h1"
+        if not changed_nodes:
+            return ApplyResult(changed_nodes=[], new_hash=self.hash, changes=[], scope="")
+        changes, scope = diff_graphs(before, graph)
+        return ApplyResult(changed_nodes=changed_nodes, new_hash=self.hash, changes=changes, scope=scope)
+
+    def run_draft(
+        self, _app_id: str, _actor: Actor, _inputs: Inputs, _on_event: Callable[[NodeEvent], None]
+    ) -> Run:
+        return Run(dify_run_id="build-run-1", status="succeeded")
+
+    def publish(self, _app_id: str, _actor: Actor) -> None:
+        self.published = True

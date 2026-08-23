@@ -130,3 +130,100 @@ def test_initial_plan_find_resources_advances_to_resource_recommendation():
     rs = next(i for i in res.items if i.kind == "resource_select")
     assert rs.payload["recommended"][0]["readiness"] == "ready"
     assert len(rs.payload["conflict_policy_options"]) == 2
+
+
+def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
+    from core.workflow_copilot.handlers_build import handle_resource_recommendation
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    env, repo = _new_env(dify=FakeBuildDifyPort())
+    s = _seed_build_session(
+        repo, PcState.BUILD_RESOURCE_RECOMMENDATION, plan_items=["Retrieve", "Summarize"], plan_version_tag="v1"
+    )
+    turn = Turn(
+        action=Action(
+            kind="confirm_resources",
+            payload={"resource_ids": ["kb-company"], "conflict_policy": "audited"},
+            base_version=1,
+        ),
+        actor=_actor(),
+    )
+    res = handle_resource_recommendation(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.BUILD_PLAN_APPROVAL
+    assert res.context.plan_version_tag == "v2"
+    assert res.context.resource_selection == {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    assert res.context.checkpoint_id
+    cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
+    assert cp.session_id == s.id
+    checkpoint_card = next(i for i in res.items if i.kind == "checkpoint")
+    assert checkpoint_card.payload["checkpoint_id"] == res.context.checkpoint_id
+    assert {i.kind for i in res.items} >= {"decision", "plan", "checkpoint", "assistant_turn"}
+
+
+def test_plan_approval_approve_builds_graph_and_reveals_nodes():
+    from core.workflow_copilot.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    events: list[dict] = []
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    s = _seed_build_session(
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v2"
+    )
+    # approve_plan resolves (via service.resolve_action_kind) to "approve_repair".
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.BUILD_EXECUTION
+    assert res.context.built_node_ids == ["start", "knowledge_retrieval", "llm", "end"]
+    assert len(dify.graph["nodes"]) == 4
+    assert len(dify.graph["edges"]) == 3
+    names = [e["event"] for e in events]
+    assert names[0] == "create_checkpoint"
+    assert [n for n in names if n.startswith("add_")] == [
+        "add_start_node",
+        "add_knowledge_node",
+        "add_llm_node",
+        "add_output_node",
+    ]
+    change_set = next(i for i in res.items if i.kind == "change_set")
+    assert change_set.payload["scope"] == "structure"
+    assistant = next(i for i in res.items if i.kind == "assistant_turn")
+    assert len(assistant.payload["trace"]["steps"]) == 4
+
+
+def test_plan_approval_ignores_non_approve_action():
+    from core.workflow_copilot.handlers_build import handle_plan_approval
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    env, repo = _new_env(dify=FakeBuildDifyPort())
+    s = _seed_build_session(repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve"], plan_version_tag="v2")
+    turn = Turn(action=Action(kind="message", base_version=1), actor=_actor())
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_PLAN_APPROVAL
+
+
+def test_execution_run_test_advances_to_test_and_repair():
+    from core.workflow_copilot.handlers_build import handle_execution
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_EXECUTION, built_node_ids=["start", "llm", "end"])
+    turn = Turn(action=Action(kind="run_test", base_version=1), actor=_actor())
+    res = handle_execution(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_TEST_AND_REPAIR
+    assert {"event": "start_test_run"} in events
+
+
+def test_execution_revert_records_intent_only():
+    from core.workflow_copilot.handlers_build import handle_execution
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_EXECUTION, built_node_ids=["start", "llm", "end"])
+    turn = Turn(action=Action(kind="undo", base_version=1), actor=_actor())  # revert -> undo
+    res = handle_execution(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_REVERTED
+    assert any(i.kind == "decision" for i in res.items)
+    assert {"event": "revert_checkpoint"} in events
