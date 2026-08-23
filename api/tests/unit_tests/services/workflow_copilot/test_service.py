@@ -612,3 +612,24 @@ def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
             resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
         }
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
+
+
+def test_get_session_view_surfaces_checkpoint_when_set(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
+                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    repo.create_session(s, CopilotContext(checkpoint_id="cp-123"), [ConversationItem(kind="user", seq=0)])
+    view = service.get_session_view(s.id, _actor())
+    assert view.checkpoint is not None
+    assert view.checkpoint.checkpoint_id == "cp-123"
+
+
+def test_get_session_view_no_checkpoint_when_unset(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
+                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_INITIAL_PLAN)
+    repo.create_session(s, CopilotContext(), [ConversationItem(kind="user", seq=0)])
+    view = service.get_session_view(s.id, _actor())
+    assert view.checkpoint is None
