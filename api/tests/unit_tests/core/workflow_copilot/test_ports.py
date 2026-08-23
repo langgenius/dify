@@ -198,6 +198,9 @@ class _StubRepository:
     def list_conversation(self, _session_id):
         return []
 
+    def invalidate_conversation_items(self, _session_id, _from_seq):
+        return None
+
 
 def test_stub_agent_satisfies_copilot_agent_protocol():
     assert isinstance(_StubAgent(), CopilotAgent)
