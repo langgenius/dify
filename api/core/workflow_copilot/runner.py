@@ -105,7 +105,17 @@ class Runner:
             next_state, items = recovery.apply_recovery_action(self._env.dify, turn, s, fc)
             s.version = self._env.repo.compare_and_advance(s.id, s.version, next_state, fc, items)
             s.current_state = next_state
-            return s
+            # check_recovery / recovery_continue stay at the current waiting state,
+            # and recovery_restart into BUILD/EDIT lands on the waiting
+            # capability_check — all rest here. recovery_restart into FIX /
+            # FIX_CHECKLIST lands on a *working* entry state (fix.diagnose /
+            # checklist.diagnose) that the runner must drive, exactly like any
+            # transition into a working state — fall through to the advance loop
+            # with the recovery action consumed.
+            if is_waiting(s.current_state) or is_terminal(s.current_state):
+                return s
+            turn = Turn(actor=turn.actor)  # action consumed
+            # fall through to the advance loop below
 
         first = True
         while True:

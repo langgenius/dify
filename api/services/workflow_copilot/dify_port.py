@@ -60,18 +60,8 @@ from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
+from services.workflow_copilot import graph_ops
 from services.workflow_copilot.errors import HashMismatchError, WorkflowNotInitializedError
-from services.workflow_copilot.graph_ops import (
-    apply_connect,
-    apply_create_node,
-    apply_delete_node,
-    apply_insert_between,
-    apply_set_node_config,
-    diff_graphs,
-    node_ids,
-    structural_fingerprint,
-    validate_intent_args,
-)
 from services.workflow_copilot.identity import load_app, resolve_account
 from services.workflow_copilot.run_mapping import map_run_result, to_node_event
 from services.workflow_service import WorkflowService
@@ -80,11 +70,11 @@ __all__ = ["WorkflowServiceDifyPort"]
 
 
 _APPLY_FNS: dict[str, Callable[..., tuple[Graph, list[str]]]] = {
-    "set_node_config": apply_set_node_config,
-    "create_node": apply_create_node,
-    "delete_node": apply_delete_node,
-    "connect": apply_connect,
-    "insert_between": apply_insert_between,
+    "set_node_config": graph_ops.apply_set_node_config,
+    "create_node": graph_ops.apply_create_node,
+    "delete_node": graph_ops.apply_delete_node,
+    "connect": graph_ops.apply_connect,
+    "insert_between": graph_ops.apply_insert_between,
 }
 
 _CREATE_NODE_CANVAS_EVENTS: dict[str, CanvasEvent] = {
@@ -193,7 +183,7 @@ class WorkflowServiceDifyPort:
                 apply_fn = _APPLY_FNS.get(intent.op)
                 if apply_fn is None:
                     continue
-                validate_intent_args(intent)
+                graph_ops.validate_intent_args(intent)
                 graph, changed = apply_fn(graph, **intent.args)
                 changed_nodes.extend(changed)
                 if on_canvas is not None:
@@ -205,10 +195,10 @@ class WorkflowServiceDifyPort:
                     new_hash=unique_hash,
                     changes=[],
                     scope="",
-                    structure_fingerprint=structural_fingerprint(before_graph),
+                    structure_fingerprint=graph_ops.structural_fingerprint(before_graph),
                 )
 
-            changes, scope = diff_graphs(before_graph, graph)
+            changes, scope = graph_ops.diff_graphs(before_graph, graph)
 
             try:
                 updated = WorkflowService().sync_draft_workflow(
@@ -233,14 +223,14 @@ class WorkflowServiceDifyPort:
                 new_hash=updated.unique_hash,
                 changes=changes,
                 scope=scope,
-                structure_fingerprint=structural_fingerprint(graph),
+                structure_fingerprint=graph_ops.structural_fingerprint(graph),
             )
 
     def structural_fingerprint(self, graph: Graph) -> str:
-        return structural_fingerprint(graph)
+        return graph_ops.structural_fingerprint(graph)
 
     def graph_node_ids(self, graph: Graph) -> list[str]:
-        return node_ids(graph)
+        return graph_ops.node_ids(graph)
 
     def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str:
         """Restore the draft to a prior snapshot graph (Slice 4 revert): write
