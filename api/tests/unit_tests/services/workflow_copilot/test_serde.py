@@ -152,3 +152,25 @@ def test_context_from_dict_defaults_lifecycle_fields_when_absent():
     out = context_from_dict({})  # an older row with no paused/checkpoint_seq keys
     assert out.paused is False
     assert out.checkpoint_seq == 0
+
+
+def test_serde_round_trips_recovery_fields():
+    from core.workflow_copilot.models import CopilotContext
+    from services.workflow_copilot.serde import context_from_dict, context_to_dict
+
+    fc = CopilotContext(last_structure_fingerprint="fp-abc", recovery_class="config_only")
+    d = context_to_dict(fc)
+    assert d["last_structure_fingerprint"] == "fp-abc"
+    assert d["recovery_class"] == "config_only"
+    back = context_from_dict(d)
+    assert back.last_structure_fingerprint == "fp-abc"
+    assert back.recovery_class == "config_only"
+
+
+def test_serde_defaults_recovery_fields_for_old_rows():
+    from services.workflow_copilot.serde import context_from_dict
+
+    # An older persisted dict lacking the new keys still deserializes.
+    back = context_from_dict({})
+    assert back.last_structure_fingerprint == ""
+    assert back.recovery_class == ""

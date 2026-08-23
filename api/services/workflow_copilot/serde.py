@@ -71,4 +71,6 @@ def context_from_dict(d: dict[str, Any]) -> CopilotContext:
         edit_target_node_ids=list(d.get("edit_target_node_ids") or []),
         paused=bool(d.get("paused", False)),
         checkpoint_seq=int(d.get("checkpoint_seq", 0)),
+        last_structure_fingerprint=d.get("last_structure_fingerprint", ""),
+        recovery_class=d.get("recovery_class", ""),
     )
