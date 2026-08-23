@@ -131,6 +131,15 @@ class _StubAgent:
     def propose_build_repair(self, _built_node_ids):
         return []
 
+    def analyze_impact(self, _goal_text, _graph):
+        return {"edit_rules": {}, "target_node_ids": []}
+
+    def propose_edit_plan(self, _edit_rules, _graph):
+        return []
+
+    def build_edit_intents(self, _edit_rules, _graph):
+        return []
+
 
 class _StubDifyPort:
     """A trivial conforming DifyPort. Takes `actor`, never ForwardAuth."""

@@ -91,6 +91,14 @@ class CopilotAgent(Protocol):
 
     def propose_build_repair(self, built_node_ids: list[str]) -> list[MutationIntent]: ...
 
+    # -- Edit cognition (Slice 3; canned in PlaceholderAgent) --
+
+    def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, Any]: ...
+
+    def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]: ...
+
+    def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]: ...
+
 
 @runtime_checkable
 class DifyPort(Protocol):
