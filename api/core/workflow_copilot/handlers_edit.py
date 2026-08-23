@@ -23,13 +23,20 @@ from core.workflow_copilot.contract import (
     PlanCard,
     SummaryCard,
     Trace,
+    TraceStep,
 )
 from core.workflow_copilot.handlers_fix import action_string, append_card
-from core.workflow_copilot.models import Checkpoint, CopilotContext, Session, Snapshot, Turn
+from core.workflow_copilot.models import ChangeSet, Checkpoint, CopilotContext, Session, Snapshot, Turn
 from core.workflow_copilot.runner import Env, Handler, StepResult
 from core.workflow_copilot.state import PcState
 
-__all__ = ["edit_registry", "handle_capability_check", "handle_impact_analysis"]
+__all__ = [
+    "edit_registry",
+    "handle_apply_changes",
+    "handle_capability_check",
+    "handle_impact_analysis",
+    "handle_plan_approval",
+]
 
 
 def _emit_canvas(env: Env, event: str, **extra) -> None:
@@ -167,10 +174,110 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: CopilotContext)
     )
 
 
+_EDIT_TRACE_STEPS = [
+    TraceStep(
+        id="edit-highlight",
+        label="Highlight edit targets",
+        state="done",
+        tone="neutral",
+        canvas_event="highlight_edit_target",
+    ),
+    TraceStep(
+        id="edit-apply",
+        label="Apply the change plan",
+        state="done",
+        tone="success",
+        canvas_event="apply_edit_plan",
+    ),
+]
+
+
+def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) THE EDIT. Only ``approve_repair`` (resolved from approve_plan)
+    applies: read the current graph, get the canned set_node_config intents,
+    highlight the targets, apply once (on_canvas=None -- Edit narrates its own
+    coarse apply_edit_plan rather than the Fix-flavored per-intent apply_error_
+    fix), emit the real change_set + checkpoint + assistant_turn, transition to
+    edit.apply_changes.
+
+    Naturally idempotent on loop-back re-approve: re-applying the same
+    set_node_config value overwrites the node's data (no ValueError, unlike
+    Build's create_node); a re-approve simply yields an empty diff."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind != "approve_repair":
+        return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc)
+
+    _emit_canvas(env, "create_checkpoint")
+    graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
+    intents = env.agent.build_edit_intents(dict(fc.edit_rules), graph)
+    fc.staged_repair = list(intents)
+
+    for node_id in fc.edit_target_node_ids:
+        _emit_canvas(env, "highlight_edit_target", node_id=node_id)
+
+    result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=None)
+    fc.last_snapshot_hash = result.new_hash
+    _emit_canvas(env, "apply_edit_plan")
+
+    changes = list(result.changes) if result.changes else list(result.changed_nodes)
+    scope = result.scope or "configuration"
+    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "no changes")
+
+    change_set_items = append_card(
+        fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+    )
+    checkpoint_items = append_card(
+        fc, CheckpointCard(checkpoint_id=fc.checkpoint_id, label="Pre-edit checkpoint", created_at="")
+    )
+    decision_items = append_card(fc, DecisionItem(text="Approved the change plan"))
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="edit.apply_changes",
+            trace=Trace(status="completed", steps=list(_EDIT_TRACE_STEPS)),
+            reply_text="Applied the changes to the canvas.",
+            cards=["change_set", "checkpoint"],
+        ),
+    )
+    return StepResult(
+        next=PcState.EDIT_APPLY_CHANGES,
+        context=fc,
+        items=[*change_set_items, *checkpoint_items, *decision_items, *turn_items],
+    )
+
+
+def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) At rest after the edit. ``run_affected_tests`` -> edit.test_
+    affected_paths; ``revert`` (resolved to ``undo``) -> edit.reverted (intent
+    only)."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind == "undo":
+        _emit_canvas(env, "revert_checkpoint")
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
+    if kind == "run_affected_tests":
+        _emit_canvas(env, "start_test_run")
+        items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="edit.test_affected_paths",
+                trace=Trace(status="running", steps=[]),
+                reply_text="Running affected-path tests.",
+                cards=[],
+            ),
+        )
+        return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=items)
+    return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc)
+
+
 def edit_registry() -> dict[PcState, Handler]:
     """The Edit handler table. Grows across Slice 3 tasks; ``edit.publish`` is
     terminal and intentionally absent (the loop returns before lookup)."""
     return {
         PcState.EDIT_CAPABILITY_CHECK: handle_capability_check,
         PcState.EDIT_IMPACT_ANALYSIS: handle_impact_analysis,
+        PcState.EDIT_PLAN_APPROVAL: handle_plan_approval,
+        PcState.EDIT_APPLY_CHANGES: handle_apply_changes,
     }
