@@ -369,11 +369,16 @@ class WorkflowCopilotService:
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
         """Port of Go ``GetSessionView``."""
-        s, _fc = self._repo.get_session(session_id)  # raises NotFoundError if absent
+        s, fc = self._repo.get_session(session_id)  # raises NotFoundError if absent
         if s.owner_account_id != actor.account_id:
             raise NotFoundError("session not found")  # do not leak existence to non-owners
         items = self._repo.list_conversation(session_id)
         st = s.current_state
+        checkpoint = (
+            CheckpointRef(checkpoint_id=fc.checkpoint_id, label="Restore point", created_at="")
+            if fc.checkpoint_id
+            else None
+        )
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,
@@ -386,7 +391,7 @@ class WorkflowCopilotService:
             entry_mode=s.entry_mode,
             phase=_phase_for(st),
             actions=_actions_for(st),
-            checkpoint=None,
+            checkpoint=checkpoint,
         )
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
