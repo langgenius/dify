@@ -69,4 +69,6 @@ def context_from_dict(d: dict[str, Any]) -> CopilotContext:
         built_node_ids=list(d.get("built_node_ids") or []),
         edit_rules=dict(d.get("edit_rules") or {}),
         edit_target_node_ids=list(d.get("edit_target_node_ids") or []),
+        paused=bool(d.get("paused", False)),
+        checkpoint_seq=int(d.get("checkpoint_seq", 0)),
     )

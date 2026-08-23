@@ -134,3 +134,21 @@ def test_context_from_dict_defaults_edit_fields_when_absent():
     out = context_from_dict({})  # an older row with no edit_* keys
     assert out.edit_rules == {}
     assert out.edit_target_node_ids == []
+
+
+def test_context_roundtrip_preserves_lifecycle_fields():
+    from core.workflow_copilot.models import CopilotContext
+    from services.workflow_copilot.serde import context_from_dict, context_to_dict
+
+    fc = CopilotContext(paused=True, checkpoint_seq=7)
+    out = context_from_dict(context_to_dict(fc))
+    assert out.paused is True
+    assert out.checkpoint_seq == 7
+
+
+def test_context_from_dict_defaults_lifecycle_fields_when_absent():
+    from services.workflow_copilot.serde import context_from_dict
+
+    out = context_from_dict({})  # an older row with no paused/checkpoint_seq keys
+    assert out.paused is False
+    assert out.checkpoint_seq == 0
