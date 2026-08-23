@@ -124,6 +124,7 @@ def perform_revert(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> None
         return
     _cp, snap = env.repo.get_checkpoint(fc.checkpoint_id)
     fc.last_snapshot_hash = env.dify.restore_graph(s.app_id, turn.actor, snap.graph)
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(snap.graph)
     env.repo.invalidate_conversation_items(s.id, fc.checkpoint_seq)
     fc.checkpoint_id = ""
 
@@ -152,6 +153,7 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> Ste
     diagnosis = env.agent.diagnose(failed, graph, outputs)
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
 
     items = append_card(
         fc,
@@ -220,6 +222,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepRe
     ``checklist.await_recheck``. Port of ``handlers_fix.go:146``."""
     result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
+    fc.last_structure_fingerprint = result.structure_fingerprint
     # Adapters that don't compute a real diff (e.g. FakeDifyPort in tests)
     # leave changes/scope empty -- fall back to the old changed_nodes/
     # "configuration" behavior so those callers stay green.
@@ -368,6 +371,7 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: CopilotConte
     diagnosis = env.agent.diagnose_checklist(fc.checklist_errors, graph)
     fc.diagnosis = diagnosis
     fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
 
     items = append_card(
         fc,

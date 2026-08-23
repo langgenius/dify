@@ -160,6 +160,7 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: CopilotContext)
     env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
     fc.checkpoint_id = checkpoint.id
     fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
 
     decision_items = append_card(fc, DecisionItem(text="Submitted edit rules"))
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
@@ -226,6 +227,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
 
     result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=None)
     fc.last_snapshot_hash = result.new_hash
+    fc.last_structure_fingerprint = result.structure_fingerprint
     _emit_canvas(env, "apply_edit_plan")
 
     changes = list(result.changes) if result.changes else list(result.changed_nodes)
@@ -429,6 +431,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> Ste
     env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
     fc.checkpoint_id = checkpoint.id
     fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
         fc, CheckpointCard(checkpoint_id=checkpoint.id, label="Pre-edit checkpoint", created_at="")

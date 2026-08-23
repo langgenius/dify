@@ -154,6 +154,7 @@ def test_resource_recommendation_confirm_creates_checkpoint_and_plan_v2():
     assert res.context.plan_version_tag == "v2"
     assert res.context.resource_selection == {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
     assert res.context.checkpoint_id
+    assert res.context.last_structure_fingerprint != ""
     cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
     assert cp.session_id == s.id
     checkpoint_card = next(i for i in res.items if i.kind == "checkpoint")
@@ -177,6 +178,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
 
     assert res.next == PcState.BUILD_EXECUTION
     assert res.context.built_node_ids == ["start", "knowledge_retrieval", "llm", "end"]
+    assert res.context.last_structure_fingerprint != ""
     assert len(dify.graph["nodes"]) == 4
     assert len(dify.graph["edges"]) == 3
     names = [e["event"] for e in events]
@@ -248,6 +250,7 @@ def test_test_and_repair_finds_and_fixes_then_reaches_review():
     res = handle_test_and_repair(env, Turn(actor=_actor()), repo.get_session(s.id)[0], fc)
 
     assert res.next == PcState.BUILD_REVIEW
+    assert res.context.last_structure_fingerprint != ""
     kinds = [i.kind for i in res.items]
     assert kinds.count("error") == 1
     assert "change_set" in kinds

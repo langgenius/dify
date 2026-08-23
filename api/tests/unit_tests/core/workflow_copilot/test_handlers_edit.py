@@ -112,6 +112,7 @@ def test_impact_analysis_submit_rules_advances_to_plan_approval_with_checkpoint(
     assert "junk" not in res.context.edit_rules  # non-listed key excluded
     assert res.context.plan_items
     assert res.context.checkpoint_id
+    assert res.context.last_structure_fingerprint != ""
     cp, _snap = repo.get_checkpoint(res.context.checkpoint_id)
     assert cp.session_id == s.id
     checkpoint_card = next(i for i in res.items if i.kind == "checkpoint")
