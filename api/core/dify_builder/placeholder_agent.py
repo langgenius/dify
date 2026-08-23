@@ -175,6 +175,15 @@ class PlaceholderAgent:
             )
         ]
 
+    def learn_from_build(
+        self,
+        goal_text: str,
+        requirements: dict[str, Any],
+        plan_items: list[str],
+        built_node_ids: list[str],
+    ) -> str:
+        return "Reusable skill: a Start->Knowledge->LLM->End summary workflow"
+
     # -- Edit cognition (Slice 3; fixed, deterministic canned output) --
 
     def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, Any]:
