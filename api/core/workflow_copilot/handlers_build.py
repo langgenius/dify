@@ -21,8 +21,10 @@ from core.workflow_copilot.contract import (
     FormCard,
     FormField,
     PlanCard,
+    PublishCard,
     ResourceSelectCard,
     SummaryCard,
+    SummaryRow,
     TestResultCard,
     TestStat,
     Trace,
@@ -38,9 +40,12 @@ __all__ = [
     "handle_capability_check",
     "handle_execution",
     "handle_goal_analysis",
+    "handle_governance_feedback",
     "handle_initial_plan",
     "handle_plan_approval",
+    "handle_publish",
     "handle_resource_recommendation",
+    "handle_reverted",
     "handle_review",
     "handle_test_and_repair",
 ]
@@ -433,6 +438,51 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepR
     return StepResult(next=PcState.BUILD_REVIEW, context=fc)
 
 
+def handle_publish(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(working, auto) Publish the built workflow, emit the PublishCard, and
+    auto-advance to build.governance_feedback."""
+    env.dify.publish(s.app_id, turn.actor)
+    _emit_canvas(env, "publish_workflow")
+    items = append_card(fc, PublishCard(version="1.0", badge="live"))
+    return StepResult(next=PcState.BUILD_GOVERNANCE_FEEDBACK, context=fc, items=items)
+
+
+def handle_governance_feedback(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(working, auto) Governance tail is spec-deferred (no body). As the
+    handler transitioning INTO the terminal build.complete, it emits the
+    completion summary. Reached both via publish and via keep_draft (which
+    skips publish), so the status row is scenario-neutral."""
+    rows = [
+        SummaryRow(label="Workflow", value="Start -> Knowledge -> LLM -> End"),
+        SummaryRow(label="Nodes", value=str(len(fc.built_node_ids))),
+        SummaryRow(label="Status", value="Complete"),
+    ]
+    items = append_card(fc, SummaryCard(variant="completion", title="Build complete", rows=rows))
+    return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=items)
+
+
+def handle_reverted(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
+    re-proposes plan v1 and returns to build.initial_plan."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind != "re_fix":
+        return StepResult(next=PcState.BUILD_REVERTED, context=fc)
+    fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
+    fc.plan_version_tag = "v1"
+    plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="build.initial_plan",
+            trace=Trace(status="completed", steps=[]),
+            reply_text="Restarting the plan.",
+            cards=["plan"],
+        ),
+    )
+    return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc, items=[*plan_items, *turn_items])
+
+
 def build_registry() -> dict[PcState, Handler]:
     """The Build handler table. Grows across Slice 2 tasks; ``build.complete``
     is terminal and intentionally absent (the loop returns before lookup)."""
@@ -445,4 +495,7 @@ def build_registry() -> dict[PcState, Handler]:
         PcState.BUILD_EXECUTION: handle_execution,
         PcState.BUILD_TEST_AND_REPAIR: handle_test_and_repair,
         PcState.BUILD_REVIEW: handle_review,
+        PcState.BUILD_PUBLISH: handle_publish,
+        PcState.BUILD_GOVERNANCE_FEEDBACK: handle_governance_feedback,
+        PcState.BUILD_REVERTED: handle_reverted,
     }
