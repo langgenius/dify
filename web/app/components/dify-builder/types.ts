@@ -69,10 +69,10 @@ export const CHECKLIST_AWAIT_RECHECK_STATE = 'checklist.await_recheck'
 // beyond the odd `provide_testdata` special-case in the panel).
 //
 // Slice 0 Task 7 made action rendering data-driven off `SessionView.actions`
-// (see `use-difyBuilder-session.ts`'s `runAction`, now typed to accept any
+// (see `use-dify-builder-session.ts`'s `runAction`, now typed to accept any
 // backend-provided action id, and `/dify-builder-debug`'s button list).
 // This hardcoded list is kept only because the in-editor Dify Builder
-// panel (`dify-builder-panel/difyBuilder-session-view.tsx`) still renders a
+// panel (`dify-builder-panel/dify-builder-session-view.tsx`) still renders a
 // fixed action list with i18n labels rather than `view.actions`; migrating
 // that real (non-throwaway) panel to data-driven actions/labels is out of
 // scope here. Don't add new consumers of this list — new call sites should
