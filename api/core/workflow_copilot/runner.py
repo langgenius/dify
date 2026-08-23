@@ -95,6 +95,12 @@ class Runner:
                 f"copilot: stale base_version {turn.action.base_version} for session {session_id} (current {s.version})"
             )
 
+        action_kind = turn.action.kind if turn.action is not None else ""
+        if action_kind in ("stop", "resume"):
+            fc.paused = action_kind == "stop"
+            s.version = self._env.repo.compare_and_advance(s.id, s.version, s.current_state, fc, [])
+            return s
+
         first = True
         while True:
             if is_waiting(s.current_state) and first and turn.action is None:

@@ -633,3 +633,14 @@ def test_get_session_view_no_checkpoint_when_unset(
     repo.create_session(s, CopilotContext(), [ConversationItem(kind="user", seq=0)])
     view = service.get_session_view(s.id, _actor())
     assert view.checkpoint is None
+
+
+def test_get_session_view_run_status_paused(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
+                entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_REVIEW)
+    repo.create_session(s, CopilotContext(paused=True), [ConversationItem(kind="user", seq=0)])
+    view = service.get_session_view(s.id, _actor())
+    assert view.run_status == "paused"
+    assert view.canvas_read_only is False  # editable while paused
