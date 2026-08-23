@@ -124,6 +124,8 @@ class DifyPort(Protocol):
 
     def publish(self, app_id: str, actor: Actor) -> None: ...
 
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str: ...
+
 
 @runtime_checkable
 class Repository(Protocol):
