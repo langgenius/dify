@@ -226,6 +226,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: Copilot
     env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
     fc.checkpoint_id = checkpoint.id
     fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
 
     decision_items = append_card(fc, DecisionItem(text="Confirmed resources"))
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2", items=list(fc.plan_items)))
@@ -301,6 +302,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
 
     result = env.dify.apply_repair(s.app_id, turn.actor, to_apply, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
+    fc.last_structure_fingerprint = result.structure_fingerprint
     fc.built_node_ids = [
         intent.args["node_id"]
         for intent in intents
@@ -377,6 +379,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: CopilotContext)
     repair_intents = env.agent.propose_build_repair(list(fc.built_node_ids))
     result = env.dify.apply_repair(s.app_id, turn.actor, repair_intents, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
+    fc.last_structure_fingerprint = result.structure_fingerprint
     changes = list(result.changes) if result.changes else list(result.changed_nodes)
     scope = result.scope or "configuration"
     fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "config edit")

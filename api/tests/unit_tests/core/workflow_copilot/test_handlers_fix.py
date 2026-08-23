@@ -216,6 +216,25 @@ def test_apply_emits_change_set_card_with_fallback_scope_and_changes_when_adapte
     assert change_set_item.payload["count"] == 1
 
 
+def test_diagnose_records_structure_fingerprint():
+    # Locks the C-1 pairing: handle_diagnose's read-graph site
+    # (fc.last_snapshot_hash = graph_hash) must set fc.last_structure_fingerprint
+    # alongside it. Calls handle_diagnose directly (not via the Runner) so the
+    # apply site's later write to last_structure_fingerprint doesn't mask a
+    # missing diagnose-site pairing.
+    env, repo = _new_env()
+    dify = env.dify
+    repo.save_run("sess", Run(id="r1", dify_run_id="d1", status="failed"))
+    s = _session(id="sess")
+    fc = CopilotContext(failed_run_id="r1")
+
+    handle_diagnose(env, Turn(actor=_actor()), s, fc)
+
+    assert fc.last_snapshot_hash == dify.hash
+    assert fc.last_structure_fingerprint != ""
+    assert fc.last_structure_fingerprint == dify.structural_fingerprint(dify.graph)
+
+
 # ---- await_approval ------------------------------------------------------
 
 
