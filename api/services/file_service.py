@@ -131,43 +131,32 @@ class FileService:
         file_size: int,
         default_file_size_limit: int | None = None,
     ) -> bool:
+        return file_size <= FileService.file_size_limit(
+            extension=extension,
+            default_file_size_limit=default_file_size_limit,
+        )
+
+    @staticmethod
+    def file_size_limit(
+        *,
+        extension: str,
+        default_file_size_limit: int | None = None,
+    ) -> int:
+        """Return the size an extension is allowed, in bytes."""
+
         if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
         elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT
         elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT
         else:
             # Context-specific uploads may override the default limit without changing media-specific limits.
             file_size_limit = (
-                (default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT)
-                * 1024
-                * 1024
+                default_file_size_limit if default_file_size_limit is not None else dify_config.UPLOAD_FILE_SIZE_LIMIT
             )
 
-        return file_size <= file_size_limit
-
-    @staticmethod
-    def largest_file_size_limit() -> int:
-        """Return the largest size the configured limits allow any extension, in bytes.
-
-        ``is_file_size_within_limit`` can only answer once the whole body has
-        been counted, which is one buffer too late for a caller reading from an
-        untrusted stream. This is the bound such a caller can apply first, and
-        it is exact for anyone who does not also pass ``default_file_size_limit``,
-        the one override that can lift a single call above it.
-        """
-
-        return (
-            max(
-                dify_config.UPLOAD_FILE_SIZE_LIMIT,
-                dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
-                dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
-                dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
-            )
-            * 1024
-            * 1024
-        )
+        return file_size_limit * 1024 * 1024
 
     def get_file_base64(self, file_id: str) -> str:
         with self._session_maker(expire_on_commit=False) as session:

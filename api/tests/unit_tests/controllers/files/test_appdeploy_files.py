@@ -474,72 +474,53 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(app: Flask) -> None:
     )
 
 
-def test_produced_applies_the_shared_per_extension_size_limit(
-    app: Flask, config_overrides: Callable[..., None]
-) -> None:
-    """``create_file_by_raw`` has no limit of its own, so nothing else would stop this."""
-
-    config_overrides(UPLOAD_IMAGE_FILE_SIZE_LIMIT=1)
-
-    with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
-        with app.test_request_context(
-            "/files/appdeploy/produced",
-            method="POST",
-            headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
-            data={"file": (BytesIO(b"0" * (1024 * 1024 + 1)), "chart.png")},
-            content_type="multipart/form-data",
-        ):
-            with pytest.raises(FileTooLargeError):
-                ProducedFileApi().post()
-
-    tool_file_manager.return_value.create_file_by_raw.assert_not_called()
-
-
 @pytest.fixture
-def one_megabyte_ceiling(config_overrides: Callable[..., None]) -> int:
-    """Flatten every per-extension limit so the stream ceiling is one mebibyte."""
+def one_megabyte_image_limit(config_overrides: Callable[..., None]) -> int:
+    """Hold images to one mebibyte while every other kind stays far above it."""
 
     config_overrides(
-        UPLOAD_FILE_SIZE_LIMIT=1,
+        UPLOAD_FILE_SIZE_LIMIT=64,
         UPLOAD_IMAGE_FILE_SIZE_LIMIT=1,
-        UPLOAD_VIDEO_FILE_SIZE_LIMIT=1,
-        UPLOAD_AUDIO_FILE_SIZE_LIMIT=1,
+        UPLOAD_VIDEO_FILE_SIZE_LIMIT=64,
+        UPLOAD_AUDIO_FILE_SIZE_LIMIT=64,
     )
     return 1024 * 1024
 
 
-@pytest.mark.usefixtures("one_megabyte_ceiling")
-def test_produced_accepts_a_file_of_exactly_the_largest_allowed_size(app: Flask, one_megabyte_ceiling: int) -> None:
+def test_produced_accepts_a_file_of_exactly_the_per_extension_limit(app: Flask, one_megabyte_image_limit: int) -> None:
     with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
         tool_file_manager.return_value.create_file_by_raw.return_value = SimpleNamespace(
             id="88888888-8888-4888-8888-888888888888",
             name="chart.png",
-            size=one_megabyte_ceiling,
+            size=one_megabyte_image_limit,
             mimetype="image/png",
         )
         with app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
-            data={"file": (BytesIO(b"0" * one_megabyte_ceiling), "chart.png")},
+            data={"file": (BytesIO(b"0" * one_megabyte_image_limit), "chart.png")},
             content_type="multipart/form-data",
         ):
             _, status = ProducedFileApi().post()
 
     assert status == 201
     assert len(tool_file_manager.return_value.create_file_by_raw.call_args.kwargs["file_binary"]) == (
-        one_megabyte_ceiling
+        one_megabyte_image_limit
     )
 
 
-@pytest.mark.usefixtures("one_megabyte_ceiling")
-def test_produced_rejects_a_file_one_byte_over_the_largest_allowed_size(app: Flask, one_megabyte_ceiling: int) -> None:
+def test_produced_rejects_a_file_one_byte_over_the_per_extension_limit(
+    app: Flask, one_megabyte_image_limit: int
+) -> None:
+    """``create_file_by_raw`` has no limit of its own, so nothing else would stop this."""
+
     with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
         with app.test_request_context(
             "/files/appdeploy/produced",
             method="POST",
             headers=_bearer(FileGrantScope.PRODUCE, end_user_id="99999999-9999-4999-8999-999999999999"),
-            data={"file": (BytesIO(b"0" * (one_megabyte_ceiling + 1)), "chart.png")},
+            data={"file": (BytesIO(b"0" * (one_megabyte_image_limit + 1)), "chart.png")},
             content_type="multipart/form-data",
         ):
             with pytest.raises(FileTooLargeError) as raised:
@@ -563,11 +544,10 @@ class _CountingStream:
         return b"0" * served
 
 
-@pytest.mark.usefixtures("one_megabyte_ceiling")
-def test_produced_stops_reading_an_oversized_body_at_the_ceiling(one_megabyte_ceiling: int) -> None:
+def test_produced_stops_reading_an_oversized_body_at_the_per_extension_limit(one_megabyte_image_limit: int) -> None:
     """The caller is a worker running plugin code with no proxy body limit in front of it."""
 
-    stream = _CountingStream(one_megabyte_ceiling * 64)
+    stream = _CountingStream(one_megabyte_image_limit * 64)
 
     with patch(f"{SERVICE_MODULE}.ToolFileManager") as tool_file_manager:
         with pytest.raises(FileTooLargeServiceError):
@@ -579,7 +559,7 @@ def test_produced_stops_reading_an_oversized_body_at_the_ceiling(one_megabyte_ce
                 mimetype="image/png",
             )
 
-    assert stream.bytes_read == one_megabyte_ceiling + 1
+    assert stream.bytes_read == one_megabyte_image_limit + 1
     tool_file_manager.return_value.create_file_by_raw.assert_not_called()
 
 

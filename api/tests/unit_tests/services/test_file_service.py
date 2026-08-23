@@ -253,20 +253,18 @@ class TestFileService:
                 is False
             )
 
-    def test_largest_file_size_limit(self):
+    def test_file_size_limit(self):
         with (
             patch.object(dify_config, "UPLOAD_IMAGE_FILE_SIZE_LIMIT", 10),
             patch.object(dify_config, "UPLOAD_VIDEO_FILE_SIZE_LIMIT", 20),
             patch.object(dify_config, "UPLOAD_AUDIO_FILE_SIZE_LIMIT", 30),
             patch.object(dify_config, "UPLOAD_FILE_SIZE_LIMIT", 5),
         ):
-            ceiling = FileService.largest_file_size_limit()
-
-            assert ceiling == 30 * 1024 * 1024
-            # Nothing above the ceiling can pass the exact per-extension check,
-            # so a caller may refuse past it before it knows the extension.
-            for extension in ("jpg", "mp4", "mp3", "txt"):
-                assert FileService.is_file_size_within_limit(extension=extension, file_size=ceiling + 1) is False
+            assert FileService.file_size_limit(extension="jpg") == 10 * 1024 * 1024
+            assert FileService.file_size_limit(extension="mp4") == 20 * 1024 * 1024
+            assert FileService.file_size_limit(extension="mp3") == 30 * 1024 * 1024
+            assert FileService.file_size_limit(extension="txt") == 5 * 1024 * 1024
+            assert FileService.file_size_limit(extension="txt", default_file_size_limit=7) == 7 * 1024 * 1024
 
     def test_get_file_base64_success(self, file_service: FileService, db_session: Session):
         self._persist_upload_file(db_session, key="test_key")

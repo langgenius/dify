@@ -171,23 +171,16 @@ class FileGrantService:
     ) -> ToolFile:
         """Store bytes a workflow node produced as a ``tool_files`` row.
 
-        Takes the body as a stream rather than bytes because the caller is a
-        worker running third-party plugin code that reaches this process
-        directly, with no proxy body limit in front of it. Buffering the body in
-        order to measure it would be the denial of service, so the read stops one
-        byte past the largest size any extension could be allowed, and the exact
-        per-extension limit is applied after, once the extension is known.
-        ``create_file_by_raw`` enforces no size limit of its own.
+        ``create_file_by_raw`` enforces no size limit of its own and the caller
+        is a worker running third-party plugin code, so the body arrives as a
+        stream and the read stops one byte past what its extension is allowed.
         """
 
-        cap = FileService.largest_file_size_limit()
-        content = stream.read(cap + 1)
-        if len(content) > cap:
-            raise FileTooLargeError(f"File size exceeded. The limit is {cap} bytes.")
-
         extension = resolve_extension(filename=filename, mimetype=mimetype).lstrip(".").lower()
-        if not FileService.is_file_size_within_limit(extension=extension, file_size=len(content)):
-            raise FileTooLargeError(f"File size exceeded. {len(content)} bytes is too large.")
+        limit = FileService.file_size_limit(extension=extension)
+        content = stream.read(limit + 1)
+        if len(content) > limit:
+            raise FileTooLargeError(f"File size exceeded. The limit is {limit} bytes.")
 
         return ToolFileManager().create_file_by_raw(
             user_id=end_user_id,
