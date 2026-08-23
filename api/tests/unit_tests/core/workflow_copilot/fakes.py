@@ -219,6 +219,12 @@ class InMemoryRepository:
         with self._lock:
             return copy.deepcopy(self._items.get(session_id, []))
 
+    def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None:
+        with self._lock:
+            for item in self._items.get(session_id, []):
+                if item.seq >= from_seq and item.kind == "assistant_turn":
+                    item.payload = {**item.payload, "card_state": "invalidated"}
+
 
 # ---- fake DifyPort -------------------------------------------------------
 

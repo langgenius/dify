@@ -517,6 +517,24 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
 
 
+def test_sql_repo_invalidate_conversation_items(repo: SqlCopilotRepository) -> None:
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
+                entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_REVIEW)
+    items = [
+        ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "t0"}),
+        ConversationItem(seq=1, kind="assistant_turn", payload={"turn_id": "t1"}),
+        ConversationItem(seq=2, kind="decision", payload={"text": "x"}),
+    ]
+    repo.create_session(s, CopilotContext(), items)
+
+    repo.invalidate_conversation_items(s.id, from_seq=1)
+
+    by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
+    assert "card_state" not in by_seq[0].payload
+    assert by_seq[1].payload["card_state"] == "invalidated"
+    assert by_seq[2].payload.get("card_state") is None
+
+
 def _seed_edit_at(repo: SqlCopilotRepository, state: PcState) -> Session:
     s = Session(
         app_id=APP_ID,

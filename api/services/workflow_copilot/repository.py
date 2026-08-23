@@ -266,6 +266,20 @@ class SqlCopilotRepository:
             rows = db_session.execute(stmt).scalars().all()
             return [self._to_domain_conversation_item(row) for row in rows]
 
+    def invalidate_conversation_items(self, session_id: str, from_seq: int) -> None:
+        """Flip card_state='invalidated' on assistant_turn items at/after
+        from_seq (Slice 4 revert invalidates approvals made since a checkpoint).
+        Reassigns the payload dict (not in-place) so the JSON column is marked
+        dirty and flushed."""
+        with self._session_factory() as db_session, db_session.begin():
+            stmt = select(CopilotConversationItem).where(
+                CopilotConversationItem.session_id == session_id,
+                CopilotConversationItem.seq >= from_seq,
+                CopilotConversationItem.kind == "assistant_turn",
+            )
+            for row in db_session.execute(stmt).scalars().all():
+                row.payload = {**row.payload, "card_state": "invalidated"}
+
     # -- mappers --
 
     @staticmethod
