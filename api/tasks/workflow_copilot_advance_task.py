@@ -26,6 +26,7 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.workflow_copilot.errors import ConflictError
+from core.workflow_copilot.handlers_build import build_registry
 from core.workflow_copilot.handlers_fix import fix_registry
 from core.workflow_copilot.models import Action, Actor, NodeEvent, Turn
 from core.workflow_copilot.runner import Env, Runner
@@ -70,7 +71,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
 
         actor = Actor(**actor_dict)
         env = Env(dify=dify, agent=agent, repo=repo, now=naive_utc_now, emit=emit, emit_canvas=emit_canvas)
-        runner = Runner(env, fix_registry())
+        runner = Runner(env, fix_registry() | build_registry())
         runner.advance(session_id, Turn(action=Action(**action_dict), actor=actor))
         # Project a SessionView (single source of truth for phase/run_status/
         # actions) rather than recomputing those fields inline -- once Task 5

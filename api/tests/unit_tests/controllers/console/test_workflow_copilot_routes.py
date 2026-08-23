@@ -62,6 +62,22 @@ def test_create_returns_201_and_view(monkeypatch):
     assert called.kwargs["actor"] == actor
 
 
+def test_create_build_scenario_calls_create_build_session(monkeypatch):
+    svc = MagicMock()
+    svc.create_build_session.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._create({"scenario": "build", "app_id": "a1", "goal_text": "Build it"}, actor)
+
+    assert status == 201
+    svc.create_build_session.assert_called_once()
+    called = svc.create_build_session.call_args
+    assert called.kwargs["app_id"] == "a1"
+    assert called.kwargs["goal_text"] == "Build it"
+    svc.create_fix_session.assert_not_called()
+
+
 def test_create_rejects_non_dict_body():
     actor = _actor()
     svc = MagicMock()
