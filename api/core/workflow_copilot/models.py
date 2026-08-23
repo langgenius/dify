@@ -202,6 +202,7 @@ class ApplyResult:
     new_hash: str = ""
     changes: list[str] = field(default_factory=list)
     scope: str = ""
+    structure_fingerprint: str = ""
 
 
 @dataclass(kw_only=True)
@@ -244,6 +245,10 @@ class CopilotContext:
     # -- Lifecycle fields (Slice 4, additive) --
     paused: bool = False
     checkpoint_seq: int = 0
+
+    # -- Recovery fields (C-1, additive) --
+    last_structure_fingerprint: str = ""
+    recovery_class: str = ""
 
 
 @dataclass(kw_only=True)
