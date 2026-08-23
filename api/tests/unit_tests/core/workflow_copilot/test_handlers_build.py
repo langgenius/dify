@@ -470,3 +470,113 @@ def test_full_build_flow_keep_draft_reaches_complete_without_publish():
     assert out.current_state == PcState.BUILD_COMPLETE
     assert dify.published is False  # keep_draft skips publish
     assert not any(i.kind == "publish" for i in repo.list_conversation(s.id))
+
+
+def test_review_continue_adjusting_then_reapprove_is_idempotent():
+    """Final-review fix (Important #1): looping back from build.review via
+    continue_adjusting (resolved re_fix) and re-walking find_resources ->
+    confirm_resources -> approve_plan must NOT crash on the second build.
+    build_nodes() always emits create_node with the SAME fixed node ids
+    (start/knowledge_retrieval/llm/end); without idempotency the second
+    apply_repair raises ValueError on the colliding node id and the session
+    dead-ends at build.plan_approval. handle_plan_approval must filter out
+    intents that already exist in the current draft graph before applying."""
+    from core.workflow_copilot.handlers_build import build_registry
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    runner = Runner(env, build_registry())
+
+    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
+    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
+
+    # first build: applies all 7 intents.
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+    assert len(dify.graph["nodes"]) == 4
+    assert len(dify.graph["edges"]) == 3
+
+    out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW
+
+    # loop back: continue_adjusting (-> re_fix) -> build.initial_plan (re-plan)
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_INITIAL_PLAN
+
+    # re-walk find_resources -> confirm_resources -> approve_plan
+    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+    confirm_action_2 = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=confirm_action_2, actor=_actor()))
+    assert out.current_state == PcState.BUILD_PLAN_APPROVAL
+
+    # THE re-approve: must not raise ValueError, must reach build.execution,
+    # and must not double the graph (idempotent -- everything already exists).
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+    assert len(dify.graph["nodes"]) == 4
+    assert len(dify.graph["edges"]) == 3
+    _, fc = repo.get_session(s.id)
+    # built_node_ids reflects the full set (all 4 exist), not an empty/partial
+    # subset just because nothing new was actually applied this time.
+    assert set(fc.built_node_ids) == {"start", "knowledge_retrieval", "llm", "end"}
+
+
+def test_execution_revert_then_retry_after_revert_reapprove_is_idempotent():
+    """Same idempotency path via the revert -> reverted -> retry_after_revert
+    loop (handle_reverted's re_fix), not continue_adjusting."""
+    from core.workflow_copilot.handlers_build import build_registry
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    runner = Runner(env, build_registry())
+
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_goal", payload={"text": "Build it"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="submit_requirements", base_version=out.version), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
+    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+    assert len(dify.graph["nodes"]) == 4
+
+    # revert (intent only -- doesn't mutate the fake's graph) -> build.reverted
+    out = runner.advance(s.id, Turn(action=Action(kind="undo", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVERTED
+
+    # retry_after_revert (-> re_fix) -> build.initial_plan (re-plan)
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_INITIAL_PLAN
+
+    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version),
+            actor=_actor(),
+        ),
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+    assert len(dify.graph["nodes"]) == 4
+    assert len(dify.graph["edges"]) == 3
