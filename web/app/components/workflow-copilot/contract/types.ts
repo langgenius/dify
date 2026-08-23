@@ -11,6 +11,7 @@ export type RecoveryClass = 'unchanged' | 'config_only' | 'structural_compatible
 export type EntryMode = 'fix' | 'fix_checklist' | 'build' | 'edit';
 export interface Action { id: string; label: string; kind: ActionKind; next_state?: string | null; canvas_event?: string | null; }
 export interface CheckpointRef { checkpoint_id: string; label: string; created_at: string; }
+export interface RecoveryRef { recovery_class: string; can_continue: boolean; can_restart: boolean; message: string; }
 export interface FormField { key: string; label: string; type: string; options?: string[]; }
 export interface ResourceOption { id: string; label: string; meta: string; kind: string; readiness: string; }
 export interface ConflictPolicyOption { id: string; label: string; recommended?: boolean; }
@@ -46,7 +47,7 @@ export interface CheckpointPayload { checkpoint_id: string; }
 export interface TestPayload { run_ids?: string[]; }
 export interface PublishPayload { version: string; }
 export interface TestdataPayload { mode: string; inputs?: Record<string, unknown> | null; }
-export interface SessionView { session_id: string; app_id: string; version: number; state: string; canvas_read_only: boolean; run_status: RunStatus; interrupted: boolean; conversation: ConversationItem[]; entry_mode?: EntryMode; phase?: Phase; actions?: Action[]; checkpoint?: CheckpointRef | null; }
+export interface SessionView { session_id: string; app_id: string; version: number; state: string; canvas_read_only: boolean; run_status: RunStatus; interrupted: boolean; conversation: ConversationItem[]; entry_mode?: EntryMode; phase?: Phase; actions?: Action[]; checkpoint?: CheckpointRef | null; recovery?: RecoveryRef | null; }
 export type ConversationItem =
   | { seq: number; at_version: number; kind: 'user'; payload: UserItem }
   | { seq: number; at_version: number; kind: 'decision'; payload: DecisionItem }

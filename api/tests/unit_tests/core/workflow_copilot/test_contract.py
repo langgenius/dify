@@ -46,6 +46,16 @@ def test_recovery_class_members():
     ]
 
 
+def test_recovery_ref_fields():
+    from core.workflow_copilot.contract import RecoveryRef
+
+    ref = RecoveryRef(recovery_class="config_only", can_continue=True, can_restart=True, message="m")
+    assert ref.recovery_class == "config_only"
+    assert ref.can_continue is True
+    assert ref.can_restart is True
+    assert ref.message == "m"
+
+
 def test_enums_match_spec():
     assert [p.value for p in Phase] == [
         "understand",

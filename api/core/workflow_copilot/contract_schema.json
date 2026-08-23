@@ -178,6 +178,30 @@
       ],
       "additionalProperties": false
     },
+    "RecoveryRef": {
+      "type": "object",
+      "properties": {
+        "recovery_class": {
+          "type": "string"
+        },
+        "can_continue": {
+          "type": "boolean"
+        },
+        "can_restart": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "recovery_class",
+        "can_continue",
+        "can_restart",
+        "message"
+      ],
+      "additionalProperties": false
+    },
     "FormField": {
       "type": "object",
       "properties": {
@@ -1387,6 +1411,16 @@
           "anyOf": [
             {
               "$ref": "#/$defs/CheckpointRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recovery": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecoveryRef"
             },
             {
               "type": "null"
