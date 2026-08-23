@@ -100,6 +100,15 @@
         "disabled"
       ]
     },
+    "RecoveryClass": {
+      "type": "string",
+      "enum": [
+        "unchanged",
+        "config_only",
+        "structural_compatible",
+        "structural_invalidating"
+      ]
+    },
     "EntryMode": {
       "type": "string",
       "enum": [

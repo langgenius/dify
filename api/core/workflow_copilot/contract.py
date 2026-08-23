@@ -132,6 +132,16 @@ class SkillLearningPolicy(StrEnum):
     DISABLED = "disabled"
 
 
+class RecoveryClass(StrEnum):
+    """How the draft drifted from what the copilot last knew, when a session
+    is reopened after a hand-edit (spec §8 / C-1)."""
+
+    UNCHANGED = "unchanged"
+    CONFIG_ONLY = "config_only"
+    STRUCTURAL_COMPATIBLE = "structural_compatible"
+    STRUCTURAL_INVALIDATING = "structural_invalidating"
+
+
 @dataclass
 class Action:
     """A UI action the FE renders (spec §5).

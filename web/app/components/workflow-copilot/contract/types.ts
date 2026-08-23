@@ -7,6 +7,7 @@ export type CardKind = 'user' | 'decision' | 'notice' | 'run_context' | 'preflig
 export type CanvasEvent = 'reset_build_canvas' | 'add_start_node' | 'add_knowledge_node' | 'add_llm_node' | 'add_output_node' | 'focus_workflow' | 'highlight_edit_target' | 'apply_edit_plan' | 'start_test_run' | 'mark_test_error' | 'focus_error_node' | 'focus_checklist_node' | 'create_checkpoint' | 'apply_error_fix' | 'mark_repair_applied' | 'apply_preflight_fix' | 'start_retest' | 'mark_test_success' | 'mark_review_ready' | 'revert_checkpoint' | 'cancel_publish' | 'publish_workflow';
 export type ConflictPolicy = 'audited' | 'ask';
 export type SkillLearningPolicy = 'ask' | 'automatic' | 'disabled';
+export type RecoveryClass = 'unchanged' | 'config_only' | 'structural_compatible' | 'structural_invalidating';
 export type EntryMode = 'fix' | 'fix_checklist' | 'build' | 'edit';
 export interface Action { id: string; label: string; kind: ActionKind; next_state?: string | null; canvas_event?: string | null; }
 export interface CheckpointRef { checkpoint_id: string; label: string; created_at: string; }

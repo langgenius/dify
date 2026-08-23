@@ -34,6 +34,18 @@ from services.workflow_copilot.service import SessionView, _run_status
 from services.workflow_copilot.wiring import session_view_to_dict
 
 
+def test_recovery_class_members():
+    from core.workflow_copilot.contract import RecoveryClass
+
+    assert RecoveryClass.UNCHANGED == "unchanged"
+    assert RecoveryClass.CONFIG_ONLY == "config_only"
+    assert RecoveryClass.STRUCTURAL_COMPATIBLE == "structural_compatible"
+    assert RecoveryClass.STRUCTURAL_INVALIDATING == "structural_invalidating"
+    assert [c.value for c in RecoveryClass] == [
+        "unchanged", "config_only", "structural_compatible", "structural_invalidating",
+    ]
+
+
 def test_enums_match_spec():
     assert [p.value for p in Phase] == [
         "understand",
