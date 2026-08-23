@@ -30,7 +30,7 @@ from core.workflow_copilot.contract import (
     Trace,
     TraceStep,
 )
-from core.workflow_copilot.handlers_fix import action_string, append_card
+from core.workflow_copilot.handlers_fix import action_string, append_card, perform_revert
 from core.workflow_copilot.models import ChangeSet, Checkpoint, CopilotContext, Session, Snapshot, Turn
 from core.workflow_copilot.runner import Env, Handler, StepResult
 from core.workflow_copilot.state import PcState
@@ -206,6 +206,8 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: Copilot
     if kind != "confirm_resources":
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
 
+    fc.checkpoint_seq = fc.next_seq
+
     resource_ids: list[str] = []
     conflict_policy = ""
     if turn.action is not None and isinstance(turn.action.payload, dict):
@@ -335,7 +337,7 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> St
     ``revert`` (resolved to ``undo``) -> build.reverted (intent only)."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "undo":
-        _emit_canvas(env, "revert_checkpoint")
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     if kind == "run_test":
@@ -457,7 +459,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepR
             items=[*decision_items, *plan_items, *turn_items],
         )
     if kind == "undo":  # revert
-        _emit_canvas(env, "revert_checkpoint")
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     return StepResult(next=PcState.BUILD_REVIEW, context=fc)
