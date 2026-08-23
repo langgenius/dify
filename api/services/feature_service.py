@@ -205,8 +205,9 @@ class FeatureService:
         features.education.enabled = (
             dify_config.EDUCATION_ENABLED and dify_config.DEPLOYMENT_EDITION in EDUCATION_EDITIONS
         )
-        features.dify_builder_enabled = dify_config.DIFY_BUILDER_ENABLED
         features.enable_skill = dify_config.ENABLE_SKILL
+        features.dify_builder_enabled = dify_config.DIFY_BUILDER_ENABLED
+        features.skill_learning_policy = dify_config.DIFY_BUILDER_SKILL_LEARNING_POLICY
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
         features.enable_file_scan = dify_config.FILE_SCAN_ENABLED
 
