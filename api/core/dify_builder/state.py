@@ -42,6 +42,7 @@ class PcState(StrEnum):
     BUILD_REVIEW = "build.review"
     BUILD_PUBLISH = "build.publish"
     BUILD_GOVERNANCE_FEEDBACK = "build.governance_feedback"
+    BUILD_AWAIT_LEARNING = "build.await_learning"
     BUILD_COMPLETE = "build.complete"
     BUILD_REVERTED = "build.reverted"
 
@@ -89,6 +90,7 @@ _WAITING = frozenset(
         PcState.BUILD_PLAN_APPROVAL,
         PcState.BUILD_EXECUTION,
         PcState.BUILD_REVIEW,
+        PcState.BUILD_AWAIT_LEARNING,
         PcState.BUILD_REVERTED,
         PcState.EDIT_CAPABILITY_CHECK,
         PcState.EDIT_IMPACT_ANALYSIS,
