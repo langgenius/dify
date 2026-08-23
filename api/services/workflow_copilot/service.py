@@ -240,7 +240,7 @@ def resolve_action_kind(raw: str) -> str:
     return _ACTION_ID_TO_KIND.get(raw, raw)
 
 
-def _run_status(state: PcState) -> RunStatus:
+def _run_status(state: PcState, paused: bool = False) -> RunStatus:
     """Port of Go ``runStatusFor``, widened to the ``RunStatus`` enum (spec
     §2). Deliberate wire-value change from the old string: ``waiting-input``
     (hyphen) -> ``RunStatus.WAITING_INPUT`` = ``"waiting_input"``
@@ -251,11 +251,17 @@ def _run_status(state: PcState) -> RunStatus:
     complete``) but are not in ``_WORKING``/``_WAITING`` and are not
     ``SUCCESS``/``FAILED`` -- without this ordering they'd wrongly fall
     through to EXECUTING.
+
+    ``paused`` (Task 7, ``fc.paused``) only applies at a waiting state -- the
+    canvas stays editable while paused -- and never overrides a terminal
+    outcome (FAILED/COMPLETE win regardless of the flag).
     """
     if state == PcState.FAILED:
         return RunStatus.FAILED
     if is_terminal(state):  # SUCCESS, BUILD_COMPLETE, EDIT_PUBLISH
         return RunStatus.COMPLETE
+    if paused and is_waiting(state):
+        return RunStatus.PAUSED
     if is_waiting(state):
         return RunStatus.WAITING_INPUT
     if is_working(state):
@@ -385,7 +391,7 @@ class WorkflowCopilotService:
             version=s.version,
             state=str(st),
             canvas_read_only=canvas_read_only(st),
-            run_status=_run_status(st),
+            run_status=_run_status(st, paused=fc.paused),
             interrupted=is_working(st) and not self._session_lock.exists(session_id),
             conversation=items,
             entry_mode=s.entry_mode,
