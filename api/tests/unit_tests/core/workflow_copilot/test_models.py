@@ -6,7 +6,7 @@ these structs (see e.g. handlers_fix_test.go, runner_test.go): almost every
 struct literal in that suite sets only a handful of fields and relies on
 Go's implicit zero-initialization for the rest (``&Session{AppID: "app",
 TenantID: "t", OwnerAccountID: "u", EntryMode: EntryModeFix, CurrentState:
-FixDiagnose}``, ``&FixContext{}``, ``&FixContext{FailedRunID: "TR-1"}``).
+FixDiagnose}``, ``&CopilotContext{}``, ``&CopilotContext{FailedRunID: "TR-1"}``).
 These tests port that same terse-construction ergonomics and assert the
 Python defaults match the Go zero values field-for-field.
 """
@@ -19,8 +19,8 @@ from core.workflow_copilot.models import (
     ChecklistError,
     Checkpoint,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     NodeOutput,
     Run,
     Session,
@@ -162,8 +162,8 @@ def test_conversation_item_defaults():
 
 
 def test_fix_context_round_trip_defaults_empty():
-    # Mirrors runner_test.go: repo.CreateSession(..., &FixContext{}, nil)
-    fc = FixContext()
+    # Mirrors runner_test.go: repo.CreateSession(..., &CopilotContext{}, nil)
+    fc = CopilotContext()
     assert fc.failed_run_id == ""
     assert fc.diagnosis is None
     assert fc.staged_repair == []
@@ -179,14 +179,14 @@ def test_fix_context_round_trip_defaults_empty():
 
 
 def test_fix_context_partial_construction():
-    # Mirrors handlers_fix_test.go: &FixContext{FailedRunID: "TR-1"}
-    fc = FixContext(failed_run_id="TR-1")
+    # Mirrors handlers_fix_test.go: &CopilotContext{FailedRunID: "TR-1"}
+    fc = CopilotContext(failed_run_id="TR-1")
     assert fc.failed_run_id == "TR-1"
     assert fc.source == ""
 
-    # Mirrors handlers_fix_test.go: &FixContext{Source: "checklist", ChecklistErrors: errs}
+    # Mirrors handlers_fix_test.go: &CopilotContext{Source: "checklist", ChecklistErrors: errs}
     errs = [ChecklistError(node_id="n1", unconnected=True)]
-    fc2 = FixContext(source="checklist", checklist_errors=errs)
+    fc2 = CopilotContext(source="checklist", checklist_errors=errs)
     assert fc2.source == "checklist"
     assert fc2.checklist_errors == errs
     assert fc2.failed_run_id == ""

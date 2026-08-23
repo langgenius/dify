@@ -14,13 +14,13 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
   Go test suite constructs these structs: almost every struct literal in
   ``*_test.go`` sets only a handful of fields and relies on Go's implicit
   zero-initialization for the rest (e.g. ``&Session{AppID: "app", ...}``,
-  ``&FixContext{}``, ``&FixContext{FailedRunID: "TR-1"}``). The excepted
+  ``&CopilotContext{}``, ``&CopilotContext{FailedRunID: "TR-1"}``). The excepted
   fields have no meaningful "empty" value (an empty string is not a valid
   ``PcState``/``EntryMode`` member) and are always set explicitly in the Go
   suite, so they stay required here.
 - ``Diagnosis`` / ``Risk`` / ``MutationIntent`` / ``ChangeSet`` / ``NodeEvent``
   / ``ApplyResult`` (Go: ``ports.go``) live here rather than in ``ports.py``.
-  ``FixContext`` embeds ``Diagnosis``/``Risk``/``ChangeSet``/
+  ``CopilotContext`` embeds ``Diagnosis``/``Risk``/``ChangeSet``/
   ``MutationIntent`` directly, and defining them in ``ports.py`` (which
   imports the rest of these models) would create a models<->ports import
   cycle; ``ports.py`` imports them back out of this module instead.
@@ -205,9 +205,16 @@ class ApplyResult:
 
 
 @dataclass(kw_only=True)
-class FixContext:
-    """Per-session working state persisted as the commit context."""
+class CopilotContext:
+    """Per-session working state persisted as the commit context.
 
+    One context type for all entry modes (Fix, checklist, Build, Edit).
+    Fix-specific and Build-specific fields coexist; each scenario touches
+    only its own, all default-valued (serialized as a JSON blob -- no
+    migration on rename or on adding fields).
+    """
+
+    # -- Fix / checklist fields --
     failed_run_id: str = ""
     diagnosis: Diagnosis | None = None
     staged_repair: list[MutationIntent] = field(default_factory=list)
@@ -221,6 +228,14 @@ class FixContext:
     # source distinguishes diagnosis origin: "" (run, default) | "checklist".
     source: str = ""
     checklist_errors: list[ChecklistError] = field(default_factory=list)
+
+    # -- Build fields (Slice 2, additive) --
+    goal_text: str = ""
+    requirements: dict[str, Any] = field(default_factory=dict)
+    plan_items: list[str] = field(default_factory=list)
+    plan_version_tag: str = ""
+    resource_selection: dict[str, Any] = field(default_factory=dict)
+    built_node_ids: list[str] = field(default_factory=list)
 
 
 @dataclass(kw_only=True)

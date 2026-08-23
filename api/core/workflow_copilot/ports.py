@@ -11,7 +11,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 - The value types Go defines in this file (``Diagnosis``, ``Risk``,
   ``MutationIntent``, ``ChangeSet``, ``NodeEvent``, ``ApplyResult``) live in
   ``models.py`` instead, alongside the rest of the domain dataclasses —
-  ``FixContext`` embeds several of them directly, and defining them here
+  ``CopilotContext`` embeds several of them directly, and defining them here
   (where the models are imported) would create a models<->ports import
   cycle. They are re-exported from here for convenience.
 - ``interface`` becomes ``typing.Protocol``, marked ``@runtime_checkable`` so
@@ -29,8 +29,8 @@ from core.workflow_copilot.models import (
     ChecklistError,
     Checkpoint,
     ConversationItem,
+    CopilotContext,
     Diagnosis,
-    FixContext,
     Graph,
     Inputs,
     MutationIntent,
@@ -109,16 +109,16 @@ class Repository(Protocol):
     ``base_version``, else raises ``ConflictError``.
     """
 
-    def create_session(self, session: Session, initial_fc: FixContext, items: list[ConversationItem]) -> None: ...
+    def create_session(self, session: Session, initial_fc: CopilotContext, items: list[ConversationItem]) -> None: ...
 
-    def get_session(self, id: str) -> tuple[Session, FixContext]: ...
+    def get_session(self, id: str) -> tuple[Session, CopilotContext]: ...
 
     def compare_and_advance(
         self,
         session_id: str,
         base_version: int,
         next: PcState,
-        fc: FixContext,
+        fc: CopilotContext,
         items: list[ConversationItem],
     ) -> int: ...
 

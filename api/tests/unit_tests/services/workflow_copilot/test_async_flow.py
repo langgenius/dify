@@ -29,7 +29,7 @@ from sqlalchemy.orm import sessionmaker
 
 import tasks.workflow_copilot_advance_task as task_mod
 from core.workflow_copilot.errors import BusyError
-from core.workflow_copilot.models import Action, Actor, ConversationItem, EntryMode, FixContext, Run, Session
+from core.workflow_copilot.models import Action, Actor, ConversationItem, CopilotContext, EntryMode, Run, Session
 from core.workflow_copilot.state import PcState
 from models.base import Base
 from services.workflow_copilot import session_lock
@@ -170,7 +170,7 @@ def test_submit_action_while_lock_held_raises_busy_eager_async(
         entry_mode=EntryMode.FIX,
         current_state=PcState.FIX_DIAGNOSE,
     )
-    repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    repo.create_session(s, CopilotContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
 
     # Manually hold the lock, simulating an in-flight advance on another
     # worker.

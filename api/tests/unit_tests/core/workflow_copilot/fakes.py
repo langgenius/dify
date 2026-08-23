@@ -42,8 +42,8 @@ from core.workflow_copilot.models import (
     ChecklistError,
     Checkpoint,
     ConversationItem,
+    CopilotContext,
     Diagnosis,
-    FixContext,
     Graph,
     Inputs,
     MutationIntent,
@@ -75,7 +75,7 @@ class InMemoryRepository:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._sessions: dict[str, Session] = {}
-        self._contexts: dict[str, FixContext] = {}
+        self._contexts: dict[str, CopilotContext] = {}
         self._commits: dict[str, list[int]] = {}
         self._checkpoints: dict[str, Checkpoint] = {}
         self._snapshots: dict[str, Snapshot] = {}
@@ -86,7 +86,7 @@ class InMemoryRepository:
 
     # -- sessions --
 
-    def create_session(self, session: Session, initial_fc: FixContext, items: list[ConversationItem]) -> None:
+    def create_session(self, session: Session, initial_fc: CopilotContext, items: list[ConversationItem]) -> None:
         with self._lock:
             if not session.id:
                 session.id = str(uuid.uuid4())
@@ -109,7 +109,7 @@ class InMemoryRepository:
             self._items[session.id] = copy.deepcopy(items)
             self._used_seqs[session.id] = seqs
 
-    def get_session(self, id: str) -> tuple[Session, FixContext]:
+    def get_session(self, id: str) -> tuple[Session, CopilotContext]:
         with self._lock:
             session = self._sessions.get(id)
             if session is None:
@@ -121,7 +121,7 @@ class InMemoryRepository:
         session_id: str,
         base_version: int,
         next: PcState,
-        fc: FixContext,
+        fc: CopilotContext,
         items: list[ConversationItem],
     ) -> int:
         with self._lock:

@@ -1,6 +1,6 @@
-"""Round-trip tests for the ``FixContext`` JSON (de)serializer.
+"""Round-trip tests for the ``CopilotContext`` JSON (de)serializer.
 
-``FixContext`` is the per-session working state persisted as the
+``CopilotContext`` is the per-session working state persisted as the
 ``context`` JSONB column on ``workflow_copilot_session_commits`` (P3a Task 4).
 This module verifies the pure (de)serializer is lossless and produces a
 JSON-safe dict, independent of any database concern.
@@ -11,16 +11,16 @@ import json
 from core.workflow_copilot.models import (
     ChangeSet,
     ChecklistError,
+    CopilotContext,
     Diagnosis,
-    FixContext,
     MutationIntent,
     Risk,
 )
-from services.workflow_copilot.serde import fix_context_from_dict, fix_context_to_dict
+from services.workflow_copilot.serde import context_from_dict, context_to_dict
 
 
-def _full_fix_context() -> FixContext:
-    return FixContext(
+def _full_fix_context() -> CopilotContext:
+    return CopilotContext(
         failed_run_id="TR-1",
         diagnosis=Diagnosis(
             culprit_node_id="n1",
@@ -57,15 +57,15 @@ def _full_fix_context() -> FixContext:
 def test_fully_populated_fix_context_round_trips():
     fc = _full_fix_context()
 
-    result = fix_context_from_dict(fix_context_to_dict(fc))
+    result = context_from_dict(context_to_dict(fc))
 
     assert result == fc
 
 
 def test_empty_fix_context_round_trips():
-    fc = FixContext()
+    fc = CopilotContext()
 
-    result = fix_context_from_dict(fix_context_to_dict(fc))
+    result = context_from_dict(context_to_dict(fc))
 
     assert result == fc
 
@@ -73,7 +73,7 @@ def test_empty_fix_context_round_trips():
 def test_to_dict_output_is_json_serializable():
     fc = _full_fix_context()
 
-    d = fix_context_to_dict(fc)
+    d = context_to_dict(fc)
 
     # Must not raise -- this is what actually lands in the JSONB column.
     json.dumps(d)
@@ -83,6 +83,33 @@ def test_from_dict_tolerates_missing_optional_keys():
     # An older/partial persisted dict -- only a subset of keys present.
     d = {"failed_run_id": "TR-9"}
 
-    fc = fix_context_from_dict(d)
+    fc = context_from_dict(d)
 
-    assert fc == FixContext(failed_run_id="TR-9")
+    assert fc == CopilotContext(failed_run_id="TR-9")
+
+
+def test_context_round_trips_build_fields():
+    from core.workflow_copilot.models import CopilotContext
+    from services.workflow_copilot.serde import context_from_dict, context_to_dict
+
+    fc = CopilotContext(
+        goal_text="Build a quarterly report workflow",
+        requirements={"currency": "USD", "prefer_audited": True},
+        plan_items=["Retrieve", "Summarize", "Emit"],
+        plan_version_tag="v2",
+        resource_selection={"resource_ids": ["kb-company"], "conflict_policy": "audited"},
+        built_node_ids=["start", "llm", "end"],
+    )
+    out = context_from_dict(context_to_dict(fc))
+    assert out == fc
+
+
+def test_context_from_dict_defaults_build_fields_when_absent():
+    from core.workflow_copilot.models import CopilotContext
+    from services.workflow_copilot.serde import context_from_dict
+
+    fc = context_from_dict({"failed_run_id": "TR-9"})
+    assert fc == CopilotContext(failed_run_id="TR-9")
+    assert fc.goal_text == ""
+    assert fc.requirements == {}
+    assert fc.plan_items == []

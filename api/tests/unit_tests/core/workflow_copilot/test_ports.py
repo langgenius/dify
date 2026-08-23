@@ -14,8 +14,8 @@ from core.workflow_copilot.models import (
     Actor,
     ApplyResult,
     ChangeSet,
+    CopilotContext,
     Diagnosis,
-    FixContext,
     MutationIntent,
     NodeEvent,
     Risk,
@@ -86,7 +86,7 @@ def test_apply_result_defaults_and_changed_nodes_not_shared():
 
 
 def test_fix_context_embeds_the_tightened_value_types():
-    fc = FixContext(
+    fc = CopilotContext(
         diagnosis=Diagnosis(culprit_node_id="n1"),
         staged_repair=[MutationIntent(op="set_node_config")],
         risk=Risk(level="low"),

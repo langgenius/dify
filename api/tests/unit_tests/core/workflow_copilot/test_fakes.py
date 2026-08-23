@@ -16,9 +16,9 @@ from core.workflow_copilot.models import (
     Actor,
     Checkpoint,
     ConversationItem,
+    CopilotContext,
     Diagnosis,
     EntryMode,
-    FixContext,
     MutationIntent,
     Run,
     Session,
@@ -62,7 +62,7 @@ def test_create_session_assigns_id_and_starts_at_version_1():
     repo = InMemoryRepository()
     s = _session()
 
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     assert s.id != ""
     assert s.version == 1
@@ -75,7 +75,7 @@ def test_create_session_assigns_id_and_starts_at_version_1():
 def test_create_session_sets_next_seq_to_seed_item_count():
     repo = InMemoryRepository()
     s = _session()
-    fc = FixContext()
+    fc = CopilotContext()
     items = [
         ConversationItem(seq=0, kind="run-context", at_version=1),
         ConversationItem(seq=1, kind="user", at_version=1),
@@ -93,7 +93,7 @@ def test_create_session_sets_next_seq_to_seed_item_count():
 def test_create_session_does_not_downgrade_an_already_larger_next_seq():
     repo = InMemoryRepository()
     s = _session()
-    fc = FixContext(next_seq=5)
+    fc = CopilotContext(next_seq=5)
 
     repo.create_session(s, fc, [])
 
@@ -109,7 +109,7 @@ def test_create_session_rejects_duplicate_seq_within_seed_items():
     ]
 
     with pytest.raises(ConflictError):
-        repo.create_session(s, FixContext(), items)
+        repo.create_session(s, CopilotContext(), items)
 
 
 # ---- compare_and_advance: version CAS -------------------------------------
@@ -118,10 +118,10 @@ def test_create_session_rejects_duplicate_seq_within_seed_items():
 def test_compare_and_advance_rejects_stale_base_version():
     repo = InMemoryRepository()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     with pytest.raises(ConflictError):
-        repo.compare_and_advance(s.id, 0, PcState.FIX_PROPOSE, FixContext(), [])
+        repo.compare_and_advance(s.id, 0, PcState.FIX_PROPOSE, CopilotContext(), [])
 
     # Nothing applied.
     stored, _ = repo.get_session(s.id)
@@ -132,13 +132,13 @@ def test_compare_and_advance_rejects_stale_base_version():
 def test_compare_and_advance_accepts_current_version_and_bumps_it():
     repo = InMemoryRepository()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     new_version = repo.compare_and_advance(
         s.id,
         1,
         PcState.FIX_PROPOSE,
-        FixContext(diagnosis=Diagnosis(culprit_node_id="n1")),
+        CopilotContext(diagnosis=Diagnosis(culprit_node_id="n1")),
         [],
     )
 
@@ -154,15 +154,15 @@ def test_compare_and_advance_on_unknown_session_raises_not_found():
     repo = InMemoryRepository()
 
     with pytest.raises(NotFoundError):
-        repo.compare_and_advance("nope", 1, PcState.FIX_PROPOSE, FixContext(), [])
+        repo.compare_and_advance("nope", 1, PcState.FIX_PROPOSE, CopilotContext(), [])
 
 
 def test_compare_and_advance_deep_copies_the_stored_context():
     repo = InMemoryRepository()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
-    fc = FixContext(staged_repair=[MutationIntent(op="set_node_config")])
+    fc = CopilotContext(staged_repair=[MutationIntent(op="set_node_config")])
     repo.compare_and_advance(s.id, 1, PcState.FIX_APPLY, fc, [])
 
     # Mutating the caller's fc after the commit must not affect stored state.
@@ -179,7 +179,7 @@ def test_compare_and_advance_deep_copies_the_stored_context():
 def test_compare_and_advance_rejects_duplicate_seq_within_one_batch():
     repo = InMemoryRepository()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     dup_items = [
         ConversationItem(seq=0, kind="a", at_version=2),
@@ -187,7 +187,7 @@ def test_compare_and_advance_rejects_duplicate_seq_within_one_batch():
     ]
 
     with pytest.raises(ConflictError):
-        repo.compare_and_advance(s.id, 1, PcState.FIX_PROPOSE, FixContext(), dup_items)
+        repo.compare_and_advance(s.id, 1, PcState.FIX_PROPOSE, CopilotContext(), dup_items)
 
     # Nothing applied: neither version nor conversation items advanced.
     stored, _ = repo.get_session(s.id)
@@ -198,14 +198,14 @@ def test_compare_and_advance_rejects_duplicate_seq_within_one_batch():
 def test_compare_and_advance_rejects_seq_reused_from_a_previous_commit():
     repo = InMemoryRepository()
     s = _session()
-    repo.create_session(s, FixContext(), [ConversationItem(seq=0, kind="run-context", at_version=1)])
+    repo.create_session(s, CopilotContext(), [ConversationItem(seq=0, kind="run-context", at_version=1)])
 
     with pytest.raises(ConflictError):
         repo.compare_and_advance(
             s.id,
             1,
             PcState.FIX_PROPOSE,
-            FixContext(),
+            CopilotContext(),
             [ConversationItem(seq=0, kind="user", at_version=2)],
         )
 
@@ -217,13 +217,13 @@ def test_compare_and_advance_rejects_seq_reused_from_a_previous_commit():
 def test_compare_and_advance_accepts_the_next_seq_in_order():
     repo = InMemoryRepository()
     s = _session()
-    repo.create_session(s, FixContext(), [ConversationItem(seq=0, kind="run-context", at_version=1)])
+    repo.create_session(s, CopilotContext(), [ConversationItem(seq=0, kind="run-context", at_version=1)])
 
     repo.compare_and_advance(
         s.id,
         1,
         PcState.FIX_PROPOSE,
-        FixContext(),
+        CopilotContext(),
         [ConversationItem(seq=1, kind="user", at_version=2)],
     )
 
