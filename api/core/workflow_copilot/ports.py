@@ -20,8 +20,9 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 """
 
 from collections.abc import Callable
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
+from core.workflow_copilot.contract import ResourceOption
 from core.workflow_copilot.models import (
     Actor,
     ApplyResult,
@@ -73,6 +74,22 @@ class CopilotAgent(Protocol):
     def propose_repair(self, diagnosis: Diagnosis, graph: Graph) -> tuple[list[MutationIntent], Risk]: ...
 
     def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs: ...
+
+    # -- Build cognition (Slice 2; canned in PlaceholderAgent) --
+
+    def analyze_goal(self, goal_text: str) -> dict[str, Any]: ...
+
+    def propose_plan_v1(self, requirements: dict[str, Any]) -> list[str]: ...
+
+    def discover_resources(self, plan_items: list[str]) -> list[ResourceOption]: ...
+
+    def bind_resources(
+        self, plan_items: list[str], resource_ids: list[str], conflict_policy: str
+    ) -> list[str]: ...
+
+    def build_nodes(self, plan_items: list[str]) -> list[MutationIntent]: ...
+
+    def propose_build_repair(self, built_node_ids: list[str]) -> list[MutationIntent]: ...
 
 
 @runtime_checkable
