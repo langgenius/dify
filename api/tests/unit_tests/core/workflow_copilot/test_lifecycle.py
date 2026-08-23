@@ -223,3 +223,42 @@ def test_edit_apply_changes_undo_restores_pre_edit_graph():
     assert dify.read_graph("app", _actor())[0] == pre_edit  # config edit undone
     assert res.context.checkpoint_id == ""
     assert {"event": "revert_checkpoint"} in events
+
+
+def test_runner_stop_sets_paused_same_state_and_bumps_version():
+    from datetime import datetime
+
+    from core.workflow_copilot.models import Action, ConversationItem, CopilotContext, EntryMode, Session, Turn
+    from core.workflow_copilot.placeholder_agent import PlaceholderAgent
+    from core.workflow_copilot.runner import Env, Runner
+    from core.workflow_copilot.state import PcState
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeDifyPort, InMemoryRepository
+
+    repo = InMemoryRepository()
+    env = Env(dify=FakeDifyPort(), agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min)
+    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
+                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
+    repo.create_session(s, CopilotContext(), [ConversationItem(kind="user", seq=0)])
+    runner = Runner(env, {})  # empty registry: stop must not need a handler
+
+    out = runner.advance(s.id, Turn(action=Action(kind="stop", base_version=1), actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW  # unchanged
+    assert out.version == 2                            # committed
+    _s, fc = repo.get_session(s.id)
+    assert fc.paused is True
+
+    out = runner.advance(s.id, Turn(action=Action(kind="resume", base_version=2), actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW
+    _s, fc = repo.get_session(s.id)
+    assert fc.paused is False
+
+
+def test_run_status_paused_when_flag_set():
+    from core.workflow_copilot.contract import RunStatus
+    from core.workflow_copilot.state import PcState
+    from services.workflow_copilot.service import _run_status
+
+    assert _run_status(PcState.BUILD_REVIEW, paused=True) == RunStatus.PAUSED
+    assert _run_status(PcState.BUILD_REVIEW, paused=False) == RunStatus.WAITING_INPUT
+    # paused never overrides terminal/failed
+    assert _run_status(PcState.BUILD_COMPLETE, paused=True) == RunStatus.COMPLETE
