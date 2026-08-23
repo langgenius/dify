@@ -21,7 +21,7 @@ def test_session_view_to_dict_round_trips_fields():
         "session_id": "s1", "app_id": "a1", "version": 3, "state": "fix.await_verify",
         "canvas_read_only": False, "run_status": "waiting-input", "interrupted": False,
         "conversation": [], "entry_mode": "fix", "phase": "understand", "actions": [],
-        "checkpoint": None,
+        "checkpoint": None, "recovery": None,
     }
 
 

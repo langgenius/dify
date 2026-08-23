@@ -167,6 +167,16 @@ class CheckpointRef:
     created_at: str
 
 
+@dataclass
+class RecoveryRef:
+    """Draft-drift recovery offer on the SessionView (spec §8 / C-1)."""
+
+    recovery_class: str
+    can_continue: bool
+    can_restart: bool
+    message: str
+
+
 # ---------------------------------------------------------------------------
 # Card sub-types (spec §4.3). Plain dataclasses -- no ``kind`` discriminant,
 # they nest inside a card's fields rather than standing alone in the

@@ -644,3 +644,44 @@ def test_get_session_view_run_status_paused(
     view = service.get_session_view(s.id, _actor())
     assert view.run_status == "paused"
     assert view.canvas_read_only is False  # editable while paused
+
+
+def test_recovery_ref_for():
+    # A session whose fc has a recovery_class surfaces a RecoveryRef;
+    # can_continue/can_restart follow the class.
+    from core.workflow_copilot.contract import RecoveryClass
+    from core.workflow_copilot import recovery
+
+    ref = recovery.recovery_ref_for(str(RecoveryClass.STRUCTURAL_INVALIDATING))
+    assert ref is not None
+    assert ref.recovery_class == "structural_invalidating"
+    assert ref.can_continue is False  # cannot continue when invalidating
+    assert ref.can_restart is True
+
+    ref2 = recovery.recovery_ref_for(str(RecoveryClass.UNCHANGED))
+    assert ref2 is not None
+    assert ref2.can_continue is True
+    assert ref2.can_restart is False  # nothing to restart from when unchanged
+
+    assert recovery.recovery_ref_for("") is None
+
+
+def test_get_session_view_surfaces_recovery_when_set(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
+                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_EXECUTION)
+    repo.create_session(s, CopilotContext(recovery_class="config_only"), [ConversationItem(kind="user", seq=0)])
+    view = service.get_session_view(s.id, _actor())
+    assert view.recovery is not None
+    assert view.recovery.recovery_class == "config_only"
+
+
+def test_get_session_view_no_recovery_when_unset(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = Session(app_id=APP_ID, tenant_id=TENANT_ID, owner_account_id=ACCOUNT_ID,
+                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_INITIAL_PLAN)
+    repo.create_session(s, CopilotContext(), [ConversationItem(kind="user", seq=0)])
+    view = service.get_session_view(s.id, _actor())
+    assert view.recovery is None

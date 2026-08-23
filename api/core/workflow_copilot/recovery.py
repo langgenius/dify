@@ -12,7 +12,7 @@ is stamped inline via the ``fc.next_seq`` protocol rather than reusing
 ``handlers_fix.append_card``.
 """
 
-from core.workflow_copilot.contract import NoticeItem, RecoveryClass
+from core.workflow_copilot.contract import NoticeItem, RecoveryClass, RecoveryRef
 from core.workflow_copilot.models import ConversationItem, CopilotContext, EntryMode, Session, Turn
 from core.workflow_copilot.ports import DifyPort
 from core.workflow_copilot.state import PcState
@@ -21,6 +21,7 @@ __all__ = [
     "apply_recovery_action",
     "classify",
     "entry_state_for",
+    "recovery_ref_for",
     "target_node_ids",
 ]
 
@@ -49,6 +50,21 @@ def entry_state_for(entry_mode: EntryMode) -> PcState:
     """The state a fresh session of this mode starts in. Mirrors
     ``service.create_*_session``; a parity test guards drift."""
     return _ENTRY_STATE[entry_mode]
+
+
+def recovery_ref_for(recovery_class: str) -> RecoveryRef | None:
+    """Build the SessionView recovery offer from a stored class string.
+    ``None`` when there is no active recovery (``recovery_class == ""``).
+    can_continue is false only for a structural-invalidating drift; can_restart
+    is false only when nothing changed."""
+    if not recovery_class:
+        return None
+    return RecoveryRef(
+        recovery_class=recovery_class,
+        can_continue=recovery_class != RecoveryClass.STRUCTURAL_INVALIDATING,
+        can_restart=recovery_class != RecoveryClass.UNCHANGED,
+        message=_RECOVERY_MESSAGE.get(recovery_class, ""),
+    )
 
 
 def target_node_ids(fc: CopilotContext, entry_mode: EntryMode) -> list[str]:
