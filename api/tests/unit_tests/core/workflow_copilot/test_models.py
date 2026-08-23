@@ -220,3 +220,18 @@ def test_turn_action_is_optional_actor_is_not():
     assert turn_with_action.action is action
 
     assert not hasattr(turn_with_action, "auth")
+
+
+def test_apply_result_has_structure_fingerprint_default():
+    from core.workflow_copilot.models import ApplyResult
+
+    assert ApplyResult().structure_fingerprint == ""
+    assert ApplyResult(structure_fingerprint="fp1").structure_fingerprint == "fp1"
+
+
+def test_copilot_context_recovery_fields_default():
+    from core.workflow_copilot.models import CopilotContext
+
+    fc = CopilotContext()
+    assert fc.last_structure_fingerprint == ""
+    assert fc.recovery_class == ""
