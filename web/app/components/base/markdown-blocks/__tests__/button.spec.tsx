@@ -119,4 +119,36 @@ describe('MarkdownButton (integration)', () => {
       'bg-components-button-destructive-primary-bg',
     )
   })
+
+  it('applies a whitelisted data-tone on top of the variant', () => {
+    renderWithCtx(createButtonNode({ dataVariant: 'ghost', dataTone: 'destructive' }, 'Remove'))
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toHaveClass(
+      'text-components-button-destructive-ghost-text',
+    )
+  })
+
+  it('renders a destructive secondary button when only data-tone is provided', () => {
+    renderWithCtx(createButtonNode({ dataTone: 'destructive' }, 'Stop'))
+
+    expect(screen.getByRole('button', { name: 'Stop' })).toHaveClass(
+      'bg-components-button-destructive-secondary-bg',
+    )
+  })
+
+  it('lets an explicit data-tone override the tone derived from the variant', () => {
+    renderWithCtx(createButtonNode({ dataVariant: 'warning', dataTone: 'default' }, 'Warn'))
+
+    const button = screen.getByRole('button', { name: 'Warn' })
+    expect(button).not.toHaveClass('bg-components-button-destructive-primary-bg')
+    expect(button).toHaveClass('bg-components-button-primary-bg')
+  })
+
+  it('ignores invalid data-tone values', () => {
+    renderWithCtx(createButtonNode({ dataTone: 'warning' }, 'Invalid'))
+
+    expect(screen.getByRole('button', { name: 'Invalid' })).not.toHaveClass(
+      'bg-components-button-destructive-secondary-bg',
+    )
+  })
 })

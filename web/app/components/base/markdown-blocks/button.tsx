@@ -17,6 +17,7 @@ const MarkdownButton = ({ node }: MarkdownButtonProps) => {
   const appearance = getMarkdownButtonAppearance(
     node?.properties.dataVariant,
     node?.properties.dataSize,
+    node?.properties.dataTone,
   )
   const message = getStringProperty(node?.properties.dataMessage)
   const link = getStringProperty(node?.properties.dataLink)
