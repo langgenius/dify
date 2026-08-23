@@ -83,14 +83,23 @@ def _respond(fn: Callable[[], object]) -> tuple[dict, int]:
 def _create(body, actor: Actor) -> tuple[dict, int]:
     if not isinstance(body, dict):
         return {"code": "bad_request"}, 400
-    result, status = _respond(
-        lambda: build_service().create_fix_session(
-            app_id=body.get("app_id", ""),
-            actor=actor,
-            failed_run_id=body.get("failed_run_id") or None,
-            checklist_errors=body.get("checklist_errors") or None,
+    if body.get("scenario") == "build":
+        result, status = _respond(
+            lambda: build_service().create_build_session(
+                app_id=body.get("app_id", ""),
+                actor=actor,
+                goal_text=body.get("goal_text", ""),
+            )
         )
-    )
+    else:
+        result, status = _respond(
+            lambda: build_service().create_fix_session(
+                app_id=body.get("app_id", ""),
+                actor=actor,
+                failed_run_id=body.get("failed_run_id") or None,
+                checklist_errors=body.get("checklist_errors") or None,
+            )
+        )
     # create returns 201 on success; map-through keeps error statuses.
     return result, (201 if status == 200 else status)
 

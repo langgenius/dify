@@ -432,3 +432,18 @@ def test_submit_message_constructs_message_action(repo: SqlCopilotRepository) ->
     assert action.kind == "message"
     assert action.payload == {"text": "hello"}
     assert action.base_version == 1
+
+
+def test_create_build_session_bootstraps_at_capability_check_and_dispatches_send_goal(
+    service: WorkflowCopilotService, enqueued: list[tuple]
+) -> None:
+    view = service.create_build_session(APP_ID, _actor(), goal_text="Build a report workflow")
+
+    assert view.state == "build.capability_check"
+    assert view.entry_mode == EntryMode.BUILD
+    assert view.version == 1
+    assert len(enqueued) == 1
+    _sid, action, _actor2, _token = enqueued[0]
+    assert action.kind == "send_goal"
+    assert action.payload == {"text": "Build a report workflow"}
+    assert action.base_version == 1

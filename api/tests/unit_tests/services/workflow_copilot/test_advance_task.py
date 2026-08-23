@@ -220,3 +220,32 @@ def test_advance_session_setup_failure_still_releases_lock(monkeypatch) -> None:
     assert all("db down" not in str(ev) for _sid, ev in events)
 
     assert ("sess-setup", "tok-setup") in released
+
+
+def _seed_build_session(repo: SqlCopilotRepository) -> Session:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=PcState.BUILD_CAPABILITY_CHECK,
+    )
+    repo.create_session(
+        s,
+        CopilotContext(goal_text="Build a report workflow"),
+        [ConversationItem(kind="user", seq=0)],
+    )
+    return s
+
+
+def test_advance_session_resolves_build_handler_via_merged_registry(
+    repo: SqlCopilotRepository, wired
+) -> None:
+    _events, released = wired
+    s = _seed_build_session(repo)
+
+    mod.advance_session(s.id, _act("send_goal", 1, text="Build it"), _ACTOR_DICT, "tok-b1")
+
+    stored, _fc = repo.get_session(s.id)
+    assert stored.current_state == PcState.BUILD_GOAL_ANALYSIS  # build handler resolved, not a 500
+    assert (s.id, "tok-b1") in released
