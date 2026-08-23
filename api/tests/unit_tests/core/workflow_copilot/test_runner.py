@@ -10,7 +10,7 @@ from datetime import datetime
 import pytest
 
 from core.workflow_copilot.errors import ConflictError
-from core.workflow_copilot.models import Action, Actor, EntryMode, FixContext, Session, Turn
+from core.workflow_copilot.models import Action, Actor, CopilotContext, EntryMode, Session, Turn
 from core.workflow_copilot.runner import Env, Runner, StepResult
 from core.workflow_copilot.state import PcState
 from tests.unit_tests.core.workflow_copilot.fakes import FakeDifyPort, InMemoryRepository, StubAgent
@@ -36,7 +36,7 @@ def _toy_registry() -> dict[PcState, object]:
     """A working -> waiting toy machine: FIX_DIAGNOSE auto-advances to
     FIX_AWAIT_APPROVAL (a waiting state), where the loop stops."""
 
-    def diagnose(_env: Env, _turn: Turn, _s: Session, fc: FixContext) -> StepResult:
+    def diagnose(_env: Env, _turn: Turn, _s: Session, fc: CopilotContext) -> StepResult:
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)
 
     return {PcState.FIX_DIAGNOSE: diagnose}
@@ -56,7 +56,7 @@ def _new_env() -> tuple[Env, InMemoryRepository]:
 def test_advance_commits_each_transition_and_stops_at_waiting():
     env, repo = _new_env()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     runner = Runner(env, _toy_registry())
     turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
@@ -73,7 +73,7 @@ def test_advance_commits_each_transition_and_stops_at_waiting():
 def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
     env, repo = _new_env()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     runner = Runner(env, _toy_registry())
     turn = Turn(action=Action(kind="request_fix", base_version=99), actor=_actor())
@@ -90,7 +90,7 @@ def test_advance_stale_base_version_raises_conflict_with_nothing_applied():
 def test_advance_missing_handler_raises():
     env, repo = _new_env()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     runner = Runner(env, {})  # empty registry: no handler for FIX_DIAGNOSE
     turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
@@ -102,7 +102,7 @@ def test_advance_missing_handler_raises():
 def test_advance_missing_handler_error_message_names_the_state():
     env, repo = _new_env()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     runner = Runner(env, {})
     turn = Turn(action=Action(kind="request_fix", base_version=1), actor=_actor())
@@ -114,7 +114,7 @@ def test_advance_missing_handler_error_message_names_the_state():
 def test_advance_waiting_state_first_turn_no_action_returns_session_unchanged():
     env, repo = _new_env()
     s = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     runner = Runner(env, {})  # never consulted: loop returns before handler lookup
     turn = Turn(actor=_actor())  # no action
@@ -127,7 +127,7 @@ def test_advance_waiting_state_first_turn_no_action_returns_session_unchanged():
 def test_advance_terminal_state_returns_session_unchanged():
     env, repo = _new_env()
     s = _session(current_state=PcState.SUCCESS)
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     runner = Runner(env, {})  # never consulted: terminal short-circuits first
     turn = Turn(actor=_actor())
@@ -143,15 +143,15 @@ def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequen
     handler must see a Turn with Action consumed (None) but the same Actor."""
     env, repo = _new_env()
     s = _session()
-    repo.create_session(s, FixContext(), [])
+    repo.create_session(s, CopilotContext(), [])
 
     seen_turns: list[Turn] = []
 
-    def diagnose(_env: Env, turn: Turn, _s: Session, fc: FixContext) -> StepResult:
+    def diagnose(_env: Env, turn: Turn, _s: Session, fc: CopilotContext) -> StepResult:
         seen_turns.append(turn)
         return StepResult(next=PcState.FIX_PROPOSE, context=fc)
 
-    def propose(_env: Env, turn: Turn, _s: Session, fc: FixContext) -> StepResult:
+    def propose(_env: Env, turn: Turn, _s: Session, fc: CopilotContext) -> StepResult:
         seen_turns.append(turn)
         return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)
 

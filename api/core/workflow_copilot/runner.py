@@ -27,7 +27,7 @@ from core.workflow_copilot.errors import ConflictError
 from core.workflow_copilot.models import (
     Checkpoint,
     ConversationItem,
-    FixContext,
+    CopilotContext,
     NodeEvent,
     Run,
     Session,
@@ -61,14 +61,14 @@ class Env:
 @dataclass
 class StepResult:
     next: PcState
-    context: FixContext | None = None
+    context: CopilotContext | None = None
     items: list[ConversationItem] = field(default_factory=list)
     checkpoint: Snapshot | None = None  # if set, persist a checkpoint from this snapshot before advancing
     run: Run | None = None  # if set, persist this run before advancing
     run_id_sink: list[str] | None = None  # internal: runner writes the saved run id to run_id_sink[0]
 
 
-Handler = Callable[[Env, Turn, Session, FixContext], StepResult]
+Handler = Callable[[Env, Turn, Session, CopilotContext], StepResult]
 
 
 class Runner:

@@ -21,8 +21,8 @@ from core.workflow_copilot.models import (
     Actor,
     ChecklistError,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     Session,
 )
 from core.workflow_copilot.state import PcState
@@ -251,7 +251,7 @@ def _seed_free_session(repo: SqlCopilotRepository) -> Session:
         entry_mode=EntryMode.FIX,
         current_state=PcState.FIX_DIAGNOSE,
     )
-    repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    repo.create_session(s, CopilotContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
     return s
 
 
@@ -266,7 +266,7 @@ def _seed_session_at(repo: SqlCopilotRepository, state: PcState) -> Session:
         entry_mode=EntryMode.FIX,
         current_state=state,
     )
-    repo.create_session(s, FixContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
+    repo.create_session(s, CopilotContext(failed_run_id="TR-1"), [ConversationItem(kind="run-context", seq=0)])
     return s
 
 
