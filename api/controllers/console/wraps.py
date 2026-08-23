@@ -352,19 +352,6 @@ def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]
     return decorated
 
 
-def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-    @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_system_features()
-        if features.is_allow_register:
-            return view(*args, **kwargs)
-
-        # otherwise, return 403
-        abort(403)
-
-    return decorated
-
-
 def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -652,6 +639,21 @@ def with_current_user_id[T, **P, R](
     return decorated
 
 
+def validate_request[M: BaseModel](model: type[M]) -> M:
+    """Parse and validate the current request without exposing submitted values."""
+
+    if request.method in ("GET", "DELETE"):
+        raw = request.args.to_dict(flat=True)
+    else:
+        raw = request.get_json(silent=True) or {}
+
+    try:
+        return model.model_validate(raw)
+    except ValidationError as exc:
+        errors = exc.errors(include_url=False, include_input=False, include_context=False)
+        raise UnprocessableEntity(json.dumps(errors)) from None
+
+
 def model_validate[T, M: BaseModel, **P, R](
     model: type[M],
 ) -> Callable[
@@ -670,17 +672,7 @@ def model_validate[T, M: BaseModel, **P, R](
     ) -> Callable[Concatenate[T, P], R]:
         @wraps(view)
         def wrapper(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
-            if request.method in ("GET", "DELETE"):
-                raw = request.args.to_dict(flat=True)
-            else:
-                raw = request.get_json(silent=True) or {}
-
-            try:
-                validated = model.model_validate(raw)
-            except ValidationError as exc:
-                raise UnprocessableEntity(exc.json())
-
-            return view(self, validated, *args, **kwargs)
+            return view(self, validate_request(model), *args, **kwargs)
 
         return wrapper
 

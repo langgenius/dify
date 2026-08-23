@@ -100,6 +100,7 @@ source_modules =
     services.account_avatar_service
     services.account_change_email_ports
     services.account_change_email_service
+    services.account_email_registration_service
     services.account_deletion_service
     services.account_deletion_feedback_service
     services.account_education_service

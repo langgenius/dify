@@ -62,6 +62,16 @@ from services.account_deletion_adapters import (
 from services.account_deletion_feedback_service import AccountDeletionFeedbackService
 from services.account_deletion_service import AccountDeletionService
 from services.account_education_service import AccountEducationService
+from services.account_email_registration_adapters import (
+    AccountServiceRegistrationGateway,
+    BillingAccountRegistrationPolicyGateway,
+    CeleryEmailRegistrationNotificationGateway,
+    RateLimiterEmailRegistrationSendLimiter,
+    RedisEmailRegistrationSecurityGateway,
+    SecureEmailRegistrationCodeGenerator,
+    TokenManagerEmailRegistrationTokenGateway,
+)
+from services.account_email_registration_service import AccountEmailRegistrationService
 from services.account_initialization_service import AccountInitializationService
 from services.account_integration_service import AccountIntegrationService
 from services.account_password_hasher import LegacyAccountPasswordHasher
@@ -127,6 +137,7 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 class AccountServices:
     avatar: AccountAvatarService
     change_email: AccountChangeEmailService
+    email_registration: AccountEmailRegistrationService
     deletion: AccountDeletionService
     deletion_feedback: AccountDeletionFeedbackService
     education: AccountEducationService
@@ -206,6 +217,29 @@ def build_application_services(
                 email_policy=BillingAccountEmailPolicyGateway(
                     billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
                 ),
+            ),
+            email_registration=AccountEmailRegistrationService(
+                accounts=accounts,
+                tokens=TokenManagerEmailRegistrationTokenGateway(),
+                codes=SecureEmailRegistrationCodeGenerator(),
+                notifications=CeleryEmailRegistrationNotificationGateway(),
+                send_limits=RateLimiterEmailRegistrationSendLimiter(
+                    rate_limiter=RateLimiter(
+                        prefix="email_register_rate_limit",
+                        max_attempts=1,
+                        time_window=60,
+                        redis_client=redis,
+                    )
+                ),
+                security=RedisEmailRegistrationSecurityGateway(
+                    redis=redis,
+                    verification_failure_limit=5,
+                    verification_lockout_duration=dify_config.EMAIL_REGISTER_LOCKOUT_DURATION,
+                ),
+                account_policy=BillingAccountRegistrationPolicyGateway(
+                    enabled=deployment_edition == DeploymentEdition.CLOUD,
+                ),
+                registration=AccountServiceRegistrationGateway(session_factory=database_client),
             ),
             deletion=AccountDeletionService(
                 accounts=accounts,

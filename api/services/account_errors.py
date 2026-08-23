@@ -85,5 +85,41 @@ class AccountEmailAlreadyInUseError(AccountApplicationError):
     """The target email already belongs to an account."""
 
 
+class EmailRegistrationSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the registration-email send policy."""
+
+
+class EmailRegistrationSendRateLimitError(AccountApplicationError):
+    """Too many registration messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class EmailRegistrationVerificationLimitError(AccountApplicationError):
+    """Too many invalid registration-code attempts were made."""
+
+
+class InvalidEmailRegistrationTokenError(AccountApplicationError):
+    """The registration token is absent, malformed, or in the wrong phase."""
+
+
+class InvalidEmailRegistrationAddressError(AccountApplicationError):
+    """The request address does not match the registration token."""
+
+
+class InvalidEmailRegistrationCodeError(AccountApplicationError):
+    """The verification code does not match the registration token."""
+
+
+class EmailRegistrationPasswordMismatchError(AccountApplicationError):
+    """The registration password confirmation does not match."""
+
+
+class EmailRegistrationSeatsLimitError(AccountApplicationError):
+    """The deployment has no licensed seat available for another account."""
+
+
 class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
