@@ -26,7 +26,7 @@ _OBJECT_NOT_FOUND_ERROR_CODES = frozenset({"404", "NoSuchKey", "NotFound"})
 
 
 def _is_object_not_found_error(error: ClientError) -> bool:
-    error_code = str(error.response.get("Error", {}).get("Code", ""))
+    error_code = error.response.get("Error", {}).get("Code", "")
     return error_code in _OBJECT_NOT_FOUND_ERROR_CODES
 
 
