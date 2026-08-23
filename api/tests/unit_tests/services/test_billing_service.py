@@ -22,10 +22,9 @@ import pytest
 from werkzeug.exceptions import InternalServerError
 
 from enums import CloudPlan
-from models import Account, Tenant, TenantAccountRole
+from models import Account, Tenant
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.errors.billing import (
-    BillingAccessDeniedError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
@@ -1389,22 +1388,6 @@ class TestBillingServiceAccountManagement:
         mock_send_request.assert_called_once_with(
             "POST", "/account/delete-feedback", json={"email": email, "feedback": feedback}
         )
-
-    @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN])
-    def test_ensure_tenant_owner_or_admin_accepts_privileged_roles(self, role: TenantAccountRole) -> None:
-        BillingService.ensure_tenant_owner_or_admin(role)
-
-    @pytest.mark.parametrize(
-        "role",
-        [TenantAccountRole.EDITOR, TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR],
-    )
-    def test_ensure_tenant_owner_or_admin_rejects_non_privileged_roles(self, role: TenantAccountRole) -> None:
-        with pytest.raises(BillingAccessDeniedError):
-            BillingService.ensure_tenant_owner_or_admin(role)
-
-    def test_ensure_tenant_owner_or_admin_rejects_missing_membership(self) -> None:
-        with pytest.raises(BillingAccessDeniedError):
-            BillingService.ensure_tenant_owner_or_admin(None)
 
 
 class TestBillingServiceCacheManagement:

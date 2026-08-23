@@ -10,6 +10,7 @@ from controllers.common.fields import SimpleResultResponse, ValidationResultResp
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -18,27 +19,29 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
-    with_current_user,
 )
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import dump_response, uuid_value
 from libs.login import login_required
-from models import Account
-from services.billing_service import BillingService
+from machinery.context import RequestContext
+from models import TenantAccountRole
 from services.entities.model_provider_entities import (
     ModelProviderPluginSummaryResponse,
     ModelProviderSummaryResponse,
     ProviderResponse,
 )
-from services.errors.billing import BillingAccessDeniedError
 from services.model_provider_service import ModelProviderService
 from services.workspace_service import WorkspaceService
 
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
+
+
+_MODEL_PROVIDER_PAYMENT_ALLOWED_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 
 class ParserCredentialId(BaseModel):
@@ -409,24 +412,12 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         "Model provider checkout URL retrieved successfully",
         console_ns.models[ModelProviderPaymentCheckoutUrlResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    def get(self, current_tenant_id: str, current_user: Account, provider: str):
+    @console_account_admission(allowed_roles=_MODEL_PROVIDER_PAYMENT_ALLOWED_ROLES)
+    def get(self, request_context: RequestContext, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        if current_user.current_role is None:
-            raise ValueError("Tenant account join not found")
-        try:
-            BillingService.ensure_tenant_owner_or_admin(current_user.current_role)
-        except BillingAccessDeniedError as error:
-            raise ValueError("Only team owner or team admin can perform this action") from error
-        data = BillingService.get_model_provider_payment_link(
+        data = application_services().billing_portal.get_model_provider_payment_link(
+            request_context,
             provider_name=provider,
-            tenant_id=current_tenant_id,
-            account_id=current_user.id,
-            prefilled_email=current_user.email,
         )
         return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)

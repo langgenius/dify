@@ -198,6 +198,11 @@ def test_build_application_services_wires_billing_service(
         ) as get_invoices,
         patch.object(
             BillingService,
+            "get_model_provider_payment_link",
+            return_value={"payment_link": "https://billing.example.com/provider"},
+        ) as get_model_provider_payment_link,
+        patch.object(
+            BillingService,
             "sync_partner_tenants_bindings",
             return_value={"result": "success"},
         ) as sync_partner_tenants_bindings,
@@ -222,6 +227,10 @@ def test_build_application_services_wires_billing_service(
         interval="month",
     ) == {"url": "https://billing.example.com/checkout"}
     assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
+    assert services.billing_portal.get_model_provider_payment_link(
+        request_context,
+        provider_name="anthropic",
+    ) == {"payment_link": "https://billing.example.com/provider"}
     assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
     assert services.partner_tenant_bindings.sync(
         account_id="account-1",
@@ -230,6 +239,12 @@ def test_build_application_services_wires_billing_service(
     ) == {"result": "success"}
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
+    get_model_provider_payment_link.assert_called_once_with(
+        "anthropic",
+        "workspace-1",
+        "account-1",
+        "owner@example.com",
+    )
     sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
 
 

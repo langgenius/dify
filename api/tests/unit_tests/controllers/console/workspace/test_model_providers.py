@@ -5,6 +5,7 @@ import pytest
 from flask import Flask
 from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console.workspace.model_providers import (
@@ -19,10 +20,13 @@ from controllers.console.workspace.model_providers import (
     PreferredProviderTypeUpdateApi,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from libs.login import AccountWithTenant
+from machinery.context import RequestContext
 from models import Account, TenantAccountRole
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
@@ -35,7 +39,6 @@ from services.entities.model_provider_entities import (
     ProviderResponse,
     SystemConfigurationResponse,
 )
-from services.errors.billing import BillingAccessDeniedError
 from services.workspace_service import EffectiveCreditPool
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
@@ -46,6 +49,15 @@ def make_account() -> Account:
     account = Account(name="Provider Owner", email="owner@example.com")
     account.id = "account-1"
     return account
+
+
+def make_request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="tenant1",
+    )
 
 
 def make_provider_response() -> ProviderResponse:
@@ -570,28 +582,23 @@ class TestModelProviderPaymentCheckoutUrlApi:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
-        user = make_account()
-        user.role = TenantAccountRole.OWNER
-
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.model_providers.BillingService.ensure_tenant_owner_or_admin",
-                return_value=None,
-            ) as ensure_tenant_owner_or_admin,
-            patch(
-                "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
-                return_value={"payment_link": "https://payment.example.com/provider"},
-            ) as get_model_provider_payment_link,
+                "controllers.console.workspace.model_providers.application_services",
+            ) as application_services,
         ):
-            result = method(api, "tenant1", user, provider="anthropic")
+            get_model_provider_payment_link = (
+                application_services.return_value.billing_portal.get_model_provider_payment_link
+            )
+            get_model_provider_payment_link.return_value = {
+                "payment_link": "https://payment.example.com/provider"
+            }
+            result = method(api, make_request_context(), provider="anthropic")
 
-        ensure_tenant_owner_or_admin.assert_called_once_with(TenantAccountRole.OWNER)
         get_model_provider_payment_link.assert_called_once_with(
+            make_request_context(),
             provider_name="anthropic",
-            tenant_id="tenant1",
-            account_id="account-1",
-            prefilled_email="owner@example.com",
         )
         assert result == {"payment_link": "https://payment.example.com/provider"}
 
@@ -601,29 +608,32 @@ class TestModelProviderPaymentCheckoutUrlApi:
 
         with app.test_request_context("/"):
             with pytest.raises(ValueError):
-                method(api, "tenant1", make_account(), provider="openai")
+                method(api, make_request_context(), provider="openai")
 
-    def test_permission_denied(self, app: Flask):
+    def test_checkout_rejects_non_privileged_role(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
-        method = unwrap(api.get)
-
-        user = make_account()
-        user.role = TenantAccountRole.NORMAL
+        account = make_account()
+        account.role = TenantAccountRole.NORMAL
+        account_with_tenant = AccountWithTenant(account=account, tenant_id="tenant1")
 
         with (
             app.test_request_context("/"),
+            patch.object(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
+            patch.object(dify_config, "LOGIN_DISABLED", True),
+            patch.object(dify_config, "RBAC_ENABLED", False),
             patch(
-                "controllers.console.workspace.model_providers.BillingService.ensure_tenant_owner_or_admin",
-                side_effect=BillingAccessDeniedError,
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=account_with_tenant,
             ),
+            patch(
+                "controllers.console.flask_admission.current_account_with_tenant",
+                return_value=account_with_tenant,
+            ),
+            patch(
+                "controllers.console.workspace.model_providers.application_services",
+            ) as application_services,
+            pytest.raises(Forbidden),
         ):
-            with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
-                method(api, "tenant1", user, provider="anthropic")
+            api.get(provider="anthropic")
 
-    def test_missing_membership(self, app: Flask):
-        api = ModelProviderPaymentCheckoutUrlApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/"):
-            with pytest.raises(ValueError, match="Tenant account join not found"):
-                method(api, "tenant1", make_account(), provider="anthropic")
+        application_services.assert_not_called()

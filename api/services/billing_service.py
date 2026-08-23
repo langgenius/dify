@@ -13,10 +13,9 @@ from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from models import Account, TenantAccountRole
-from services.billing_portal_service import BillingPortalLink
+from models import Account
+from services.billing_portal_service import BillingPortalLink, ModelProviderPaymentLink
 from services.errors.billing import (
-    BillingAccessDeniedError,
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
 )
@@ -371,7 +370,13 @@ class BillingService:
         return cls._send_billing_portal_request("/subscription/payment-link", params=params)
 
     @classmethod
-    def get_model_provider_payment_link(cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str):
+    def get_model_provider_payment_link(
+        cls,
+        provider_name: str,
+        tenant_id: str,
+        account_id: str,
+        prefilled_email: str,
+    ) -> ModelProviderPaymentLink:
         params = {
             "provider_name": provider_name,
             "tenant_id": tenant_id,
@@ -491,11 +496,6 @@ class BillingService:
             raise BillingUpstreamInvalidResponseError from error
         except ValueError as error:
             raise RuntimeError("Unexpected billing service value error") from error
-
-    @staticmethod
-    def ensure_tenant_owner_or_admin(role: TenantAccountRole | None) -> None:
-        if role is None or not TenantAccountRole.is_privileged_role(role):
-            raise BillingAccessDeniedError
 
     @classmethod
     def delete_account(cls, account_id: str):

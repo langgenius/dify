@@ -48,6 +48,11 @@ def get_invoices() -> MagicMock:
 
 
 @pytest.fixture
+def get_model_provider_payment_link() -> MagicMock:
+    return MagicMock()
+
+
+@pytest.fixture
 def accounts() -> Mock:
     accounts = Mock(spec=AccountRepository)
     accounts.get.return_value = _account()
@@ -55,8 +60,18 @@ def accounts() -> Mock:
 
 
 @pytest.fixture
-def service(accounts: Mock, get_subscription: MagicMock, get_invoices: MagicMock) -> BillingPortalService:
-    return BillingPortalService(accounts=accounts, get_subscription=get_subscription, get_invoices=get_invoices)
+def service(
+    accounts: Mock,
+    get_subscription: MagicMock,
+    get_invoices: MagicMock,
+    get_model_provider_payment_link: MagicMock,
+) -> BillingPortalService:
+    return BillingPortalService(
+        accounts=accounts,
+        get_subscription=get_subscription,
+        get_invoices=get_invoices,
+        get_model_provider_payment_link=get_model_provider_payment_link,
+    )
 
 
 def test_get_subscription_loads_email_and_delegates(
@@ -89,6 +104,25 @@ def test_get_invoices_loads_email_and_delegates(
     assert result == {"url": "https://billing.example.com/portal"}
     accounts.get.assert_called_once_with("account-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
+
+
+def test_get_model_provider_payment_link_loads_email_and_delegates(
+    service: BillingPortalService,
+    accounts: Mock,
+    get_model_provider_payment_link: MagicMock,
+) -> None:
+    get_model_provider_payment_link.return_value = {"payment_link": "https://billing.example.com/provider"}
+
+    result = service.get_model_provider_payment_link(_context(), provider_name="anthropic")
+
+    assert result == {"payment_link": "https://billing.example.com/provider"}
+    accounts.get.assert_called_once_with("account-1")
+    get_model_provider_payment_link.assert_called_once_with(
+        "anthropic",
+        "workspace-1",
+        "account-1",
+        "owner@example.com",
+    )
 
 
 def test_missing_account_does_not_call_billing(
