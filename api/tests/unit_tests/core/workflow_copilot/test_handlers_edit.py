@@ -198,3 +198,111 @@ def test_apply_changes_revert_records_intent_only():
     assert res.next == PcState.EDIT_REVERTED
     assert any(i.kind == "decision" for i in res.items)
     assert {"event": "revert_checkpoint"} in events
+
+
+def test_test_affected_paths_emits_result_and_reaches_review():
+    from core.workflow_copilot.handlers_edit import handle_test_affected_paths
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_TEST_AFFECTED_PATHS, edit_target_node_ids=["llm"])
+    res = handle_test_affected_paths(env, Turn(actor=_actor()), *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_REVIEW
+    kinds = [i.kind for i in res.items]
+    assert "test_result" in kinds
+    summary = next(i for i in res.items if i.kind == "summary")
+    assert summary.payload["variant"] == "review"
+    names = [e["event"] for e in events]
+    assert "mark_test_success" in names
+    assert "mark_review_ready" in names
+
+
+def test_review_publish_reaches_terminal_edit_publish_with_publish_card():
+    from core.workflow_copilot.handlers_edit import handle_review
+
+    dify = FakeEditDifyPort()
+    events: list[dict] = []
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_REVIEW, plan_items=["Tighten threshold"])
+    res = handle_review(
+        env, Turn(action=Action(kind="publish_workflow", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.EDIT_PUBLISH
+    assert dify.published is True
+    kinds = {i.kind for i in res.items}
+    assert "publish" in kinds
+    assert any(i.kind == "summary" and i.payload["variant"] == "completion" for i in res.items)
+    assert {"event": "publish_workflow"} in events
+
+
+def test_review_keep_draft_reaches_terminal_without_publish_card():
+    from core.workflow_copilot.handlers_edit import handle_review
+
+    dify = FakeEditDifyPort()
+    events: list[dict] = []
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_REVIEW, plan_items=["Tighten threshold"])
+    res = handle_review(
+        env, Turn(action=Action(kind="keep_draft", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.EDIT_PUBLISH  # same terminal, mock: keep_draft = Task Completed
+    assert dify.published is False  # but no real publish
+    assert not any(i.kind == "publish" for i in res.items)  # and no publish card
+    assert any(i.kind == "summary" and i.payload["variant"] == "completion" for i in res.items)
+    assert {"event": "cancel_publish"} in events
+
+
+def test_review_continue_adjusting_returns_to_impact_analysis():
+    from core.workflow_copilot.handlers_edit import handle_review
+
+    env, repo = _new_env()
+    s = _seed_edit_session(
+        repo, PcState.EDIT_REVIEW, edit_rules={"risk_threshold": "high"}, edit_target_node_ids=["llm"]
+    )
+    res = handle_review(
+        env, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.EDIT_IMPACT_ANALYSIS
+    kinds = {i.kind for i in res.items}
+    assert {"form", "challenge", "change_set"} <= kinds
+
+
+def test_review_revert_records_intent_only():
+    from core.workflow_copilot.handlers_edit import handle_review
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_REVIEW, edit_target_node_ids=["llm"])
+    res = handle_review(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), *repo.get_session(s.id))
+    assert res.next == PcState.EDIT_REVERTED
+    assert {"event": "revert_checkpoint"} in events
+
+
+def test_reverted_retry_returns_to_plan_approval_with_fresh_checkpoint():
+    from core.workflow_copilot.handlers_edit import handle_reverted
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_REVERTED, edit_rules={"risk_threshold": "high"})
+    res = handle_reverted(
+        env, Turn(action=Action(kind="re_fix", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.EDIT_PLAN_APPROVAL
+    assert res.context.plan_version_tag == "v1"
+    assert res.context.checkpoint_id
+    assert {i.kind for i in res.items} >= {"plan", "checkpoint", "assistant_turn"}
+
+
+def test_edit_registry_covers_all_non_terminal_edit_states():
+    from core.workflow_copilot.handlers_edit import edit_registry
+
+    assert set(edit_registry().keys()) == {
+        PcState.EDIT_CAPABILITY_CHECK,
+        PcState.EDIT_IMPACT_ANALYSIS,
+        PcState.EDIT_PLAN_APPROVAL,
+        PcState.EDIT_APPLY_CHANGES,
+        PcState.EDIT_TEST_AFFECTED_PATHS,
+        PcState.EDIT_REVIEW,
+        PcState.EDIT_REVERTED,
+    }
+    assert PcState.EDIT_PUBLISH not in edit_registry()  # terminal: no handler
