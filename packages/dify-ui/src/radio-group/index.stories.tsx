@@ -5,14 +5,14 @@ import { Field, FieldDescription, FieldItem, FieldLabel } from '../field'
 import { Fieldset, FieldsetLegend } from '../fieldset'
 
 const meta = {
-  title: 'Base/Form/Radio',
+  title: 'Base/Form/Radio Group',
   component: RadioGroup,
   parameters: {
     layout: 'centered',
     docs: {
       description: {
         component:
-          '`@langgenius/dify-ui/radio` exports the complete radio family. `RadioGroup` owns single-selection state, `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
+          '`@langgenius/dify-ui/radio-group` exports the complete radio family. Every radio belongs to a `RadioGroup`, which owns single-selection state and group interaction. `Radio` is the default Dify control for plain form rows, `RadioItem` makes custom UI the radio item, and `RadioControl` renders the standard visual dot inside custom items.',
       },
     },
   },

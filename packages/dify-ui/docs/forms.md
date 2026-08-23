@@ -25,8 +25,8 @@ message relationships.
 
 Choose the label primitive by the control:
 
-- Text-like inputs, `Textarea`, input-based `Combobox` and `Autocomplete`, a single `Checkbox` or
-  `Radio`, `Switch`, and `NumberField` use `FieldLabel`.
+- Text-like inputs, `Textarea`, input-based `Combobox` and `Autocomplete`, a single `Checkbox`,
+  each `Radio` option, `Switch`, and `NumberField` use `FieldLabel`.
 - Trigger-based `Select` fields use `SelectLabel`.
 - `Slider` fields follow the [Base UI Slider anatomy] and use `SliderLabel`; only multi-thumb
   sliders add per-thumb `aria-label` to distinguish the thumbs.
@@ -57,6 +57,9 @@ option with `FieldItem` and give it its own label:
 
 `Fieldset` owns group semantics and the legend relationship, not interactive state. Pass
 `disabled`, `value`, `defaultValue`, and change handlers to the group primitive.
+
+Every radio belongs to a `RadioGroup`. Use `FieldsetLegend` to name the group and `FieldLabel` to
+name each option; do not render a standalone `Radio`.
 
 Keep form state, schemas, server validation, and reset behavior outside these primitives. Pass
 their observable state through the public field and control props instead of replacing the
