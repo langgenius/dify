@@ -70,6 +70,7 @@ __all__ = [
     "handle_propose",
     "handle_publish",
     "handle_verify",
+    "perform_revert",
 ]
 
 
@@ -109,6 +110,24 @@ def action_string(turn: Turn, key: str) -> tuple[str, bool]:
     return "", False
 
 
+def perform_revert(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> None:
+    """Shared revert primitive (Slice 4). Emits the revert_checkpoint canvas
+    signal; then, if an active checkpoint exists, restores the pre-change draft
+    from its snapshot, invalidates the approval cards emitted since the
+    checkpoint (assistant_turns with seq >= fc.checkpoint_seq), and clears the
+    active restore point. A revert with no checkpoint (fc.checkpoint_id == "")
+    emits the signal but changes no draft -- the pre-Slice-4 record-intent-only
+    behavior, now centralized."""
+    if env.emit_canvas is not None:
+        env.emit_canvas({"event": "revert_checkpoint"})
+    if not fc.checkpoint_id:
+        return
+    _cp, snap = env.repo.get_checkpoint(fc.checkpoint_id)
+    fc.last_snapshot_hash = env.dify.restore_graph(s.app_id, turn.actor, snap.graph)
+    env.repo.invalidate_conversation_items(s.id, fc.checkpoint_seq)
+    fc.checkpoint_id = ""
+
+
 def first_failed_node(nodes: list[NodeOutput]) -> str:
     for n in nodes:
         if n.status == "failed":
@@ -126,6 +145,7 @@ def _mode_or_default(mode: str) -> str:
 def handle_diagnose(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(working) Read the failed run's node outputs, diagnose, capture the
     pre-repair checkpoint. Port of ``handlers_fix.go:38``."""
+    fc.checkpoint_seq = fc.next_seq
     failed = env.repo.get_run(fc.failed_run_id)
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     outputs = env.dify.node_outputs(s.app_id, turn.actor, failed.dify_run_id)
@@ -226,6 +246,7 @@ def handle_await_verify(env: Env, turn: Turn, s: Session, fc: CopilotContext) ->
     """(waiting) The user runs verification or undoes. Port of
     ``handlers_fix.go:163``."""
     if turn.action is not None and turn.action.kind == "undo":
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
     # run_verify: if we have prepared inputs, go verify; else prepare test data.
@@ -318,10 +339,7 @@ def handle_await_decision(env: Env, turn: Turn, s: Session, fc: CopilotContext) 
         fc.verify_run_id = ""
         return StepResult(next=PcState.FIX_DIAGNOSE, context=fc)
     if kind == "undo":
-        # The real draft-restore on undo (re-sync the checkpoint snapshot
-        # through the adapter) is not yet implemented — this records the
-        # intent only; the append-only commit + terminal transition still
-        # hold.
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
     # default: keep_draft
@@ -345,6 +363,7 @@ def handle_checklist_diagnose(env: Env, turn: Turn, s: Session, fc: CopilotConte
     pre-publish checklist's config errors instead of a failed run's node
     outputs — there is no ``fc.failed_run_id`` on this path, so no run
     lookup. Port of ``handlers_fix.go:72``."""
+    fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     diagnosis = env.agent.diagnose_checklist(fc.checklist_errors, graph)
     fc.diagnosis = diagnosis
@@ -382,6 +401,7 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
     flow loops back to ``checklist.diagnose`` to re-fix. Port of
     ``handlers_fix.go:272``."""
     if turn.action is not None and turn.action.kind == "undo":
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.SUCCESS, context=fc, items=items)
 
