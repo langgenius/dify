@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Account, AccountIntegrate, AccountStatus, InvitationCode, InvitationCodeStatus
@@ -95,6 +96,37 @@ def test_account_repository_updates_password(
     assert persisted is not None
     assert persisted.password == "new-hash"
     assert persisted.password_salt == "new-salt"
+
+
+def test_account_repository_falls_back_to_normalized_email(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    account = repository.get_by_email_with_case_fallback("ACCOUNT@Example.com")
+
+    assert account is not None
+    assert account.id == "account-1"
+    assert account.email == "account@example.com"
+
+
+def test_account_repository_fails_closed_for_duplicate_email(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    sqlite_session.add_all(
+        [
+            Account(name="First", email="duplicate@example.com"),
+            Account(name="Second", email="duplicate@example.com"),
+        ]
+    )
+    sqlite_session.commit()
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    with pytest.raises(MultipleResultsFound):
+        repository.get_by_email_with_case_fallback("duplicate@example.com")
 
 
 def test_account_integration_repository_lists_integrations(

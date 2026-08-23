@@ -17,6 +17,38 @@ class InvalidAccountPasswordError(AccountApplicationError):
     """The requested password does not satisfy the account password policy."""
 
 
+class ForgotPasswordSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the email-send policy."""
+
+
+class ForgotPasswordSendRateLimitError(AccountApplicationError):
+    """Too many password-reset messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class ForgotPasswordVerificationLimitError(AccountApplicationError):
+    """Too many invalid password-reset codes were submitted."""
+
+
+class InvalidForgotPasswordTokenError(AccountApplicationError):
+    """The password-reset token is absent, malformed, or in the wrong phase."""
+
+
+class InvalidForgotPasswordEmailError(AccountApplicationError):
+    """The request address does not match the password-reset token."""
+
+
+class InvalidForgotPasswordCodeError(AccountApplicationError):
+    """The verification code does not match the password-reset token."""
+
+
+class ForgotPasswordMismatchError(AccountApplicationError):
+    """The password and its confirmation do not match."""
+
+
 class AvatarFileNotFoundError(AccountApplicationError):
     """The requested avatar file does not exist or is not owned by the account."""
 
