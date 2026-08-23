@@ -393,8 +393,9 @@ def handle_await_recheck(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
     """(waiting) The checklist-fix counterpart of ``handle_await_verify``:
     instead of running the workflow, the caller re-runs the pre-publish
     checklist and reports the result via a ``"recheck"`` action. On ``undo``
-    the flow ends (recorded intent only, matching ``handle_await_decision``'s
-    undo). If the checklist now passes, hand off to the shared
+    (resolved to revert) restores the pre-change draft from the checkpoint and
+    invalidates the approvals made since it (via perform_revert), then ends the
+    flow. If the checklist now passes, hand off to the shared
     ``fix.await_decision`` gate (publish / keep / re-fix / undo). Otherwise
     the caller supplies the still-failing entries in
     ``payload["remaining"]``, which replace ``fc.checklist_errors``, and the
