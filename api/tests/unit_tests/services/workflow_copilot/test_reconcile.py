@@ -24,7 +24,7 @@ from sqlalchemy.orm import sessionmaker
 
 import schedule.workflow_copilot_reconcile_task as mod
 from configs import dify_config
-from core.workflow_copilot.models import ConversationItem, EntryMode, FixContext, Session
+from core.workflow_copilot.models import ConversationItem, CopilotContext, EntryMode, Session
 from core.workflow_copilot.state import PcState
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
@@ -63,7 +63,7 @@ def _seed(repo: SqlCopilotRepository, state: PcState) -> Session:
         entry_mode=EntryMode.FIX,
         current_state=state,
     )
-    repo.create_session(s, FixContext(), [ConversationItem(kind="run-context", seq=0)])
+    repo.create_session(s, CopilotContext(), [ConversationItem(kind="run-context", seq=0)])
     return s
 
 

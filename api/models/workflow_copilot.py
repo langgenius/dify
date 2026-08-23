@@ -46,7 +46,7 @@ class CopilotSessionCommit(Base):
     Copilot Session Commit Model
 
     One immutable row per session version, carrying the serialized
-    `FixContext` (`context`) as of that version. The latest commit by
+    `CopilotContext` (`context`) as of that version. The latest commit by
     `version` for a given `session_id` is the session's current context.
     """
 

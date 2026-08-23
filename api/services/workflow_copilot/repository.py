@@ -30,8 +30,8 @@ from core.workflow_copilot.errors import ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Checkpoint,
     ConversationItem,
+    CopilotContext,
     EntryMode,
-    FixContext,
     NodeOutput,
     Run,
     Snapshot,
@@ -50,7 +50,7 @@ from models.workflow_copilot import (
     CopilotSnapshot,
     CopilotTestInput,
 )
-from services.workflow_copilot.serde import fix_context_from_dict, fix_context_to_dict
+from services.workflow_copilot.serde import context_from_dict, context_to_dict
 
 __all__ = ["SqlCopilotRepository"]
 
@@ -63,7 +63,7 @@ class SqlCopilotRepository:
 
     # -- sessions --
 
-    def create_session(self, session: DomainSession, initial_fc: FixContext, items: list[ConversationItem]) -> None:
+    def create_session(self, session: DomainSession, initial_fc: CopilotContext, items: list[ConversationItem]) -> None:
         with self._session_factory() as db_session, db_session.begin():
             row = CopilotSession(
                 app_id=session.app_id,
@@ -93,12 +93,12 @@ class SqlCopilotRepository:
                     session_id=row.id,
                     version=1,
                     state=str(session.current_state),
-                    context=fix_context_to_dict(initial_fc),
+                    context=context_to_dict(initial_fc),
                     actor="",
                 )
             )
 
-    def get_session(self, id: str) -> tuple[DomainSession, FixContext]:
+    def get_session(self, id: str) -> tuple[DomainSession, CopilotContext]:
         with self._session_factory() as db_session, db_session.begin():
             row = db_session.get(CopilotSession, id)
             if row is None:
@@ -114,7 +114,7 @@ class SqlCopilotRepository:
             if commit is None:
                 raise NotFoundError(f"no commits found for session {id}")
 
-            fc = fix_context_from_dict(commit.context)
+            fc = context_from_dict(commit.context)
             return self._to_domain_session(row), fc
 
     def compare_and_advance(
@@ -122,7 +122,7 @@ class SqlCopilotRepository:
         session_id: str,
         base_version: int,
         next: PcState,
-        fc: FixContext,
+        fc: CopilotContext,
         items: list[ConversationItem],
     ) -> int:
         new_version = base_version + 1
@@ -145,7 +145,7 @@ class SqlCopilotRepository:
                     session_id=session_id,
                     version=new_version,
                     state=str(next),
-                    context=fix_context_to_dict(fc),
+                    context=context_to_dict(fc),
                     actor="",
                 )
             )

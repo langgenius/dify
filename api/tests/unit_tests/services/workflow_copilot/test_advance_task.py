@@ -21,7 +21,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 import tasks.workflow_copilot_advance_task as mod
-from core.workflow_copilot.models import ConversationItem, EntryMode, FixContext, Run, Session
+from core.workflow_copilot.models import ConversationItem, CopilotContext, EntryMode, Run, Session
 from core.workflow_copilot.state import PcState
 from models.base import Base
 from services.workflow_copilot.repository import SqlCopilotRepository
@@ -55,7 +55,7 @@ def _seed_fix_session(repo: SqlCopilotRepository) -> Session:
     )
     repo.create_session(
         s,
-        FixContext(failed_run_id="TR-1"),
+        CopilotContext(failed_run_id="TR-1"),
         [ConversationItem(kind="run-context", seq=0)],
     )
     repo.save_run(s.id, Run(id="TR-1", kind="original-failed", status="failed", immutable=True))
