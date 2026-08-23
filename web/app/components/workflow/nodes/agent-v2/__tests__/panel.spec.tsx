@@ -1277,6 +1277,27 @@ describe('agent/panel', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps prompt output definitions stable when workflow data is unchanged', () => {
+    const data = createData({
+      agent_task: 'Use [§output:summary:summary§]',
+      agent_declared_outputs: [
+        {
+          name: 'summary',
+          type: 'string',
+        },
+      ],
+    })
+    const { rerender } = render(
+      <AgentV2Panel id="agent-node" data={data} panelProps={panelProps} />,
+    )
+    const initialOutputs = mockPromptEditorProps.at(-1)?.agentOutputBlock?.outputs
+    expect(initialOutputs).toBeDefined()
+
+    rerender(<AgentV2Panel id="agent-node" data={data} panelProps={panelProps} />)
+
+    expect(mockPromptEditorProps.at(-1)?.agentOutputBlock?.outputs).toBe(initialOutputs)
+  })
+
   it('opens the output variable editor from an agent task output token hover', () => {
     render(
       <AgentV2Panel
