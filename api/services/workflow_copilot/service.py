@@ -172,6 +172,40 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
         UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY,
                  next_state="build.initial_plan"),
     ],
+    # Edit (Slice 3). next_state/canvas_event carry the frozen state-map hints.
+    PcState.EDIT_CAPABILITY_CHECK: [
+        UiAction(id="send_edit_goal", label="Send", kind=ActionKind.PRIMARY,
+                 next_state="edit.impact_analysis"),
+    ],
+    PcState.EDIT_IMPACT_ANALYSIS: [
+        UiAction(id="submit_edit_rules", label="Submit rules", kind=ActionKind.PRIMARY,
+                 next_state="edit.plan_approval"),
+    ],
+    PcState.EDIT_PLAN_APPROVAL: [
+        UiAction(id="approve_plan", label="Approve changes", kind=ActionKind.PRIMARY,
+                 next_state="edit.apply_changes", canvas_event="create_checkpoint"),
+    ],
+    PcState.EDIT_APPLY_CHANGES: [
+        UiAction(id="run_affected_tests", label="Run affected tests", kind=ActionKind.PRIMARY,
+                 next_state="edit.test_affected_paths", canvas_event="start_test_run"),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
+                 next_state="edit.reverted", canvas_event="revert_checkpoint"),
+    ],
+    PcState.EDIT_REVIEW: [
+        UiAction(id="publish_workflow", label="Publish", kind=ActionKind.PRIMARY,
+                 next_state="edit.publish", canvas_event="publish_workflow"),
+        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY,
+                 next_state="edit.publish", canvas_event="cancel_publish"),
+        UiAction(id="continue_adjusting", label="Continue adjusting", kind=ActionKind.SECONDARY,
+                 next_state="edit.impact_analysis", canvas_event="cancel_publish"),
+        UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
+                 next_state="edit.reverted", canvas_event="revert_checkpoint"),
+    ],
+    PcState.EDIT_REVERTED: [
+        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY,
+                 next_state="edit.plan_approval"),
+    ],
 }
 
 
@@ -313,6 +347,24 @@ class WorkflowCopilotService:
         items = [UserItem(text=goal_text).to_item(seq=0, at_version=0)]
         self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
         self.dispatch(s.id, Action(kind="send_goal", payload={"text": goal_text}, base_version=1), actor)
+        return self.get_session_view(s.id, actor)
+
+    def create_edit_session(self, app_id: str, actor: Actor) -> SessionView:
+        """Start an Edit session at edit.capability_check WITHOUT dispatching.
+        Mock 02-edit.txt:3 -- on open, show history + composer only; do not read
+        or lock the canvas. The graph read + impact analysis happen on the first
+        send_edit_goal action, not here. Unlike create_build_session, this takes
+        no goal and enqueues no advance -- the session simply rests, canvas
+        editable, until the user sends their change request."""
+        fc = CopilotContext()
+        s = Session(
+            app_id=app_id,
+            tenant_id=actor.tenant_id,
+            owner_account_id=actor.account_id,
+            entry_mode=EntryMode.EDIT,
+            current_state=PcState.EDIT_CAPABILITY_CHECK,
+        )
+        self._repo.create_session(s, fc, [])  # empty conversation; assigns s.id, s.version = 1
         return self.get_session_view(s.id, actor)
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
