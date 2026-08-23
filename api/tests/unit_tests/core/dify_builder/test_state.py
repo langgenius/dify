@@ -83,3 +83,10 @@ def test_state_values_are_verbatim_go_strings():
     assert PcState.CHECKLIST_AWAIT_RECHECK == "checklist.await_recheck"
     assert PcState.SUCCESS == "success"
     assert PcState.FAILED == "failed"
+
+
+def test_build_await_learning_is_waiting():
+    assert PcState.BUILD_AWAIT_LEARNING == "build.await_learning"
+    assert is_waiting(PcState.BUILD_AWAIT_LEARNING) is True
+    assert is_working(PcState.BUILD_AWAIT_LEARNING) is False
+    assert is_terminal(PcState.BUILD_AWAIT_LEARNING) is False

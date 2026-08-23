@@ -174,3 +174,19 @@ def test_serde_defaults_recovery_fields_for_old_rows():
     back = context_from_dict({})
     assert back.last_structure_fingerprint == ""
     assert back.recovery_class == ""
+
+
+def test_serde_round_trips_skill_learning_policy():
+    from core.dify_builder.models import DifyBuilderContext
+    from services.dify_builder.serde import context_from_dict, context_to_dict
+
+    fc = DifyBuilderContext(skill_learning_policy="automatic")
+    d = context_to_dict(fc)
+    assert d["skill_learning_policy"] == "automatic"
+    assert context_from_dict(d).skill_learning_policy == "automatic"
+
+
+def test_serde_defaults_skill_learning_policy_for_old_rows():
+    from services.dify_builder.serde import context_from_dict
+
+    assert context_from_dict({}).skill_learning_policy == "ask"

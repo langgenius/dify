@@ -250,6 +250,9 @@ class DifyBuilderContext:
     last_structure_fingerprint: str = ""
     recovery_class: str = ""
 
+    # -- Governance fields (C-2, additive) --
+    skill_learning_policy: str = "ask"
+
 
 @dataclass(kw_only=True)
 class Action:

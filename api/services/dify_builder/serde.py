@@ -73,4 +73,5 @@ def context_from_dict(d: dict[str, Any]) -> DifyBuilderContext:
         checkpoint_seq=int(d.get("checkpoint_seq", 0)),
         last_structure_fingerprint=d.get("last_structure_fingerprint", ""),
         recovery_class=d.get("recovery_class", ""),
+        skill_learning_policy=d.get("skill_learning_policy", "ask"),
     )
