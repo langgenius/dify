@@ -174,3 +174,60 @@ class PlaceholderAgent:
                 },
             )
         ]
+
+    # -- Edit cognition (Slice 3; fixed, deterministic canned output) --
+
+    def analyze_impact(self, goal_text: str, graph: Graph) -> dict[str, Any]:
+        # Pick affected nodes from the existing graph (LLM + knowledge), with a
+        # canned-id fallback so the flow works on any Build-shaped draft.
+        node_ids = {n.get("id") for n in graph.get("nodes", [])}
+        targets = [nid for nid in (BUILD_LLM_ID, BUILD_KNOWLEDGE_ID) if nid in node_ids]
+        if not targets:
+            targets = [BUILD_LLM_ID]
+        return {
+            "edit_rules": {
+                "risk_threshold": "medium",
+                "review_team": "compliance",
+                "timeout_behavior": "fail_closed",
+                "preserve_summary": True,
+            },
+            "target_node_ids": targets,
+        }
+
+    def propose_edit_plan(self, edit_rules: dict[str, Any], graph: Graph) -> list[str]:
+        return [
+            "Tighten the LLM risk threshold",
+            "Route high-risk output to the review team",
+            "Apply the timeout behavior",
+            "Preserve the existing summary contract",
+        ]
+
+    def build_edit_intents(self, edit_rules: dict[str, Any], graph: Graph) -> list[MutationIntent]:
+        # Canned config-level edits (set_node_config) on the existing LLM node,
+        # matching the edit_rules semantics. Deterministic target selection:
+        # prefer the canned LLM id, else the lexicographically-first node id.
+        node_ids = {n.get("id") for n in graph.get("nodes", []) if n.get("id")}
+        if BUILD_LLM_ID in node_ids:
+            llm_id = BUILD_LLM_ID
+        elif node_ids:
+            llm_id = min(node_ids)
+        else:
+            llm_id = BUILD_LLM_ID
+        return [
+            MutationIntent(
+                op="set_node_config",
+                args={
+                    "node_id": llm_id,
+                    "path": "risk_threshold",
+                    "value": edit_rules.get("risk_threshold", "medium"),
+                },
+            ),
+            MutationIntent(
+                op="set_node_config",
+                args={
+                    "node_id": llm_id,
+                    "path": "timeout_behavior",
+                    "value": edit_rules.get("timeout_behavior", "fail_closed"),
+                },
+            ),
+        ]
