@@ -133,3 +133,93 @@ def test_perform_revert_without_checkpoint_is_graceful_noop():
 
     assert {"event": "revert_checkpoint"} in events   # signal still fires
     assert dify.read_graph("app", _actor())[0] == {"nodes": [{"id": "keep"}]}  # no restore
+
+
+def test_build_review_undo_restores_pre_build_graph():
+    from datetime import datetime
+
+    from core.workflow_copilot.handlers_build import handle_review
+    from core.workflow_copilot.models import (
+        Action,
+        Checkpoint,
+        ConversationItem,
+        CopilotContext,
+        EntryMode,
+        Session,
+        Snapshot,
+        Turn,
+    )
+    from core.workflow_copilot.placeholder_agent import PlaceholderAgent
+    from core.workflow_copilot.runner import Env
+    from core.workflow_copilot.state import PcState
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort, InMemoryRepository
+
+    repo = InMemoryRepository()
+    dify = FakeBuildDifyPort()
+    events: list[dict] = []
+    env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
+
+    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
+                entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
+    fc = CopilotContext(checkpoint_seq=0, built_node_ids=["start", "llm", "end"])
+    repo.create_session(s, fc, [ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "approve"})])
+    cp = Checkpoint(session_id=s.id, state=PcState.BUILD_PLAN_APPROVAL)
+    repo.create_checkpoint(cp, Snapshot(session_id=s.id, hash="h0", graph={"nodes": [], "edges": []}))
+    _s, fc = repo.get_session(s.id)
+    fc.checkpoint_id = cp.id
+    dify.graph = {
+        "nodes": [{"id": "start"}, {"id": "llm"}, {"id": "end"}],
+        "edges": [{"source": "start", "target": "llm"}],
+    }
+
+    res = handle_review(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), s, fc)
+
+    assert res.next == PcState.BUILD_REVERTED
+    assert dify.read_graph("app", _actor())[0] == {"nodes": [], "edges": []}  # pre-build graph restored
+    assert res.context.checkpoint_id == ""
+    assert {"event": "revert_checkpoint"} in events
+    by_seq = {i.seq: i for i in repo.list_conversation(s.id)}
+    assert by_seq[0].payload["card_state"] == "invalidated"
+
+
+def test_edit_apply_changes_undo_restores_pre_edit_graph():
+    from datetime import datetime
+
+    from core.workflow_copilot.handlers_edit import handle_apply_changes
+    from core.workflow_copilot.models import (
+        Action,
+        Checkpoint,
+        ConversationItem,
+        CopilotContext,
+        EntryMode,
+        Session,
+        Snapshot,
+        Turn,
+    )
+    from core.workflow_copilot.placeholder_agent import PlaceholderAgent
+    from core.workflow_copilot.runner import Env
+    from core.workflow_copilot.state import PcState
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeEditDifyPort, InMemoryRepository
+
+    repo = InMemoryRepository()
+    dify = FakeEditDifyPort()
+    events: list[dict] = []
+    env = Env(dify=dify, agent=PlaceholderAgent(), repo=repo, now=lambda: datetime.min, emit_canvas=events.append)
+
+    s = Session(app_id="app", tenant_id="t", owner_account_id="a",
+                entry_mode=EntryMode.EDIT, current_state=PcState.EDIT_APPLY_CHANGES)
+    fc = CopilotContext(checkpoint_seq=0, edit_target_node_ids=["llm"])
+    repo.create_session(s, fc, [ConversationItem(seq=0, kind="assistant_turn", payload={"turn_id": "approve"})])
+    pre_edit = {"nodes": [{"id": "llm", "data": {}}], "edges": []}
+    cp = Checkpoint(session_id=s.id, state=PcState.EDIT_PLAN_APPROVAL)
+    repo.create_checkpoint(cp, Snapshot(session_id=s.id, hash="h0", graph=pre_edit))
+    _s, fc = repo.get_session(s.id)
+    fc.checkpoint_id = cp.id
+    dify.graph = {"nodes": [{"id": "llm", "data": {"risk_threshold": "high"}}], "edges": []}
+
+    res = handle_apply_changes(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), s, fc)
+
+    assert res.next == PcState.EDIT_REVERTED
+    assert dify.read_graph("app", _actor())[0] == pre_edit  # config edit undone
+    assert res.context.checkpoint_id == ""
+    assert {"event": "revert_checkpoint"} in events
