@@ -12,10 +12,6 @@ class BillingPortalLink(TypedDict):
     url: str
 
 
-class ModelProviderPaymentLink(TypedDict):
-    payment_link: str
-
-
 class BillingPortalService:
     def __init__(
         self,
@@ -23,12 +19,10 @@ class BillingPortalService:
         accounts: AccountRepository,
         get_subscription: Callable[[str, str, str, str], BillingPortalLink],
         get_invoices: Callable[[str, str], BillingPortalLink],
-        get_model_provider_payment_link: Callable[[str, str, str, str], ModelProviderPaymentLink],
     ) -> None:
         self._accounts = accounts
         self._get_subscription = get_subscription
         self._get_invoices = get_invoices
-        self._get_model_provider_payment_link = get_model_provider_payment_link
 
     def get_subscription(
         self,
@@ -43,15 +37,6 @@ class BillingPortalService:
     def get_invoices(self, context: RequestContext) -> BillingPortalLink:
         email, workspace_id = self._resolve_account_email_and_workspace_id(context)
         return self._get_invoices(email, workspace_id)
-
-    def get_model_provider_payment_link(
-        self,
-        context: RequestContext,
-        *,
-        provider_name: str,
-    ) -> ModelProviderPaymentLink:
-        email, workspace_id = self._resolve_account_email_and_workspace_id(context)
-        return self._get_model_provider_payment_link(provider_name, workspace_id, context.account_id, email)
 
     def _resolve_account_email_and_workspace_id(self, context: RequestContext) -> tuple[str, str]:
         workspace_id = context.active_workspace_id

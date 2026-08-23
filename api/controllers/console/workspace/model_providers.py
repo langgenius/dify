@@ -10,7 +10,6 @@ from controllers.common.fields import SimpleResultResponse, ValidationResultResp
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
@@ -19,15 +18,15 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
+    with_current_user,
 )
-from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import dump_response, uuid_value
 from libs.login import login_required
-from machinery.context import RequestContext
-from models import TenantAccountRole
+from models import Account
+from services.billing_service import BillingService
 from services.entities.model_provider_entities import (
     ModelProviderPluginSummaryResponse,
     ModelProviderSummaryResponse,
@@ -39,9 +38,6 @@ from services.workspace_service import WorkspaceService
 
 class ParserModelList(BaseModel):
     model_type: ModelType | None = None
-
-
-_MODEL_PROVIDER_PAYMENT_ALLOWED_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 
 class ParserCredentialId(BaseModel):
@@ -412,12 +408,19 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         "Model provider checkout URL retrieved successfully",
         console_ns.models[ModelProviderPaymentCheckoutUrlResponse.__name__],
     )
-    @console_account_admission(allowed_roles=_MODEL_PROVIDER_PAYMENT_ALLOWED_ROLES)
-    def get(self, request_context: RequestContext, provider: str):
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        data = application_services().billing_portal.get_model_provider_payment_link(
-            request_context,
+        data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
+            tenant_id=current_tenant_id,
+            account_id=current_user.id,
+            prefilled_email=current_user.email,
         )
         return dump_response(ModelProviderPaymentCheckoutUrlResponse, data)

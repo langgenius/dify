@@ -186,7 +186,6 @@ def build_application_services(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,
             get_invoices=BillingService.get_invoices,
-            get_model_provider_payment_link=BillingService.get_model_provider_payment_link,
         ),
         data_source_api_key_auth=DataSourceApiKeyAuthService(
             bindings=data_source_api_key_auth_bindings,

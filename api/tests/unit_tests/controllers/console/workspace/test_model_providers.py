@@ -2,7 +2,7 @@ from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 from pydantic_core import ValidationError
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
@@ -25,9 +25,7 @@ from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-from libs.login import AccountWithTenant
-from machinery.context import RequestContext
-from models import Account, TenantAccountRole
+from models import Account
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
@@ -49,15 +47,6 @@ def make_account() -> Account:
     account = Account(name="Provider Owner", email="owner@example.com")
     account.id = "account-1"
     return account
-
-
-def make_request_context() -> RequestContext:
-    return RequestContext(
-        request_id="request-1",
-        trace_id="trace-1",
-        account_id="account-1",
-        active_workspace_id="tenant1",
-    )
 
 
 def make_provider_response() -> ProviderResponse:
@@ -582,21 +571,21 @@ class TestModelProviderPaymentCheckoutUrlApi:
         api = ModelProviderPaymentCheckoutUrlApi()
         method = unwrap(api.get)
 
+        user = make_account()
         with (
             app.test_request_context("/"),
             patch(
-                "controllers.console.workspace.model_providers.application_services",
-            ) as application_services,
+                "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
+                return_value={"payment_link": "https://payment.example.com/provider"},
+            ) as get_model_provider_payment_link,
         ):
-            get_model_provider_payment_link = (
-                application_services.return_value.billing_portal.get_model_provider_payment_link
-            )
-            get_model_provider_payment_link.return_value = {"payment_link": "https://payment.example.com/provider"}
-            result = method(api, make_request_context(), provider="anthropic")
+            result = method(api, "tenant1", user, provider="anthropic")
 
         get_model_provider_payment_link.assert_called_once_with(
-            make_request_context(),
             provider_name="anthropic",
+            tenant_id="tenant1",
+            account_id="account-1",
+            prefilled_email="owner@example.com",
         )
         assert result == {"payment_link": "https://payment.example.com/provider"}
 
@@ -606,13 +595,11 @@ class TestModelProviderPaymentCheckoutUrlApi:
 
         with app.test_request_context("/"):
             with pytest.raises(ValueError):
-                method(api, make_request_context(), provider="openai")
+                method(api, "tenant1", make_account(), provider="openai")
 
     def test_checkout_rejects_non_privileged_role(self, app: Flask):
         api = ModelProviderPaymentCheckoutUrlApi()
         account = make_account()
-        account.role = TenantAccountRole.NORMAL
-        account_with_tenant = AccountWithTenant(account=account, tenant_id="tenant1")
 
         with (
             app.test_request_context("/"),
@@ -620,18 +607,11 @@ class TestModelProviderPaymentCheckoutUrlApi:
             patch.object(dify_config, "LOGIN_DISABLED", True),
             patch.object(dify_config, "RBAC_ENABLED", False),
             patch(
-                "controllers.console.wraps.current_account_with_tenant",
-                return_value=account_with_tenant,
-            ),
-            patch(
-                "controllers.console.flask_admission.current_account_with_tenant",
-                return_value=account_with_tenant,
-            ),
-            patch(
-                "controllers.console.workspace.model_providers.application_services",
-            ) as application_services,
-            pytest.raises(Forbidden),
+                "controllers.console.workspace.model_providers.BillingService.get_model_provider_payment_link",
+            ) as get_model_provider_payment_link,
         ):
-            api.get(provider="anthropic")
+            g._login_user = account
+            with pytest.raises(Forbidden):
+                api.get(provider="anthropic")
 
-        application_services.assert_not_called()
+        get_model_provider_payment_link.assert_not_called()

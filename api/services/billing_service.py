@@ -14,7 +14,7 @@ from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account
-from services.billing_portal_service import BillingPortalLink, ModelProviderPaymentLink
+from services.billing_portal_service import BillingPortalLink
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
@@ -370,13 +370,7 @@ class BillingService:
         return cls._send_billing_portal_request("/subscription/payment-link", params=params)
 
     @classmethod
-    def get_model_provider_payment_link(
-        cls,
-        provider_name: str,
-        tenant_id: str,
-        account_id: str,
-        prefilled_email: str,
-    ) -> ModelProviderPaymentLink:
+    def get_model_provider_payment_link(cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str):
         params = {
             "provider_name": provider_name,
             "tenant_id": tenant_id,
