@@ -1,5 +1,5 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ReactElement } from 'react'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
@@ -29,14 +29,14 @@ import {
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
 
-type Props = Readonly<{
-  disabled: boolean
-  trigger: ReactElement
-  placement?: Placement
-  sideOffset?: number
-  isShow: boolean
-  onShowChange: (isShow: boolean) => void
-}> &
+type Props = Readonly<
+  Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+    disabled: boolean
+    trigger: ReactElement
+    isShow: boolean
+    onShowChange: (isShow: boolean) => void
+  }
+> &
   ToolPickerContentProps
 
 export type ToolPickerContentProps = Readonly<{
@@ -216,7 +216,7 @@ function ToolPicker({
       <PopoverContent
         placement={placement}
         sideOffset={sideOffset}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <PopoverTitle className="sr-only">
           {t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}

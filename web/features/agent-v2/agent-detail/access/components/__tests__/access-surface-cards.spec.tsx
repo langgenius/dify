@@ -341,7 +341,7 @@ describe('Agent access surface cards', () => {
         name: 'appOverview.overview.appInfo.embedded.title',
       })
 
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
         expect(

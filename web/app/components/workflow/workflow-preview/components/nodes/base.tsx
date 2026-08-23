@@ -81,7 +81,7 @@ const BaseCard = ({ id, data, children }: NodeCardProps) => {
                 >
                   {t(($) => $['nodes.iteration.parallelModeUpper'], { ns: 'workflow' })}
                 </PopoverTrigger>
-                <PopoverContent popupClassName="w-[180px] px-3 py-2 system-xs-regular text-text-tertiary">
+                <PopoverContent className="w-[180px] px-3 py-2 system-xs-regular text-text-tertiary">
                   <div className="font-extrabold">
                     {t(($) => $['nodes.iteration.parallelModeEnableTitle'], { ns: 'workflow' })}
                   </div>

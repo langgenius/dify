@@ -2,7 +2,8 @@ import type { FC } from 'react'
 import type { DefaultModel, DefaultModelResponse } from '../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -196,7 +197,17 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           backdropProps={{ forceRender: true }}
           className="flex max-h-[calc(100dvh-2rem)] w-120 max-w-120 flex-col overflow-hidden rounded-2xl p-0"
         >
-          <DialogCloseButton className="top-5 right-5" />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute top-5 right-5"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="shrink-0 px-6 pt-6 pr-14 pb-3">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['modelProvider.systemModelSettingsTitle'], { ns: 'common' })}
