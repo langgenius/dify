@@ -306,3 +306,160 @@ def test_edit_registry_covers_all_non_terminal_edit_states():
         PcState.EDIT_REVERTED,
     }
     assert PcState.EDIT_PUBLISH not in edit_registry()  # terminal: no handler
+
+
+def test_full_edit_flow_goal_to_publish():
+    from core.workflow_copilot.handlers_edit import edit_registry
+
+    dify = FakeEditDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+
+    # 1) send_edit_goal -> edit.impact_analysis
+    out = runner.advance(
+        s.id,
+        Turn(action=Action(kind="send_edit_goal", payload={"text": "Tighten risk"}, base_version=1), actor=_actor()),
+    )
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+
+    # 2) submit_edit_rules -> edit.plan_approval
+    out = runner.advance(
+        s.id,
+        Turn(
+            action=Action(
+                kind="submit_edit_rules",
+                payload={"risk_threshold": "high"},
+                base_version=out.version,
+            ),
+            actor=_actor(),
+        ),
+    )
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+
+    # 3) approve_plan (-> approve_repair) -> THE EDIT -> edit.apply_changes
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor())
+    )
+    assert out.current_state == PcState.EDIT_APPLY_CHANGES
+    # the existing llm node was reconfigured with the submitted rule value.
+    graph, _hash = dify.read_graph("app", _actor())
+    llm = next(n for n in graph["nodes"] if n["id"] == "llm")
+    assert llm["data"]["risk_threshold"] == "high"
+
+    # 4) run_affected_tests -> edit.test_affected_paths (working, auto) -> rest at edit.review
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor())
+    )
+    assert out.current_state == PcState.EDIT_REVIEW
+
+    # 5) publish_workflow -> edit.publish (terminal)
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="publish_workflow", base_version=out.version), actor=_actor())
+    )
+    assert out.current_state == PcState.EDIT_PUBLISH
+    assert dify.published is True
+
+    items = repo.list_conversation(s.id)
+    kinds = [i.kind for i in items]
+    expected_kinds = [
+        "user",
+        "summary",
+        "form",
+        "challenge",
+        "change_set",
+        "plan",
+        "checkpoint",
+        "test_result",
+        "publish",
+    ]
+    for expected in expected_kinds:
+        assert expected in kinds, f"missing card kind {expected}"
+    seqs = [i.seq for i in items]
+    assert seqs == sorted(seqs)
+    assert any(i.kind == "summary" and i.payload.get("variant") == "completion" for i in items)
+
+
+def test_full_edit_flow_keep_draft_completes_without_publish():
+    from core.workflow_copilot.handlers_edit import edit_registry
+
+    dify = FakeEditDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_REVIEW
+
+    out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PUBLISH  # terminal, Task Completed
+    assert dify.published is False  # keep_draft does not publish
+    assert not any(i.kind == "publish" for i in repo.list_conversation(s.id))
+
+
+def test_continue_adjusting_then_reapprove_is_idempotent():
+    """Loop back from edit.review via continue_adjusting (-> re_fix) to edit.
+    impact_analysis, re-submit rules, re-approve. Re-applying the same
+    set_node_config value overwrites (no crash); the flow reaches edit.apply_
+    changes again."""
+    from core.workflow_copilot.handlers_edit import edit_registry
+
+    dify = FakeEditDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="run_affected_tests", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_REVIEW
+
+    # continue_adjusting (-> re_fix) -> edit.impact_analysis
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_IMPACT_ANALYSIS
+
+    # re-submit + re-approve: must not raise, reaches edit.apply_changes again.
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_APPLY_CHANGES
+    assert len(dify.graph["nodes"]) == 4  # no duplicate nodes; config-only edits
+
+
+def test_revert_then_retry_after_revert_reapprove_is_idempotent():
+    """Loop back via the revert -> reverted -> retry_after_revert (handle_
+    reverted's re_fix -> edit.plan_approval) path, then re-approve."""
+    from core.workflow_copilot.handlers_edit import edit_registry
+
+    dify = FakeEditDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_edit_session(repo, PcState.EDIT_CAPABILITY_CHECK)
+    runner = Runner(env, edit_registry())
+
+    out = runner.advance(
+        s.id, Turn(action=Action(kind="send_edit_goal", payload={"text": "x"}, base_version=1), actor=_actor())
+    )
+    out = runner.advance(s.id, Turn(action=Action(kind="submit_edit_rules", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_APPLY_CHANGES
+
+    # revert (intent only) -> edit.reverted
+    out = runner.advance(s.id, Turn(action=Action(kind="undo", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_REVERTED
+
+    # retry_after_revert (-> re_fix) -> edit.plan_approval
+    out = runner.advance(s.id, Turn(action=Action(kind="re_fix", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_PLAN_APPROVAL
+
+    # re-approve: idempotent, reaches edit.apply_changes.
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.EDIT_APPLY_CHANGES
+    assert len(dify.graph["nodes"]) == 4
