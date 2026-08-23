@@ -372,3 +372,101 @@ def test_build_registry_covers_all_non_terminal_build_states():
         PcState.BUILD_REVERTED,
     }
     assert PcState.BUILD_COMPLETE not in build_registry()  # terminal: no handler
+
+
+def test_full_build_flow_goal_to_complete():
+    from core.workflow_copilot.handlers_build import build_registry
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    runner = Runner(env, build_registry())
+
+    # 1) send_goal -> build.goal_analysis
+    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    assert out.current_state == PcState.BUILD_GOAL_ANALYSIS
+
+    # 2) submit_requirements -> build.initial_plan
+    reqs_action = Action(kind="submit_requirements", payload={"currency": "USD"}, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
+    assert out.current_state == PcState.BUILD_INITIAL_PLAN
+
+    # 3) find_resources -> build.resource_recommendation
+    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_RESOURCE_RECOMMENDATION
+
+    # 4) confirm_resources -> build.plan_approval
+    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
+    assert out.current_state == PcState.BUILD_PLAN_APPROVAL
+
+    # 5) approve_plan (-> approve_repair) -> THE BUILD -> build.execution
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_EXECUTION
+    # the graph was actually built.
+    graph, _hash = dify.read_graph("app", _actor())
+    assert len(graph["nodes"]) == 4
+    assert len(graph["edges"]) == 3
+
+    # 6) run_test -> build.test_and_repair (working, auto) -> rest at build.review
+    out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW
+
+    # 7) publish_workflow -> build.publish (auto) -> governance_feedback (auto) -> build.complete
+    publish_action = Action(kind="publish_workflow", base_version=out.version)
+    out = runner.advance(s.id, Turn(action=publish_action, actor=_actor()))
+    assert out.current_state == PcState.BUILD_COMPLETE
+    assert dify.published is True
+
+    # ordered card stream: every Build card kind appears, seq-ordered.
+    items = repo.list_conversation(s.id)
+    kinds = [i.kind for i in items]
+    expected_kinds = [
+        "user",
+        "form",
+        "challenge",
+        "plan",
+        "resource_select",
+        "checkpoint",
+        "change_set",
+        "error",
+        "test_result",
+        "summary",
+        "publish",
+    ]
+    for expected in expected_kinds:
+        assert expected in kinds, f"missing card kind {expected}"
+    seqs = [i.seq for i in items]
+    assert seqs == sorted(seqs)
+    # the final completion summary is present.
+    assert any(i.kind == "summary" and i.payload.get("variant") == "completion" for i in items)
+
+
+def test_full_build_flow_keep_draft_reaches_complete_without_publish():
+    from core.workflow_copilot.handlers_build import build_registry
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify)
+    s = _seed_build_session(repo, PcState.BUILD_CAPABILITY_CHECK)
+    runner = Runner(env, build_registry())
+
+    goal_action = Action(kind="send_goal", payload={"text": "Build it"}, base_version=1)
+    out = runner.advance(s.id, Turn(action=goal_action, actor=_actor()))
+    reqs_action = Action(kind="submit_requirements", base_version=out.version)
+    out = runner.advance(s.id, Turn(action=reqs_action, actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="find_resources", base_version=out.version), actor=_actor()))
+    confirm_payload = {"resource_ids": ["kb-company"], "conflict_policy": "audited"}
+    confirm_action = Action(kind="confirm_resources", payload=confirm_payload, base_version=out.version)
+    out = runner.advance(s.id, Turn(action=confirm_action, actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="approve_repair", base_version=out.version), actor=_actor()))
+    out = runner.advance(s.id, Turn(action=Action(kind="run_test", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_REVIEW
+
+    out = runner.advance(s.id, Turn(action=Action(kind="keep_draft", base_version=out.version), actor=_actor()))
+    assert out.current_state == PcState.BUILD_COMPLETE
+    assert dify.published is False  # keep_draft skips publish
+    assert not any(i.kind == "publish" for i in repo.list_conversation(s.id))

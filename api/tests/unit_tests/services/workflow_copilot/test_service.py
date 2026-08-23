@@ -447,3 +447,71 @@ def test_create_build_session_bootstraps_at_capability_check_and_dispatches_send
     assert action.kind == "send_goal"
     assert action.payload == {"text": "Build a report workflow"}
     assert action.base_version == 1
+
+
+def _seed_build_at(repo: SqlCopilotRepository, state: PcState) -> Session:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.BUILD,
+        current_state=state,
+    )
+    repo.create_session(s, CopilotContext(goal_text="Build it"), [ConversationItem(kind="user", seq=0)])
+    return s
+
+
+def test_build_execution_actions_and_run_status(service: WorkflowCopilotService, repo: SqlCopilotRepository) -> None:
+    s = _seed_build_at(repo, PcState.BUILD_EXECUTION)
+    view = service.get_session_view(s.id, _actor())
+    assert view.run_status == "waiting_input"
+    assert view.phase == "modify"
+    assert [(a.id, a.kind) for a in view.actions] == [
+        ("run_test", ActionKind.PRIMARY),
+        ("revert", ActionKind.DESTRUCTIVE),
+    ]
+
+
+def test_build_review_actions(service: WorkflowCopilotService, repo: SqlCopilotRepository) -> None:
+    s = _seed_build_at(repo, PcState.BUILD_REVIEW)
+    view = service.get_session_view(s.id, _actor())
+    assert [a.id for a in view.actions] == [
+        "publish_workflow",
+        "keep_draft",
+        "continue_adjusting",
+        "view_changes",
+        "revert",
+    ]
+
+
+def test_build_complete_is_terminal_with_no_actions(
+    service: WorkflowCopilotService, repo: SqlCopilotRepository
+) -> None:
+    s = _seed_build_at(repo, PcState.BUILD_COMPLETE)
+    view = service.get_session_view(s.id, _actor())
+    assert view.run_status == "complete"
+    assert view.actions == []
+
+
+def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
+    """Every non-client-only Build action id must resolve (via
+    resolve_action_kind) to a kind its handler in handlers_build.py branches
+    on -- otherwise the button is a dead no-op. approve_plan->approve_repair,
+    revert->undo, continue_adjusting/retry_after_revert->re_fix reuse the
+    existing global _ACTION_ID_TO_KIND map; the rest pass through."""
+    handled: dict[PcState, set[str]] = {
+        PcState.BUILD_CAPABILITY_CHECK: {"send_goal"},
+        PcState.BUILD_GOAL_ANALYSIS: {"submit_requirements"},
+        PcState.BUILD_INITIAL_PLAN: {"find_resources"},
+        PcState.BUILD_RESOURCE_RECOMMENDATION: {"confirm_resources"},
+        PcState.BUILD_PLAN_APPROVAL: {"approve_repair"},
+        PcState.BUILD_EXECUTION: {"run_test", "undo"},
+        PcState.BUILD_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
+        PcState.BUILD_REVERTED: {"re_fix"},
+    }
+    for state, kinds in handled.items():
+        actions = service_module._ACTIONS_FOR[state]
+        resolved = {
+            resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
+        }
+        assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
