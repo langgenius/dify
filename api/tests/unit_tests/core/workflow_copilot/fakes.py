@@ -57,6 +57,8 @@ from core.workflow_copilot.models import (
     TestInput,
 )
 from core.workflow_copilot.state import PcState
+from graphon.enums import BuiltinNodeTypes
+from services.workflow_copilot import node_defaults
 from services.workflow_copilot.graph_ops import (
     apply_connect,
     apply_create_node,
@@ -67,7 +69,7 @@ from services.workflow_copilot.graph_ops import (
     validate_intent_args,
 )
 
-__all__ = ["FakeBuildDifyPort", "FakeDifyPort", "InMemoryRepository", "StubAgent"]
+__all__ = ["FakeBuildDifyPort", "FakeDifyPort", "FakeEditDifyPort", "InMemoryRepository", "StubAgent"]
 
 
 # ---- in-memory Repository ----------------------------------------------
@@ -436,3 +438,63 @@ class FakeBuildDifyPort:
 
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
+
+
+# ---- fake DifyPort pre-seeded with an existing graph (for Edit) -----------
+
+_EDIT_SEED_INTENTS = [
+    MutationIntent(
+        op="create_node",
+        args={
+            "node_type": BuiltinNodeTypes.START,
+            "config": node_defaults.default_config(BuiltinNodeTypes.START),
+            "node_id": "start",
+        },
+    ),
+    MutationIntent(
+        op="create_node",
+        args={
+            "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+            "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+            "node_id": "knowledge_retrieval",
+        },
+    ),
+    MutationIntent(op="connect", args={"from_node": "start", "to_node": "knowledge_retrieval"}),
+    MutationIntent(
+        op="create_node",
+        args={
+            "node_type": BuiltinNodeTypes.LLM,
+            "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
+            "node_id": "llm",
+        },
+    ),
+    MutationIntent(op="connect", args={"from_node": "knowledge_retrieval", "to_node": "llm"}),
+    MutationIntent(
+        op="create_node",
+        args={
+            "node_type": BuiltinNodeTypes.END,
+            "config": node_defaults.default_config(BuiltinNodeTypes.END),
+            "node_id": "end",
+        },
+    ),
+    MutationIntent(op="connect", args={"from_node": "llm", "to_node": "end"}),
+]
+
+
+def _seeded_edit_graph() -> Graph:
+    graph: Graph = {"nodes": [], "edges": []}
+    for intent in _EDIT_SEED_INTENTS:
+        validate_intent_args(intent)
+        graph, _changed = _BUILD_APPLY_FNS[intent.op](graph, **intent.args)
+    return graph
+
+
+class FakeEditDifyPort(FakeBuildDifyPort):
+    """A FakeBuildDifyPort pre-seeded with a real Start->Knowledge->LLM->End
+    graph, so Edit's set_node_config edits have existing target nodes (Fix/Build
+    fakes start empty). Reuses FakeBuildDifyPort.apply_repair/diff unchanged;
+    only the initial graph differs."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.graph = _seeded_edit_graph()
