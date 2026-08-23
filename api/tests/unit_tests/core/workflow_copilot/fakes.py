@@ -287,6 +287,11 @@ class FakeDifyPort:
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
 
+    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph) -> str:
+        self.graph = copy.deepcopy(graph)
+        self.hash = "h-restored"
+        return self.hash
+
 
 # ---- stub CopilotAgent ----------------------------------------------------
 
@@ -438,6 +443,11 @@ class FakeBuildDifyPort:
 
     def publish(self, _app_id: str, _actor: Actor) -> None:
         self.published = True
+
+    def restore_graph(self, _app_id: str, _actor: Actor, graph: Graph) -> str:
+        self.graph = copy.deepcopy(graph)
+        self.hash = "h-restored"
+        return self.hash
 
 
 # ---- fake DifyPort pre-seeded with an existing graph (for Edit) -----------
