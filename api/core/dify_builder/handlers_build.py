@@ -12,6 +12,7 @@ import uuid
 
 from core.dify_builder.contract import (
     AssistantTurnItem,
+    BuildLearningCard,
     ChallengeCard,
     ChangeSetCard,
     CheckpointCard,
@@ -20,6 +21,7 @@ from core.dify_builder.contract import (
     ErrorCard,
     FormCard,
     FormField,
+    NoticeItem,
     PlanCard,
     PublishCard,
     ResourceSelectCard,
@@ -31,12 +33,21 @@ from core.dify_builder.contract import (
     TraceStep,
 )
 from core.dify_builder.handlers_fix import action_string, append_card, perform_revert
-from core.dify_builder.models import ChangeSet, Checkpoint, DifyBuilderContext, Session, Snapshot, Turn
+from core.dify_builder.models import (
+    ChangeSet,
+    Checkpoint,
+    ConversationItem,
+    DifyBuilderContext,
+    Session,
+    Snapshot,
+    Turn,
+)
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
 __all__ = [
     "build_registry",
+    "handle_await_learning",
     "handle_capability_check",
     "handle_execution",
     "handle_goal_analysis",
@@ -56,6 +67,16 @@ def _emit_canvas(env: Env, event: str, **extra) -> None:
     (opt-in; None is a no-op, mirroring how apply_repair treats on_canvas)."""
     if env.emit_canvas is not None:
         env.emit_canvas({"event": event, **extra})
+
+
+def _emit_completion(fc: DifyBuilderContext) -> list[ConversationItem]:
+    """Shared build-complete summary, emitted on every governance-tail exit."""
+    rows = [
+        SummaryRow(label="Workflow", value="Start -> Knowledge -> LLM -> End"),
+        SummaryRow(label="Nodes", value=str(len(fc.built_node_ids))),
+        SummaryRow(label="Status", value="Complete"),
+    ]
+    return append_card(fc, SummaryCard(variant="completion", title="Build complete", rows=rows))
 
 
 _REQUIREMENT_FIELDS = [
@@ -481,16 +502,42 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
 
 
 def handle_governance_feedback(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(working, auto) Governance tail is spec-deferred (no body). As the
-    handler transitioning INTO the terminal build.complete, it emits the
-    completion summary. Reached both via publish and via keep_draft (which
-    skips publish), so the status row is scenario-neutral."""
-    rows = [
-        SummaryRow(label="Workflow", value="Start -> Knowledge -> LLM -> End"),
-        SummaryRow(label="Nodes", value=str(len(fc.built_node_ids))),
-        SummaryRow(label="Status", value="Complete"),
-    ]
-    items = append_card(fc, SummaryCard(variant="completion", title="Build complete", rows=rows))
+    """(working, auto) Governance tail: apply the skill-learning policy.
+    automatic -> learn + accepted card; disabled -> skipped card; ask ->
+    emit the pending prompt and rest at build.await_learning. Reached via both
+    publish and keep_draft (scenario-neutral)."""
+    policy = fc.skill_learning_policy or "ask"
+    if policy == "automatic":
+        descriptor = env.agent.learn_from_build(
+            fc.goal_text, dict(fc.requirements), list(fc.plan_items), list(fc.built_node_ids)
+        )
+        items = append_card(fc, BuildLearningCard(policy="automatic", state="accepted"))
+        items += append_card(fc, NoticeItem(text=descriptor))
+        items += _emit_completion(fc)
+        return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=items)
+    if policy == "disabled":
+        items = append_card(fc, BuildLearningCard(policy="disabled", state="skipped"))
+        items += _emit_completion(fc)
+        return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=items)
+    # ask (default): prompt, then rest for the user's accept/skip.
+    items = append_card(fc, BuildLearningCard(policy="ask", state="pending"))
+    return StepResult(next=PcState.BUILD_AWAIT_LEARNING, context=fc, items=items)
+
+
+def handle_await_learning(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
+    """(waiting) Resolve the ask-policy skill-learning prompt. accept_learning
+    -> learn + accepted decision; anything else (skip_learning / absent) ->
+    skipped. Either way emit the completion summary and reach build.complete."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind == "accept_learning":
+        descriptor = env.agent.learn_from_build(
+            fc.goal_text, dict(fc.requirements), list(fc.plan_items), list(fc.built_node_ids)
+        )
+        items = append_card(fc, DecisionItem(text="Accepted skill learning"))
+        items += append_card(fc, NoticeItem(text=descriptor))
+    else:
+        items = append_card(fc, DecisionItem(text="Skipped skill learning"))
+    items += _emit_completion(fc)
     return StepResult(next=PcState.BUILD_COMPLETE, context=fc, items=items)
 
 
@@ -530,5 +577,6 @@ def build_registry() -> dict[PcState, Handler]:
         PcState.BUILD_REVIEW: handle_review,
         PcState.BUILD_PUBLISH: handle_publish,
         PcState.BUILD_GOVERNANCE_FEEDBACK: handle_governance_feedback,
+        PcState.BUILD_AWAIT_LEARNING: handle_await_learning,
         PcState.BUILD_REVERTED: handle_reverted,
     }
