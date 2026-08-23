@@ -16,7 +16,7 @@ import OnlineUsers from './online-users'
 import RunAndHistory from './run-and-history'
 import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 import { VersionHistoryButton } from './version-history-button'
-import WorkflowCopilotButton from './workflow-copilot-button'
+import DifyBuilderButton from './dify-builder-button'
 
 export type HeaderInNormalProps = {
   components?: {
@@ -28,7 +28,7 @@ export type HeaderInNormalProps = {
   controls?: {
     showEnvButton?: boolean
     showGlobalVariableButton?: boolean
-    showWorkflowCopilotButton?: boolean
+    showDifyBuilderButton?: boolean
   }
   runAndHistoryProps?: RunAndHistoryProps
 }
@@ -43,14 +43,14 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
   const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
-  const setShowWorkflowCopilotPanel = useStore((s) => s.setShowWorkflowCopilotPanel)
+  const setShowDifyBuilderPanel = useStore((s) => s.setShowDifyBuilderPanel)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find((node) => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
   const showEnvButton = controls?.showEnvButton !== false
   const showGlobalVariableButton = controls?.showGlobalVariableButton !== false
-  const showWorkflowCopilotButton = controls?.showWorkflowCopilotButton === true
+  const showDifyBuilderButton = controls?.showDifyBuilderButton === true
   const showContextButtons =
     !!components?.chatVariableTrigger || showEnvButton || showGlobalVariableButton
 
@@ -65,7 +65,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
     setShowGlobalVariablePanel(false)
-    setShowWorkflowCopilotPanel(false)
+    setShowDifyBuilderPanel(false)
     closeAllInputFieldPanels()
   }, [
     workflowStore,
@@ -78,7 +78,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
     setShowVariableInspectPanel,
     setShowChatVariablePanel,
     setShowGlobalVariablePanel,
-    setShowWorkflowCopilotPanel,
+    setShowDifyBuilderPanel,
     closeAllInputFieldPanels,
   ])
 
@@ -93,7 +93,7 @@ const HeaderInNormal = ({ components, controls, runAndHistoryProps }: HeaderInNo
         {components?.left}
         <Divider type="vertical" className="mx-auto h-3.5" />
         <RunAndHistory {...runAndHistoryProps} />
-        {showWorkflowCopilotButton && <WorkflowCopilotButton disabled={nodesReadOnly} />}
+        {showDifyBuilderButton && <DifyBuilderButton disabled={nodesReadOnly} />}
         {showContextButtons && (
           <div className="shrink-0 cursor-pointer rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs backdrop-blur-[10px]">
             {components?.chatVariableTrigger}

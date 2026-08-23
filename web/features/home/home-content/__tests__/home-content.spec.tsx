@@ -699,7 +699,7 @@ describe('HomeContent', () => {
           author_name: 'Evan',
           permission_keys: [AppACLPermission.Monitor],
         }),
-        createWorkspaceApp({ id: 'app-2', name: 'Feature Copilot', author_name: 'Maggie' }),
+        createWorkspaceApp({ id: 'app-2', name: 'Feature DifyBuilder', author_name: 'Maggie' }),
         createWorkspaceApp({ id: 'app-3', name: 'Book Translation', author_name: 'Alex' }),
         createWorkspaceApp({ id: 'app-4', name: 'Logo Design', author_name: 'Taylor' }),
         createWorkspaceApp({ id: 'app-5', name: 'Data Summarizer', author_name: 'Robin' }),
@@ -715,7 +715,7 @@ describe('HomeContent', () => {
         screen.getByRole('heading', { name: 'explore.continueWork.title' }),
       ).toBeInTheDocument()
       expect(screen.getByText('Email Reply')).toBeInTheDocument()
-      expect(screen.getByText('Feature Copilot')).toBeInTheDocument()
+      expect(screen.getByText('Feature DifyBuilder')).toBeInTheDocument()
       expect(screen.getByText('Book Translation')).toBeInTheDocument()
       expect(screen.getByText('Logo Design')).toBeInTheDocument()
       expect(screen.getByText('Data Summarizer')).toBeInTheDocument()

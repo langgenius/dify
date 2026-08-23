@@ -16,8 +16,8 @@ const VersionHistoryPanel = dynamic(
   },
 )
 
-const WorkflowCopilotPanel = dynamic(
-  () => import('@/app/components/workflow/panel/workflow-copilot-panel'),
+const DifyBuilderPanel = dynamic(
+  () => import('@/app/components/workflow/panel/dify-builder-panel'),
   {
     ssr: false,
   },
@@ -103,7 +103,7 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
   const showEnvPanel = useStore((s) => s.showEnvPanel)
   const isRestoring = useStore((s) => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore((s) => s.showWorkflowVersionHistoryPanel)
-  const showWorkflowCopilotPanel = useStore((s) => s.showWorkflowCopilotPanel)
+  const showDifyBuilderPanel = useStore((s) => s.showDifyBuilderPanel)
 
   // widths used for adaptive layout
   const workflowCanvasWidth = useStore((s) => s.workflowCanvasWidth)
@@ -136,13 +136,13 @@ const Panel: FC<PanelProps> = ({ components, versionHistoryPanelProps }) => {
 
   return (
     <>
-      {showWorkflowCopilotPanel && (
+      {showDifyBuilderPanel && (
         <div
           data-workflow-left-panel
           tabIndex={-1}
           className={cn('absolute top-14 left-0 bottom-1 z-10 flex outline-hidden')}
         >
-          <WorkflowCopilotPanel />
+          <DifyBuilderPanel />
         </div>
       )}
       <div

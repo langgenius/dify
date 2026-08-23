@@ -929,16 +929,16 @@ class WorkflowConfig(BaseSettings):
         ge=0.1,
     )
 
-    WORKFLOW_COPILOT_MAX_ADVANCE_SECONDS: PositiveInt = Field(
+    DIFY_BUILDER_MAX_ADVANCE_SECONDS: PositiveInt = Field(
         description=(
-            "Max wall-clock seconds for one copilot advance; "
+            "Max wall-clock seconds for one dify_builder advance; "
             "also the advance-lock TTL and Celery soft_time_limit."
         ),
         default=600,
     )
 
-    WORKFLOW_COPILOT_ENABLED: bool = Field(
-        description="Expose the workflow copilot feature (console routes + UI flag).",
+    DIFY_BUILDER_ENABLED: bool = Field(
+        description="Expose the Dify Builder feature (console routes + UI flag).",
         default=False,
     )
 
@@ -1481,12 +1481,12 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=60 * 60,
     )
 
-    ENABLE_WORKFLOW_COPILOT_RECONCILER: bool = Field(
-        description="Enable the workflow-copilot interrupted-session reconciler (beat sweeper)",
+    ENABLE_DIFY_BUILDER_RECONCILER: bool = Field(
+        description="Enable the dify-builder interrupted-session reconciler (beat sweeper)",
         default=False,
     )
-    WORKFLOW_COPILOT_RECONCILE_INTERVAL: PositiveInt = Field(
-        description="Minutes between workflow-copilot reconciler sweeps",
+    DIFY_BUILDER_RECONCILE_INTERVAL: PositiveInt = Field(
+        description="Minutes between dify-builder reconciler sweeps",
         default=5,
     )
 

@@ -249,7 +249,7 @@ def test_app_list_query_preserves_regular_query_params(app_module):
             ("page", "2"),
             ("limit", "50"),
             ("mode", "chat"),
-            ("name", "Sales Copilot"),
+            ("name", "Sales DifyBuilder"),
             ("is_created_by_me", "true"),
         ]
     )
@@ -263,7 +263,7 @@ def test_app_list_query_preserves_regular_query_params(app_module):
     assert query.page == 2
     assert query.limit == 50
     assert query.mode == "chat"
-    assert query.name == "Sales Copilot"
+    assert query.name == "Sales DifyBuilder"
     assert query.is_created_by_me is True
     assert query.tag_ids is None
 

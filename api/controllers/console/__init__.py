@@ -49,6 +49,7 @@ for module_name in RESOURCE_MODULES:
 # Import other controllers
 from . import (
     apikey,
+    dify_builder,
     extension,
     feature,
     human_input_form,
@@ -59,7 +60,6 @@ from . import (
     setup,
     spec,
     system,
-    workflow_copilot,
     workflow_run_archive,
 )
 from .agent import composer as agent_composer
@@ -201,6 +201,7 @@ __all__ = [
     "datasets_segments",
     "datasource_auth",
     "datasource_content_preview",
+    "dify_builder",
     "email_register",
     "endpoint",
     "extension",
@@ -254,7 +255,6 @@ __all__ = [
     "workflow",
     "workflow_app_log",
     "workflow_comment",
-    "workflow_copilot",
     "workflow_draft_variable",
     "workflow_node_output_inspector",
     "workflow_run",

@@ -41,7 +41,7 @@ const WorkflowHeader = () => {
           chatVariableTrigger: <ChatVariableTrigger />,
         },
         controls: {
-          showWorkflowCopilotButton: true,
+          showDifyBuilderButton: true,
         },
         runAndHistoryProps: {
           showRunButton: !isChatMode,

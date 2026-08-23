@@ -177,7 +177,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
-        "tasks.workflow_copilot_advance_task",  # workflow copilot session advance
+        "tasks.dify_builder_advance_task",  # Dify Builder session advance
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -237,11 +237,11 @@ def init_app(app: DifyApp) -> Celery:
             "task": "human_input_form_timeout.check_and_resume",
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
-    if dify_config.ENABLE_WORKFLOW_COPILOT_RECONCILER:
-        imports.append("schedule.workflow_copilot_reconcile_task")
-        beat_schedule["workflow_copilot_reconcile"] = {
-            "task": "schedule.workflow_copilot_reconcile_task.reconcile_interrupted_sessions",
-            "schedule": timedelta(minutes=dify_config.WORKFLOW_COPILOT_RECONCILE_INTERVAL),
+    if dify_config.ENABLE_DIFY_BUILDER_RECONCILER:
+        imports.append("schedule.dify_builder_reconcile_task")
+        beat_schedule["dify_builder_reconcile"] = {
+            "task": "schedule.dify_builder_reconcile_task.reconcile_interrupted_sessions",
+            "schedule": timedelta(minutes=dify_config.DIFY_BUILDER_RECONCILE_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.append("schedule.check_upgradable_plugin_task")
