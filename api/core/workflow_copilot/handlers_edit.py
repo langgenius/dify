@@ -258,8 +258,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
 
 def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) At rest after the edit. ``run_affected_tests`` -> edit.test_
-    affected_paths; ``revert`` (resolved to ``undo``) -> edit.reverted (intent
-    only)."""
+    affected_paths; ``revert`` (resolved to ``undo``) -> edit.reverted: restores
+    the pre-edit draft from the checkpoint and invalidates the approvals made
+    since it (via perform_revert)."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "undo":
         perform_revert(env, turn, s, fc)
@@ -344,7 +345,8 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepR
     keep_draft both = Task Completed -> edit.publish (terminal). Because edit.
     publish runs no handler, this handler emits its cards before returning.
     continue_adjusting (resolved re_fix) -> edit.impact_analysis (re-analyze);
-    revert (undo) -> edit.reverted (intent only)."""
+    revert (undo) -> edit.reverted: restores the pre-edit draft from the
+    checkpoint and invalidates the approvals made since it (via perform_revert)."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "publish_workflow":
         env.dify.publish(s.app_id, turn.actor)
@@ -418,6 +420,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> Ste
     kind = turn.action.kind if turn.action is not None else ""
     if kind != "re_fix":
         return StepResult(next=PcState.EDIT_REVERTED, context=fc)
+
     fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)

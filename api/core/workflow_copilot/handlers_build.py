@@ -334,7 +334,9 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
 
 def handle_execution(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
     """(waiting) At rest after the build. ``run_test`` -> build.test_and_repair;
-    ``revert`` (resolved to ``undo``) -> build.reverted (intent only)."""
+    ``revert`` (resolved to ``undo``) -> build.reverted: restores the pre-build
+    draft from the checkpoint and invalidates the approvals made since it (via
+    perform_revert)."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "undo":
         perform_revert(env, turn, s, fc)
@@ -428,7 +430,8 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepR
     """(waiting) Terminal decision. publish_workflow -> build.publish;
     keep_draft -> build.governance_feedback (skips publish); continue_adjusting
     (resolved to re_fix) -> build.initial_plan (re-plan); revert (undo) ->
-    build.reverted (intent only)."""
+    build.reverted: restores the pre-build draft from the checkpoint and
+    invalidates the approvals made since it (via perform_revert)."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "publish_workflow":
         items = append_card(fc, DecisionItem(text="Chose to publish"))
