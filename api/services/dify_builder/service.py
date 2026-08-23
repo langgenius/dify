@@ -37,6 +37,7 @@ from core.dify_builder.models import (
 )
 from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
+from services.feature_service import FeatureService
 
 __all__ = ["DifyBuilderService", "SessionLock", "SessionView", "resolve_action_kind"]
 
@@ -100,6 +101,7 @@ _PHASE_FOR: dict[PcState, Phase] = {
     PcState.BUILD_REVIEW: Phase.REVIEW,
     PcState.BUILD_PUBLISH: Phase.PUBLISH,
     PcState.BUILD_GOVERNANCE_FEEDBACK: Phase.COMPLETE,
+    PcState.BUILD_AWAIT_LEARNING: Phase.COMPLETE,
     PcState.BUILD_COMPLETE: Phase.COMPLETE,
     PcState.BUILD_REVERTED: Phase.PLAN,
     # Edit.
@@ -181,6 +183,10 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     PcState.BUILD_REVERTED: [
         UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY,
                  next_state="build.initial_plan"),
+    ],
+    PcState.BUILD_AWAIT_LEARNING: [
+        UiAction(id="accept_learning", label="Add to skills", kind=ActionKind.PRIMARY),
+        UiAction(id="skip_learning", label="Skip", kind=ActionKind.SECONDARY),
     ],
     # Edit (Slice 3). next_state/canvas_event carry the frozen state-map hints.
     PcState.EDIT_CAPABILITY_CHECK: [
@@ -352,7 +358,8 @@ class DifyBuilderService:
         initial ``send_goal`` (parallels ``create_fix_session``). The goal is
         seeded as the user's opening bubble; the first advance's
         ``handle_capability_check`` analyzes it into requirements."""
-        fc = DifyBuilderContext(goal_text=goal_text)
+        policy = FeatureService.get_features(actor.tenant_id).skill_learning_policy
+        fc = DifyBuilderContext(goal_text=goal_text, skill_learning_policy=policy)
         s = Session(
             app_id=app_id,
             tenant_id=actor.tenant_id,
