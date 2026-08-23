@@ -311,3 +311,21 @@ class StubAgent:
 
     def generate_mock_inputs(self, _schema: StartSchema, _prior_failed: Inputs) -> Inputs:
         return {"report_pdf": "mock.pdf"}
+
+    def analyze_goal(self, _goal_text):
+        return {}
+
+    def propose_plan_v1(self, _requirements):
+        return []
+
+    def discover_resources(self, _plan_items):
+        return []
+
+    def bind_resources(self, _plan_items, _resource_ids, _conflict_policy):
+        return []
+
+    def build_nodes(self, _plan_items):
+        return []
+
+    def propose_build_repair(self, _built_node_ids):
+        return []

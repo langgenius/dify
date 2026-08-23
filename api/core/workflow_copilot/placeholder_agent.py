@@ -9,6 +9,9 @@ node raises at runtime" failure. It satisfies ``CopilotAgent`` structurally
 constructor to port; plain instantiation (``PlaceholderAgent()``) replaces it.
 """
 
+from typing import Any
+
+from core.workflow_copilot.contract import ResourceOption
 from core.workflow_copilot.models import (
     ChecklistError,
     Diagnosis,
@@ -20,13 +23,26 @@ from core.workflow_copilot.models import (
     Run,
     StartSchema,
 )
+from graphon.enums import BuiltinNodeTypes
+from services.workflow_copilot import node_defaults
 
-__all__ = ["FIXED_CODE", "PlaceholderAgent"]
+__all__ = [
+    "BUILD_END_ID",
+    "BUILD_KNOWLEDGE_ID",
+    "BUILD_LLM_ID",
+    "BUILD_START_ID",
+    "FIXED_CODE",
+    "PlaceholderAgent",
+]
 
-# FIXED_CODE is the replacement body for the fixture's broken Code node — a
-# minimal working program whose return shape matches what the fixture's End
-# node reads. Keep it in sync with the Task-2 fixture.
 FIXED_CODE = 'def main() -> dict:\n    return {"result": "ok"}'
+
+# Deterministic node ids for the canned Build graph, so connect intents can
+# reference them and built_node_ids is known up front.
+BUILD_START_ID = "start"
+BUILD_KNOWLEDGE_ID = "knowledge_retrieval"
+BUILD_LLM_ID = "llm"
+BUILD_END_ID = "end"
 
 
 class PlaceholderAgent:
@@ -59,3 +75,102 @@ class PlaceholderAgent:
 
     def generate_mock_inputs(self, schema: StartSchema, prior_failed: Inputs) -> Inputs:
         return {"query": "mock"}
+
+    # -- Build cognition (Slice 2; fixed, deterministic canned output) --
+
+    def analyze_goal(self, goal_text: str) -> dict[str, Any]:
+        # Always proceeds -- no real missing-info branch. The challenge card
+        # the handler shows is an informational "proceeding" note.
+        return {
+            "report_types": "quarterly",
+            "audience": "executives",
+            "currency": "USD",
+            "metrics": "revenue, gross_margin",
+            "output": "PDF summary",
+            "prefer_audited": True,
+        }
+
+    def propose_plan_v1(self, requirements: dict[str, Any]) -> list[str]:
+        return [
+            "Ingest source documents",
+            "Retrieve relevant knowledge",
+            "Summarize with an LLM",
+            "Emit the final report",
+        ]
+
+    def discover_resources(self, plan_items: list[str]) -> list[ResourceOption]:
+        return [
+            ResourceOption(
+                id="kb-company",
+                label="Company Knowledge Base",
+                meta="1,024 documents",
+                kind="knowledge",
+                readiness="ready",
+            )
+        ]
+
+    def bind_resources(
+        self, plan_items: list[str], resource_ids: list[str], conflict_policy: str
+    ) -> list[str]:
+        return [
+            "Ingest source documents",
+            "Retrieve from Company Knowledge Base",
+            "Summarize with the configured LLM",
+            "Emit the final report",
+        ]
+
+    def build_nodes(self, plan_items: list[str]) -> list[MutationIntent]:
+        # Start -> Knowledge-Retrieval -> LLM -> End. Creates and connects are
+        # interleaved so each connect's endpoints already exist when
+        # apply_connect validates them.
+        return [
+            MutationIntent(
+                op="create_node",
+                args={
+                    "node_type": BuiltinNodeTypes.START,
+                    "config": node_defaults.default_config(BuiltinNodeTypes.START),
+                    "node_id": BUILD_START_ID,
+                },
+            ),
+            MutationIntent(
+                op="create_node",
+                args={
+                    "node_type": BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL,
+                    "config": node_defaults.default_config(BuiltinNodeTypes.KNOWLEDGE_RETRIEVAL),
+                    "node_id": BUILD_KNOWLEDGE_ID,
+                },
+            ),
+            MutationIntent(op="connect", args={"from_node": BUILD_START_ID, "to_node": BUILD_KNOWLEDGE_ID}),
+            MutationIntent(
+                op="create_node",
+                args={
+                    "node_type": BuiltinNodeTypes.LLM,
+                    "config": node_defaults.default_config(BuiltinNodeTypes.LLM),
+                    "node_id": BUILD_LLM_ID,
+                },
+            ),
+            MutationIntent(op="connect", args={"from_node": BUILD_KNOWLEDGE_ID, "to_node": BUILD_LLM_ID}),
+            MutationIntent(
+                op="create_node",
+                args={
+                    "node_type": BuiltinNodeTypes.END,
+                    "config": node_defaults.default_config(BuiltinNodeTypes.END),
+                    "node_id": BUILD_END_ID,
+                },
+            ),
+            MutationIntent(op="connect", args={"from_node": BUILD_LLM_ID, "to_node": BUILD_END_ID}),
+        ]
+
+    def propose_build_repair(self, built_node_ids: list[str]) -> list[MutationIntent]:
+        # Canned "found a config bug, fixed it" repair on the LLM node --
+        # structurally like Fix's propose_repair, applied via apply_repair.
+        return [
+            MutationIntent(
+                op="set_node_config",
+                args={
+                    "node_id": BUILD_LLM_ID,
+                    "path": "prompt_template",
+                    "value": [{"role": "system", "text": "You are a financial report assistant."}],
+                },
+            )
+        ]

@@ -98,3 +98,85 @@ def test_diagnose_checklist_empty_errors_returns_generic_cause():
 def test_generate_mock_inputs_returns_canned_query():
     a = PlaceholderAgent()
     assert a.generate_mock_inputs({}, {}) == {"query": "mock"}
+
+
+def test_analyze_goal_returns_full_requirements_shape():
+    from core.workflow_copilot.placeholder_agent import PlaceholderAgent
+
+    req = PlaceholderAgent().analyze_goal("Build a quarterly report workflow")
+    assert set(req.keys()) == {
+        "report_types",
+        "audience",
+        "currency",
+        "metrics",
+        "output",
+        "prefer_audited",
+    }
+    assert req["currency"] == "USD"
+    assert req["prefer_audited"] is True
+
+
+def test_propose_plan_v1_and_bind_resources_return_ordered_strings():
+    from core.workflow_copilot.placeholder_agent import PlaceholderAgent
+
+    a = PlaceholderAgent()
+    v1 = a.propose_plan_v1({"currency": "USD"})
+    assert v1
+    assert all(isinstance(x, str) for x in v1)
+    v2 = a.bind_resources(v1, ["kb-company"], "audited")
+    assert v2
+    assert all(isinstance(x, str) for x in v2)
+
+
+def test_discover_resources_returns_one_ready_option():
+    from core.workflow_copilot.placeholder_agent import PlaceholderAgent
+
+    opts = PlaceholderAgent().discover_resources(["Retrieve", "Summarize"])
+    assert len(opts) == 1
+    assert opts[0].readiness == "ready"
+    assert opts[0].kind == "knowledge"
+
+
+def test_build_nodes_emits_start_knowledge_llm_end_with_valid_connects():
+    from core.workflow_copilot.placeholder_agent import (
+        BUILD_END_ID,
+        BUILD_KNOWLEDGE_ID,
+        BUILD_LLM_ID,
+        BUILD_START_ID,
+        PlaceholderAgent,
+    )
+
+    intents = PlaceholderAgent().build_nodes(["Retrieve", "Summarize", "Emit"])
+    creates = [i for i in intents if i.op == "create_node"]
+    connects = [i for i in intents if i.op == "connect"]
+    assert [i.args["node_id"] for i in creates] == [
+        BUILD_START_ID,
+        BUILD_KNOWLEDGE_ID,
+        BUILD_LLM_ID,
+        BUILD_END_ID,
+    ]
+    assert [i.args["node_type"] for i in creates] == ["start", "knowledge-retrieval", "llm", "end"]
+    assert [(i.args["from_node"], i.args["to_node"]) for i in connects] == [
+        (BUILD_START_ID, BUILD_KNOWLEDGE_ID),
+        (BUILD_KNOWLEDGE_ID, BUILD_LLM_ID),
+        (BUILD_LLM_ID, BUILD_END_ID),
+    ]
+    # every connect references only nodes created earlier in the sequence:
+    created_so_far: set[str] = set()
+    for i in intents:
+        if i.op == "create_node":
+            created_so_far.add(i.args["node_id"])
+        else:
+            assert i.args["from_node"] in created_so_far
+            assert i.args["to_node"] in created_so_far
+    # each create_node config carries a real node_defaults baseline:
+    assert creates[2].args["config"]["model"]["mode"] == "chat"
+
+
+def test_propose_build_repair_targets_the_llm_node():
+    from core.workflow_copilot.placeholder_agent import BUILD_LLM_ID, PlaceholderAgent
+
+    intents = PlaceholderAgent().propose_build_repair(["start", "knowledge_retrieval", "llm", "end"])
+    assert len(intents) == 1
+    assert intents[0].op == "set_node_config"
+    assert intents[0].args["node_id"] == BUILD_LLM_ID
