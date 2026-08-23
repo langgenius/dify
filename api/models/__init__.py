@@ -57,6 +57,15 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
+from .dify_builder import (
+    DifyBuilderCheckpoint,
+    DifyBuilderConversationItem,
+    DifyBuilderRun,
+    DifyBuilderSession,
+    DifyBuilderSessionCommit,
+    DifyBuilderSnapshot,
+    DifyBuilderTestInput,
+)
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -245,15 +254,6 @@ from .workflow import (
     WorkflowVersionCounter,
     resolve_workflow_kind,
 )
-from .workflow_copilot import (
-    CopilotCheckpoint,
-    CopilotConversationItem,
-    CopilotRun,
-    CopilotSession,
-    CopilotSessionCommit,
-    CopilotSnapshot,
-    CopilotTestInput,
-)
 
 __all__ = [
     "APIBasedExtension",
@@ -308,13 +308,6 @@ __all__ = [
     "ContactSubjectType",
     "Conversation",
     "ConversationVariable",
-    "CopilotCheckpoint",
-    "CopilotConversationItem",
-    "CopilotRun",
-    "CopilotSession",
-    "CopilotSessionCommit",
-    "CopilotSnapshot",
-    "CopilotTestInput",
     "CreatorUserRole",
     "CredentialPermission",
     "CredentialPermissionType",
@@ -332,6 +325,13 @@ __all__ = [
     "DatasetRetrieverResource",
     "DatasourceOauthParamConfig",
     "DatasourceProvider",
+    "DifyBuilderCheckpoint",
+    "DifyBuilderConversationItem",
+    "DifyBuilderRun",
+    "DifyBuilderSession",
+    "DifyBuilderSessionCommit",
+    "DifyBuilderSnapshot",
+    "DifyBuilderTestInput",
     "DifySetup",
     "Document",
     "DocumentSegment",
