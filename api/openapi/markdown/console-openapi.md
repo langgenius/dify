@@ -4998,7 +4998,7 @@ Restore a published workflow version into the draft workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
-| 403 | Billing access denied | **application/json**: [BillingAccessDeniedErrorResponse](#billingaccessdeniederrorresponse)<br> |
+| 403 | Forbidden |  |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
@@ -5037,7 +5037,7 @@ Sync partner tenants bindings
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
-| 403 | Billing access denied | **application/json**: [BillingAccessDeniedErrorResponse](#billingaccessdeniederrorresponse)<br> |
+| 403 | Forbidden |  |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
@@ -15448,14 +15448,6 @@ ExporleBanner status
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | upload_file_id | string |  | Yes |
-
-#### BillingAccessDeniedErrorResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| code | string |  | Yes |
-| message | string |  | Yes |
-| status | integer |  | Yes |
 
 #### BillingInvoiceResponse
 

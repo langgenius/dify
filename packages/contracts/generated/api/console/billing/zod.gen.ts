@@ -10,15 +10,6 @@ export const zBillingInvoiceResponse = z.object({
 })
 
 /**
- * BillingAccessDeniedErrorResponse
- */
-export const zBillingAccessDeniedErrorResponse = z.object({
-  code: z.literal('billing_access_denied'),
-  message: z.string(),
-  status: z.literal(403),
-})
-
-/**
  * BillingOperationFailedErrorResponse
  */
 export const zBillingOperationFailedErrorResponse = z.object({

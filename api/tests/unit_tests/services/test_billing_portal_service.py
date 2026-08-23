@@ -1,9 +1,40 @@
-from unittest.mock import MagicMock
+from datetime import datetime
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
+from machinery.context import RequestContext
+from services.account_errors import AccountNotFoundError
+from services.account_ports import AccountRepository
 from services.billing_portal_service import BillingPortalService
-from services.errors.billing import BillingAccessDeniedError
+from services.entities.account_entities import AccountSnapshot
+
+
+def _context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id=workspace_id,
+    )
+
+
+def _account() -> AccountSnapshot:
+    return AccountSnapshot(
+        id="account-1",
+        name="Account",
+        email="owner@example.com",
+        avatar=None,
+        is_password_set=False,
+        interface_language="en-US",
+        interface_theme="light",
+        timezone="UTC",
+        last_login_at=None,
+        last_login_ip=None,
+        status="active",
+        initialized_at=None,
+        created_at=datetime(2026, 1, 1),
+    )
 
 
 @pytest.fixture
@@ -17,51 +48,69 @@ def get_invoices() -> MagicMock:
 
 
 @pytest.fixture
-def service(get_subscription: MagicMock, get_invoices: MagicMock) -> BillingPortalService:
-    return BillingPortalService(get_subscription=get_subscription, get_invoices=get_invoices)
+def accounts() -> Mock:
+    accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = _account()
+    return accounts
 
 
-def test_get_subscription_checks_access_and_delegates(
+@pytest.fixture
+def service(accounts: Mock, get_subscription: MagicMock, get_invoices: MagicMock) -> BillingPortalService:
+    return BillingPortalService(accounts=accounts, get_subscription=get_subscription, get_invoices=get_invoices)
+
+
+def test_get_subscription_loads_email_and_delegates(
     service: BillingPortalService,
+    accounts: Mock,
     get_subscription: MagicMock,
 ) -> None:
     get_subscription.return_value = {"url": "https://billing.example.com/checkout"}
 
     result = service.get_subscription(
+        _context(),
         plan="professional",
         interval="month",
-        email="owner@example.com",
-        workspace_id="workspace-1",
-        role="owner",
     )
 
     assert result == {"url": "https://billing.example.com/checkout"}
+    accounts.get.assert_called_once_with("account-1")
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
 
 
-def test_get_invoices_checks_access_and_delegates(
+def test_get_invoices_loads_email_and_delegates(
     service: BillingPortalService,
+    accounts: Mock,
     get_invoices: MagicMock,
 ) -> None:
     get_invoices.return_value = {"url": "https://billing.example.com/portal"}
 
-    result = service.get_invoices(
-        email="admin@example.com",
-        workspace_id="workspace-1",
-        role="admin",
-    )
+    result = service.get_invoices(_context())
 
     assert result == {"url": "https://billing.example.com/portal"}
-    get_invoices.assert_called_once_with("admin@example.com", "workspace-1")
+    accounts.get.assert_called_once_with("account-1")
+    get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
 
 
-@pytest.mark.parametrize("role", [None, "editor", "normal", "dataset_operator"])
-def test_access_denied_does_not_call_billing(
-    role: str | None,
+def test_missing_account_does_not_call_billing(
     service: BillingPortalService,
+    accounts: Mock,
     get_invoices: MagicMock,
 ) -> None:
-    with pytest.raises(BillingAccessDeniedError):
-        service.get_invoices(email="member@example.com", workspace_id="workspace-1", role=role)
+    accounts.get.return_value = None
 
+    with pytest.raises(AccountNotFoundError):
+        service.get_invoices(_context())
+
+    get_invoices.assert_not_called()
+
+
+def test_missing_workspace_does_not_query_account_or_billing(
+    service: BillingPortalService,
+    accounts: Mock,
+    get_invoices: MagicMock,
+) -> None:
+    with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
+        service.get_invoices(_context(workspace_id=None))
+
+    accounts.get.assert_not_called()
     get_invoices.assert_not_called()

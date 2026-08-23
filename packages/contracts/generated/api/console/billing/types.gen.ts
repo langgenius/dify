@@ -8,12 +8,6 @@ export type BillingInvoiceResponse = {
   url: string
 }
 
-export type BillingAccessDeniedErrorResponse = {
-  code: 'billing_access_denied'
-  message: string
-  status: 403
-}
-
 export type BillingOperationFailedErrorResponse = {
   code: 'billing_operation_failed'
   message: string
@@ -52,7 +46,7 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesErrors = {
-  403: BillingAccessDeniedErrorResponse
+  403: unknown
   502: BillingOperationFailedErrorResponse
   503: BillingUnavailableErrorResponse
 }
@@ -97,7 +91,7 @@ export type GetBillingSubscriptionData = {
 }
 
 export type GetBillingSubscriptionErrors = {
-  403: BillingAccessDeniedErrorResponse
+  403: unknown
   422: BillingUnprocessableEntityErrorResponse
   502: BillingOperationFailedErrorResponse
   503: BillingUnavailableErrorResponse

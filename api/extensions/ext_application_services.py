@@ -183,6 +183,7 @@ def build_application_services(
             ),
         ),
         billing_portal=BillingPortalService(
+            accounts=accounts,
             get_subscription=BillingService.get_subscription,
             get_invoices=BillingService.get_invoices,
         ),

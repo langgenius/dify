@@ -632,13 +632,11 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
     payload = app.test_client().get("/console/api/openapi.json").get_json()
     expected_responses = {
         ("/billing/subscription", "get"): {
-            "403": "BillingAccessDeniedErrorResponse",
             "422": "BillingUnprocessableEntityErrorResponse",
             "502": "BillingOperationFailedErrorResponse",
             "503": "BillingUnavailableErrorResponse",
         },
         ("/billing/invoices", "get"): {
-            "403": "BillingAccessDeniedErrorResponse",
             "502": "BillingOperationFailedErrorResponse",
             "503": "BillingUnavailableErrorResponse",
         },
@@ -650,8 +648,11 @@ def test_console_billing_routes_document_error_responses(monkeypatch: pytest.Mon
             schema = operation["responses"][status]["content"]["application/json"]["schema"]
             assert schema["$ref"] == f"#/components/schemas/{model_name}"
 
+        forbidden_response = operation["responses"]["403"]
+        assert forbidden_response["description"] == "Forbidden"
+        assert "content" not in forbidden_response
+
     expected_error_contracts = {
-        "BillingAccessDeniedErrorResponse": ("billing_access_denied", 403),
         "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
         "BillingOperationFailedErrorResponse": ("billing_operation_failed", 502),
         "BillingUnavailableErrorResponse": ("billing_unavailable", 503),

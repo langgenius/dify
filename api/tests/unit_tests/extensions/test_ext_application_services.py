@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
+from machinery.context import RequestContext
+from models.account import Account
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -175,8 +177,14 @@ def test_build_application_services_wires_tag_boundary(
 
 
 def test_build_application_services_wires_billing_service(
+    sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
+    account = Account(name="Billing Owner", email="owner@example.com")
+    account.id = "account-1"
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
     with (
         patch.object(
             BillingService,
@@ -201,19 +209,19 @@ def test_build_application_services_wires_billing_service(
             redis=MagicMock(spec=RedisClientWrapper),
         )
 
+    request_context = RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
     assert isinstance(services.billing_portal, BillingPortalService)
     assert services.billing_portal.get_subscription(
+        request_context,
         plan="professional",
         interval="month",
-        email="owner@example.com",
-        workspace_id="workspace-1",
-        role="owner",
     ) == {"url": "https://billing.example.com/checkout"}
-    assert services.billing_portal.get_invoices(
-        email="owner@example.com",
-        workspace_id="workspace-1",
-        role="owner",
-    ) == {"url": "https://billing.example.com/portal"}
+    assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
     assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
     assert services.partner_tenant_bindings.sync(
         account_id="account-1",
