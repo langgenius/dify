@@ -8,6 +8,8 @@ mutation only — no DB, no services, no I/O.
 """
 
 import copy
+import hashlib
+import json
 from typing import Any
 
 from core.workflow_copilot.models import Graph, MutationIntent
@@ -308,3 +310,33 @@ def diff_graphs(before: Graph, after: Graph) -> tuple[list[str], str]:
 
     structural = bool(added_nodes or removed_nodes or added_edges or removed_edges)
     return changes, "structure" if structural else "configuration"
+
+
+def structural_fingerprint(graph: Graph) -> str:
+    """Stable hash of a graph's STRUCTURE only -- node identity+type and edge
+    topology -- EXCLUDING node ``data`` config. Two graphs with the same
+    nodes/edges but different node configs share a fingerprint; adding,
+    removing, or reconnecting a node changes it. Used by recovery (C-1) to
+    tell a config-only hand-edit from a structural one. Order-independent
+    (nodes and edges are sorted before hashing)."""
+    nodes = sorted(
+        (str(n.get("id", "")), str((n.get("data") or {}).get("type", "")))
+        for n in graph.get("nodes", [])
+    )
+    edges = sorted(
+        (
+            str(e.get("source", "")),
+            str(e.get("target", "")),
+            str(e.get("sourceHandle", "")),
+            str(e.get("targetHandle", "")),
+        )
+        for e in graph.get("edges", [])
+    )
+    canonical = json.dumps({"nodes": nodes, "edges": edges}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def node_ids(graph: Graph) -> list[str]:
+    """The ids of every node in ``graph``, in document order (missing-id
+    nodes skipped). Used by recovery's target-presence check."""
+    return [str(n["id"]) for n in graph.get("nodes", []) if n.get("id") is not None]

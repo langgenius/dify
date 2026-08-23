@@ -415,3 +415,63 @@ def test_diff_graphs_no_changes_is_configuration_scope_with_empty_changes():
 
     assert changes == []
     assert scope == "configuration"
+
+
+# ---- structural_fingerprint -------------------------------------------------------
+
+
+def test_structural_fingerprint_is_config_insensitive():
+    from services.workflow_copilot.graph_ops import structural_fingerprint
+
+    g1 = {
+        "nodes": [{"id": "a", "type": "custom", "data": {"type": "llm", "model": "gpt-4"}}],
+        "edges": [],
+    }
+    g2 = {
+        "nodes": [{"id": "a", "type": "custom", "data": {"type": "llm", "model": "claude"}}],
+        "edges": [],
+    }
+    # Same nodes/edges, different node config -> same fingerprint.
+    assert structural_fingerprint(g1) == structural_fingerprint(g2)
+
+
+def test_structural_fingerprint_changes_on_structure():
+    from services.workflow_copilot.graph_ops import structural_fingerprint
+
+    base = {"nodes": [{"id": "a", "data": {"type": "llm"}}], "edges": []}
+    add_node = {
+        "nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}],
+        "edges": [],
+    }
+    add_edge = {
+        "nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}],
+        "edges": [{"source": "a", "target": "b", "sourceHandle": "source", "targetHandle": "target"}],
+    }
+    assert structural_fingerprint(base) != structural_fingerprint(add_node)
+    assert structural_fingerprint(add_node) != structural_fingerprint(add_edge)
+
+
+def test_structural_fingerprint_is_order_independent():
+    from services.workflow_copilot.graph_ops import structural_fingerprint
+
+    g1 = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
+    g2 = {"nodes": [{"id": "b", "data": {"type": "end"}}, {"id": "a", "data": {"type": "llm"}}], "edges": []}
+    assert structural_fingerprint(g1) == structural_fingerprint(g2)
+
+
+def test_structural_fingerprint_handles_empty_and_missing_keys():
+    from services.workflow_copilot.graph_ops import structural_fingerprint
+
+    assert isinstance(structural_fingerprint({}), str)
+    assert structural_fingerprint({}) == structural_fingerprint({"nodes": [], "edges": []})
+
+
+# ---- node_ids -------------------------------------------------------
+
+
+def test_node_ids():
+    from services.workflow_copilot.graph_ops import node_ids
+
+    g = {"nodes": [{"id": "a", "data": {"type": "llm"}}, {"id": "b", "data": {"type": "end"}}], "edges": []}
+    assert node_ids(g) == ["a", "b"]
+    assert node_ids({}) == []
