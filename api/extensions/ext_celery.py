@@ -212,6 +212,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.dify_builder_advance_task",  # Dify Builder session advance
         "tasks.im_message_inbox_tasks",  # durable IM callback processing
         "tasks.human_input_im_card_tasks",  # post-submission IM card updates
         "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
@@ -224,7 +225,6 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
         "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
         "tasks.evaluation_task",  # evaluation run execution
-        "tasks.workflow_copilot_advance_task",  # workflow copilot session advance
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -356,11 +356,11 @@ def init_app(app: DifyApp) -> Celery:
             "task": "human_input_form_timeout.check_and_resume",
             "schedule": timedelta(minutes=dify_config.HUMAN_INPUT_TIMEOUT_TASK_INTERVAL),
         }
-    if dify_config.ENABLE_WORKFLOW_COPILOT_RECONCILER:
-        imports.append("schedule.workflow_copilot_reconcile_task")
-        beat_schedule["workflow_copilot_reconcile"] = {
-            "task": "schedule.workflow_copilot_reconcile_task.reconcile_interrupted_sessions",
-            "schedule": timedelta(minutes=dify_config.WORKFLOW_COPILOT_RECONCILE_INTERVAL),
+    if dify_config.ENABLE_DIFY_BUILDER_RECONCILER:
+        imports.append("schedule.dify_builder_reconcile_task")
+        beat_schedule["dify_builder_reconcile"] = {
+            "task": "schedule.dify_builder_reconcile_task.reconcile_interrupted_sessions",
+            "schedule": timedelta(minutes=dify_config.DIFY_BUILDER_RECONCILE_INTERVAL),
         }
     if dify_config.ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK and dify_config.MARKETPLACE_ENABLED:
         imports.extend(("schedule.check_upgradable_plugin_task", "tasks.process_tenant_plugin_autoupgrade_check_task"))
