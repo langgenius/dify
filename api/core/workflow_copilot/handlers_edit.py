@@ -29,7 +29,7 @@ from core.workflow_copilot.contract import (
     Trace,
     TraceStep,
 )
-from core.workflow_copilot.handlers_fix import action_string, append_card
+from core.workflow_copilot.handlers_fix import action_string, append_card, perform_revert
 from core.workflow_copilot.models import ChangeSet, Checkpoint, CopilotContext, Session, Snapshot, Turn
 from core.workflow_copilot.runner import Env, Handler, StepResult
 from core.workflow_copilot.state import PcState
@@ -142,6 +142,8 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: CopilotContext)
     kind = turn.action.kind if turn.action is not None else ""
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
+
+    fc.checkpoint_seq = fc.next_seq
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
         merged = dict(fc.edit_rules)
@@ -260,7 +262,7 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
     only)."""
     kind = turn.action.kind if turn.action is not None else ""
     if kind == "undo":
-        _emit_canvas(env, "revert_checkpoint")
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind == "run_affected_tests":
@@ -403,7 +405,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepR
             items=[*decision_items, *form_items, *challenge_items, *change_set_items, *turn_items],
         )
     if kind == "undo":  # revert
-        _emit_canvas(env, "revert_checkpoint")
+        perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     return StepResult(next=PcState.EDIT_REVIEW, context=fc)
@@ -416,6 +418,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> Ste
     kind = turn.action.kind if turn.action is not None else ""
     if kind != "re_fix":
         return StepResult(next=PcState.EDIT_REVERTED, context=fc)
+    fc.checkpoint_seq = fc.next_seq
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.plan_version_tag = "v1"
