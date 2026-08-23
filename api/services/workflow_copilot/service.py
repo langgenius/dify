@@ -13,8 +13,17 @@ from dataclasses import dataclass, field
 from typing import Protocol
 from uuid import uuid4
 
+from core.workflow_copilot import recovery
 from core.workflow_copilot.contract import Action as UiAction
-from core.workflow_copilot.contract import ActionKind, CheckpointRef, Phase, RunContextCard, RunStatus, UserItem
+from core.workflow_copilot.contract import (
+    ActionKind,
+    CheckpointRef,
+    Phase,
+    RecoveryRef,
+    RunContextCard,
+    RunStatus,
+    UserItem,
+)
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Action,
@@ -48,6 +57,7 @@ class SessionView:
     phase: Phase = Phase.UNDERSTAND
     actions: list[UiAction] = field(default_factory=list)
     checkpoint: CheckpointRef | None = None
+    recovery: RecoveryRef | None = None
 
 
 class SessionLock(Protocol):
@@ -385,6 +395,7 @@ class WorkflowCopilotService:
             if fc.checkpoint_id
             else None
         )
+        recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,
@@ -398,6 +409,7 @@ class WorkflowCopilotService:
             phase=_phase_for(st),
             actions=_actions_for(st),
             checkpoint=checkpoint,
+            recovery=recovery_ref,
         )
 
     def submit_action(self, session_id: str, actor: Actor, action: Action) -> SessionView:
