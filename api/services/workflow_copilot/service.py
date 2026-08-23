@@ -14,7 +14,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from core.workflow_copilot.contract import Action as UiAction
-from core.workflow_copilot.contract import ActionKind, CheckpointRef, Phase, RunContextCard, RunStatus
+from core.workflow_copilot.contract import ActionKind, CheckpointRef, Phase, RunContextCard, RunStatus, UserItem
 from core.workflow_copilot.errors import BusyError, ConflictError, NotFoundError
 from core.workflow_copilot.models import (
     Action,
@@ -129,6 +129,48 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
     ],
     PcState.CHECKLIST_AWAIT_RECHECK: [
         UiAction(id="recheck", label="Re-check", kind=ActionKind.PRIMARY),
+    ],
+    # Build (Slice 2). next_state/canvas_event carry the frozen state-map hints.
+    PcState.BUILD_CAPABILITY_CHECK: [
+        UiAction(id="send_goal", label="Send goal", kind=ActionKind.PRIMARY,
+                 next_state="build.goal_analysis", canvas_event="reset_build_canvas"),
+    ],
+    PcState.BUILD_GOAL_ANALYSIS: [
+        UiAction(id="submit_requirements", label="Submit requirements", kind=ActionKind.PRIMARY,
+                 next_state="build.initial_plan"),
+    ],
+    PcState.BUILD_INITIAL_PLAN: [
+        UiAction(id="find_resources", label="Find resources", kind=ActionKind.PRIMARY,
+                 next_state="build.resource_recommendation"),
+    ],
+    PcState.BUILD_RESOURCE_RECOMMENDATION: [
+        UiAction(id="confirm_resources", label="Confirm resources", kind=ActionKind.PRIMARY,
+                 next_state="build.plan_approval"),
+    ],
+    PcState.BUILD_PLAN_APPROVAL: [
+        UiAction(id="approve_plan", label="Approve plan", kind=ActionKind.PRIMARY,
+                 next_state="build.execution", canvas_event="create_checkpoint"),
+    ],
+    PcState.BUILD_EXECUTION: [
+        UiAction(id="run_test", label="Run test", kind=ActionKind.PRIMARY,
+                 next_state="build.test_and_repair", canvas_event="start_test_run"),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
+                 next_state="build.reverted", canvas_event="revert_checkpoint"),
+    ],
+    PcState.BUILD_REVIEW: [
+        UiAction(id="publish_workflow", label="Publish", kind=ActionKind.PRIMARY,
+                 next_state="build.publish", canvas_event="publish_workflow"),
+        UiAction(id="keep_draft", label="Keep draft", kind=ActionKind.SECONDARY,
+                 next_state="build.governance_feedback", canvas_event="cancel_publish"),
+        UiAction(id="continue_adjusting", label="Continue adjusting", kind=ActionKind.SECONDARY,
+                 next_state="build.initial_plan", canvas_event="cancel_publish"),
+        UiAction(id="view_changes", label="View changes", kind=ActionKind.SECONDARY),
+        UiAction(id="revert", label="Revert", kind=ActionKind.DESTRUCTIVE,
+                 next_state="build.reverted", canvas_event="revert_checkpoint"),
+    ],
+    PcState.BUILD_REVERTED: [
+        UiAction(id="retry_after_revert", label="Retry", kind=ActionKind.PRIMARY,
+                 next_state="build.initial_plan"),
     ],
 }
 
@@ -253,6 +295,24 @@ class WorkflowCopilotService:
             self._repo.save_run(s.id, failed_run)
 
         self.dispatch(s.id, Action(kind="request_fix", base_version=1), actor)
+        return self.get_session_view(s.id, actor)
+
+    def create_build_session(self, app_id: str, actor: Actor, goal_text: str) -> SessionView:
+        """Start a Build session at build.capability_check and dispatch the
+        initial ``send_goal`` (parallels ``create_fix_session``). The goal is
+        seeded as the user's opening bubble; the first advance's
+        ``handle_capability_check`` analyzes it into requirements."""
+        fc = CopilotContext(goal_text=goal_text)
+        s = Session(
+            app_id=app_id,
+            tenant_id=actor.tenant_id,
+            owner_account_id=actor.account_id,
+            entry_mode=EntryMode.BUILD,
+            current_state=PcState.BUILD_CAPABILITY_CHECK,
+        )
+        items = [UserItem(text=goal_text).to_item(seq=0, at_version=0)]
+        self._repo.create_session(s, fc, items)  # assigns s.id, s.version = 1
+        self.dispatch(s.id, Action(kind="send_goal", payload={"text": goal_text}, base_version=1), actor)
         return self.get_session_view(s.id, actor)
 
     def get_session_view(self, session_id: str, actor: Actor) -> SessionView:
