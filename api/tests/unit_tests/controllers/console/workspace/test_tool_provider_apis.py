@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from inspect import unwrap
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -37,6 +37,7 @@ from controllers.console.workspace.tool_providers import (
     ToolBuiltinProviderSetDefaultApi,
     ToolBuiltinProviderUpdateApi,
     ToolLabelsApi,
+    ToolMCPListAllApi,
     ToolOAuthCallback,
     ToolOAuthCustomClient,
     ToolOAuthCustomClientPayload,
@@ -640,6 +641,23 @@ class TestLists:
             ),
         ):
             assert method(api, "t", make_account())[0]["id"] == "workflow-1"
+
+    def test_mcp_list_uses_database_provider_ids(self, app: Flask) -> None:
+        api = ToolMCPListAllApi()
+        method = unwrap(api.get)
+        session = MagicMock()
+
+        with (
+            app.test_request_context("/"),
+            patch("controllers.console.workspace.tool_providers.sessionmaker") as sessionmaker_mock,
+            patch("controllers.console.workspace.tool_providers.MCPToolManageService") as service_class,
+        ):
+            sessionmaker_mock.return_value.begin.return_value.__enter__.return_value = session
+            list_providers = service_class.return_value.list_providers
+            list_providers.return_value = [provider_entity(provider_id="mcp-provider-id", provider_type="mcp")]
+            assert method(api, "t")[0]["id"] == "mcp-provider-id"
+
+        list_providers.assert_called_once_with(tenant_id="t", for_list=True, include_sensitive=False)
 
 
 class TestLabels:
