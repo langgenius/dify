@@ -241,6 +241,10 @@ class CopilotContext:
     edit_rules: dict[str, Any] = field(default_factory=dict)
     edit_target_node_ids: list[str] = field(default_factory=list)
 
+    # -- Lifecycle fields (Slice 4, additive) --
+    paused: bool = False
+    checkpoint_seq: int = 0
+
 
 @dataclass(kw_only=True)
 class Action:
