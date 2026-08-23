@@ -91,6 +91,13 @@ def _create(body, actor: Actor) -> tuple[dict, int]:
                 goal_text=body.get("goal_text", ""),
             )
         )
+    elif body.get("scenario") == "edit":
+        result, status = _respond(
+            lambda: build_service().create_edit_session(
+                app_id=body.get("app_id", ""),
+                actor=actor,
+            )
+        )
     else:
         result, status = _respond(
             lambda: build_service().create_fix_session(

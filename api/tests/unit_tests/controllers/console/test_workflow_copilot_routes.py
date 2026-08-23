@@ -78,6 +78,22 @@ def test_create_build_scenario_calls_create_build_session(monkeypatch):
     svc.create_fix_session.assert_not_called()
 
 
+def test_create_edit_scenario_calls_create_edit_session(monkeypatch):
+    svc = MagicMock()
+    svc.create_edit_session.return_value = _session_view()
+    monkeypatch.setattr(mod, "build_service", lambda: svc)
+    actor = _actor()
+
+    body, status = mod._create({"scenario": "edit", "app_id": "a1"}, actor)
+
+    assert status == 201
+    svc.create_edit_session.assert_called_once()
+    called = svc.create_edit_session.call_args
+    assert called.kwargs["app_id"] == "a1"
+    svc.create_fix_session.assert_not_called()
+    svc.create_build_session.assert_not_called()
+
+
 def test_create_rejects_non_dict_body():
     actor = _actor()
     svc = MagicMock()

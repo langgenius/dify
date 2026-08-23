@@ -515,3 +515,82 @@ def test_build_waiting_state_actions_resolve_to_handled_kinds() -> None:
             resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
         }
         assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
+
+
+def _seed_edit_at(repo: SqlCopilotRepository, state: PcState) -> Session:
+    s = Session(
+        app_id=APP_ID,
+        tenant_id=TENANT_ID,
+        owner_account_id=ACCOUNT_ID,
+        entry_mode=EntryMode.EDIT,
+        current_state=state,
+    )
+    repo.create_session(s, CopilotContext(goal_text="Tighten risk"), [ConversationItem(kind="user", seq=0)])
+    return s
+
+
+def test_create_edit_session_rests_at_capability_check_without_dispatch(
+    service: WorkflowCopilotService, enqueued: list[tuple]
+) -> None:
+    view = service.create_edit_session(APP_ID, _actor())
+    assert view.state == "edit.capability_check"
+    assert view.entry_mode == EntryMode.EDIT
+    assert view.version == 1
+    assert view.run_status == "waiting_input"
+    assert view.canvas_read_only is False
+    assert view.conversation == []  # mock: show history + composer, nothing read yet
+    assert enqueued == []  # NO advance dispatched (unlike Build)
+    assert [a.id for a in view.actions] == ["send_edit_goal"]
+
+
+def test_edit_apply_changes_actions_and_run_status(service: WorkflowCopilotService, repo: SqlCopilotRepository) -> None:
+    s = _seed_edit_at(repo, PcState.EDIT_APPLY_CHANGES)
+    view = service.get_session_view(s.id, _actor())
+    assert view.run_status == "waiting_input"
+    assert view.phase == "modify"
+    assert [(a.id, a.kind) for a in view.actions] == [
+        ("run_affected_tests", ActionKind.PRIMARY),
+        ("revert", ActionKind.DESTRUCTIVE),
+    ]
+
+
+def test_edit_review_actions(service: WorkflowCopilotService, repo: SqlCopilotRepository) -> None:
+    s = _seed_edit_at(repo, PcState.EDIT_REVIEW)
+    view = service.get_session_view(s.id, _actor())
+    assert [a.id for a in view.actions] == [
+        "publish_workflow",
+        "keep_draft",
+        "continue_adjusting",
+        "view_changes",
+        "revert",
+    ]
+
+
+def test_edit_publish_is_terminal_with_no_actions(service: WorkflowCopilotService, repo: SqlCopilotRepository) -> None:
+    s = _seed_edit_at(repo, PcState.EDIT_PUBLISH)
+    view = service.get_session_view(s.id, _actor())
+    assert view.run_status == "complete"
+    assert view.actions == []
+
+
+def test_edit_waiting_state_actions_resolve_to_handled_kinds() -> None:
+    """Every non-client-only Edit action id must resolve (via
+    resolve_action_kind) to a kind its handler in handlers_edit.py branches on.
+    approve_plan->approve_repair, revert->undo, continue_adjusting/
+    retry_after_revert->re_fix reuse the existing global map; the rest pass
+    through (send_edit_goal, submit_edit_rules, run_affected_tests, keep_draft,
+    publish_workflow)."""
+    handled: dict[PcState, set[str]] = {
+        PcState.EDIT_CAPABILITY_CHECK: {"send_edit_goal"},
+        PcState.EDIT_IMPACT_ANALYSIS: {"submit_edit_rules"},
+        PcState.EDIT_PLAN_APPROVAL: {"approve_repair"},
+        PcState.EDIT_APPLY_CHANGES: {"run_affected_tests", "undo"},
+        PcState.EDIT_REVIEW: {"publish_workflow", "keep_draft", "re_fix", "undo"},
+        PcState.EDIT_REVERTED: {"re_fix"},
+    }
+    for state, kinds in handled.items():
+        actions = service_module._ACTIONS_FOR[state]
+        resolved = {
+            resolve_action_kind(a.id) for a in actions if a.id not in service_module._CLIENT_ONLY_ACTIONS
+        }
+        assert resolved <= kinds, f"{state}: resolved {resolved} not handled by its handler ({kinds})"
