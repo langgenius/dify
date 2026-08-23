@@ -80,12 +80,14 @@ def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1
 
     env, repo = _new_env()
     s = _seed_build_session(
-        repo, PcState.BUILD_GOAL_ANALYSIS, requirements={"currency": "USD"}
+        repo,
+        PcState.BUILD_GOAL_ANALYSIS,
+        requirements={"currency": "USD", "metrics": "revenue"},
     )
     turn = Turn(
         action=Action(
             kind="submit_requirements",
-            payload={"currency": "EUR", "audience": "board"},
+            payload={"currency": "EUR", "audience": "board", "junk": "x"},
             base_version=1,
         ),
         actor=_actor(),
@@ -95,8 +97,12 @@ def test_goal_analysis_submit_requirements_advances_to_initial_plan_with_plan_v1
     )
 
     assert res.next == PcState.BUILD_INITIAL_PLAN
-    assert res.context.requirements["currency"] == "EUR"
-    assert res.context.requirements["audience"] == "board"
+    assert res.context.requirements["currency"] == "EUR"  # payload overrides
+    assert res.context.requirements["audience"] == "board"  # new listed key merged
+    assert (
+        res.context.requirements["metrics"] == "revenue"
+    )  # untouched key survives (not blind-overwrite)
+    assert "junk" not in res.context.requirements  # non-listed key excluded
     assert res.context.plan_version_tag == "v1"
     assert res.context.plan_items
     kinds = [i.kind for i in res.items]
