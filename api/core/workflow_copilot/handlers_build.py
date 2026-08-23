@@ -17,10 +17,14 @@ from core.workflow_copilot.contract import (
     CheckpointCard,
     ConflictPolicyOption,
     DecisionItem,
+    ErrorCard,
     FormCard,
     FormField,
     PlanCard,
     ResourceSelectCard,
+    SummaryCard,
+    TestResultCard,
+    TestStat,
     Trace,
     TraceStep,
 )
@@ -37,6 +41,8 @@ __all__ = [
     "handle_initial_plan",
     "handle_plan_approval",
     "handle_resource_recommendation",
+    "handle_review",
+    "handle_test_and_repair",
 ]
 
 
@@ -318,6 +324,115 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> St
     return StepResult(next=PcState.BUILD_EXECUTION, context=fc)
 
 
+def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(working, auto) Canned test/repair arc: found a config bug -> applied a
+    real set_node_config fix via apply_repair -> retested green. Emits the
+    error/change_set/test_result plus the review summary, transitions to
+    build.review. No live run_draft (spec: canned test_and_repair)."""
+    _emit_canvas(env, "mark_test_error")
+    error_items = append_card(
+        fc,
+        ErrorCard(
+            title="gross_margin parsed as text",
+            body="The LLM node returned gross_margin as a string; tightening the prompt to coerce a number.",
+            tone="danger",
+            node_id="llm",
+        ),
+    )
+
+    repair_intents = env.agent.propose_build_repair(list(fc.built_node_ids))
+    result = env.dify.apply_repair(s.app_id, turn.actor, repair_intents, on_canvas=env.emit_canvas)
+    fc.last_snapshot_hash = result.new_hash
+    changes = list(result.changes) if result.changes else list(result.changed_nodes)
+    scope = result.scope or "configuration"
+    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "config edit")
+    change_set_items = append_card(
+        fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
+    )
+
+    _emit_canvas(env, "mark_test_success")
+    test_result_items = append_card(
+        fc,
+        TestResultCard(
+            title="Test run",
+            subtitle="All checks passed",
+            tone="success",
+            stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
+            run_ids=[],
+        ),
+    )
+
+    _emit_canvas(env, "mark_review_ready")
+    summary_items = append_card(
+        fc,
+        SummaryCard(
+            variant="review",
+            title="Review",
+            items=[
+                "Workflow built: Start -> Knowledge -> LLM -> End",
+                "1 issue found and fixed",
+                "Tests passing",
+            ],
+        ),
+    )
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="build.review",
+            trace=Trace(status="completed", steps=[]),
+            reply_text="Tests passed; ready for review.",
+            cards=["error", "change_set", "test_result", "summary"],
+        ),
+    )
+    return StepResult(
+        next=PcState.BUILD_REVIEW,
+        context=fc,
+        items=[*error_items, *change_set_items, *test_result_items, *summary_items, *turn_items],
+    )
+
+
+def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) Terminal decision. publish_workflow -> build.publish;
+    keep_draft -> build.governance_feedback (skips publish); continue_adjusting
+    (resolved to re_fix) -> build.initial_plan (re-plan); revert (undo) ->
+    build.reverted (intent only)."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind == "publish_workflow":
+        items = append_card(fc, DecisionItem(text="Chose to publish"))
+        return StepResult(next=PcState.BUILD_PUBLISH, context=fc, items=items)
+    if kind == "keep_draft":
+        _emit_canvas(env, "cancel_publish")
+        items = append_card(fc, DecisionItem(text="Kept the draft"))
+        return StepResult(next=PcState.BUILD_GOVERNANCE_FEEDBACK, context=fc, items=items)
+    if kind == "re_fix":  # continue_adjusting
+        _emit_canvas(env, "cancel_publish")
+        fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
+        fc.plan_version_tag = "v1"
+        decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
+        plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v1", items=list(fc.plan_items)))
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="build.initial_plan",
+                trace=Trace(status="completed", steps=[]),
+                reply_text="Revised plan.",
+                cards=["plan"],
+            ),
+        )
+        return StepResult(
+            next=PcState.BUILD_INITIAL_PLAN,
+            context=fc,
+            items=[*decision_items, *plan_items, *turn_items],
+        )
+    if kind == "undo":  # revert
+        _emit_canvas(env, "revert_checkpoint")
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
+    return StepResult(next=PcState.BUILD_REVIEW, context=fc)
+
+
 def build_registry() -> dict[PcState, Handler]:
     """The Build handler table. Grows across Slice 2 tasks; ``build.complete``
     is terminal and intentionally absent (the loop returns before lookup)."""
@@ -328,4 +443,6 @@ def build_registry() -> dict[PcState, Handler]:
         PcState.BUILD_RESOURCE_RECOMMENDATION: handle_resource_recommendation,
         PcState.BUILD_PLAN_APPROVAL: handle_plan_approval,
         PcState.BUILD_EXECUTION: handle_execution,
+        PcState.BUILD_TEST_AND_REPAIR: handle_test_and_repair,
+        PcState.BUILD_REVIEW: handle_review,
     }

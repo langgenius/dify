@@ -227,3 +227,84 @@ def test_execution_revert_records_intent_only():
     assert res.next == PcState.BUILD_REVERTED
     assert any(i.kind == "decision" for i in res.items)
     assert {"event": "revert_checkpoint"} in events
+
+
+def test_test_and_repair_finds_and_fixes_then_reaches_review():
+    from core.workflow_copilot.handlers_build import handle_plan_approval, handle_test_and_repair
+    from tests.unit_tests.core.workflow_copilot.fakes import FakeBuildDifyPort
+
+    events: list[dict] = []
+    dify = FakeBuildDifyPort()
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    # first build the graph so the llm node exists for the repair to target.
+    s = _seed_build_session(
+        repo, PcState.BUILD_PLAN_APPROVAL, plan_items=["Retrieve", "Summarize"], plan_version_tag="v2"
+    )
+    approve_turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    built = handle_plan_approval(env, approve_turn, *repo.get_session(s.id))
+    fc = built.context
+
+    events.clear()
+    res = handle_test_and_repair(env, Turn(actor=_actor()), repo.get_session(s.id)[0], fc)
+
+    assert res.next == PcState.BUILD_REVIEW
+    kinds = [i.kind for i in res.items]
+    assert kinds.count("error") == 1
+    assert "change_set" in kinds
+    assert "test_result" in kinds
+    summary = next(i for i in res.items if i.kind == "summary")
+    assert summary.payload["variant"] == "review"
+    names = [e["event"] for e in events]
+    assert "mark_test_error" in names
+    assert "apply_error_fix" in names
+    assert "mark_test_success" in names
+    assert "mark_review_ready" in names
+    # the repair actually mutated the llm node's prompt_template.
+    llm = next(n for n in dify.graph["nodes"] if n["id"] == "llm")
+    assert llm["data"]["prompt_template"][0]["text"] == "You are a financial report assistant."
+
+
+def test_review_publish_advances_to_publish():
+    from core.workflow_copilot.handlers_build import handle_review
+
+    env, repo = _new_env()
+    s = _seed_build_session(repo, PcState.BUILD_REVIEW, built_node_ids=["start", "llm", "end"])
+    publish_turn = Turn(action=Action(kind="publish_workflow", base_version=1), actor=_actor())
+    res = handle_review(env, publish_turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_PUBLISH
+    assert any(i.kind == "decision" for i in res.items)
+
+
+def test_review_keep_draft_skips_publish_to_governance():
+    from core.workflow_copilot.handlers_build import handle_review
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_REVIEW, built_node_ids=["start", "llm", "end"])
+    keep_draft_turn = Turn(action=Action(kind="keep_draft", base_version=1), actor=_actor())
+    res = handle_review(env, keep_draft_turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_GOVERNANCE_FEEDBACK
+    assert {"event": "cancel_publish"} in events
+
+
+def test_review_continue_adjusting_returns_to_initial_plan_with_fresh_plan():
+    from core.workflow_copilot.handlers_build import handle_review
+
+    env, repo = _new_env()
+    s = _seed_build_session(repo, PcState.BUILD_REVIEW, requirements={"currency": "USD"}, built_node_ids=["start"])
+    re_fix_turn = Turn(action=Action(kind="re_fix", base_version=1), actor=_actor())
+    res = handle_review(env, re_fix_turn, *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_INITIAL_PLAN
+    assert res.context.plan_version_tag == "v1"
+    assert any(i.kind == "plan" for i in res.items)
+
+
+def test_review_revert_records_intent_only():
+    from core.workflow_copilot.handlers_build import handle_review
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_build_session(repo, PcState.BUILD_REVIEW, built_node_ids=["start", "llm", "end"])
+    res = handle_review(env, Turn(action=Action(kind="undo", base_version=1), actor=_actor()), *repo.get_session(s.id))
+    assert res.next == PcState.BUILD_REVERTED
+    assert {"event": "revert_checkpoint"} in events
