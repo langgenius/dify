@@ -224,6 +224,34 @@ class WorkflowServiceDifyPort:
                 changed_nodes=changed_nodes, new_hash=updated.unique_hash, changes=changes, scope=scope
             )
 
+    def restore_graph(self, app_id: str, actor: Actor, graph: Graph) -> str:
+        """Restore the draft to a prior snapshot graph (Slice 4 revert): write
+        the whole graph back via the same graph-only sync apply_repair uses.
+        Returns the new draft hash. Raises HashMismatchError if the draft
+        changed since the caller read it (same contract as apply_repair)."""
+        with _session_factory()() as session:
+            account = resolve_account(session, actor)
+            app = load_app(session, app_id, actor)
+            workflow = _load_draft_workflow_or_raise(app, session=session)
+            try:
+                updated = WorkflowService().sync_draft_workflow(
+                    app_model=app,
+                    graph=graph,
+                    features=dict(workflow.features_dict),
+                    unique_hash=workflow.unique_hash,
+                    account=account,
+                    environment_variables=[],
+                    conversation_variables=workflow.conversation_variables,
+                    session=session,
+                    graph_only=True,
+                    sync_agent_bindings=False,
+                    commit=True,
+                    preserve_environment_variables=True,
+                )
+            except WorkflowHashNotEqualError as exc:
+                raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
+            return updated.unique_hash
+
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:
         with _session_factory()() as session:
             account = resolve_account(session, actor)

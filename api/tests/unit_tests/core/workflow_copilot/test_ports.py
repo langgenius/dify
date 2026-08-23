@@ -159,6 +159,9 @@ class _StubDifyPort:
     def publish(self, _app_id, _actor):
         return None
 
+    def restore_graph(self, _app_id, _actor, _graph):
+        return "hash-restored"
+
 
 class _StubRepository:
     """A trivial conforming Repository."""
