@@ -180,3 +180,10 @@ def test_propose_build_repair_targets_the_llm_node():
     assert len(intents) == 1
     assert intents[0].op == "set_node_config"
     assert intents[0].args["node_id"] == BUILD_LLM_ID
+
+
+def test_placeholder_learn_from_build_returns_descriptor():
+    from core.dify_builder.placeholder_agent import PlaceholderAgent
+
+    out = PlaceholderAgent().learn_from_build("summarize a PDF", {}, ["step"], ["llm"])
+    assert isinstance(out, str) and out != ""

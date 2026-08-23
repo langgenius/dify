@@ -367,6 +367,10 @@ class StubAgent:
     def propose_build_repair(self, _built_node_ids):
         return []
 
+    def learn_from_build(self, _goal_text, _requirements, _plan_items, _built_node_ids):
+        self.learn_calls = getattr(self, "learn_calls", 0) + 1
+        return "stub-skill"
+
     def analyze_impact(self, _goal_text, _graph):
         return {"edit_rules": {}, "target_node_ids": []}
 
