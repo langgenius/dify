@@ -25,9 +25,25 @@ The workflow runtime MUST inspect the raw persisted `version` before shared node
 - **WHEN** raw persisted Human Input node data contains a string other than `"1"` or `"2"`
 - **THEN** the runtime MUST reject it and MUST NOT resolve the Human Input registry `latest` node class
 
+### Requirement: Human Input v1 implementation MUST remain unchanged
+
+This change MUST NOT modify Human Input v1 node data, node class, callback composition, form repository, delivery behavior, submission behavior or public contract. Shared dispatch code MAY add an exact v2 branch, but missing version and exact string `"1"` MUST continue through the existing legacy validation and callback construction path without a new v1 binding, adapter or runtime application.
+
+#### Scenario: Missing version executes after v2 support is installed
+
+- **WHEN** an existing Human Input node omits `version`
+- **THEN** the runtime MUST construct the same legacy node class and `DifyHITLCallback` composition used before this change
+- **AND** no v2 runtime protocol or `RuntimeFormProvisioner` operation may execute
+
+#### Scenario: Exact v1 executes after v2 support is installed
+
+- **WHEN** a Human Input node contains exact string `version: "1"`
+- **THEN** its validation, pause/reload, delivery, submission and output behavior MUST remain unchanged
+- **AND** the implementation MUST NOT require a new v1 adapter or binding
+
 ### Requirement: Human Input v2 MUST be a separately registered workflow node class
 
-The Human Input v2 node MUST register under `type: human-input` with exact version `"2"` and strict v2 node data. The v1 and v2 classes MAY share the version-neutral Graphon HITL decision protocol, but MUST NOT share version-specific validation or callback composition.
+The Human Input v2 node MUST register under `type: human-input` with exact version `"2"` and strict v2 node data. The v2 class MAY implement the version-neutral Graphon HITL decision protocol already used by v1, but it MUST NOT change or replace v1 validation or callback composition.
 
 #### Scenario: Registry contains both Human Input versions
 
@@ -43,7 +59,7 @@ The Human Input v2 node MUST register under `type: human-input` with exact versi
 
 ### Requirement: Node and HITL callback external effects MUST be injected through ports
 
-The Human Input v2 Node MUST perform external work only through its injected HITL callback. The v2 callback MUST convert strict v2 node data and callback runtime context into one runtime entry request and call only the injected `HumanInputV2Runtime` protocol. Neither layer MAY directly construct or access ORM records, SQLAlchemy sessions, controller state, recipient snapshots, provider capabilities, sender lists, Celery tasks, global database handles, repository implementations or service locators.
+The Human Input v2 Node MUST perform external work only through its injected HITL callback. The v2 callback MUST convert strict v2 node data and callback runtime context into one runtime entry request and call only the injected `HumanInputV2Runtime` protocol. Neither layer MAY directly construct or access ORM records, SQLAlchemy sessions, controller state, recipient snapshots, delivery materialization internals, Celery tasks, global database handles, repository implementations or service locators.
 
 #### Scenario: V2 node executes
 
@@ -54,52 +70,56 @@ The Human Input v2 Node MUST perform external work only through its injected HIT
 
 - **WHEN** the callback needs to create or reload one runtime form
 - **THEN** it MUST call the injected `HumanInputV2Runtime` protocol once
-- **AND** it MUST NOT receive a persistence create result, recipient snapshot, delivery capability or sender list
+- **AND** it MUST NOT receive a persistence result, recipient snapshot, `FormCreation`, delivery command, scheduler or Worker state
 
-### Requirement: FormSending MUST hide recipient resolution and delivery fanout
+### Requirement: RuntimeFormProvisioner MUST hide new-form provisioning
 
-The v2 runtime application MUST expose delivery through one injected `FormSending` interface. `FormSending` MUST own recipient snapshot reads, `ResolvedApprovalPlan` construction, owner-scoped form graph create-once, internal sender selection, sender fanout and Email/IM delivery policy. It MUST return the winning persisted runtime form without returning sender objects, Provider adapters, credentials or Provider-specific outcomes to the callback.
+The v2 runtime application MUST establish a missing runtime form through one injected `RuntimeFormProvisioner` interface. The provisioner MUST own recipient snapshot reads, `ResolvedApprovalPlan` construction, `FormCreation` construction, missing-form persistence and post-commit delivery scheduling. It MUST return the newly persisted `HumanInputForm` without returning `FormCreation`, persistence results, delivery commands, Worker state, Provider adapters or credentials to the runtime application or callback.
 
-#### Scenario: A new runtime form is sent
+#### Scenario: A new runtime form is provisioned
 
-- **WHEN** no form exists for the runtime owner and `HumanInputV2Runtime` invokes `FormSending`
-- **THEN** `FormSending` MUST establish one complete form, grant and endpoint graph for that owner
-- **AND** only a create-once winner with a complete graph MUST execute internal sender fanout
+- **WHEN** no form exists for the runtime owner and `HumanInputV2Runtime` invokes `RuntimeFormProvisioner`
+- **THEN** the provisioner MUST persist the form, grants and endpoints in one transaction
+- **AND** it MUST call `FormDeliveryScheduler.schedule(form_ref)` only after that transaction commits
 
-#### Scenario: Form graph persistence uses multiple commits
+#### Scenario: Delivery is scheduled asynchronously
 
-- **WHEN** a persistence adapter does not commit the form, grants and endpoints in one transaction
-- **THEN** repeated execution MUST complete or reject the partial graph without creating duplicate form, grant or endpoint records
-- **AND** `FormSending` MUST NOT execute sender fanout until the graph is complete
+- **WHEN** the persisted runtime form graph is ready
+- **THEN** `RuntimeFormProvisioner` MUST schedule delivery without waiting for a per-endpoint result
+- **AND** the Worker MUST own delivery fanout, attempt persistence, Provider I/O and outcome persistence
 
-#### Scenario: IM form delivery selects a surface
+#### Scenario: Asynchronous delivery fails
 
-- **WHEN** `FormSending` delivers one IM endpoint
-- **THEN** it MUST keep dynamic-card assessment, card selection and Message Template text fallback behind its interface
-- **AND** the callback and runtime application MUST NOT branch on Provider-specific capabilities or outcomes
+- **WHEN** delivery scheduling, attempt execution or Provider I/O fails after the form transaction commits
+- **THEN** the callback MUST still use the persisted waiting form as a valid `PauseRequested` state
+- **AND** the failure MUST NOT change the current node entry outcome or Form lifecycle
 
-#### Scenario: Delivery fails after form creation
+#### Scenario: Runtime owner uniqueness conflicts during provisioning
 
-- **WHEN** one sender fails after the runtime form graph commits
-- **THEN** `FormSending` MUST retain the failure as a delivery fact when available
-- **AND** the waiting Form lifecycle and callback pause decision MUST remain unchanged
+- **WHEN** persistence reports that the runtime owner already has a form after the entry-start read reported none
+- **THEN** `RuntimeFormProvisioner` MUST fail with an invariant violation
+- **AND** it MUST NOT reinterpret the conflict as a normal existing-form result
 
-### Requirement: V2 callback reload MUST be create-once for one node execution
+### Requirement: V2 callback entry MUST branch once on persisted owner state
 
-For one tenant, workflow run and workflow node execution, `HumanInputV2Runtime` MUST first reload by owner. It MUST invoke `FormSending` only when no runtime form exists. `FormSending` MUST use owner-scoped create-once persistence so concurrent invocations reuse the winning form and only the create-once winner executes sender fanout.
+The Graph runtime MUST serialize callback execution for the same `workflow_node_execution_id`. For each entry, `HumanInputV2Runtime` MUST first read the persisted runtime form by owner. It MUST use that read to choose exactly one branch: evaluate the existing frozen entry or invoke `RuntimeFormProvisioner` for an absent form. It MUST NOT retry provisioning as an existing-form path after a uniqueness conflict, and it MUST NOT wait for asynchronous delivery outcomes before returning the callback decision.
 
 #### Scenario: Waiting callback is entered again
 
 - **WHEN** the callback is invoked again for a node execution whose v2 form already exists and remains waiting
 - **THEN** it MUST return `PauseRequested` with the same form-backed session identity
-- **AND** `HumanInputV2Runtime` MUST NOT invoke `FormSending`
+- **AND** `HumanInputV2Runtime` MUST NOT invoke `RuntimeFormProvisioner`
 
-#### Scenario: Concurrent callback creation races
+#### Scenario: First callback entry has no form
 
-- **WHEN** two callback invocations concurrently observe the same new workflow node execution
-- **THEN** exactly one form graph MUST be committed
-- **AND** both invocations MUST resolve to the same form identity
-- **AND** only the create-once winner MUST execute sender fanout
+- **WHEN** the entry-start owner read finds no runtime form
+- **THEN** `HumanInputV2Runtime` MUST invoke `RuntimeFormProvisioner` once
+- **AND** it MUST use the provisioned form as the waiting callback state
+
+#### Scenario: Same node execution is invoked concurrently
+
+- **WHEN** two callback executions for the same `workflow_node_execution_id` would overlap
+- **THEN** the Graph runtime MUST serialize them before either enters `HumanInputV2Runtime`
 
 ### Requirement: Frozen v2 lifecycle state MUST determine the callback outcome
 

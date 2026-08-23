@@ -40,7 +40,7 @@
 
 ### Requirement: Form persistence MUST expose aggregate-oriented operations
 
-Form persistence ports MUST own form graph creation and append-oriented delivery writes, use explicit mappers and load only the graph required by each operation. Runtime form creation MUST expose an owner-scoped create-once operation that establishes one complete form, grant and endpoint graph before returning a ready result. A persistence adapter MAY commit the complete graph in one transaction. An adapter that uses multiple commits MUST idempotently complete or reject a partial graph without creating duplicate records. Initial delivery attempts and provider outcomes MUST remain append-oriented operational facts owned behind `FormSending`; they MUST NOT extend the Form lifecycle state.
+Form persistence ports MUST own form graph creation, use explicit mappers and load only the graph required by each operation. Runtime form creation MUST accept one `FormCreation` only after the serialized runtime entry has confirmed that the owner has no form. One transaction MUST persist the form, grants and endpoints or roll back all of them. Runtime provisioning MUST NOT create `DeliveryAttempt` records in that transaction. Delivery attempts and Provider outcomes MUST be persisted by the asynchronous delivery Worker and MUST NOT extend the Form lifecycle state.
 
 #### Scenario: Form and approval plan are persisted
 
@@ -51,20 +51,20 @@ Form persistence ports MUST own form graph creation and append-oriented delivery
 #### Scenario: Runtime form graph is first created
 
 - **WHEN** no form exists for one tenant and workflow node execution owner
-- **THEN** persistence MUST establish one complete form, grant and endpoint graph for that owner
-- **AND** it MUST NOT require all three record kinds to commit in one transaction
+- **THEN** one transaction MUST persist the form, grants and endpoints
+- **AND** any write failure MUST roll back the complete creation
 
-#### Scenario: Runtime form graph already exists
+#### Scenario: Runtime owner uniqueness conflicts
 
-- **WHEN** create-once is repeated for the same workflow node execution owner
-- **THEN** the operation MUST return the complete existing graph without creating duplicate form, grant or endpoint records
-- **AND** it MUST complete or reject an existing partial graph rather than returning it as ready
+- **WHEN** form creation encounters an existing complete graph for the same workflow node execution owner despite the serialized entry precondition
+- **THEN** persistence MUST report an invariant violation
+- **AND** it MUST NOT return the existing graph as a successful creation result
 
-#### Scenario: Initial delivery fails after form creation
+#### Scenario: Asynchronous delivery attempt fails after form creation
 
-- **WHEN** `FormSending` cannot deliver one or more sender operations after the create-once winner commits
+- **WHEN** the Worker records a delivery failure after the runtime form graph is complete
 - **THEN** the form MUST remain waiting
-- **AND** each attempted sender outcome MUST be recorded as an append-oriented delivery fact
+- **AND** the Worker MUST persist the attempt outcome as an append-oriented delivery fact
 - **AND** the system MUST NOT add a Form sending status
 
 #### Scenario: Two forms share a workflow run
