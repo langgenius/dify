@@ -237,6 +237,10 @@ class CopilotContext:
     resource_selection: dict[str, Any] = field(default_factory=dict)
     built_node_ids: list[str] = field(default_factory=list)
 
+    # -- Edit fields (Slice 3, additive) --
+    edit_rules: dict[str, Any] = field(default_factory=dict)
+    edit_target_node_ids: list[str] = field(default_factory=list)
+
 
 @dataclass(kw_only=True)
 class Action:
