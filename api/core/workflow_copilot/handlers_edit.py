@@ -21,7 +21,11 @@ from core.workflow_copilot.contract import (
     FormCard,
     FormField,
     PlanCard,
+    PublishCard,
     SummaryCard,
+    SummaryRow,
+    TestResultCard,
+    TestStat,
     Trace,
     TraceStep,
 )
@@ -36,6 +40,9 @@ __all__ = [
     "handle_capability_check",
     "handle_impact_analysis",
     "handle_plan_approval",
+    "handle_reverted",
+    "handle_review",
+    "handle_test_affected_paths",
 ]
 
 
@@ -272,6 +279,169 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: CopilotContext) -
     return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc)
 
 
+def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(working, auto) Canned affected-path test: emit a success test_result +
+    the review summary + change_set, transition to edit.review. No live
+    run_draft (spec: canned)."""
+    _emit_canvas(env, "mark_test_success")
+    test_result_items = append_card(
+        fc,
+        TestResultCard(
+            title="Affected-path tests",
+            subtitle="All checks passed",
+            tone="success",
+            stats=[TestStat(value="1", label="runs"), TestStat(value="0", label="errors")],
+            run_ids=[],
+        ),
+    )
+    changed = list(fc.change_set.changed_nodes) if fc.change_set else []
+    change_set_items = append_card(
+        fc,
+        ChangeSetCard(
+            count=len(changed),
+            changes=[f"edited {nid}" for nid in changed],
+            scope="configuration",
+            full_diff_open=False,
+        ),
+    )
+    _emit_canvas(env, "mark_review_ready")
+    summary_items = append_card(
+        fc,
+        SummaryCard(
+            variant="review",
+            title="Review",
+            items=["Applied the change plan", "Affected paths tested", "Tests passing"],
+        ),
+    )
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="edit.review",
+            trace=Trace(status="completed", steps=[]),
+            reply_text="Tests passed; ready for review.",
+            cards=["test_result", "change_set", "summary"],
+        ),
+    )
+    return StepResult(
+        next=PcState.EDIT_REVIEW,
+        context=fc,
+        items=[*test_result_items, *change_set_items, *summary_items, *turn_items],
+    )
+
+
+def _completion_rows(fc: CopilotContext, status: str) -> list[SummaryRow]:
+    return [
+        SummaryRow(label="Change", value="; ".join(fc.plan_items) or "config edit"),
+        SummaryRow(label="Status", value=status),
+    ]
+
+
+def handle_review(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) Terminal decision. Mock 02-edit.txt:36-39: publish_workflow AND
+    keep_draft both = Task Completed -> edit.publish (terminal). Because edit.
+    publish runs no handler, this handler emits its cards before returning.
+    continue_adjusting (resolved re_fix) -> edit.impact_analysis (re-analyze);
+    revert (undo) -> edit.reverted (intent only)."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind == "publish_workflow":
+        env.dify.publish(s.app_id, turn.actor)
+        _emit_canvas(env, "publish_workflow")
+        decision_items = append_card(fc, DecisionItem(text="Chose to publish"))
+        publish_items = append_card(fc, PublishCard(version="2.1", badge="live"))
+        summary_items = append_card(
+            fc, SummaryCard(variant="completion", title="Edit published", rows=_completion_rows(fc, "Published"))
+        )
+        return StepResult(
+            next=PcState.EDIT_PUBLISH, context=fc, items=[*decision_items, *publish_items, *summary_items]
+        )
+    if kind == "keep_draft":
+        _emit_canvas(env, "cancel_publish")
+        decision_items = append_card(fc, DecisionItem(text="Kept the draft"))
+        summary_items = append_card(
+            fc, SummaryCard(variant="completion", title="Draft kept", rows=_completion_rows(fc, "Draft kept"))
+        )
+        return StepResult(next=PcState.EDIT_PUBLISH, context=fc, items=[*decision_items, *summary_items])
+    if kind == "re_fix":  # continue_adjusting -> re-analyze impact
+        _emit_canvas(env, "cancel_publish")
+        for node_id in fc.edit_target_node_ids:
+            _emit_canvas(env, "highlight_edit_target", node_id=node_id)
+        decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
+        form_items = append_card(
+            fc, FormCard(variant="edit_rules", fields=list(_EDIT_RULE_FIELDS), values=dict(fc.edit_rules), frozen=False)
+        )
+        challenge_items = append_card(
+            fc,
+            ChallengeCard(
+                title="High-impact rules",
+                body="These rules change branching and output; review before applying.",
+                tone="warning",
+            ),
+        )
+        change_set_items = append_card(
+            fc,
+            ChangeSetCard(
+                count=len(fc.edit_target_node_ids),
+                changes=[f"will edit {nid}" for nid in fc.edit_target_node_ids],
+                scope="configuration",
+                full_diff_open=False,
+            ),
+        )
+        turn_items = append_card(
+            fc,
+            AssistantTurnItem(
+                turn_id=str(uuid.uuid4()),
+                stage_id="edit.impact_analysis",
+                trace=Trace(status="completed", steps=[]),
+                reply_text="Let's adjust the change.",
+                cards=["form", "challenge", "change_set"],
+            ),
+        )
+        return StepResult(
+            next=PcState.EDIT_IMPACT_ANALYSIS,
+            context=fc,
+            items=[*decision_items, *form_items, *challenge_items, *change_set_items, *turn_items],
+        )
+    if kind == "undo":  # revert
+        _emit_canvas(env, "revert_checkpoint")
+        items = append_card(fc, DecisionItem(text="Requested a revert"))
+        return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
+    return StepResult(next=PcState.EDIT_REVIEW, context=fc)
+
+
+def handle_reverted(env: Env, turn: Turn, s: Session, fc: CopilotContext) -> StepResult:
+    """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
+    re-proposes the change plan, self-mints a fresh pre-edit checkpoint, and
+    returns to edit.plan_approval (spec §7.2)."""
+    kind = turn.action.kind if turn.action is not None else ""
+    if kind != "re_fix":
+        return StepResult(next=PcState.EDIT_REVERTED, context=fc)
+    graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
+    fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
+    fc.plan_version_tag = "v1"
+    checkpoint = Checkpoint(id=str(uuid.uuid4()), session_id=s.id, state=PcState.EDIT_PLAN_APPROVAL)
+    env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
+    fc.checkpoint_id = checkpoint.id
+    fc.last_snapshot_hash = graph_hash
+    plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
+    checkpoint_items = append_card(
+        fc, CheckpointCard(checkpoint_id=checkpoint.id, label="Pre-edit checkpoint", created_at="")
+    )
+    turn_items = append_card(
+        fc,
+        AssistantTurnItem(
+            turn_id=str(uuid.uuid4()),
+            stage_id="edit.plan_approval",
+            trace=Trace(status="completed", steps=[]),
+            reply_text="Re-approve to apply the change.",
+            cards=["plan", "checkpoint"],
+        ),
+    )
+    return StepResult(
+        next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=[*plan_items, *checkpoint_items, *turn_items]
+    )
+
+
 def edit_registry() -> dict[PcState, Handler]:
     """The Edit handler table. Grows across Slice 3 tasks; ``edit.publish`` is
     terminal and intentionally absent (the loop returns before lookup)."""
@@ -280,4 +450,7 @@ def edit_registry() -> dict[PcState, Handler]:
         PcState.EDIT_IMPACT_ANALYSIS: handle_impact_analysis,
         PcState.EDIT_PLAN_APPROVAL: handle_plan_approval,
         PcState.EDIT_APPLY_CHANGES: handle_apply_changes,
+        PcState.EDIT_TEST_AFFECTED_PATHS: handle_test_affected_paths,
+        PcState.EDIT_REVIEW: handle_review,
+        PcState.EDIT_REVERTED: handle_reverted,
     }
