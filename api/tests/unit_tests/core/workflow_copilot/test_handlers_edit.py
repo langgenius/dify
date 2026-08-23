@@ -129,3 +129,72 @@ def test_edit_registry_maps_capability_check_and_impact_analysis():
     reg = edit_registry()
     assert reg[PcState.EDIT_CAPABILITY_CHECK] is handle_capability_check
     assert reg[PcState.EDIT_IMPACT_ANALYSIS] is handle_impact_analysis
+
+
+def test_plan_approval_approve_edits_graph_and_emits_canvas():
+    from core.workflow_copilot.handlers_edit import handle_plan_approval
+
+    events: list[dict] = []
+    dify = FakeEditDifyPort()
+    env, repo = _new_env(dify=dify, emit_canvas=events.append)
+    s = _seed_edit_session(
+        repo,
+        PcState.EDIT_PLAN_APPROVAL,
+        edit_rules={"risk_threshold": "high", "timeout_behavior": "fail_closed"},
+        edit_target_node_ids=["llm"],
+        checkpoint_id="cp-1",
+    )
+    # approve_plan resolves (via service.resolve_action_kind) to "approve_repair".
+    turn = Turn(action=Action(kind="approve_repair", base_version=1), actor=_actor())
+    res = handle_plan_approval(env, turn, *repo.get_session(s.id))
+
+    assert res.next == PcState.EDIT_APPLY_CHANGES
+    # the existing llm node was actually reconfigured.
+    llm = next(n for n in dify.graph["nodes"] if n["id"] == "llm")
+    assert llm["data"]["risk_threshold"] == "high"
+    # Edit narrates its own canvas events (no per-intent apply_error_fix leak).
+    names = [e["event"] for e in events]
+    assert "create_checkpoint" in names
+    assert "highlight_edit_target" in names
+    assert "apply_edit_plan" in names
+    assert "apply_error_fix" not in names
+    change_set = next(i for i in res.items if i.kind == "change_set")
+    assert change_set.payload["scope"] == "configuration"
+    assert change_set.payload["count"] >= 1
+    assert {i.kind for i in res.items} >= {"change_set", "checkpoint", "decision", "assistant_turn"}
+
+
+def test_plan_approval_ignores_non_approve_action():
+    from core.workflow_copilot.handlers_edit import handle_plan_approval
+
+    env, repo = _new_env()
+    s = _seed_edit_session(repo, PcState.EDIT_PLAN_APPROVAL, edit_target_node_ids=["llm"])
+    res = handle_plan_approval(
+        env, Turn(action=Action(kind="message", base_version=1), actor=_actor()), *repo.get_session(s.id)
+    )
+    assert res.next == PcState.EDIT_PLAN_APPROVAL
+
+
+def test_apply_changes_run_affected_tests_advances_to_test():
+    from core.workflow_copilot.handlers_edit import handle_apply_changes
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_APPLY_CHANGES, edit_target_node_ids=["llm"])
+    turn = Turn(action=Action(kind="run_affected_tests", base_version=1), actor=_actor())
+    res = handle_apply_changes(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.EDIT_TEST_AFFECTED_PATHS
+    assert {"event": "start_test_run"} in events
+
+
+def test_apply_changes_revert_records_intent_only():
+    from core.workflow_copilot.handlers_edit import handle_apply_changes
+
+    events: list[dict] = []
+    env, repo = _new_env(emit_canvas=events.append)
+    s = _seed_edit_session(repo, PcState.EDIT_APPLY_CHANGES, edit_target_node_ids=["llm"])
+    turn = Turn(action=Action(kind="undo", base_version=1), actor=_actor())  # revert -> undo
+    res = handle_apply_changes(env, turn, *repo.get_session(s.id))
+    assert res.next == PcState.EDIT_REVERTED
+    assert any(i.kind == "decision" for i in res.items)
+    assert {"event": "revert_checkpoint"} in events
