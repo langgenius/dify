@@ -61,6 +61,17 @@ class SqlDifyBuilderRepository:
     def __init__(self, session_factory: sessionmaker) -> None:
         self._session_factory = session_factory
 
+    @staticmethod
+    def _add(db_session, row, domain_id: str) -> str:
+        """Id-preservation idiom: a caller-supplied non-empty ``domain_id``
+        must survive unchanged on the new row; otherwise the DB mints one.
+        Adds+flushes ``row`` and returns its (possibly DB-generated) id."""
+        if domain_id:
+            row.id = domain_id
+        db_session.add(row)
+        db_session.flush()
+        return row.id
+
     # -- sessions --
 
     def create_session(
@@ -74,12 +85,7 @@ class SqlDifyBuilderRepository:
                 entry_mode=str(session.entry_mode),
                 current_state=str(session.current_state),
             )
-            if session.id:
-                row.id = session.id
-            db_session.add(row)
-            db_session.flush()
-
-            session.id = row.id
+            session.id = self._add(db_session, row, session.id)
             session.version = 1
 
             db_session.add_all(self._to_conversation_row(row.id, item) for item in items)
@@ -170,22 +176,14 @@ class SqlDifyBuilderRepository:
                 hash=snap.hash,
                 graph=snap.graph,
             )
-            if snap.id:
-                snap_row.id = snap.id
-            db_session.add(snap_row)
-            db_session.flush()
-            snap.id = snap_row.id
+            snap.id = self._add(db_session, snap_row, snap.id)
 
             cp_row = DifyBuilderCheckpoint(
                 session_id=cp.session_id,
                 state=str(cp.state),
                 snapshot_id=snap_row.id,
             )
-            if cp.id:
-                cp_row.id = cp.id
-            db_session.add(cp_row)
-            db_session.flush()
-            cp.id = cp_row.id
+            cp.id = self._add(db_session, cp_row, cp.id)
             cp.snapshot_id = snap_row.id
 
     def get_checkpoint(self, id: str) -> tuple[Checkpoint, Snapshot]:
@@ -218,11 +216,7 @@ class SqlDifyBuilderRepository:
             )
             # Id-preservation contract (see `ports.Repository.save_run`):
             # a caller-supplied non-empty `run.id` must survive unchanged.
-            if run.id:
-                row.id = run.id
-            db_session.add(row)
-            db_session.flush()
-            run.id = row.id
+            run.id = self._add(db_session, row, run.id)
 
     def get_run(self, id: str) -> Run:
         with self._session_factory() as db_session, db_session.begin():
@@ -242,11 +236,7 @@ class SqlDifyBuilderRepository:
                 inputs=ti.inputs,
                 start_schema_hash=ti.start_schema_hash,
             )
-            if ti.id:
-                row.id = ti.id
-            db_session.add(row)
-            db_session.flush()
-            ti.id = row.id
+            ti.id = self._add(db_session, row, ti.id)
 
     def get_test_input(self, id: str) -> TestInput:
         with self._session_factory() as db_session, db_session.begin():
