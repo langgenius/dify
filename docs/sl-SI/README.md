@@ -85,7 +85,7 @@ Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://loca
 
 #### Iskanje pomoči
 
-Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#community--contact).
+Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#skupnost-in-stik).
 
 > Če želite prispevati k Difyju ali narediti dodaten razvoj, glejte naš vodnik za [uvajanje iz izvorne kode](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
@@ -120,7 +120,7 @@ AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez t
   Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
 
 - **Self-hosting Dify Community Edition</br>**
-  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#quick-start) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
+  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#hitri-začetek) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai) .
 
 - **Dify za podjetja/organizacije</br>**
   Ponujamo dodatne funkcije, osredotočene na podjetja. Zabeležite svoja vprašanja prek tega klepetalnega robota ali nam pošljite e-pošto, da se pogovorimo o potrebah podjetja. </br>
@@ -183,6 +183,10 @@ Z enim klikom namestite Dify na Alibaba Cloud z [Alibaba Cloud Data Management](
 #### Uporaba Azure Devops Pipeline za uvajanje v AKS
 
 Z enim klikom namestite Dify v AKS z uporabo [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
+
+#### Namestitev s Sealos
+
+Z enim klikom namestite Dify prek [Sealos App Store](https://sealos.io/products/app-store/dify/)
 
 ## Prispevam
 

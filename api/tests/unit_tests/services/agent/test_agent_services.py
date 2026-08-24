@@ -25,7 +25,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
@@ -58,7 +57,12 @@ from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
-from services.entities.agent_entities import AgentSoulConfig, ComposerSavePayload, ComposerSaveStrategy, ComposerVariant
+from services.entities.agent_entities import (
+    AgentSoulConfig,
+    ComposerSavePayload,
+    ComposerSaveStrategy,
+    ComposerVariant,
+)
 
 
 def _agent_soul_with_model() -> AgentSoulConfig:
@@ -255,13 +259,9 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPa
     assert result["binding"] is None
     assert result["save_options"] == ["node_job_only", "save_to_roster"]
     assert result["workflow_id"] == "workflow-1"
-    # Stage 4 §4.1 / §10.1 (D-3): empty state still surfaces PRD defaults so
-    # the front-end has stable output names to render before the user declares
-    # anything.
     effective = result["effective_declared_outputs"]
-    assert [o["name"] for o in effective] == ["text", "files", "json"]
-    files_output = next(o for o in effective if o["name"] == "files")
-    assert files_output["array_item"] == {"type": "file", "description": None, "children": []}
+    assert [o["name"] for o in effective] == ["text"]
+    assert effective[0]["required"] is False
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -562,14 +562,8 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
     def retire_unowned(**kwargs):
         assert kwargs["agent_ids"] == {"old-inline-agent"}
         events.append("retire")
-        return ["binding-1"], ["home-1"]
 
     monkeypatch.setattr(composer_service.WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
-    monkeypatch.setattr(
-        composer_service,
-        "enqueue_agent_resource_collection",
-        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
-    )
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW,
@@ -589,7 +583,7 @@ def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(
         payload=payload,
     )
 
-    assert events == ["commit", "retire", "enqueue"]
+    assert events == ["commit", "retire"]
 
 
 def test_save_workflow_composer_rejects_agent_app_variant(sqlite_session: Session):
@@ -2267,10 +2261,8 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     assert state["agent"]["icon_background"] == "#F5F3FF"
     assert "save_as_new_version" in state["save_options"]
     assert state["agent_soul"]["app_features"] == {}
-    # Stage 4 §10.1 (D-3): binding with no declared_outputs → response surfaces
-    # PRD defaults via effective_declared_outputs (DB row remains untouched).
     effective_names = [o["name"] for o in state["effective_declared_outputs"]]
-    assert effective_names == ["text", "files", "json"]
+    assert effective_names == ["text"]
 
 
 def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(
@@ -2304,12 +2296,11 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
         session=session, binding=binding, agent=agent, version=version
     )
 
-    # When the user has declared outputs, effective_declared_outputs is the same
-    # list (no defaults injected).
     effective = state["effective_declared_outputs"]
-    assert [o["name"] for o in effective] == ["summary"]
-    assert effective[0]["type"] == "string"
-    assert effective[0]["required"] is True
+    assert [o["name"] for o in effective] == ["text", "summary"]
+    assert effective[0]["required"] is False
+    assert effective[1]["type"] == "string"
+    assert effective[1]["required"] is True
 
 
 def test_serialize_workflow_state_includes_inline_debug_conversation_message_state(
@@ -3878,7 +3869,7 @@ def test_reference_counts_include_draft_and_published_bindings_once_per_app(sqli
     assert result == {"agent-1": 1}
 
 
-def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_roster_update_versions_and_detail(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     session = sqlite_session
     listed_version = AgentConfigSnapshot(
         id="version-4",
@@ -3933,8 +3924,6 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     session.add_all([agent, listed_version, older_listed_version, revision, listed_revision])
     session.commit()
     service = AgentRosterService(session)
-    retire_snapshots = MagicMock(return_value=[])
-    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", retire_snapshots)
     monkeypatch.setattr(
         service,
         "get_roster_agent_detail",
@@ -3947,13 +3936,10 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
         account_id="account-1",
         payload=roster_service.RosterAgentUpdatePayload(description="new"),
     )
-    service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
     versions = service.list_agent_versions(tenant_id="tenant-1", agent_id="agent-1")
     detail = service.get_agent_version_detail(tenant_id="tenant-1", agent_id="agent-1", version_id="version-2")
 
     assert updated["description"] == "new"
-    assert agent.status == AgentStatus.ARCHIVED
-    retire_snapshots.assert_called_once_with(session=session, tenant_id="tenant-1", agent_id="agent-1")
     assert versions[0]["id"] == "version-4"
     assert versions[0]["version"] == 2
     assert versions[0]["display_version"] == 2
@@ -3968,69 +3954,6 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     assert detail["config_snapshot"] == {"prompt": {}}
     assert detail["created_at"] == int(older_listed_version.created_at.timestamp())
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
-
-
-def test_roster_archive_retires_then_commits_before_enqueue(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    session = sqlite_session
-    service = AgentRosterService(session)
-    agent = _agent()
-    binding = AgentWorkspaceBinding(
-        id="binding-1",
-        tenant_id=agent.tenant_id,
-        app_id="app-1",
-        workspace_id="workspace-1",
-        agent_id=agent.id,
-        agent_config_version_id="version-1",
-        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        backend_binding_ref="backend-binding-1",
-    )
-    session.add_all([agent, binding])
-    session.commit()
-    events: list[str] = []
-    monkeypatch.setattr(
-        AgentWorkspaceService,
-        "retire_binding",
-        MagicMock(side_effect=lambda **_kwargs: events.append("retire-binding") or "binding-1"),
-    )
-    monkeypatch.setattr(
-        AgentHomeSnapshotService,
-        "retire_all_for_agent",
-        MagicMock(side_effect=lambda **_kwargs: events.append("retire-home") or ["home-1"]),
-    )
-    event.listen(session, "after_commit", lambda _session: events.append("commit"))
-    monkeypatch.setattr(
-        roster_service,
-        "enqueue_agent_resource_collection",
-        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
-    )
-
-    service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
-
-    assert events == ["retire-binding", "retire-home", "commit", "enqueue"]
-
-
-def test_roster_archive_commit_failure_does_not_enqueue(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    session = sqlite_session
-    service = AgentRosterService(session)
-    session.add(_agent())
-    session.commit()
-    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", MagicMock(return_value=["home-1"]))
-    event.listen(
-        session,
-        "before_commit",
-        lambda _session: (_ for _ in ()).throw(RuntimeError("commit failed")),
-    )
-    enqueue_collection = MagicMock()
-    monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
-
-    with pytest.raises(RuntimeError, match="commit failed"):
-        service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
-
-    enqueue_collection.assert_not_called()
 
 
 def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -4485,7 +4408,7 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
             {
                 "declared_outputs": [
                     {
-                        "name": "text",
+                        "name": "summary",
                         "type": "string",
                         "check": {
                             "enabled": True,
@@ -4513,6 +4436,21 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
                 ]
             }
         )
+
+    for reserved_name in ("text", "switch", "_session"):
+        with pytest.raises(InvalidComposerConfigError, match="reserved"):
+            ComposerConfigValidator.validate_node_job_dict(
+                {"declared_outputs": [{"name": reserved_name, "type": "string"}]}
+            )
+
+    ComposerConfigValidator.validate_node_job_dict(
+        {
+            "declared_outputs": [
+                {"name": "files", "type": "string"},
+                {"name": "json", "type": "string"},
+            ]
+        }
+    )
 
     # Nested array_item is rejected outright.
     with pytest.raises(InvalidComposerConfigError):
@@ -5927,6 +5865,27 @@ class TestWorkflowAgentDraftBindingSync:
                 )
             ],
         ).model_dump(mode="json")
+
+    @pytest.mark.parametrize("reserved_name", ["text", "switch", "_session"])
+    def test_rejects_reserved_output_names_from_agent_node_graph(self, reserved_name: str):
+        with pytest.raises(ValueError, match="invalid agent_declared_outputs"):
+            WorkflowAgentPublishService._node_job_config_from_node_data(
+                existing_binding=None,
+                node_data={
+                    "agent_declared_outputs": [{"name": reserved_name, "type": "string"}],
+                },
+            )
+
+    @pytest.mark.parametrize("output_name", ["files", "json"])
+    def test_accepts_retired_output_names_as_custom_outputs_from_agent_node_graph(self, output_name: str):
+        node_job = WorkflowAgentPublishService._node_job_config_from_node_data(
+            existing_binding=None,
+            node_data={
+                "agent_declared_outputs": [{"name": output_name, "type": "string"}],
+            },
+        )
+
+        assert [output.name for output in node_job.declared_outputs] == [output_name]
 
     def test_creates_roster_binding_deriving_previous_node_refs_from_agent_task(self, sqlite_session: Session):
         node_job = self._sync_roster_agent_task_refs(

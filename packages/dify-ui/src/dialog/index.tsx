@@ -1,9 +1,8 @@
 'use client'
 
-import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
+import * as React from 'react'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
 import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
 
 const Dialog = BaseDialog.Root
@@ -11,6 +10,7 @@ const DialogTrigger = BaseDialog.Trigger
 const DialogTitle = BaseDialog.Title
 const DialogDescription = BaseDialog.Description
 const DialogPortal = BaseDialog.Portal
+const DialogClose = BaseDialog.Close
 const createDialogHandle = BaseDialog.createHandle
 
 type DialogProps<Payload = unknown> = BaseDialog.Root.Props<Payload>
@@ -19,6 +19,7 @@ type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
 type DialogTitleProps = BaseDialog.Title.Props
 type DialogDescriptionProps = BaseDialog.Description.Props
 type DialogPortalProps = BaseDialog.Portal.Props
+type DialogCloseProps = BaseDialog.Close.Props
 
 type DialogBackdropProps = Omit<BaseDialog.Backdrop.Props, 'className'> & {
   className?: string
@@ -53,51 +54,22 @@ function DialogPopup({ className, ...props }: DialogPopupProps) {
   )
 }
 
-type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children' | 'className'> & {
-  className?: string
-}
-
-function DialogCloseButton({
-  className,
-  'aria-label': ariaLabel = 'Close',
-  ...props
-}: DialogCloseButtonProps) {
-  return (
-    <BaseDialog.Close
-      aria-label={ariaLabel}
-      {...props}
-      className={cn(
-        iconButtonVariants({ size: 'sm' }),
-        'absolute inset-e-6 top-6 z-10 rounded-2xl disabled:cursor-not-allowed disabled:opacity-50',
-        className,
-      )}
-    >
-      <span aria-hidden="true" className="i-ri-close-line size-4 text-text-tertiary" />
-    </BaseDialog.Close>
-  )
-}
-
-type DialogContentProps = {
+type DialogContentProps = Omit<DialogPopupProps, 'children' | 'className'> & {
   children: React.ReactNode
   className?: string
-  backdropClassName?: string
-  backdropProps?: Omit<BaseDialog.Backdrop.Props, 'className'>
+  backdropProps?: DialogBackdropProps
 }
 
-function DialogContent({
-  children,
-  className,
-  backdropClassName,
-  backdropProps,
-}: DialogContentProps) {
+function DialogContent({ children, className, backdropProps, ...props }: DialogContentProps) {
   return (
     <DialogPortal>
-      <DialogBackdrop {...backdropProps} className={backdropClassName} />
+      <DialogBackdrop {...backdropProps} />
       <DialogPopup
         className={cn(
           'fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain p-6',
           className,
         )}
+        {...props}
       >
         {children}
       </DialogPopup>
@@ -109,7 +81,7 @@ export {
   createDialogHandle,
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogPopup,
@@ -121,7 +93,7 @@ export {
 
 export type {
   DialogBackdropProps,
-  DialogCloseButtonProps,
+  DialogCloseProps,
   DialogContentProps,
   DialogDescriptionProps,
   DialogHandle,

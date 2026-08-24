@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import * as React from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '../index'
@@ -101,7 +101,7 @@ describe('SegmentedControl', () => {
   })
 
   it('uses non-submitting native buttons for its items', async () => {
-    const onSubmit = vi.fn((event: FormEvent) => event.preventDefault())
+    const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
     const screen = await render(
       <form onSubmit={onSubmit}>
         <SegmentedControl defaultValue="one" aria-label="View">

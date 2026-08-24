@@ -41,7 +41,7 @@ export const zTagBasePayload = z.object({
 
 export const zGetTagsQuery = z.object({
   keyword: z.string().optional(),
-  type: z.string().optional().default(''),
+  type: zTagType,
 })
 
 /**

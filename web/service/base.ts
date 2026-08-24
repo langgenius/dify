@@ -116,7 +116,7 @@ type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinished
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
 type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
 type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
+type IOnTTSEnd = (messageId: string, audioStr: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 type IOnLoopNext = (workflowStarted: LoopNextResponse) => void

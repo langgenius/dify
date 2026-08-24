@@ -1,5 +1,5 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -15,22 +15,21 @@ import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { PluginSource } from '../types'
 
-type OperationDropdownProps = Readonly<{
-  source: PluginSource
-  onInfo: () => void
-  onCheckVersion: () => void
-  onRemove: () => void
-  onViewReadme?: () => void
-  detailUrl: string
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  popupClassName?: string
-  triggerSize?: 'm' | 'xs'
-  destructiveRemove?: boolean
-  showCheckVersion?: boolean
-  showRemove?: boolean
-}>
+type OperationDropdownProps = Readonly<
+  Pick<DropdownMenuContentProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+    source: PluginSource
+    onInfo: () => void
+    onCheckVersion: () => void
+    onRemove: () => void
+    onViewReadme?: () => void
+    detailUrl: string
+    popupClassName?: string
+    triggerSize?: 'm' | 'xs'
+    destructiveRemove?: boolean
+    showCheckVersion?: boolean
+    showRemove?: boolean
+  }
+>
 
 export function OperationDropdown({
   source,
@@ -86,7 +85,7 @@ export function OperationDropdown({
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName={cn('w-48 py-1', popupClassName)}
+        className={cn('w-48 py-1', popupClassName)}
       >
         {showInfo && (
           <DropdownMenuItem

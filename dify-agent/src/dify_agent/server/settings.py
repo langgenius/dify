@@ -63,6 +63,7 @@ class ServerSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
     e2b_api_key: str | None = None
     e2b_template: str = "difys-default-team/dify-agent-local-sandbox"
     e2b_active_timeout_seconds: int = Field(
@@ -82,6 +83,7 @@ class ServerSettings(BaseSettings):
         description="Maximum Agent Stub upload size in MiB",
         validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
     )
+    binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -206,6 +208,7 @@ class ServerSettings(BaseSettings):
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
                 enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
+                enterprise_sandbox_snapshot_timeout=self.enterprise_sandbox_snapshot_timeout,
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,

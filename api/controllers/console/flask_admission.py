@@ -9,7 +9,12 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.wraps import enforce_rbac_access
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enable_change_email,
+    enterprise_license_required,
+    setup_required,
+)
 from core.logging.context import get_request_id, get_trace_id
 from core.rbac import RBACPermission, RBACResourceScope
 from enums import DeploymentEdition
@@ -22,6 +27,8 @@ from models.account import TenantAccountRole
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,
+    require_change_email_enabled: bool = False,
+    require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
     allowed_roles: frozenset[TenantAccountRole] | None = None,
     rbac_resource_scope: RBACResourceScope | None = None,
@@ -34,9 +41,9 @@ def console_account_admission[T, **P, R](
     """Declare Console account admission and inject a stable RequestContext.
 
     All combinations use this decorator factory. Requirements are data, while
-    the execution order stays fixed: edition, setup, login/CSRF, account
-    initialization, optional enterprise license, role/RBAC checks, then context
-    construction.
+    the execution order stays fixed: edition, setup, login/CSRF, optional
+    account initialization, optional enterprise license, role/RBAC checks, then
+    context construction.
     """
 
     if (rbac_resource_scope is None) != (rbac_permission is None):
@@ -70,9 +77,12 @@ def console_account_admission[T, **P, R](
             return view(self, request_context, *args, **kwargs)
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
+        if require_change_email_enabled:
+            admitted = enable_change_email(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
-        admitted = account_initialization_required(admitted)
+        if require_initialized:
+            admitted = account_initialization_required(admitted)
         admitted = login_required(admitted)
         admitted = setup_required(admitted)
 

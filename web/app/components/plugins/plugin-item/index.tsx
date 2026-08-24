@@ -168,7 +168,7 @@ const PluginItem: FC<Props> = ({
                   >
                     <RiErrorWarningLine color="red" className="size-4 text-text-accent" />
                   </PopoverTrigger>
-                  <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                     {t(($) => $.difyVersionNotCompatible, {
                       ns: 'plugin',
                       minimalDifyVersion: declarationMeta.minimum_dify_version,

@@ -59,7 +59,7 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
         placement="bottom-start"
         sideOffset={4}
         alignOffset={-6}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
