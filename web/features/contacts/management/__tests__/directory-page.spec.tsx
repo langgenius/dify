@@ -32,6 +32,16 @@ function renderDirectory(scenario: ContactsMockScenarioDefinition, searchParams 
 }
 
 describe('ContactsDirectoryPage', () => {
+  it('renders API timestamps expressed in Unix seconds', async () => {
+    const scenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
+    scenario.contacts[0].created_at = 1768204800
+    const expectedDate = new Date(scenario.contacts[0].created_at * 1000).toLocaleDateString()
+
+    renderDirectory(scenario)
+
+    expect(await screen.findByText(expectedDate)).toBeInTheDocument()
+  })
+
   it('renders all three contact types and restores details from the loaded list', async () => {
     renderDirectory(
       createContactsMockScenario(ContactsMockScenario.EeMixed),

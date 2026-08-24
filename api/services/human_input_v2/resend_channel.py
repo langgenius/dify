@@ -1,4 +1,4 @@
-"""Request-scoped Resend validation and test-delivery adapter."""
+"""Request-scoped Resend validation and test-delivery adapter for Human Input v2."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from core.helper import ssrf_proxy
 from core.human_input_v2.email_channel import (
     EmailProviderOperationError,
     EmailProviderValidationError,
-    ResendProviderSettings,
+    ResendCandidate,
 )
 from core.human_input_v2.shared import NormalizedEmail
 from libs.uuid_utils import uuidv7
@@ -37,8 +37,8 @@ class ResendHTTPClient(Protocol):
     def post(self, url: str, **kwargs: Any) -> ResendHTTPResponse: ...
 
 
-class ResendEmailProviderValidator:
-    """Validate one Resend candidate without shared SDK credential state."""
+class ResendProviderGateway:
+    """Perform Resend management I/O without shared SDK credential state."""
 
     def __init__(
         self,
@@ -53,15 +53,15 @@ class ResendEmailProviderValidator:
         self._timeout_seconds = timeout_seconds
         self._id_factory = id_factory
 
-    def validate(self, settings: ResendProviderSettings) -> None:
+    def validate(self, candidate: ResendCandidate) -> None:
         """Verify the credential and exact sender domain without sending Email."""
 
-        body = self._request("get", "/domains", settings.api_key)
+        body = self._request("get", "/domains", candidate.api_key)
         domains = body.get("data")
         if not isinstance(domains, list):
             raise EmailProviderOperationError("provider_response_malformed")
 
-        sender_domain = str(settings.sender_email).rsplit("@", maxsplit=1)[-1].casefold()
+        sender_domain = str(candidate.sender_email).rsplit("@", maxsplit=1)[-1].casefold()
         matching_domain = next(
             (
                 domain
@@ -80,16 +80,14 @@ class ResendEmailProviderValidator:
         if not isinstance(capabilities, Mapping) or capabilities.get("sending") != "enabled":
             raise EmailProviderValidationError("sender_domain_sending_disabled")
 
-    def send_test(self, settings: ResendProviderSettings, recipient: NormalizedEmail) -> None:
+    def send_test(self, candidate: ResendCandidate, recipient: NormalizedEmail) -> None:
         """Send one idempotent test message to the authenticated operator."""
 
-        sender = (
-            f"{settings.sender_name} <{settings.sender_email}>" if settings.sender_name else str(settings.sender_email)
-        )
+        sender = f"{candidate.sender_name} <{candidate.sender_email}>"
         body = self._request(
             "post",
             "/emails",
-            settings.api_key,
+            candidate.api_key,
             json={
                 "from": sender,
                 "to": [str(recipient)],
@@ -168,7 +166,7 @@ class ResendEmailProviderValidator:
 
 
 __all__ = [
-    "ResendEmailProviderValidator",
     "ResendHTTPClient",
     "ResendHTTPResponse",
+    "ResendProviderGateway",
 ]

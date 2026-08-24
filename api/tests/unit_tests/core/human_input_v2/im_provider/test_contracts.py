@@ -59,6 +59,23 @@ def test_resolved_slack_credentials_are_strict_immutable_and_secret_safe() -> No
         credentials.client_id = "changed"
 
 
+def test_resolved_slack_credentials_require_app_token_only_for_socket_mode() -> None:
+    credentials = SlackIMIntegrationCredentials(
+        provider=IMProvider.SLACK,
+        client_id="client-id",
+        client_secret="client-secret",
+        signing_secret="signing-secret",
+        bot_token="xoxb-test-bot-token",
+    )
+
+    assert credentials.app_token is None
+    schema = SlackIMIntegrationCredentials.model_json_schema()
+    assert "app_token" not in schema["required"]
+    assert schema["properties"]["app_token"]["description"] == (
+        "Optional resolved Slack app-level token required only for Socket Mode."
+    )
+
+
 def test_provider_neutral_values_are_immutable() -> None:
     directory = Directory((DirectoryEntry(ProviderUserId("user-1"), None, None),))
     success = CredentialTestSuccess(IMProvider.SLACK, "team-1")

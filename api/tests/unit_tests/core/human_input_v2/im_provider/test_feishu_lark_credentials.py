@@ -4,18 +4,10 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
-from controllers.common.human_input_feishu_lark_credentials import (
-    _resolve_required_secret,
-    resolve_feishu_request_credentials,
-    resolve_lark_request_credentials,
+from controllers.console.human_input_v2.providers import (
+    FeishuCredentials as FeishuCredentialRequest,
 )
-from controllers.common.human_input_v2_contracts import (
-    FeishuIMIntegrationCredentials as FeishuCredentialRequest,
-)
-from controllers.common.human_input_v2_contracts import (
-    LarkIMIntegrationCredentials as LarkCredentialRequest,
-)
-from controllers.common.human_input_v2_contracts import PreserveOriginalValue
+from controllers.console.human_input_v2.providers import LarkCredentials as LarkCredentialRequest
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMIntegrationCredentials,
@@ -25,7 +17,7 @@ from models.human_input_v2 import (
     FeishuIMIntegrationEncryptedCredentials,
     LarkIMIntegrationEncryptedCredentials,
 )
-from services.human_input_feishu_lark_channel import (
+from services.human_input_v2.feishu_lark_channel import (
     resolve_feishu_encrypted_credentials,
     resolve_lark_encrypted_credentials,
 )
@@ -74,37 +66,21 @@ def test_resolved_credentials_are_strict_frozen_and_secret_safe(
         credentials.app_id = "changed"
 
 
-def test_feishu_request_projection_resolves_each_secret_directive() -> None:
-    current = FeishuIMIntegrationEncryptedCredentials(
-        app_id="cli_old_app",
-        encrypted_app_secret="cipher-app-secret",
-        encrypted_verification_token="cipher-verification-token",
-        encrypted_encrypt_key="cipher-encrypt-key",
-    )
+def test_feishu_request_projection_requires_and_maps_complete_credentials() -> None:
     request = FeishuCredentialRequest(
         provider=IMProvider.FEISHU,
         app_id="cli_new_app",
-        app_secret=PreserveOriginalValue(),
+        app_secret="new-app-secret",
         verification_token="new-verification-token",
         encrypt_key=None,
     )
 
-    resolved = resolve_feishu_request_credentials(
-        request,
-        current,
-        decrypt=_decryptor(
-            {
-                "cipher-app-secret": "old-app-secret",
-                "cipher-verification-token": "old-verification-token",
-                "cipher-encrypt-key": "old-encrypt-key",
-            }
-        ),
-    )
+    resolved = request.to_owner_credentials()
 
     assert resolved == FeishuIMIntegrationCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_new_app",
-        app_secret="old-app-secret",
+        app_secret="new-app-secret",
         verification_token="new-verification-token",
         encrypt_key=None,
     )
@@ -147,11 +123,7 @@ def test_lark_request_projection_applies_new_and_cleared_secrets() -> None:
         encrypt_key="new-encrypt-key",
     )
 
-    resolved = resolve_lark_request_credentials(
-        request,
-        None,
-        decrypt=lambda encrypted: encrypted,
-    )
+    resolved = request.to_owner_credentials()
 
     assert resolved == LarkIMIntegrationCredentials(
         provider=IMProvider.LARK,
@@ -184,17 +156,17 @@ def test_feishu_encrypted_projection_preserves_optional_clear_values() -> None:
     )
 
 
-def test_preserve_without_current_secret_fails_safely() -> None:
-    request = LarkCredentialRequest(
-        provider=IMProvider.LARK,
-        app_id="cli_sanitized_app",
-        app_secret=PreserveOriginalValue(),
-        verification_token=None,
-        encrypt_key=None,
-    )
-
-    with pytest.raises(ValueError, match="preserved credential is unavailable"):
-        resolve_lark_request_credentials(request, None, decrypt=lambda value: value)
+def test_retention_marker_is_rejected_by_the_canonical_request() -> None:
+    with pytest.raises(ValidationError):
+        LarkCredentialRequest.model_validate(
+            {
+                "provider": IMProvider.LARK,
+                "app_id": "cli_sanitized_app",
+                "app_secret": {"tag": "preserve_original_value"},
+                "verification_token": None,
+                "encrypt_key": None,
+            }
+        )
 
 
 def test_decryption_failure_does_not_expose_ciphertext_or_decryptor_error() -> None:
@@ -237,7 +209,7 @@ def test_credential_schemas_remain_explicitly_aligned() -> None:
     assert set(LarkIMIntegrationEncryptedCredentials.model_fields) == encrypted_fields
 
 
-def test_projection_rejects_wrong_persistence_types_and_missing_required_secret() -> None:
+def test_projection_rejects_wrong_persistence_types() -> None:
     feishu = FeishuIMIntegrationEncryptedCredentials(
         app_id="cli_sanitized_app",
         encrypted_app_secret="cipher-app-secret",
@@ -261,5 +233,3 @@ def test_projection_rejects_wrong_persistence_types_and_missing_required_secret(
             cast(LarkIMIntegrationEncryptedCredentials, feishu),
             decrypt=lambda value: value,
         )
-    with pytest.raises(ValueError, match="required credential"):
-        _resolve_required_secret(cast(str, None), None, lambda value: value)

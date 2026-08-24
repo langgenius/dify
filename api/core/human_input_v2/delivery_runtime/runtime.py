@@ -40,10 +40,10 @@ class HumanInputRenderedEmailDeliveryRuntime:
     ) -> PreparedRenderedEmailDelivery:
         snapshot = self._resolver.resolve(
             request.tenant_id,
-            request.channel,
+            request.provider,
             expected=expected_snapshot,
         )
-        if snapshot.channel != request.channel:
+        if snapshot.provider is not request.provider:
             raise DeliveryPreparationError("provider_configuration_mismatch")
         return PreparedRenderedEmailDelivery(
             request=request,
@@ -55,4 +55,4 @@ class HumanInputRenderedEmailDeliveryRuntime:
     def send(self, prepared: PreparedRenderedEmailDelivery) -> DeliveryOutcome:
         if prepared._runtime_token is not self._runtime_token:
             raise ValueError("prepared delivery was not created by this runtime")
-        return self._adapters.get(prepared.snapshot.channel.provider).send(prepared)
+        return self._adapters.get(prepared.snapshot.provider).send(prepared)

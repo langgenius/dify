@@ -15,6 +15,7 @@ from typing import Protocol
 import sqlalchemy as sa
 from pydantic import NaiveDatetime
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.human_input_v2.contact_directory import ContactSnapshot
@@ -25,6 +26,7 @@ from core.human_input_v2.im_integration import (
     BindingResolutionResult,
     ConfigurationTransition,
     EffectiveBindingResolver,
+    IMControlPlanePersistenceError,
     IMIntegration,
     IMIntegrationState,
     IMSyncRun,
@@ -136,9 +138,12 @@ class SQLAlchemyIMControlPlaneRepository:
             if tenant_id is None
             else HumanInputIMIntegration.tenant_id == str(tenant_id)
         )
-        with self._session_maker() as session:
-            record = session.scalar(select(HumanInputIMIntegration).where(owner_predicate).limit(1))
-            return integration_from_record(record) if record is not None else None
+        try:
+            with self._session_maker() as session:
+                record = session.scalar(select(HumanInputIMIntegration).where(owner_predicate).limit(1))
+                return integration_from_record(record) if record is not None else None
+        except SQLAlchemyError as error:
+            raise IMControlPlanePersistenceError("failed to load IM Integration") from error
 
     def create_integration(
         self,
@@ -149,11 +154,14 @@ class SQLAlchemyIMControlPlaneRepository:
         """Route configuration creation through the explicit Organization guard."""
 
         self._ensure_scope_matches_owner(organization_scope, integration.tenant_id)
-        with self._write_unit_of_work_factory(organization_scope) as protected_repository:
-            return protected_repository.create_integration(
-                integration,
-                organization_scope=organization_scope,
-            )
+        try:
+            with self._write_unit_of_work_factory(organization_scope) as protected_repository:
+                return protected_repository.create_integration(
+                    integration,
+                    organization_scope=organization_scope,
+                )
+        except SQLAlchemyError as error:
+            raise IMControlPlanePersistenceError("failed to create IM Integration") from error
 
     @staticmethod
     def _ensure_scope_matches_owner(scope: DirectoryScope, tenant_id: TenantId | None) -> None:
@@ -176,11 +184,14 @@ class SQLAlchemyIMControlPlaneRepository:
         """Route configuration CAS through the explicit Organization guard."""
 
         self._ensure_scope_matches_owner(organization_scope, transition.integration.tenant_id)
-        with self._write_unit_of_work_factory(organization_scope) as protected_repository:
-            return protected_repository.compare_and_swap_configuration(
-                transition,
-                organization_scope=organization_scope,
-            )
+        try:
+            with self._write_unit_of_work_factory(organization_scope) as protected_repository:
+                return protected_repository.compare_and_swap_configuration(
+                    transition,
+                    organization_scope=organization_scope,
+                )
+        except SQLAlchemyError as error:
+            raise IMControlPlanePersistenceError("failed to persist IM Integration configuration") from error
 
     def compare_and_swap_delete(
         self,
@@ -190,11 +201,14 @@ class SQLAlchemyIMControlPlaneRepository:
     ) -> None | StaleRevision:
         """Route configuration deletion through the explicit Organization guard."""
 
-        with self._write_unit_of_work_factory(organization_scope) as protected_repository:
-            return protected_repository.compare_and_swap_delete(
-                deletion,
-                organization_scope=organization_scope,
-            )
+        try:
+            with self._write_unit_of_work_factory(organization_scope) as protected_repository:
+                return protected_repository.compare_and_swap_delete(
+                    deletion,
+                    organization_scope=organization_scope,
+                )
+        except SQLAlchemyError as error:
+            raise IMControlPlanePersistenceError("failed to delete IM Integration") from error
 
     def create_or_get_active_run(
         self,

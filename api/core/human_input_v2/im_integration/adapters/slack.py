@@ -1127,8 +1127,11 @@ class SlackIMProviderAdapter:
                 CredentialTestFailureKind.UNKNOWN,
                 "Slack baseline permissions could not be confirmed.",
             )
+        app_token = self._credentials.app_token
+        if app_token is None:
+            return CredentialTestSuccess(IMProvider.SLACK, team_id)
         try:
-            connection_response = self._client.apps_connections_open(app_token=self._credentials.app_token)
+            connection_response = self._client.apps_connections_open(app_token=app_token)
         except SlackApiError as error:
             kind = (
                 CredentialTestFailureKind.AUTHENTICATION_REJECTED
@@ -1174,9 +1177,12 @@ class SlackIMProviderAdapter:
     def create_webhook_handler(self, consumer: IMEventConsumer) -> IMWebhookHandler:
         return _SlackWebhookHandler(self._credentials.signing_secret, consumer)
 
-    def create_stream_handler(self, consumer: IMEventConsumer) -> IMEventStream:
+    def create_stream_handler(self, consumer: IMEventConsumer) -> IMEventStream | None:
+        app_token = self._credentials.app_token
+        if app_token is None:
+            return None
         return _SlackEventStream(
-            app_token=self._credentials.app_token,
+            app_token=app_token,
             bot_token=self._credentials.bot_token,
             consumer=consumer,
         )

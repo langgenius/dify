@@ -99,6 +99,22 @@ class IntegrationDeletion:
 
 
 @dataclass(frozen=True, slots=True)
+class IMIntegrationView:
+    """Credential-free Integration state exposed by the IM owner."""
+
+    id: IntegrationId
+    provider: IMProvider
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
+    status: IMIntegrationStatus
+    safe_status_reason: str | None
+    app_identifier: str
+    provider_tenant_display: str | None
+    webhook_url: str | None
+    revision: IntegrationRevisionToken
+
+
+@dataclass(frozen=True, slots=True)
 class IMIntegration:
     """Organization IM configuration aggregate.
 
@@ -194,6 +210,33 @@ class IMIntegration:
             )
 
         if replacement_integration_id is None or replacement_integration_id == self.id:
+            raise ValueError("provider replacement requires a new integration identity")
+        return self.replace_configuration(
+            expected_revision=expected_revision,
+            replacement_integration_id=replacement_integration_id,
+            provider_tenant=provider_tenant,
+            encrypted_credentials=encrypted_credentials,
+            configured_by_account_id=configured_by_account_id,
+            callback_url=callback_url,
+            now=now,
+        )
+
+    def replace_configuration(
+        self,
+        *,
+        expected_revision: IntegrationRevisionToken,
+        replacement_integration_id: IntegrationId,
+        provider_tenant: ProviderTenantIdentity,
+        encrypted_credentials: EncryptedCredentials,
+        configured_by_account_id: AccountId | None,
+        callback_url: str | None,
+        now: NaiveDatetime,
+    ) -> ConfigurationTransition | StaleRevision:
+        """Plan an explicit identity replacement independently from rotation."""
+
+        if expected_revision != self.revision:
+            return StaleRevision(expected_revision, self.revision)
+        if replacement_integration_id == self.id:
             raise ValueError("provider replacement requires a new integration identity")
         replacement = IMIntegration.create(
             integration_id=replacement_integration_id,

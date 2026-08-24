@@ -13,7 +13,6 @@ from core.human_input_v2.email_channel import (
     CreateEmailConfigurationStatus,
     DeleteEmailConfigurationStatus,
     EmailChannelConfiguration,
-    ProtectedAPIKey,
     UpdateEmailConfigurationStatus,
 )
 from core.human_input_v2.shared import (
@@ -44,7 +43,7 @@ def _configuration(
         tenant_id,
         NormalizedEmail("sender@example.com"),
         "Sender",
-        ProtectedAPIKey("ciphertext"),
+        "ciphertext",
         AccountId("00000000-0000-0000-0000-000000000020"),
         _NOW,
         _NOW,
@@ -85,7 +84,7 @@ def test_email_configuration_mapper_round_trip_is_detached() -> None:
     assert restored is not configuration
 
 
-def test_update_uses_identity_and_timestamp_and_advances_equal_clock(sqlite_engine: Engine) -> None:
+def test_update_uses_identity_and_revision_and_advances_numeric_version(sqlite_engine: Engine) -> None:
     repository, _ = _context(sqlite_engine)
     current = repository.create(_configuration()).configuration
     assert current is not None
@@ -103,7 +102,7 @@ def test_update_uses_identity_and_timestamp_and_advances_equal_clock(sqlite_engi
 
     assert result.status is UpdateEmailConfigurationStatus.UPDATED
     assert result.configuration is not None
-    assert result.configuration.updated_at > current.updated_at
+    assert result.configuration.config_version == current.config_version + 1
     assert stale.status is UpdateEmailConfigurationStatus.STALE
     assert repository.load(_TENANT_ID) == result.configuration
 
@@ -112,7 +111,7 @@ def test_delete_recreate_rejects_deleted_identity_snapshot(sqlite_engine: Engine
     repository, _ = _context(sqlite_engine)
     deleted = repository.create(_configuration()).configuration
     assert deleted is not None
-    assert repository.delete(_TENANT_ID).status is DeleteEmailConfigurationStatus.DELETED
+    assert repository.delete(_TENANT_ID, expected=deleted.snapshot).status is DeleteEmailConfigurationStatus.DELETED
     recreated = repository.create(_configuration("00000000-0000-0000-0000-000000000011")).configuration
     assert recreated is not None
 
@@ -124,6 +123,23 @@ def test_delete_recreate_rejects_deleted_identity_snapshot(sqlite_engine: Engine
 
     assert stale.status is UpdateEmailConfigurationStatus.STALE
     assert repository.load(_TENANT_ID) == recreated
+
+
+def test_delete_uses_identity_and_revision_snapshot(sqlite_engine: Engine) -> None:
+    repository, _ = _context(sqlite_engine)
+    current = repository.create(_configuration()).configuration
+    assert current is not None
+
+    wrong_identity = replace(current.snapshot, configuration_id=EmailProviderId("email-other"))
+    stale_identity = repository.delete(_TENANT_ID, expected=wrong_identity)
+    stale_revision = repository.delete(
+        _TENANT_ID,
+        expected=replace(current.snapshot, config_version=current.config_version + 1),
+    )
+
+    assert stale_identity.status is DeleteEmailConfigurationStatus.STALE
+    assert stale_revision.status is DeleteEmailConfigurationStatus.STALE
+    assert repository.load(_TENANT_ID) == current
 
 
 def test_operation_scoped_loads_have_bounded_query_counts(sqlite_engine: Engine) -> None:

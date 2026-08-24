@@ -3,8 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from controllers.common.human_input_v2_contracts import PreserveOriginalValue
-from controllers.common.human_input_v2_contracts import WeComIMIntegrationCredentials as WeComCredentialUpdate
+from controllers.console.human_input_v2.providers import WeComCredentials as WeComCredentialUpdate
 from core.human_input_v2 import im_provider
 from core.human_input_v2.entities import IMProvider
 from models.human_input_v2 import WeComIMIntegrationEncryptedCredentials
@@ -87,14 +86,22 @@ def test_wecom_resolved_credentials_require_a_positive_decimal_agent_id() -> Non
 
 def test_preserve_original_value_never_enters_wecom_resolved_credentials() -> None:
     resolved_credentials = im_provider.WeComIMIntegrationCredentials
-    update = WeComCredentialUpdate(
-        provider=IMProvider.WE_COM,
-        corp_id="fake-corp-001",
-        agent_id="1000001",
-        secret=PreserveOriginalValue(),
-    )
 
-    assert isinstance(update.secret, PreserveOriginalValue)
-    assert "PreserveOriginalValue" not in repr(update)
     with pytest.raises(ValidationError):
-        resolved_credentials.model_validate(update.model_dump())
+        WeComCredentialUpdate.model_validate(
+            {
+                "provider": IMProvider.WE_COM,
+                "corp_id": "fake-corp-001",
+                "agent_id": "1000001",
+                "secret": {"tag": "preserve_original_value"},
+            }
+        )
+    with pytest.raises(ValidationError):
+        resolved_credentials.model_validate(
+            {
+                "provider": IMProvider.WE_COM,
+                "corp_id": "fake-corp-001",
+                "agent_id": "1000001",
+                "secret": {"tag": "preserve_original_value"},
+            }
+        )

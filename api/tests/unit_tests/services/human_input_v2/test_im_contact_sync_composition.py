@@ -104,6 +104,50 @@ def test_slack_adapter_factory_uses_workspace_owner_and_reveals_every_secret() -
     ]
 
 
+def test_slack_adapter_factory_preserves_missing_optional_app_token() -> None:
+    integration = IMIntegration.create(
+        integration_id=IntegrationId("integration-1"),
+        tenant_id=TenantId("workspace-1"),
+        provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "provider-team-1"),
+        encrypted_credentials=EncryptedCredentials.from_mapping(
+            {
+                "client_id": "client-1",
+                "encrypted_client_secret": "cipher-client",
+                "encrypted_signing_secret": "cipher-signing",
+                "encrypted_bot_token": "cipher-bot",
+            }
+        ),
+        configured_by_account_id=None,
+        callback_url=None,
+        now=_NOW,
+    )
+    decryptions: list[str] = []
+    captured_credentials: list[SlackIMIntegrationCredentials] = []
+
+    def decrypt(_owner_key: str, ciphertext: str) -> str:
+        decryptions.append(ciphertext)
+        return {
+            "cipher-client": "plain-client",
+            "cipher-signing": "plain-signing",
+            "cipher-bot": "xoxb-plain-bot",
+        }[ciphertext]
+
+    def build_slack(credentials: SlackIMIntegrationCredentials) -> _SlackAdapter:
+        captured_credentials.append(credentials)
+        return _SlackAdapter()
+
+    factory = DifyIMProviderAdapterFactory(
+        decrypt_token=decrypt,
+        deployment_owner_key_loader=lambda: "deployment-1",
+        slack_adapter_factory=build_slack,
+    )
+
+    factory(integration)
+
+    assert captured_credentials[0].app_token is None
+    assert decryptions == ["cipher-client", "cipher-signing", "cipher-bot"]
+
+
 def test_adapter_factory_supports_every_non_slack_provider_with_deployment_owned_credentials() -> None:
     encrypted_credentials_by_provider = {
         IMProvider.FEISHU: {

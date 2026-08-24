@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
-from core.human_input_v2.channel_identity import ChannelProvider, ChannelRef
+from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import TenantId
 
 from .contracts import (
@@ -20,14 +20,14 @@ class EmailProviderConfigurationSnapshotResolver(Protocol):
     def resolve(
         self,
         tenant_id: TenantId,
-        channel: ChannelRef,
+        provider: EmailProviderType,
         *,
         expected: ConfigurationSnapshotIdentity | None = None,
     ) -> ResolvedEmailChannelSnapshot: ...
 
 
 class EmailProviderAdapter(Protocol):
-    provider: ChannelProvider
+    provider: EmailProviderType
 
     def send(self, prepared: PreparedRenderedEmailDelivery) -> DeliveryOutcome: ...
 
@@ -38,7 +38,7 @@ class DuplicateEmailProviderAdapterError(ValueError):
 
 class EmailProviderAdapterRegistry:
     def __init__(self, adapters: Sequence[EmailProviderAdapter] = ()) -> None:
-        self._adapters: dict[ChannelProvider, EmailProviderAdapter] = {}
+        self._adapters: dict[EmailProviderType, EmailProviderAdapter] = {}
         for adapter in adapters:
             self.register(adapter)
 
@@ -47,7 +47,7 @@ class EmailProviderAdapterRegistry:
             raise DuplicateEmailProviderAdapterError(adapter.provider.value)
         self._adapters[adapter.provider] = adapter
 
-    def get(self, provider: ChannelProvider) -> EmailProviderAdapter:
+    def get(self, provider: EmailProviderType) -> EmailProviderAdapter:
         try:
             return self._adapters[provider]
         except KeyError as error:

@@ -12,7 +12,7 @@
 
 - 让 configured Channel 与 available provider 成为两个语义独立的 resource collection，并各自只提供一个 list endpoint。
 - 让 item URL 永远定位一个已持久化 resource，而不是一个可能未配置的 provider slot。
-- 让 Channel Management 委托 Email/IM owner，并删除 provider-level pass-through hierarchy 与重复 contracts。
+- 让 Console transport 直接聚合 Email/IM owner 的 configured-resource/provider discovery，不为 HTTP collection 创建对应的 application facade。
 - 保持现有 IM domain CAS、diagnostic、identity/binding ownership，同时让 HTTP `ConfigVersion` 对 client 保持 opaque。
 - 在当前 single-IM invariant 下提供 ID-addressed explicit replacement。
 - 移除旧 `im-integration` management API，并删除或迁移其重复 Console credential/request DTO。
@@ -27,13 +27,13 @@
 
 ## Decisions
 
-### 1. Channel is a facade over two application owners
+### 1. Channel is a transport boundary over independent Email and IM owners
 
-`HumanInputChannelManagementService` 只依赖一个 Email Management port 和一个 IM Integration application port。它可以统一 authenticated scope derivation、`ChannelSummary` projection、safe failure 和 provider catalog projection，但不得复制 Email/IM aggregate，或在 Channel layer 实现 credential rotation、provider replacement、domain CAS、identity invalidation、binding cleanup 或 Email key protection。
+Channel Management 不定义 cross-kind application service 或 core contract package。Console controller 直接调用 Email Management service 和 IM Integration application service；`GET /channels` 聚合两个 owner 的 credential-free view，`GET /channel-providers` 聚合两个 owner 的 available providers。这两个操作只负责 HTTP response organization，不拥有事务、一致性边界或领域规则。
 
-Dispatch 只发生在稳定的 `email` / `im` kind boundary。Provider discriminator 由对应 owner 的 typed request 处理。删除 `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError`、per-provider Channel manager 和 runtime register/resolve flow。
+Email 与 IM 使用独立、无可选依赖的 production composition function。Controller 根据稳定的 `email` / `im` route 调用对应 owner；Provider discriminator 由对应 owner 的 typed request 处理。删除 `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError`、per-provider Channel manager、runtime register/resolve flow 和同签名 pass-through。
 
-这使相邻层提供不同 abstraction：Channel layer 回答“当前配置了哪些 delivery channels、还能配置哪些 provider”；Email/IM owner 回答“该 kind 的 candidate 如何验证并改变 aggregate”。`api/controllers/console/human_input_v2/providers.py` 是 Console provider credential DTO 的 canonical owner，并负责把 HTTP DTO 映射到 owner-native application input。
+这使相邻层提供不同 abstraction：Email/IM owner 负责各自的配置状态与 lifecycle invariant；controller 只负责 HTTP DTO mapping、owner invocation、cross-kind response organization、canonical projection 和 safe response translation。`api/controllers/console/human_input_v2/providers.py` 是 Console provider credential DTO 的 canonical owner，并负责把 HTTP DTO 映射到 owner-native application input。
 
 ### 2. Configured Channels and provider catalog are separate resources
 
@@ -92,7 +92,7 @@ Create、update、replacement and test all require complete provider credentials
 
 Resend `sender_email`、`sender_name` and `api_key` are required。The Console DTO maps the complete candidate to the Email owner without creating a second Email aggregate。
 
-HTTP `ConfigVersion` is an opaque string。A client stores and returns it exactly as received and MUST NOT parse、decode、modify、interpret or synthesize it。For an IM write the server combines the path `channel_id` with the decoded numeric domain version to preserve the IM owner's complete `integration_id + numeric config_version` CAS invariant。
+HTTP `ConfigVersion` is an opaque string owned by Console transport。A client stores and returns it exactly as received and MUST NOT parse、decode、modify、interpret or synthesize it。The Console codec translates Email values to `EmailConfigurationSnapshot` and IM values to `IntegrationRevisionToken` before invoking the corresponding owner。For an IM write the codec validates kind and path `channel_id` together with the decoded numeric domain version, preserving the IM owner's complete `integration_id + numeric config_version` CAS invariant。
 
 ### 6. Candidate tests do not address persisted resources
 
@@ -123,14 +123,14 @@ Keeping the old route as an alias would create two public lifecycle authorities 
 
 ### 9. Controllers remain transport adapters
 
-Workspace Console controllers enforce authentication and owner/admin authorization on every route, including provider catalog and collection reads；derive the existing `WorkspaceScope` / `DirectoryScope` values required by each owner；validate Pydantic DTOs；call Channel Management；and translate stable safe outcomes。They do not construct a `*ManagementContext` wrapper and do not import repositories、credential protectors、provider SDKs or ORM records。
+Workspace Console controllers enforce authentication and owner/admin authorization on every route, including provider catalog and collection reads；derive the existing `WorkspaceScope` / `DirectoryScope` values required by each owner；validate Pydantic DTOs；decode transport configuration versions；call the Email/IM owners directly；aggregate collection/catalog responses；project owner-native credential-free views through the canonical projection functions；and translate stable safe outcomes。They do not construct a cross-kind service bundle and do not import repositories、credential protectors、provider SDKs or ORM records。
 
 Collection reads perform no provider I/O. Unexpected errors are isolated by configured resource where possible and never expose credentials, raw provider responses or persistence diagnostics.
 
 ## Risks / Trade-offs
 
 - [Two discovery collections add one API concept] → Their state semantics are disjoint: provider definitions are static possibilities; Channels are persisted facts. Combining them recreates ambiguous resource identity.
-- [Channel facade becomes less provider-oriented] → Provider-specific HTTP fields remain available through the typed credential unions in `providers.py`, while provider lifecycle stays in its actual owner.
+- [Controller aggregates two owners for collection reads] → The aggregation owns only HTTP response organization；provider-specific fields remain in `providers.py`, while lifecycle and persistence semantics remain in the actual owners.
 - [Current cross-provider switch uses an ID-addressed replacement subresource] → This makes resource replacement and destructive cleanup explicit；a PUT never silently changes the identity it addresses。
 - [Provider validation can discover a tenant change only after external I/O] → Return replacement-required without writing; a retry with explicit replacement target makes operator consent testable.
 - [Old clients use `/im-integration`] → Treat removal as a breaking migration and update callers atomically to `/channels/im`; do not retain a compatibility alias.
@@ -139,11 +139,18 @@ Collection reads perform no provider I/O. Unexpected errors are isolated by conf
 ## Migration Plan
 
 1. Add contract tests for the unified configured collection, unified provider catalog, ID-addressed items/replacement and legacy-route `404` behavior.
-2. Make Email and IM Integration services expose the minimal application ports required by Channel Management.
+2. Make Email and IM Integration services expose owner-native credential-free views and native revision tokens, and give each owner an independent production composition function.
 3. Move Console provider credential DTO ownership to `api/controllers/console/human_input_v2/providers.py`；delete duplicate DTOs and per-provider manager/registry code。
 4. Replace provider-addressed controllers with the `/workspace/current/human-input/v2` unified collection/catalog、ID-addressed item and replacement controllers。
 5. Move all configuration callers from `/im-integration` to `/workspace/current/human-input/v2/channels/im`, then remove the legacy route registration in the same deployment.
 6. Add transition, concurrency, rollback and security coverage before enabling production rollout.
+
+## Verification Strategy
+
+- Service unit tests isolate Email/IM orchestration with deterministic repository and provider test doubles；they own transition selection、provider-I/O ordering、safe error classification and stale/replacement precedence。
+- Service integration tests combine each real application owner with PostgreSQL persistence；the IM path also uses the real guarded unit of work and Redis write lock。They own native revision CAS、atomic replacement cleanup、rollback and cross-kind isolation。
+- Controller unit tests isolate HTTP authorization、DTO mapping、opaque `ConfigVersion` translation and safe error projection with owner test doubles。
+- A minimal Console API integration test crosses the real Flask route、transport codec、production composition、application owner、Redis lock and PostgreSQL repository while replacing only external provider I/O。
 
 ## Open Questions
 

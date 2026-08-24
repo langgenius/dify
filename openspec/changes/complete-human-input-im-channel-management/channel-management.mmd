@@ -12,13 +12,14 @@ flowchart LR
     subgraph Transport["Canonical Console transport contracts"]
         ProviderCatalog["ChannelProvider catalog<br/>email_providers + im_providers<br/>available custom_app providers only"]
         Credentials["providers.py<br/>EmailProviderCredentials<br/>IMProviderCredentials<br/>complete input; secrets use SecretStr"]
-        Version["ConfigVersion<br/>client-opaque string"]
+        Version["ConfigVersion<br/>client-opaque string<br/>transport codec to owner-native revision"]
         Summary["ChannelSummary<br/>connected | invalid_credentials | connection_failure<br/>safe display_identifier and status_description"]
         TestResponse["ChannelTestResponse<br/>non-persistent candidate result"]
         DeleteResponse["ChannelDeleteResponse<br/>deleted channel_id"]
     end
 
-    Service["HumanInputChannelManagementService<br/>authorize scope and dispatch by email or im"]
+    Controller["Console controllers<br/>authorize, aggregate owner reads, map DTOs, serialize responses"]
+    Projection["Canonical projection functions<br/>owner-native credential-free view to ChannelSummary"]
 
     subgraph Owners["Application owners"]
         EmailOwner["Email Management owner<br/>Resend lifecycle and credential protection"]
@@ -36,22 +37,25 @@ flowchart LR
     Admin --> IMRoutes
     Admin --> ReplacementRoute
 
-    CatalogRoute --> Service
+    CatalogRoute --> Controller
     ProviderCatalog --> Admin
 
-    ListRoute --> Service
+    ListRoute --> Controller
+    EmailRoutes --> Controller
+    IMRoutes --> Controller
+    ReplacementRoute --> Controller
     EmailRoutes --> Credentials
     IMRoutes --> Credentials
     ReplacementRoute --> Credentials
-    Credentials --> Service
+    Credentials --> Controller
 
     EmailRoutes -. "update or delete" .-> Version
     IMRoutes -. "update or delete" .-> Version
     ReplacementRoute -. "expected_config_version" .-> Version
-    Version --> Service
+    Version --> Controller
 
-    Service -->|"email"| EmailOwner
-    Service -->|"im"| IMOwner
+    Controller -->|"email discovery, get, test, mutation"| EmailOwner
+    Controller -->|"im discovery, get, test, mutation"| IMOwner
 
     EmailOwner --> ProviderIO
     IMOwner --> ProviderIO
@@ -59,10 +63,11 @@ flowchart LR
     IMOwner -->|"complete CAS"| IMStore
     IMOwner -->|"replacement or delete cleanup"| IMDependents
 
-    EmailOwner -->|"available providers"| ProviderCatalog
-    IMOwner -->|"available providers"| ProviderCatalog
-    EmailOwner -->|"list, get, create, update"| Summary
-    IMOwner -->|"list, get, create, update, replacement"| Summary
+    Controller --> ProviderCatalog
+    Controller --> Projection
+    EmailOwner --> Projection
+    IMOwner --> Projection
+    Projection --> Summary
     Summary --> Admin
 
     EmailOwner -. "test only" .-> TestResponse

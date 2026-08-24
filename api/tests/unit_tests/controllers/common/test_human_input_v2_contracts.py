@@ -12,7 +12,6 @@ from controllers.common.human_input_v2_contracts import (
     ExternalContactCreateRequest,
     FormAccessRequestResponse,
     HumanInputV2ServiceFormSubmitRequest,
-    IMIntegration,
     IMSyncResultItem,
     IMSyncRun,
     ListIMIdentitiesQuery,
@@ -20,7 +19,6 @@ from controllers.common.human_input_v2_contracts import (
     NodeDataMigrationFailureResponse,
     NodeDataMigrationPayload,
     NodeDataMigrationResponse,
-    UpdateIMIntegrationRequest,
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.entities import RecipientConfig
@@ -40,45 +38,7 @@ def test_request_dto_coerces_enum_values_and_forbids_extra_fields() -> None:
         MessageTemplateTestRequest.model_validate({"channel": "email", "inputs": {}, "unexpected": True})
 
 
-def test_update_im_integration_cas_fields_are_both_present_or_both_absent() -> None:
-    credentials = {
-        "provider": "feishu",
-        "app_id": "app-id",
-        "app_secret": "app-secret",
-    }
-
-    create_request = UpdateIMIntegrationRequest.model_validate({"credentials": credentials})
-    update_request = UpdateIMIntegrationRequest.model_validate(
-        {
-            "credentials": credentials,
-            "expected_integration_id": "integration-id",
-            "expected_config_version": 3,
-        }
-    )
-
-    assert create_request.expected_integration_id is None
-    assert create_request.expected_config_version is None
-    assert update_request.expected_integration_id == "integration-id"
-    assert update_request.expected_config_version == 3
-
-    with pytest.raises(ValidationError):
-        UpdateIMIntegrationRequest.model_validate(
-            {
-                "credentials": credentials,
-                "expected_integration_id": "integration-id",
-            }
-        )
-
-
-def test_im_integration_and_sync_run_expose_captured_revision() -> None:
-    integration = IMIntegration.model_validate(
-        {
-            "provider": "feishu",
-            "status": "connected",
-            "integration_id": "integration-id",
-            "config_version": 4,
-        }
-    )
+def test_sync_run_exposes_captured_revision() -> None:
     sync_run = IMSyncRun.model_validate(
         {
             "id": "run-id",
@@ -90,28 +50,8 @@ def test_im_integration_and_sync_run_expose_captured_revision() -> None:
         }
     )
 
-    assert integration.integration_id == "integration-id"
-    assert integration.config_version == 4
     assert sync_run.integration_id == "integration-id"
     assert sync_run.integration_config_version == 4
-
-
-def test_delete_im_integration_requires_complete_cas_token() -> None:
-    delete_query_model = getattr(contracts, "DeleteIMIntegrationQuery", None)
-    assert delete_query_model is not None
-
-    query = delete_query_model.model_validate(
-        {
-            "expected_integration_id": "integration-id",
-            "expected_config_version": "4",
-        }
-    )
-
-    assert query.expected_integration_id == "integration-id"
-    assert query.expected_config_version == 4
-
-    with pytest.raises(ValidationError):
-        delete_query_model.model_validate({"expected_integration_id": "integration-id"})
 
 
 def test_external_contact_avatar_is_optional() -> None:

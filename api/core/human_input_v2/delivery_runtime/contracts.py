@@ -9,7 +9,7 @@ from enum import StrEnum
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.channel_identity import ChannelKind, ChannelRef
+from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
@@ -46,7 +46,7 @@ class RenderedEmailDeliveryRequest:
     """Complete provider-ready content for exactly one logical attempt."""
 
     tenant_id: TenantId
-    channel: ChannelRef
+    provider: EmailProviderType
     delivery_id: DeliveryAttemptId
     recipient: NormalizedEmail = field(repr=False)
     subject: str = field(repr=False)
@@ -55,8 +55,6 @@ class RenderedEmailDeliveryRequest:
     idempotency_key: str = field(default="", repr=False)
 
     def __post_init__(self) -> None:
-        if self.channel.kind is not ChannelKind.EMAIL:
-            raise ValueError("rendered Email delivery requires an Email channel")
         if not self.subject.strip():
             raise ValueError("rendered Email subject must not be blank")
         if not self.html.strip():
@@ -70,14 +68,10 @@ class ResolvedEmailChannelSnapshot:
     """Send-time configuration with only its credential kept ephemeral."""
 
     identity: ConfigurationSnapshotIdentity
-    channel: ChannelRef
+    provider: EmailProviderType
     sender_email: NormalizedEmail
     sender_name: str
     credential: ProviderCredential = field(repr=False)
-
-    def __post_init__(self) -> None:
-        if self.channel.kind is not ChannelKind.EMAIL:
-            raise ValueError("resolved Email snapshot requires an Email channel")
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,8 +155,7 @@ class DeliveryOutcome:
 def fingerprint_rendered_email(request: RenderedEmailDeliveryRequest) -> str:
     payload = json.dumps(
         {
-            "channel_kind": request.channel.kind.value,
-            "channel_provider": request.channel.provider.value,
+            "provider": request.provider.value,
             "recipient": str(request.recipient),
             "subject": request.subject,
             "html": request.html,

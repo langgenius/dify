@@ -38,11 +38,12 @@ class SlackIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
         repr=False,
         description="Resolved Slack bot API token.",
     )
-    app_token: str = Field(
+    app_token: str | None = Field(
+        default=None,
         min_length=1,
         pattern=r"^xapp-",
         repr=False,
-        description="Resolved Slack app-level Socket Mode token.",
+        description="Optional resolved Slack app-level token required only for Socket Mode.",
     )
 
 

@@ -1,94 +1,107 @@
+"""Canonical Console transport for Human Input Email and IM Channels."""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
+from enum import StrEnum
 from http import HTTPStatus
-from typing import Annotated, Literal, Self, Union
+from typing import Annotated, Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, model_validator
+from flask import request
+from flask.typing import ResponseReturnValue
+from flask_restx import Resource
+from pydantic import Field, StringConstraints
+
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
+from controllers.console import console_ns
+from controllers.console.wraps import with_current_tenant_id, with_current_user
+from core.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
+from core.human_input_v2.entities import (
+    EmailProviderType,
+    HumanInputDeliveryChannel,
+    IMIntegrationStatus,
+    IMProvider,
+)
+from core.human_input_v2.im_integration import IMIntegrationView, IntegrationRevisionToken
+from core.human_input_v2.shared import (
+    AccountId,
+    EmailProviderId,
+    IntegrationId,
+    TenantId,
+    WorkspaceScope,
+)
 from fields.base import ResponseModel
-from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
-from libs.helper import EmailStr
-from controllers.common.session import with_session
-
-from ._common import StrictModel
-from ._decorator import require_admin_or_owner
-
-from .providers import (
-    ChannelKind,
-    IMProviderCredentials,
+from models.account import Account
+from services.human_input_v2.email_channel_management_composition import (
+    build_human_input_email_channel_management_service,
+)
+from services.human_input_v2.errors import (
+    ChannelAlreadyConfiguredError,
+    ChannelNotFoundError,
+    ChannelProviderError,
+    ProviderConfigurationUpdatedError,
+    ReplacementRequiredError,
+)
+from services.human_input_v2.im_integration_management_composition import (
+    build_human_input_im_integration_management_service,
 )
 
-type ChannelId = Annotated[NewType("ChannelId", str), StringConstraints(strip_whitespace=True, min_length=1)]
+from ._common import StrictModel
+from ._decorators import require_admin_or_owner
+from .config_version import (
+    InvalidConfigVersionError,
+    decode_email_config_version,
+    decode_im_config_version,
+    encode_email_config_version,
+    encode_im_config_version,
+)
+from .errors import (
+    ChannelAlreadyConfiguredHttpError,
+    ChannelNotFoundHttpError,
+    ChannelProviderBadRequestHttpError,
+    ChannelProviderConfigurationUpdatedHttpError,
+    ChannelReplacementRequiredHttpError,
+)
+from .providers import EmailProviderCredentials, IMProviderCredentials
 
-# An opaque string to represent a specific config version. It must be stored it and returnd it exactly as provided.
-# The client MUST NOT parse, parse, decode, modify, attempt to interpret it or synthesize it.
-#
-# The ConfigVersion is not a cryptography-protected text. It is used as a means for information hiding.
-type ConfigVersion = NewType("ConfigVersion", str)
-
-
-class ChannelTestResponse(ResponseModel):
-    pass
-
-
-class ChannelDeleteResponse(ResponseModel):
-    # identifier for the channel deleted.
-    channel_id: ChannelId
+type ChannelId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+type ConfigVersion = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 class ChannelStatus(StrEnum):
-    # CONNECTED means that the channel is properly connected and ready for use.
-    # The credentials is valid and no errors has occurred.
     CONNECTED = "connected"
-
-
-
-    # The supplied credentials are invalid. (Wrong client_id / client_secret ete.)
     INVALID_CREDENTIALS = "invalid_credentials"
-
-    #
     CONNECTION_FAILURE = "connection_failure"
 
 
 class ConnectionMode(StrEnum):
-    """ConnectionMode record how should the provider be configred."""
-    # CUSTOM_APP corresponds to IM / Email applications managed by the user. When configureing
-    # the provider, all credentials (including but not limited to `client_id` and `client_secret`)
-    # must be provided by the user.
     CUSTOM_APP = "custom_app"
 
-    # CUSTOM_APP corresponds to IM applications managed by the Dify platform. Generally the user only
-    # needs to go through the OAuth procedure to connect corresponding IM / Email providers.
-    # MANAGED_APP = "managed_app"
+
+class ChannelTestResponse(ResponseModel):
+    status: ChannelStatus
+    status_description: str
 
 
-class DeletionQuery(BaseModel):
-    """Query arguments used for concurrency control."""
-    expected_config_version: ConfigVersion
+class ChannelDeleteResponse(ResponseModel):
+    channel_id: ChannelId
 
 
-class ConflictResponse(ResponseModel):
-    code: Literal[
-        # replacement_required signals that it is not possible to update the channel configuration inplace, and
-        # an explicit IM provider replacement is required.
-        # This code is only returned for IM channel updates.
-        #
-        # When this error code is returned, the caller should send a POST request to IMChannelReplaceApi
-        # instead.
-        "replacement_required",
-
-        # rprovider_configuration_updated is returned when the specified version in the request
-        # does not match the state in the server.
-        "provider_configuration_updated"
-    ]
+class ChannelConflictResponse(ResponseModel):
+    code: Literal["replacement_required", "provider_configuration_updated"]
     message: str
     status: Literal[HTTPStatus.CONFLICT] = HTTPStatus.CONFLICT
 
 
-class ChannelProvider(StrictModel):
-    provider: IMProvider | EmailProvider
-    # currently, only `CUSTOM_APP` is returned.
-    connection_mode: ConnectionMode
+class ChannelProvider(ResponseModel):
+    provider: EmailProviderType | IMProvider
+    connection_mode: Literal[ConnectionMode.CUSTOM_APP] = ConnectionMode.CUSTOM_APP
 
 
 class ListChannelProvidersResponse(ResponseModel):
@@ -96,262 +109,481 @@ class ListChannelProvidersResponse(ResponseModel):
     im_providers: Sequence[ChannelProvider]
 
 
-@console_ns.route("/workspace/current/human-input/v2/channel-providers")
-class ListChannelProvidersApi(Resource):
-    @console_ns.doc("list_channel_providers")
-    @console_ns.doc(description="List available IM and email sending providers")
-    @console_ns.response(200, "Success", console_ns.models[ListChannelProvidersResponse.__name__])
-    @setup_required
-    @require_admin_or_owner
-    def get(self) -> ListChannelProvidersResponse:
-        ...
-
-
-class ChannelSummary(StrictModel):
-    # Channel Identifiers, correspond to
+class ChannelSummary(ResponseModel):
     id: ChannelId
     created_at: Timestamp
     updated_at: Timestamp
-    kind: ChannelKind
-    provider: EmailProvider | IMProvider = Field(..., "The provider of the channel. The actual type depend on the `kind` field.")
+    kind: Literal[HumanInputDeliveryChannel.EMAIL, HumanInputDeliveryChannel.IM]
+    provider: EmailProviderType | IMProvider = Field(
+        description="The provider of the Channel. The concrete provider type depends on the `kind` field."
+    )
     status: ChannelStatus
-    status_description: str = Field(..., "Human-readable status description text. Empty if status is CONECTED.")
-    display_identifier: str = Field(..., description="The display identifier of the channel")
-    webhook_url: str | None = Field(None, description=(
-        "webhook url to be configured on the provider side. None if no webhook configuration required. "
-        "(E.G. using persisted connection to retrieve event, or webhook is not supported."
-    ))
-    config_version: ConfigVersion  = Field(..., description="The current configuration version. Use to serialize concurrent update.")
+    status_description: str = Field(
+        description="Human-readable status description. Empty when the status is `connected`."
+    )
+    display_identifier: str = Field(description="The display identifier of the Channel.")
+    webhook_url: str | None = Field(
+        description=(
+            "Webhook URL to configure on the provider side. None when webhook configuration is not required "
+            "or the provider does not support webhooks."
+        )
+    )
+    config_version: ConfigVersion = Field(
+        description="The current opaque configuration version used for optimistic concurrency control."
+    )
 
 
 class ListChannelsResponse(ResponseModel):
     channels: Sequence[ChannelSummary]
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels")
-class ListChannelsApi(Resource):
-    @console_ns.doc("list_channels")
-    @console_ns.doc(description="list configured channels. Currently only one email and one IM channels can be configured.")
-    @console_ns.response(200, "Success", console_ns.models[ListChannelsResponse.__name__])
-    @require_admin_or_owner
-    @with_session(write=False)
-    def get(self, session: Session) -> ListChannelsResponse:
-        ...
-
-
-class EmailChannelTestRequest(StrictModel):
+class EmailChannelTestPayload(StrictModel):
     credentials: EmailProviderCredentials
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email/test")
-class EmailChannelTestApi(Resource):
-    @console_ns.doc("test_email_channel")
-    @console_ns.doc(description=(
-        "Test email channel credentials. This API does not persist the provided credentials. "
-        "Nor does it mutate the existing configured email channels."
-    ))
-    @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
-    @console_ns.expect(console_ns.models[EmailChannelTestRequest.__name__])
-    @console_ns.response(400, "Invalid credentials")
-    @require_admin_or_owner
-    @with_session()
-    def post(self, session: Session) -> ChannelTestResponse:
-        ...
-
-class EmailChannelCreationRequest(StrictModel):
+class EmailChannelCreatePayload(StrictModel):
     credentials: EmailProviderCredentials
 
 
-class EmailChannelCreationResponse(ResponseModel):
+class EmailChannelMutationResponse(ResponseModel):
     summary: ChannelSummary
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email")
-class EmailChannelCreationApi(Resource):
-    @console_ns.doc("create_email_channel")
-    @console_ns.doc(description="Create a email channel for sending emails")
-    @console_ns.response(200, "Success", console_ns.models[EmailChannelCreationResponse.__name__])
-    @console_ns.expect(console_ns.models[EmailChannelCreationRequest.__name__])
-    @require_admin_or_owner
-    @with_session()
-    def post(self, session: Session) -> EmailChannelCreationResponse:
-        payload = EmailChannelCreationRequest.model_validate(console_ns.payload or {})
-        ...
-
-
-class EmailChannelGetResponse(ResponseModel):
+class EmailChannelDetailResponse(ResponseModel):
     summary: ChannelSummary
     sender_name: str
     sender_email: str
 
 
-class EmailChannelUpdateRequest(StrictModel):
+class EmailChannelUpdatePayload(StrictModel):
     credentials: EmailProviderCredentials
-    expected_config_version: ConfigVersion = Field(..., description="config_version used to ensure updates are serialized.")
+    expected_config_version: ConfigVersion
 
 
-class EmailChannelUpdateResponse(ResponseModel):
-    summary: ChannelSummary
+class ChannelDeleteQuery(StrictModel):
+    expected_config_version: ConfigVersion
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/email/<uuid:channel_id>")
-class EmailChannel(Resource):
-    @console_ns.doc("get_email_channel")
-    @console_ns.doc(description="Retrieve email channel summary")
-    @console_ns.response(200, "Success", console_ns.models[EmailChannelGetResponse.__name__])
-    @require_admin_or_owner
-    @with_session(write=False)
-    def get(self, channel_id: ChannelId, session: Session) -> EmailChannelGetResponse:
-        ...
-
-    @console_ns.doc("update_email_channel")
-    @console_ns.doc(description="Update a previously configured email channel")
-    @console_ns.response(200, "Success", console_ns.models[EmailChannelUpdateResponse.__name__])
-    @console_ns.expect(console_ns.models[EmailChannelUpdateRequest.__name__])
-    @require_admin_or_owner
-    @with_session()
-    def put(self, channel_id: ChannelId, session: Session) -> EmailChannelUpdateResponse:
-        ...
-
-    @console_ns.doc("delete_email_channel")
-    @console_ns.doc(description="delete a previously configured email channel")
-    @console_ns.response(200, "Success", console_ns.models[EmailChannelDeleteResponse.__name__])
-    @console_ns.response(
-        HTTPStatus.CONFLICT,
-        "The configuration has already been updated on the server side",
-        console_ns.models[ConflictResponse.__name__],
-    )
-    @console_ns.doc(params=query_params_from_model(DeletionQuery))
-    @require_admin_or_owner
-    @with_session()
-    def delete(self, channel_id: ChannelId, session: Session) -> ChannelDeleteResponse:
-        ...
-
-
-
-class IMChannelTestRequest(StrictModel):
+class IMChannelTestPayload(StrictModel):
     credentials: IMProviderCredentials
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im/test")
-class IMChannelTestApi(Resource):
-    @console_ns.doc("test_im_channel")
-    @console_ns.doc(description=(
-        "Test IM channel credentials. This API does not persist the provided credentials. "
-        "Nor does it mutate the existing configured IM channels."
-    ))
-    @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
-    @console_ns.response(400, "Invalid credentials")
-    @require_admin_or_owner
-    @with_session()
-    def post(self, session: Session) -> ChannelTestResponse:
-        ...
-
-
-
-class IMChannelCreationRequest(StrictModel):
+class IMChannelCreatePayload(StrictModel):
     credentials: IMProviderCredentials
 
 
-class IMChannelCreationResponse(ResponseModel):
+class IMChannelMutationResponse(ResponseModel):
     summary: ChannelSummary
 
 
-@console_ns.route("/workspace/current/human-input/v2/channels/im")
-class IMChannelCreationApi(Resource):
-    @console_ns.doc("create_im_channel")
-    @console_ns.doc(description="create IM channel")
-    @console_ns.response(200, "Success", console_ns.models[IMChannelCreationResponse.__name__])
-    @console_ns.expect(console_ns.models[IMChannelCreationRequest.__name__])
-    @console_ns.response(
-        HTTPStatus.CONFLICT,
-        "The configuration has already been updated on the server side, or a IM channel has already been created.",
-        console_ns.models[ConflictResponse.__name__],
-    )
-    @require_admin_or_owner
-    @with_session()
-    def post(self, session: Session) -> IMChannelCreationResponse:
-        ...
-
-
-class IMChannelGetResponse(ResponseModel):
+class IMChannelDetailResponse(ResponseModel):
     summary: ChannelSummary
 
 
-class IMChannelUpdateRequest(StrictModel):
-    credentials: IMProviderCredentials
-
-    expected_config_version: ConfigVersion = Field(..., description="config_version used to ensure updates are serialized.")
-
-
-class IMChannelUpdateResponse(ResponseModel):
-    summary: ChannelSummary
-
-
-@console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>")
-class IMChannelUpdateApi(Resource):
-    @console_ns.doc("get_im_channele")
-    @console_ns.doc(description="get IM channel")
-    @console_ns.response(200, "Success", console_ns.models[IMChannelGetResponse.__name__])
-    @require_admin_or_owner
-    @with_session()
-    def get(self, channel_id: ChannelId, session: Session) -> IMChannelGetResponse:
-        ...
-
-    @console_ns.doc("update_im_channele")
-    @console_ns.doc(description="update IM channel")
-    @console_ns.response(200, "Success", console_ns.models[IMChannelUpdateResponse.__name__])
-    @console_ns.response(
-        HTTPStatus.CONFLICT,
-        "The configuration has already been updated on the server side, or a replacement is required.",
-        console_ns.models[ConflictResponse.__name__],
-    )
-    @console_ns.expect(console_ns.models[IMChannelUpdateRequest.__name__])
-    @require_admin_or_owner
-    @with_session()
-    def put(self, channel_id: ChannelId, session: Session) -> IMChannelUpdateResponse:
-        ...
-
-    @console_ns.doc("delete_im_channel")
-    @console_ns.doc(description="delete IM channel")
-    @console_ns.doc(params=query_params_from_model(DeletionQuery))
-    @console_ns.response(200, "Success", console_ns.models[ChannelDeleteResponse.__name__])
-    @console_ns.response(
-        HTTPStatus.CONFLICT,
-        "The configuration has already been updated on the server side",
-        console_ns.models[ConflictResponse.__name__],
-    )
-    @require_admin_or_owner
-    @with_session()
-    def delete(self, channel_id: ChannelId, session: Session) -> ChannelDeleteResponse:
-        ...
-
-
-class IMChannelReplaceRequest(StrictModel):
+class IMChannelUpdatePayload(StrictModel):
     credentials: IMProviderCredentials
     expected_config_version: ConfigVersion
 
 
-class IMChannelReplaceResponse(ResponseModel):
-    summary: ChannelSummary
+class IMChannelReplacementPayload(StrictModel):
+    credentials: IMProviderCredentials
+    expected_config_version: ConfigVersion
+
+
+register_schema_models(
+    console_ns,
+    ChannelDeleteQuery,
+    EmailChannelTestPayload,
+    EmailChannelCreatePayload,
+    EmailChannelUpdatePayload,
+    IMChannelTestPayload,
+    IMChannelCreatePayload,
+    IMChannelUpdatePayload,
+    IMChannelReplacementPayload,
+)
+register_response_schema_models(
+    console_ns,
+    ChannelTestResponse,
+    ChannelDeleteResponse,
+    ChannelConflictResponse,
+    ChannelProvider,
+    ListChannelProvidersResponse,
+    ChannelSummary,
+    ListChannelsResponse,
+    EmailChannelMutationResponse,
+    EmailChannelDetailResponse,
+    IMChannelMutationResponse,
+    IMChannelDetailResponse,
+)
+
+
+def _workspace_scope(tenant_id: str) -> WorkspaceScope:
+    return WorkspaceScope(id=TenantId(tenant_id))
+
+
+def _actor_id(account: Account) -> AccountId:
+    return AccountId(account.id)
+
+
+def _channel_provider_response(provider: EmailProviderType | IMProvider) -> ChannelProvider:
+    return ChannelProvider(provider=provider)
+
+
+def _email_channel_summary_response(view: EmailChannelView) -> ChannelSummary:
+    return ChannelSummary(
+        id=view.id,
+        created_at=view.created_at,
+        updated_at=view.updated_at,
+        kind=HumanInputDeliveryChannel.EMAIL,
+        provider=view.provider,
+        status=ChannelStatus.CONNECTED,
+        status_description="",
+        display_identifier=" ".join(part for part in (view.sender_name, view.sender_email) if part),
+        webhook_url=None,
+        config_version=encode_email_config_version(view.revision),
+    )
+
+
+def _im_channel_summary_response(view: IMIntegrationView) -> ChannelSummary:
+    status, status_description = _im_channel_status(view)
+    return ChannelSummary(
+        id=view.id,
+        created_at=view.created_at,
+        updated_at=view.updated_at,
+        kind=HumanInputDeliveryChannel.IM,
+        provider=view.provider,
+        status=status,
+        status_description=status_description,
+        display_identifier=" ".join(part for part in (view.app_identifier, view.provider_tenant_display) if part),
+        webhook_url=view.webhook_url,
+        config_version=encode_im_config_version(view.revision),
+    )
+
+
+def _im_channel_status(view: IMIntegrationView) -> tuple[ChannelStatus, str]:
+    if view.status in (IMIntegrationStatus.CONFIGURED, IMIntegrationStatus.CONNECTED):
+        return ChannelStatus.CONNECTED, ""
+    if view.status is IMIntegrationStatus.PERMISSION_ISSUE:
+        return (
+            ChannelStatus.INVALID_CREDENTIALS,
+            view.safe_status_reason or "The configured credentials are no longer accepted.",
+        )
+    return (
+        ChannelStatus.CONNECTION_FAILURE,
+        view.safe_status_reason or "The configured provider connection is unavailable.",
+    )
+
+
+def _email_revision(value: str, channel_id: EmailProviderId) -> EmailConfigurationSnapshot:
+    try:
+        return decode_email_config_version(value, channel_id)
+    except InvalidConfigVersionError as error:
+        raise ChannelProviderConfigurationUpdatedHttpError() from error
+
+
+def _im_revision(value: str, channel_id: IntegrationId) -> IntegrationRevisionToken:
+    try:
+        return decode_im_config_version(value, channel_id)
+    except InvalidConfigVersionError as error:
+        raise ChannelProviderConfigurationUpdatedHttpError() from error
+
+
+@console_ns.route("/workspace/current/human-input/v2/channel-providers")
+class ListChannelProvidersApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ListChannelProvidersResponse.__name__])
+    @require_admin_or_owner
+    def get(self) -> ResponseReturnValue:
+        email_providers = build_human_input_email_channel_management_service().available_providers()
+        im_providers = build_human_input_im_integration_management_service().available_providers()
+        return ListChannelProvidersResponse(
+            email_providers=[_channel_provider_response(provider) for provider in email_providers],
+            im_providers=[_channel_provider_response(provider) for provider in im_providers],
+        ).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels")
+class ListChannelsApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ListChannelsResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def get(self, tenant_id: str) -> ResponseReturnValue:
+        workspace_scope = _workspace_scope(tenant_id)
+        email = build_human_input_email_channel_management_service().get_current(workspace_scope)
+        im = build_human_input_im_integration_management_service().get_current(workspace_scope)
+        channels: list[ChannelSummary] = []
+        if email is not None:
+            channels.append(_email_channel_summary_response(email))
+        if im is not None:
+            channels.append(_im_channel_summary_response(im))
+        return ListChannelsResponse(channels=channels).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels/email/test")
+class EmailChannelTestApi(Resource):
+    @console_ns.expect(console_ns.models[EmailChannelTestPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def post(self, tenant_id: str) -> ResponseReturnValue:
+        request_body = EmailChannelTestPayload.model_validate(console_ns.payload or {})
+        candidate = request_body.credentials.to_owner_candidate()
+        try:
+            build_human_input_email_channel_management_service().test(
+                _workspace_scope(tenant_id),
+                candidate,
+                candidate.sender_email,
+            )
+        except ChannelProviderError as error:
+            return ChannelTestResponse(
+                status=ChannelStatus(error.kind.value),
+                status_description=error.status_description,
+            ).model_dump(mode="json")
+        return ChannelTestResponse(
+            status=ChannelStatus.CONNECTED,
+            status_description="",
+        ).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels/email")
+class EmailChannelCreateApi(Resource):
+    @console_ns.expect(console_ns.models[EmailChannelCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[EmailChannelMutationResponse.__name__])
+    @require_admin_or_owner
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
+        request_body = EmailChannelCreatePayload.model_validate(console_ns.payload or {})
+        try:
+            snapshot = build_human_input_email_channel_management_service().create(
+                _workspace_scope(tenant_id),
+                _actor_id(current_user),
+                request_body.credentials.to_owner_candidate(),
+            )
+        except ChannelAlreadyConfiguredError as error:
+            raise ChannelAlreadyConfiguredHttpError() from error
+        except ChannelProviderError as error:
+            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        return EmailChannelMutationResponse(summary=_email_channel_summary_response(snapshot)).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels/email/<uuid:channel_id>")
+class EmailChannelApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[EmailChannelDetailResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def get(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
+        try:
+            snapshot = build_human_input_email_channel_management_service().get(
+                _workspace_scope(tenant_id),
+                EmailProviderId(str(channel_id)),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        return EmailChannelDetailResponse(
+            summary=_email_channel_summary_response(snapshot),
+            sender_name=snapshot.sender_name,
+            sender_email=snapshot.sender_email,
+        ).model_dump(mode="json")
+
+    @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[EmailChannelMutationResponse.__name__])
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
+    @require_admin_or_owner
+    @with_current_user
+    @with_current_tenant_id
+    def put(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
+        request_body = EmailChannelUpdatePayload.model_validate(console_ns.payload or {})
+        addressed_id = EmailProviderId(str(channel_id))
+        try:
+            snapshot = build_human_input_email_channel_management_service().update(
+                _workspace_scope(tenant_id),
+                addressed_id,
+                _email_revision(request_body.expected_config_version, addressed_id),
+                _actor_id(current_user),
+                request_body.credentials.to_owner_candidate(),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        except ChannelProviderError as error:
+            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        return EmailChannelMutationResponse(summary=_email_channel_summary_response(snapshot)).model_dump(mode="json")
+
+    @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
+    @console_ns.response(200, "Success", console_ns.models[ChannelDeleteResponse.__name__])
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
+        query = ChannelDeleteQuery.model_validate(request.args.to_dict(flat=True))
+        addressed_id = EmailProviderId(str(channel_id))
+        try:
+            deleted_id = build_human_input_email_channel_management_service().delete(
+                _workspace_scope(tenant_id),
+                addressed_id,
+                _email_revision(query.expected_config_version, addressed_id),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        return ChannelDeleteResponse(channel_id=deleted_id).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels/im/test")
+class IMChannelTestApi(Resource):
+    @console_ns.expect(console_ns.models[IMChannelTestPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def post(self, tenant_id: str) -> ResponseReturnValue:
+        request_body = IMChannelTestPayload.model_validate(console_ns.payload or {})
+        try:
+            build_human_input_im_integration_management_service().test(
+                _workspace_scope(tenant_id),
+                request_body.credentials.to_owner_credentials(),
+            )
+        except ChannelProviderError as error:
+            return ChannelTestResponse(
+                status=ChannelStatus(error.kind.value),
+                status_description=error.status_description,
+            ).model_dump(mode="json")
+        return ChannelTestResponse(
+            status=ChannelStatus.CONNECTED,
+            status_description="",
+        ).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels/im")
+class IMChannelCreateApi(Resource):
+    @console_ns.expect(console_ns.models[IMChannelCreatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
+    @require_admin_or_owner
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
+        request_body = IMChannelCreatePayload.model_validate(console_ns.payload or {})
+        try:
+            snapshot = build_human_input_im_integration_management_service().create(
+                _workspace_scope(tenant_id),
+                _actor_id(current_user),
+                request_body.credentials.to_owner_credentials(),
+            )
+        except ChannelAlreadyConfiguredError as error:
+            raise ChannelAlreadyConfiguredHttpError() from error
+        except ChannelProviderError as error:
+            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
+
+
+@console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>")
+class IMChannelApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[IMChannelDetailResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def get(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
+        try:
+            snapshot = build_human_input_im_integration_management_service().get(
+                _workspace_scope(tenant_id),
+                IntegrationId(str(channel_id)),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        return IMChannelDetailResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
+
+    @console_ns.expect(console_ns.models[IMChannelUpdatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
+    @require_admin_or_owner
+    @with_current_user
+    @with_current_tenant_id
+    def put(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
+        request_body = IMChannelUpdatePayload.model_validate(console_ns.payload or {})
+        addressed_id = IntegrationId(str(channel_id))
+        try:
+            snapshot = build_human_input_im_integration_management_service().update(
+                _workspace_scope(tenant_id),
+                addressed_id,
+                _im_revision(request_body.expected_config_version, addressed_id),
+                _actor_id(current_user),
+                request_body.credentials.to_owner_credentials(),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ReplacementRequiredError as error:
+            raise ChannelReplacementRequiredHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        except ChannelProviderError as error:
+            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
+
+    @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
+    @console_ns.response(200, "Success", console_ns.models[ChannelDeleteResponse.__name__])
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
+    @require_admin_or_owner
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, channel_id: UUID) -> ResponseReturnValue:
+        query = ChannelDeleteQuery.model_validate(request.args.to_dict(flat=True))
+        addressed_id = IntegrationId(str(channel_id))
+        try:
+            deleted_id = build_human_input_im_integration_management_service().delete(
+                _workspace_scope(tenant_id),
+                addressed_id,
+                _im_revision(query.expected_config_version, addressed_id),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        return ChannelDeleteResponse(channel_id=deleted_id).model_dump(mode="json")
 
 
 @console_ns.route("/workspace/current/human-input/v2/channels/im/<uuid:channel_id>/replacement")
-class IMChannelReplaceApi(Resource):
-    @console_ns.doc("replace_im_channel")
-    @console_ns.doc(description=(
-        "replace an exisiting IM channel. A replacement also dissociates exisiting IM bindings "
-        "and IM identities. Fresh IM synchronizaiton and reconciliation are required to use "
-        "bind IM accounts to contacts."
-    ))
-    @console_ns.response(200, "Success", console_ns.models[IMChannelReplaceResponse.__name__])
-    @console_ns.expect(console_ns.models[IMChannelReplaceRequest.__name__])
-    @console_ns.response(
-        HTTPStatus.CONFLICT,
-        "The configuration has already been updated on the server side",
-        console_ns.models[ConflictResponse.__name__],
-    )
+class IMChannelReplacementApi(Resource):
+    @console_ns.expect(console_ns.models[IMChannelReplacementPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[IMChannelMutationResponse.__name__])
+    @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
     @require_admin_or_owner
-    @with_session()
-    def post(self, session: Session) -> IMChannelReplaceResponse:
-        ...
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, channel_id: UUID) -> ResponseReturnValue:
+        request_body = IMChannelReplacementPayload.model_validate(console_ns.payload or {})
+        addressed_id = IntegrationId(str(channel_id))
+        try:
+            snapshot = build_human_input_im_integration_management_service().replace(
+                _workspace_scope(tenant_id),
+                addressed_id,
+                _im_revision(request_body.expected_config_version, addressed_id),
+                _actor_id(current_user),
+                request_body.credentials.to_owner_credentials(),
+            )
+        except ChannelNotFoundError as error:
+            raise ChannelNotFoundHttpError() from error
+        except ProviderConfigurationUpdatedError as error:
+            raise ChannelProviderConfigurationUpdatedHttpError() from error
+        except ChannelProviderError as error:
+            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
+
+
+__all__ = [
+    "ChannelConflictResponse",
+    "ChannelDeleteQuery",
+    "ChannelDeleteResponse",
+    "ChannelProvider",
+    "ChannelSummary",
+    "ChannelTestResponse",
+    "EmailChannelCreatePayload",
+    "EmailChannelDetailResponse",
+    "EmailChannelTestPayload",
+    "EmailChannelUpdatePayload",
+    "IMChannelCreatePayload",
+    "IMChannelDetailResponse",
+    "IMChannelReplacementPayload",
+    "IMChannelTestPayload",
+    "IMChannelUpdatePayload",
+    "ListChannelProvidersResponse",
+    "ListChannelsResponse",
+]

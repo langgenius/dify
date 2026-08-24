@@ -24,23 +24,21 @@ from core.human_input_v2.approval import (
     ProtectedRenderedEmailRequest,
     RenderedEmailRequestProtector,
 )
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
     RenderedEmailDeliveryRequest,
     derive_idempotency_key,
     fingerprint_rendered_email,
 )
-from core.human_input_v2.entities import HumanInputDeliveryAttemptStatus
+from core.human_input_v2.entities import EmailProviderType, HumanInputDeliveryAttemptStatus
 from core.human_input_v2.shared import DeliveryAttemptId, NormalizedEmail, TenantId
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
-_RESEND_EMAIL_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
 _RENDERED_EMAIL_REQUEST_FIELDS = frozenset(
     {
         "schema_version",
         "tenant_id",
-        "channel",
+        "provider",
         "delivery_id",
         "recipient",
         "subject",
@@ -146,7 +144,6 @@ class HumanInputV2NotificationProducer:
                 protected = self._protector.protect(tenant_id, serialize_rendered_email_request(request))
                 data = DeliveryAttemptData(
                     protected_request=protected,
-                    selected_channel=request.channel,
                     payload_fingerprint=fingerprint_rendered_email(request),
                     idempotency_key=request.idempotency_key,
                 )
@@ -214,7 +211,7 @@ class HumanInputV2NotificationProducer:
         text_body = _render_standard_email_text(body, form_url)
         return RenderedEmailDeliveryRequest(
             tenant_id=tenant_id,
-            channel=_RESEND_EMAIL_CHANNEL,
+            provider=EmailProviderType.RESEND,
             delivery_id=delivery_id,
             recipient=configuration.email_address,
             subject=subject,
@@ -229,10 +226,7 @@ def serialize_rendered_email_request(request: RenderedEmailDeliveryRequest) -> s
         {
             "schema_version": 1,
             "tenant_id": str(request.tenant_id),
-            "channel": {
-                "kind": request.channel.kind.value,
-                "provider": request.channel.provider.value,
-            },
+            "provider": request.provider.value,
             "delivery_id": str(request.delivery_id),
             "recipient": str(request.recipient),
             "subject": request.subject,
@@ -251,12 +245,11 @@ def deserialize_rendered_email_request(serialized: str) -> RenderedEmailDelivery
         value = json.loads(serialized)
         if not isinstance(value, dict) or set(value) != _RENDERED_EMAIL_REQUEST_FIELDS:
             raise ValueError
-        channel = value["channel"]
-        if value["schema_version"] != 1 or not isinstance(channel, dict):
+        if value["schema_version"] != 1:
             raise ValueError
         return RenderedEmailDeliveryRequest(
             tenant_id=TenantId(value["tenant_id"]),
-            channel=ChannelRef(ChannelKind(channel["kind"]), ChannelProvider(channel["provider"])),
+            provider=EmailProviderType(value["provider"]),
             delivery_id=DeliveryAttemptId(value["delivery_id"]),
             recipient=NormalizedEmail(value["recipient"]),
             subject=value["subject"],

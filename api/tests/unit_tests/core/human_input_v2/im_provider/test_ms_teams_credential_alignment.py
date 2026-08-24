@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from controllers.common.human_input_v2_contracts import MSTeamsIMIntegrationCredentials as MSTeamsCredentialUpdate
+from controllers.console.human_input_v2.providers import MSTeamsCredentials as MSTeamsCredentialUpdate
 from core.human_input_v2.im_provider import contracts
 from models.human_input_v2 import MSTeamsIMIntegrationEncryptedCredentials
 

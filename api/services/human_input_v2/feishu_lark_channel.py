@@ -1,4 +1,4 @@
-"""Typed persisted credential projections for Feishu and Lark adapters."""
+"""Typed Human Input v2 credential projections for Feishu and Lark adapters."""
 
 from __future__ import annotations
 

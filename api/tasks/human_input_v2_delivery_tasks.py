@@ -18,10 +18,7 @@ from libs.datetime_utils import naive_utc_now
 from repositories.human_input_v2.email_channel import SQLAlchemyEmailChannelRepository
 from repositories.human_input_v2.form import SQLAlchemyDeliveryAttemptRepository
 from services.human_input_v2.delivery_publisher import HumanInputV2DueAttemptPublisher
-from services.human_input_v2.delivery_runtime import (
-    DifyEmailCredentialProtector,
-    TenantEmailConfigurationSnapshotResolver,
-)
+from services.human_input_v2.delivery_runtime import TenantEmailConfigurationSnapshotResolver
 from services.human_input_v2.delivery_worker import HumanInputV2DeliveryWorker
 from services.human_input_v2.notification_producer import DifyRenderedEmailRequestProtector
 from services.human_input_v2.resend_delivery import HttpxResendTransport, ResendEmailProviderAdapter
@@ -38,10 +35,7 @@ def build_human_input_v2_delivery_worker(
 ) -> HumanInputV2DeliveryWorker:
     sessions = _operation_sessions(session_factory)
     attempt_repository = SQLAlchemyDeliveryAttemptRepository(sessions)
-    resolver = TenantEmailConfigurationSnapshotResolver(
-        SQLAlchemyEmailChannelRepository(sessions),
-        DifyEmailCredentialProtector(),
-    )
+    resolver = TenantEmailConfigurationSnapshotResolver(SQLAlchemyEmailChannelRepository(sessions))
     adapter = ResendEmailProviderAdapter(HttpxResendTransport())
     runtime = HumanInputRenderedEmailDeliveryRuntime(
         resolver,

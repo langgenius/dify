@@ -16,57 +16,20 @@ from core.human_input_v2.shared import (
 
 
 @dataclass(frozen=True, slots=True)
-class NewAPIKey:
-    """A transient plaintext credential accepted only at a provider boundary."""
-
-    value: str = field(repr=False)
-
-    def __post_init__(self) -> None:
-        if not self.value.strip():
-            raise ValueError("API key must not be blank")
-
-
-@dataclass(frozen=True, slots=True)
-class RetainExistingAPIKey:
-    """Explicit instruction to validate and preserve the current credential."""
-
-
-@dataclass(frozen=True, slots=True)
-class ProtectedAPIKey:
-    """Opaque protected credential that is never part of a safe projection."""
-
-    value: str = field(repr=False)
-
-    def __post_init__(self) -> None:
-        if not self.value:
-            raise ValueError("protected API key must not be empty")
-
-
-type APIKeyDirective = NewAPIKey | RetainExistingAPIKey
-
-
-@dataclass(frozen=True, slots=True)
 class ResendCandidate:
     """Complete candidate settings for a Resend save or test operation."""
 
     sender_email: NormalizedEmail
     sender_name: str
-    api_key: APIKeyDirective = field(repr=False)
-    provider: EmailProviderType = field(default=EmailProviderType.RESEND, init=False)
+    api_key: str = field(repr=False)
 
     def __post_init__(self) -> None:
-        if self.provider is not EmailProviderType.RESEND:
-            raise ValueError("only the Resend email provider is supported")
-        object.__setattr__(self, "sender_name", self.sender_name.strip())
-
-
-@dataclass(frozen=True, slots=True)
-class ResendProviderSettings:
-    """Transient complete settings supplied to the provider validation port."""
-
-    sender_email: NormalizedEmail
-    sender_name: str
-    api_key: str = field(repr=False)
+        if not self.api_key.strip():
+            raise ValueError("API key must not be blank")
+        sender_name = self.sender_name.strip()
+        if not sender_name:
+            raise ValueError("sender name must not be blank")
+        object.__setattr__(self, "sender_name", sender_name)
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +37,11 @@ class EmailConfigurationSnapshot:
     """Complete internal token guarding a validated configuration write."""
 
     configuration_id: EmailProviderId
-    updated_at: NaiveDatetime
+    config_version: int
+
+    def __post_init__(self) -> None:
+        if self.config_version < 1:
+            raise ValueError("config version must be positive")
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,16 +52,34 @@ class EmailChannelConfiguration:
     tenant_id: TenantId
     sender_email: NormalizedEmail
     sender_name: str
-    protected_api_key: ProtectedAPIKey = field(repr=False)
+    protected_api_key: str = field(repr=False)
     configured_by_account_id: AccountId | None
     created_at: NaiveDatetime
     updated_at: NaiveDatetime
+    config_version: int = 1
     provider: EmailProviderType = EmailProviderType.RESEND
 
     def __post_init__(self) -> None:
         if self.provider is not EmailProviderType.RESEND:
             raise ValueError("only the Resend email provider is supported")
+        if not self.protected_api_key:
+            raise ValueError("protected API key must not be empty")
+        if self.config_version < 1:
+            raise ValueError("config version must be positive")
 
     @property
     def snapshot(self) -> EmailConfigurationSnapshot:
-        return EmailConfigurationSnapshot(self.id, self.updated_at)
+        return EmailConfigurationSnapshot(self.id, self.config_version)
+
+
+@dataclass(frozen=True, slots=True)
+class EmailChannelView:
+    """Credential-free configuration state exposed by the Email owner."""
+
+    id: EmailProviderId
+    provider: EmailProviderType
+    created_at: NaiveDatetime
+    updated_at: NaiveDatetime
+    sender_name: str
+    sender_email: str
+    revision: EmailConfigurationSnapshot

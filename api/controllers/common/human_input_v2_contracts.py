@@ -19,7 +19,6 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue, mod
 from controllers.common.human_input_v2_migration import LegacyHITLv1NodeData
 from core.human_input_v2.entities import (
     ContactId,
-    EmailProviderType,
     HumanInputContactType,
     IMBindingId,
     IMBindingScope,
@@ -244,182 +243,6 @@ class RemoveContactsResponse(ResponseModel):
     removed_contact_ids: list[ContactId] = Field(description="Contact identifiers removed by the current operation.")
 
 
-class _FeishuLarkIMIntegrationCredentialsBase(_RequestModel):
-    """Shared credential fields for Feishu and Lark integrations."""
-
-    app_id: str = Field(description="Feishu or Lark application identifier.")
-    app_secret: str = Field(description="Feishu or Lark application secret.")
-    verification_token: str $ None = Field(
-        default=None, description="Optional callback verification token."
-    )
-    encrypt_key: str | None = Field(default=None, description="Optional callback encrypt key.")
-
-
-class FeishuIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentialsBase):
-    """Feishu integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.FEISHU] = Field(description="Discriminator for Feishu integration credentials.")
-
-
-class LarkIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentialsBase):
-    """Lark integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.LARK] = Field(description="Discriminator for Lark integration credentials.")
-
-
-class SlackIMIntegrationCredentials(_RequestModel):
-    """Slack integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.SLACK] = Field(description="Discriminator for Slack integration credentials.")
-    client_id: str = Field(description="Slack OAuth client identifier.")
-    client_secret: str = Field(description="Slack OAuth client secret.")
-    signing_secret: str = Field(description="Slack signing secret used to verify callbacks.")
-    bot_token: str = Field(
-        description="Slack bot token used for API calls and message delivery."
-    )
-    app_token: str | None = Field(
-        description="Slack app-level token used exclusively for Socket Mode. None if socket mode is not utilized."
-    )
-
-
-class DingTalkIMIntegrationCredentials(_RequestModel):
-    """DingTalk integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.DING_TALK] = Field(description="Discriminator for DingTalk integration credentials.")
-    corp_id: str = Field(description="DingTalk corporation identifier.")
-    client_id: str = Field(description="DingTalk application client identifier.")
-    client_secret: str = Field(
-        repr=False, description="DingTalk application client secret. This field will be masked in response."
-    )
-
-
-class MSTeamsIMIntegrationCredentials(_RequestModel):
-    """Microsoft Teams integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.MS_TEAMS] = Field(
-        description="Discriminator for Microsoft Teams integration credentials."
-    )
-    tenant_id: str = Field(description="Microsoft Entra tenant identifier.")
-    client_id: str = Field(description="Microsoft Teams application client identifier.")
-    client_secret: str = Field(
-        description="Microsoft Teams application client secret. This field will be masked in response"
-    )
-
-
-class WeComIMIntegrationCredentials(_RequestModel):
-    """WeCom integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.WE_COM] = Field(description="Discriminator for WeCom integration credentials.")
-    corp_id: str = Field(description="WeCom corporation identifier.")
-    agent_id: str = Field(description="WeCom agent identifier.")
-    secret: str = Field(
-        repr=False, description="WeCom application secret. This field will be masked in response"
-    )
-
-
-IMIntegrationCredentials = Annotated[
-    FeishuIMIntegrationCredentials
-    | LarkIMIntegrationCredentials
-    | SlackIMIntegrationCredentials
-    | DingTalkIMIntegrationCredentials
-    | MSTeamsIMIntegrationCredentials
-    | WeComIMIntegrationCredentials,
-    Field(discriminator="provider"),
-]
-
-
-class _IMIntegrationRequest(_RequestModel):
-    """Internal shared body for IM integration write/test operations."""
-
-    credentials: IMIntegrationCredentials = Field(description="Provider-specific IM integration credentials.")
-
-
-class UpdateIMIntegrationRequest(_IMIntegrationRequest):
-    """Request body for creating or updating one IM integration."""
-
-    expected_integration_id: str | None = Field(
-        default=None,
-        min_length=1,
-        description="Current integration identifier used with expected_config_version for compare-and-swap.",
-    )
-    expected_config_version: int | None = Field(
-        default=None,
-        ge=1,
-        description="Current integration revision used with expected_integration_id for compare-and-swap.",
-    )
-
-    @model_validator(mode="after")
-    def validate_complete_cas_token(self) -> Self:
-        has_integration_id = self.expected_integration_id is not None
-        has_config_version = self.expected_config_version is not None
-        if has_integration_id != has_config_version:
-            raise ValueError("expected_integration_id and expected_config_version must be provided together")
-        return self
-
-
-class DeleteIMIntegrationQuery(_NoExtraModel):
-    """CAS token required when deleting the current IM integration."""
-
-    expected_integration_id: str = Field(min_length=1, description="Current integration identifier.")
-    expected_config_version: int = Field(ge=1, description="Current integration revision.")
-
-
-class TestIMIntegrationRequest(_IMIntegrationRequest):
-    """Request body for testing one IM integration."""
-
-
-class IMIntegration(ResponseModel):
-    """One organization-level IM integration snapshot."""
-
-    provider: IMProvider | None = Field(
-        default=None,
-        description="Configured IM provider. None is allowed when the integration is not configured.",
-    )
-    status: IMIntegrationStatus = Field(description="Current integration connectivity state.")
-    callback_url: str | None = Field(
-        default=None,
-        description=(
-            "Callback URL expected by the provider. "
-            "None if the current deployment uses persistence connections for receive events."
-        ),
-    )
-    permission_hint: str | None = Field(default=None, description="Operator-facing hint about permission issues.")
-    configured_at: Timestamp | None = Field(
-        default=None, description="Unix timestamp in milliseconds when the integration was created."
-    )
-    updated_at: Timestamp | None = Field(
-        default=None, description="Unix timestamp in milliseconds when the integration was last updated."
-    )
-    integration_id: str | None = Field(
-        default=None,
-        description="Stable integration identifier. None when no integration is configured.",
-    )
-    config_version: int | None = Field(
-        default=None,
-        ge=1,
-        description="Monotonic configuration revision. None when no integration is configured.",
-    )
-
-
-class GetIMIntegrationResponse(ResponseModel):
-    """Response body carrying one IM integration snapshot."""
-
-    integration: IMIntegration = Field(description="Current organization-level IM integration snapshot.")
-
-
-class UpdateIMIntegrationResponse(ResponseModel):
-    """Response body returned after updating one IM integration."""
-
-    integration: IMIntegration = Field(description="Saved organization-level IM integration snapshot.")
-
-
-class TestIMIntegrationResponse(ResponseModel):
-    """Response body returned by IM integration test APIs."""
-
-    status: IMIntegrationStatus = Field(description="Integration status mapped from the test result.")
-    message: str = Field(description="Human-readable explanation of the test result.")
-
-
 class IMSyncRunResultCounts(ResponseModel):
     """Aggregate result counts for one IM sync run."""
 
@@ -440,12 +263,12 @@ class IMSyncRun(ResponseModel):
     id: IMSyncRunId = Field(description="Unique sync run identifier.")
     status: IMSyncRunStatus = Field(description="Current lifecycle state of the sync run.")
     started_at: Timestamp | None = Field(
-        default=None, description="Unix timestamp in milliseconds when the sync run started."
+        default=None, description="Unix timestamp in seconds when the sync run started."
     )
     finished_at: Timestamp | None = Field(
         default=None,
         description=(
-            "Unix timestamp in milliseconds when the sync run finished. "
+            "Unix timestamp in seconds when the sync run finished. "
             "This is the sync time displayed by the latest-only UI and is None while the run is unfinished."
         ),
     )
@@ -834,61 +657,6 @@ class NodeDataMigrationFailureResponse(ResponseModel):
     )
 
 
-# =================== EmailProvider related entities ===================
-
-
-class PreserveOriginalValue(_RequestModel):
-    tag: Literal["preserve_original_value"] = "preserve_original_value"
-
-
-class ResendProviderUpdateConfig(_RequestModel):
-    type: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
-
-    api_key: str = Field(
-        ...,
-        description="Resend API key. "
-    )
-    sender_email: str = Field(
-        ..., description="The email address shown as the sender. Its domain must be verified in Resend."
-    )
-
-    sender_name: str = Field("", description="The sender's name displayed in the recipient's inbox.")
-
-
-class ResendProviderConfigResponse(ResponseModel):
-    type: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
-    api_key_configured: bool = Field(description="Whether a Resend API key has been configured.")
-    sender_email: str = Field(description="The email address shown as the sender.")
-    sender_name: str = Field("", description="The sender's name displayed in the recipient's inbox.")
-
-
-EmailProviderUpdateConfig = ResendProviderUpdateConfig
-EmailProviderConfigResponse = ResendProviderConfigResponse
-
-
-class GetEmailProviderResponse(ResponseModel):
-    provider_config: EmailProviderConfigResponse | None = Field(
-        ...,
-        description="The current email provider configuration. `None` if not set.",
-    )
-
-
-class SetEmailProviderRequest(_RequestModel):
-    provider_config: EmailProviderUpdateConfig = Field(..., description="Email provider configuration update.")
-
-
-class SetEmailProviderResponse(ResponseModel):
-    pass
-
-
-class TestEmailProviderConfigRequest(_RequestModel):
-    pass
-
-
-class TestEmailProviderConfigResponse(ResponseModel):
-    pass
-
-
 __all__ = [
     "AddPlatformContactsRequest",
     "AddPlatformContactsResponse",
@@ -898,21 +666,13 @@ __all__ = [
     "ContactOption",
     "ContactOptionsQuery",
     "CreateIMSyncRunResponse",
-    "DeleteIMIntegrationQuery",
-    "DingTalkIMIntegrationCredentials",
-    "EmailProviderConfigResponse",
-    "EmailProviderType",
-    "EmailProviderUpdateConfig",
     "ExternalContactCreateRequest",
     "ExternalContactUpdateRequest",
-    "FeishuIMIntegrationCredentials",
     "FormAccessRequestResponse",
     "FormDefinitionResponse",
     "FormSubmitResponse",
     "FormUploadTokenResponse",
     "GetContactResponse",
-    "GetEmailProviderResponse",
-    "GetIMIntegrationResponse",
     "GetLatestIMSyncRunResponse",
     "HumanInputContact",
     "HumanInputContactType",
@@ -921,8 +681,6 @@ __all__ = [
     "IMContactSyncErrorResponse",
     "IMIdentity",
     "IMIdentityBindingStatus",
-    "IMIntegration",
-    "IMIntegrationCredentials",
     "IMIntegrationStatus",
     "IMProvider",
     "IMSyncRemovalReason",
@@ -931,7 +689,6 @@ __all__ = [
     "IMSyncRun",
     "IMSyncRunResultCounts",
     "IMSyncRunStatus",
-    "LarkIMIntegrationCredentials",
     "ListContactOptionsResponse",
     "ListContactsResponse",
     "ListIMIdentitiesQuery",
@@ -939,7 +696,6 @@ __all__ = [
     "ListLatestIMSyncRunResultsQuery",
     "ListLatestIMSyncRunResultsResponse",
     "ListOrganizationCandidatesResponse",
-    "MSTeamsIMIntegrationCredentials",
     "MessageTemplateTestRequest",
     "MessageTemplateTestResponse",
     "NodeDataMigrationFailureResponse",
@@ -947,21 +703,10 @@ __all__ = [
     "NodeDataMigrationResponse",
     "OrganizationCandidate",
     "OrganizationCandidatesQuery",
-    "PreserveOriginalValue",
     "RemoveContactsRequest",
     "RemoveContactsResponse",
-    "ResendProviderConfigResponse",
-    "ResendProviderUpdateConfig",
     "ResetContactIMOverrideResponse",
     "ServiceFormQuery",
     "SetContactIMOverrideRequest",
     "SetContactIMOverrideResponse",
-    "SetEmailProviderRequest",
-    "SetEmailProviderResponse",
-    "SlackIMIntegrationCredentials",
-    "TestIMIntegrationRequest",
-    "TestIMIntegrationResponse",
-    "UpdateIMIntegrationRequest",
-    "UpdateIMIntegrationResponse",
-    "WeComIMIntegrationCredentials",
 ]

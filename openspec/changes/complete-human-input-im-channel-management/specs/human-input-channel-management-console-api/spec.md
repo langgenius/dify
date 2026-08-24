@@ -43,7 +43,7 @@ The Console API MUST expose the canonical prefix `/console/api/workspace/current
 
 - **WHEN** a create、update、replacement or test request supplies `credentials`
 - **THEN** strict Pydantic validation MUST select exactly one provider-specific variant through its `provider` discriminator
-- **AND** the controller MUST map that DTO to the corresponding Email or IM application input
+- **AND** the controller MUST map that DTO to the corresponding Email or IM application input and call that owner directly
 
 #### Scenario: Secret fields are defined
 
@@ -248,4 +248,4 @@ The v2 Channel controllers MUST be the only public configuration lifecycle for H
 
 **Reason**: This change completes self-managed management behavior for every current IM provider through the existing IM Integration owner。Placeholder Channel handlers would preserve the duplicated authority being removed。
 
-**Migration**: Remove unimplemented provider-specific Channel handlers。Route supported IM credentials through the canonical Console v2 DTOs and IM application port。
+**Migration**: Remove unimplemented provider-specific Channel handlers。Route supported IM credentials through the canonical Console v2 DTOs and IM application owner。
