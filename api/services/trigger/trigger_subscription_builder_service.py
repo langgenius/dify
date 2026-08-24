@@ -254,6 +254,11 @@ class TriggerSubscriptionBuilderService:
                     credentials=subscription_builder.credentials,
                     credential_type=credential_type,
                 )
+                # Keep the in-memory builder in sync with the real lease so
+                # any diagnostic / logging in the rest of this request (or
+                # in the cache, if a later step re-reads it) sees the same
+                # value the refresh task will use to schedule renewal.
+                subscription_builder.expires_at = subscription.expires_at
 
                 TriggerProviderService.add_trigger_subscription(
                     subscription_id=subscription_builder.id,
@@ -267,7 +272,7 @@ class TriggerSubscriptionBuilderService:
                     credentials=subscription_builder.credentials,
                     credential_type=credential_type,
                     credential_expires_at=subscription_builder.credential_expires_at or -1,
-                    expires_at=subscription_builder.expires_at,
+                    expires_at=subscription.expires_at,
                 )
 
             # Delete the builder after successful subscription creation

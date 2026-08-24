@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.entities.entities import SubscriptionBuilder, SubscriptionBuilderUpdater
+from core.trigger.entities.entities import Subscription, SubscriptionBuilder, SubscriptionBuilderUpdater
 from core.trigger.trigger_manager import TriggerManager
 from models.provider_ids import TriggerProviderID
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderService
@@ -249,3 +249,116 @@ def test_process_validation_endpoint_uses_the_public_capability() -> None:
     assert str(provider_call["provider_id"]) == str(PROVIDER_ID)
     controller.dispatch.assert_called_once()
     append_log.assert_called_once()
+
+
+def test_update_and_build_persists_subscription_expires_at_not_builder_placeholder() -> None:
+    """Regression for #41162: the autosubscribe path must persist the lease
+    timestamp returned by the plugin (e.g. Gmail `users.watch` 7-day lease),
+    not the builder's -1 placeholder. The refresh task uses the stored
+    `expires_at` to decide when to re-issue `users.watch`; storing -1 means
+    "never expires" per the trigger plugin spec, so the lease silently lapses.
+    """
+    builder = subscription_builder()
+    # Builder is still in its initial state (expires_at=-1) - this is the
+    # exact pre-fix state where the bug surfaces.
+    assert builder.expires_at == -1
+
+    real_lease = 1_787_560_681  # some far-future timestamp
+    subscription = Subscription(
+        expires_at=real_lease,
+        endpoint="https://dify.example.com/triggers/plugin/builder-1",
+        parameters={"label_ids": ["INBOX"]},
+        properties={"subscription_name": "SES Mail Intake", "topic_name": "projects/p/topics/t"},
+    )
+
+    with (
+        patch.object(TriggerManager, "get_trigger_provider", return_value=Mock()),
+        patch.object(TriggerSubscriptionBuilderService, "acquire_builder_lock", return_value=nullcontext()),
+        patch.object(
+            TriggerSubscriptionBuilderService,
+            "get_subscription_builder",
+            return_value=builder,
+        ),
+        patch("services.trigger.trigger_subscription_builder_service.redis_client.setex"),
+        patch.object(TriggerManager, "subscribe_trigger", return_value=subscription) as subscribe,
+        patch(
+            "services.trigger.trigger_subscription_builder_service.TriggerProviderService.add_trigger_subscription"
+        ) as add_subscription,
+        patch("services.trigger.trigger_subscription_builder_service.redis_client.delete"),
+    ):
+        TriggerSubscriptionBuilderService.update_and_build_builder(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            provider_id=PROVIDER_ID,
+            subscription_builder_id=builder.id,
+            subscription_builder_updater=SubscriptionBuilderUpdater(
+                name="SES Mail Intake",
+                credentials={"access_token": "x", "refresh_token": "y"},
+                credential_type=CredentialType.OAUTH2,
+            ),
+        )
+
+    subscribe.assert_called_once()
+    add_subscription.assert_called_once()
+    subscription_call = add_subscription.call_args.kwargs
+
+    # The bug: pre-fix this is the builder's -1; post-fix it is the real lease.
+    assert subscription_call["expires_at"] == real_lease
+    assert subscription_call["expires_at"] != -1
+
+    # Other fields must still flow through unchanged.
+    assert subscription_call["subscription_id"] == builder.id
+    assert subscription_call["tenant_id"] == "tenant-1"
+    assert subscription_call["user_id"] == "user-1"
+    assert subscription_call["provider_id"] == PROVIDER_ID
+    assert subscription_call["endpoint_id"] == builder.endpoint_id
+    assert subscription_call["name"] == "SES Mail Intake"
+    # The autosubscribe path persists the builder's `parameters` (already
+    # validated against the plugin during the build step), and the
+    # Subscription's `properties` (the plugin's own subscription metadata).
+    # It does NOT take `subscription.parameters` - that field documents the
+    # Subscription entity but is not the source of truth for what Dify
+    # persists.
+    assert subscription_call["parameters"] == builder.parameters
+    assert subscription_call["properties"] == subscription.properties
+    assert subscription_call["credentials"] == {"access_token": "x", "refresh_token": "y"}
+    assert subscription_call["credential_type"] == CredentialType.OAUTH2
+    # credential_expires_at stays a builder field - the OAuth flow fills it
+    # in via the SubscriptionBuilderUpdater before the build step.
+    assert subscription_call["credential_expires_at"] == builder.credential_expires_at
+
+
+def test_update_and_build_uses_builder_expires_at_for_unauthorized_path() -> None:
+    """The UNAUTHORIZED (manual create) path legitimately reads expires_at
+    from the builder because no Subscription object is created. Guard
+    against accidentally rewriting that path along with the autosubscribe fix.
+    """
+    builder = subscription_builder()
+    custom_lease = 1_900_000_000  # user-supplied
+    builder.expires_at = custom_lease
+
+    with (
+        patch.object(TriggerManager, "get_trigger_provider", return_value=Mock()),
+        patch.object(TriggerSubscriptionBuilderService, "acquire_builder_lock", return_value=nullcontext()),
+        patch.object(
+            TriggerSubscriptionBuilderService,
+            "get_subscription_builder",
+            return_value=builder,
+        ),
+        patch("services.trigger.trigger_subscription_builder_service.redis_client.setex"),
+        patch(
+            "services.trigger.trigger_subscription_builder_service.TriggerProviderService.add_trigger_subscription"
+        ) as add_subscription,
+        patch("services.trigger.trigger_subscription_builder_service.redis_client.delete"),
+    ):
+        TriggerSubscriptionBuilderService.update_and_build_builder(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            provider_id=PROVIDER_ID,
+            subscription_builder_id=builder.id,
+            subscription_builder_updater=SubscriptionBuilderUpdater(name="Manual"),
+        )
+
+    add_subscription.assert_called_once()
+    # Manual path keeps the builder value as-is.
+    assert add_subscription.call_args.kwargs["expires_at"] == custom_lease
