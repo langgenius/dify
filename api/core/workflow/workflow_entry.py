@@ -118,7 +118,7 @@ class WorkflowEntry:
         :param workflow_id: workflow id
         :param workflow_type: workflow type
         :param graph_config: workflow graph config
-        :param graph: workflow graph
+        :param graph: graph
         :param user_id: user id
         :param user_from: user from
         :param invoke_from: invoke from
@@ -250,7 +250,7 @@ class WorkflowEntry:
                     variable_pool,
                     node_id=node_id,
                     inputs=user_inputs,
-                    **({"input_types": input_types} if input_types else {}),
+                    input_types=input_types,
                 )
             else:
                 add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
