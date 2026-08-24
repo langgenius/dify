@@ -186,6 +186,11 @@ def test_patch_state_complete_and_uncomplete_task() -> None:
     assert result.completed_task_ids == ("studio",)
 
 
+def test_rejects_unsupported_task_id() -> None:
+    with pytest.raises(ValueError, match="Unsupported task_id"):
+        StepByStepTourService._require_task_id("unknown")
+
+
 def test_rejects_missing_workspace_before_using_state_repository() -> None:
     states = StateRepositoryStub()
 

@@ -2,16 +2,17 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Literal, TypeAlias
 
-type StepByStepTourAction = Literal[
+# Assignment-form aliases preserve Literal enum values in Pydantic-generated OpenAPI schemas.
+StepByStepTourAction: TypeAlias = Literal[  # noqa: UP040
     "skip",
     "complete_task",
     "uncomplete_task",
     "enable_current_workspace",
     "disable_current_workspace",
 ]
-type StepByStepTourTaskId = Literal["home", "studio", "knowledge", "integration"]
+StepByStepTourTaskId: TypeAlias = Literal["home", "studio", "knowledge", "integration"]  # noqa: UP040
 
 
 @dataclass(frozen=True, slots=True)

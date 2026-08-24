@@ -130,18 +130,18 @@ class SQLAlchemyStepByStepTourStateRepository(StepByStepTourStateRepository):
 
     @staticmethod
     def _run_with_lock_retry[T](operation: Callable[[], T]) -> T:
-        for attempt in range(1, _MAX_LOCK_ATTEMPTS + 1):
+        for attempt in range(1, _MAX_LOCK_ATTEMPTS):
             try:
                 return operation()
             except OperationalError as exc:
-                if attempt == _MAX_LOCK_ATTEMPTS or not _is_retryable_mysql_lock_error(exc):
+                if not _is_retryable_mysql_lock_error(exc):
                     raise
                 logger.warning(
                     "Retrying Step-by-step Tour transaction after MySQL lock failure (attempt %s/%s)",
                     attempt,
                     _MAX_LOCK_ATTEMPTS,
                 )
-        raise RuntimeError("Step-by-step Tour transaction did not complete")
+        return operation()
 
     @staticmethod
     def _get_model(

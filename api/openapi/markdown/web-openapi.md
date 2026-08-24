@@ -1019,7 +1019,7 @@ Button styles for user actions.
 | inputs | object | Input variables for the chat | Yes |
 | parent_message_id | string | Parent message ID | No |
 | query | string | User query/message | Yes |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### CompletionMessagePayload
@@ -1029,7 +1029,7 @@ Button styles for user actions.
 | files | [ object ] | Files to be processed | No |
 | inputs | object | Input variables for the completion | Yes |
 | query | string | Query text for completion | No |
-| response_mode | string | Response mode: blocking or streaming | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode: blocking or streaming | No |
 | retriever_from | string, <br>**Default:** web_app | Source of retriever | No |
 
 #### ConversationInfiniteScrollPagination
@@ -1328,7 +1328,7 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 

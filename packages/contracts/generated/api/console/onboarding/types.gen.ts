@@ -5,7 +5,7 @@ export type ClientOptions = {
 }
 
 export type StepByStepTourStateResponse = {
-  completed_task_ids?: Array<StepByStepTourTaskId>
+  completed_task_ids?: Array<'home' | 'integration' | 'knowledge' | 'studio'>
   first_workspace_id?: string | null
   manually_disabled_workspace_ids?: Array<string>
   manually_enabled_workspace_ids?: Array<string>
@@ -14,18 +14,14 @@ export type StepByStepTourStateResponse = {
 }
 
 export type StepByStepTourStatePatchPayload = {
-  action: StepByStepTourAction
-  task_id?: StepByStepTourTaskId | null
+  action:
+    | 'complete_task'
+    | 'disable_current_workspace'
+    | 'enable_current_workspace'
+    | 'skip'
+    | 'uncomplete_task'
+  task_id?: 'home' | 'integration' | 'knowledge' | 'studio' | null
 }
-
-export type StepByStepTourTaskId = 'home' | 'integration' | 'knowledge' | 'studio'
-
-export type StepByStepTourAction =
-  | 'complete_task'
-  | 'disable_current_workspace'
-  | 'enable_current_workspace'
-  | 'skip'
-  | 'uncomplete_task'
 
 export type GetOnboardingStepByStepTourStateData = {
   body?: never

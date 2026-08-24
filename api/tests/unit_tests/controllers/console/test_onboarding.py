@@ -8,7 +8,11 @@ from unittest.mock import Mock, patch
 import pytest
 from pydantic import ValidationError
 
-from controllers.console.onboarding import StepByStepTourStateApi, StepByStepTourStatePatchPayload
+from controllers.console.onboarding import (
+    StepByStepTourStateApi,
+    StepByStepTourStatePatchPayload,
+    StepByStepTourStateResponse,
+)
 from machinery.context import RequestContext
 from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult
 
@@ -84,3 +88,21 @@ def test_patch_payload_rejects_task_id_without_task_action() -> None:
 def test_patch_payload_requires_action() -> None:
     with pytest.raises(ValidationError):
         StepByStepTourStatePatchPayload.model_validate({"task_id": "home"})
+
+
+def test_step_by_step_tour_schemas_preserve_enum_values() -> None:
+    patch_schema = StepByStepTourStatePatchPayload.model_json_schema()
+    action_schema = patch_schema["properties"]["action"]
+    task_id_schema = patch_schema["properties"]["task_id"]
+    task_id_values = next(candidate["enum"] for candidate in task_id_schema["anyOf"] if "enum" in candidate)
+    response_schema = StepByStepTourStateResponse.model_json_schema()
+
+    assert set(action_schema["enum"]) == {
+        "skip",
+        "complete_task",
+        "uncomplete_task",
+        "enable_current_workspace",
+        "disable_current_workspace",
+    }
+    assert set(task_id_values) == {"home", "studio", "knowledge", "integration"}
+    assert set(response_schema["properties"]["completed_task_ids"]["items"]["enum"]) == set(task_id_values)

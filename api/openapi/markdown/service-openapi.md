@@ -2309,14 +2309,14 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | error_msg | string |  | No |
 | job_id | string |  | Yes |
-| job_status | string<br>string |  | Yes |
+| job_status | string, <br>**Available values:** "completed", "error", "processing", "waiting"<br>string |  | Yes |
 
 #### AnnotationJobStatusResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | job_id | string |  | Yes |
-| job_status | string<br>string |  | Yes |
+| job_status | string, <br>**Available values:** "completed", "error", "processing", "waiting"<br>string |  | Yes |
 
 #### AnnotationList
 
@@ -2417,7 +2417,7 @@ Button styles for user actions.
 | files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
 | workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChatRequestPayloadWithUser
@@ -2429,7 +2429,7 @@ Button styles for user actions.
 | files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or question content. | Yes |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 | workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
@@ -2489,7 +2489,7 @@ Button styles for user actions.
 | files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
 
 #### CompletionRequestPayloadWithUser
 
@@ -2498,7 +2498,7 @@ Button styles for user actions.
 | files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
 | query | string | User input or prompt content. | No |
-| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### Condition
@@ -2614,7 +2614,7 @@ Enum class for custom configuration status.
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | external_knowledge_api_id | string | ID of the external knowledge API. | No |
 | external_knowledge_id | string | ID of the external knowledge base. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
 | name | string | Name of the knowledge base. | Yes |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
 | provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.<br>*Enum:* `"external"`, `"vendor"` | No |
@@ -2856,7 +2856,7 @@ Enum class for custom configuration status.
 | external_knowledge_api_id | string | ID of the external knowledge API. | No |
 | external_knowledge_id | string | ID of the external knowledge base. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
 | name | string | Name of the knowledge base. | No |
 | partial_member_list | [ object ] | List of team members with access when `permission` is `partial_members`. | No |
 | permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
@@ -2984,7 +2984,7 @@ Request payload for bulk downloading documents as a zip archive.
 | keyword | string | Search keyword to filter by document name. | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
 | page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
-| status | string | Filter by display status. | No |
+| status | string, <br>**Available values:** "archived", "available", "disabled", "error", "indexing", "paused", "queuing" | Filter by display status. | No |
 
 #### DocumentListResponse
 
@@ -3082,7 +3082,7 @@ Request payload for bulk downloading documents as a zip archive.
 | doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
 | embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
-| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | No |
 | name | string | Document name. | Yes |
 | original_document_id | string | Original document ID for replacement. | No |
 | process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
@@ -3437,14 +3437,14 @@ Model class for i18n object.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFeedbackPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | content | string | Optional text feedback providing additional detail. | No |
-| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| rating | string, <br>**Available values:** "dislike", "like" | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### MessageFile
@@ -3524,7 +3524,7 @@ Metadata Filtering Condition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
-| logical_operator | string | How to combine multiple conditions. | No |
+| logical_operator | string, <br>**Available values:** "and", "or" | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -3726,7 +3726,7 @@ Model class for provider with models response.
 | ---- | ---- | ----------- | -------- |
 | metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
 | reranking_enable | boolean | Whether reranking is enabled. | Yes |
-| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_mode | string, <br>**Available values:** "reranking_model", "weighted_score" | Reranking mode. Required when `reranking_enable` is `true`. | No |
 | reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
 | score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
 | score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
@@ -3760,7 +3760,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string | Parent-child segmentation mode. | No |
+| parent_mode | string, <br>**Available values:** "full-doc", "paragraph" | Parent-child segmentation mode. | No |
 | pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
 | segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
 | subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
@@ -4078,7 +4078,7 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
 | vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
-| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
+| weight_type | string, <br>**Available values:** "customized", "keyword_first", "semantic_first" | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
@@ -4130,7 +4130,7 @@ in form definition, or a variable while the workflow is running.
 | keyword | string | Keyword to search in logs. | No |
 | limit | integer, <br>**Default:** 20 | Number of items per page. | No |
 | page | integer, <br>**Default:** 1 | Page number for pagination. | No |
-| status | string | Filter by execution status. | No |
+| status | string, <br>**Available values:** "failed", "stopped", "succeeded" | Filter by execution status. | No |
 
 #### WorkflowRunForLogResponse
 
@@ -4154,7 +4154,7 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-| response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 
 #### WorkflowRunPayloadWithUser
 
@@ -4162,7 +4162,7 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
 | inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-| response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### WorkflowRunResponse

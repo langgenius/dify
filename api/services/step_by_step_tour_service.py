@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, get_args
 
 from libs.datetime_utils import ensure_naive_utc
 from machinery.context import RequestContext
@@ -12,9 +12,10 @@ from services.entities.onboarding_entities import (
     StepByStepTourPatch,
     StepByStepTourResult,
     StepByStepTourState,
+    StepByStepTourTaskId,
 )
 
-_TASK_IDS = frozenset(("home", "studio", "knowledge", "integration"))
+_TASK_IDS: frozenset[str] = frozenset(get_args(StepByStepTourTaskId))
 
 
 class StepByStepTourStateRepository(Protocol):
