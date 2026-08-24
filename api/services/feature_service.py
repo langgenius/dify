@@ -198,6 +198,16 @@ class SystemFeatureModel(FeatureResponseModel):
 
 class FeatureService:
     @classmethod
+    def get_workspace_plan(cls, tenant_id: str) -> CloudPlan:
+        if not dify_config.BILLING_ENABLED or not tenant_id:
+            return CloudPlan.SANDBOX
+
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        if not billing_info["enabled"]:
+            return CloudPlan.SANDBOX
+        return CloudPlan(billing_info["subscription"]["plan"])
+
+    @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
         features = FeatureModel()
         if exclude_vector_space:
@@ -253,11 +263,8 @@ class FeatureService:
         if not dify_config.BILLING_ENABLED or not tenant_id:
             return default_limit
 
-        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        if billing_info["enabled"] and billing_info["subscription"]["plan"] in (
-            CloudPlan.PROFESSIONAL,
-            CloudPlan.TEAM,
-        ):
+        subscription_plan = cls.get_workspace_plan(tenant_id)
+        if subscription_plan.is_paid:
             return max(default_limit, dify_config.KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN)
 
         return default_limit
@@ -340,20 +347,26 @@ class FeatureService:
         system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
 
     @classmethod
-    def _fulfill_trial_models_from_env(cls) -> list[str]:
+    def _fulfill_trial_models_from_env(cls, quota_types: tuple[str, ...] | None = None) -> list[str]:
+        allowed_quota_types = quota_types or ("PAID", "TRIAL")
         return [
             provider.value
             for provider in HostedTrialProvider
-            if (
-                getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
-                and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
+            if any(
+                getattr(dify_config, f"HOSTED_{provider.config_key}_{quota_type}_ENABLED", False)
+                for quota_type in allowed_quota_types
             )
         ]
 
     @classmethod
-    def get_trial_models(cls) -> list[str]:
-        """Return hosted trial provider ids without requiring the full system-features payload."""
-        return cls._fulfill_trial_models_from_env()
+    def get_trial_models(cls, tenant_id: str) -> list[str]:
+        """Return hosted credit providers filtered by the workspace subscription plan."""
+        if not dify_config.BILLING_ENABLED:
+            return cls._fulfill_trial_models_from_env()
+
+        subscription_plan = cls.get_workspace_plan(tenant_id)
+        quota_types = ("PAID", "TRIAL") if subscription_plan.is_paid else ("TRIAL",)
+        return cls._fulfill_trial_models_from_env(quota_types)
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):

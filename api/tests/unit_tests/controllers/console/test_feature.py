@@ -80,10 +80,10 @@ class TestTrialModelsApi:
         api = TrialModelsApi()
 
         raw_get = unwrap(TrialModelsApi.get)
-        result = raw_get(api)
+        result = raw_get(api, "tenant_123")
 
         assert result == {"trial_models": ["langgenius/openai/openai"]}
-        get_trial_models.assert_called_once_with()
+        get_trial_models.assert_called_once_with("tenant_123")
 
 
 class TestAppDslVersionApi:

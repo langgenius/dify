@@ -9861,9 +9861,9 @@ Returns the site configuration for the application including theme, icons, and t
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /trial-models
-**Get hosted trial model provider configuration for model-provider pages**
+**Get hosted credit provider configuration for the current workspace**
 
-Get hosted trial model provider configuration
+Get hosted credit model provider configuration for the current workspace
 
 #### Responses
 

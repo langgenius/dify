@@ -88,7 +88,7 @@ class FeatureVectorSpaceApi(Resource):
 @console_ns.route("/trial-models")
 class TrialModelsApi(Resource):
     @console_ns.doc("get_trial_models")
-    @console_ns.doc(description="Get hosted trial model provider configuration")
+    @console_ns.doc(description="Get hosted credit model provider configuration for the current workspace")
     @console_ns.response(
         200,
         "Success",
@@ -97,11 +97,12 @@ class TrialModelsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        """Get hosted trial model provider configuration for model-provider pages."""
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str):
+        """Get hosted credit provider configuration for the current workspace."""
         return dump_response(
             TrialModelsResponse,
-            {"trial_models": FeatureService.get_trial_models()},
+            {"trial_models": FeatureService.get_trial_models(current_tenant_id)},
         )
 
 
