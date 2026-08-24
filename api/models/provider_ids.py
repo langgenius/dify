@@ -23,10 +23,8 @@ class GenericProviderID:
     def __init__(self, value: str, is_hardcoded: bool = False) -> None:
         if not value:
             raise NotFound("plugin not found, please add plugin")
-        # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
-        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
-            # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
-            if re.match(r"^[a-z0-9_-]+$", value):
+        if not re.fullmatch(r"[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+", value):
+            if re.fullmatch(r"[a-z0-9_-]+", value):
                 value = f"langgenius/{value}/{value}"
             else:
                 raise ValueError(f"Invalid plugin id {value}")

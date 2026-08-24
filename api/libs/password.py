@@ -7,10 +7,9 @@ password_pattern = r"^(?=.*[a-zA-Z])(?=.*\d).{8,}$"
 
 
 def valid_password(password):
-    # Define a regex pattern for password rules
-    pattern = password_pattern
-    # Check if the password matches the pattern
-    if re.match(pattern, password) is not None:
+    if not isinstance(password, str):
+        raise ValueError("Password must contain letters and numbers, and the length must be at least 8 characters.")
+    if re.fullmatch(r"(?=.*[a-zA-Z])(?=.*\d).{8,}", password) is not None:
         return password
 
     raise ValueError("Password must contain letters and numbers, and the length must be at least 8 characters.")
