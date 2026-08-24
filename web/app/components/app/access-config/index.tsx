@@ -82,6 +82,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
     (nextValue: boolean) => {
       if (nextValue === automaticIncludeWorkspaceMembers) return
 
+      if (!nextValue) setCurrentPage(1)
       setOptimisticAutomaticIncludeWorkspaceMembers(nextValue)
       updateAppAutomaticIncludeWorkspaceMembers(nextValue, {
         onError: () => setOptimisticAutomaticIncludeWorkspaceMembers(null),

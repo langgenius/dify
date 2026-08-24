@@ -237,6 +237,24 @@ describe('DatasetAccessConfigPage', () => {
     expect(mockAccessRulesEditor.props?.pageSize).toBe(25)
   })
 
+  it('should return to the first page when automatic member inclusion is disabled', () => {
+    mockDatasetResourceWhitelistConfig.data = {
+      automatic_include_workspace_members: true,
+    }
+    render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+    act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
+
+    act(() => mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(false))
+
+    expect(useDatasetUserAccessSettings).toHaveBeenLastCalledWith(
+      'dataset-1',
+      expect.any(String),
+      1,
+      10,
+      { enabled: true },
+    )
+  })
+
   it('should jump to the new last page after adding a member', () => {
     mockDatasetUserAccessSettings.pagination = {
       current_page: 1,

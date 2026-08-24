@@ -5,13 +5,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -243,94 +236,86 @@ export default function AccessRulesEditor({
           aria-busy={isLoading || isChangingPage}
           className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg"
         >
-          <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
-            <ScrollAreaViewport className="overscroll-contain">
-              <ScrollAreaContent
-                className={cn(shouldCenterTableBody && 'flex min-h-full flex-col')}
+          <table
+            aria-label={t(($) => $['accessRule.allowedMembers'], {
+              ns: 'permission',
+            })}
+            className="flex min-h-0 w-full flex-1 flex-col"
+          >
+            <thead className="block shrink-0 bg-components-panel-bg">
+              <tr
+                className={cn(
+                  'grid items-center gap-4 border-b border-divider-deep px-4 py-4 system-sm-semibold text-text-tertiary',
+                  ACCESS_RULE_TABLE_GRID,
+                )}
               >
-                <table
-                  aria-label={t(($) => $['accessRule.allowedMembers'], {
-                    ns: 'permission',
-                  })}
-                  className={cn('block w-full', shouldCenterTableBody && 'flex flex-1 flex-col')}
-                >
-                  <thead className="sticky top-0 z-10 block shrink-0 bg-components-panel-bg">
-                    <tr
-                      className={cn(
-                        'grid items-center gap-4 border-b border-divider-deep px-4 py-4 system-sm-semibold text-text-tertiary',
-                        ACCESS_RULE_TABLE_GRID,
-                      )}
-                    >
-                      <th scope="col" className="font-inherit flex items-center gap-3 text-left">
-                        <Checkbox
-                          aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
-                          checked={areAllAccountsSelected}
-                          indeterminate={areSomeAccountsSelected}
-                          disabled={
-                            isChangingPage ||
-                            areMembershipChangesDisabled ||
-                            !onBatchRemoveAccessPolicyMemberBindings ||
-                            selectableAccountIds.length === 0
-                          }
-                          onCheckedChange={handleSelectAllAccounts}
-                        />
-                        <span>{t(($) => $['accessRule.collaborator'], { ns: 'permission' })}</span>
-                      </th>
-                      <th scope="col" className="font-inherit text-left">
-                        {t(($) => $['accessRule.accessPermission'], { ns: 'permission' })}
-                      </th>
-                      <th scope="col" className="font-inherit text-left">
-                        {t(($) => $['accessRule.actions'], { ns: 'permission' })}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className={cn('block px-4', shouldCenterTableBody && 'flex flex-1')}>
-                    {isLoading ? (
-                      <tr className="flex flex-1">
-                        <td
-                          colSpan={3}
-                          className="flex flex-1 items-center justify-center px-4 py-8 text-center"
-                        >
-                          <Loading type="app" />
-                        </td>
-                      </tr>
-                    ) : userAccessSettings.length === 0 ? (
-                      <tr className="flex flex-1">
-                        <td
-                          colSpan={3}
-                          className="flex flex-1 items-center justify-center px-4 py-8 text-center system-sm-regular text-text-tertiary"
-                        >
-                          {t(($) => $['accessRule.noUserAccessSettings'], { ns: 'permission' })}
-                        </td>
-                      </tr>
-                    ) : (
-                      userAccessSettings.map((setting, index) => (
-                        <UserAccessPolicyRow
-                          key={setting.account.account_id}
-                          setting={setting}
-                          policyOptions={policyOptions}
-                          disabled={
-                            isChangingPage || updatingAccountId === setting.account.account_id
-                          }
-                          membershipChangesDisabled={areMembershipChangesDisabled}
-                          selectionDisabled={!onBatchRemoveAccessPolicyMemberBindings}
-                          isMaintainer={maintainerId === setting.account.account_id}
-                          selected={selectedAccountIds.has(setting.account.account_id)}
-                          className={cn(index > 0 && 'border-t border-divider-subtle')}
-                          onSelectedChange={handleAccountSelectedChange}
-                          onChange={onUserAccessPoliciesChange}
-                          onRemove={handleRemoveAccessPolicyMemberBinding}
-                        />
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </ScrollAreaContent>
-            </ScrollAreaViewport>
-            <ScrollAreaScrollbar>
-              <ScrollAreaThumb />
-            </ScrollAreaScrollbar>
-          </ScrollArea>
+                <th scope="col" className="font-inherit flex items-center gap-3 text-left">
+                  <Checkbox
+                    aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
+                    checked={areAllAccountsSelected}
+                    indeterminate={areSomeAccountsSelected}
+                    disabled={
+                      isChangingPage ||
+                      areMembershipChangesDisabled ||
+                      !onBatchRemoveAccessPolicyMemberBindings ||
+                      selectableAccountIds.length === 0
+                    }
+                    onCheckedChange={handleSelectAllAccounts}
+                  />
+                  <span>{t(($) => $['accessRule.collaborator'], { ns: 'permission' })}</span>
+                </th>
+                <th scope="col" className="font-inherit text-left">
+                  {t(($) => $['accessRule.accessPermission'], { ns: 'permission' })}
+                </th>
+                <th scope="col" className="font-inherit text-left">
+                  {t(($) => $['accessRule.actions'], { ns: 'permission' })}
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              className={cn(
+                'block min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid',
+                shouldCenterTableBody && 'flex flex-col',
+              )}
+            >
+              {isLoading ? (
+                <tr className="flex flex-1">
+                  <td
+                    colSpan={3}
+                    className="flex flex-1 items-center justify-center px-4 py-8 text-center"
+                  >
+                    <Loading type="app" />
+                  </td>
+                </tr>
+              ) : userAccessSettings.length === 0 ? (
+                <tr className="flex flex-1">
+                  <td
+                    colSpan={3}
+                    className="flex flex-1 items-center justify-center px-4 py-8 text-center system-sm-regular text-text-tertiary"
+                  >
+                    {t(($) => $['accessRule.noUserAccessSettings'], { ns: 'permission' })}
+                  </td>
+                </tr>
+              ) : (
+                userAccessSettings.map((setting, index) => (
+                  <UserAccessPolicyRow
+                    key={setting.account.account_id}
+                    setting={setting}
+                    policyOptions={policyOptions}
+                    disabled={isChangingPage || updatingAccountId === setting.account.account_id}
+                    membershipChangesDisabled={areMembershipChangesDisabled}
+                    selectionDisabled={!onBatchRemoveAccessPolicyMemberBindings}
+                    isMaintainer={maintainerId === setting.account.account_id}
+                    selected={selectedAccountIds.has(setting.account.account_id)}
+                    className={cn(index > 0 && 'border-t border-divider-subtle')}
+                    onSelectedChange={handleAccountSelectedChange}
+                    onChange={onUserAccessPoliciesChange}
+                    onRemove={handleRemoveAccessPolicyMemberBinding}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
           {showPagination ? (
             <Pagination
               page={currentPage}

@@ -213,6 +213,18 @@ describe('AppAccessConfigPage', () => {
     expect(mockAccessRulesEditor.props?.pageSize).toBe(50)
   })
 
+  it('should return to the first page when automatic member inclusion is disabled', () => {
+    mockAppResourceWhitelistConfig.data = {
+      automatic_include_workspace_members: true,
+    }
+    render(<AppAccessConfigPage appId="app-1" />)
+    act(() => mockAccessRulesEditor.props?.onPageChange?.(2))
+
+    act(() => mockAccessRulesEditor.props?.onAutomaticIncludeWorkspaceMembersChange?.(false))
+
+    expect(useAppUserAccessSettings).toHaveBeenLastCalledWith('app-1', expect.any(String), 1, 10)
+  })
+
   it('should jump to the new last page after adding a member', () => {
     mockAppUserAccessSettings.pagination = {
       current_page: 2,

@@ -99,6 +99,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
       if (!canAccessConfig) return
       if (nextValue === automaticIncludeWorkspaceMembers) return
 
+      if (!nextValue) setCurrentPage(1)
       setOptimisticAutomaticIncludeWorkspaceMembers(nextValue)
       updateDatasetAutomaticIncludeWorkspaceMembers(nextValue, {
         onError: () => setOptimisticAutomaticIncludeWorkspaceMembers(null),
