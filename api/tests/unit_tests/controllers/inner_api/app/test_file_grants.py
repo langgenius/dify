@@ -5,6 +5,7 @@ import os
 import time
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import jwt
@@ -29,6 +30,8 @@ from libs.file_grant import FILE_GRANT_AUDIENCE
 from models.enums import CreatorUserRole, EndUserType
 from models.model import App, EndUser, UploadFile
 from models.tools import ToolFile
+from services import end_user_service
+from services.end_user_service import EndUserService
 from services.file_grant_service import FileGrantService
 
 CONTROLLER_MODULE = "controllers.inner_api.app.file_grants"
@@ -326,11 +329,44 @@ def test_mint_reports_optional_files_item_by_item(app: Flask, sqlite_session: Se
     assert response["files"] == []
 
 
+@pytest.mark.usefixtures("seeded_app")
+def test_end_user_service_never_retypes_an_app_deploy_row(
+    sqlite_engine: Engine,
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Retyping would hide the row from the grant read and strand its files."""
+
+    subject = "subject-that-also-reaches-the-service-api"
+    session_id = FileGrantService.session_id_for_subject(subject)
+    owner = EndUser(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        type=EndUserType.APP_DEPLOY,
+        is_anonymous=True,
+        session_id=session_id,
+        external_user_id=session_id,
+    )
+    sqlite_session.add(owner)
+    sqlite_session.commit()
+    owner_id = owner.id
+    monkeypatch.setattr(end_user_service, "db", SimpleNamespace(engine=sqlite_engine))
+
+    EndUserService.get_or_create_end_user_by_type(EndUserType.SERVICE_API, TENANT_ID, APP_ID, session_id)
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(EndUser, owner_id).type == EndUserType.APP_DEPLOY
+
+
 SKIPPED_DIRECTORY_NAMES = frozenset({".git", ".venv", "__pycache__", "migrations", "node_modules", "tests"})
 
 
 def test_app_deploy_end_users_have_exactly_one_writer() -> None:
-    """``end_users`` has no unique constraint, so a second writer would fork identities."""
+    """``end_users`` has no unique constraint, so a second writer would fork identities.
+
+    ``end_user_service`` names the type only to exclude it from the legacy retype;
+    the behavioural guard above is what holds that exclusion in place.
+    """
 
     api_root = Path(__file__).resolve().parents[5]
     assert api_root.name == "api"
@@ -345,4 +381,7 @@ def test_app_deploy_end_users_have_exactly_one_writer() -> None:
             if "EndUserType.APP_DEPLOY" in path.read_text(encoding="utf-8"):
                 referencing_modules.add(path.relative_to(api_root).as_posix())
 
-    assert referencing_modules == {"services/file_grant_service.py"}
+    assert referencing_modules == {
+        "services/end_user_service.py",
+        "services/file_grant_service.py",
+    }

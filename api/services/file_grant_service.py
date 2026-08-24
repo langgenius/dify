@@ -4,10 +4,13 @@ An AppDeploy subject is asserted exactly once, when the enterprise control
 plane mints a grant. Everything downstream verifies the grant's signature and
 reads by primary key, so this module owns the only stateful step in the flow.
 
-Invariant: this module is the sole writer of ``EndUserType.APP_DEPLOY`` rows.
-``end_users`` has no unique constraint, so a second writer would silently split
-one AppDeploy subject across two identities and strand its files. New code that
-needs such an end user must call :meth:`FileGrantService.get_or_create_end_user`.
+Invariant: this module is the sole creator of ``EndUserType.APP_DEPLOY`` rows,
+and nothing else may retype one. ``end_users`` has no unique constraint, so a
+second creator would silently split one AppDeploy subject across two identities
+and strand its files; :meth:`EndUserService.get_or_create_end_user_by_type`
+excludes this type from the legacy retype it applies to the others for the same
+reason. New code that needs such an end user must call
+:meth:`FileGrantService.get_or_create_end_user`.
 """
 
 from __future__ import annotations
