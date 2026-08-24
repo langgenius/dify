@@ -29,11 +29,7 @@ class BillingNotificationGateway(NotificationGateway):
     @classmethod
     def _map_notification(cls, payload: Mapping[str, Any]) -> AccountNotification:
         raw_contents = payload.get("contents") or {}
-        contents = {
-            language: cls._map_content(content)
-            for language, content in raw_contents.items()
-            if content
-        }
+        contents = {language: cls._map_content(content) for language, content in raw_contents.items() if content}
         return AccountNotification(
             notification_id=payload.get("notificationId"),
             frequency=payload.get("frequency"),
