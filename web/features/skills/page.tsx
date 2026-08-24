@@ -512,7 +512,7 @@ function SkillCard({
               </span>
               <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
               {canEdit && (
                 <DropdownMenuItem className="gap-2" onClick={handleDuplicate}>
                   <span

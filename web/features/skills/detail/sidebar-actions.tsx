@@ -257,7 +257,7 @@ export function SkillDetailSidebarActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
           {canEdit && (
             <DropdownMenuItem className="gap-2" onClick={onRename}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />

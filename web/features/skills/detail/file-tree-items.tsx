@@ -284,7 +284,7 @@ function FileActions({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" popupClassName={skillFileMenuPopupClassName}>
+        <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
           <FileActionMenuItems
             kind="dropdown"
             node={node}
@@ -513,7 +513,7 @@ export function FileTreeItem({
       <>
         <ContextMenu>
           <ContextMenuTrigger render={trigger} />
-          <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+          <ContextMenuContent className={skillFileMenuPopupClassName}>
             <FileActionMenuItems
               kind="context"
               node={node}

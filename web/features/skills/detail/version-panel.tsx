@@ -178,7 +178,7 @@ function VersionFilter({
         placement="bottom-end"
         sideOffset={4}
         alignOffset={55}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="flex w-62 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
           {(['all', 'onlyNamed'] as const).map((filterValue) => (
@@ -377,7 +377,7 @@ function VersionRow({
             >
               <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[184px]">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[184px]">
               <DropdownMenuItem onClick={() => setRestoreOpen(true)}>
                 {t(($) => $['skillManagement.detail.restoreVersion'])}
               </DropdownMenuItem>

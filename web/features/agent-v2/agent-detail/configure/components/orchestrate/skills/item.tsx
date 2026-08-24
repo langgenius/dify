@@ -155,7 +155,7 @@ export function AgentSkillItem({
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
               {!skill.isMissing && (
                 <DropdownMenuItem className="gap-2" onClick={handleDownload}>
                   <span

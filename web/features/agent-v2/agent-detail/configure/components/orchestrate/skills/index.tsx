@@ -422,7 +422,7 @@ function WorkspaceAgentSkillItem({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
           <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden
@@ -727,7 +727,7 @@ export function AgentSkills() {
               <PopoverContent
                 placement="bottom-end"
                 sideOffset={4}
-                popupClassName={
+                className={
                   addMenuView === 'menu'
                     ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
                     : 'w-[320px] overflow-visible border-none bg-transparent p-0 shadow-none'

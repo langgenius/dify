@@ -1376,10 +1376,7 @@ export function FileTree({
                 >
                   <span aria-hidden className="i-ri-add-line size-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  placement="bottom-end"
-                  popupClassName={skillFileMenuPopupClassName}
-                >
+                <DropdownMenuContent placement="bottom-end" className={skillFileMenuPopupClassName}>
                   <RootFileActionMenuItems
                     kind="dropdown"
                     onCreateFile={() =>
@@ -1522,7 +1519,7 @@ export function FileTree({
                       </ul>
                     )}
                   </ContextMenuTrigger>
-                  <ContextMenuContent popupClassName={skillFileMenuPopupClassName}>
+                  <ContextMenuContent className={skillFileMenuPopupClassName}>
                     <RootFileActionMenuItems
                       kind="context"
                       onCreateFile={() =>
@@ -1625,16 +1622,14 @@ export function FileTree({
               <PopoverContent
                 placement="top-start"
                 sideOffset={4}
-                popupClassName="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
-                popupProps={{
-                  'aria-label': t(
-                    ($) =>
-                      referenceCount === 1
-                        ? $['skillManagement.detail.referencedBy_one']
-                        : $['skillManagement.detail.referencedBy_other'],
-                    { count: referenceCount },
-                  ),
-                }}
+                className="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
+                aria-label={t(
+                  ($) =>
+                    referenceCount === 1
+                      ? $['skillManagement.detail.referencedBy_one']
+                      : $['skillManagement.detail.referencedBy_other'],
+                  { count: referenceCount },
+                )}
               >
                 <div className="px-1 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
                   {t(
