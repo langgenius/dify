@@ -7,12 +7,14 @@ from core.moderation.base import ModerationAction, ModerationError, ModerationIn
 from core.moderation.input_moderation import InputModeration
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager
+from models.model import AppMode
 
 
 class TestInputModeration:
     @pytest.fixture
     def app_config(self):
         config = MagicMock(spec=AppConfig)
+        config.app_mode = AppMode.CHAT
         config.sensitive_word_avoidance = None
         return config
 
