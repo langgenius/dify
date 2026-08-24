@@ -12,7 +12,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.rbac import RBACResourceWhitelistScope
 from models import TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
@@ -223,6 +222,10 @@ class ResourceWhitelist(_RBACModel):
         return value
 
 
+class ResourceWhitelistConfig(_RBACModel):
+    automatic_include_workspace_members: bool
+
+
 class ResourceWhitelistResources(_RBACModel):
     unrestricted: bool = False
     resource_ids: list[str] = Field(default_factory=list)
@@ -249,7 +252,6 @@ class ResourceUserAccessPolicies(_RBACModel):
 
 
 class ResourceUserAccessPoliciesResponse(_RBACModel):
-    scope: RBACResourceWhitelistScope
     data: list[ResourceUserAccessPolicies] = Field(default_factory=list)
     pagination: Pagination | None = None
 
@@ -1141,6 +1143,17 @@ class RBACService:
             return ResourceWhitelist.model_validate(data or {})
 
         @staticmethod
+        def whitelist_config(tenant_id: str, account_id: str | None, app_id: str) -> ResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/apps/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"app_id": app_id},
+            )
+            return ResourceWhitelistConfig.model_validate(data or {})
+
+        @staticmethod
         def replace_whitelist(
             tenant_id: str,
             account_id: str | None,
@@ -1313,6 +1326,17 @@ class RBACService:
                 params={"dataset_id": dataset_id},
             )
             return ResourceWhitelist.model_validate(data or {})
+
+        @staticmethod
+        def whitelist_config(tenant_id: str, account_id: str | None, dataset_id: str) -> ResourceWhitelistConfig:
+            data = _inner_call(
+                "GET",
+                f"{_INNER_PREFIX}/datasets/whitelist",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"dataset_id": dataset_id},
+            )
+            return ResourceWhitelistConfig.model_validate(data or {})
 
         @staticmethod
         def replace_whitelist(

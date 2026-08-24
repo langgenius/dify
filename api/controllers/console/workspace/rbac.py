@@ -52,6 +52,7 @@ register_response_schema_models(
     svc.DatasetAccessMatrix,
     svc.WorkspaceAccessMatrix,
     svc.ResourceWhitelist,
+    svc.ResourceWhitelistConfig,
     svc.ResourceUserAccessPoliciesResponse,
     svc.ReplaceUserAccessPoliciesResponse,
     svc.RoleBindingsResponse,
@@ -636,6 +637,15 @@ class RBACAppWhitelistApi(Resource):
         return _dump(result)
 
 
+@console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/whitelist_config")
+class RBACAppWhitelistConfigApi(Resource):
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelistConfig.__name__])
+    def get(self, app_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.AppAccess.whitelist_config(tenant_id, account_id, str(app_id)))
+
+
 @console_ns.route("/workspaces/current/rbac/apps/<uuid:app_id>/user-access-policies")
 class RBACAppUserAccessPoliciesApi(Resource):
     @login_required
@@ -716,6 +726,15 @@ class RBACDatasetMatrixApi(Resource):
         result = svc.RBACService.DatasetAccess.matrix(tenant_id, account_id, str(dataset_id))
         _hydrate_access_matrix_account_names(result.items)
         return _dump(result)
+
+
+@console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/whitelist_config")
+class RBACDatasetWhitelistConfigApi(Resource):
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[svc.ResourceWhitelistConfig.__name__])
+    def get(self, dataset_id):
+        tenant_id, account_id = _current_ids()
+        return _dump(svc.RBACService.DatasetAccess.whitelist_config(tenant_id, account_id, str(dataset_id)))
 
 
 @console_ns.route("/workspaces/current/rbac/datasets/<uuid:dataset_id>/whitelist")
