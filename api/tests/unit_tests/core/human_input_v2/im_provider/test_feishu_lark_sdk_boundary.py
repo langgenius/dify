@@ -17,17 +17,10 @@ import pytest
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-from controllers.common.human_input_feishu_lark_credentials import (
-    resolve_feishu_request_credentials,
-    resolve_lark_request_credentials,
+from controllers.console.human_input_v2.providers import (
+    FeishuCredentials as FeishuCredentialRequest,
 )
-from controllers.common.human_input_v2_contracts import (
-    FeishuIMIntegrationCredentials as FeishuCredentialRequest,
-)
-from controllers.common.human_input_v2_contracts import (
-    LarkIMIntegrationCredentials as LarkCredentialRequest,
-)
-from controllers.common.human_input_v2_contracts import PreserveOriginalValue
+from controllers.console.human_input_v2.providers import LarkCredentials as LarkCredentialRequest
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.entities import IMProvider
@@ -67,7 +60,7 @@ from models.human_input_v2 import (
     FeishuIMIntegrationEncryptedCredentials,
     LarkIMIntegrationEncryptedCredentials,
 )
-from services.human_input_feishu_lark_channel import (
+from services.human_input_v2.feishu_lark_channel import (
     resolve_feishu_encrypted_credentials,
     resolve_lark_encrypted_credentials,
 )
@@ -903,15 +896,11 @@ def test_controller_and_service_projections_feed_typed_adapter_construction(
     feishu_request = FeishuCredentialRequest(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
-        app_secret=PreserveOriginalValue(),
+        app_secret="sanitized-app-secret",
         verification_token="sanitized-new-verification-token",
         encrypt_key=None,
     )
-    feishu_resolved = resolve_feishu_request_credentials(
-        feishu_request,
-        feishu_current,
-        decrypt=decrypted.__getitem__,
-    )
+    feishu_resolved = feishu_request.to_owner_credentials()
     assert FeishuIMProviderAdapter(feishu_resolved).test_credentials() == CredentialTestSuccess(
         IMProvider.FEISHU,
         "tenant_sanitized",
@@ -937,7 +926,7 @@ def test_controller_and_service_projections_feed_typed_adapter_construction(
         verification_token=None,
         encrypt_key="sanitized-encrypt-key",
     )
-    lark_resolved = resolve_lark_request_credentials(lark_request, lark_current, decrypt=decrypted.__getitem__)
+    lark_resolved = lark_request.to_owner_credentials()
     assert LarkIMProviderAdapter(lark_resolved).provider is IMProvider.LARK
     assert (
         resolve_lark_encrypted_credentials(

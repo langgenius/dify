@@ -46,7 +46,7 @@ export type ContactsMockScenarioDefinition = {
 
 const workspaceContact: ContactView = {
   avatar_url: '',
-  created_at: Date.parse('2026-01-12T08:00:00.000Z'),
+  created_at: Date.parse('2026-01-12T08:00:00.000Z') / 1000,
   email: 'owner@example.com',
   id: 'contact-owner',
   im_bindings: [{ id: 'binding-owner-slack', provider: 'slack', scope: 'workspace' }],
@@ -56,7 +56,7 @@ const workspaceContact: ContactView = {
 
 const platformContact: ContactView = {
   avatar_url: '',
-  created_at: Date.parse('2026-02-04T08:00:00.000Z'),
+  created_at: Date.parse('2026-02-04T08:00:00.000Z') / 1000,
   email: 'platform@example.com',
   id: 'contact-platform',
   im_bindings: [{ id: 'binding-platform-feishu', provider: 'feishu', scope: 'organization' }],
@@ -66,7 +66,7 @@ const platformContact: ContactView = {
 
 const externalContact: ContactView = {
   avatar_url: '',
-  created_at: Date.parse('2026-03-20T08:00:00.000Z'),
+  created_at: Date.parse('2026-03-20T08:00:00.000Z') / 1000,
   email: 'external@example.com',
   id: 'contact-external',
   im_bindings: [],
@@ -120,7 +120,7 @@ function paginatedContacts(): ContactView[] {
   for (let index = 1; index <= 20; index += 1) {
     contacts.push({
       avatar_url: '',
-      created_at: Date.parse('2026-04-01T08:00:00.000Z'),
+      created_at: Date.parse('2026-04-01T08:00:00.000Z') / 1000,
       email: `partner-${index}@example.com`,
       id: `contact-partner-${index}`,
       im_bindings: [],

@@ -1,30 +1,30 @@
 ## MODIFIED Requirements
 
-### Requirement: Channel management MUST expose Email and IM through one facade
+### Requirement: Console collections MUST aggregate independent Email and IM owners
 
-The system MUST provide one Channel Management application boundary for listing configured Channels、listing available providers、testing candidates、creating Channels、reading Channels、updating Channels、replacing IM Channels and deleting Channels。It MUST support Resend Email and Slack、Feishu、Lark、DingTalk、Microsoft Teams and WeCom IM。It MUST delegate configuration state and transitions to the Email Management owner or IM Integration owner instead of reading their persistence directly。
+The Console controller MUST call the Email Management owner or IM Integration owner directly for listing、reading、testing、creating、updating、replacing and deleting Channels。The unified HTTP collection and provider catalog MUST be transport-level response aggregation and MUST NOT introduce a cross-kind application service or service bundle。Controllers MUST NOT read owner persistence directly。The system MUST support Resend Email and Slack、Feishu、Lark、DingTalk、Microsoft Teams and WeCom IM。
 
 #### Scenario: Configured Channels are listed
 
 - **WHEN** an authenticated caller requests configured Channels
-- **THEN** management MUST return the current persisted Email and IM Channels
+- **THEN** the Console controller MUST aggregate the current persisted Email and IM owner snapshots
 - **AND** it MUST NOT construct a `not_configured` Channel for an unconfigured provider
 
 #### Scenario: Available providers are listed
 
 - **WHEN** an authenticated caller requests available Channel providers
-- **THEN** management MUST return only providers available in the effective deployment
+- **THEN** the Console controller MUST aggregate only providers reported available by the Email and IM owners
 - **AND** each provider MUST remain separate from persisted Channel state
 
 #### Scenario: One configured Channel is requested
 
 - **WHEN** a caller supplies a kind and `channel_id`
-- **THEN** Channel Management MUST delegate the read to that kind's application owner
+- **THEN** the Console controller MUST delegate the read directly to that kind's application owner
 - **AND** it MUST NOT select a provider implementation from a Channel registry
 
 ### Requirement: Common channel views MUST be credential-free persisted-state snapshots
 
-`ChannelSummary` MUST be the canonical configured-channel transport projection。Channel Management MUST project Email and IM owner state into this DTO and MUST NOT expose per-kind summary DTOs、provider credentials、aggregate objects or persistence records。Candidate test outcomes and provider catalog entries MUST NOT be represented as configured Channels。
+`ChannelSummary` MUST be the canonical configured-channel transport projection。The Console controller MUST use the canonical projection functions for Email and IM owner snapshots。It MUST NOT expose per-kind summary DTOs、provider credentials、aggregate objects or persistence records。Candidate test outcomes and provider catalog entries MUST NOT be represented as configured Channels。
 
 #### Scenario: Configured Email is viewed
 
@@ -47,7 +47,7 @@ The system MUST provide one Channel Management application boundary for listing 
 
 #### Scenario: Display identity is projected
 
-- **WHEN** management creates `display_identifier`
+- **WHEN** an owner snapshot is projected to `ChannelSummary`
 - **THEN** it MUST use only a safe app/client identifier、an optional provider tenant display name or Email sender name/address
 - **AND** it MUST NOT use an API key、secret、token、encrypt key or masked credential
 
@@ -57,21 +57,21 @@ The system MUST provide one Channel Management application boundary for listing 
 - **THEN** management MUST treat its status as a stored snapshot
 - **AND** it MUST NOT perform provider I/O to refresh that snapshot
 
-### Requirement: Management commands MUST preserve provider-specific configuration types
+### Requirement: Owner commands MUST preserve provider-specific configuration types
 
-Email and IM operations MUST receive strict provider-discriminated inputs mapped from the canonical Console v2 DTOs。Channel Management MUST NOT define a second provider-specific credential union or accept an untyped configuration map。
+Email and IM owners MUST receive strict provider-discriminated inputs mapped from the canonical Console v2 DTOs。Channel transport MUST NOT define command services、a second provider-specific credential union or an untyped configuration map。
 
 #### Scenario: Resend candidate is submitted
 
 - **WHEN** Email create、update or test receives a Resend candidate
 - **THEN** the candidate MUST contain required `sender_email`、`sender_name` and `api_key`
-- **AND** Channel Management MUST delegate the complete candidate to the Email owner
+- **AND** the Console controller MUST delegate the complete candidate directly to the Email owner
 
 #### Scenario: IM candidate is submitted
 
 - **WHEN** IM create、update、replacement or test receives provider credentials
 - **THEN** the selected provider variant MUST be validated through its `provider` discriminator
-- **AND** Channel Management MUST delegate the mapped input to the IM owner
+- **AND** the Console controller MUST delegate the mapped input directly to the IM owner
 
 #### Scenario: Required configuration is not newly submitted
 
@@ -92,12 +92,12 @@ Channel controllers MUST derive the existing owner-native `WorkspaceScope` or `D
 #### Scenario: Email command is delegated
 
 - **WHEN** an Email command is handled
-- **THEN** Channel Management MUST scope it to the trusted current Workspace
+- **THEN** the Console controller MUST scope the owner call to the trusted current Workspace
 
 #### Scenario: IM command is delegated
 
 - **WHEN** an IM command is handled
-- **THEN** Channel Management MUST pass the effective existing `DirectoryScope` required by the IM owner
+- **THEN** the Console controller MUST pass the effective existing `DirectoryScope` directly to the IM owner
 
 #### Scenario: Cross-scope record is encountered
 
@@ -129,9 +129,9 @@ Channel Management MUST allow one Workspace Email Channel and at most one active
 - **THEN** the IM owner MUST reject create before provider I/O
 - **AND** it MUST NOT create a second active Integration
 
-### Requirement: IM management MUST delegate to the existing IM Control Plane
+### Requirement: IM Channel commands MUST use the existing IM Control Plane owner
 
-Channel Management MUST delegate configuration revision、credential rotation、provider installation replacement、identity invalidation、binding and synchronization invariants to the existing IM Integration application owner。The Channel layer MUST NOT reimplement these transitions。
+The Console controller MUST call the existing IM Integration application owner for configuration revision、credential rotation、provider installation replacement and deletion。The controller MUST NOT reimplement identity invalidation、binding、synchronization or persistence transitions。
 
 #### Scenario: IM credentials rotate within one provider tenant
 
@@ -199,7 +199,7 @@ Management MUST expose only the failure categories required by clients。Configu
 
 ### Requirement: Provider catalog MUST remain separate from persisted Channel state
 
-Channel Management MUST build one provider catalog from the Email and IM owners' available providers。The catalog MUST return only available providers and MUST use collection membership as its only availability expression。It MUST NOT query provider configuration persistence to manufacture one Channel per provider or treat a provider value as a persisted resource identifier。
+The Console controller MUST build one provider catalog response from the Email and IM owners' available providers。The catalog MUST return only available providers and MUST use collection membership as its only availability expression。It MUST NOT query provider configuration persistence to manufacture one Channel per provider or treat a provider value as a persisted resource identifier。Provider catalog DTOs MUST remain transport-owned and MUST NOT be introduced as core application contracts。
 
 #### Scenario: Provider catalog is requested
 
@@ -241,4 +241,4 @@ Every IM create、credential rotation or replacement MUST validate complete cred
 
 **Reason**: Channel routes no longer select a provider slot, and Email/IM application owners already own provider dispatch and lifecycle invariants。A Channel-level handler registry duplicates ownership。
 
-**Migration**: Remove `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError`、per-provider Channel managers and their register/resolve tests。Inject one Email Management port and one IM Integration application port into `HumanInputChannelManagementService`。
+**Migration**: Remove `ChannelHandler`、`ChannelHandlerRegistry`、`DuplicateChannelHandlerError`、per-provider Channel managers and their register/resolve tests。Give Email Management and IM Integration independent production composition functions and let Console controllers call the owners directly for discovery、get、test and mutation。

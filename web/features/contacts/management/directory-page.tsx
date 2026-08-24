@@ -116,7 +116,7 @@ function ContactRow({
         </span>
       </td>
       <td className="px-4 py-3 system-xs-regular whitespace-nowrap text-text-tertiary">
-        {new Date(contact.created_at).toLocaleDateString()}
+        {new Date(contact.created_at * 1000).toLocaleDateString()}
       </td>
     </tr>
   )

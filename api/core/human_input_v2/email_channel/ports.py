@@ -1,4 +1,4 @@
-"""Provider, protection, and transactional persistence ports for Email."""
+"""Provider failures and transactional persistence ports for Email."""
 
 from __future__ import annotations
 
@@ -8,13 +8,11 @@ from typing import Protocol
 
 from pydantic import NaiveDatetime
 
-from core.human_input_v2.shared import NormalizedEmail, TenantId
+from core.human_input_v2.shared import TenantId
 
 from .entities import (
     EmailChannelConfiguration,
     EmailConfigurationSnapshot,
-    ProtectedAPIKey,
-    ResendProviderSettings,
 )
 
 
@@ -38,24 +36,8 @@ class EmailProviderOperationError(Exception):
         self.code = code
 
 
-class EmailProviderValidator(Protocol):
-    """Concrete provider I/O implemented outside the domain package."""
-
-    def validate(self, settings: ResendProviderSettings) -> None:
-        """Validate credentials, permissions, sender, and domain without sending."""
-        ...
-
-    def send_test(self, settings: ResendProviderSettings, recipient: NormalizedEmail) -> None:
-        """Send exactly one test message through the candidate settings."""
-        ...
-
-
-class EmailCredentialProtector(Protocol):
-    """Workspace-scoped protection boundary for Resend credentials."""
-
-    def protect(self, tenant_id: TenantId, api_key: str) -> ProtectedAPIKey: ...
-
-    def reveal(self, tenant_id: TenantId, protected_api_key: ProtectedAPIKey) -> str: ...
+class EmailChannelPersistenceError(RuntimeError):
+    """Credential-free failure raised by an Email persistence adapter."""
 
 
 class CreateEmailConfigurationStatus(StrEnum):
@@ -75,12 +57,12 @@ class CreateEmailConfigurationResult:
 
 
 class UpdateEmailConfigurationStatus(StrEnum):
-    """Outcome of an identity-and-timestamp guarded configuration update."""
+    """Outcome of an identity-and-revision guarded configuration update."""
 
     # The captured configuration snapshot still matched and the replacement was committed.
     UPDATED = "updated"
 
-    # The captured identity or timestamp is no longer current; callers must reload before retrying.
+    # The captured identity or revision is no longer current; callers must reload before retrying.
     STALE = "stale"
 
 
@@ -98,6 +80,9 @@ class DeleteEmailConfigurationStatus(StrEnum):
 
     # No configuration exists in the trusted workspace scope.
     NOT_CONFIGURED = "not_configured"
+
+    # The current row no longer matches the identity-and-revision snapshot.
+    STALE = "stale"
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,4 +105,9 @@ class EmailChannelRepository(Protocol):
         now: NaiveDatetime,
     ) -> UpdateEmailConfigurationResult: ...
 
-    def delete(self, tenant_id: TenantId) -> DeleteEmailConfigurationResult: ...
+    def delete(
+        self,
+        tenant_id: TenantId,
+        *,
+        expected: EmailConfigurationSnapshot,
+    ) -> DeleteEmailConfigurationResult: ...

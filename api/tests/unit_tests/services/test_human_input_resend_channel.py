@@ -10,10 +10,10 @@ import pytest
 from core.human_input_v2.email_channel import (
     EmailProviderOperationError,
     EmailProviderValidationError,
-    ResendProviderSettings,
+    ResendCandidate,
 )
 from core.human_input_v2.shared import NormalizedEmail
-from services.human_input_resend_channel import ResendEmailProviderValidator
+from services.human_input_v2.resend_channel import ResendProviderGateway
 
 
 @dataclass
@@ -46,8 +46,8 @@ class FakeHTTPClient:
         return result
 
 
-def _settings() -> ResendProviderSettings:
-    return ResendProviderSettings(
+def _candidate() -> ResendCandidate:
+    return ResendCandidate(
         sender_email=NormalizedEmail("approvals@example.com"),
         sender_name="Approvals",
         api_key="re_secret",
@@ -71,9 +71,9 @@ def _verified_domains() -> FakeResponse:
 
 def test_validate_uses_full_access_domain_read_without_sending_email() -> None:
     http_client = FakeHTTPClient(_verified_domains())
-    validator = ResendEmailProviderValidator(http_client=http_client)
+    gateway = ResendProviderGateway(http_client=http_client)
 
-    validator.validate(_settings())
+    gateway.validate(_candidate())
 
     assert len(http_client.calls) == 1
     method, url, kwargs = http_client.calls[0]
@@ -82,7 +82,7 @@ def test_validate_uses_full_access_domain_read_without_sending_email() -> None:
     assert kwargs["headers"]["Authorization"] == "Bearer re_secret"
     assert kwargs["headers"]["User-Agent"] == "Dify-Human-Input/1.0"
     assert kwargs["max_retries"] == 0
-    assert "re_secret" not in repr(validator)
+    assert "re_secret" not in repr(gateway)
 
 
 @pytest.mark.parametrize(
@@ -109,33 +109,31 @@ def test_validate_uses_full_access_domain_read_without_sending_email() -> None:
 )
 def test_validate_classifies_unusable_sender_domain(domain, code: str) -> None:
     domains = [] if domain is None else [domain]
-    validator = ResendEmailProviderValidator(http_client=FakeHTTPClient(FakeResponse(200, {"data": domains})))
+    gateway = ResendProviderGateway(http_client=FakeHTTPClient(FakeResponse(200, {"data": domains})))
 
     with pytest.raises(EmailProviderValidationError) as raised:
-        validator.validate(_settings())
+        gateway.validate(_candidate())
 
     assert raised.value.code == code
 
 
 def test_validate_rejects_sending_only_key_because_domain_cannot_be_checked() -> None:
-    validator = ResendEmailProviderValidator(
-        http_client=FakeHTTPClient(FakeResponse(401, {"name": "restricted_api_key"}))
-    )
+    gateway = ResendProviderGateway(http_client=FakeHTTPClient(FakeResponse(401, {"name": "restricted_api_key"})))
 
     with pytest.raises(EmailProviderValidationError) as raised:
-        validator.validate(_settings())
+        gateway.validate(_candidate())
 
     assert raised.value.code == "provider_full_access_required"
 
 
 def test_send_test_targets_operator_once_with_unique_idempotency_key() -> None:
     http_client = FakeHTTPClient(FakeResponse(200, {"id": "email-1"}))
-    validator = ResendEmailProviderValidator(
+    gateway = ResendProviderGateway(
         http_client=http_client,
         id_factory=lambda: "test-1",
     )
 
-    validator.send_test(_settings(), NormalizedEmail("operator@example.com"))
+    gateway.send_test(_candidate(), NormalizedEmail("operator@example.com"))
 
     assert len(http_client.calls) == 1
     method, url, kwargs = http_client.calls[0]
@@ -173,10 +171,10 @@ def test_send_test_targets_operator_once_with_unique_idempotency_key() -> None:
     ],
 )
 def test_send_test_maps_provider_responses_to_safe_failures(response, exception_type, code: str) -> None:
-    validator = ResendEmailProviderValidator(http_client=FakeHTTPClient(response))
+    gateway = ResendProviderGateway(http_client=FakeHTTPClient(response))
 
     with pytest.raises(exception_type) as raised:
-        validator.send_test(_settings(), NormalizedEmail("operator@example.com"))
+        gateway.send_test(_candidate(), NormalizedEmail("operator@example.com"))
 
     assert raised.value.code == code
     assert "re_secret" not in repr(raised.value)
@@ -184,12 +182,10 @@ def test_send_test_maps_provider_responses_to_safe_failures(response, exception_
 
 def test_transport_failure_is_classified_without_credential_material() -> None:
     request = httpx.Request("GET", "https://api.resend.com/domains")
-    validator = ResendEmailProviderValidator(
-        http_client=FakeHTTPClient(httpx.ReadTimeout("request timed out", request=request))
-    )
+    gateway = ResendProviderGateway(http_client=FakeHTTPClient(httpx.ReadTimeout("request timed out", request=request)))
 
     with pytest.raises(EmailProviderOperationError) as raised:
-        validator.validate(_settings())
+        gateway.validate(_candidate())
 
     assert raised.value.code == "provider_timeout"
     assert "re_secret" not in repr(raised.value)

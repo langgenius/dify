@@ -463,12 +463,13 @@ def test_endpoint_preserves_auth_scope_decorators_and_rejects_before_service(
     account = Account(name="Viewer", email="viewer@example.com")
     account.role = TenantAccountRole.NORMAL
     login_module = import_module("libs.login")
+    wraps_module = import_module("controllers.console.wraps")
     monkeypatch.setattr(
         login_module,
         "current_user",
         SimpleNamespace(_get_current_object=lambda: account, has_edit_permission=False),
     )
-    monkeypatch.setattr(_CONTROLLER_MODULE.dify_config, "RBAC_ENABLED", False)
+    monkeypatch.setattr(wraps_module.dify_config, "RBAC_ENABLED", False)
 
     edit_wrapped_handler = NodeDataMigrationAPI.post.__wrapped__.__wrapped__.__wrapped__
     with app.test_request_context(method="POST"), pytest.raises(Forbidden):

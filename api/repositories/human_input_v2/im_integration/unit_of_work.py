@@ -39,6 +39,7 @@ from core.human_input_v2.im_integration import (
     IMIdentityUpsert,
     IMIdentityUpsertKind,
     IMIntegration,
+    IMIntegrationAlreadyExistsError,
     IMReconciliationChange,
     IMReconciliationOperation,
     IMReconciliationSubjectKind,
@@ -162,7 +163,7 @@ class _SQLAlchemyProtectedIMRepository:
         )
         existing_id = self._session.scalar(select(HumanInputIMIntegration.id).where(owner_predicate).limit(1))
         if existing_id is not None:
-            raise ValueError("Organization IM Integration already exists")
+            raise IMIntegrationAlreadyExistsError
         record = integration_to_record(integration)
         self._session.add(record)
         self._session.flush()

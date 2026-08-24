@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.email_channel import (
     CreateEmailConfigurationStatus,
+    DeleteEmailConfigurationStatus,
     EmailChannelConfiguration,
-    ProtectedAPIKey,
     UpdateEmailConfigurationStatus,
 )
 from core.human_input_v2.shared import (
@@ -31,7 +31,7 @@ def _configuration(tenant_id: TenantId, *, configuration_id: str | None = None) 
         tenant_id,
         NormalizedEmail("sender@example.com"),
         "Sender",
-        ProtectedAPIKey("ciphertext"),
+        "ciphertext",
         AccountId(str(uuid4())),
         now,
         now,
@@ -108,26 +108,30 @@ def test_update_delete_race_cannot_restore_deleted_row(db_session_with_container
 
     def delete():
         barrier.wait()
-        return repository.delete(tenant_id)
+        return repository.delete(tenant_id, expected=current.snapshot)
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         update_future = executor.submit(update)
         delete_future = executor.submit(delete)
         update_result = update_future.result()
-        delete_future.result()
+        delete_result = delete_future.result()
 
-    assert update_result.status in (
-        UpdateEmailConfigurationStatus.UPDATED,
-        UpdateEmailConfigurationStatus.STALE,
-    )
-    assert repository.load(tenant_id) is None
+    persisted = repository.load(tenant_id)
+    if update_result.status is UpdateEmailConfigurationStatus.UPDATED:
+        assert delete_result.status is DeleteEmailConfigurationStatus.STALE
+        assert update_result.configuration is not None
+        assert persisted == update_result.configuration
+    else:
+        assert update_result.status is UpdateEmailConfigurationStatus.STALE
+        assert delete_result.status is DeleteEmailConfigurationStatus.DELETED
+        assert persisted is None
 
 
 def test_delete_recreate_rejects_previous_identity(db_session_with_containers: Session) -> None:
     repository, tenant_id = _repository(db_session_with_containers)
     deleted = repository.create(_configuration(tenant_id)).configuration
     assert deleted is not None
-    repository.delete(tenant_id)
+    repository.delete(tenant_id, expected=deleted.snapshot)
     recreated = repository.create(_configuration(tenant_id)).configuration
     assert recreated is not None
 

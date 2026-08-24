@@ -8,7 +8,7 @@ type CreateContactsMockRepositoryOptions = {
 }
 
 const normalizeEmail = (email: string) => email.trim().toLocaleLowerCase()
-const MOCK_CREATED_AT = Date.parse('2026-07-17T00:00:00.000Z')
+const MOCK_CREATED_AT = Date.parse('2026-07-17T00:00:00.000Z') / 1000
 
 const matchesSearch = (search: string, ...values: string[]) => {
   const normalizedSearch = search.trim().toLocaleLowerCase()

@@ -40,16 +40,25 @@ _MIGRATION_PATH = (
     Path(__file__).resolve().parents[3]
     / "migrations/versions/2026_07_25_1200-8a1c4e7f9b2d_add_human_input_v2_form_core.py"
 )
+_EMAIL_CONFIG_VERSION_MIGRATION_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "migrations/versions/2026_08_22_1000-e5f7a9b2c4d6_add_human_input_email_provider_config_version.py"
+)
 _NOW = datetime(2026, 7, 25, 8, tzinfo=UTC)
 
 
-def _load_migration_module():
-    spec = importlib.util.spec_from_file_location("human_input_v2_form_core_migration", _MIGRATION_PATH)
+def _load_migration_module(path: Path = _MIGRATION_PATH):
+    spec = importlib.util.spec_from_file_location(f"human_input_v2_migration_{path.stem}", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("failed to load migration module")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _upgrade_to_email_config_version(engine: sa.Engine) -> None:
+    _run_migration_step(_load_migration_module(), engine, "upgrade")
+    _run_migration_step(_load_migration_module(_EMAIL_CONFIG_VERSION_MIGRATION_PATH), engine, "upgrade")
 
 
 def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> None:
@@ -77,7 +86,7 @@ def test_upgrade_matches_form_core_model_columns_constraints_and_indexes() -> No
     engine = sa.create_engine("sqlite:///:memory:")
     module = _load_migration_module()
 
-    _run_migration_step(module, engine, "upgrade")
+    _upgrade_to_email_config_version(engine)
 
     inspector = sa.inspect(engine)
     model_by_table = {
@@ -98,6 +107,7 @@ def test_upgrade_matches_form_core_model_columns_constraints_and_indexes() -> No
     assert {constraint["name"] for constraint in inspector.get_check_constraints("human_input_v2_forms")} == {
         "runtime_owner"
     }
+    assert not inspector.get_check_constraints("human_input_email_providers")
     assert {
         constraint["name"] for constraint in inspector.get_check_constraints("human_input_v2_form_approver_grants")
     } == {"subject_identity"}
@@ -117,7 +127,7 @@ def test_upgrade_matches_form_core_model_columns_constraints_and_indexes() -> No
 def test_upgrade_persists_and_loads_strict_structured_json_values() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     module = _load_migration_module()
-    _run_migration_step(module, engine, "upgrade")
+    _upgrade_to_email_config_version(engine)
 
     with Session(engine) as session, session.begin():
         provider = HumanInputEmailProvider(
@@ -172,6 +182,7 @@ def test_upgrade_persists_and_loads_strict_structured_json_values() -> None:
         assert stored_provider.encrypted_credentials == ResendEmailProviderEncryptedCredentials(
             encrypted_api_key="ciphertext"
         )
+        assert stored_provider.config_version == 1
         assert stored_form.form_definition == HumanInputV2FormDefinition(
             title="Review",
             blocks=(ResolvedFormMarkdownText(text="Approve"),),
@@ -190,6 +201,10 @@ def test_downgrade_removes_only_form_core_tables_and_preserves_v1_and_im_state()
         connection.execute(sa.text("INSERT INTO unrelated_state (id) VALUES (1)"))
     module = _load_migration_module()
     _run_migration_step(module, engine, "upgrade")
+
+    email_config_version_module = _load_migration_module(_EMAIL_CONFIG_VERSION_MIGRATION_PATH)
+    _run_migration_step(email_config_version_module, engine, "upgrade")
+    _run_migration_step(email_config_version_module, engine, "downgrade")
 
     _run_migration_step(module, engine, "downgrade")
 

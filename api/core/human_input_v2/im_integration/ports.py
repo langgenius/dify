@@ -34,6 +34,10 @@ from .sync_reconciliation import ReconciliationReasonCode
 from .sync_records import IMSyncRun, SynchronizedIMIdentityPage, SyncResultFact, SyncResultPage
 
 
+class IMControlPlanePersistenceError(RuntimeError):
+    """Credential-free failure raised by an IM persistence adapter."""
+
+
 class ActiveRunDecisionKind(StrEnum):
     """Outcome of Integration-locked sync run creation."""
 
@@ -198,6 +202,7 @@ __all__ = [
     "ActiveRunDecisionKind",
     "ApplyReconciliationResult",
     "ApplyReconciliationStatus",
+    "IMControlPlanePersistenceError",
     "IMControlPlaneRepository",
     "IMSyncRepository",
     "ResolvedReconciliationWarning",

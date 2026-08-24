@@ -117,14 +117,18 @@ class RecordingConsumer:
         return self.acceptance
 
 
-def _credentials(*, signing_secret: str = "signing-secret") -> SlackIMIntegrationCredentials:
+def _credentials(
+    *,
+    signing_secret: str = "signing-secret",
+    app_token: str | None = "xapp-test-app-token",
+) -> SlackIMIntegrationCredentials:
     return SlackIMIntegrationCredentials(
         provider=IMProvider.SLACK,
         client_id="client-id",
         client_secret="client-secret",
         signing_secret=signing_secret,
         bot_token="xoxb-test-bot-token",
-        app_token="xapp-test-app-token",
+        app_token=app_token,
     )
 
 
@@ -236,6 +240,26 @@ def test_credential_test_authenticates_both_tokens_and_checks_baseline_scopes(mo
     assert result == CredentialTestSuccess(IMProvider.SLACK, "team-1")
     assert client.auth_calls == 1
     assert client.connection_calls == 1
+
+
+def test_credential_test_does_not_require_socket_mode_app_token(mocker) -> None:
+    client = FakeWebClient()
+    client.auth_responses.append(_successful_auth_response())
+    adapter = _adapter(mocker, client, _credentials(app_token=None))
+
+    result = adapter.test_credentials()
+
+    assert result == CredentialTestSuccess(IMProvider.SLACK, "team-1")
+    assert client.auth_calls == 1
+    assert client.connection_calls == 0
+
+
+def test_stream_capability_is_unavailable_without_socket_mode_app_token(mocker) -> None:
+    client = FakeWebClient()
+    adapter = _adapter(mocker, client, _credentials(app_token=None))
+
+    assert adapter.create_stream_handler(RecordingConsumer()) is None
+    assert adapter.create_webhook_handler(RecordingConsumer()) is not None
 
 
 def test_credential_test_returns_safe_typed_failures(mocker) -> None:

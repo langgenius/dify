@@ -123,7 +123,7 @@ class DifyIMProviderAdapterFactory:
                     client_secret=self._decrypt_token(owner_key, slack_credentials.encrypted_client_secret),
                     signing_secret=self._decrypt_token(owner_key, slack_credentials.encrypted_signing_secret),
                     bot_token=self._decrypt_token(owner_key, slack_credentials.encrypted_bot_token),
-                    app_token=self._decrypt_token(owner_key, slack_credentials.encrypted_app_token),
+                    app_token=self._decrypt_optional(owner_key, slack_credentials.encrypted_app_token),
                 )
             )
         if provider is IMProvider.FEISHU:

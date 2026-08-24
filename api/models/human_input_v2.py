@@ -144,7 +144,10 @@ class SlackIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
     encrypted_client_secret: str = Field(description="Encrypted Slack OAuth client secret.")
     encrypted_signing_secret: str = Field(description="Encrypted Slack callback signing secret.")
     encrypted_bot_token: str = Field(description="Encrypted Slack bot token.")
-    encrypted_app_token: str = Field(description="Encrypted Slack app-level Socket Mode token.")
+    encrypted_app_token: str | None = Field(
+        default=None,
+        description="Optional encrypted Slack app-level token required only for Socket Mode.",
+    )
 
 
 class DingTalkIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
@@ -888,6 +891,12 @@ class HumanInputEmailProvider(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=False,
         comment="Logical foreign key to tenants.id.",
+    )
+    config_version: Mapped[int] = mapped_column(
+        sa.Integer,
+        nullable=False,
+        default=1,
+        comment="Monotonic Email configuration revision used for compare-and-swap.",
     )
     sender_name: Mapped[str] = mapped_column(
         sa.String(255), nullable=False, default="", comment="Optional sender display name."

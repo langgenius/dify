@@ -22,13 +22,11 @@ from controllers.common.human_input_v2_contracts import (
     CreateIMSyncRunResponse,
     DeleteIMBindingQuery,
     DeleteIMBindingResponse,
-    DeleteIMIntegrationQuery,
     ExternalContactCreateRequest,
     ExternalContactCreateResponse,
     ExternalContactUpdateRequest,
     ExternalContactUpdateResponse,
     GetContactResponse,
-    GetIMIntegrationResponse,
     GetLatestIMSyncRunResponse,
     HumanInputContact,
     HumanInputContactType,
@@ -53,10 +51,6 @@ from controllers.common.human_input_v2_contracts import (
     ResetContactIMOverrideResponse,
     SetContactIMOverrideRequest,
     SetContactIMOverrideResponse,
-    TestIMIntegrationRequest,
-    TestIMIntegrationResponse,
-    UpdateIMIntegrationRequest,
-    UpdateIMIntegrationResponse,
 )
 from controllers.common.human_input_v2_migration import preflight_legacy_human_input_node_data
 from controllers.common.schema import (
@@ -85,7 +79,7 @@ from core.human_input_v2.im_integration import (
 )
 from core.human_input_v2.shared import AccountId, ContactId, IMBindingId, IMIdentityId, TenantId, WorkspaceScope
 from graphon.file import helpers as file_helpers
-from libs.helper import dump_response, to_timestamp
+from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
 from services.human_input_v2.composition import build_human_input_node_data_migration_service
@@ -117,9 +111,6 @@ register_schema_models(
     ExternalContactCreateRequest,
     ExternalContactUpdateRequest,
     RemoveContactsRequest,
-    UpdateIMIntegrationRequest,
-    DeleteIMIntegrationQuery,
-    TestIMIntegrationRequest,
     ListIMIdentitiesQuery,
     ListLatestIMSyncRunResultsQuery,
     SetContactIMOverrideRequest,
@@ -139,9 +130,6 @@ register_response_schema_models(
     BatchGetContactOptionsResponse,
     RemoveContactsResponse,
     ListIMIdentitiesResponse,
-    GetIMIntegrationResponse,
-    UpdateIMIntegrationResponse,
-    TestIMIntegrationResponse,
     CreateIMSyncRunResponse,
     IMContactSyncErrorResponse,
     GetLatestIMSyncRunResponse,
@@ -217,8 +205,8 @@ def _sync_run_payload(run: IMSyncRun) -> dict[str, object]:
     return {
         "id": run.id,
         "status": run.status,
-        "started_at": to_timestamp(run.started_at),
-        "finished_at": to_timestamp(run.finished_at),
+        "started_at": run.started_at,
+        "finished_at": run.finished_at,
         "error_message": run.error_message,
         "result_counts": {
             "added": run.added_count,
@@ -256,7 +244,7 @@ def _sync_contact_payload(contact: SyncContactSnapshot, fallback_created_at) -> 
         "id": contact.contact_id,
         "name": contact.name,
         "avatar_url": _avatar_url(contact.avatar_file_id),
-        "created_at": to_timestamp(created_at),
+        "created_at": created_at,
     }
 
 
@@ -311,7 +299,7 @@ def _contact_binding_payload(contact: ContactIMBindingView) -> dict[str, object]
         "im_bindings": [
             {"id": binding.id, "provider": binding.provider, "scope": binding.scope} for binding in contact.im_bindings
         ],
-        "created_at": to_timestamp(contact.created_at),
+        "created_at": contact.created_at,
     }
 
 
@@ -434,54 +422,6 @@ class WorkspaceContactsRemoveApi(Resource):
     @with_current_tenant_id
     def post(self, tenant_id: str):
         RemoveContactsRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
-
-
-@console_ns.route("/workspaces/current/human-input/im-integration")
-class WorkspaceIMIntegrationApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[GetIMIntegrationResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_tenant_id
-    def get(self, tenant_id: str):
-        _raise_stub_not_implemented()
-
-    @console_ns.expect(console_ns.models[UpdateIMIntegrationRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[UpdateIMIntegrationResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_tenant_id
-    def put(self, tenant_id: str):
-        UpdateIMIntegrationRequest.model_validate(console_ns.payload or {})
-        _raise_stub_not_implemented()
-
-    @console_ns.doc(params=query_params_from_model(DeleteIMIntegrationQuery))
-    @console_ns.response(204, "IM integration deleted successfully")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_tenant_id
-    def delete(self, tenant_id: str):
-        query_params_from_request(DeleteIMIntegrationQuery)
-        _raise_stub_not_implemented()
-
-
-@console_ns.route("/workspaces/current/human-input/im-integration/test")
-class WorkspaceIMIntegrationTestApi(Resource):
-    @console_ns.expect(console_ns.models[TestIMIntegrationRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[TestIMIntegrationResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @is_admin_or_owner_required
-    @with_current_tenant_id
-    def post(self, tenant_id: str):
-        TestIMIntegrationRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
 
