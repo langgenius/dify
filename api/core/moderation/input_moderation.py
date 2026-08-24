@@ -3,6 +3,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import AppConfig
+from core.app.entities.app_invoke_entities import get_credit_usage_created_by
+from core.model_context import use_credit_usage_metadata
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
 from core.ops.entities.trace_entity import TraceTaskName
@@ -41,12 +43,15 @@ class InputModeration:
         sensitive_word_avoidance_config = app_config.sensitive_word_avoidance
         moderation_type = sensitive_word_avoidance_config.type
 
-        moderation_factory = ModerationFactory(
-            name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config
-        )
+        with use_credit_usage_metadata(
+            {"created_by": get_credit_usage_created_by(getattr(app_config, "app_mode", None))}
+        ):
+            moderation_factory = ModerationFactory(
+                name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config
+            )
 
-        with measure_time() as timer:
-            moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
+            with measure_time() as timer:
+                moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
 
         if trace_manager:
             trace_manager.add_trace_task(

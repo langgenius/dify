@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.errors import AgentMaxIterationError
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.app.file_access import grant_upload_file_access
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
@@ -167,6 +168,11 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             session.close()
 
             # invoke model
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "created_by": CreditUsageCreatedBy.AGENT,
+            }
+
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -174,7 +180,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
                 callbacks=[],
-                request_metadata={"app_id": self.app_config.app_id},
+                request_metadata=request_metadata,
             )
 
             tool_calls: list[tuple[str, str, dict[str, Any]]] = []

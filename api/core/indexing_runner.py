@@ -14,9 +14,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
+from core.credit_usage import CreditUsageCreatedBy
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import ProviderTokenNotInitError
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -74,6 +76,7 @@ class IndexingRunner:
             document.stopped_at = naive_utc_now()
             session.flush()
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run(self, dataset_documents: list[DatasetDocument], session: Session):
         """Run indexing with commits before slow transforms and parallel index workers.
 
@@ -160,6 +163,7 @@ class IndexingRunner:
             except Exception as e:
                 self._handle_indexing_error(document_id, e, session)
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run_in_splitting_status(self, dataset_document: DatasetDocument, session: Session):
         """Run the indexing process when the index_status is splitting."""
         document_id = dataset_document.id
@@ -243,6 +247,7 @@ class IndexingRunner:
         except Exception as e:
             self._handle_indexing_error(document_id, e, session)
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def run_in_indexing_status(self, dataset_document: DatasetDocument, session: Session):
         """Run the indexing process when the index_status is indexing."""
         document_id = dataset_document.id
@@ -315,6 +320,7 @@ class IndexingRunner:
         except Exception as e:
             self._handle_indexing_error(document_id, e, session)
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_INDEXING)
     def indexing_estimate(
         self,
         tenant_id: str,

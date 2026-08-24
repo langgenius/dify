@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.runtime import GraphRuntimeState, VariablePool
+from models.model import AppMode
 from models.workflow import Workflow, WorkflowKind
 
 
@@ -41,6 +42,7 @@ def test_run_uses_single_node_execution_branch(
     app_config.app_id = "app"
     app_config.tenant_id = "tenant"
     app_config.workflow_id = "workflow"
+    app_config.app_mode = AppMode.WORKFLOW
 
     app_generate_entity = MagicMock(spec=WorkflowAppGenerateEntity)
     app_generate_entity.app_config = app_config
@@ -104,6 +106,7 @@ def test_run_uses_single_node_execution_branch(
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
+        created_by="workflow",
         trace_session_id="session-1",
     )
     init_graph.assert_not_called()

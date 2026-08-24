@@ -10,6 +10,7 @@ stay fast and focus on the wiring itself.
 from unittest.mock import MagicMock, patch
 
 from core.app.app_config.entities import ModelConfig
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from services.workflow_generator_service import WorkflowGeneratorService
 
@@ -63,7 +64,10 @@ class TestWorkflowGeneratorService:
         )
 
         # Assert
-        mock_model_manager.for_tenant.assert_called_once_with(tenant_id="t-1")
+        mock_model_manager.for_tenant.assert_called_once_with(
+            tenant_id="t-1",
+            request_metadata={"created_by": CreditUsageCreatedBy.WORKFLOW.value},
+        )
         mock_workflow_generator.generate_workflow_graph.assert_called_once()
         call_kwargs = mock_workflow_generator.generate_workflow_graph.call_args.kwargs
         assert call_kwargs["model_instance"] is instance

@@ -9,6 +9,7 @@ from typing import cast
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory as default_session_factory
+from core.credit_usage import CreditUsageCreatedBy
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -89,6 +90,7 @@ class AgentLLMInnerService:
                 "workflow_run_id": caller.workflow_run_id,
                 "node_execution_id": caller.node_execution_id,
                 "trace_id": caller.trace_id,
+                "created_by": CreditUsageCreatedBy.AGENT_V2,
             },
         )
         yield from cast(Generator[LLMResultChunk, None, None], result)

@@ -7,8 +7,11 @@ import pytest
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
+    CreditUsageCreatedBy,
+    DifyRunContext,
     InvokeFrom,
     WorkflowAppGenerateEntity,
+    get_credit_usage_created_by,
 )
 from core.app.layers.pause_state_persist_layer import (
     WorkflowResumptionContext,
@@ -97,6 +100,42 @@ def test_advanced_chat_generate_entity_roundtrip_excludes_trace_manager():
 
     assert restored.model_dump() == entity.model_dump()
     assert restored.trace_manager is None
+
+
+@pytest.mark.parametrize(
+    ("app_mode", "created_by"),
+    [
+        (AppMode.CHAT, CreditUsageCreatedBy.CHATBOT),
+        (AppMode.ADVANCED_CHAT, CreditUsageCreatedBy.CHATFLOW),
+        (AppMode.WORKFLOW, CreditUsageCreatedBy.WORKFLOW),
+        (AppMode.AGENT_CHAT, CreditUsageCreatedBy.AGENT),
+        (AppMode.AGENT, CreditUsageCreatedBy.AGENT_V2),
+        (AppMode.COMPLETION, CreditUsageCreatedBy.COMPLETION),
+        (AppMode.RAG_PIPELINE, CreditUsageCreatedBy.RAG_PIPELINE),
+    ],
+)
+def test_get_credit_usage_created_by_maps_app_mode(
+    app_mode: AppMode,
+    created_by: CreditUsageCreatedBy,
+) -> None:
+    assert get_credit_usage_created_by(app_mode) == created_by
+
+
+def test_get_credit_usage_created_by_defaults_to_unknown() -> None:
+    assert get_credit_usage_created_by(None) == CreditUsageCreatedBy.UNKNOWN
+
+
+def test_dify_run_context_normalizes_unknown_created_by_values() -> None:
+    context = DifyRunContext(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        user_id="user-id",
+        user_from="account",
+        invoke_from=InvokeFrom.DEBUGGER,
+        created_by="legacy-created-by",
+    )
+
+    assert context.created_by == CreditUsageCreatedBy.UNKNOWN
 
 
 @dataclass(frozen=True)

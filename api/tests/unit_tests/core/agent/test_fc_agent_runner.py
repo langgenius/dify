@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -435,7 +436,10 @@ class TestRunMethod:
         assert len(outputs) == 1
         assert "session" not in runner.create_agent_thought.call_args.kwargs
         assert "session" not in runner.save_agent_thought.call_args.kwargs
-        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
+        assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
+            "app_id": "app",
+            "created_by": CreditUsageCreatedBy.AGENT.value,
+        }
         runner.queue_manager.publish.assert_called()
 
         queue_calls = runner.queue_manager.publish.call_args_list

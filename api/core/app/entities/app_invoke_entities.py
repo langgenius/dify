@@ -6,9 +6,15 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationInfo, fi
 
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
+from core.credit_usage import (
+    CreditUsageCreatedBy,
+    CreditUsageCreatedByInput,
+    normalize_credit_usage_created_by,
+)
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
+from models.model import AppMode
 
 if TYPE_CHECKING:
     from core.ops.ops_trace_manager import TraceQueueManager
@@ -56,13 +62,44 @@ class InvokeFrom(StrEnum):
         return self in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE)
 
 
+def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCreatedBy:
+    """Return the business feature value for an app mode."""
+    if app_mode is None:
+        return CreditUsageCreatedBy.UNKNOWN
+
+    try:
+        normalized_app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(str(app_mode))
+    except ValueError:
+        return CreditUsageCreatedBy.UNKNOWN
+
+    app_mode_mapping = {
+        AppMode.CHAT: CreditUsageCreatedBy.CHATBOT,
+        AppMode.ADVANCED_CHAT: CreditUsageCreatedBy.CHATFLOW,
+        AppMode.WORKFLOW: CreditUsageCreatedBy.WORKFLOW,
+        AppMode.AGENT_CHAT: CreditUsageCreatedBy.AGENT,
+        AppMode.AGENT: CreditUsageCreatedBy.AGENT_V2,
+        AppMode.COMPLETION: CreditUsageCreatedBy.COMPLETION,
+        AppMode.CHANNEL: CreditUsageCreatedBy.CHANNEL,
+        AppMode.RAG_PIPELINE: CreditUsageCreatedBy.RAG_PIPELINE,
+    }
+    return app_mode_mapping.get(normalized_app_mode, CreditUsageCreatedBy.UNKNOWN)
+
+
 class DifyRunContext(BaseModel):
     tenant_id: str
     app_id: str
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
+    created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+
+    @field_validator("created_by", mode="before")
+    @classmethod
+    def normalize_created_by(cls, value: object) -> CreditUsageCreatedBy | None:
+        if value is None:
+            return None
+        return normalize_credit_usage_created_by(value)
 
 
 def build_dify_run_context(
@@ -72,6 +109,7 @@ def build_dify_run_context(
     user_id: str,
     user_from: UserFrom,
     invoke_from: InvokeFrom,
+    created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -88,6 +126,7 @@ def build_dify_run_context(
         user_id=user_id,
         user_from=user_from,
         invoke_from=invoke_from,
+        created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
     )
     return run_context

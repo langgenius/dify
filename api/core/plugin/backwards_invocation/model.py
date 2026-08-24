@@ -3,7 +3,9 @@ from binascii import hexlify, unhexlify
 from collections.abc import Generator
 from typing import Any
 
+from core.credit_usage import CreditUsageCreatedBy
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
@@ -36,6 +38,7 @@ from models.account import Tenant
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
     @staticmethod
+    @with_credit_usage_created_by(CreditUsageCreatedBy.PLUGIN_API)
     def _get_bound_model_instance(
         *,
         tenant_id: str,

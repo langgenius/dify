@@ -11,6 +11,7 @@ from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
 from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
@@ -135,6 +136,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             session.close()
 
             # invoke model
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "created_by": CreditUsageCreatedBy.AGENT,
+            }
+
             chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -142,7 +148,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 callbacks=[],
-                request_metadata={"app_id": self.app_config.app_id},
+                request_metadata=request_metadata,
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}

@@ -7,9 +7,7 @@ from sqlalchemy.orm import Session
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
-from core.app.entities.app_invoke_entities import (
-    CompletionAppGenerateEntity,
-)
+from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, get_credit_usage_created_by
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.db.session_factory import create_session
 from core.model_manager import ModelManager
@@ -192,12 +190,17 @@ class CompletionAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
+        request_metadata: dict[str, object] = {"app_id": app_config.app_id}
+        app_mode = getattr(app_config, "app_mode", None)
+        if isinstance(app_mode, str):
+            request_metadata["created_by"] = get_credit_usage_created_by(app_mode)
+
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=application_generate_entity.model_conf.parameters,
             stop=stop,
             stream=application_generate_entity.stream,
-            request_metadata={"app_id": app_config.app_id},
+            request_metadata=request_metadata,
         )
 
         # handle invoke result

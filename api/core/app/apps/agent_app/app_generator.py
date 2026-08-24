@@ -41,6 +41,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AgentAppGenerateEntity,
+    CreditUsageCreatedBy,
     DifyRunContext,
     InvokeFrom,
     UserFrom,
@@ -498,6 +499,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     user_id=application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=application_generate_entity.invoke_from,
+                    created_by=CreditUsageCreatedBy.AGENT_V2,
                 )
                 with session_factory.create_session() as session:
                     agent, config_version, agent_soul = self._resolve_agent_by_id(

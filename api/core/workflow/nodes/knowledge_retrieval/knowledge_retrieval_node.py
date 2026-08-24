@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal, override
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, CreditUsageCreatedBy, DifyRunContext
 from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -185,6 +185,12 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         self, session: Session, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[Source], LLMUsage]:
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        self._rag_retrieval.set_request_metadata(
+            {
+                "app_id": dify_ctx.app_id,
+                "created_by": dify_ctx.created_by or CreditUsageCreatedBy.UNKNOWN,
+            }
+        )
         dataset_ids = node_data.dataset_ids
         query = variables.get("query")
         attachments = variables.get("attachments")

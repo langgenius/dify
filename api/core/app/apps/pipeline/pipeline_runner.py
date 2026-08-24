@@ -9,6 +9,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
+    CreditUsageCreatedBy,
     InvokeFrom,
     RagPipelineGenerateEntity,
     UserFrom,
@@ -302,6 +303,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
             user_id=self.application_generate_entity.user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            created_by=CreditUsageCreatedBy.RAG_PIPELINE,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,

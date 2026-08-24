@@ -4,6 +4,8 @@ from typing import override
 
 import numpy as np
 
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.embedding.cached_embedding import CacheEmbedding
@@ -151,6 +153,7 @@ class WeightRerankRunner(BaseRerankRunner):
 
         return similarities
 
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def _calculate_cosine(
         self, tenant_id: str, query: str, documents: list[Document], vector_setting: VectorSetting
     ) -> list[float]:

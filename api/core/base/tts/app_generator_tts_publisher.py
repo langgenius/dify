@@ -14,6 +14,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     WorkflowQueueMessage,
 )
+from core.credit_usage import CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -53,14 +54,24 @@ def _process_future(
 
 
 class AppGeneratorTTSPublisher:
-    def __init__(self, tenant_id: str, voice: str, language: str | None = None):
+    def __init__(
+        self,
+        tenant_id: str,
+        voice: str,
+        language: str | None = None,
+        created_by: CreditUsageCreatedBy = CreditUsageCreatedBy.AUDIO,
+    ):
         self.logger = logging.getLogger(__name__)
         self.tenant_id = tenant_id
         self.msg_text = ""
         self._audio_queue: queue.Queue[AudioTrunk] = queue.Queue()
         self._msg_queue: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
         self.match = re.compile(r"[。.!?]")
-        self.model_manager = ModelManager.for_tenant(tenant_id=self.tenant_id, user_id="responding_tts")
+        self.model_manager = ModelManager.for_tenant(
+            tenant_id=self.tenant_id,
+            user_id="responding_tts",
+            request_metadata={"created_by": created_by},
+        )
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
