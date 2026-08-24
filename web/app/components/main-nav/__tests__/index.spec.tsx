@@ -679,22 +679,32 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(
       'team',
     )
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    expect(homeLink).toHaveAttribute('href', '/')
+    expect(homeLink.querySelector('.i-custom-vender-main-nav-home')).toBeInTheDocument()
+    const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
+    expect(studioLink).toHaveAttribute('href', '/apps')
+    expect(studioLink.querySelector('.i-custom-vender-main-nav-studio')).toBeInTheDocument()
+    const agentsLink = screen.getByRole('link', { name: /Agents/ })
+    expect(agentsLink).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
-      'href',
-      '/datasets',
-    )
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
-      'href',
-      '/integrations/model-provider',
-    )
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute(
-      'href',
-      '/marketplace',
-    )
+    expect(agentsLink.querySelector('.i-custom-vender-main-nav-roster')).toBeInTheDocument()
+    const skillsLink = screen.getByRole('link', { name: /common.mainNav.skills/ })
+    expect(skillsLink).toHaveAttribute('href', '/skills')
+    expect(skillsLink.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
+    const knowledgeLink = screen.getByRole('link', { name: /common.menus.datasets/ })
+    expect(knowledgeLink).toHaveAttribute('href', '/datasets')
+    expect(knowledgeLink.querySelector('.i-custom-vender-main-nav-knowledge')).toBeInTheDocument()
+    const integrationsLink = screen.getByRole('link', { name: /common.mainNav.integrations/ })
+    expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
+    expect(
+      integrationsLink.querySelector('.i-custom-vender-main-nav-integrations'),
+    ).toBeInTheDocument()
+    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
+    expect(
+      marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace'),
+    ).toBeInTheDocument()
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {
@@ -703,6 +713,10 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.skills/ })).toHaveAttribute(
+      'href',
+      '/skills',
+    )
   })
 
   it('hides the roster entry when the user lacks agent.manage', () => {
@@ -803,6 +817,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',

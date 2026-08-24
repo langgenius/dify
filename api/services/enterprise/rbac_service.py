@@ -304,6 +304,10 @@ class MyPermissionsResponse(_RBACModel):
 # Fallback permission snapshots for legacy Dify tenant roles when external RBAC is disabled.
 # Keep these keys aligned with langgenius/rbac's built-in workspace roles and access policies.
 _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
+    "skill.view",
+    "skill.edit",
+    "skill.publish",
+    "skill.delete",
     "workspace.member.manage",
     "workspace.role.manage",
     "data_source.manage",
@@ -334,6 +338,10 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
+    "skill.view",
+    "skill.edit",
+    "skill.publish",
+    "skill.delete",
     "workspace.member.manage",
     "workspace.role.manage",
     "data_source.manage",
@@ -362,6 +370,10 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
+    "skill.view",
+    "skill.edit",
+    "skill.publish",
+    "skill.delete",
     "api_extension.manage",
     "plugin.install",
     "credential.use",
@@ -377,6 +389,7 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
+    "skill.view",
     "api_extension.manage",
     "plugin.install",
     "credential.use",
@@ -384,6 +397,7 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
+    "skill.view",
     "plugin.install",
     "dataset.create_and_management",
     "dataset.external.connect",
