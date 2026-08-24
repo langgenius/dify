@@ -1,10 +1,8 @@
 import base64
-import concurrent.futures
 import logging
 import queue
 import re
 import threading
-from collections.abc import Iterable
 
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -14,43 +12,24 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     WorkflowQueueMessage,
 )
+from core.base.tts.audio_mime import (
+    DEFAULT_TTS_AUDIO_MIME_TYPE,
+    get_model_audio_mime_type,
+    inspect_audio_stream,
+)
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
-from core.model_manager import ModelInstance, ModelManager
+from core.model_manager import ModelManager
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 
 
 class AudioTrunk:
-    def __init__(self, status: str, audio):
+    def __init__(self, status: str, audio, audio_type: str | None = None, error: Exception | None = None):
         self.audio = audio
         self.status = status
-
-
-def _invoice_tts(text_content: str, model_instance: ModelInstance, voice: str):
-    if not text_content or text_content.isspace():
-        return
-    return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
-
-
-def _process_future(
-    future_queue: queue.Queue[concurrent.futures.Future[Iterable[bytes] | None] | None],
-    audio_queue: queue.Queue[AudioTrunk],
-):
-    while True:
-        try:
-            future = future_queue.get()
-            if future is None:
-                break
-            invoke_result = future.result()
-            if not invoke_result:
-                continue
-            for audio in invoke_result:
-                audio_base64 = base64.b64encode(bytes(audio))
-                audio_queue.put(AudioTrunk("responding", audio=audio_base64))
-        except Exception as e:
-            logging.getLogger(__name__).warning(e)
-            break
-    audio_queue.put(AudioTrunk("finish", b""))
+        self.audio_type = audio_type
+        self.error = error
 
 
 class AppGeneratorTTSPublisher:
@@ -76,6 +55,7 @@ class AppGeneratorTTSPublisher:
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
+        self._declared_audio_mime_type = get_model_audio_mime_type(self.model_instance)
         self.voices = self.model_instance.get_tts_voices(language=language)
         values = [voice.get("value") for voice in self.voices]
         self.voice = voice
@@ -83,26 +63,30 @@ class AppGeneratorTTSPublisher:
             self.voice = self.voices[0].get("value")
         self.max_sentence = 2
         self._last_audio_event: AudioTrunk | None = None
-        # FIXME better way to handle this threading.start
-        threading.Thread(target=self._runtime).start()
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
+        self._cancelled = threading.Event()
+        threading.Thread(target=self._runtime, daemon=True).start()
 
     def publish(self, message: WorkflowQueueMessage | MessageQueueMessage | None, /):
         self._msg_queue.put(message)
 
+    def cancel(self):
+        if self._cancelled.is_set():
+            return
+        self._cancelled.set()
+        self._msg_queue.put(None)
+
     def _runtime(self):
-        future_queue: queue.Queue[concurrent.futures.Future[Iterable[bytes] | None] | None] = queue.Queue()
-        threading.Thread(target=_process_future, args=(future_queue, self._audio_queue)).start()
-        while True:
-            try:
+        audio_type = self._declared_audio_mime_type or DEFAULT_TTS_AUDIO_MIME_TYPE
+        resolved_audio_type: str | None = None
+        try:
+            while True:
                 message = self._msg_queue.get()
+                if self._cancelled.is_set():
+                    return
+                text_content = ""
+                incremental_request = False
                 if message is None:
-                    if self.msg_text and len(self.msg_text.strip()) > 0:
-                        futures_result = self.executor.submit(
-                            _invoice_tts, self.msg_text, self.model_instance, self.voice
-                        )
-                        future_queue.put(futures_result)
-                    break
+                    text_content = self.msg_text
                 else:
                     match message.event:
                         case QueueAgentMessageEvent() | QueueLLMChunkEvent():
@@ -125,34 +109,57 @@ class AppGeneratorTTSPublisher:
                             output = message.event.outputs.get("output", "")
                             if isinstance(output, str):
                                 self.msg_text += output
-                self.last_message = message
-                sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
-                if len(sentence_arr) >= min(self.max_sentence, 7):
-                    self.max_sentence += 1
-                    text_content = "".join(sentence_arr)
-                    futures_result = self.executor.submit(_invoice_tts, text_content, self.model_instance, self.voice)
-                    future_queue.put(futures_result)
-                    if isinstance(text_tmp, str):
+                    sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
+                    if self._declared_audio_mime_type == DEFAULT_TTS_AUDIO_MIME_TYPE and len(sentence_arr) >= min(
+                        self.max_sentence, 7
+                    ):
+                        self.max_sentence += 1
+                        text_content = "".join(sentence_arr)
                         self.msg_text = text_tmp
-                    else:
-                        self.msg_text = ""
+                        incremental_request = True
 
-            except Exception as e:
-                self.logger.warning(e)
-                break
-        future_queue.put(None)
+                if text_content and not text_content.isspace():
+                    invoke_result = self.model_instance.invoke_tts(content_text=text_content.strip(), voice=self.voice)
+                    audio_stream, next_audio_type = inspect_audio_stream(invoke_result, self._declared_audio_mime_type)
+                    if self._cancelled.is_set():
+                        return
+                    if incremental_request and next_audio_type != DEFAULT_TTS_AUDIO_MIME_TYPE:
+                        raise InvokeBadRequestError(
+                            "The TTS model declared MP3 but returned a format that cannot be played incrementally"
+                        )
+                    if resolved_audio_type and resolved_audio_type != next_audio_type:
+                        raise InvokeBadRequestError(
+                            "TTS provider changed MIME type between audio responses: "
+                            f"{resolved_audio_type} then {next_audio_type}"
+                        )
+                    resolved_audio_type = audio_type = next_audio_type
+                    for audio in audio_stream:
+                        # ponytail: reads stop at the next chunk; add transport cancellation when Graphon exposes it.
+                        if self._cancelled.is_set():
+                            return
+                        self._audio_queue.put(
+                            AudioTrunk(
+                                "responding",
+                                audio=base64.b64encode(audio),
+                                audio_type=audio_type,
+                            )
+                        )
 
-    def check_and_get_audio(self):
+                if message is None:
+                    break
+        except Exception as e:
+            self.logger.warning("TTS generation failed", exc_info=True)
+            self._audio_queue.put(AudioTrunk("error", b"", audio_type=audio_type, error=e))
+            return
+
+        self._audio_queue.put(AudioTrunk("finish", b"", audio_type=audio_type))
+
+    def check_and_get_audio(self, *, block: bool = False):
         try:
-            if self._last_audio_event and self._last_audio_event.status == "finish":
-                if self.executor:
-                    self.executor.shutdown(wait=False)
+            if self._last_audio_event and self._last_audio_event.status in {"finish", "error"}:
                 return self._last_audio_event
-            audio = self._audio_queue.get_nowait()
-            if audio and audio.status == "finish":
-                self.executor.shutdown(wait=False)
-            if audio:
-                self._last_audio_event = audio
+            audio = self._audio_queue.get(block=block)
+            self._last_audio_event = audio
             return audio
         except queue.Empty:
             return None

@@ -225,10 +225,12 @@ function buildConnectedGraph() {
 
 function buildInlineAgentGraph({
   difyTools = [],
+  hasModel = true,
   hasMissingFile = false,
   hasMissingSkill = false,
 }: {
   difyTools?: AgentSoulDifyToolConfig[]
+  hasModel?: boolean
   hasMissingFile?: boolean
   hasMissingSkill?: boolean
 }) {
@@ -250,6 +252,13 @@ function buildInlineAgentGraph({
     }),
     zWorkflowAgentComposerResponse.parse({
       agent_soul: {
+        model: hasModel
+          ? {
+              model_provider: 'langgenius/openai/openai',
+              model: 'gpt-4o-mini',
+              plugin_id: 'langgenius/openai',
+            }
+          : undefined,
         config_files: [
           { file_kind: 'upload_file', name: 'available.pdf' },
           ...(hasMissingFile
@@ -412,6 +421,21 @@ describe('useChecklist', () => {
         expect.objectContaining({
           id: nodeId,
           errorMessages: [scenario.errorMessage],
+          openInlineAgentPanel: true,
+        }),
+      ])
+    })
+  })
+
+  it('should report a missing model from inline agents and open their configuration panel', async () => {
+    const { edges, nodeId, nodes, options } = buildInlineAgentGraph({ hasModel: false })
+    const { result } = renderWorkflowHook(() => useChecklist(nodes, edges), options)
+
+    await waitFor(() => {
+      expect(result.current).toEqual([
+        expect.objectContaining({
+          id: nodeId,
+          errorMessages: ['workflow.nodes.agent.modelNotSelected'],
           openInlineAgentPanel: true,
         }),
       ])

@@ -110,10 +110,13 @@ const makeProviderSummary = (): ModelProviderSummaryResponse => ({
 
 const renderWithQueryClient = (node: ReactNode) => {
   const queryClient = createConsoleQueryClient()
-  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.key(), {
-    data: [makeProviderSummary()],
-    plugins: {},
-  })
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions().queryKey,
+    {
+      data: [makeProviderSummary()],
+      plugins: {},
+    },
+  )
   return render(<QueryClientProvider client={queryClient}>{node}</QueryClientProvider>)
 }
 

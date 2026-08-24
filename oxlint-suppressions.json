@@ -1,9 +1,4 @@
 {
-  "cli/src/store/keychain-token-store.test.ts": {
-    "no-throw-literal": {
-      "count": 2
-    }
-  },
   "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
     "prefer-const": {
       "count": 1
@@ -468,11 +463,6 @@
       "count": 1
     },
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/duplicate-modal/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -1815,11 +1805,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
-    "eslint-react/error-boundaries": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -1901,11 +1886,6 @@
   },
   "web/app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2486,11 +2466,6 @@
       "count": 2
     }
   },
-  "web/app/components/goto-anything/actions/recent-store.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/data-source-page-new/__tests__/item.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -2840,9 +2815,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/index.spec.tsx": {
-    "no-throw-literal": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -2937,14 +2909,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 25
-    }
-  },
-  "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
@@ -3042,11 +3006,6 @@
   "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/publish-toast.tsx": {
@@ -3437,14 +3396,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/add-variable-popup-with-position.tsx": {
     "typescript/no-explicit-any": {
       "count": 2
@@ -3777,9 +3728,6 @@
       "count": 2
     },
     "no-restricted-imports": {
-      "count": 1
-    },
-    "no-throw-literal": {
       "count": 1
     },
     "typescript/no-explicit-any": {

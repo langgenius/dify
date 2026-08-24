@@ -1,7 +1,7 @@
 import io
 import logging
 import uuid
-from collections.abc import Generator
+from collections.abc import Iterable
 from typing import cast
 
 from flask import Response, stream_with_context
@@ -12,6 +12,7 @@ from werkzeug.datastructures import FileStorage
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.entities.app_invoke_entities import get_credit_usage_app_type
+from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream, resolve_audio_mime_type
 from core.credit_usage import CreditUsageCreatedBy
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -37,6 +38,21 @@ _ASR_MIME_TYPE_ALIASES = {
 }
 
 logger = logging.getLogger(__name__)
+
+
+def _create_tts_response(
+    audio: Iterable[bytes] | bytes | bytearray | memoryview, declared_mime_type: str | None
+) -> Response:
+    """Create a response whose Content-Type matches the returned audio container."""
+    if isinstance(audio, (bytes, bytearray, memoryview)):
+        audio_bytes = bytes(audio)
+        return Response(audio_bytes, content_type=resolve_audio_mime_type(audio_bytes, declared_mime_type))
+
+    audio_stream, mime_type = inspect_audio_stream(audio, declared_mime_type)
+    return Response(
+        stream_with_context(audio_stream),  # pyrefly: ignore[no-matching-overload]
+        content_type=mime_type,
+    )
 
 
 class AudioService:
@@ -225,7 +241,10 @@ class AudioService:
                     else:
                         raise ValueError("Sorry, no voice available.")
 
-                return model_instance.invoke_tts(content_text=text_content.strip(), voice=voice)
+                return (
+                    model_instance.invoke_tts(content_text=text_content.strip(), voice=voice),
+                    get_model_audio_mime_type(model_instance),
+                )
             except Exception as e:
                 raise e
 
@@ -241,17 +260,17 @@ class AudioService:
                 return None
 
             else:
-                response = invoke_tts(text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft)
-                if isinstance(response, Generator):
-                    return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
-                return response
+                response, declared_mime_type = invoke_tts(
+                    text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft
+                )
+                return _create_tts_response(response, declared_mime_type)
         else:
             if text is None:
                 raise ValueError("Text is required")
-            response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
-            if isinstance(response, Generator):
-                return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
-            return response
+            response, declared_mime_type = invoke_tts(
+                text_content=text, app_model=app_model, voice=voice, is_draft=is_draft
+            )
+            return _create_tts_response(response, declared_mime_type)
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):
