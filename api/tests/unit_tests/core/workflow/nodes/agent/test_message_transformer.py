@@ -194,3 +194,178 @@ def test_transform_keeps_plain_link_as_text() -> None:
 
     assert text == "Link: https://dify.ai\n"
     assert files.value == []
+
+
+def _log_message(provider: str) -> ToolInvokeMessage:
+    return ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.LOG,
+        message=ToolInvokeMessage.LogMessage(
+            id="log-id",
+            label="",
+            parent_id=None,
+            error=None,
+            status=ToolInvokeMessage.LogMessage.LogStatus.START,
+            data={},
+            metadata={"provider": provider},
+        ),
+    )
+
+
+def _collect_log_metadata(messages: list[ToolInvokeMessage]) -> list[dict]:
+    events = list(
+        AgentMessageTransformer().transform(
+            messages=_message_stream(messages),
+            tool_info={"icon": "seed-icon"},
+            parameters_for_log={},
+            user_id="user-id",
+            tenant_id="tenant-id",
+            conversation_id=None,
+            node_type=BuiltinNodeTypes.AGENT,
+            node_id="node-id",
+            node_execution_id="execution-id",
+        )
+    )
+    return [
+        event.metadata
+        for event in events
+        if hasattr(event, "metadata") and getattr(event, "metadata", None) is not None
+    ]
+
+
+def test_log_icon_enrichment_uses_seed_when_provider_unknown() -> None:
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller") as plugin_installer,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            return_value=[],
+        ),
+    ):
+        result = _collect_log_metadata([_log_message("unknown/plugin")])
+
+    assert result
+    assert result[0]["icon"] == "seed-icon"
+    assert result[0]["icon_dark"] is None
+    # The plugin daemon was queried once (no cache hit) for the unknown provider
+    # and the builtins list was queried once.
+    plugin_installer.return_value.list_plugins.assert_called_once_with("tenant-id")
+
+
+def test_log_icon_enrichment_repeated_provider_uses_cache() -> None:
+    """Repeated LOG messages for the same provider must not re-scan plugins/builtins."""
+    plugin = SimpleNamespace(
+        plugin_id="plug",
+        name="tool",
+        declaration=SimpleNamespace(icon="plug-icon"),
+    )
+    built_in = SimpleNamespace(name="plug/tool", icon="built-in-icon", icon_dark="built-in-dark")
+
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller") as plugin_installer_cls,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            return_value=[built_in],
+        ) as list_builtin,
+    ):
+        plugin_installer_cls.return_value.list_plugins.return_value = [plugin]
+        result = _collect_log_metadata(
+            [_log_message("plug/tool"), _log_message("plug/tool"), _log_message("plug/tool")]
+        )
+
+    assert len(result) == 3
+    for metadata in result:
+        assert metadata["icon"] == "built-in-icon"
+        assert metadata["icon_dark"] == "built-in-dark"
+
+    # The plugin daemon must have been hit only once even though there were
+    # three LOG messages for the same provider.
+    plugin_installer_cls.return_value.list_plugins.assert_called_once_with("tenant-id")
+    list_builtin.assert_called_once_with("user-id", "tenant-id")
+
+
+def test_log_icon_enrichment_fails_open_when_plugin_daemon_unavailable() -> None:
+    built_in = SimpleNamespace(name="plug/tool", icon="built-in-icon", icon_dark="built-in-dark")
+
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller") as plugin_installer_cls,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            return_value=[built_in],
+        ),
+    ):
+        plugin_installer_cls.return_value.list_plugins.side_effect = RuntimeError("daemon down")
+        result = _collect_log_metadata([_log_message("plug/tool")])
+
+    assert result[0]["icon"] == "built-in-icon"
+    assert result[0]["icon_dark"] == "built-in-dark"
+
+
+def test_log_icon_enrichment_fails_open_when_builtin_service_unavailable() -> None:
+    plugin = SimpleNamespace(
+        plugin_id="plug",
+        name="tool",
+        declaration=SimpleNamespace(icon="plug-icon"),
+    )
+
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller") as plugin_installer_cls,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            side_effect=RuntimeError("decrypt boom"),
+        ),
+    ):
+        plugin_installer_cls.return_value.list_plugins.return_value = [plugin]
+        result = _collect_log_metadata([_log_message("plug/tool")])
+
+    assert result[0]["icon"] == "plug-icon"
+    assert result[0]["icon_dark"] is None
+
+
+def test_log_icon_enrichment_fails_open_when_both_lookups_raise() -> None:
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller") as plugin_installer_cls,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            side_effect=RuntimeError("decrypt boom"),
+        ),
+    ):
+        plugin_installer_cls.return_value.list_plugins.side_effect = RuntimeError("daemon down")
+        result = _collect_log_metadata([_log_message("plug/tool")])
+
+    assert result[0]["icon"] == "seed-icon"
+    assert result[0]["icon_dark"] is None
+
+
+def test_log_icon_enrichment_uses_plugin_icon_when_not_in_builtins() -> None:
+    plugin = SimpleNamespace(
+        plugin_id="plug",
+        name="tool",
+        declaration=SimpleNamespace(icon="plug-icon"),
+    )
+
+    with (
+        patch("core.plugin.impl.plugin.PluginInstaller") as plugin_installer_cls,
+        patch(
+            "services.tools.builtin_tools_manage_service.BuiltinToolManageService.list_builtin_tools",
+            return_value=[],
+        ),
+    ):
+        plugin_installer_cls.return_value.list_plugins.return_value = [plugin]
+        result = _collect_log_metadata([_log_message("plug/tool")])
+
+    assert result[0]["icon"] == "plug-icon"
+    assert result[0]["icon_dark"] is None
+
+
+def test_log_icon_enrichment_handles_uncaught_helper_failure() -> None:
+    """A bug in the helper itself must not break Agent execution."""
+    with patch.object(
+        AgentMessageTransformer,
+        "_resolve_provider_icons",
+        side_effect=RuntimeError("unexpected"),
+    ):
+        result = _collect_log_metadata([_log_message("plug/tool")])
+
+    # The transform should still complete and emit the LOG event; metadata
+    # falls back to the seed icon rather than the original (un-enriched) dict.
+    assert result[0]["icon"] == "seed-icon"
+    assert result[0]["icon_dark"] is None

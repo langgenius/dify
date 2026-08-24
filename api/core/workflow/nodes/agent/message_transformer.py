@@ -45,8 +45,6 @@ class AgentMessageTransformer:
         node_id: str,
         node_execution_id: str,
     ) -> Generator[NodeEventBase, None, None]:
-        from core.plugin.impl.plugin import PluginInstaller
-
         message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
             messages=messages,
             user_id=user_id,
@@ -62,6 +60,11 @@ class AgentMessageTransformer:
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
         llm_usage = LLMUsage.empty_usage()
         variables: dict[str, Any] = {}
+        # Per-execution cache for LOG provider icon enrichment. The AgentNode
+        # factory returns a shared AgentMessageTransformer instance, so a
+        # class-level cache would leak icons across concurrent runs; a
+        # function-local cache scopes the memoization to one transform() call.
+        provider_icon_cache: dict[str, tuple[str | Mapping[str, str], str | Mapping[str, str] | None]] = {}
 
         for message in message_stream:
             if message.type in {
@@ -194,35 +197,24 @@ class AgentMessageTransformer:
             elif message.type == ToolInvokeMessage.MessageType.LOG:
                 assert isinstance(message.message, ToolInvokeMessage.LogMessage)
                 if message.message.metadata:
-                    icon = tool_info.get("icon", "")
                     dict_metadata = dict(message.message.metadata)
-                    if dict_metadata.get("provider"):
-                        manager = PluginInstaller()
-                        plugins = manager.list_plugins(tenant_id)
+                    provider = dict_metadata.get("provider")
+                    if provider:
+                        # Fail open: any lookup failure (slow plugin daemon,
+                        # credential decryption error, schema conversion error)
+                        # must not affect Agent execution. A missing icon is
+                        # purely cosmetic, so we always fall through to the
+                        # seed icon from tool_info.
                         try:
-                            current_plugin = next(
-                                plugin
-                                for plugin in plugins
-                                if f"{plugin.plugin_id}/{plugin.name}" == dict_metadata["provider"]
+                            icon, icon_dark = self._resolve_provider_icons(
+                                provider=provider,
+                                user_id=user_id,
+                                tenant_id=tenant_id,
+                                seed_icon=tool_info.get("icon", ""),
+                                cache=provider_icon_cache,
                             )
-                            icon = current_plugin.declaration.icon
-                        except StopIteration:
-                            pass
-                        icon_dark = None
-                        try:
-                            builtin_tool = next(
-                                provider
-                                for provider in BuiltinToolManageService.list_builtin_tools(
-                                    user_id,
-                                    tenant_id,
-                                )
-                                if provider.name == dict_metadata["provider"]
-                            )
-                            icon = builtin_tool.icon
-                            icon_dark = builtin_tool.icon_dark
-                        except StopIteration:
-                            pass
-
+                        except Exception:
+                            icon, icon_dark = tool_info.get("icon", ""), None
                         dict_metadata["icon"] = icon
                         dict_metadata["icon_dark"] = icon_dark
                         message.message.metadata = dict_metadata
@@ -343,3 +335,54 @@ class AgentMessageTransformer:
                 access_controller=_file_access_controller,
             )
         return None
+
+    @staticmethod
+    def _resolve_provider_icons(
+        *,
+        provider: str,
+        user_id: str,
+        tenant_id: str,
+        seed_icon: str,
+        cache: dict[str, tuple[str | Mapping[str, str], str | Mapping[str, str] | None]],
+    ) -> tuple[str | Mapping[str, str], str | Mapping[str, str] | None]:
+        """Resolve (icon, icon_dark) for a LOG provider with per-execution memoization.
+
+        Fails open: a slow plugin daemon, credential decryption error, or any
+        other lookup failure returns (seed_icon, None) so decorative metadata
+        enrichment never affects Agent execution success.
+
+        Repeated LOG messages for the same provider within one execution reuse
+        the cached result instead of repeating the full plugin and built-in
+        provider scans.
+        """
+        cached = cache.get(provider)
+        if cached is not None:
+            return cached
+
+        icon: str | Mapping[str, str] = seed_icon
+        icon_dark: str | Mapping[str, str] | None = None
+
+        from core.plugin.impl.plugin import PluginInstaller
+
+        try:
+            plugins = PluginInstaller().list_plugins(tenant_id)
+        except Exception:
+            plugins = []
+        for plugin in plugins:
+            if f"{plugin.plugin_id}/{plugin.name}" == provider:
+                icon = plugin.declaration.icon
+                break
+
+        try:
+            providers = BuiltinToolManageService.list_builtin_tools(user_id, tenant_id)
+        except Exception:
+            providers = []
+        for built_in in providers:
+            if built_in.name == provider:
+                icon = built_in.icon
+                icon_dark = built_in.icon_dark
+                break
+
+        result = (icon, icon_dark)
+        cache[provider] = result
+        return result
