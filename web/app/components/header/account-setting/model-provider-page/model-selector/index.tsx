@@ -155,7 +155,7 @@ function ModelSelectorRoot({
       />
       <PopoverContent
         placement="bottom-start"
-        popupClassName={cn(
+        className={cn(
           'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
           popupClassName,
         )}

@@ -116,7 +116,7 @@ function EnvEditorScope({
       >
         {t(($) => $[scopeLabelKeys[scope]])}
       </SelectTrigger>
-      <SelectContent placement="bottom-start" popupClassName="min-w-24">
+      <SelectContent placement="bottom-start" className="min-w-24">
         {envScopeOptions.map((option) => (
           <SelectItem<EnvScope> key={option} value={option} className="h-7 system-xs-regular">
             <SelectItemText>{t(($) => $[scopeLabelKeys[option]])}</SelectItemText>

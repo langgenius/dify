@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { PopoverContentProps } from '.'
 import * as React from 'react'
 import {
   createPopoverHandle,
@@ -185,7 +185,7 @@ export const Infotip: Story = {
         />
         <PopoverContent
           placement="top"
-          popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
+          className="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary"
         >
           Set which resource to use first when running models. The Trial quota will be used after
           the paid quota is exhausted.
@@ -195,7 +195,9 @@ export const Infotip: Story = {
   ),
 }
 
-const PLACEMENTS: Placement[] = [
+type PopoverPlacement = NonNullable<PopoverContentProps['placement']>
+
+const PLACEMENTS: PopoverPlacement[] = [
   'top-start',
   'top',
   'top-end',
@@ -211,7 +213,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<PopoverPlacement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">

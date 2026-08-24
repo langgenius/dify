@@ -209,7 +209,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         <PopoverContent
           placement={isInWorkflow ? 'left' : 'bottom-end'}
           sideOffset={4}
-          popupClassName={cn(popupClassName, 'w-97.25 rounded-2xl')}
+          className={cn(popupClassName, 'w-97.25 rounded-2xl')}
         >
           <div className="max-h-105 overflow-y-auto p-4 pt-3">
             {currentModel?.model_type === ModelTypeEnum.textGeneration && selectedModel && (

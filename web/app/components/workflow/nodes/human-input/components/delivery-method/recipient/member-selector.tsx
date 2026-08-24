@@ -52,7 +52,7 @@ const MemberSelector: FC<Props> = ({ value, email, onSelect, list = [] }) => {
         placement="bottom-end"
         sideOffset={4}
         alignOffset={35}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <MemberList
           searchValue={searchValue}

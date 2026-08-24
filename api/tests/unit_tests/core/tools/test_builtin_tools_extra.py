@@ -287,6 +287,7 @@ def test_tts_invoke_returns_messages(monkeypatch: pytest.MonkeyPatch, sqlite_ses
     )
     messages = list(tts.invoke(session=sqlite_session, user_id="u", tool_parameters={"model": "p#m", "text": "hello"}))
     assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.BLOB]
+    assert messages[1].meta == {"mime_type": "audio/mpeg"}
     assert captured_manager_kwargs == {"tenant_id": "tenant-1", "user_id": "u"}
 
 

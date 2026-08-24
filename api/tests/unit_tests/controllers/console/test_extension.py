@@ -24,7 +24,7 @@ from enums import DeploymentEdition
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
     del builtins.__dict__["MethodView"]
-from models.account import AccountStatus
+from models.account import Account, AccountStatus, Tenant
 from models.api_based_extension import APIBasedExtension
 
 
@@ -52,16 +52,16 @@ def _masked_api_key(api_key: str) -> str:
 
 
 @pytest.fixture(autouse=True)
-def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> Account:
     """Bypass console decorators so handlers can run in isolation."""
 
     from controllers.console import wraps as wraps_module
 
-    account = MagicMock()
-    account.status = AccountStatus.ACTIVE
-    account.current_tenant_id = "tenant-123"
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-123"
+    account = Account(name="Test User", email="user@example.com", status=AccountStatus.ACTIVE)
     account.id = "account-123"
-    account.is_authenticated = True
+    account._current_tenant = tenant
 
     monkeypatch.setattr(wraps_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(wraps_module.dify_config, "INIT_PASSWORD", "")

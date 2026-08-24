@@ -3,29 +3,40 @@
 import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import httpx
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
-from models.model import DifySetup
+from machinery.context import RequestContext
+from models.account import Account
+from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
     RegisterServiceInvitationTokenStore,
 )
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.billing_portal_service import BillingPortalService
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
 
@@ -152,6 +163,76 @@ def test_build_application_services_does_not_construct_schema_manager(
     schema_manager.assert_not_called()
 
 
+def test_build_application_services_wires_tag_boundary(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_wires_billing_service(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = Account(name="Billing Owner", email="owner@example.com")
+    account.id = "account-1"
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    with (
+        patch.object(
+            BillingService,
+            "get_subscription",
+            return_value={"url": "https://billing.example.com/checkout"},
+        ) as get_subscription,
+        patch.object(
+            BillingService,
+            "get_invoices",
+            return_value={"url": "https://billing.example.com/portal"},
+        ) as get_invoices,
+        patch.object(
+            BillingService,
+            "sync_partner_tenants_bindings",
+            return_value={"result": "success"},
+        ) as sync_partner_tenants_bindings,
+    ):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    request_context = RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
+    assert isinstance(services.billing_portal, BillingPortalService)
+    assert services.billing_portal.get_subscription(
+        request_context,
+        plan="professional",
+        interval="month",
+    ) == {"url": "https://billing.example.com/checkout"}
+    assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
+    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
+    assert services.partner_tenant_bindings.sync(
+        account_id="account-1",
+        partner_key="partner-key",
+        click_id="click-1",
+    ) == {"result": "success"}
+    get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
+    get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
+    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
+
+
 def test_build_application_services_wires_account_profile_repository(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -165,6 +246,32 @@ def test_build_application_services_wires_account_profile_repository(
     accounts = services.accounts.profile._accounts
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
+    assert services.accounts.password._accounts is accounts
+    assert services.accounts.initialization._accounts is accounts
+    assert not services.accounts.initialization._invitation_required
+    assert services.accounts.change_email._accounts is accounts
+    assert services.accounts.education._accounts is accounts
+    assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
+    integrations = services.accounts.integrations._integrations
+    assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
+    assert integrations._session_factory is sqlite_session_factory
+    avatar_files = services.accounts.avatar._files
+    assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
+    assert avatar_files._session_factory is sqlite_session_factory
+
+
+def test_build_application_services_requires_invitation_for_cloud_initialization(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    assert services.accounts.initialization._invitation_required
 
 
 @pytest.mark.parametrize(
@@ -209,6 +316,31 @@ def test_build_application_services_wires_data_source_api_key_auth(
     )
 
     assert isinstance(services.data_source_api_key_auth, DataSourceApiKeyAuthService)
+
+
+def test_build_application_services_wires_trial_app_usage(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+    app_id = str(uuid4())
+    account_id = str(uuid4())
+
+    services.trial_app_usage.record(app_id=app_id, account_id=account_id)
+
+    with sqlite_session_factory() as session:
+        record = session.scalar(
+            select(AccountTrialAppRecord).where(
+                AccountTrialAppRecord.app_id == app_id,
+                AccountTrialAppRecord.account_id == account_id,
+            )
+        )
+    assert record is not None
+    assert record.count == 1
 
 
 def test_build_application_services_adapts_enterprise_webapp_access_mode(
@@ -362,3 +494,40 @@ def test_webapp_permission_adapter_maps_connection_failure() -> None:
         ext_application_services._is_user_allowed_to_access_webapp("user-1", "app-1")
 
     assert raised.value.__cause__ is failure
+
+
+def test_build_application_services_wires_dynamic_recommended_catalog(
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "builtin")
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=MagicMock(spec=RedisClientWrapper),
+    )
+
+    builtin_payload = json.dumps(
+        {
+            "recommended_apps": {
+                "en-US": {
+                    "recommended_apps": [{"app": None, "app_id": "app-1", "categories": []}],
+                    "categories": [],
+                }
+            }
+        }
+    )
+    with patch.object(recommended_app_catalog_gateway.Path, "read_text", return_value=builtin_payload):
+        result = services.recommended_app_queries.list_recommended(
+            requested_language="en-US",
+            interface_language=None,
+        )
+    assert result.recommended_apps
+
+    monkeypatch.setattr(ext_application_services.dify_config, "HOSTED_FETCH_APP_TEMPLATES_MODE", "invalid")
+    with pytest.raises(ValueError, match="invalid fetch recommended apps mode: invalid"):
+        services.recommended_app_queries.list_recommended(
+            requested_language="en-US",
+            interface_language=None,
+        )

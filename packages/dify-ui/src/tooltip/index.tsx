@@ -1,8 +1,8 @@
 'use client'
 
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
+import * as React from 'react'
 import { cn } from '../cn'
 import { parsePlacement } from '../placement'
 
@@ -33,21 +33,18 @@ type TooltipProviderProps = BaseTooltip.Provider.Props
 type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
 type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
 
-type TooltipContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
-  positionerClassName?: string
-  className?: string
-} & Omit<BaseTooltip.Popup.Props, 'children' | 'className'>
+type TooltipContentProps = Omit<BaseTooltip.Popup.Props, 'children' | 'className'> &
+  Pick<BaseTooltip.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+    children: React.ReactNode
+    placement?: Placement
+    className?: string
+  }
 
 function TooltipContent({
   children,
   placement = 'top',
   sideOffset = 8,
   alignOffset = 0,
-  positionerClassName,
   className,
   ...props
 }: TooltipContentProps) {
@@ -60,7 +57,7 @@ function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', positionerClassName)}
+        className="z-50 outline-hidden"
       >
         <BaseTooltip.Popup
           className={cn(

@@ -6,12 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account import Tenant, TenantAccountJoin, TenantStatus
+from services.account_ports import AccountWorkspaceMembershipQuery
 from services.workspace_query_service import WorkspaceQuery, WorkspaceRecord
 
 
-class WorkspaceQueryRepository(WorkspaceQuery):
-    def __init__(self, client: sessionmaker[Session]) -> None:
-        self._client = client
+class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery):
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
 
     @override
     def list_for_account(self, account_id: str) -> tuple[WorkspaceRecord, ...]:
@@ -31,7 +32,7 @@ class WorkspaceQueryRepository(WorkspaceQuery):
             .order_by(Tenant.created_at.asc())
         )
 
-        with self._client() as session:
+        with self._session_factory() as session:
             rows = session.execute(stmt).all()
             return tuple(
                 WorkspaceRecord(
@@ -43,3 +44,9 @@ class WorkspaceQueryRepository(WorkspaceQuery):
                 )
                 for workspace_id, name, status, created_at, last_opened_at in rows
             )
+
+    @override
+    def list_ids_for_account(self, account_id: str) -> tuple[str, ...]:
+        stmt = select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account_id)
+        with self._session_factory() as session:
+            return tuple(session.scalars(stmt).all())

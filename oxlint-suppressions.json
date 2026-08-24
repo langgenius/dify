@@ -379,11 +379,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -473,11 +468,6 @@
       "count": 1
     },
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/duplicate-modal/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -697,11 +687,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/base/chat/chat-with-history/sidebar/rename-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
@@ -1914,22 +1899,12 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create-from-pipeline/list/template-card/operations.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 3
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 3
-    }
-  },
-  "web/app/components/datasets/create/empty-dataset-creation-modal/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/create/file-preview/index.tsx": {
@@ -2087,11 +2062,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/components/rename-modal.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2311,11 +2281,6 @@
   "web/app/components/datasets/documents/detail/settings/pipeline-settings/process-documents/index.tsx": {
     "typescript/no-explicit-any": {
       "count": 3
-    }
-  },
-  "web/app/components/datasets/external-api/external-api-modal/Form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
@@ -2890,11 +2855,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 2
@@ -2967,14 +2927,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 25
-    }
-  },
-  "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
@@ -3072,11 +3024,6 @@
   "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/publish-toast.tsx": {
@@ -3378,14 +3325,6 @@
   "web/app/components/workflow/datasets-detail-store/provider.tsx": {
     "react/only-export-components": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/header/online-users.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "web/app/components/workflow/header/test-run-menu.tsx": {
@@ -4074,11 +4013,6 @@
   },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

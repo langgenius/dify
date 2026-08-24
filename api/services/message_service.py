@@ -256,8 +256,50 @@ class MessageService:
             session.add(feedback)
 
         session.commit()
+        if rating:
+            cls._emit_feedback_telemetry(
+                app_model=app_model, message=message, user=user, rating=rating, content=content
+            )
 
         return feedback
+
+    @classmethod
+    def _emit_feedback_telemetry(
+        cls,
+        *,
+        app_model: App,
+        message: Message,
+        user: Account | EndUser,
+        rating: FeedbackRating | None,
+        content: str | None,
+    ) -> None:
+        try:
+            from core.telemetry import FeedbackCreatedEvent, TelemetryContext, emit
+
+            if message.id is None:
+                return
+
+            emit(
+                FeedbackCreatedEvent(
+                    context=TelemetryContext(tenant_id=app_model.tenant_id),
+                    payload={
+                        "message_id": str(message.id),
+                        "app_id": str(app_model.id) if app_model.id is not None else None,
+                        "conversation_id": (
+                            str(message.conversation_id) if message.conversation_id is not None else None
+                        ),
+                        "from_end_user_id": str(user.id) if isinstance(user, EndUser) and user.id is not None else None,
+                        "from_account_id": str(user.id) if isinstance(user, Account) and user.id is not None else None,
+                        "rating": rating.value if rating else None,
+                        "from_source": (
+                            FeedbackFromSource.USER if isinstance(user, EndUser) else FeedbackFromSource.ADMIN
+                        ).value,
+                        "content": content,
+                    },
+                )
+            )
+        except Exception:
+            logger.warning("Failed to emit feedback_created telemetry", exc_info=True)
 
     @classmethod
     def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int, *, session: Session):

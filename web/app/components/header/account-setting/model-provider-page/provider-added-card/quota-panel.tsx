@@ -61,7 +61,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
       </PopoverTrigger>
       <PopoverContent
         placement="top"
-        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+        className="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
       >
         {tipText}
       </PopoverContent>

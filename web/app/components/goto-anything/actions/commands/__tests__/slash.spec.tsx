@@ -181,4 +181,15 @@ describe('SlashCommandProvider', () => {
       'refine',
     ])
   })
+
+  it('should register the enterprise documentation home URL', () => {
+    const { unmount } = render(<SlashCommandProvider />, {
+      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+    })
+    const docsRegistration = mockRegister.mock.calls.find((call) => call[0].name === 'docs')
+
+    expect(docsRegistration?.[1].getDocsHomeUrl()).toBe('https://enterprise-docs.dify.ai/en/')
+
+    unmount()
+  })
 })

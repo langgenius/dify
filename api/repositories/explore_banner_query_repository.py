@@ -11,8 +11,8 @@ from services.explore_banner_query_service import ExploreBannerQuery, ExploreBan
 
 
 class ExploreBannerQueryRepository(ExploreBannerQuery):
-    def __init__(self, client: sessionmaker[Session]) -> None:
-        self._client = client
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
 
     @override
     def list_enabled(self, language: str) -> tuple[ExploreBannerRecord, ...]:
@@ -32,7 +32,7 @@ class ExploreBannerQueryRepository(ExploreBannerQuery):
             .order_by(ExporleBanner.sort)
         )
 
-        with self._client() as session:
+        with self._session_factory() as session:
             rows = session.execute(stmt).all()
             return tuple(
                 ExploreBannerRecord(

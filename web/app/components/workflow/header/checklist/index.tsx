@@ -88,7 +88,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
         placement="bottom-start"
         sideOffset={12}
         alignOffset={-30}
-        popupClassName="w-[420px] rounded-2xl bg-background-default-subtle"
+        className="w-[420px] rounded-2xl bg-background-default-subtle"
       >
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">

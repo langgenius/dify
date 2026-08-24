@@ -9,6 +9,7 @@ import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
@@ -62,7 +63,8 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
     select: (data) => data.profile,
   })
   const appId = useStore((s) => s.appId)
-  const { nodePanelPresence } = useCollaboration(appId as string)
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
+  const { nodePanelPresence } = useCollaboration(appId as string, canEdit)
   const controlMode = useStore((s) => s.controlMode)
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,

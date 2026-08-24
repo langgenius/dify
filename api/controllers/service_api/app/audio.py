@@ -151,8 +151,9 @@ class TextApi(Resource):
         tags=["TTS"],
         responses={
             200: (
-                "Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; "
-                "otherwise the provider output is returned directly."
+                "Returns the generated audio. The `Content-Type` header reflects the provider audio container, "
+                "verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, "
+                "MP3, Ogg, WAV, or WebM."
             ),
             400: (
                 "- `app_unavailable` : App unavailable or misconfigured.\n"
@@ -165,7 +166,8 @@ class TextApi(Resource):
         },
     )
     @expect_with_user(service_api_ns, TextToAudioPayload)
-    @binary_response(service_api_ns, "audio/mpeg")
+    # OpenAPI 2 cannot express a runtime-selected response MIME type, so document the body as generic binary.
+    @binary_response(service_api_ns, "application/octet-stream")
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(

@@ -77,13 +77,12 @@ class TestPluginRuntimeExecution:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-api-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-api-key",
+        )
 
     def test_request_preparation(self, plugin_client, mock_config):
         """Test that requests are properly prepared with correct headers and URL."""
@@ -182,13 +181,12 @@ class TestPluginRuntimeSandboxIsolation:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "secure-api-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="secure-api-key",
+        )
 
     def test_api_key_authentication(self, plugin_client, mock_config):
         """Test that all requests include API key for authentication."""
@@ -272,13 +270,13 @@ class TestPluginRuntimeResourceLimits:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration with timeout."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-            patch("core.plugin.impl.base.plugin_daemon_request_timeout", httpx.Timeout(30.0)),
-        ):
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
+        with patch("core.plugin.impl.base.plugin_daemon_request_timeout", httpx.Timeout(30.0)):
             yield
 
     def test_timeout_configuration_applied(self, plugin_client, mock_config):
@@ -346,13 +344,12 @@ class TestPluginRuntimeErrorHandling:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_plugin_invoke_rate_limit_error(self, plugin_client, mock_config):
         """Test handling of rate limit errors during plugin invocation."""
@@ -605,13 +602,12 @@ class TestPluginRuntimeCommunication:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_request_response_communication(self, plugin_client, mock_config):
         """Test basic request/response communication pattern."""
@@ -811,13 +807,12 @@ class TestPluginToolManagerIntegration:
         return PluginToolManager()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_tool_invocation_success(self, tool_manager, mock_config):
         """Test successful tool invocation."""
@@ -938,13 +933,12 @@ class TestPluginInstallerIntegration:
         return PluginInstaller()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_list_plugins_success(self, installer, mock_config):
         """Test successful plugin listing."""
@@ -1012,13 +1006,12 @@ class TestPluginRuntimeEdgeCases:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_malformed_json_response(self, plugin_client, mock_config):
         """Test handling of malformed JSON responses."""
@@ -1174,13 +1167,12 @@ class TestPluginRuntimeAdvancedScenarios:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_multiple_sequential_requests(self, plugin_client, mock_config):
         """Test multiple sequential requests to the same endpoint."""
@@ -1360,13 +1352,12 @@ class TestPluginRuntimeSecurityAndValidation:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "secure-key-123"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="secure-key-123",
+        )
 
     def test_api_key_header_always_present(self, plugin_client, mock_config):
         """Test that API key header is always included in requests."""
@@ -1480,13 +1471,12 @@ class TestPluginRuntimePerformanceScenarios:
         return BasePluginClient()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_high_volume_streaming(self, plugin_client, mock_config):
         """Test streaming with high volume of chunks."""
@@ -1598,13 +1588,12 @@ class TestPluginToolManagerAdvanced:
         return PluginToolManager()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_tool_invocation_with_complex_parameters(self, tool_manager, mock_config):
         """Test tool invocation with complex parameter structures."""
@@ -1750,13 +1739,12 @@ class TestPluginInstallerAdvanced:
         return PluginInstaller()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self, config_overrides):
         """Mock plugin daemon configuration."""
-        with (
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_URL", "http://127.0.0.1:5002"),
-            patch("core.plugin.impl.base.dify_config.PLUGIN_DAEMON_KEY", "test-key"),
-        ):
-            yield
+        config_overrides(
+            PLUGIN_DAEMON_URL="http://127.0.0.1:5002",
+            PLUGIN_DAEMON_KEY="test-key",
+        )
 
     def test_upload_plugin_package_success(self, installer, mock_config):
         """Test successful plugin package upload."""

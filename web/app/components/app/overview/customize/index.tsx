@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -73,7 +74,17 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
           {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
         </DialogDescription>
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
             <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">

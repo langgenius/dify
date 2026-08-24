@@ -1,9 +1,9 @@
 // shellctl-runner is the Go replacement for the previously generated bash+python
 // runner script.  It is invoked by tmux as:
 //
-//	shellctl-runner <job_dir> <job_id> <cwd>
+//	shellctl-runner <job_dir> <job_id> <cwd> [pty|stdio]
 //
-// The binary operates in two modes:
+// The binary operates in two process roles:
 //
 //  1. Parent mode (default): waits for start-gate, loads env, forks child,
 //     waits for exit, writes exit artifacts.
@@ -17,16 +17,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/langgenius/dify/dify-agent-runtime/internal/cmdutil"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/envvar"
+	"github.com/langgenius/dify/dify-agent-runtime/internal/jobmode"
 	"github.com/langgenius/dify/dify-agent-runtime/internal/landlock"
 )
 
@@ -39,21 +42,25 @@ func main() {
 }
 
 // parentMode is the entry point when called by tmux.
-// Args: shellctl-runner <job_dir> <job_id> <cwd>
+// Args: shellctl-runner <job_dir> <job_id> <cwd> [pty|stdio]
 func parentMode() {
 	if len(os.Args) < 4 {
-		cmdutil.HandleError(fmt.Errorf("bad args"), 125, "usage: shellctl-runner <job_dir> <job_id> <cwd>")
+		cmdutil.HandleError(fmt.Errorf("bad args"), 125, "usage: shellctl-runner <job_dir> <job_id> <cwd> [pty|stdio]")
 	}
 
 	jobDir := os.Args[1]
 	// jobID := os.Args[2] // unused in parent but passed for compat
 	cwd := os.Args[3]
+	modeRaw := ""
+	if len(os.Args) >= 5 {
+		modeRaw = os.Args[4]
+	}
+	mode, err := jobmode.Parse(modeRaw)
+	cmdutil.HandleError(err, 125, "parse job mode")
 
 	scriptPath := filepath.Join(jobDir, "script")
 	envPath := filepath.Join(jobDir, ".job-env.json")
 	startGate := filepath.Join(jobDir, "start-gate")
-	exitCodePath := filepath.Join(jobDir, "runner-exit-code")
-	endedAtPath := filepath.Join(jobDir, "runner-ended-at")
 
 	// Wait for start-gate.
 	for {
@@ -77,20 +84,17 @@ func parentMode() {
 
 	envOverlay := loadEnvJSON(envPath)
 	env = mergeEnv(env, envOverlay)
+	env = mergeEnv(env, map[string]string{
+		"TMPDIR": cwd,
+		"TMP":    cwd,
+		"TEMP":   cwd,
+	})
 
 	// Ensure HOME exists.
 	home := envGet(env, "HOME")
 	if home != "" {
 		cmdutil.HandleError(os.MkdirAll(home, 0755), 125, "mkdir HOME %s", home)
 	}
-
-	// Create a per-workspace temp directory under cwd and inject TMPDIR.
-	// This avoids granting RW access to the shared /tmp.
-	agentTmp := filepath.Join(cwd, ".tmp")
-	cmdutil.HandleError(os.MkdirAll(agentTmp, 0755), 125, "mkdir TMPDIR %s", agentTmp)
-	env = setEnvIfEmpty(env, "TMPDIR", agentTmp)
-	env = setEnvIfEmpty(env, "TMP", agentTmp)
-	env = setEnvIfEmpty(env, "TEMP", agentTmp)
 
 	// Determine if path isolation is enabled.
 	enableIsolation := envvar.PathIsolationEnabled()
@@ -104,9 +108,6 @@ func parentMode() {
 
 	cmd := exec.Command(self, childArgs...)
 	cmd.Env = env
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	cmd.Dir = cwd
 
 	// Forward signals to child.
@@ -120,23 +121,154 @@ func parentMode() {
 		}
 	}()
 
-	err := cmd.Run()
+	exitCode := runCommandAndRecordExit(cmd, jobDir, mode)
+	os.Exit(exitCode)
+}
 
-	exitCode := 0
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			exitCode = exitErr.ExitCode()
-		} else {
-			exitCode = 125
-		}
+// runCommandAndRecordExit publishes the existing runner artifacts after the
+// child path returns. In stdio mode that return includes both stream drains;
+// PTY mode still relies on its separate pipe-drain finalizer.
+func runCommandAndRecordExit(cmd *exec.Cmd, jobDir string, mode jobmode.Mode) int {
+	var exitCode int
+	if mode == jobmode.Stdio {
+		exitCode = runStdio(cmd, jobDir)
+	} else {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		exitCode = runPTY(cmd)
 	}
 
 	endedAt := time.Now().UTC().Format("2006-01-02T15:04:05Z")
 
-	writeAtomic(exitCodePath, fmt.Sprintf("%d", exitCode))
-	writeAtomic(endedAtPath, endedAt)
+	writeAtomic(filepath.Join(jobDir, "runner-exit-code"), fmt.Sprintf("%d", exitCode))
+	writeAtomic(filepath.Join(jobDir, "runner-ended-at"), endedAt)
+	return exitCode
+}
 
-	os.Exit(exitCode)
+func runPTY(cmd *exec.Cmd) int {
+	return commandExitCode(cmd.Run())
+}
+
+// runStdio captures stdout and stderr independently and does not return until
+// both streams reach EOF and their files are closed.
+func runStdio(cmd *exec.Cmd, jobDir string) int {
+	outputFile, err := openCaptureFile(filepath.Join(jobDir, "output.log"))
+	if err != nil {
+		return runnerError("open stdout capture", err)
+	}
+	stderrFile, err := openCaptureFile(filepath.Join(jobDir, "stderr.log"))
+	if err != nil {
+		_ = outputFile.Close()
+		return runnerError("open stderr capture", err)
+	}
+
+	stdoutReader, stdoutWriter, err := os.Pipe()
+	if err != nil {
+		_ = outputFile.Close()
+		_ = stderrFile.Close()
+		return runnerError("create stdout pipe", err)
+	}
+	stderrReader, stderrWriter, err := os.Pipe()
+	if err != nil {
+		_ = stdoutReader.Close()
+		_ = stdoutWriter.Close()
+		_ = outputFile.Close()
+		_ = stderrFile.Close()
+		return runnerError("create stderr pipe", err)
+	}
+	stdinFile, err := os.Open(os.DevNull)
+	if err != nil {
+		_ = stdoutReader.Close()
+		_ = stdoutWriter.Close()
+		_ = stderrReader.Close()
+		_ = stderrWriter.Close()
+		_ = outputFile.Close()
+		_ = stderrFile.Close()
+		return runnerError("open stdin", err)
+	}
+
+	cmd.Stdin = stdinFile
+	cmd.Stdout = stdoutWriter
+	cmd.Stderr = stderrWriter
+
+	var captureErrors []error
+	var captureErrorsMu sync.Mutex
+	recordError := func(operation string, err error) {
+		if err != nil {
+			captureErrorsMu.Lock()
+			captureErrors = append(captureErrors, fmt.Errorf("%s: %w", operation, err))
+			captureErrorsMu.Unlock()
+		}
+	}
+
+	var drains sync.WaitGroup
+	drains.Add(2)
+	go func() {
+		defer drains.Done()
+		_, copyErr := io.Copy(outputFile, stdoutReader)
+		recordError("copy stdout", copyErr)
+		recordError("close stdout reader", stdoutReader.Close())
+	}()
+	go func() {
+		defer drains.Done()
+		_, copyErr := io.Copy(stderrFile, stderrReader)
+		recordError("copy stderr", copyErr)
+		recordError("close stderr reader", stderrReader.Close())
+	}()
+
+	startErr := cmd.Start()
+	recordError("close stdout writer", stdoutWriter.Close())
+	recordError("close stderr writer", stderrWriter.Close())
+	recordError("close stdin", stdinFile.Close())
+
+	var waitErr error
+	if startErr != nil {
+		recordError("start child", startErr)
+	} else {
+		waitErr = cmd.Wait()
+	}
+
+	// Descendants may retain either write end after the direct child exits. In
+	// that case the runner intentionally remains alive until both reach EOF.
+	drains.Wait()
+	recordError("close stdout capture", outputFile.Close())
+	recordError("close stderr capture", stderrFile.Close())
+
+	for _, captureErr := range captureErrors {
+		fmt.Fprintf(os.Stderr, "shellctl-runner: %v\n", captureErr)
+	}
+	if len(captureErrors) > 0 {
+		return 125
+	}
+	return commandExitCode(waitErr)
+}
+
+func openCaptureFile(path string) (*os.File, error) {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
+	if err != nil {
+		return nil, err
+	}
+	if err := file.Chmod(0600); err != nil {
+		_ = file.Close()
+		return nil, err
+	}
+	return file, nil
+}
+
+func runnerError(operation string, err error) int {
+	fmt.Fprintf(os.Stderr, "shellctl-runner: %s: %v\n", operation, err)
+	return 125
+}
+
+func commandExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode()
+	}
+	return 125
 }
 
 // childMode applies Landlock (if --landlock flag) and exec's the user script.
@@ -262,14 +394,6 @@ func envGet(env []string, key string) string {
 		}
 	}
 	return ""
-}
-
-// setEnvIfEmpty sets key=value in the env slice only if the key is not already present.
-func setEnvIfEmpty(env []string, key, value string) []string {
-	if envGet(env, key) != "" {
-		return env
-	}
-	return append(env, key+"="+value)
 }
 
 // writeAtomic writes value to dest via a temp file + rename.
