@@ -1,451 +1,205 @@
-"""SQLite-backed tests for account invitation and activation flows."""
+"""Transport-boundary tests for account invitation activation."""
 
-from __future__ import annotations
-
+from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session, scoped_session
 
-from controllers.console.auth import activate as activate_module
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
-from controllers.console.auth.error import InvitationAccountMismatchError
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
-from enums import DeploymentEdition
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
+from controllers.console.error import (
+    AccountInFreezeError,
+    AlreadyActivateError,
+)
+from controllers.console.error import (
+    EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
+)
+from services.account_activation_service import (
+    AccountActivationService,
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+)
+from services.account_activation_service import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
+from services.entities.account_activation_entities import (
+    ActivationCheckData,
+    ActivationCheckResult,
+    ActivationCommand,
+    InvitationLookup,
+)
 
 
 @pytest.fixture
-def app(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Flask:
-    session_proxy = scoped_session(lambda: sqlite_session)
-    monkeypatch.setattr(activate_module, "db", SimpleNamespace(session=session_proxy))
+def app() -> Flask:
     app = Flask(__name__)
     app.config["TESTING"] = True
     return app
 
 
 @pytest.fixture
-def invitation(sqlite_session: Session) -> dict[str, object]:
-    account = Account(name="Invited user", email="invitee@example.com", status=AccountStatus.PENDING)
-    account.id = "account-123"
-    tenant = Tenant(name="Test Workspace")
-    tenant.id = "workspace-123"
-    sqlite_session.add_all([account, tenant])
-    sqlite_session.commit()
-    return {
-        "data": {"email": account.email},
-        "tenant": tenant,
-        "account": account,
-    }
+def activation_service() -> Mock:
+    return Mock(spec=AccountActivationService)
 
 
-@pytest.fixture
-def switch_tenant(monkeypatch: pytest.MonkeyPatch) -> Mock:
-    switch = Mock()
-    monkeypatch.setattr(activate_module.TenantService, "switch_tenant", switch)
-    return switch
-
-
-def _post(app: Flask, payload: dict[str, object]) -> dict[str, str]:
-    with app.test_request_context("/activate", method="POST", json=payload):
-        return ActivateApi().post()
-
-
-def _setup_payload(**overrides: object) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "workspace_id": "workspace-123",
-        "email": "invitee@example.com",
-        "token": "valid_token",
-        "name": "John Doe",
-        "interface_language": "en-US",
-        "timezone": "UTC",
-    }
-    payload.update(overrides)
-    return payload
+def _services(service: Mock) -> SimpleNamespace:
+    return SimpleNamespace(account_activation=service)
 
 
 class TestActivateCheckApi:
-    def test_check_valid_invitation_token(self, app: Flask, invitation: dict[str, object]) -> None:
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ),
-            app.test_request_context(
-                "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid_token"
-            ),
-        ):
-            response = ActivateCheckApi().get()
-
-        assert response["is_valid"] is True
-        assert response["data"]["workspace_name"] == "Test Workspace"
-        assert response["data"]["workspace_id"] == "workspace-123"
-        assert response["data"]["email"] == "invitee@example.com"
-
-    def test_check_includes_persisted_account_status(self, app: Flask, invitation: dict[str, object]) -> None:
-        account = invitation["account"]
-        assert isinstance(account, Account)
-        account.status = AccountStatus.ACTIVE
-
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ),
-            app.test_request_context("/activate/check?email=invitee@example.com&token=valid_token"),
-        ):
-            response = ActivateCheckApi().get()
-
-        assert response["data"]["account_status"] == AccountStatus.ACTIVE
-        assert response["data"]["requires_setup"] is False
-
-    def test_check_invalid_invitation_token(self, app: Flask) -> None:
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=None,
-            ),
-            app.test_request_context("/activate/check?email=test@example.com&token=invalid_token"),
-        ):
-            assert ActivateCheckApi().get() == {"is_valid": False}
-
-    @pytest.mark.parametrize(
-        ("query", "workspace_id", "email"),
-        [
-            ("email=invitee@example.com&token=valid_token", None, "invitee@example.com"),
-            ("workspace_id=workspace-123&token=valid_token", "workspace-123", None),
-            (
-                "workspace_id=workspace-123&email=Invitee@Example.com&token=valid_token",
-                "workspace-123",
-                "Invitee@Example.com",
-            ),
-        ],
-    )
-    def test_check_forwards_optional_lookup_fields(
+    def test_serializes_valid_invitation(
         self,
         app: Flask,
-        invitation: dict[str, object],
-        query: str,
-        workspace_id: str | None,
-        email: str | None,
+        activation_service: Mock,
     ) -> None:
+        activation_service.check.return_value = ActivationCheckResult(
+            is_valid=True,
+            data=ActivationCheckData(
+                workspace_name="Test Workspace",
+                workspace_id="workspace-123",
+                email="invitee@example.com",
+                account_status="pending",
+                requires_setup=True,
+            ),
+        )
         with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ) as lookup,
-            app.test_request_context(f"/activate/check?{query}"),
+            app.test_request_context(
+                "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid-token"
+            ),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
+            ),
         ):
-            assert ActivateCheckApi().get()["is_valid"] is True
+            response = unwrap(ActivateCheckApi.get)(ActivateCheckApi())
 
-        lookup.assert_called_once_with(workspace_id, email, "valid_token", session=ANY)
-        assert isinstance(lookup.call_args.kwargs["session"], Session)
+        assert response == {
+            "is_valid": True,
+            "data": {
+                "workspace_name": "Test Workspace",
+                "workspace_id": "workspace-123",
+                "email": "invitee@example.com",
+                "account_status": "pending",
+                "requires_setup": True,
+            },
+        }
+        activation_service.check.assert_called_once_with(
+            InvitationLookup(
+                workspace_id="workspace-123",
+                email="invitee@example.com",
+                token="valid-token",
+            ),
+        )
+
+    def test_omits_data_for_invalid_invitation(self, app: Flask, activation_service: Mock) -> None:
+        activation_service.check.return_value = ActivationCheckResult(is_valid=False)
+
+        with (
+            app.test_request_context("/activate/check?token=invalid-token"),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
+            ),
+        ):
+            response = unwrap(ActivateCheckApi.get)(ActivateCheckApi())
+
+        assert response == {"is_valid": False}
 
 
 class TestActivateApi:
-    def test_activation_rejects_invitation_for_different_authenticated_account(
+    def test_passes_parsed_command_to_application_service(
         self,
-        sqlite_session: Session,
         app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
+        activation_service: Mock,
     ) -> None:
-        """A logged-in account cannot consume another account's invitation token."""
-        invited_account = invitation["account"]
-        assert isinstance(invited_account, Account)
-        invited_account.status = AccountStatus.ACTIVE
-        data = invitation["data"]
-        assert isinstance(data, dict)
-        data["requires_setup"] = False
-        sqlite_session.commit()
-        current_account = Mock(id="current-account-id")
-
+        payload = {
+            "workspace_id": "workspace-123",
+            "email": "Invitee@Example.com",
+            "token": "valid-token",
+            "name": "John Doe",
+            "interface_language": "en-US",
+            "timezone": "UTC",
+        }
         with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
+            app.test_request_context("/activate", method="POST", json=payload),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
             ),
-            patch.object(
-                activate_module,
-                "current_account_with_tenant",
-                return_value=(current_account, "current-workspace-id"),
+            patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
+            patch(
+                "controllers.console.auth.activate.current_account_with_tenant",
+                return_value=SimpleNamespace(account=SimpleNamespace(id="account-123")),
             ),
-            patch.object(activate_module, "extract_access_token", return_value="access-token") as extract_access_token,
-            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
-            patch.object(activate_module.TenantService, "create_tenant_member") as create_tenant_member,
-            pytest.raises(InvitationAccountMismatchError),
         ):
-            _post(app, {"token": "valid_token"})
+            response = unwrap(ActivateApi.post)(ActivateApi())
 
-        extract_access_token.assert_called_once()
-        revoke_token.assert_not_called()
-        create_tenant_member.assert_not_called()
-        switch_tenant.assert_not_called()
-        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
-
-    def test_successful_account_activation_persists_membership(
-        self,
-        sqlite_session: Session,
-        app: Flask,
-        invitation: dict[str, object],
-    ) -> None:
-        invited_account = invitation["account"]
-        invited_tenant = invitation["tenant"]
-        assert isinstance(invited_account, Account)
-        assert isinstance(invited_tenant, Tenant)
-        account_id = invited_account.id
-        tenant_id = invited_tenant.id
-
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ),
-            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
-        ):
-            response = _post(app, _setup_payload())
-
-        sqlite_session.expire_all()
-        account = sqlite_session.get(Account, account_id)
-        assert account is not None
-        membership = sqlite_session.scalar(
-            select(TenantAccountJoin).where(
-                TenantAccountJoin.account_id == account_id,
-                TenantAccountJoin.tenant_id == tenant_id,
-            )
-        )
-        assert membership is not None
-        assert membership.role == TenantAccountRole.NORMAL
-        assert membership.current is True
-        assert membership.last_opened_at is not None
         assert response == {"result": "success"}
-        assert account.name == "John Doe"
-        assert account.interface_language == "en-US"
-        assert account.timezone == "UTC"
-        assert account.interface_theme == "light"
-        assert account.status == AccountStatus.ACTIVE
-        assert account.initialized_at is not None
-        revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        activation_service.activate.assert_called_once_with(
+            ActivationCommand(
+                invitation=InvitationLookup(
+                    workspace_id="workspace-123",
+                    email="Invitee@Example.com",
+                    token="valid-token",
+                ),
+                name="John Doe",
+                interface_language="en-US",
+                timezone="UTC",
+            ),
+            authenticated_account_id="account-123",
+        )
 
-    def test_missing_setup_fields_does_not_consume_invitation_or_create_membership(
+    def test_passes_no_authenticated_account_for_token_only_activation(
         self,
-        sqlite_session: Session,
         app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
+        activation_service: Mock,
     ) -> None:
-        data = invitation["data"]
-        assert isinstance(data, dict)
-        data["requires_setup"] = True
-
         with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
+            app.test_request_context("/activate", method="POST", json={"token": "valid-token"}),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
             ),
-            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
-            pytest.raises(AlreadyActivateError),
+            patch("controllers.console.auth.activate.extract_access_token", return_value=None),
+            patch("controllers.console.auth.activate.current_account_with_tenant") as resolve_account,
         ):
-            _post(app, _setup_payload(name=None, interface_language=None, timezone=None))
+            response = unwrap(ActivateApi.post)(ActivateApi())
 
-        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
-        revoke_token.assert_not_called()
-        switch_tenant.assert_not_called()
-
-    def test_activation_with_invalid_token(self, app: Flask, switch_tenant: Mock) -> None:
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=None,
-            ),
-            pytest.raises(AlreadyActivateError),
-        ):
-            _post(app, _setup_payload(token="invalid_token"))
-        switch_tenant.assert_not_called()
-
-    def test_billing_freeze_leaves_persisted_account_pending(
-        self,
-        sqlite_session: Session,
-        app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        account = invitation["account"]
-        assert isinstance(account, Account)
-        account.email = "Invitee@Example.com"
-        sqlite_session.commit()
-        monkeypatch.setattr(activate_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
-
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ),
-            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
-            patch.object(activate_module.BillingService, "is_email_in_freeze", return_value=True) as is_frozen,
-            pytest.raises(AccountInFreezeError),
-        ):
-            _post(app, _setup_payload())
-
-        sqlite_session.refresh(account)
-        assert account.status == AccountStatus.PENDING
-        assert sqlite_session.scalar(select(func.count(TenantAccountJoin.id))) == 0
-        is_frozen.assert_called_once_with("Invitee@Example.com")
-        revoke_token.assert_not_called()
-        switch_tenant.assert_not_called()
+        assert response == {"result": "success"}
+        activation_service.activate.assert_called_once_with(
+            ActivationCommand(invitation=InvitationLookup(workspace_id=None, email=None, token="valid-token")),
+            authenticated_account_id=None,
+        )
+        resolve_account.assert_not_called()
 
     @pytest.mark.parametrize(
-        ("language", "timezone"),
+        ("service_error", "http_error"),
         [
-            ("en-US", "UTC"),
-            ("zh-Hans", "Asia/Shanghai"),
-            ("ja-JP", "Asia/Tokyo"),
-            ("es-ES", "Europe/Madrid"),
+            (InvalidInvitationError(), AlreadyActivateError),
+            (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
+            (FrozenAccountError(), AccountInFreezeError),
+            (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
         ],
     )
-    def test_activation_with_different_locales(
+    def test_translates_application_errors(
         self,
         app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
-        language: str,
-        timezone: str,
+        activation_service: Mock,
+        service_error: Exception,
+        http_error: type[Exception],
     ) -> None:
+        activation_service.activate.side_effect = service_error
+
         with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
+            app.test_request_context("/activate", method="POST", json={"token": "invalid-token"}),
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(activation_service),
             ),
-            patch.object(activate_module.RegisterService, "revoke_token"),
+            patch("controllers.console.auth.activate.extract_access_token", return_value=None),
+            pytest.raises(http_error),
         ):
-            assert _post(app, _setup_payload(interface_language=language, timezone=timezone)) == {"result": "success"}
-
-        account = invitation["account"]
-        assert isinstance(account, Account)
-        assert account.interface_language == language
-        assert account.timezone == timezone
-
-    def test_activation_without_workspace_id_revokes_normalized_email(
-        self,
-        app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
-    ) -> None:
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ) as lookup,
-            patch.object(activate_module.RegisterService, "revoke_token") as revoke_token,
-        ):
-            response = _post(
-                app,
-                _setup_payload(workspace_id=None, email="Invitee@Example.com"),
-            )
-
-        assert response == {"result": "success"}
-        lookup.assert_called_once_with(None, "Invitee@Example.com", "valid_token", session=ANY)
-        revoke_token.assert_called_once_with(None, "invitee@example.com", "valid_token")
-
-    def test_existing_active_account_gets_tenant_scoped_admin_membership(
-        self,
-        sqlite_session: Session,
-        app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
-    ) -> None:
-        session = sqlite_session
-        account = invitation["account"]
-        tenant = invitation["tenant"]
-        data = invitation["data"]
-        assert isinstance(account, Account)
-        assert isinstance(tenant, Tenant)
-        assert isinstance(data, dict)
-        account.status = AccountStatus.ACTIVE
-        data.update({"role": "admin", "requires_setup": False})
-        other_tenant = Tenant(name="Other Workspace")
-        other_tenant.id = "workspace-456"
-        session.add(other_tenant)
-        session.flush()
-        session.add(
-            TenantAccountJoin(
-                tenant_id=other_tenant.id,
-                account_id=account.id,
-                role=TenantAccountRole.NORMAL,
-            )
-        )
-        session.commit()
-
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ),
-            patch.object(activate_module.RegisterService, "revoke_token"),
-        ):
-            assert _post(
-                app,
-                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
-            ) == {"result": "success"}
-
-        memberships = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account.id)).all()
-        assert {(row.tenant_id, row.role) for row in memberships} == {
-            (other_tenant.id, TenantAccountRole.NORMAL),
-            (tenant.id, TenantAccountRole.ADMIN),
-        }
-
-    def test_existing_membership_is_not_duplicated(
-        self,
-        sqlite_session: Session,
-        app: Flask,
-        invitation: dict[str, object],
-        switch_tenant: Mock,
-    ) -> None:
-        session = sqlite_session
-        account = invitation["account"]
-        tenant = invitation["tenant"]
-        assert isinstance(account, Account)
-        assert isinstance(tenant, Tenant)
-        account.status = AccountStatus.ACTIVE
-        session.add(
-            TenantAccountJoin(
-                tenant_id=tenant.id,
-                account_id=account.id,
-                role=TenantAccountRole.EDITOR,
-            )
-        )
-        session.commit()
-
-        with (
-            patch.object(
-                activate_module.RegisterService,
-                "get_invitation_with_case_fallback",
-                return_value=invitation,
-            ),
-            patch.object(activate_module.RegisterService, "revoke_token"),
-        ):
-            assert _post(
-                app,
-                {"workspace_id": tenant.id, "email": account.email, "token": "valid_token"},
-            ) == {"result": "success"}
-
-        assert session.scalar(select(func.count(TenantAccountJoin.id))) == 1
-        membership = session.scalar(select(TenantAccountJoin))
-        assert membership is not None
-        assert membership.role == TenantAccountRole.EDITOR
+            unwrap(ActivateApi.post)(ActivateApi())

@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import './app/styles/globals.css'
 
 document.documentElement.dataset.theme = 'light'

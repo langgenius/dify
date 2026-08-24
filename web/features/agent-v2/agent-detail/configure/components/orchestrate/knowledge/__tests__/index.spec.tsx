@@ -2,7 +2,7 @@ import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-compose
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
@@ -282,7 +282,7 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
       )
 
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(
         screen.queryByRole('button', {
@@ -733,7 +733,7 @@ describe('AgentKnowledgeRetrieval', () => {
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add',
         }),
       )
-      await user.click(screen.getByRole('button', { name: 'Close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(
         screen.queryByRole('dialog', {
@@ -765,7 +765,7 @@ describe('AgentKnowledgeRetrieval', () => {
         }),
         'temporary query',
       )
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await user.click(
         screen.getByRole('button', {

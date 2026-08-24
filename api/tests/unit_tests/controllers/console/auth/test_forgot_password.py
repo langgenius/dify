@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -43,8 +43,8 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account,
         app: Flask,
     ):
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+        account = Account(name="User", email="user@example.com")
+        mock_get_account.return_value = account
         mock_send_email.return_value = "token-123"
 
         wraps_features = SystemFeatureModel(
@@ -73,7 +73,7 @@ class TestForgotPasswordSendEmailApi:
 
         assert response == {"result": "success", "data": "token-123"}
         mock_send_email.assert_called_once_with(
-            account=mock_account,
+            account=account,
             email="user@example.com",
             language="zh-Hans",
             is_allow_register=True,

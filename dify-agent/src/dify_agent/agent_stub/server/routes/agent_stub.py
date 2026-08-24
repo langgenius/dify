@@ -2,7 +2,7 @@
 
 The router is a thin HTTP adapter around ``AgentStubControlPlaneService``. It
 keeps FastAPI-specific request parsing and HTTPException translation here while
-the service owns auth and file/config/drive delegation.
+the service owns auth and file/config delegation.
 """
 
 from __future__ import annotations
@@ -17,16 +17,12 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigNoteUpdateRequest,
     AgentStubConfigPushRequest,
     AgentStubConfigPushResponse,
-    AgentStubDriveCommitRequest,
-    AgentStubDriveCommitResponse,
-    AgentStubDriveManifestResponse,
     AgentStubFileDownloadRequest,
     AgentStubFileDownloadResponse,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
 )
 from dify_agent.agent_stub.server.agent_stub_config import AgentStubConfigRequestHandler
-from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.control_plane import AgentStubControlPlaneError, AgentStubControlPlaneService
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
@@ -35,7 +31,6 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 def create_agent_stub_http_router(
     token_codec: AgentStubTokenCodec | None,
     file_request_handler: AgentStubFileRequestHandler | None = None,
-    drive_request_handler: AgentStubDriveRequestHandler | None = None,
     config_request_handler: AgentStubConfigRequestHandler | None = None,
 ) -> APIRouter:
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
@@ -44,7 +39,6 @@ def create_agent_stub_http_router(
         token_codec=token_codec,
         file_request_handler=file_request_handler,
         config_request_handler=config_request_handler,
-        drive_request_handler=drive_request_handler,
     )
 
     @router.post("/connections", response_model=AgentStubConnectResponse)
@@ -62,9 +56,14 @@ def create_agent_stub_http_router(
     async def create_file_upload_request(
         request: AgentStubFileUploadRequest,
         authorization: str | None = Header(default=None, alias="Authorization"),
+        expose_expiration: bool = False,
     ) -> AgentStubFileUploadResponse:
         try:
-            return await service.create_file_upload_request(request=request, authorization=authorization)
+            return await service.create_file_upload_request(
+                request=request,
+                authorization=authorization,
+                expose_expiration=expose_expiration,
+            )
         except AgentStubControlPlaneError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -124,31 +123,6 @@ def create_agent_stub_http_router(
     ) -> dict[str, object]:
         try:
             return await service.update_config_note(note=request.note, authorization=authorization)
-        except AgentStubControlPlaneError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-
-    @router.get("/drive/manifest", response_model=AgentStubDriveManifestResponse)
-    async def get_drive_manifest(
-        prefix: str = "",
-        include_download_url: bool = False,
-        authorization: str | None = Header(default=None, alias="Authorization"),
-    ) -> AgentStubDriveManifestResponse:
-        try:
-            return await service.get_drive_manifest(
-                prefix=prefix,
-                include_download_url=include_download_url,
-                authorization=authorization,
-            )
-        except AgentStubControlPlaneError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-
-    @router.post("/drive/commit", response_model=AgentStubDriveCommitResponse)
-    async def commit_drive(
-        request: AgentStubDriveCommitRequest,
-        authorization: str | None = Header(default=None, alias="Authorization"),
-    ) -> AgentStubDriveCommitResponse:
-        try:
-            return await service.commit_drive(request=request, authorization=authorization)
         except AgentStubControlPlaneError as exc:
             raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 

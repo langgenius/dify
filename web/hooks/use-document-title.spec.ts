@@ -24,4 +24,12 @@ describe('useDocumentTitle', () => {
     rerender({ title: '' })
     expect(document.title).toBe('Acme')
   })
+
+  it('preserves route metadata when no client title is provided', () => {
+    document.title = 'Route title - Dify'
+
+    renderHookWithConsoleQuery(() => useDocumentTitle(null))
+
+    expect(document.title).toBe('Route title - Dify')
+  })
 })

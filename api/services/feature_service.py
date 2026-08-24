@@ -104,10 +104,10 @@ class FeatureService:
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
+        system_features.webapp_auth.enabled = cls.is_webapp_auth_enabled()
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             system_features.branding.enabled = True
-            system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
             cls._fulfill_params_from_enterprise(system_features)
 
@@ -158,6 +158,14 @@ class FeatureService:
     @staticmethod
     def is_explore_banner_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_EXPLORE_BANNER
+
+    @staticmethod
+    def is_webapp_auth_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
+    @staticmethod
+    def is_trial_app_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel):

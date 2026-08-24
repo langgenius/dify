@@ -3,6 +3,9 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import CredentialConfiguration
@@ -12,7 +15,13 @@ from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
-from models.provider import ProviderType
+from models.provider import (
+    Provider,
+    ProviderCredential,
+    ProviderModel,
+    ProviderType,
+    TenantPreferredModelProvider,
+)
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
 from services.model_provider_service import ModelProviderService, _ProviderSummaryState
@@ -389,56 +398,96 @@ class TestModelProviderServiceConfiguration:
 
         assert preferred_provider_type == ProviderType.CUSTOM
 
-    def test_load_provider_summary_states_reads_only_lightweight_columns(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_load_provider_summary_states_reads_only_lightweight_columns(
+        self,
+        sqlite_engine: Engine,
+        sqlite_session: Session,
+    ) -> None:
         canonical_provider = "langgenius/openai/openai"
-        session = MagicMock()
-        session.execute.side_effect = [
-            SimpleNamespace(
-                all=lambda: [
-                    SimpleNamespace(
-                        provider_name="openai",
-                        credential_id="credential-legacy",
-                        credential_provider_name="openai",
-                        credential_name="Legacy",
-                    ),
-                    SimpleNamespace(
-                        provider_name=canonical_provider,
-                        credential_id="credential-current",
-                        credential_provider_name=canonical_provider,
-                        credential_name="Production",
-                    ),
-                ]
-            ),
-            SimpleNamespace(
-                all=lambda: [
-                    SimpleNamespace(
-                        id="credential-legacy",
-                        provider_name="openai",
-                        credential_name="Legacy",
-                    ),
-                    SimpleNamespace(
-                        id="credential-current",
-                        provider_name=canonical_provider,
-                        credential_name="Production",
-                    ),
-                ]
-            ),
-            SimpleNamespace(all=lambda: [SimpleNamespace(provider_name="openai")]),
-            SimpleNamespace(
-                all=lambda: [
-                    SimpleNamespace(
-                        provider_name=canonical_provider,
-                        preferred_provider_type=ProviderType.SYSTEM,
-                    )
-                ]
-            ),
-        ]
-        session_context = MagicMock()
-        session_context.__enter__.return_value = session
-        create_session = MagicMock(return_value=session_context)
-        monkeypatch.setattr(service_module.session_factory, "create_session", create_session)
+        legacy_credential = ProviderCredential(
+            tenant_id="tenant-1",
+            provider_name="openai",
+            credential_name="Legacy",
+            encrypted_config="legacy-secret",
+        )
+        legacy_credential.id = "credential-legacy"
+        current_credential = ProviderCredential(
+            tenant_id="tenant-1",
+            provider_name=canonical_provider,
+            credential_name="Production",
+            encrypted_config="production-secret",
+        )
+        current_credential.id = "credential-current"
+        foreign_credential = ProviderCredential(
+            tenant_id="tenant-2",
+            provider_name=canonical_provider,
+            credential_name="Foreign",
+            encrypted_config="foreign-secret",
+        )
+        foreign_credential.id = "credential-foreign"
+        sqlite_session.add_all(
+            [
+                legacy_credential,
+                current_credential,
+                foreign_credential,
+                Provider(
+                    tenant_id="tenant-1",
+                    provider_name="openai",
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=legacy_credential.id,
+                ),
+                Provider(
+                    tenant_id="tenant-1",
+                    provider_name=canonical_provider,
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=current_credential.id,
+                ),
+                Provider(
+                    tenant_id="tenant-2",
+                    provider_name=canonical_provider,
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=foreign_credential.id,
+                ),
+                ProviderModel(
+                    tenant_id="tenant-1",
+                    provider_name="openai",
+                    model_name="gpt-4o",
+                    model_type=ModelType.LLM,
+                    is_valid=True,
+                ),
+                ProviderModel(
+                    tenant_id="tenant-2",
+                    provider_name="langgenius/foreign/foreign",
+                    model_name="foreign-model",
+                    model_type=ModelType.LLM,
+                    is_valid=True,
+                ),
+                TenantPreferredModelProvider(
+                    tenant_id="tenant-1",
+                    provider_name=canonical_provider,
+                    preferred_provider_type=ProviderType.SYSTEM,
+                ),
+                TenantPreferredModelProvider(
+                    tenant_id="tenant-2",
+                    provider_name=canonical_provider,
+                    preferred_provider_type=ProviderType.CUSTOM,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        statements: list[str] = []
 
-        states = ModelProviderService._load_provider_summary_states("tenant-1")
+        def capture_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+            statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", capture_statement)
+        try:
+            states = ModelProviderService._load_provider_summary_states("tenant-1")
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", capture_statement)
 
         state = states[canonical_provider]
         assert state.has_custom_provider is True
@@ -458,7 +507,6 @@ class TestModelProviderServiceConfiguration:
         assert state.current_credential_usable is True
         assert state.preferred_provider_type == ProviderType.SYSTEM
 
-        statements = [str(execute_call.args[0]) for execute_call in session.execute.call_args_list]
         assert len(statements) == 4
         assert all("encrypted_config" not in statement for statement in statements)
         assert "count(" not in statements[1].lower()

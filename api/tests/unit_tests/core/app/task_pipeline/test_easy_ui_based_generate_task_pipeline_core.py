@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Generator, Sequence
 from datetime import UTC, datetime
+from decimal import Decimal
 from threading import Thread
 from typing import cast
 from unittest.mock import Mock
@@ -704,6 +706,52 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert isinstance(responses[-1].err, ValueError)
         assert pipeline._task_state.llm_result.message.content == "annotated"
 
+    def test_process_stream_response_error_event_adds_trace_task(self, monkeypatch: pytest.MonkeyPatch):
+        conversation = _make_conversation(AppMode.CHAT)
+        message = _make_message()
+        application_generate_entity = _make_entity(ChatAppGenerateEntity, AppMode.CHAT)
+        application_generate_entity.extras = {"trace_session_id": "session-1"}
+
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=_FakeQueueManager(),
+            conversation=conversation,
+            message=message,
+            stream=True,
+        )
+        _set_queue_events(pipeline, [_queue_message(QueueErrorEvent(error=ValueError("boom")))])
+        _set_method(pipeline, "handle_error", lambda **kwargs: ValueError("boom"))
+        _set_method(pipeline, "error_to_stream_response", lambda err: ErrorStreamResponse(task_id="task", err=err))
+
+        trace_manager_double = _TraceManagerDouble()
+        trace_manager = cast(TraceQueueManager, trace_manager_double)
+
+        class _Session:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def commit(self):
+                return None
+
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.session_factory.create_session",
+            lambda: _Session(),
+        )
+
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+
+        assert len(responses) == 1
+        assert isinstance(responses[0], ErrorStreamResponse)
+        trace_manager_double.add_trace_task.assert_called_once()
+        trace_task = trace_manager_double.add_trace_task.call_args.args[0]
+        assert trace_task.trace_type == TraceTaskName.MESSAGE_TRACE
+        assert trace_task.conversation_id == "conv"
+        assert trace_task.message_id == "msg"
+        assert trace_task.kwargs["trace_session_id"] == "session-1"
+
     def test_agent_thought_to_stream_response_returns_payload(self, monkeypatch: pytest.MonkeyPatch):
         conversation = _make_conversation(AppMode.CHAT)
         message = _make_message()
@@ -810,7 +858,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
 
         assert result == "streamed"
         pipeline._message_cycle_manager.generate_conversation_name.assert_called_once_with(
-            conversation_id="conv", query="hello"
+            conversation_id="conv", query="hello", message_id="msg"
         )
 
     def test_process_routes_to_blocking_for_completion_mode(self):
@@ -1275,6 +1323,82 @@ class TestEasyUiBasedGenerateTaskPipeline:
         assert trace_task.message_id == "msg"
         assert trace_task.kwargs["trace_session_id"] == "session-1"
         assert len(sent_payloads) == 1
+
+    def test_save_stopped_message_preserves_backend_reported_usage(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    ) -> None:
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=_make_conversation(AppMode.CHAT),
+            message=_make_message(),
+            stream=True,
+        )
+        _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+        pipeline._task_state.llm_result.usage = LLMUsage.empty_usage()
+
+        message = _make_message()
+        message.message_tokens = 13
+        message.answer_tokens = 8
+        message.total_price = Decimal("0.21")
+        message.message_metadata = json.dumps({"usage": {"total_tokens": 21}})
+        sqlite_session.add_all([_make_conversation(AppMode.CHAT), message])
+        sqlite_session.flush()
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+            lambda _mode, _prompt_messages: "",
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+            lambda *_args, **_kwargs: None,
+        )
+
+        pipeline._save_message(session=sqlite_session, preserve_existing_usage=True)
+
+        assert message.message_tokens == 13
+        assert message.answer_tokens == 8
+        assert message.total_price == Decimal("0.21")
+        assert message.message_metadata is not None
+        assert json.loads(message.message_metadata)["usage"]["total_tokens"] == 21
+
+    @pytest.mark.parametrize("metadata", ["{", "[]"])
+    def test_save_stopped_message_recovers_invalid_existing_metadata(
+        self,
+        metadata: str,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+    ) -> None:
+        pipeline = EasyUIBasedGenerateTaskPipeline(
+            application_generate_entity=_make_entity(ChatAppGenerateEntity, AppMode.CHAT),
+            queue_manager=_FakeQueueManager(),
+            conversation=_make_conversation(AppMode.CHAT),
+            message=_make_message(),
+            stream=True,
+        )
+        _set_method(pipeline, "_model_config", _ModelConfigMode(mode="chat"))
+        pipeline._task_state.llm_result.usage = LLMUsage.empty_usage()
+
+        message = _make_message()
+        message.message_tokens = 13
+        message.answer_tokens = 8
+        message.total_price = Decimal("0.21")
+        message.message_metadata = metadata
+        sqlite_session.add_all([_make_conversation(AppMode.CHAT), message])
+        sqlite_session.flush()
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.PromptMessageUtil.prompt_messages_to_prompt_for_saving",
+            lambda _mode, _prompt_messages: "",
+        )
+        monkeypatch.setattr(
+            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.message_was_created.send",
+            lambda *_args, **_kwargs: None,
+        )
+
+        pipeline._save_message(session=sqlite_session, preserve_existing_usage=True)
+
+        assert message.message_tokens == 13
+        assert message.answer_tokens == 8
+        assert message.total_price == Decimal("0.21")
 
     def test_save_message_raises_when_message_not_found(self, sqlite_session: Session):
         conversation = _make_conversation(AppMode.CHAT)

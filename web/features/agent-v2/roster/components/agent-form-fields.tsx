@@ -1,5 +1,6 @@
 import type { AgentIconSelection } from './agent-form'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -61,7 +62,7 @@ export function AgentFormFields({
             }}
           >
             <FieldLabel>{t(($) => $['roster.createForm.nameLabel'])}</FieldLabel>
-            <FieldControl
+            <Input
               autoComplete="off"
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- Agent roster dialogs open from explicit commands, and the name field is the primary editable control.
               autoFocus
@@ -85,7 +86,7 @@ export function AgentFormFields({
                 {tCommon(($) => $['label.optional'])}
               </span>
             </FieldLabel>
-            <FieldControl
+            <Input
               autoComplete="off"
               maxLength={255}
               onValueChange={onRoleChange}

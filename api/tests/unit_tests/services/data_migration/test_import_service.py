@@ -1,5 +1,8 @@
+from contextlib import nullcontext
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import cast
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -332,7 +335,7 @@ def test_find_existing_mcp_tool_does_not_compare_invalid_uuid(database: Database
     assert f"{MCPToolProvider.__tablename__}.name" not in where_clause
 
 
-def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(
+def test_workflow_app_import_closes_read_transaction_before_dsl_overwrite(
     monkeypatch: pytest.MonkeyPatch, database: Database
 ):
     class StubAppDslService:
@@ -340,32 +343,25 @@ def test_workflow_app_import_does_not_wrap_app_dsl_import_in_nested_transaction(
             self.session = session
 
         def import_app(self, **kwargs):
+            assert not self.session.in_transaction()
             return Import(id="import-id", status=ImportStatus.COMPLETED, app_id="imported-app-id")
 
     monkeypatch.setattr(import_service, "AppDslService", StubAppDslService)
-    nested_transactions = []
+    monkeypatch.setattr(import_service.dify_config, "RBAC_ENABLED", True)
+    existing_app = _persist_app(database.session, app_id="11111111-1111-4111-8111-111111111111")
+    database.session.begin()
 
-    def capture_transaction(_session, transaction) -> None:
-        if transaction.nested:
-            nested_transactions.append(transaction)
-
-    event.listen(database.session, "after_transaction_create", capture_transaction)
-
-    try:
-        imported_app_id = MigrationImportService()._import_workflow_app(
-            account=object(),
-            workflow_data={"name": "main_chatflow"},
-            dsl_content="app:\n  mode: workflow\n",
-            app_id="source-app-id",
-            existing_app=None,
-            options=ImportOptions(id_strategy=IdStrategy.PRESERVE_ID),
-            session=database.session,
-        )
-    finally:
-        event.remove(database.session, "after_transaction_create", capture_transaction)
+    imported_app_id = MigrationImportService()._import_workflow_app(
+        account=object(),
+        workflow_data={"name": "main_chatflow"},
+        dsl_content="app:\n  mode: workflow\n",
+        app_id="source-app-id",
+        existing_app=existing_app,
+        options=ImportOptions(id_strategy=IdStrategy.PRESERVE_ID),
+        session=database.session,
+    )
 
     assert imported_app_id == "imported-app-id"
-    assert nested_transactions == []
 
 
 def test_rewrite_workflow_dsl_replaces_tool_provider_ids():
@@ -487,6 +483,30 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(
     )
 
     assert events == [("published", app_id), ("created", app_id)]
+
+
+def test_ensure_workflow_app_is_published_updates_current_workflow(
+    monkeypatch: pytest.MonkeyPatch,
+    database: Database,
+) -> None:
+    _, account = _persist_tenant_account(database.session)
+    app_id = "00000000-0000-0000-0000-000000000001"
+    _persist_app(database.session, app_id=app_id)
+    publish = Mock(return_value=SimpleNamespace(id="published-workflow"))
+    monkeypatch.setattr(import_service, "WorkflowService", Mock(return_value=SimpleNamespace(publish_workflow=publish)))
+    monkeypatch.setattr(
+        import_service,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(database.session)),
+    )
+    MigrationImportService()._ensure_workflow_app_is_published(
+        ImportTarget("tenant-1", "target", "account-1", "owner@example.com"),
+        account,
+        app_id,
+        session=database.session,
+    )
+
+    assert database.session.get(App, app_id).workflow_id == "published-workflow"
 
 
 @pytest.mark.parametrize("id_strategy", [IdStrategy.PRESERVE_ID, IdStrategy.GENERATE_NEW_ID])

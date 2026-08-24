@@ -88,7 +88,7 @@ Nachdem Sie den Server gestartet haben, können Sie über Ihren Browser auf das 
 
 #### Hilfe suchen
 
-Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#community--contact), falls weiterhin Schwierigkeiten auftreten.
+Bitte beachten Sie unsere [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs), wenn Sie Probleme bei der Einrichtung von Dify haben. Wenden Sie sich an [die Community und uns](#gemeinschaft--kontakt), falls weiterhin Schwierigkeiten auftreten.
 
 > Wenn Sie zu Dify beitragen oder zusätzliche Entwicklungen durchführen möchten, lesen Sie bitte unseren [Leitfaden zur Bereitstellung aus dem Quellcode](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code).
 
@@ -123,7 +123,7 @@ Alle Dify-Angebote kommen mit entsprechenden APIs, sodass Sie Dify mühelos in I
   Wir hosten einen [Dify Cloud](https://dify.ai)-Service, den jeder ohne Einrichtung ausprobieren kann. Er bietet alle Funktionen der selbstgehosteten Version und beinhaltet 200 kostenlose GPT-4-Aufrufe im Sandbox-Plan.
 
 - **Selbstgehostete Dify Community Edition</br>**
-  Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#quick-start). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai) für weiterführende Informationen und detaillierte Anweisungen.
+  Starten Sie Dify schnell in Ihrer Umgebung mit diesem [Schnellstart-Leitfaden](#schnellstart). Nutzen Sie unsere [Dokumentation](https://docs.dify.ai) für weiterführende Informationen und detaillierte Anweisungen.
 
 - **Dify für Unternehmen / Organisationen</br>**
   Wir bieten zusätzliche, unternehmensspezifische Funktionen. [Über diesen Chatbot können Sie uns Ihre Fragen mitteilen](https://udify.app/chat/22L1zSxg6yW1cWQg) oder [senden Sie uns eine E-Mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry), um Ihre unternehmerischen Bedürfnisse zu besprechen. </br>
@@ -187,6 +187,10 @@ Ein-Klick-Bereitstellung von Dify in der Alibaba Cloud mit [Alibaba Cloud Data M
 #### Verwendung von Azure Devops Pipeline für AKS-Bereitstellung
 
 Stellen Sie Dify mit einem Klick in AKS bereit, indem Sie [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) verwenden
+
+#### Bereitstellung mit Sealos
+
+Stellen Sie Dify mit einem Klick über den [Sealos App Store](https://sealos.io/products/app-store/dify/) bereit
 
 ## Contributing
 

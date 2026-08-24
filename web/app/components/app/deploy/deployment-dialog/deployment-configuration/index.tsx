@@ -1,10 +1,10 @@
 'use client'
-
 import type { DeploymentVersion } from '../../version'
 import type { DeploymentDialogRequest } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { DialogCloseButton, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { useDeployWorkflow } from '../../use-deploy-workflow'
 import { DeploymentConfigurationContent } from './content'
@@ -77,10 +77,17 @@ export function DeploymentConfiguration({
       }}
     >
       {!embedded && (
-        <DialogCloseButton
-          type="button"
-          aria-label={tCommon(($) => $['operation.close'])}
-          className="top-5 right-5 size-8 rounded-lg"
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={tCommon(($) => $['operation.close'])}
+              size="lg"
+              className="absolute top-5 right-5"
+              type="button"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
       )}
       <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pt-5 pr-14 pb-1')}>

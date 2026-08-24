@@ -93,11 +93,11 @@ export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdo
             size="lg"
             className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
           >
-            <span className="i-ri-book-open-line size-4 shrink-0" />
+            <span aria-hidden className="i-ri-book-open-line size-4 shrink-0" />
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px] p-1">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px] p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>
             {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}

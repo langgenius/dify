@@ -17,14 +17,16 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -434,7 +436,7 @@ export const AppCardActionBar = memo(
                   {...getStepByStepTourDropdownMenuContentProps({
                     highlightPart: stepByStepTourActionMenuHighlightPart,
                     interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
-                    popupClassName: OPERATIONS_MENU_POPUP_CLASS_NAME,
+                    className: OPERATIONS_MENU_POPUP_CLASS_NAME,
                   })}
                 >
                   <AppCardOperationsMenuContent
@@ -517,24 +519,26 @@ export const AppCardActionBar = memo(
                       }}
                     />
                   </FieldLabel>
-                  <div className="relative">
-                    <FieldControl
+                  <InputGroup className="border-components-input-border-hover">
+                    <InputGroupInput
                       type="text"
                       autoComplete="off"
                       spellCheck={false}
                       placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                       value={confirmDeleteInput}
                       onValueChange={setConfirmDeleteInput}
-                      className="border-components-input-border-hover bg-components-input-bg-normal pr-20 focus:border-components-input-border-active focus:bg-components-input-bg-active"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteInput(app.name)}
-                      className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                    >
-                      {t(($) => $['operation.fill'], { ns: 'common' })}
-                    </button>
-                  </div>
+                    <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                      <Button
+                        variant="tertiary"
+                        size="small"
+                        onClick={() => setConfirmDeleteInput(app.name)}
+                        className="rounded-full px-2.5"
+                      >
+                        {t(($) => $['operation.fill'], { ns: 'common' })}
+                      </Button>
+                    </InputGroupAddon>
+                  </InputGroup>
                 </Field>
               </div>
               <AlertDialogActions>

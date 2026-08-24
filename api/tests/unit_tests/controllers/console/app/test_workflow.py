@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from types import SimpleNamespace
 from typing import cast
@@ -77,6 +78,99 @@ def _make_workflow(**overrides):
     for key, value in overrides.items():
         setattr(workflow, key, value)
     return workflow
+
+
+def test_publish_workflow_returns_success(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    workflow = SimpleNamespace(id="published-workflow", created_at=datetime(2026, 8, 17, 12, 0, 0))
+    session = Mock()
+    session.get.return_value = app_model
+    monkeypatch.setattr(
+        workflow_module,
+        "WorkflowService",
+        Mock(return_value=SimpleNamespace(publish_workflow=Mock(return_value=workflow))),
+    )
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=lambda: nullcontext(session)),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
+        response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
+            workflow_module.PublishedWorkflowApi(),
+            current_user,
+            app_model,
+        )
+
+    assert response["result"] == "success"
+
+
+@pytest.mark.parametrize("transaction_fails", [False, True], ids=["commit-succeeds", "commit-fails"])
+def test_delete_workflow_retires_candidates_only_after_transaction_exit(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    transaction_fails: bool,
+) -> None:
+    current_user = SimpleNamespace(id="account-1")
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
+    session = Mock()
+    events: list[str] = []
+    error = RuntimeError("commit failed")
+    workflow_service = SimpleNamespace(
+        delete_workflow=Mock(side_effect=lambda **_kwargs: events.append("delete") or ["inline-agent"])
+    )
+
+    @contextmanager
+    def transaction():
+        events.append("transaction-enter")
+        yield session
+        events.append("transaction-exit")
+        if transaction_fails:
+            raise error
+
+    monkeypatch.setattr(workflow_module, "WorkflowService", Mock(return_value=workflow_service))
+    monkeypatch.setattr(
+        workflow_module,
+        "sessionmaker",
+        lambda _engine: SimpleNamespace(begin=transaction),
+    )
+    monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
+    retire_unowned = Mock(side_effect=lambda **_kwargs: events.append("retire"))
+    monkeypatch.setattr(workflow_module.WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
+
+    with app.test_request_context("/apps/app-1/workflows/workflow-1", method="DELETE"):
+        if transaction_fails:
+            with pytest.raises(RuntimeError) as exc_info:
+                inspect.unwrap(workflow_module.WorkflowByIdApi.delete)(
+                    workflow_module.WorkflowByIdApi(),
+                    current_user,
+                    app_model,
+                    "workflow-1",
+                )
+            assert exc_info.value is error
+        else:
+            response = inspect.unwrap(workflow_module.WorkflowByIdApi.delete)(
+                workflow_module.WorkflowByIdApi(),
+                current_user,
+                app_model,
+                "workflow-1",
+            )
+            assert response == (None, 204)
+
+    assert events == ["transaction-enter", "delete", "transaction-exit"] + ([] if transaction_fails else ["retire"])
+    if transaction_fails:
+        retire_unowned.assert_not_called()
+    else:
+        retire_unowned.assert_called_once_with(
+            tenant_id=app_model.tenant_id,
+            agent_ids=["inline-agent"],
+            account_id=current_user.id,
+        )
 
 
 def test_parse_file_no_config(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -650,6 +744,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                     "data": {
                         "type": "agent",
                         "version": "2",
+                        "agent_node_kind": "dify_agent",
                     },
                 }
             ],
@@ -663,6 +758,7 @@ def test_draft_workflow_get_projects_agent_node_job_to_graph(monkeypatch: pytest
                 "data": {
                     "type": "agent",
                     "version": "2",
+                    "agent_node_kind": "dify_agent",
                     "agent_task": "Summarize it.",
                     "agent_declared_outputs": [{"name": "summary", "type": "string"}],
                 },
@@ -750,12 +846,19 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     app_id_2 = "22222222-2222-2222-2222-222222222222"
     signed_avatar_url = "https://files.example.com/signed/avatar-1"
     sign_avatar = Mock(return_value=signed_avatar_url)
+    get_tenant_app_maintainers = Mock(return_value={app_id_1: "owner-1", app_id_2: "owner-2"})
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: {app_id_1}),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
     )
+    access_filter = SimpleNamespace(is_app_accessible=lambda app_id, _maintainer, _account_id: app_id == app_id_1)
+    resolve_access = Mock(return_value=access_filter)
+    monkeypatch.setattr(workflow_module, "resolve_app_access_filter", resolve_access)
+    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr(workflow_module.file_helpers, "get_signed_file_url", sign_avatar)
+    short_session = Mock()
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(short_session))
 
     redis_pipeline = Mock()
     redis_pipeline.execute.return_value = [
@@ -803,7 +906,7 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api, "tenant-1")
+        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert response == {
         "data": [
@@ -828,6 +931,11 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
     redis_pipeline.hgetall.assert_called_once_with(f"{workflow_module.WORKFLOW_ONLINE_USERS_PREFIX}{app_id_1}")
     redis_pipeline.execute.assert_called_once_with()
     sign_avatar.assert_called_once_with("avatar-file-id")
+    get_tenant_app_maintainers.assert_called_once()
+    resolve_access.assert_called_once()
+    assert get_tenant_app_maintainers.call_args.args == ([app_id_1, app_id_2], "tenant-1")
+    assert resolve_access.call_args.args == ("tenant-1", "account-1")
+    assert get_tenant_app_maintainers.call_args.kwargs["session"] is resolve_access.call_args.kwargs["session"]
 
 
 def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -835,8 +943,10 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=lambda app_ids, tenant_id, session: set(app_ids)),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=lambda app_ids, tenant_id, session: dict.fromkeys(app_ids)),
     )
+    monkeypatch.setattr(workflow_module.dify_config, "RBAC_ENABLED", False)
+    monkeypatch.setattr(workflow_module.session_factory, "create_session", lambda: nullcontext(Mock()))
 
     first_pipeline = Mock()
     first_pipeline.execute.return_value = [{} for _ in range(workflow_module.WORKFLOW_ONLINE_USERS_REDIS_BATCH_SIZE)]
@@ -853,7 +963,7 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api, "tenant-1")
+        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -862,11 +972,11 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
 
 
 def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    accessible_app_ids = Mock(return_value=set())
+    get_tenant_app_maintainers = Mock(return_value={})
     monkeypatch.setattr(
         workflow_module,
         "WorkflowService",
-        lambda: SimpleNamespace(get_accessible_app_ids=accessible_app_ids),
+        lambda: SimpleNamespace(get_tenant_app_maintainers=get_tenant_app_maintainers),
     )
 
     excessive_ids = [f"wf-{index}" for index in range(workflow_module.MAX_WORKFLOW_ONLINE_USERS_REQUEST_IDS + 1)]
@@ -880,9 +990,9 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
         json={"app_ids": excessive_ids},
     ):
         with pytest.raises(HTTPException) as exc:
-            handler(api, "tenant-1")
+            handler(api, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert exc.value.code == 400
     assert exc.value.description is not None
     assert "Maximum" in exc.value.description
-    accessible_app_ids.assert_not_called()
+    get_tenant_app_maintainers.assert_not_called()

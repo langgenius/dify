@@ -36,6 +36,7 @@ from ..wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    is_admin_or_owner_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -138,6 +139,8 @@ register_response_schema_models(
 class DataSourceApi(Resource):
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
     @with_current_tenant_id
@@ -187,6 +190,8 @@ class DataSourceApi(Resource):
 
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @with_current_tenant_id

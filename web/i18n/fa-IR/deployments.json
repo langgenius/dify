@@ -22,7 +22,6 @@
   "deployTab.moreActions": "اقدامات بیشتر",
   "deployTab.redeploy": "استقرار مجدد",
   "deployTab.undeploy": "لغو استقرار",
-  "deployTab.undeployConfirmWarning": "پس از تأیید، این محیط وارد وضعیت لغو استقرار می‌شود و اقدامات به‌طور موقت غیرفعال خواهند شد.",
   "health.ENVIRONMENT_STATUS_FAILED": "در دسترس نیست",
   "list.emptyTitle": "هنوز استقراری وجود ندارد",
   "overview.chip.latest": "آخرین",

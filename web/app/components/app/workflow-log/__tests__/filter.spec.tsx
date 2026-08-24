@@ -94,7 +94,9 @@ describe('Filter', () => {
       expect(screen.getByText('appLog.filter.period.last7days'))!.toBeInTheDocument()
       // Search input
       // Search input
-      expect(screen.getByPlaceholderText('common.operation.search'))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'common.operation.search' }),
+      )!.toBeInTheDocument()
     })
   })
 
@@ -372,7 +374,7 @@ describe('Filter', () => {
 
       render(<Wrapper />)
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       await user.type(input, 'workflow')
 
       // Should call setQueryParams for each character typed
@@ -392,7 +394,7 @@ describe('Filter', () => {
         />,
       )
 
-      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      const searchInput = screen.getByRole('searchbox', { name: 'common.operation.search' })
       const searchField = searchInput.closest('div')!
       await user.click(within(searchField).getByRole('button', { name: 'common.operation.clear' }))
 
@@ -408,7 +410,7 @@ describe('Filter', () => {
 
       render(<Filter queryParams={createDefaultQueryParams()} setQueryParams={setQueryParams} />)
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'new search' } })
 
       expect(setQueryParams).toHaveBeenCalledWith({
@@ -471,7 +473,7 @@ describe('Filter', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input)!.toHaveValue('')
     })
 
@@ -483,7 +485,7 @@ describe('Filter', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input)!.toHaveValue('')
     })
 
@@ -540,7 +542,7 @@ describe('Filter', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('common.operation.search')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       await user.type(input, 'a')
 
       expect(setQueryParams).toHaveBeenCalledWith({

@@ -74,22 +74,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     }),
     [reactFlow],
   )
-  const {
-    startCursorTracking,
-    stopCursorTracking,
-    onlineUsers,
-    cursors,
-    isConnected,
-    isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId || '', reactFlowStore)
-  const myUserId = useMemo(
-    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
-    [isCollaborationEnabled, isConnected],
-  )
-
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
-  )
   const { data: currentUserId } = useSuspenseQuery({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
@@ -103,6 +87,22 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         workspacePermissionKeys,
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
+  const {
+    startCursorTracking,
+    stopCursorTracking,
+    onlineUsers,
+    cursors,
+    isConnected,
+    isEnabled: isCollaborationEnabled,
+  } = useCollaboration(appId || '', appACLCapabilities.canEdit, reactFlowStore)
+  const myUserId = useMemo(
+    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
+    [isCollaborationEnabled, isConnected],
+  )
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
 
   useEffect(() => {

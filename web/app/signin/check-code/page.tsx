@@ -14,6 +14,7 @@ import { TURNSTILE_SITE_KEY } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
@@ -36,6 +37,8 @@ export default function CheckCode() {
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
+  const [verifyTurnstileToken, setVerifyTurnstileToken] = useState('')
+  const [verifyTurnstileGeneration, setVerifyTurnstileGeneration] = useState(0)
   const [showResendTurnstile, setShowResendTurnstile] = useState(false)
   const [countdownGeneration, setCountdownGeneration] = useState(0)
   const locale = useLocale()
@@ -43,26 +46,34 @@ export default function CheckCode() {
   const codeInputRef = useRef<HTMLInputElement>(null)
   const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
   const isTurnstileRequired = systemFeatures.deployment_edition === 'CLOUD'
-  const shouldRenderResendTurnstile =
-    isTurnstileRequired && Boolean(turnstileSiteKey) && showResendTurnstile
+  const shouldRenderTurnstile = isTurnstileRequired && Boolean(turnstileSiteKey)
+  const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const verify = async () => {
+    if (loading || isResending || showResendTurnstile) return
+
+    let shouldResetTurnstile = false
     try {
       if (!code.trim()) {
         toast.error(t(($) => $['checkCode.emptyCode'], { ns: 'login' }))
         return
       }
-      if (!/\d{6}/.test(code)) {
+      if (!/^\d{6}$/.test(code)) {
         toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
         return
       }
+      if (isTurnstileRequired && !verifyTurnstileToken) return
+
       setIsLoading(true)
+      shouldResetTurnstile = isTurnstileRequired
       const ret = await emailLoginWithCode({
         email,
         code: encryptVerificationCode(code),
         token,
         language,
         timezone: getBrowserTimezone(),
+        ...(isTurnstileRequired ? { turnstile_token: verifyTurnstileToken } : {}),
       })
       if (ret.result === 'success') {
         // Track login success event
@@ -84,6 +95,10 @@ export default function CheckCode() {
       console.error(error)
     } finally {
       setIsLoading(false)
+      if (shouldResetTurnstile) {
+        setVerifyTurnstileToken('')
+        setVerifyTurnstileGeneration((value) => value + 1)
+      }
     }
   }
 
@@ -120,7 +135,10 @@ export default function CheckCode() {
   }
 
   const handleResend = () => {
+    if (loading || isResending) return
+
     if (isTurnstileRequired) {
+      setVerifyTurnstileToken('')
       setShowResendTurnstile(true)
       return
     }
@@ -133,9 +151,7 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h1 className="title-4xl-semi-bold text-text-primary">
-          {t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })}
-        </h1>
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
             {t(($) => $['checkCode.tipsPrefix'], { ns: 'login' })}
@@ -153,6 +169,9 @@ export default function CheckCode() {
         <Input
           ref={codeInputRef}
           id="code"
+          name="code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
           value={code}
           onChange={(e) => setVerifyCode(e.target.value)}
           maxLength={6}
@@ -161,31 +180,52 @@ export default function CheckCode() {
             t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
           }
         />
+        {shouldRenderTurnstile && (
+          <Turnstile
+            action={showResendTurnstile ? 'signin_code' : 'signin_code_verify'}
+            resetKey={verifyTurnstileGeneration}
+            siteKey={turnstileSiteKey}
+            onVerify={(turnstileToken) => {
+              if (showResendTurnstile) {
+                void resendCode(turnstileToken)
+                return
+              }
+              setVerifyTurnstileToken(turnstileToken)
+            }}
+            onInvalidate={() => {
+              if (showResendTurnstile) {
+                setShowResendTurnstile(false)
+                return
+              }
+              setVerifyTurnstileToken('')
+            }}
+            onError={() => {
+              setVerifyTurnstileToken('')
+            }}
+          />
+        )}
         <Button
           type="submit"
           loading={loading}
-          disabled={loading}
+          disabled={
+            loading ||
+            isResending ||
+            showResendTurnstile ||
+            (isTurnstileRequired && !verifyTurnstileToken)
+          }
           className="my-3 w-full"
           variant="primary"
         >
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
-        {shouldRenderResendTurnstile && (
-          <Turnstile
-            siteKey={turnstileSiteKey}
-            onVerify={(turnstileToken) => {
-              void resendCode(turnstileToken)
-            }}
-            onInvalidate={() => {
-              setShowResendTurnstile(false)
-            }}
-          />
-        )}
         <Countdown
           key={countdownGeneration}
           onResend={handleResend}
           resendDisabled={
-            isResending || showResendTurnstile || (isTurnstileRequired && !turnstileSiteKey)
+            loading ||
+            isResending ||
+            showResendTurnstile ||
+            (isTurnstileRequired && !turnstileSiteKey)
           }
           restartOnResend={false}
         />

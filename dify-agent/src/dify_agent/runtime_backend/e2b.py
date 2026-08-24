@@ -49,10 +49,16 @@ class _E2BControlPlaneNotFoundError(RuntimeError):
     """Typed boundary error for SDK resources that no longer exist."""
 
 
+class _E2BFileEntry(Protocol):
+    path: str
+
+
 class _E2BFileSystem(Protocol):
     async def make_dir(self, path: str) -> bool: ...
 
     async def exists(self, path: str) -> bool: ...
+
+    async def list(self, path: str) -> list[_E2BFileEntry]: ...
 
     async def remove(self, path: str) -> None: ...
 
@@ -126,6 +132,7 @@ class E2BSDKControlPlane:
                         template,
                         timeout=timeout,
                         metadata=metadata,
+                        network={"allow_public_traffic": False},
                         lifecycle={"on_timeout": on_timeout, "auto_resume": False},
                         **self._options(),
                     ),
@@ -209,10 +216,9 @@ class E2BExecutionBindingBackend:
     control_plane: E2BControlPlane
     template: str
     active_timeout_seconds: int
-    shellctl_auth_token: str = ""
     shellctl_port: int = 5004
     layout: RuntimeLayout = field(
-        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
@@ -233,9 +239,9 @@ class E2BExecutionBindingBackend:
                 },
                 on_timeout="pause",
             )
-            if await sandbox.files.exists(self.layout.workspace_dir):
-                await sandbox.files.remove(self.layout.workspace_dir)
             _ = await sandbox.files.make_dir(self.layout.workspace_dir)
+            for entry in await sandbox.files.list(self.layout.workspace_dir):
+                await sandbox.files.remove(entry.path)
             sandbox_id = sandbox.sandbox_id
             _ = await sandbox.pause(keep_memory=True)
             return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
@@ -308,14 +314,17 @@ class E2BExecutionBindingBackend:
     async def _lease(self, sandbox: _E2BSandbox) -> "E2BRuntimeLease":
         entrypoint = f"https://{sandbox.get_host(self.shellctl_port)}"
         traffic_token = sandbox.traffic_access_token
-        headers = {"X-Access-Token": traffic_token} if isinstance(traffic_token, str) and traffic_token else {}
+        if not isinstance(traffic_token, str) or not traffic_token:
+            raise BindingAcquireError("E2B sandbox did not provide a traffic access token")
         http_client = httpx.AsyncClient(
             base_url=entrypoint,
-            headers=headers,
+            headers={"e2b-traffic-access-token": traffic_token},
             follow_redirects=True,
             timeout=httpx.Timeout(60.0),
         )
 
+        # Explicit token="" prevents process-level SHELLCTL_AUTH_TOKEN fallback;
+        # E2B port access is authenticated only by e2b-traffic-access-token above.
         def client_factory() -> ShellctlClientProtocol:
             from shellctl.client import ShellctlClient
 
@@ -323,7 +332,7 @@ class E2BExecutionBindingBackend:
                 ShellctlClientProtocol,
                 cast(
                     object,
-                    ShellctlClient(entrypoint, token=self.shellctl_auth_token, client=http_client),
+                    ShellctlClient(entrypoint, token="", client=http_client),
                 ),
             )
 
@@ -331,7 +340,7 @@ class E2BExecutionBindingBackend:
             handle=sandbox.sandbox_id,
             layout=self.layout,
             entrypoint=entrypoint,
-            token=self.shellctl_auth_token,
+            token="",
             client_factory=client_factory,
             owned_transport=http_client,
         )
