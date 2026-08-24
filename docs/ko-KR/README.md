@@ -126,7 +126,7 @@ docker compose up -d
 
 ## 다음 단계
 
-사용자 지정 구성, 관측 가능성 및 배포 옵션은 [고급 설정](../ADVANCED_SETUP.md)을 참조하세요.
+사용자 지정 구성, 관측 가능성 및 배포 옵션은 [고급 설정](ADVANCED_SETUP.md)을 참조하세요.
 
 ## 기여
 

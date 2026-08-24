@@ -133,7 +133,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 ## Napredne nastavitve
 
-Za možnosti konfiguracije po meri, opazovanja in namestitve glejte [Napredne nastavitve](../ADVANCED_SETUP.md).
+Za možnosti konfiguracije po meri, opazovanja in namestitve glejte [Napredne nastavitve](ADVANCED_SETUP.md).
 
 ## Prispevam
 

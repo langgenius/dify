@@ -132,7 +132,7 @@ Après l'exécution, vous pouvez accéder au tableau de bord Dify dans votre nav
 
 ## Prochaines étapes
 
-Pour les options de configuration personnalisée, d’observabilité et de déploiement, consultez la page [Configuration avancée](../ADVANCED_SETUP.md).
+Pour les options de configuration personnalisée, d’observabilité et de déploiement, consultez la page [Configuration avancée](ADVANCED_SETUP.md).
 
 ## Contribuer
 

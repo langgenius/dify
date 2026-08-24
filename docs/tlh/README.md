@@ -132,7 +132,7 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 ## Next steps
 
-For custom configuration, observability, and deployment options, see [Advanced Setup](../ADVANCED_SETUP.md).
+For custom configuration, observability, and deployment options, see [Advanced Setup](ADVANCED_SETUP.md).
 
 ## Contributing
 

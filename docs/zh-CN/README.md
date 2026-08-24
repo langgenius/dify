@@ -133,7 +133,7 @@ docker compose up -d
 
 ### 高级设置
 
-如需自定义配置、可观测性和部署选项，请参阅[高级设置](../ADVANCED_SETUP.md)。
+如需自定义配置、可观测性和部署选项，请参阅[高级设置](ADVANCED_SETUP.md)。
 
 ## Star History
 

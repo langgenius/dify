@@ -132,7 +132,7 @@ Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegad
 
 ## Próximos pasos
 
-Para opciones de configuración personalizada, observabilidad y despliegue, consulta la [Configuración avanzada](../ADVANCED_SETUP.md).
+Para opciones de configuración personalizada, observabilidad y despliegue, consulta la [Configuración avanzada](ADVANCED_SETUP.md).
 
 ## Contribuir
 

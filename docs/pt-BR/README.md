@@ -131,7 +131,7 @@ Após a execução, você pode acessar o painel do Dify no navegador em [http://
 
 ## Próximos passos
 
-Para opções de configuração personalizada, observabilidade e implantação, consulte a [Configuração avançada](../ADVANCED_SETUP.md).
+Para opções de configuração personalizada, observabilidade e implantação, consulte a [Configuração avançada](ADVANCED_SETUP.md).
 
 ## Contribuindo
 

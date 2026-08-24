@@ -136,7 +136,7 @@ Mettete una stella a Dify su GitHub e ricevete notifiche immediate sui nuovi ril
 
 ## Configurazioni Avanzate
 
-Per le opzioni di configurazione personalizzata, osservabilità e distribuzione, consulta le [Configurazioni avanzate](../ADVANCED_SETUP.md).
+Per le opzioni di configurazione personalizzata, osservabilità e distribuzione, consulta le [Configurazioni avanzate](ADVANCED_SETUP.md).
 
 ## Contribuire
 

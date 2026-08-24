@@ -127,7 +127,7 @@ Sau khi chạy, bạn có thể truy cập bảng điều khiển Dify trong tr�
 
 ## Các bước tiếp theo
 
-Để biết các tùy chọn cấu hình tùy chỉnh, khả năng quan sát và triển khai, hãy xem [Thiết lập nâng cao](../ADVANCED_SETUP.md).
+Để biết các tùy chọn cấu hình tùy chỉnh, khả năng quan sát và triển khai, hãy xem [Thiết lập nâng cao](ADVANCED_SETUP.md).
 
 ## Đóng góp
 

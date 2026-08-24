@@ -136,7 +136,7 @@ Star Dify auf GitHub und lassen Sie sich sofort über neue Releases benachrichti
 
 ## Erweiterte Einstellungen
 
-Optionen für benutzerdefinierte Konfiguration, Observability und Bereitstellung finden Sie unter [Erweiterte Einstellungen](../ADVANCED_SETUP.md).
+Optionen für benutzerdefinierte Konfiguration, Observability und Bereitstellung finden Sie unter [Erweiterte Einstellungen](ADVANCED_SETUP.md).
 
 ## Contributing
 

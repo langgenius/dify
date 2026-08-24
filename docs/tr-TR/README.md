@@ -126,7 +126,7 @@ docker compose up -d
 
 ## Sonraki adımlar
 
-Özel yapılandırma, gözlemlenebilirlik ve dağıtım seçenekleri için [Gelişmiş Kurulum](../ADVANCED_SETUP.md) belgesine bakın.
+Özel yapılandırma, gözlemlenebilirlik ve dağıtım seçenekleri için [Gelişmiş Kurulum](ADVANCED_SETUP.md) belgesine bakın.
 
 ## Katkıda Bulunma
 
