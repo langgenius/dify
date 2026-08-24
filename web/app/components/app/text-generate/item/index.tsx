@@ -58,6 +58,7 @@ type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   isShowTextToSpeech?: boolean
+  hideLogAction?: boolean
   hideProcessDetail?: boolean
   siteInfo: SiteInfo | null
   inSidePanel?: boolean
@@ -86,6 +87,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   isShowTextToSpeech,
+  hideLogAction,
   hideProcessDetail,
   siteInfo,
   inSidePanel,
@@ -130,6 +132,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
+    hideLogAction,
     siteInfo,
     taskId,
   }
@@ -274,6 +277,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   currentTab={currentTab}
                   depth={depth}
                   feedback={feedback}
+                  hideLogAction={hideLogAction}
                   isError={isError}
                   isInWebApp={isInWebApp}
                   isResponding={isResponding}

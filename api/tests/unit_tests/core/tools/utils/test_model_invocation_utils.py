@@ -3,7 +3,8 @@
 Covers success and error branches for ModelInvocationUtils, including
 InvokeModelError and invoke error mappings for InvokeAuthorizationError,
 InvokeBadRequestError, InvokeConnectionError, InvokeRateLimitError, and
-InvokeServerUnavailableError. Assumes mocked model instances and managers.
+InvokeServerUnavailableError. Model-provider collaborators remain mocked, while
+invocation logging uses real SQLite-backed SQLAlchemy sessions.
 """
 
 from __future__ import annotations
@@ -14,7 +15,10 @@ from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import InvokeModelError, ModelInvocationUtils
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import (
@@ -24,6 +28,11 @@ from graphon.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from models.tools import ToolModelInvoke
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+USER_ID = "22222222-2222-2222-2222-222222222222"
+CALLER_ID = "33333333-3333-3333-3333-333333333333"
 
 
 def _mock_model_instance(*, schema: dict[str, Any] | None = None) -> SimpleNamespace:
@@ -80,7 +89,7 @@ def test_calculate_tokens_handles_missing_model():
     mock_factory.assert_called_once_with(tenant_id="tenant", user_id=None)
 
 
-def test_invoke_success_and_error_mappings():
+def test_invoke_success_and_error_mappings(sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]):
     model_instance = _mock_model_instance(schema={ModelPropertyKey.CONTEXT_SIZE: 2048})
     model_instance.invoke_llm.return_value = SimpleNamespace(
         message=SimpleNamespace(content="ok"),
@@ -96,28 +105,49 @@ def test_invoke_success_and_error_mappings():
     manager = Mock()
     manager.get_default_model_instance.return_value = model_instance
 
-    class _ToolModelInvoke:
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
+    database = SimpleNamespace(session=sqlite_session)
+    attached_invocations: list[ToolModelInvoke] = []
+    commit_count = 0
 
-    db_mock = SimpleNamespace(session=Mock())
+    def _record_attach(_session: Session, instance: object) -> None:
+        if isinstance(instance, ToolModelInvoke):
+            attached_invocations.append(instance)
 
-    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
-        with patch("core.tools.utils.model_invocation_utils.ToolModelInvoke", _ToolModelInvoke):
-            with patch("core.tools.utils.model_invocation_utils.db", db_mock):
-                response = ModelInvocationUtils.invoke(
-                    user_id="u1",
-                    tenant_id="tenant",
-                    tool_type="builtin",
-                    tool_name="tool-a",
-                    prompt_messages=[],
-                    caller_user_id="caller-1",
-                )
+    def _record_commit(_session: Session) -> None:
+        nonlocal commit_count
+        commit_count += 1
+
+    event.listen(sqlite_session, "after_attach", _record_attach)
+    event.listen(sqlite_session, "after_commit", _record_commit)
+
+    with (
+        patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
+        patch("core.tools.utils.model_invocation_utils.db", database),
+    ):
+        response = ModelInvocationUtils.invoke(
+            user_id=USER_ID,
+            tenant_id=TENANT_ID,
+            tool_type=ToolProviderType.BUILT_IN,
+            tool_name="tool-a",
+            prompt_messages=[],
+            caller_user_id=CALLER_ID,
+        )
 
     assert response.message.content == "ok"
-    assert db_mock.session.add.call_count == 1
-    assert db_mock.session.commit.call_count == 2
-    mock_factory.assert_called_once_with(tenant_id="tenant", user_id="caller-1")
+    assert len(attached_invocations) == 1
+    assert commit_count == 2
+    assert not sqlite_session.in_transaction()
+    with sqlite_session_factory() as observer_session:
+        persisted = observer_session.scalar(select(ToolModelInvoke))
+        assert persisted is not None
+        assert persisted.user_id == USER_ID
+        assert persisted.tenant_id == TENANT_ID
+        assert persisted.tool_type == ToolProviderType.BUILT_IN
+        assert persisted.model_response == "ok"
+        assert persisted.prompt_tokens == 5
+        assert persisted.answer_tokens == 7
+        assert persisted.total_price == Decimal("0.7000000")
+    mock_factory.assert_called_once_with(tenant_id=TENANT_ID, user_id=CALLER_ID)
 
 
 @pytest.mark.parametrize(
@@ -139,27 +169,30 @@ def test_invoke_success_and_error_mappings():
         "generic-error",
     ],
 )
-def test_invoke_error_mappings(exc, expected):
+def test_invoke_error_mappings(exc, expected, sqlite_session: Session):
     model_instance = _mock_model_instance(schema={ModelPropertyKey.CONTEXT_SIZE: 2048})
     model_instance.invoke_llm.side_effect = exc
     manager = Mock()
     manager.get_default_model_instance.return_value = model_instance
 
-    class _ToolModelInvoke:
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
+    database = SimpleNamespace(session=sqlite_session)
 
-    db_mock = SimpleNamespace(session=Mock())
-
-    with patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory:
-        with patch("core.tools.utils.model_invocation_utils.ToolModelInvoke", _ToolModelInvoke):
-            with patch("core.tools.utils.model_invocation_utils.db", db_mock):
-                with pytest.raises(InvokeModelError, match=expected):
-                    ModelInvocationUtils.invoke(
-                        user_id="u1",
-                        tenant_id="tenant",
-                        tool_type="builtin",
-                        tool_name="tool-a",
-                        prompt_messages=[],
-                    )
-    mock_factory.assert_called_once_with(tenant_id="tenant", user_id="u1")
+    with (
+        patch("core.tools.utils.model_invocation_utils.ModelManager.for_tenant", return_value=manager) as mock_factory,
+        patch("core.tools.utils.model_invocation_utils.db", database),
+    ):
+        with pytest.raises(InvokeModelError, match=expected):
+            ModelInvocationUtils.invoke(
+                user_id=USER_ID,
+                tenant_id=TENANT_ID,
+                tool_type=ToolProviderType.BUILT_IN,
+                tool_name="tool-a",
+                prompt_messages=[],
+            )
+    assert not sqlite_session.in_transaction()
+    persisted = sqlite_session.scalar(select(ToolModelInvoke))
+    assert persisted is not None
+    assert persisted.model_response == ""
+    assert persisted.prompt_tokens == 5
+    assert persisted.answer_tokens == 0
+    mock_factory.assert_called_once_with(tenant_id=TENANT_ID, user_id=USER_ID)

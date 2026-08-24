@@ -55,6 +55,7 @@ from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from graphon.runtime import VariablePool
+from graphon.variables.template_resolution import convert_template
 from models.provider_ids import ToolProviderID
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
@@ -1113,7 +1114,7 @@ class ToolManager:
                     elif tool_input.type == "constant":
                         parameter_value = tool_input.value
                     elif tool_input.type == "mixed":
-                        segment_group = variable_pool.convert_template(str(tool_input.value))
+                        segment_group = convert_template(variable_pool, str(tool_input.value))
                         parameter_value = segment_group.text
                     else:
                         raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")

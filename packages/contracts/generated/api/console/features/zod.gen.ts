@@ -3,6 +3,15 @@
 import * as z from 'zod'
 
 /**
+ * VectorSpaceLimitationModel
+ */
+export const zVectorSpaceLimitationModel = z.object({
+  limit: z.int(),
+  size: z.int(),
+  usage_unknown: z.boolean().optional().default(false),
+})
+
+/**
  * LimitationModel
  */
 export const zLimitationModel = z.object({
@@ -48,11 +57,22 @@ export const zLicenseLimitationModel = z.object({
 })
 
 /**
+ * CloudPlan
+ *
+ * Enum representing user plan types in the cloud platform.
+ *
+ * SANDBOX: Free/default plan with limited features
+ * PROFESSIONAL: Professional paid plan
+ * TEAM: Team collaboration paid plan
+ */
+export const zCloudPlan = z.enum(['professional', 'sandbox', 'team'])
+
+/**
  * SubscriptionModel
  */
 export const zSubscriptionModel = z.object({
   interval: z.string().default(''),
-  plan: z.string().default('sandbox'),
+  plan: zCloudPlan.default('sandbox'),
 })
 
 /**
@@ -112,4 +132,4 @@ export const zGetFeaturesResponse = zFeatureModel
 /**
  * Success
  */
-export const zGetFeaturesVectorSpaceResponse = zLimitationModel
+export const zGetFeaturesVectorSpaceResponse = zVectorSpaceLimitationModel

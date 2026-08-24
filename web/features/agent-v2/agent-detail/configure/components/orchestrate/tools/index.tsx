@@ -1,6 +1,5 @@
 'use client'
 
-import type { MarketplacePlugin } from '@dify/contracts/marketplace'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { ToolSettingTarget } from './types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
@@ -16,28 +15,27 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { useAtomValue, useSetAtom } from 'jotai'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { parseToolProviderType } from '@/app/components/tools/provider-type'
-import { CollectionType } from '@/app/components/tools/types'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
-import { useGetLanguage } from '@/context/i18n'
 import {
   addProviderToolsAtom,
   agentComposerToolsAtom,
   setProviderToolCredentialAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
-import {
-  useFetchPluginsInMarketPlaceByInfo,
-  useInvalidateInstalledPluginList,
-} from '@/service/use-plugins'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllMCPTools,
-  useAllWorkflowTools,
-  useInvalidateAllBuiltInTools,
-} from '@/service/use-tools'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import {
+  getAgentProviderPluginId,
+  getAgentProviderToolDisplayName,
+  getLocalizedText,
+  getProviderCredentialType,
+  getProviderCredentialVariant,
+  useAgentToolPresentation,
+  useAgentToolProviderCatalog,
+} from '../../../tool-provider-catalog'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
@@ -134,92 +132,6 @@ const AgentToolItem = memo(
   },
 )
 
-function useAgentToolProviderMap() {
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const { data: mcpTools } = useAllMCPTools()
-
-  return useMemo(() => {
-    const providers = new Map<string, ToolWithProvider>()
-    const resolvedProviderTypes = new Set<AgentProviderTool['providerType']>()
-    const buildInToolList = Array.isArray(buildInTools) ? buildInTools : []
-    const customToolList = Array.isArray(customTools) ? customTools : []
-    const workflowToolList = Array.isArray(workflowTools) ? workflowTools : []
-    const mcpToolList = Array.isArray(mcpTools) ? mcpTools : []
-    const allProviders = [
-      ...buildInToolList,
-      ...customToolList,
-      ...workflowToolList,
-      ...mcpToolList,
-    ]
-
-    if (Array.isArray(buildInTools)) {
-      resolvedProviderTypes.add(CollectionType.builtIn)
-      resolvedProviderTypes.add('plugin')
-    }
-    if (Array.isArray(customTools)) resolvedProviderTypes.add(CollectionType.custom)
-    if (Array.isArray(workflowTools)) resolvedProviderTypes.add(CollectionType.workflow)
-    if (Array.isArray(mcpTools)) resolvedProviderTypes.add(CollectionType.mcp)
-
-    allProviders.forEach((provider) => {
-      providers.set(provider.id, provider)
-      providers.set(provider.name, provider)
-      if (provider.plugin_id) {
-        providers.set(provider.plugin_id, provider)
-        providers.set(`${provider.plugin_id}/${provider.name}`, provider)
-      }
-    })
-
-    return {
-      providerById: providers,
-      resolvedProviderTypes,
-    }
-  }, [buildInTools, customTools, workflowTools, mcpTools])
-}
-
-function getLocalizedText(text: Partial<Record<string, string>> | undefined, language: string) {
-  return text?.[language] ?? text?.en_US ?? text?.zh_Hans
-}
-
-function getProviderPluginId(tool: AgentProviderTool) {
-  if (tool.pluginId) return tool.pluginId
-
-  if (tool.providerType !== 'plugin' && tool.providerType !== CollectionType.builtIn) return ''
-
-  const providerIdSegments = tool.id.split('/')
-  if (providerIdSegments.length !== 3) return ''
-
-  return providerIdSegments.slice(0, 2).join('/')
-}
-
-function getProviderDisplayName(tool: AgentProviderTool) {
-  const providerIdSegments = tool.name.split('/').filter(Boolean)
-  return providerIdSegments.at(-1) ?? tool.name
-}
-
-function getMarketplacePluginInfo(pluginId: string) {
-  const [organization, plugin, ...remainingSegments] = pluginId.split('/')
-  if (!organization || !plugin || remainingSegments.length > 0) return undefined
-
-  return {
-    organization,
-    plugin,
-  }
-}
-
-function getProviderCredentialType(
-  provider?: ToolWithProvider,
-): AgentProviderTool['credentialType'] {
-  if (!provider) return undefined
-
-  if (Object.keys(provider.team_credentials ?? {}).length > 0) return 'api-key'
-
-  if (provider.type === CollectionType.builtIn && provider.allow_delete) return 'oauth2'
-
-  return undefined
-}
-
 function getDisplayCredentialType(
   tool: AgentProviderTool,
   providerCredentialType: AgentProviderTool['credentialType'],
@@ -232,27 +144,13 @@ function getDisplayCredentialType(
   return tool.credentialType ?? providerCredentialType
 }
 
-function getProviderCredentialVariant(
-  tool: AgentProviderTool,
-  provider: ToolWithProvider,
-  providerCredentialType: AgentProviderTool['credentialType'],
-) {
-  if (!providerCredentialType) return 'none' as const
-
-  if (tool.credentialVariant !== 'none') return tool.credentialVariant
-
-  return tool.credentialId || provider.is_team_authorization
-    ? ('authorized' as const)
-    : ('unauthorized' as const)
-}
-
 function useDisplayTools(
   tools: AgentTool[],
   providerById: Map<string, ToolWithProvider>,
   resolvedProviderTypes: Set<AgentProviderTool['providerType']>,
-  marketplacePluginById: Map<string, MarketplacePlugin>,
+  toolPresentation: ReturnType<typeof useAgentToolPresentation>,
 ) {
-  const language = useGetLanguage()
+  const { language, marketplacePluginById } = toolPresentation
 
   return useMemo(() => {
     return tools.map((tool): DisplayAgentTool => {
@@ -261,7 +159,7 @@ function useDisplayTools(
       const provider = providerById.get(tool.id) ?? providerById.get(tool.name)
 
       if (!provider) {
-        const providerPluginId = getProviderPluginId(tool)
+        const providerPluginId = getAgentProviderPluginId(tool)
         const marketplacePlugin = marketplacePluginById.get(providerPluginId)
 
         return {
@@ -270,11 +168,11 @@ function useDisplayTools(
           pluginId: tool.pluginId ?? providerPluginId,
           pluginUniqueIdentifier:
             tool.pluginUniqueIdentifier ?? marketplacePlugin?.latest_package_identifier,
-          displayName:
-            tool.displayName ??
-            getLocalizedText(marketplacePlugin?.label ?? marketplacePlugin?.labels, language) ??
-            marketplacePlugin?.name ??
-            getProviderDisplayName(tool),
+          displayName: getAgentProviderToolDisplayName({
+            language,
+            marketplacePlugin,
+            tool,
+          }),
           icon:
             tool.icon ??
             (marketplacePlugin && providerPluginId
@@ -291,7 +189,7 @@ function useDisplayTools(
       return {
         ...tool,
         isInstalled: true,
-        displayName: tool.displayName ?? getLocalizedText(provider.label, language) ?? tool.name,
+        displayName: getAgentProviderToolDisplayName({ language, provider, tool }),
         icon: tool.icon ?? provider.icon,
         iconDark: tool.iconDark ?? provider.icon_dark,
         providerType: tool.providerType,
@@ -377,7 +275,7 @@ function AddToolMenu({
   const { t } = useTranslation('agentV2')
   const [open, setOpen] = useState(false)
   const [view, setView] = useState<AddToolMenuView>(addToolDefaultView)
-  const { providerById } = useAgentToolProviderMap()
+  const { providerById } = useAgentToolProviderCatalog()
 
   const openToolPicker = useCallback(() => {
     setView('tool-picker')
@@ -441,7 +339,7 @@ function AddToolMenu({
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName={
+        className={
           view === 'menu'
             ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
             : 'w-[400px] overflow-hidden border-none bg-transparent p-0 shadow-none'
@@ -486,7 +384,7 @@ export function AgentTools() {
   const setProviderToolCredential = useSetAtom(setProviderToolCredentialAtom)
   const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const { providerById, resolvedProviderTypes } = useAgentToolProviderMap()
+  const { providerById, resolvedProviderTypes } = useAgentToolProviderCatalog()
   const tools = useAtomValue(agentComposerToolsAtom)
   const selectedTools = useSelectedProviderTools()
   const addTools = useSetAtom(addProviderToolsAtom)
@@ -517,51 +415,24 @@ export function AgentTools() {
     [setProviderToolCredential],
   )
   const handlePluginInstalled = useCallback(() => {
-    void Promise.allSettled([invalidateAllBuiltInTools(), invalidateInstalledPluginList()])
+    void Promise.allSettled([
+      invalidateAllBuiltInTools(),
+      invalidateInstalledPluginList(PluginCategoryEnum.tool),
+    ])
   }, [invalidateAllBuiltInTools, invalidateInstalledPluginList])
   const visibleTools = useMemo(
     () => (ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter((tool) => tool.kind !== 'cli')),
     [tools],
   )
-  const missingMarketplacePluginInfos = useMemo(() => {
-    const pluginIds = new Set<string>()
-
-    visibleTools.forEach((tool) => {
-      if (
-        tool.kind !== 'provider' ||
-        !resolvedProviderTypes.has(tool.providerType) ||
-        providerById.has(tool.id) ||
-        providerById.has(tool.name)
-      )
-        return
-
-      const pluginId = getProviderPluginId(tool)
-      if (pluginId) pluginIds.add(pluginId)
-    })
-
-    return Array.from(pluginIds).flatMap((pluginId) => {
-      const info = getMarketplacePluginInfo(pluginId)
-      return info ? [info] : []
-    })
-  }, [providerById, resolvedProviderTypes, visibleTools])
-  const { data: missingMarketplacePluginsData } = useFetchPluginsInMarketPlaceByInfo(
-    missingMarketplacePluginInfos,
-  )
-  const marketplacePluginById = useMemo(
-    () =>
-      new Map(
-        (missingMarketplacePluginsData?.data.list ?? []).map(({ plugin }) => [
-          plugin.plugin_id,
-          plugin,
-        ]),
-      ),
-    [missingMarketplacePluginsData],
-  )
+  const toolPresentation = useAgentToolPresentation(visibleTools, {
+    providerById,
+    resolvedProviderTypes,
+  })
   const displayTools = useDisplayTools(
     visibleTools,
     providerById,
     resolvedProviderTypes,
-    marketplacePluginById,
+    toolPresentation,
   )
   /*
    * knip-ignore-start

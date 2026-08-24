@@ -1,7 +1,8 @@
 import pytest
 
-from enums.deployment_edition import DeploymentEdition
-from services.feature_service import FeatureService, SystemFeatureModel
+from enums import DeploymentEdition
+from services.entities.feature_entities import SystemFeatureModel
+from services.feature_service import FeatureService
 
 
 def test_system_feature_model_disables_knowledge_fs_by_default() -> None:

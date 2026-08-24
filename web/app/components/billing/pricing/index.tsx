@@ -10,12 +10,14 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { consoleQuery } from '@/service/client'
 import { NoiseBottom, NoiseTop } from './assets'
 import Footer from './footer'
 import Header from './header'
@@ -29,7 +31,13 @@ type PricingProps = {
 }
 
 const Pricing: FC<PricingProps> = ({ onCancel }) => {
-  const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const shouldDefaultToYearly =
     isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount

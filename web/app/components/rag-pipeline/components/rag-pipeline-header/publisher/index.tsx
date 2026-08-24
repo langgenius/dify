@@ -104,7 +104,7 @@ const Publisher = () => {
           nativeButton
           render={
             <Button className="px-2" variant="primary" disabled={!canPipelineRelease}>
-              <span className="pl-1">{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
+              <span>{t(($) => $['common.publish'], { ns: 'workflow' })}</span>
               <RiArrowDownSLine className="size-4" />
             </Button>
           }
@@ -113,7 +113,7 @@ const Publisher = () => {
           placement="bottom-end"
           sideOffset={4}
           alignOffset={40}
-          popupClassName={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
+          className={cn('border-none bg-transparent shadow-none', confirmVisible && 'hidden')}
         >
           <Popup
             onRequestClose={closePopover}

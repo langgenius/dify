@@ -2,16 +2,19 @@
 import type { MailRegisterResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
-import Input from '@/app/components/base/input'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import { useLocale } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useMailRegister } from '@/service/use-common'
@@ -43,6 +46,8 @@ const ChangePasswordForm = () => {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const { mutateAsync: register, isPending } = useMailRegister()
+  const pageTitle = t(($) => $.changePassword, { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const showErrorMessage = useCallback((message: string) => {
     toast.error(message)
@@ -115,63 +120,52 @@ const ChangePasswordForm = () => {
     >
       <div className="flex flex-col md:w-100">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">
-            {t(($) => $.changePassword, { ns: 'login' })}
-          </h2>
+          <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
           <p className="mt-2 body-md-regular text-text-secondary">
             {t(($) => $.changePasswordTip, { ns: 'login' })}
           </p>
         </div>
 
         <div className="mx-auto mt-6 w-full">
-          <div>
-            {/* Password */}
-            <div className="mb-5">
-              <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
+          <Form onFormSubmit={() => void handleSubmit()}>
+            <Field name="password" className="mb-5">
+              <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
                 {t(($) => $['account.newPassword'], { ns: 'common' })}
-              </label>
-              <div className="relative mt-1">
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
-                />
-              </div>
-              <div className="mt-1 body-xs-regular text-text-secondary">
+              </FieldLabel>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                spellCheck={false}
+                value={password}
+                onValueChange={setPassword}
+                placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
+              />
+              <FieldDescription className="py-0 text-text-secondary">
                 {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-              </div>
-            </div>
-            {/* Confirm Password */}
-            <div className="mb-5">
-              <label
-                htmlFor="confirmPassword"
-                className="my-2 system-md-semibold text-text-secondary"
-              >
+              </FieldDescription>
+            </Field>
+            <Field name="confirmPassword" className="mb-5">
+              <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
                 {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-              </label>
-              <div className="relative mt-1">
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
-                />
-              </div>
-            </div>
-            <div>
-              <Button
-                variant="primary"
-                className="w-full"
-                onClick={handleSubmit}
-                disabled={isPending || !password || !confirmPassword}
-              >
-                {t(($) => $.changePasswordBtn, { ns: 'login' })}
-              </Button>
-            </div>
-          </div>
+              </FieldLabel>
+              <Input
+                type="password"
+                autoComplete="new-password"
+                spellCheck={false}
+                value={confirmPassword}
+                onValueChange={setConfirmPassword}
+                placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
+              />
+            </Field>
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              disabled={isPending || !password || !confirmPassword}
+            >
+              {t(($) => $.changePasswordBtn, { ns: 'login' })}
+            </Button>
+          </Form>
         </div>
       </div>
     </div>

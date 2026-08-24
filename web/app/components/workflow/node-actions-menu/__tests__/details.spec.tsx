@@ -4,7 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -16,34 +16,7 @@ import { useAvailableBlocks } from '../../hooks/use-available-blocks'
 import { useNodesInteractions } from '../../hooks/use-nodes-interactions'
 import { useNodeMetaData } from '../../hooks/use-nodes-meta-data'
 import { useIsChatMode, useNodesReadOnly } from '../../hooks/use-workflow'
-import { ChangeBlockMenuTrigger } from '../change-block-menu-trigger'
 import { NodeActionsDropdownContent } from '../dropdown-content'
-
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({
-    trigger,
-    onSelect,
-    availableBlocksTypes,
-    showStartTab,
-    ignoreNodeIds,
-    forceEnableStartTab,
-    allowUserInputSelection,
-    isolateKeyboardEvents,
-  }: any) => (
-    <div>
-      <div>{trigger()}</div>
-      <div>{`available:${(availableBlocksTypes || []).join(',')}`}</div>
-      <div>{`show-start:${String(showStartTab)}`}</div>
-      <div>{`ignore:${(ignoreNodeIds || []).join(',')}`}</div>
-      <div>{`force-start:${String(forceEnableStartTab)}`}</div>
-      <div>{`allow-start:${String(allowUserInputSelection)}`}</div>
-      <div>{`isolate-keyboard:${String(isolateKeyboardEvents)}`}</div>
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
-        select-http
-      </button>
-    </div>
-  ),
-}))
 
 vi.mock('../../hooks/use-available-blocks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/use-available-blocks')>()
@@ -177,89 +150,6 @@ describe('node actions menu details', () => {
       { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
     ] as any)
     mockUseAllWorkflowTools.mockReturnValue({ data: [] } as any)
-  })
-
-  it('should select a replacement block through ChangeBlockMenuTrigger', async () => {
-    const user = userEvent.setup()
-    render(
-      <ChangeBlockMenuTrigger
-        nodeId="node-1"
-        nodeData={{ type: BlockEnum.Code } as any}
-        sourceHandle="source"
-      />,
-    )
-
-    await user.click(screen.getByText('select-http'))
-
-    expect(screen.getByText('available:http-request')).toBeInTheDocument()
-    expect(screen.getByText('show-start:true')).toBeInTheDocument()
-    expect(screen.getByText('ignore:')).toBeInTheDocument()
-    expect(screen.getByText('force-start:false')).toBeInTheDocument()
-    expect(screen.getByText('allow-start:false')).toBeInTheDocument()
-    expect(screen.getByText('isolate-keyboard:true')).toBeInTheDocument()
-    expect(handleNodeChange).toHaveBeenCalledWith(
-      'node-1',
-      BlockEnum.HttpRequest,
-      'source',
-      undefined,
-    )
-  })
-
-  it('should expose trigger and start-node specific block selector options', () => {
-    mockUseAvailableBlocks.mockReturnValueOnce({
-      getAvailableBlocks: vi.fn(() => ({
-        availablePrevBlocks: [],
-        availableNextBlocks: [BlockEnum.HttpRequest],
-      })),
-      availablePrevBlocks: [],
-      availableNextBlocks: [BlockEnum.HttpRequest],
-    } as ReturnType<typeof useAvailableBlocks>)
-    mockUseIsChatMode.mockReturnValueOnce(true)
-    mockUseHooksStore.mockImplementationOnce((selector: any) =>
-      selector({ configsMap: { flowType: FlowType.appFlow } }),
-    )
-    mockUseNodes.mockReturnValueOnce([] as any)
-
-    const { rerender } = render(
-      <ChangeBlockMenuTrigger
-        nodeId="trigger-node"
-        nodeData={{ type: BlockEnum.TriggerWebhook } as any}
-        sourceHandle="source"
-      />,
-    )
-
-    expect(screen.getByText('available:http-request')).toBeInTheDocument()
-    expect(screen.getByText('show-start:true')).toBeInTheDocument()
-    expect(screen.getByText('ignore:trigger-node')).toBeInTheDocument()
-    expect(screen.getByText('allow-start:true')).toBeInTheDocument()
-
-    mockUseAvailableBlocks.mockReturnValueOnce({
-      getAvailableBlocks: vi.fn(() => ({
-        availablePrevBlocks: [BlockEnum.Code],
-        availableNextBlocks: [],
-      })),
-      availablePrevBlocks: [BlockEnum.Code],
-      availableNextBlocks: [],
-    } as ReturnType<typeof useAvailableBlocks>)
-    mockUseHooksStore.mockImplementationOnce((selector: any) =>
-      selector({ configsMap: { flowType: FlowType.ragPipeline } }),
-    )
-    mockUseNodes.mockReturnValueOnce([
-      { id: 'start', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } as any },
-    ] as any)
-
-    rerender(
-      <ChangeBlockMenuTrigger
-        nodeId="start-node"
-        nodeData={{ type: BlockEnum.Start } as any}
-        sourceHandle="source"
-      />,
-    )
-
-    expect(screen.getByText('available:code')).toBeInTheDocument()
-    expect(screen.getByText('show-start:false')).toBeInTheDocument()
-    expect(screen.getByText('ignore:start-node')).toBeInTheDocument()
-    expect(screen.getByText('force-start:true')).toBeInTheDocument()
   })
 
   it('should run, copy, duplicate, delete, and expose the help link', async () => {

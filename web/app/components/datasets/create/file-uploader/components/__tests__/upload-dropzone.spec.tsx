@@ -2,7 +2,7 @@ import type { RefObject } from 'react'
 import type { UploadDropzoneProps } from '../upload-dropzone'
 import type { ProviderContextState } from '@/context/provider-context'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import UploadDropzone from '../upload-dropzone'
 
 let mockEnableBilling = false

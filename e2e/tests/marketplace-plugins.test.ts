@@ -1,6 +1,6 @@
 import type { ConsoleClient } from '../support/api/console-client'
 import { ORPCError } from '@orpc/client'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { bootstrapMarketplacePlugins } from '../support/marketplace-plugins'
 
 const createMarketplaceConsoleClient = (installError: unknown) => {
@@ -58,13 +58,16 @@ describe('bootstrapMarketplacePlugins', () => {
 
   it('uses generated package upload when the API process cannot download from Marketplace', async () => {
     vi.stubEnv('E2E_TEST_MARKETPLACE_PLUGIN_IDS', '')
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('plugin-package'))
+    vi.stubEnv('E2E_MARKETPLACE_API_URL', 'https://marketplace.test')
+    const marketplaceFetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('plugin-package'))
     const { consoleClient, installPackage, uploadPackage } = createMarketplaceConsoleClient(
       new ORPCError('INTERNAL_SERVER_ERROR', {
         data: {
           body: {
             message:
-              'Reached maximum retries (3) for URL https://marketplace.test/plugins/download',
+              'Reached maximum retries (3) for URL https://marketplace.test/api/v1/plugins/download-url',
           },
         },
         status: 500,
@@ -73,6 +76,10 @@ describe('bootstrapMarketplacePlugins', () => {
     const result = await bootstrapTestPlugin(consoleClient)
 
     expect(result.status).toBe('verified')
+    expect(marketplaceFetch).toHaveBeenCalledOnce()
+    expect(marketplaceFetch).toHaveBeenCalledWith(
+      'https://marketplace.test/api/v1/plugins/download-url?unique_identifier=langgenius%2Ftest%3A1.0.0%40marketplace',
+    )
     expect(uploadPackage).toHaveBeenCalledWith({
       body: { pkg: expect.any(File) },
     })

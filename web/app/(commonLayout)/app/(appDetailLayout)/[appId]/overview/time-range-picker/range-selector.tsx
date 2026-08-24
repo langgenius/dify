@@ -4,10 +4,13 @@ import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiArrowDownSLine } from '@remixicon/react'
@@ -86,18 +89,24 @@ const RangeSelector: FC<Props> = ({ isCustomRange, ranges, onSelect }) => {
           <RiArrowDownSLine className="size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
         </div>
       </SelectTrigger>
-      <SelectContent className="-translate-x-6" popupClassName="w-[200px]" listClassName="p-1">
-        {items.map((item) => (
-          <SelectItem
-            key={item.value}
-            value={item.value}
-            className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
-          >
-            <SelectItemText className="px-0">{item.name}</SelectItemText>
-            <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
-          </SelectItem>
-        ))}
-      </SelectContent>
+      <SelectPortal>
+        <SelectPositioner className="-translate-x-6">
+          <SelectPopup className="w-[200px]">
+            <SelectList className="p-1">
+              {items.map((item) => (
+                <SelectItem
+                  key={item.value}
+                  value={item.value}
+                  className="relative h-8 py-0 pr-2 pl-7 system-md-regular"
+                >
+                  <SelectItemText className="px-0">{item.name}</SelectItemText>
+                  <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
+                </SelectItem>
+              ))}
+            </SelectList>
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
     </Select>
   )
 }

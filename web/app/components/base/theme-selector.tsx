@@ -8,9 +8,9 @@ import {
   DropdownMenuRadioItemIndicator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 
 const THEMES = ['light', 'dark', 'system'] as const
 export type Theme = (typeof THEMES)[number]
@@ -27,11 +27,11 @@ export default function ThemeSelector() {
   const getCurrentIcon = () => {
     switch (theme) {
       case 'light':
-        return <span className="i-ri-sun-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-sun-line size-4 text-text-tertiary" />
       case 'dark':
-        return <span className="i-ri-moon-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-moon-line size-4 text-text-tertiary" />
       default:
-        return <span className="i-ri-computer-line size-4 text-text-tertiary" />
+        return <span aria-hidden className="i-ri-computer-line size-4 text-text-tertiary" />
     }
   }
 
@@ -39,15 +39,16 @@ export default function ThemeSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['theme.theme'], { ns: 'common' })}
-            className="h-8 w-8 p-1.5 data-popup-open:bg-state-base-hover"
-          />
+            size="lg"
+            className="data-popup-open:bg-state-base-hover"
+          >
+            {getCurrentIcon()}
+          </IconButton>
         }
-      >
-        {getCurrentIcon()}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={6} popupClassName="w-[144px]">
+      />
+      <DropdownMenuContent placement="bottom-end" sideOffset={6} className="w-[144px]">
         <DropdownMenuRadioGroup<Theme>
           value={currentTheme}
           onValueChange={(nextTheme) => setTheme(nextTheme)}

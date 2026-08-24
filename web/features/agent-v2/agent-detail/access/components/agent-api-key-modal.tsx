@@ -1,5 +1,4 @@
 'use client'
-
 import type { ApiKeyItem } from '@dify/contracts/api/console/agent/types.gen'
 import {
   AlertDialog,
@@ -13,16 +12,17 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 
@@ -130,7 +130,17 @@ export function AgentApiKeyModal({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="flex w-full max-w-200! flex-col overflow-hidden px-8">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['apiKeyModal.apiSecretKey'])}
           </DialogTitle>
@@ -218,7 +228,7 @@ export function AgentApiKeyModal({
 
           <div className="mt-4 flex justify-start">
             <Button onClick={handleCreateApiKey} loading={isCreating}>
-              <span aria-hidden className="mr-1 i-heroicons-plus-20-solid size-4" />
+              <span aria-hidden className="i-heroicons-plus-20-solid size-4" />
               {t(($) => $['apiKeyModal.createNewSecretKey'])}
             </Button>
           </div>
@@ -273,7 +283,17 @@ function AgentApiKeyGenerateModal({
       }}
     >
       <DialogContent className="w-full max-w-120! overflow-hidden px-8">
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $['apiKeyModal.apiSecretKey'])}
         </DialogTitle>

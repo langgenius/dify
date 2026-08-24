@@ -3,6 +3,7 @@
 server {
     listen ${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
+    resolver 127.0.0.11 valid=30s ipv6=off;
 
     # Docker DNS resolver — re-resolves the upstream hostname every 30s so a
     # container restart that frees/reassigns the cached IP doesn't leave
@@ -12,13 +13,13 @@ server {
     resolver 127.0.0.11 valid=30s ipv6=off;
 
     location /console/api {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /api {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
@@ -33,50 +34,50 @@ server {
     }
 
     location /v1 {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /openapi {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /files {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /explore {
-      set $web_upstream ${NGINX_WEB_UPSTREAM};
+      set $web_upstream web:3000;
       proxy_pass http://$web_upstream;
       include proxy.conf;
     }
 
     location /e/ {
-      set $plugin_daemon_upstream ${NGINX_PLUGIN_DAEMON_UPSTREAM};
+      set $plugin_daemon_upstream plugin_daemon:5002;
       proxy_pass http://$plugin_daemon_upstream;
       proxy_set_header Dify-Hook-Url $scheme://$host$request_uri;
       include proxy.conf;
     }
 
     location / {
-      set $web_upstream ${NGINX_WEB_UPSTREAM};
+      set $web_upstream web:3000;
       proxy_pass http://$web_upstream;
       include proxy.conf;
     }
 
     location /mcp {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }
 
     location /triggers {
-      set $api_upstream ${NGINX_API_UPSTREAM};
+      set $api_upstream api:5001;
       proxy_pass http://$api_upstream;
       include proxy.conf;
     }

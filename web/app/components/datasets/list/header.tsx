@@ -18,7 +18,7 @@ import {
 } from '@/app/components/step-by-step-tour/dropdown-menu'
 import { KnowledgeViewSwitcher } from '@/features/new-rag/components/knowledge-view-switcher'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
-import ServiceApi from '../extra-info/service-api'
+import { ServiceApi } from '../extra-info/service-api'
 
 type Props = {
   apiBaseUrl: string
@@ -83,14 +83,14 @@ const DatasetListHeader = ({
             <Button
               variant="ghost"
               size="small"
-              className="gap-1 overflow-hidden px-1.5 text-text-tertiary"
+              className="overflow-hidden text-text-tertiary"
               onClick={onExternalApiClick}
             >
               <span
                 aria-hidden
                 className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
               />
-              <span className="px-0.5 system-xs-medium">
+              <span className="system-xs-medium">
                 {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
               </span>
             </Button>
@@ -134,13 +134,11 @@ const DatasetListHeader = ({
                   <Button
                     variant="primary"
                     size="medium"
-                    className="gap-0.5 px-2 shadow-xs"
+                    className="px-2 shadow-xs"
                     data-step-by-step-tour-target={stepByStepTourCreateMenuTarget}
                   >
                     <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                    <span className="pl-1">
-                      {t(($) => $['operation.create'], { ns: 'common' })}
-                    </span>
+                    <span>{t(($) => $['operation.create'], { ns: 'common' })}</span>
                     <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
                   </Button>
                 }
@@ -154,7 +152,7 @@ const DatasetListHeader = ({
                     ? stepByStepTourCreateMenuHighlightPart
                     : undefined,
                   interactionMode: createMenu.controlled ? 'presentation' : 'interactive',
-                  popupClassName: 'w-80',
+                  className: 'w-80',
                 })}
               >
                 {canCreateDataset && (

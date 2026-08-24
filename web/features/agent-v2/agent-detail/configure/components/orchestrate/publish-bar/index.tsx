@@ -402,7 +402,7 @@ function PublishBarActions({
         variant="primary"
         disabled={!canPublish}
         loading={isPublishing}
-        className="h-8 gap-1 rounded-lg px-3"
+        className="h-8 rounded-lg px-3"
         onClick={onPublishRequest}
       >
         {actionIcon && <span aria-hidden className={`${actionIcon} size-4 shrink-0`} />}
@@ -467,7 +467,7 @@ function AgentVersionRestoreBar({
       <Button
         type="button"
         variant="secondary"
-        className="h-8 gap-1 rounded-lg px-3 text-text-accent"
+        className="h-8 rounded-lg px-3 text-text-accent"
         onClick={onExitVersions}
       >
         <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />

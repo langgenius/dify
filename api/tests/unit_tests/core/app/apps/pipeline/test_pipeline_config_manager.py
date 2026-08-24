@@ -1,16 +1,31 @@
+import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 from pytest_mock import MockerFixture
 
 import core.app.apps.pipeline.pipeline_config_manager as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
+from models.dataset import Pipeline
 from models.model import AppMode
+from models.workflow import Workflow, WorkflowType
 
 
 def test_get_pipeline_config(mocker: MockerFixture):
-    pipeline = MagicMock(tenant_id="tenant", id="pipe1")
-    workflow = MagicMock(id="wf1")
+    pipeline = Pipeline(tenant_id="tenant", name="Pipeline", description="")
+    pipeline.id = "pipe1"
+    workflow = Workflow.new(
+        tenant_id="tenant",
+        app_id="pipe1",
+        type=WorkflowType.RAG_PIPELINE.value,
+        version=Workflow.VERSION_DRAFT,
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features="{}",
+        created_by="user",
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.id = "wf1"
 
     mocker.patch.object(
         module.WorkflowVariablesConfigManager,

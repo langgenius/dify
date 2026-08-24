@@ -11,10 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/components/app/configuration/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
@@ -133,7 +133,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent popupClassName="w-[354px]">
+            <SelectContent className="w-[354px]">
               {providers.map((option) => (
                 <SelectItem key={option.key} value={option.key}>
                   <SelectItemText>{option.name}</SelectItemText>

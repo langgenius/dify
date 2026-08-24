@@ -1,9 +1,13 @@
-import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  PluginCategoryInstalledPluginResponse,
+  PluginEntity,
+  PluginInstallationItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import {
   AUTO_UPDATE_MODE,
@@ -15,34 +19,41 @@ import {
   PluginSource,
   TaskStatus,
 } from '@/app/components/plugins/types'
+import { consoleQuery } from '@/service/client'
 import { renderHook } from '@/test/console/render'
 import {
   normalizeInstalledPluginDetail,
   useInstalledPluginList,
-  useInstallOrUpdate,
+  useInvalidateInstalledPluginList,
   useMutationPluginAutoUpgradeSettings,
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
+  useRemoveFilteredInstalledPluginPageOnUnmount,
+  useVersionListOfPlugin,
 } from '../use-plugins'
 
-const { mockGet, mockPost, mockUninstallPlugin } = vi.hoisted(() => ({
+const { mockGet, mockGetMarketplace, mockPost, mockRequest } = vi.hoisted(() => ({
   mockGet: vi.fn(),
+  mockGetMarketplace: vi.fn(),
   mockPost: vi.fn(),
-  mockUninstallPlugin: vi.fn(),
+  mockRequest: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  getMarketplace: vi.fn(),
+  getMarketplace: mockGetMarketplace,
   post: mockPost,
   postMarketplace: vi.fn(),
+  request: mockRequest,
 }))
 
-vi.mock('@/service/plugins', () => ({
-  fetchPluginInfoFromMarketPlace: vi.fn(),
-  uninstallPlugin: mockUninstallPlugin,
-}))
+mockRequest.mockImplementation(async (url: string) => {
+  const data = await mockGet(url)
+  return new Response(JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+})
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
@@ -58,8 +69,12 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
+const { mockInvalidateAllBuiltInTools } = vi.hoisted(() => ({
+  mockInvalidateAllBuiltInTools: vi.fn(),
+}))
+
 vi.mock('../use-tools', () => ({
-  useInvalidateAllBuiltInTools: () => vi.fn(),
+  useInvalidateAllBuiltInTools: () => mockInvalidateAllBuiltInTools,
 }))
 
 const createQueryClient = () =>
@@ -227,7 +242,66 @@ const createPluginInstallation = (): PluginInstallationItemResponse => ({
   },
 })
 
+const createInstalledPlugin = (
+  pluginId: string,
+  category: PluginCategoryEnum,
+): PluginCategoryInstalledPluginResponse => {
+  const installation = createPluginInstallation()
+
+  return {
+    ...installation,
+    installation_id: installation.id,
+    name: installation.declaration.name,
+    plugin_id: pluginId,
+    declaration: {
+      ...installation.declaration,
+      category,
+    },
+  }
+}
+
+const createPluginEntity = (): PluginEntity => ({
+  checksum: 'checksum',
+  created_at: '2026-06-01T00:00:00Z',
+  declaration: {
+    author: 'Dify',
+    category: PluginCategoryEnum.tool,
+    created_at: '2026-06-01T00:00:00Z',
+    description: { en_US: 'Plugin description' },
+    icon: 'icon.svg',
+    label: { en_US: 'Plugin label' },
+    meta: { version: '1.0.0' },
+    name: 'plugin-entity',
+    plugins: {},
+    resource: { memory: 0 },
+    version: '1.0.0',
+  },
+  endpoints_active: 1,
+  endpoints_setups: 1,
+  id: 'plugin-entity-id',
+  installation_id: 'plugin-entity-id',
+  meta: {},
+  name: 'plugin-entity',
+  plugin_id: 'langgenius/plugin-entity',
+  plugin_unique_identifier: 'langgenius/plugin-entity:1.0.0@test',
+  runtime_type: 'local',
+  source: PluginSource.marketplace,
+  tenant_id: 'tenant-id',
+  updated_at: '2026-06-02T00:00:00Z',
+  version: '1.0.0',
+})
+
 describe('normalizeInstalledPluginDetail', () => {
+  it('adapts generic and category list items to the legacy detail model', () => {
+    const genericDetail = normalizeInstalledPluginDetail(createPluginEntity())
+    const categoryDetail = normalizeInstalledPluginDetail(
+      createInstalledPlugin('langgenius/category-plugin', PluginCategoryEnum.tool),
+    )
+
+    expect(genericDetail.plugin_id).toBe('langgenius/plugin-entity')
+    expect(categoryDetail.plugin_id).toBe('langgenius/category-plugin')
+  })
+
   it('should preserve generated plugin declaration capabilities', () => {
     const detail = normalizeInstalledPluginDetail(createPluginInstallation())
 
@@ -308,54 +382,6 @@ describe('use-plugins mutations', () => {
     })
 
     resolvePost({})
-  })
-
-  it('preserves credentials when replacing an installed bundle package', async () => {
-    const queryClient = createQueryClient()
-    mockUninstallPlugin.mockResolvedValue({ success: true })
-    mockPost.mockResolvedValue({ all_installed: true, task_id: '' })
-    const payload = [
-      {
-        type: 'package' as const,
-        value: {
-          unique_identifier: 'langgenius/openai:0.0.2@new',
-          manifest: {},
-        },
-      },
-    ]
-    const plugin = [
-      {
-        org: 'langgenius',
-        name: 'openai',
-      },
-    ]
-    const installedInfo = {
-      'langgenius/openai': {
-        installedId: 'installation-id',
-        installedVersion: '0.0.1',
-        uniqueIdentifier: 'langgenius/openai:0.0.1@old',
-      },
-    }
-    const { result } = renderHook(() => useInstallOrUpdate({}), {
-      wrapper: createWrapper(queryClient),
-    })
-
-    await act(async () => {
-      await result.current.mutateAsync({
-        payload: payload as Parameters<typeof result.current.mutateAsync>[0]['payload'],
-        plugin: plugin as Parameters<typeof result.current.mutateAsync>[0]['plugin'],
-        installedInfo,
-      })
-    })
-
-    expect(mockUninstallPlugin).toHaveBeenCalledWith('installation-id', {
-      preserveCredentials: true,
-    })
-    expect(mockPost).toHaveBeenCalledWith('/workspaces/current/plugin/install/pkg', {
-      body: {
-        plugin_unique_identifiers: ['langgenius/openai:0.0.2@new'],
-      },
-    })
   })
 
   it('optimistically updates plugin permission cache before the request finishes', async () => {
@@ -524,6 +550,37 @@ describe('use-plugins mutations', () => {
   })
 })
 
+describe('useVersionListOfPlugin', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('does not fetch versions while disabled', () => {
+    const queryClient = createQueryClient()
+
+    renderHook(() => useVersionListOfPlugin('plugin-1', false), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    expect(mockGetMarketplace).not.toHaveBeenCalled()
+  })
+
+  it('fetches versions when enabled', async () => {
+    const queryClient = createQueryClient()
+    mockGetMarketplace.mockResolvedValue({ data: { versions: [] } })
+
+    renderHook(() => useVersionListOfPlugin('plugin-1'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(mockGetMarketplace).toHaveBeenCalledWith('/plugins/plugin-1/versions', {
+        params: { page: 1, page_size: 100 },
+      })
+    })
+  })
+})
+
 describe('useInstalledPluginList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -533,24 +590,128 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet.mockResolvedValue({ plugins: [], total: 0 })
 
-    renderHook(() => useInstalledPluginList(false, 100), { wrapper: createWrapper(queryClient) })
+    renderHook(() => useInstalledPluginList(), { wrapper: createWrapper(queryClient) })
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/list?page=1&page_size=100')
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/list?page=1&page_size=100',
+      )
     })
+  })
+
+  it('does not fetch or expose data when disabled', () => {
+    const queryClient = createQueryClient()
+
+    const { result } = renderHook(() => useInstalledPluginList({ enabled: false }), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    expect(mockGet).not.toHaveBeenCalled()
+    expect(result.current.data).toBeUndefined()
   })
 
   it('fetches the scoped installed plugin category list when category is provided', async () => {
     const queryClient = createQueryClient()
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
-    renderHook(() => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }), {
+    renderHook(() => useInstalledPluginList({ category: PluginCategoryEnum.trigger }), {
       wrapper: createWrapper(queryClient),
     })
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(
-        '/workspaces/current/plugin/trigger/list?page=1&page_size=100',
+        'http://localhost:5001/console/api/workspaces/current/plugin/trigger/list?page=1&page_size=100',
+      )
+    })
+  })
+
+  it('filters every installed tool page on the server', async () => {
+    const queryClient = createQueryClient()
+    mockGet
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('tool-plugin-1', PluginCategoryEnum.tool)],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('tool-plugin-2', PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+
+    const { result } = renderHook(
+      () =>
+        useInstalledPluginList({
+          category: PluginCategoryEnum.tool,
+          filters: {
+            language: 'zh_Hans',
+            query: 'slack',
+            tags: ['communication', 'api'],
+          },
+          pageSize: 30,
+        }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=30&query=slack&language=zh_Hans&tags=communication&tags=api',
+      )
+    })
+
+    act(() => {
+      result.current.loadNextPage()
+    })
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=2&page_size=30&query=slack&language=zh_Hans&tags=communication&tags=api',
+      )
+    })
+  })
+
+  it('keeps category lists with different page sizes in separate caches', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    const wrapper = createWrapper(queryClient)
+
+    renderHook(() => useInstalledPluginList({ category: PluginCategoryEnum.tool, pageSize: 30 }), {
+      wrapper,
+    })
+    renderHook(() => useInstalledPluginList({ category: PluginCategoryEnum.tool }), {
+      wrapper,
+    })
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=30',
+      )
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100',
+      )
+    })
+  })
+
+  it('keeps category lists with different filters in separate caches', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    const wrapper = createWrapper(queryClient)
+
+    renderHook(
+      () =>
+        useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'slack' } }),
+      { wrapper },
+    )
+    renderHook(
+      () =>
+        useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'notion' } }),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=slack',
+      )
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=notion',
       )
     })
   })
@@ -575,7 +736,7 @@ describe('useInstalledPluginList', () => {
     mockGet.mockResolvedValue({ plugins: [], builtin_tools: builtinTools, has_more: false })
 
     const { result } = renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }),
+      () => useInstalledPluginList({ category: PluginCategoryEnum.tool }),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -588,16 +749,16 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'trigger-plugin-1' }],
+        plugins: [createInstalledPlugin('trigger-plugin-1', PluginCategoryEnum.trigger)],
         has_more: true,
       })
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'trigger-plugin-2' }],
+        plugins: [createInstalledPlugin('trigger-plugin-2', PluginCategoryEnum.trigger)],
         has_more: false,
       })
 
     const { result } = renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }),
+      () => useInstalledPluginList({ category: PluginCategoryEnum.trigger }),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -611,7 +772,7 @@ describe('useInstalledPluginList', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(
-        '/workspaces/current/plugin/trigger/list?page=2&page_size=100',
+        'http://localhost:5001/console/api/workspaces/current/plugin/trigger/list?page=2&page_size=100',
       )
     })
     await waitFor(() => {
@@ -638,18 +799,18 @@ describe('useInstalledPluginList', () => {
     ]
     mockGet
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'tool-plugin-1' }],
+        plugins: [createInstalledPlugin('tool-plugin-1', PluginCategoryEnum.tool)],
         builtin_tools: builtinTools,
         has_more: true,
       })
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'tool-plugin-2' }],
+        plugins: [createInstalledPlugin('tool-plugin-2', PluginCategoryEnum.tool)],
         builtin_tools: builtinTools,
         has_more: false,
       })
 
     const { result } = renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }),
+      () => useInstalledPluginList({ category: PluginCategoryEnum.tool }),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -662,12 +823,197 @@ describe('useInstalledPluginList', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.data?.plugins).toEqual([
-        { plugin_id: 'tool-plugin-1' },
-        { plugin_id: 'tool-plugin-2' },
+      expect(result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'tool-plugin-1',
+        'tool-plugin-2',
       ])
     })
     expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+  })
+})
+
+describe('useRemoveFilteredInstalledPluginPageOnUnmount', () => {
+  it('retains every unfiltered category page when leaving the page', async () => {
+    const queryClient = createQueryClient()
+    mockGet
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('first-page-plugin', PluginCategoryEnum.tool)],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('second-page-plugin', PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+    const wrapper = createWrapper(queryClient)
+    const useToolPluginList = () => {
+      const pluginList = useInstalledPluginList({
+        category: PluginCategoryEnum.tool,
+        gcTime: 10 * 60 * 1000,
+        pageSize: 30,
+        staleTime: 5 * 60 * 1000,
+      })
+      useRemoveFilteredInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30)
+      return pluginList
+    }
+    const { result, unmount } = renderHook(useToolPluginList, {
+      wrapper,
+    })
+
+    await waitFor(() => expect(result.current.isLastPage).toBe(false))
+    act(() => result.current.loadNextPage())
+    await waitFor(() => expect(result.current.data?.plugins).toHaveLength(2))
+    const cachedQuery = queryClient
+      .getQueryCache()
+      .getAll()
+      .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
+    if (!cachedQuery) throw new Error('Expected cached second page')
+    expect(cachedQuery.options.gcTime).toBe(10 * 60 * 1000)
+    expect(cachedQuery.observers[0]?.options.staleTime).toBe(5 * 60 * 1000)
+
+    unmount()
+
+    expect((cachedQuery.state.data as { pages: unknown[] }).pages).toHaveLength(2)
+    const requestCount = mockGet.mock.calls.length
+    const { result: remountedResult } = renderHook(useToolPluginList, { wrapper })
+    expect(remountedResult.current.data?.plugins).toHaveLength(2)
+    expect(mockGet).toHaveBeenCalledTimes(requestCount)
+  })
+
+  it('removes filtered category pages when leaving the page', async () => {
+    const queryClient = createQueryClient()
+    const filters = { query: 'slack', tags: ['communication'], language: 'en_US' as const }
+    mockGet
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('slack-1', PluginCategoryEnum.tool)],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('slack-2', PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+    const wrapper = createWrapper(queryClient)
+    const { result, unmount } = renderHook(
+      () => {
+        const pluginList = useInstalledPluginList({
+          category: PluginCategoryEnum.tool,
+          filters,
+          pageSize: 30,
+        })
+        useRemoveFilteredInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30, filters)
+        return pluginList
+      },
+      { wrapper },
+    )
+    await waitFor(() => expect(result.current.isLastPage).toBe(false))
+    act(() => result.current.loadNextPage())
+    await waitFor(() => expect(result.current.data?.plugins).toHaveLength(2))
+    const cachedQuery = queryClient
+      .getQueryCache()
+      .getAll()
+      .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
+    if (!cachedQuery) throw new Error('Expected cached filtered pages')
+
+    unmount()
+
+    expect(
+      queryClient.getQueryCache().find({ queryKey: cachedQuery.queryKey, exact: true }),
+    ).toBeUndefined()
+  })
+})
+
+describe('useInvalidateInstalledPluginList', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('only invalidates every cached query for the requested category', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    const modelInstalledIdsKey = consoleQuery.workspaces.current.plugin.installedIds.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.model } },
+    })
+    const toolInstalledIdsKey = consoleQuery.workspaces.current.plugin.installedIds.get.queryKey({
+      input: { query: { category: PluginCategoryEnum.tool } },
+    })
+    const modelCategoryQueryKey = consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+      type: 'infinite',
+      input: { params: { category: PluginCategoryEnum.model } },
+    })
+    const toolCategoryQueryKey = consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
+      type: 'infinite',
+      input: { params: { category: PluginCategoryEnum.tool } },
+    })
+
+    queryClient.setQueryData(modelInstalledIdsKey, { plugin_ids: ['langgenius/openai'] })
+    queryClient.setQueryData(toolInstalledIdsKey, { plugin_ids: ['langgenius/google'] })
+
+    const { result: listResult, unmount } = renderHook(
+      () => ({
+        model: useInstalledPluginList({ category: PluginCategoryEnum.model }),
+        filteredModel: useInstalledPluginList({
+          category: PluginCategoryEnum.model,
+          filters: { query: 'openai', language: 'en_US' },
+          pageSize: 30,
+        }),
+        tool: useInstalledPluginList({ category: PluginCategoryEnum.tool }),
+      }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(listResult.current.model.isSuccess).toBe(true)
+      expect(listResult.current.filteredModel.isSuccess).toBe(true)
+      expect(listResult.current.tool.isSuccess).toBe(true)
+    })
+
+    unmount()
+    const { result } = renderHook(() => useInvalidateInstalledPluginList(), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await act(async () => {
+      await result.current(PluginCategoryEnum.model)
+    })
+
+    const modelCategoryQueries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: modelCategoryQueryKey })
+    const toolCategoryQueries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: toolCategoryQueryKey })
+
+    expect(modelCategoryQueries).toHaveLength(2)
+    expect(modelCategoryQueries.every((query) => query.state.isInvalidated)).toBe(true)
+    expect(toolCategoryQueries).toHaveLength(1)
+    expect(toolCategoryQueries[0]?.state.isInvalidated).toBe(false)
+    expect(queryClient.getQueryState(modelInstalledIdsKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(toolInstalledIdsKey)?.isInvalidated).toBe(false)
+    expect(mockInvalidateAllBuiltInTools).not.toHaveBeenCalled()
+  })
+
+  it('also invalidates built-in tools for the tool category', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+
+    const { result } = renderHook(
+      () => ({
+        invalidate: useInvalidateInstalledPluginList(),
+        model: useInstalledPluginList({ category: PluginCategoryEnum.model }),
+        tool: useInstalledPluginList({ category: PluginCategoryEnum.tool }),
+      }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.model.isSuccess).toBe(true)
+      expect(result.current.tool.isSuccess).toBe(true)
+    })
+
+    await act(async () => {
+      await result.current.invalidate(PluginCategoryEnum.tool)
+    })
+
+    expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledOnce()
   })
 })
 

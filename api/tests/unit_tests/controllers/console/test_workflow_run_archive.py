@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 from werkzeug.exceptions import Forbidden
 
@@ -11,7 +9,14 @@ from controllers.console.workflow_run_archive import (
     WorkflowRunArchiveDownloadsApi,
     WorkflowRunArchivesApi,
 )
-from models import TenantAccountRole
+from models import Account, TenantAccountRole
+
+
+def _account(role: TenantAccountRole) -> Account:
+    account = Account(name="Test User", email="user@example.com")
+    account.id = "account-1"
+    account.role = role
+    return account
 
 
 @pytest.mark.parametrize(
@@ -22,7 +27,7 @@ from models import TenantAccountRole
 def test_current_owner_or_admin_ids_rejects_non_manager(
     monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole, rbac_enabled: bool
 ) -> None:
-    current_user = SimpleNamespace(id="account-1", current_role=role)
+    current_user = _account(role)
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", rbac_enabled)
     monkeypatch.setattr(
         workflow_run_archive,
@@ -39,7 +44,7 @@ def test_current_owner_or_admin_ids_rejects_non_manager(
 def test_current_owner_or_admin_ids_returns_current_ids_for_manager(
     monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole, rbac_enabled: bool
 ) -> None:
-    current_user = SimpleNamespace(id="account-1", current_role=role)
+    current_user = _account(role)
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", rbac_enabled)
     monkeypatch.setattr(
         workflow_run_archive,
@@ -54,7 +59,7 @@ def test_current_owner_or_admin_ids_returns_current_ids_for_manager(
     ("method", "args"),
     [
         (WorkflowRunArchivesApi.get, ()),
-        (WorkflowRunArchiveDownloadsApi.post, ()),
+        (WorkflowRunArchiveDownloadsApi.post, (None,)),
         (WorkflowRunArchiveDownloadApi.get, ("download-1",)),
         (WorkflowRunArchiveDownloadFileApi.get, ("download-1",)),
     ],
@@ -91,7 +96,6 @@ def test_workflow_run_archive_endpoints_require_cloud_paid_plan(method) -> None:
 
     assert {
         "only_edition_cloud",
-        "cloud_edition_billing_enabled",
         "cloud_edition_billing_paid_plan_required",
     } <= decorator_names
     assert "rbac_permission_required" not in decorator_names

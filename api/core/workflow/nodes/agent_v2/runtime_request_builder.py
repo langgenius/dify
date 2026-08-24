@@ -47,6 +47,8 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.llm.model_access import resolve_model_context_window
+from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
@@ -63,9 +65,6 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
     WorkflowPreviousNodeOutputRef,
-)
-from models.agent_config_entities import (
-    effective_declared_outputs as _effective_declared_outputs,
 )
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import (
@@ -120,10 +119,6 @@ class VariablePoolReader(Protocol):
     def get_by_prefix(self, prefix: str, /) -> Mapping[str, object]: ...
 
 
-class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
-
-
 @dataclass(frozen=True, slots=True)
 class WorkflowAgentRuntimeBuildContext:
     dify_context: DifyRunContext
@@ -164,11 +159,9 @@ class WorkflowAgentRuntimeRequestBuilder:
     def __init__(
         self,
         *,
-        credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
         dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
-        self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
@@ -189,7 +182,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         workflow_context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
         workflow_job_prompt = workflow_task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK
         user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
-        credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
@@ -217,25 +209,31 @@ class WorkflowAgentRuntimeRequestBuilder:
         soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
+        context_window_tokens = resolve_model_context_window(
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+        )
+        model_plugin_id, model_provider = normalize_plugin_daemon_provider_identity(
+            ModelProviderID(agent_soul.model.model_provider),
+            agent_soul.model.plugin_id,
+        )
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    plugin_id=self._plugin_daemon_plugin_id(
-                        plugin_id=agent_soul.model.plugin_id,
-                        model_provider=agent_soul.model.model_provider,
-                    ),
-                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
+                    plugin_id=model_plugin_id,
+                    model_provider=model_provider,
                     model=agent_soul.model.model,
-                    credentials=self._normalize_credentials(credentials),
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
+                    context_window_tokens=context_window_tokens,
                 ),
                 # The execution-context layer is now the only public protocol
                 # carrier for Dify tenant/user/run identifiers. ``user_id`` and
                 # ``user_from`` must be forwarded here because downstream plugin-
-                # daemon provider/tool clients and knowledge-base layers read
-                # caller identity from this layer rather than from any parallel
-                # top-level request field.
+                # API model gateway, daemon tool clients, and knowledge-base
+                # layers read caller identity from this layer rather than from
+                # any parallel top-level request field.
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
@@ -304,20 +302,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.VALIDATION}:
             return "single_step"
         return "workflow_run"
-
-    @staticmethod
-    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
-        """Return the transport plugin id expected by plugin-daemon headers."""
-        if plugin_id.count("/") == 1:
-            return plugin_id.split(":", 1)[0].split("@", 1)[0]
-        if plugin_id:
-            return ModelProviderID(plugin_id).plugin_id
-        return ModelProviderID(model_provider).plugin_id
-
-    @staticmethod
-    def _plugin_daemon_provider_name(model_provider: str) -> str:
-        """Return the provider name expected by plugin-daemon dispatch payloads."""
-        return ModelProviderID(model_provider).provider_name
 
     @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:
@@ -526,15 +510,15 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
         """Build the structured-output layer config sent to Agent backend.
 
-        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
-        PRD-mandated defaults (text / files / json) at runtime so the backend
-        always receives a stable schema and the downstream Inspector + nodes
-        have consistent output names. The defaults are NOT persisted.
+        Plain-output jobs omit this layer. Structured jobs prepend the optional,
+        system-owned ``text`` field to the persisted custom declarations.
         """
-        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
-        properties: dict[str, Any] = {}
+        if not declared_outputs:
+            return None
+
+        properties: dict[str, Any] = {"text": {"type": "string"}}
         required: list[str] = []
-        for output in effective_outputs:
+        for output in declared_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -543,19 +527,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             schema["required"] = required
         return AgentBackendOutputConfig(
             json_schema=schema,
-            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(effective_outputs),
+            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(declared_outputs),
         )
-
-    @staticmethod
-    def effective_declared_outputs(
-        declared_outputs: Sequence[DeclaredOutputConfig],
-    ) -> Sequence[DeclaredOutputConfig]:
-        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
-
-        Kept as a static method on the builder so existing call sites
-        (``agent_node._run``, tests) don't need to change their import.
-        """
-        return _effective_declared_outputs(list(declared_outputs))
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
@@ -701,7 +674,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
                 "value.",
                 "If you are replying to the user in natural language and want them to open or download the produced "
-                "file, include the returned `download_url` in that reply instead of copying it into structured "
+                "file, include the returned `public_download_url` in that reply instead of copying it into structured "
                 "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]
@@ -727,16 +700,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         schema["properties"] = properties
         if required:
             schema["required"] = required
-
-    @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
-        normalized: dict[str, str | int | float | bool | None] = {}
-        for key, value in credentials.items():
-            if isinstance(value, str | int | float | bool) or value is None:
-                normalized[key] = value
-            else:
-                normalized[key] = str(value)
-        return normalized
 
 
 def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
@@ -836,7 +799,12 @@ def _knowledge_metadata_filtering_config(
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        conditions=cast(
+            Any,
+            metadata_filtering.conditions.model_dump(
+                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
+            ),
+        )
         if metadata_filtering.conditions is not None
         else None,
     )

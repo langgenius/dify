@@ -12,10 +12,12 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { DSLExportConfirmContent } from '@/app/components/workflow/dsl-export-confirm-modal'
 import dynamic from '@/next/dynamic'
 
@@ -95,13 +97,7 @@ const AppInfoModals = ({
   return (
     <>
       {activeModal === 'switch' && (
-        <SwitchAppModal
-          inAppDetail
-          show
-          appDetail={appDetail}
-          onClose={closeModal}
-          onSuccess={closeModal}
-        />
+        <SwitchAppModal inAppDetail show appDetail={appDetail} onClose={closeModal} />
       )}
       {activeModal === 'edit' && (
         <CreateAppModal
@@ -152,8 +148,8 @@ const AppInfoModals = ({
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {t(($) => $.deleteAppConfirmContent, { ns: 'app' })}
               </AlertDialogDescription>
-              <div className="mt-2">
-                <label className="mb-1 block system-sm-regular text-text-secondary">
+              <Field name="confirm-app-name" className="mt-2 gap-0">
+                <FieldLabel className="mb-1 block py-0 system-sm-regular text-text-secondary">
                   <Trans
                     i18nKey={($) => $.deleteAppConfirmInputLabel}
                     ns="app"
@@ -164,26 +160,28 @@ const AppInfoModals = ({
                       ),
                     }}
                   />
-                </label>
-                <div className="relative">
-                  <Input
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
                     type="text"
                     autoComplete="off"
                     spellCheck={false}
                     placeholder={t(($) => $.deleteAppConfirmInputPlaceholder, { ns: 'app' })}
                     value={confirmDeleteInput}
-                    onChange={(e) => setConfirmDeleteInput(e.target.value)}
-                    className="pr-20"
+                    onValueChange={setConfirmDeleteInput}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteInput(appDetail.name)}
-                    className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/6 px-2.5 py-1 system-xs-medium text-text-secondary hover:bg-black/10"
-                  >
-                    {t(($) => $['operation.fill'], { ns: 'common' })}
-                  </button>
-                </div>
-              </div>
+                  <InputGroupAddon align="inline-end" className="min-w-20 justify-end pe-1.75">
+                    <Button
+                      variant="tertiary"
+                      size="small"
+                      onClick={() => setConfirmDeleteInput(appDetail.name)}
+                      className="rounded-full px-2.5"
+                    >
+                      {t(($) => $['operation.fill'], { ns: 'common' })}
+                    </Button>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
             </div>
             <AlertDialogActions>
               <AlertDialogCancelButton type="button">

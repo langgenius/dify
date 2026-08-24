@@ -250,6 +250,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const isSelectionContextMenu = useStore((s) => s.contextMenuTarget?.type === 'selection')
+  const environmentVariables = useStore((s) => s.environmentVariables)
 
   // Access React Flow methods
   const workflowStore = useWorkflowStore()
@@ -265,6 +266,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
   const { createSnippetDialog, handleOpenCreateSnippet, isCreateSnippetDialogOpen } =
     useCreateSnippetFromSelection({
       edges,
+      environmentVariables,
       selectedNodes,
       onClose,
     })
@@ -396,7 +398,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
+      <ContextMenuContent className="w-[240px]" sideOffset={4}>
         {canCreateSnippet && (
           <>
             <ContextMenuGroup>

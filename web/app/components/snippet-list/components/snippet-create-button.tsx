@@ -29,16 +29,16 @@ const SnippetCreateButton = () => {
         <PopoverTrigger
           render={
             <Button disabled={isSubmitting}>
-              <span aria-hidden className="mr-0.5 i-ri-add-line size-4" />
+              <span aria-hidden className="i-ri-add-line size-4" />
               <span>{t(($) => $.create)}</span>
-              <span aria-hidden className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+              <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
             </Button>
           }
         />
         <PopoverContent
           placement="bottom-end"
           sideOffset={6}
-          popupClassName="w-[228px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
+          className="w-[228px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
         >
           <div className="px-2 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">
             {t(($) => $.createFrom)}

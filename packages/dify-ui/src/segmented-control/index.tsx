@@ -1,25 +1,33 @@
 'use client'
 
-import type { Toggle as BaseToggleNS } from '@base-ui/react/toggle'
-import type { ToggleGroup as BaseToggleGroupNS } from '@base-ui/react/toggle-group'
-import type * as React from 'react'
-import { Toggle as BaseToggle } from '@base-ui/react/toggle'
-import { ToggleGroup as BaseToggleGroup } from '@base-ui/react/toggle-group'
+import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
+import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
+import { Radio as BaseRadio } from '@base-ui/react/radio'
+import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
+import * as React from 'react'
 import { cn } from '../cn'
 
-type SegmentedControlProps<Value extends string = string> = Omit<
-  BaseToggleGroupNS.Props<Value>,
-  'className'
-> & {
-  className?: string
-}
+type SegmentedControlSelectionProps<Value> =
+  | {
+      value: Value
+      defaultValue?: never
+    }
+  | {
+      value?: never
+      defaultValue: Value
+    }
 
-function SegmentedControl<Value extends string = string>({
-  className,
-  ...props
-}: SegmentedControlProps<Value>) {
+type SegmentedControlProps<Value = string> = Omit<
+  BaseRadioGroupNS.Props<Value>,
+  'className' | 'defaultValue' | 'value'
+> &
+  SegmentedControlSelectionProps<Value> & {
+    className?: string
+  }
+
+function SegmentedControl<Value = string>({ className, ...props }: SegmentedControlProps<Value>) {
   return (
-    <BaseToggleGroup
+    <BaseRadioGroup<Value>
       className={cn(
         'inline-flex items-center gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5',
         className,
@@ -29,21 +37,25 @@ function SegmentedControl<Value extends string = string>({
   )
 }
 
-type SegmentedControlItemProps<Value extends string = string> = Omit<
-  BaseToggleNS.Props<Value>,
+type SegmentedControlItemProps<Value = string> = Omit<
+  BaseRadioNS.Root.Props<Value>,
   'className'
 > & {
   className?: string
 }
 
-function SegmentedControlItem<Value extends string = string>({
+function SegmentedControlItem<Value = string>({
   className,
+  nativeButton = true,
+  render = <button type="button" />,
   ...props
 }: SegmentedControlItemProps<Value>) {
   return (
-    <BaseToggle
+    <BaseRadio.Root<Value>
+      nativeButton={nativeButton}
+      render={render}
       className={cn(
-        'relative flex h-7 min-w-0 touch-manipulation items-center justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary transition-colors duration-150 hover:bg-state-base-hover hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled data-pressed:border-components-segmented-control-item-active-border data-pressed:bg-components-segmented-control-item-active-bg data-pressed:text-text-accent-light-mode-only data-pressed:shadow-xs data-pressed:shadow-shadow-shadow-3 motion-reduce:transition-none',
+        'relative flex h-7 min-w-0 touch-manipulation items-center justify-center gap-0.5 overflow-hidden rounded-lg border-[0.5px] border-transparent px-2 py-1 system-sm-medium whitespace-nowrap text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-checked:border-components-segmented-control-item-active-border data-checked:bg-components-segmented-control-item-active-bg data-checked:text-text-accent-light-mode-only data-checked:shadow-xs data-checked:shadow-shadow-shadow-3 data-disabled:cursor-not-allowed data-disabled:bg-transparent data-disabled:text-text-disabled data-disabled:shadow-none data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
         className,
       )}
       {...props}

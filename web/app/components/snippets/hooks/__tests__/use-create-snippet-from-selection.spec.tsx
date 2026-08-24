@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react'
-import type { Edge, Node } from '@/app/components/workflow/types'
+import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
+import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import type { SnippetCanvasData, SnippetInputField } from '@/models/snippet'
+import { toast } from '@langgenius/dify-ui/toast'
 import { act, renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -24,6 +26,10 @@ vi.mock('../use-create-snippet', () => ({
   }),
 }))
 
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { error: vi.fn() },
+}))
+
 type DialogProps = {
   selectedGraph?: SnippetCanvasData
   inputFields?: SnippetInputField[]
@@ -38,6 +44,19 @@ const createNode = (id: string, data: Record<string, unknown>): Node =>
     height: 100,
     data,
   }) as unknown as Node
+
+const llmEnvironmentVariable: EnvironmentVariable = {
+  id: 'model-env',
+  name: 'MODEL_NAME',
+  value: {
+    provider: 'new-provider',
+    name: 'new-model',
+    mode: 'chat',
+    completion_params: { temperature: 0.8 },
+  },
+  value_type: 'llm',
+  description: '',
+}
 
 describe('useCreateSnippetFromSelection', () => {
   beforeEach(() => {
@@ -55,6 +74,7 @@ describe('useCreateSnippetFromSelection', () => {
           '{{#rag.query#}}',
           '{{#source.result#}}',
         ].join(' '),
+        model: { provider: 'old-provider', name: 'old-model', mode: 'chat', completion_params: {} },
         model_selector: ['env', 'MODEL_NAME'],
       }),
     ]
@@ -64,6 +84,7 @@ describe('useCreateSnippetFromSelection', () => {
     const { result } = renderHook(() =>
       useCreateSnippetFromSelection({
         edges,
+        environmentVariables: [llmEnvironmentVariable],
         selectedNodes,
         onClose,
       }),
@@ -100,12 +121,6 @@ describe('useCreateSnippetFromSelection', () => {
         type: PipelineInputVarType.textInput,
         required: true,
       },
-      {
-        label: 'MODEL_NAME',
-        variable: 'MODEL_NAME',
-        type: PipelineInputVarType.textInput,
-        required: true,
-      },
     ])
     const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as
       | Record<string, unknown>
@@ -120,8 +135,76 @@ describe('useCreateSnippetFromSelection', () => {
         `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.result#}}`,
       ].join(' '),
     )
-    expect(nodeData?.model_selector).toEqual([SNIPPET_INPUT_FIELD_NODE_ID, 'MODEL_NAME'])
+    expect(nodeData?.model_selector).toBeUndefined()
+    expect(nodeData?.model).toEqual({
+      provider: 'new-provider',
+      name: 'new-model',
+      mode: 'chat',
+      completion_params: { temperature: 0.8 },
+    })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should preserve legacy non-environment model selectors', () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        model: {
+          provider: 'static-provider',
+          name: 'static-model',
+          mode: 'chat',
+          completion_params: {},
+        },
+        model_selector: ['start', 'MODEL_NAME'],
+      }),
+    ]
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose: vi.fn(),
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    const dialogProps = (result.current.createSnippetDialog as ReactElement<DialogProps>).props
+    expect(dialogProps.inputFields).toEqual([])
+    expect((dialogProps.selectedGraph?.nodes[0]?.data as LLMNodeType).model_selector).toEqual([
+      'start',
+      'MODEL_NAME',
+    ])
+  })
+
+  it('should reject an unresolved LLM environment model when creating a snippet', () => {
+    const selectedNodes = [
+      createNode('llm', {
+        type: BlockEnum.LLM,
+        model: {
+          provider: 'stale-provider',
+          name: 'stale-model',
+          mode: 'chat',
+          completion_params: {},
+        },
+        model_selector: [],
+      }),
+    ]
+    const onClose = vi.fn()
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        environmentVariables: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
+
+    act(() => result.current.handleOpenCreateSnippet())
+
+    expect(toast.error).toHaveBeenCalled()
+    expect(mockHandleOpenCreateSnippetDialog).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should convert system variables used by if-else and variable aggregator nodes', () => {
@@ -169,6 +252,7 @@ describe('useCreateSnippetFromSelection', () => {
     const { result } = renderHook(() =>
       useCreateSnippetFromSelection({
         edges: [],
+        environmentVariables: [],
         selectedNodes,
         onClose,
       }),
@@ -249,6 +333,7 @@ describe('useCreateSnippetFromSelection', () => {
     const { result } = renderHook(() =>
       useCreateSnippetFromSelection({
         edges: [],
+        environmentVariables: [],
         selectedNodes,
         onClose,
       }),

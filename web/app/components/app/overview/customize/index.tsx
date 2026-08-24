@@ -3,14 +3,14 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Tag from '@/app/components/base/tag'
 import { useDocLink } from '@/context/i18n'
 import { AppModeEnum } from '@/types/app'
 
@@ -74,16 +74,22 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <DialogDescription className="mt-2 shrink-0 body-md-regular text-text-secondary">
           {t(($) => $[`${prefixCustomize}.explanation`], { ns: 'appOverview' })}
         </DialogDescription>
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
-            <Tag
-              bordered={true}
-              hideBg={true}
-              className="border-text-accent-secondary text-text-accent-secondary uppercase"
-            >
+            <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 1
-            </Tag>
+            </span>
             <p className="my-2 system-sm-medium text-text-secondary">
               {t(($) => $[`${prefixCustomize}.way1.name`], { ns: 'appOverview' })}
             </p>
@@ -109,7 +115,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                     />
                   }
                 >
-                  <GithubIcon className="mr-2 text-text-secondary" />
+                  <GithubIcon className="text-text-secondary" />
                   {t(($) => $[`${prefixCustomize}.way1.step1Operation`], { ns: 'appOverview' })}
                 </Button>
               </div>
@@ -136,7 +142,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
                     />
                   }
                 >
-                  <div className="mr-1.5 border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
+                  <div className="border-t-0 border-r-[7px] border-b-12 border-l-[7px] border-solid border-text-primary border-t-transparent border-r-transparent border-l-transparent"></div>
                   <span>
                     {t(($) => $[`${prefixCustomize}.way1.step2Operation`], { ns: 'appOverview' })}
                   </span>
@@ -164,13 +170,9 @@ const CustomizeModal: FC<IShareLinkProps> = ({
             </div>
           </div>
           <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
-            <Tag
-              bordered={true}
-              hideBg={true}
-              className="border-text-accent-secondary text-text-accent-secondary uppercase"
-            >
+            <span className="inline-flex shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
               {t(($) => $[`${prefixCustomize}.way`], { ns: 'appOverview' })} 2
-            </Tag>
+            </span>
             <p className="my-2 system-sm-medium text-text-secondary">
               {t(($) => $[`${prefixCustomize}.way2.name`], { ns: 'appOverview' })}
             </p>
@@ -193,7 +195,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               </span>
               <span
                 aria-hidden="true"
-                className="ml-1 i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary"
+                className="i-heroicons-arrow-top-right-on-square size-4 shrink-0 text-text-secondary"
               />
             </Button>
           </div>

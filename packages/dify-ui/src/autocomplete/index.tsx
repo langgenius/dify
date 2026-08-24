@@ -1,12 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
-import { textControlCompoundFocusClassName } from '../form-control-shared'
+import { textControlCompoundInputFocusClassName } from '../form-control-shared'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
@@ -72,18 +72,17 @@ const autocompleteListClassName = [
 ]
 
 const autocompleteItemClassName = [
-  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
+  'mx-1 flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
-  'motion-reduce:transition-none',
 ]
 
 const autocompleteInputGroupVariants = cva(
   [
     'group/autocomplete flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundFocusClassName,
+    textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
     'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
@@ -147,13 +146,11 @@ type AutocompleteInputProps = Omit<BaseAutocomplete.Input.Props, 'className' | '
 function AutocompleteInput({
   className,
   size = 'medium',
-  type = 'text',
   autoComplete = 'off',
   ...props
 }: AutocompleteInputProps) {
   return (
     <BaseAutocomplete.Input
-      type={type}
       autoComplete={autoComplete}
       className={cn(autocompleteInputVariants({ size }), className)}
       {...props}
@@ -253,56 +250,46 @@ function AutocompleteIcon({ className, children, ...props }: AutocompleteIconPro
   )
 }
 
-type AutocompleteContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+const AutocompletePortal = BaseAutocomplete.Portal
+type AutocompletePortalProps = BaseAutocomplete.Portal.Props
+
+type AutocompletePositionerProps = Omit<
+  BaseAutocomplete.Positioner.Props,
+  'className' | 'side' | 'align'
+> & {
   className?: string
-  popupClassName?: string
-  portalProps?: Omit<BaseAutocomplete.Portal.Props, 'children'>
-  positionerProps?: Omit<
-    BaseAutocomplete.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<BaseAutocomplete.Popup.Props, 'children' | 'className'>
+  placement?: Placement
 }
 
-function AutocompleteContent({
-  children,
+function AutocompletePositioner({
+  className,
   placement = 'bottom-start',
   sideOffset = 4,
-  alignOffset = 0,
-  className,
-  popupClassName,
-  portalProps,
-  positionerProps,
-  popupProps,
-}: AutocompleteContentProps) {
+  ...props
+}: AutocompletePositionerProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
-    <BaseAutocomplete.Portal {...portalProps}>
-      <BaseAutocomplete.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
-      >
-        <BaseAutocomplete.Popup
-          className={cn(
-            autocompletePopupClassName,
-            floatingPopupAnimationClassName,
-            popupClassName,
-          )}
-          {...popupProps}
-        >
-          {children}
-        </BaseAutocomplete.Popup>
-      </BaseAutocomplete.Positioner>
-    </BaseAutocomplete.Portal>
+    <BaseAutocomplete.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn('z-50 outline-hidden', className)}
+      {...props}
+    />
+  )
+}
+
+type AutocompletePopupProps = Omit<BaseAutocomplete.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function AutocompletePopup({ className, ...props }: AutocompletePopupProps) {
+  return (
+    <BaseAutocomplete.Popup
+      className={cn(autocompletePopupClassName, floatingPopupAnimationClassName, className)}
+      {...props}
+    />
   )
 }
 
@@ -408,7 +395,6 @@ export {
   Autocomplete,
   AutocompleteClear,
   AutocompleteCollection,
-  AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
   AutocompleteGroupLabel,
@@ -419,6 +405,9 @@ export {
   AutocompleteItemIndicator,
   AutocompleteItemText,
   AutocompleteList,
+  AutocompletePopup,
+  AutocompletePortal,
+  AutocompletePositioner,
   AutocompleteRow,
   AutocompleteSeparator,
   AutocompleteStatus,
@@ -432,7 +421,6 @@ export type {
   AutocompleteChangeEventDetails,
   AutocompleteClearProps,
   AutocompleteCollectionProps,
-  AutocompleteContentProps,
   AutocompleteEmptyProps,
   AutocompleteFlatProps,
   AutocompleteGroupedProps,
@@ -445,6 +433,9 @@ export type {
   AutocompleteItemProps,
   AutocompleteItemTextProps,
   AutocompleteListProps,
+  AutocompletePopupProps,
+  AutocompletePortalProps,
+  AutocompletePositionerProps,
   AutocompleteProps,
   AutocompleteRowProps,
   AutocompleteSeparatorProps,

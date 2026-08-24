@@ -5,16 +5,19 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
 const mockSetConversationVariables = vi.fn()
 const mockSetEnvironmentVariables = vi.fn()
+const mockSetEnvSecrets = vi.fn()
 const mockHandleUpdateWorkflowCanvas = vi.hoisted(() => vi.fn())
 const mockFetchWorkflowDraft = vi.hoisted(() => vi.fn())
 const mockOnVarsAndFeaturesUpdate = vi.hoisted(() => vi.fn())
 const mockOnWorkflowUpdate = vi.hoisted(() => vi.fn())
 const mockOnSyncRequest = vi.hoisted(() => vi.fn())
+const mockGetIsLeader = vi.hoisted(() => vi.fn(() => true))
 const mockOnGraphReloadRequired = vi.hoisted(() => vi.fn())
 const mockOnGraphReadyChange = vi.hoisted(() => vi.fn())
 const mockRefreshGraphSynchronously = vi.hoisted(() => vi.fn())
@@ -22,6 +25,7 @@ const mockReplaceGraphFromReactFlow = vi.hoisted(() => vi.fn())
 const mockCanPersistLocalGraph = vi.hoisted(() => vi.fn())
 const mockIsGraphReloadCurrent = vi.hoisted(() => vi.fn())
 const mockRetryGraphReload = vi.hoisted(() => vi.fn())
+const mockUseCollaboration = vi.hoisted(() => vi.fn())
 
 const hookFns = {
   doSyncWorkflowDraft: vi.fn(),
@@ -115,8 +119,10 @@ vi.mock('@/app/components/workflow/store', () => ({
     }),
   useWorkflowStore: () => ({
     getState: () => ({
+      envSecrets: {},
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
+      setEnvSecrets: mockSetEnvSecrets,
     }),
   }),
 }))
@@ -131,14 +137,10 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('@/app/components/workflow/collaboration/hooks/use-collaboration', () => ({
-  useCollaboration: () => ({
-    startCursorTracking: collaborationRuntime.startCursorTracking,
-    stopCursorTracking: collaborationRuntime.stopCursorTracking,
-    onlineUsers: collaborationRuntime.onlineUsers,
-    cursors: collaborationRuntime.cursors,
-    isConnected: collaborationRuntime.isConnected,
-    isEnabled: collaborationRuntime.isEnabled,
-  }),
+  useCollaboration: (...args: unknown[]) => {
+    mockUseCollaboration(...args)
+    return collaborationRuntime
+  },
 }))
 
 vi.mock('@/app/components/workflow/hooks/use-workflow-update', () => ({
@@ -185,6 +187,7 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
     canPersistLocalGraph: mockCanPersistLocalGraph,
     isGraphReloadCurrent: mockIsGraphReloadCurrent,
     retryGraphReload: mockRetryGraphReload,
+    getIsLeader: mockGetIsLeader,
   },
 }))
 
@@ -235,8 +238,8 @@ vi.mock('@/app/components/workflow', () => ({
                 {
                   id: 'env-1',
                   name: 'env-1',
-                  value: '',
-                  value_type: 'string',
+                  value: '********************',
+                  value_type: 'secret',
                   description: '',
                 },
               ],
@@ -437,6 +440,8 @@ describe('WorkflowMain', () => {
     collaborationListeners.graphReloadRequired = null
     collaborationListeners.graphReadyChange = null
     mockFetchWorkflowDraft.mockReset()
+    hookFns.doSyncWorkflowDraft.mockReset()
+    mockGetIsLeader.mockReturnValue(true)
     mockCanPersistLocalGraph.mockReturnValue(true)
     mockIsGraphReloadCurrent.mockReturnValue(true)
     mockReplaceGraphFromReactFlow.mockReturnValue(true)
@@ -489,6 +494,17 @@ describe('WorkflowMain', () => {
     ])
     expect(mockSetFeatures).not.toHaveBeenCalled()
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+  })
+
+  it('normalizes secret masks from collaboration refreshes', () => {
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /update-workflow-data/i }))
+
+    expect(mockSetEnvSecrets).toHaveBeenCalledWith({ 'env-1': '********************' })
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'env-1', value: '[__HIDDEN__]' }),
+    ])
   })
 
   it('should ignore empty workflow data updates', () => {
@@ -572,6 +588,16 @@ describe('WorkflowMain', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  it('disables collaboration for view-only apps', () => {
+    useAppStore.setState({
+      appDetail: { permission_keys: [AppACLPermission.ViewLayout] } as never,
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    expect(mockUseCollaboration).toHaveBeenCalledWith('app-1', false, expect.any(Object))
+  })
+
   it('subscribes collaboration listeners and handles sync/workflow update callbacks', async () => {
     collaborationRuntime.isEnabled = true
     mockFetchWorkflowDraft.mockResolvedValue({
@@ -620,6 +646,272 @@ describe('WorkflowMain', () => {
         viewport: { x: 3, y: 4, zoom: 1.2 },
       })
     })
+  })
+
+  it('syncs the leader only after applying a follower environment update', async () => {
+    collaborationRuntime.isEnabled = true
+    mockFetchWorkflowDraft.mockResolvedValue({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [
+        {
+          id: 'env-model',
+          name: 'shared_model',
+          value_type: 'llm',
+          value: { provider: 'openai', name: 'gpt-4o', mode: 'chat' },
+          description: '',
+        },
+      ],
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    hookFns.doSyncWorkflowDraft.mockClear()
+
+    await collaborationListeners.varsAndFeaturesUpdate?.({
+      data: { syncWorkflowDraft: true },
+    })
+
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'env-model' }),
+    ])
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    expect(mockSetEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
+      hookFns.doSyncWorkflowDraft.mock.invocationCallOrder[0]!,
+    )
+  })
+
+  it('ignores an older environment refresh that resolves after the latest update', async () => {
+    collaborationRuntime.isEnabled = true
+    let resolveFirst!: (value: Record<string, unknown>) => void
+    let resolveSecond!: (value: Record<string, unknown>) => void
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSecond = resolve
+        }),
+      )
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
+      data: { syncWorkflowDraft: true },
+    })
+    const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
+
+    resolveSecond({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [
+        {
+          id: 'env-model',
+          name: 'shared_model',
+          value_type: 'llm',
+          value: { provider: 'openai', name: 'gpt-latest', mode: 'chat' },
+          description: '',
+        },
+      ],
+    })
+    await secondUpdate
+
+    expect(mockSetEnvironmentVariables).toHaveBeenLastCalledWith([
+      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-latest' }) }),
+    ])
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+
+    resolveFirst({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [
+        {
+          id: 'env-model',
+          name: 'shared_model',
+          value_type: 'llm',
+          value: { provider: 'openai', name: 'gpt-stale', mode: 'chat' },
+          description: '',
+        },
+      ],
+    })
+    await firstUpdate
+
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledTimes(1)
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies the latest successful refresh when a newer refresh fails', async () => {
+    collaborationRuntime.isEnabled = true
+    let resolveFirst!: (value: Record<string, unknown>) => void
+    let rejectSecond!: (reason: Error) => void
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+          rejectSecond = reject
+        }),
+      )
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
+      data: { syncWorkflowDraft: true },
+    })
+    const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
+
+    resolveFirst({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [
+        {
+          id: 'env-model',
+          name: 'shared_model',
+          value_type: 'llm',
+          value: { provider: 'openai', name: 'gpt-recovered', mode: 'chat' },
+          description: '',
+        },
+      ],
+    })
+    await firstUpdate
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+
+    rejectSecond(new Error('refresh failed'))
+    await secondUpdate
+
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-recovered' }) }),
+    ])
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+  })
+
+  it('applies a slow successful refresh after all newer refresh attempts fail', async () => {
+    collaborationRuntime.isEnabled = true
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let resolveFirst!: (value: Record<string, unknown>) => void
+    mockFetchWorkflowDraft
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve
+        }),
+      )
+      .mockRejectedValueOnce(new Error('refresh failed'))
+      .mockRejectedValueOnce(new Error('retry failed'))
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    const firstUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
+      data: { syncWorkflowDraft: true },
+    })
+    const secondUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
+
+    await secondUpdate
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+
+    resolveFirst({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [
+        {
+          id: 'env-model',
+          name: 'shared_model',
+          value_type: 'llm',
+          value: { provider: 'openai', name: 'gpt-slow-success', mode: 'chat' },
+          description: '',
+        },
+      ],
+    })
+    await firstUpdate
+
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-slow-success' }) }),
+    ])
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
+
+  it('applies a slow retry after all newer refresh attempts fail', async () => {
+    collaborationRuntime.isEnabled = true
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockFetchWorkflowDraft.mockResolvedValueOnce({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [],
+    })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+    await collaborationListeners.varsAndFeaturesUpdate?.({})
+    mockFetchWorkflowDraft.mockReset()
+    mockSetEnvironmentVariables.mockClear()
+    hookFns.doSyncWorkflowDraft.mockClear()
+
+    let resolveSlowRetry!: (value: Record<string, unknown>) => void
+    mockFetchWorkflowDraft
+      .mockRejectedValueOnce(new Error('older refresh failed'))
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveSlowRetry = resolve
+        }),
+      )
+      .mockRejectedValueOnce(new Error('newer refresh failed'))
+      .mockRejectedValueOnce(new Error('newer retry failed'))
+
+    const olderUpdate = collaborationListeners.varsAndFeaturesUpdate?.({
+      data: { syncWorkflowDraft: true },
+    })
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledTimes(2))
+    const newerUpdate = collaborationListeners.varsAndFeaturesUpdate?.({})
+
+    await newerUpdate
+    expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
+
+    resolveSlowRetry({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [
+        {
+          id: 'env-model',
+          name: 'shared_model',
+          value_type: 'llm',
+          value: { provider: 'openai', name: 'gpt-slow-retry', mode: 'chat' },
+          description: '',
+        },
+      ],
+    })
+    await olderUpdate
+
+    expect(mockSetEnvironmentVariables).toHaveBeenCalledWith([
+      expect.objectContaining({ value: expect.objectContaining({ name: 'gpt-slow-retry' }) }),
+    ])
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
+
+  it('retries a pending follower sync request after the first leader sync fails', async () => {
+    collaborationRuntime.isEnabled = true
+    mockFetchWorkflowDraft.mockResolvedValue({
+      features: {},
+      conversation_variables: [],
+      environment_variables: [],
+    })
+    hookFns.doSyncWorkflowDraft
+      .mockImplementationOnce(async (_notRefresh, callback) => {
+        callback?.onError?.()
+      })
+      .mockImplementationOnce(async (_notRefresh, callback) => {
+        callback?.onSuccess?.()
+      })
+
+    render(<WorkflowMain nodes={[]} edges={[]} viewport={{ x: 0, y: 0, zoom: 1 }} />)
+
+    await collaborationListeners.varsAndFeaturesUpdate?.({
+      data: { syncWorkflowDraft: true },
+    })
+    await collaborationListeners.varsAndFeaturesUpdate?.({})
+
+    expect(hookFns.doSyncWorkflowDraft).toHaveBeenCalledTimes(2)
   })
 
   it('reloads the HTTP draft before trusting a reconnected leader document', async () => {

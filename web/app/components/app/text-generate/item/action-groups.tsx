@@ -3,22 +3,19 @@ import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
-import {
-  RiBookmark3Line,
-  RiClipboardLine,
-  RiFileList3Line,
-  RiResetLeftLine,
-  RiSparklingLine,
-  RiThumbDownLine,
-  RiThumbUpLine,
-} from '@remixicon/react'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
 import { getCopyContent, MAX_GENERATION_DEPTH } from './utils'
+
+const accentPressedClassName =
+  'data-pressed:bg-state-accent-active data-pressed:text-text-accent data-pressed:hover:bg-state-accent-active-alt'
+const destructivePressedClassName =
+  'data-pressed:bg-state-destructive-hover data-pressed:text-text-destructive data-pressed:hover:bg-state-destructive-hover data-pressed:hover:text-text-destructive'
 
 type GenerationActionGroupsProps = {
   appSourceType: AppSourceType
@@ -26,6 +23,7 @@ type GenerationActionGroupsProps = {
   currentTab: string
   depth: number
   feedback?: FeedbackType
+  hideLogAction?: boolean
   isError: boolean
   isInWebApp: boolean
   isResponding?: boolean
@@ -49,6 +47,7 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
   currentTab,
   depth,
   feedback,
+  hideLogAction,
   isError,
   isInWebApp,
   isResponding,
@@ -71,37 +70,35 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
 
   return (
     <>
-      {!isInWebApp && appSourceType !== AppSourceTypeEnum.installedApp && !isResponding && (
-        <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
-          <ActionButton
-            aria-label={t(($) => $['operation.log'], { ns: 'common' })}
-            disabled={isError || !messageId}
-            title={t(($) => $['operation.log'], { ns: 'common' })}
-            onClick={onOpenLogModal}
-          >
-            <RiFileList3Line className="size-4" />
-          </ActionButton>
-        </div>
-      )}
+      {!hideLogAction &&
+        !isInWebApp &&
+        appSourceType !== AppSourceTypeEnum.installedApp &&
+        !isResponding && (
+          <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
+            <IconButton
+              aria-label={t(($) => $['operation.log'], { ns: 'common' })}
+              disabled={isError || !messageId}
+              title={t(($) => $['operation.log'], { ns: 'common' })}
+              onClick={onOpenLogModal}
+            >
+              <span aria-hidden="true" className="i-ri-file-list-3-line size-4" />
+            </IconButton>
+          </div>
+        )}
       <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
         {moreLikeThis && !isTryApp && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
-            state={
-              depth === MAX_GENERATION_DEPTH
-                ? ActionButtonState.Disabled
-                : ActionButtonState.Default
-            }
             disabled={depth === MAX_GENERATION_DEPTH}
             title={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
             onClick={onMoreLikeThis}
           >
-            <RiSparklingLine className="size-4" />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-sparkling-line size-4" />
+          </IconButton>
         )}
         {isShowTextToSpeech && !isTryApp && <NewAudioButton id={messageId!} voice={voice} />}
         {showCopyAction && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
             disabled={isError || !messageId}
             title={t(($) => $['operation.copy'], { ns: 'common' })}
@@ -112,20 +109,20 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
             }}
           >
-            <RiClipboardLine className="size-4" />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
+          </IconButton>
         )}
         {isInWebApp && isError && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
             title={t(($) => $['generation.batchFailed.retry'], { ns: 'share' })}
             onClick={onRetry}
           >
-            <RiResetLeftLine className="size-4" />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-reset-left-line size-4" />
+          </IconButton>
         )}
         {isInWebApp && !isWorkflow && !isTryApp && (
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.save'], { ns: 'common' })}
             disabled={isError || !messageId}
             title={t(($) => $['operation.save'], { ns: 'common' })}
@@ -133,49 +130,71 @@ const GenerationActionGroups: FC<GenerationActionGroupsProps> = ({
               onSave?.(messageId as string)
             }}
           >
-            <RiBookmark3Line className="size-4" />
-          </ActionButton>
+            <span aria-hidden="true" className="i-ri-bookmark-3-line size-4" />
+          </IconButton>
         )}
       </div>
       {(supportFeedback || isInWebApp) && !isWorkflow && !isTryApp && !isError && messageId && (
         <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
           {!feedback?.rating && (
             <>
-              <ActionButton
-                aria-label={t(($) => $['operation.agree'], { ns: 'appDebug' })}
-                title={t(($) => $['operation.agree'], { ns: 'appDebug' })}
-                onClick={() => onFeedback?.({ rating: 'like' })}
-              >
-                <RiThumbUpLine className="size-4" />
-              </ActionButton>
-              <ActionButton
-                aria-label={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
-                title={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
-                onClick={() => onFeedback?.({ rating: 'dislike' })}
-              >
-                <RiThumbDownLine className="size-4" />
-              </ActionButton>
+              <Toggle
+                className={accentPressedClassName}
+                pressed={false}
+                onPressedChange={(pressed) => pressed && onFeedback?.({ rating: 'like' })}
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.agree'], { ns: 'appDebug' })}
+                    title={t(($) => $['operation.agree'], { ns: 'appDebug' })}
+                  >
+                    <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                  </IconButton>
+                }
+              />
+              <Toggle
+                className={destructivePressedClassName}
+                pressed={false}
+                onPressedChange={(pressed) => pressed && onFeedback?.({ rating: 'dislike' })}
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
+                    title={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
+                  >
+                    <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                  </IconButton>
+                }
+              />
             </>
           )}
           {feedback?.rating === 'like' && (
-            <ActionButton
-              aria-label={t(($) => $['operation.cancelAgree'], { ns: 'appDebug' })}
-              state={ActionButtonState.Active}
-              title={t(($) => $['operation.cancelAgree'], { ns: 'appDebug' })}
-              onClick={() => onFeedback?.({ rating: null })}
-            >
-              <RiThumbUpLine className="size-4" />
-            </ActionButton>
+            <Toggle
+              className={accentPressedClassName}
+              pressed
+              onPressedChange={(pressed) => !pressed && onFeedback?.({ rating: null })}
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.agree'], { ns: 'appDebug' })}
+                  title={t(($) => $['operation.cancelAgree'], { ns: 'appDebug' })}
+                >
+                  <span aria-hidden="true" className="i-ri-thumb-up-line size-4" />
+                </IconButton>
+              }
+            />
           )}
           {feedback?.rating === 'dislike' && (
-            <ActionButton
-              aria-label={t(($) => $['operation.cancelDisagree'], { ns: 'appDebug' })}
-              state={ActionButtonState.Destructive}
-              title={t(($) => $['operation.cancelDisagree'], { ns: 'appDebug' })}
-              onClick={() => onFeedback?.({ rating: null })}
-            >
-              <RiThumbDownLine className="size-4" />
-            </ActionButton>
+            <Toggle
+              className={destructivePressedClassName}
+              pressed
+              onPressedChange={(pressed) => !pressed && onFeedback?.({ rating: null })}
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.disagree'], { ns: 'appDebug' })}
+                  title={t(($) => $['operation.cancelDisagree'], { ns: 'appDebug' })}
+                >
+                  <span aria-hidden="true" className="i-ri-thumb-down-line size-4" />
+                </IconButton>
+              }
+            />
           )}
         </div>
       )}

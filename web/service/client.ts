@@ -161,6 +161,64 @@ function invalidateQueryKeys(client: QueryClient, queryKeys: QueryKey[]) {
   return Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })))
 }
 
+function invalidateEnvironmentApiKeyQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+) {
+  const environmentParams = {
+    app_id: params.app_id,
+    environment_id: params.environment_id,
+  }
+
+  return invalidateQueryKeys(client, [
+    query.enterprise.appDeploy.accessService.listEnvironmentApiKeys.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+    query.enterprise.appDeploy.accessService.getEnvironmentApi.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+  ])
+}
+
+function invalidateWorkflowDeploymentQueries(
+  query: ConsoleQueryUtils,
+  client: QueryClient,
+  params: { app_id: string; environment_id: string },
+  { appEnvironments }: { appEnvironments: boolean },
+) {
+  const environmentParams = {
+    app_id: params.app_id,
+    environment_id: params.environment_id,
+  }
+  const queryKeys: QueryKey[] = [
+    query.enterprise.appDeploy.deploymentService.listEnvironmentDeployments.queryOptions({
+      input: {
+        params: {
+          app_id: params.app_id,
+        },
+      },
+    }).queryKey,
+    query.enterprise.appDeploy.deploymentService.getEnvironmentDeployment.queryOptions({
+      input: { params: environmentParams },
+    }).queryKey,
+  ]
+
+  if (appEnvironments) {
+    queryKeys.push(
+      query.enterprise.appDeploy.deploymentService.listAppEnvironments.queryOptions({
+        input: {
+          params: {
+            app_id: params.app_id,
+          },
+        },
+      }).queryKey,
+    )
+  }
+
+  return invalidateQueryKeys(client, queryKeys)
+}
+
 function appInstanceQueryKey(query: ConsoleQueryUtils, appInstanceId: string) {
   return query.enterprise.appInstanceService.getAppInstance.key({
     type: 'query',
@@ -382,8 +440,178 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
   {
     path: ['console'],
     experimental_defaults: {
+      account: {
+        education: {
+          get: {
+            queryOptions: {
+              retry: false,
+            },
+          },
+          post: {
+            mutationOptions: {
+              onSuccess: (data, _variables, _onMutateResult, context) => {
+                if (data.message !== 'success') return
+
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.education.get.key(),
+                })
+              },
+            },
+          },
+        },
+        timezone: {
+          post: {
+            mutationOptions: {
+              onSuccess: async (_data, _variables, _onMutateResult, context) => {
+                await context.client.invalidateQueries({
+                  queryKey: consoleQuery.account.profile.get.key(),
+                })
+              },
+            },
+          },
+        },
+      },
       apps: {
+        post: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) => {
+              void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+              void context.client.invalidateQueries({
+                queryKey: consoleQuery.apps.starred.get.key(),
+              })
+              void context.client.invalidateQueries({
+                queryKey: consoleQuery.apps.recent.get.key(),
+              })
+            },
+          },
+        },
+        imports: {
+          post: {
+            mutationOptions: {
+              onSuccess: (data, _variables, _onMutateResult, context) => {
+                if (data.status !== 'completed' && data.status !== 'completed-with-warnings') return
+
+                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.starred.get.key(),
+                })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.recent.get.key(),
+                })
+              },
+            },
+          },
+          byImportId: {
+            confirm: {
+              post: {
+                mutationOptions: {
+                  onSuccess: (data, _variables, _onMutateResult, context) => {
+                    if (data.status !== 'completed' && data.status !== 'completed-with-warnings')
+                      return
+
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.get.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.starred.get.key(),
+                    })
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.recent.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
+        },
         byAppId: {
+          delete: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _onMutateResult, context) =>
+                Promise.all([
+                  context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  }),
+                ]),
+            },
+          },
+          put: {
+            mutationOptions: {
+              onSuccess: (data, variables, _onMutateResult, context) => {
+                context.client.setQueryData(
+                  consoleQuery.apps.byAppId.get.queryKey({
+                    input: { params: variables.params },
+                  }),
+                  data,
+                )
+                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.starred.get.key(),
+                })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.recent.get.key(),
+                })
+              },
+            },
+          },
+          convertToWorkflow: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  })
+                },
+              },
+            },
+          },
+          copy: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  })
+                },
+              },
+            },
+          },
+          star: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) =>
+                  Promise.all([
+                    context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.starred.get.key(),
+                    }),
+                  ]),
+              },
+            },
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) =>
+                  Promise.all([
+                    context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.starred.get.key(),
+                    }),
+                  ]),
+              },
+            },
+          },
           workflows: {
             draft: {
               nodes: {
@@ -464,6 +692,58 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                       },
                     },
                   },
+                },
+              },
+            },
+          },
+        },
+        byResourceId: {
+          apiKeys: {
+            post: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+                      input: { params: { resource_id: variables.params.resource_id } },
+                    }),
+                  })
+                },
+              },
+            },
+            byApiKeyId: {
+              delete: {
+                mutationOptions: {
+                  onSuccess: (_data, variables, _onMutateResult, context) => {
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.byResourceId.apiKeys.get.queryKey({
+                        input: { params: { resource_id: variables.params.resource_id } },
+                      }),
+                    })
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      datasets: {
+        apiKeys: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.datasets.apiKeys.get.key(),
+                })
+              },
+            },
+          },
+          byApiKeyId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: (_data, _variables, _onMutateResult, context) => {
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.apiKeys.get.key(),
+                  })
                 },
               },
             },
@@ -782,6 +1062,15 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.byAgentId.key({
+                    input: {
+                      params: {
+                        agent_id: variables.params.agent_id,
+                      },
+                    },
+                  }),
+                })
                 context.client.setQueriesData(
                   {
                     queryKey: consoleQuery.agent.get.key({ type: 'query' }),
@@ -904,12 +1193,29 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   (oldTags: Tag[] | undefined) =>
                     oldTags?.map((tag) => (tag.id === variables.params.tag_id ? updatedTag : tag)),
                 )
+
+                if (updatedTag.type !== 'app') return
+
+                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.starred.get.key(),
+                })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.recent.get.key(),
+                })
               },
             },
           },
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _onMutateResult, context) => {
+                const deletedTag = context.client
+                  .getQueriesData<Tag[]>({
+                    queryKey: consoleQuery.tags.get.key({ type: 'query' }),
+                  })
+                  .flatMap(([, tags]) => tags ?? [])
+                  .find((tag) => tag.id === variables.params.tag_id)
+
                 context.client.setQueriesData(
                   {
                     queryKey: consoleQuery.tags.get.key({ type: 'query' }),
@@ -917,20 +1223,96 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   (oldTags: Tag[] | undefined) =>
                     oldTags?.filter((tag) => tag.id !== variables.params.tag_id),
                 )
+
+                if (deletedTag?.type !== 'app') return
+
+                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.starred.get.key(),
+                })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.recent.get.key(),
+                })
               },
             },
           },
         },
       },
       enterprise: {
+        appDeploy: {
+          accessService: {
+            createEnvironmentApiKey: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentApiKeyQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                  )
+                },
+              },
+            },
+            deleteEnvironmentApiKey: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateEnvironmentApiKeyQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                  )
+                },
+              },
+            },
+          },
+          deploymentService: {
+            deployWorkflow: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateWorkflowDeploymentQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { appEnvironments: false },
+                  )
+                },
+              },
+            },
+            undeployWorkflow: {
+              mutationOptions: {
+                onSuccess: (_data, variables, _result, context) => {
+                  return invalidateWorkflowDeploymentQueries(
+                    consoleQuery,
+                    context.client,
+                    variables.params,
+                    { appEnvironments: true },
+                  )
+                },
+              },
+            },
+          },
+        },
         webAppAuth: {
           updateWebAppWhitelistSubjects: {
             mutationOptions: {
               onSuccess: (_data, _variables, _result, context) => {
-                return invalidateQueryKeys(context.client, [
-                  consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
-                  consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
-                  consoleQuery.agent.byAgentId.get.key(),
+                void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.starred.get.key(),
+                })
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.apps.recent.get.key(),
+                })
+
+                return Promise.all([
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+                  }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+                  }),
+                  context.client.invalidateQueries({
+                    queryKey: consoleQuery.agent.byAgentId.get.key(),
+                  }),
                 ])
               },
             },

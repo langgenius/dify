@@ -76,7 +76,7 @@ function LinkPreviewDemo() {
 
       <PreviewCard handle={previewCardHandle}>
         {({ payload = typographyPreviewPayload }) => (
-          <PreviewCardContent popupClassName="w-[240px] p-2">
+          <PreviewCardContent className="w-[240px] p-2">
             <div className="flex flex-col gap-2">
               <img
                 width="224"
@@ -137,7 +137,7 @@ const PlacementsDemo = () => {
             key={value}
             type="button"
             onClick={() => setPlacement(value)}
-            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid ${
+            className={`rounded-md border border-divider-subtle px-2 py-1 text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden ${
               placement === value ? 'bg-state-base-hover' : 'bg-components-button-secondary-bg'
             }`}
           >
@@ -149,7 +149,7 @@ const PlacementsDemo = () => {
         <PreviewCardTrigger href="#preview-card-placement" className={triggerButtonClassName}>
           Hover me
         </PreviewCardTrigger>
-        <PreviewCardContent placement={placement} popupClassName="w-56 p-3">
+        <PreviewCardContent placement={placement} className="w-56 p-3">
           <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold text-text-primary">
               placement="
@@ -182,7 +182,7 @@ const CustomDelayDemo = () => (
     >
       Snappy trigger
     </PreviewCardTrigger>
-    <PreviewCardContent popupClassName="w-64 p-3">
+    <PreviewCardContent className="w-64 p-3">
       <div className="flex flex-col gap-1">
         <div className="text-sm font-semibold text-text-primary">Fast hover</div>
         <div className="text-xs text-text-secondary">

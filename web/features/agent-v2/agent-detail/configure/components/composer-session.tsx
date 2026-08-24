@@ -12,7 +12,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Loading from '@/app/components/base/loading'
@@ -94,11 +94,14 @@ export function AgentConfigureComposerScope({
     onModeChange: onRightPanelModeChange,
   })
 
+  useEffect(() => {
+    if (!buildDraft.isPending) initializedComposerAgentIdRef.current = agentId
+  }, [agentId, buildDraft.isPending])
+
   if (buildDraft.isPending && initializedComposerAgentIdRef.current !== agentId) {
     return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
-  initializedComposerAgentIdRef.current = agentId
   const composerHydrationState = composerQuery.data === undefined ? 'unavailable' : 'loaded'
   const composerSessionKey = `${agentId}:${activeVersionId ?? selectedVersionId ?? 'draft'}:${composerHydrationState}:${composerRebaseRevision}`
 

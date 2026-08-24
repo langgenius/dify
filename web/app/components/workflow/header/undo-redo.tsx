@@ -1,5 +1,4 @@
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
@@ -29,40 +28,30 @@ function UndoRedo({ handleUndo, handleRedo }: UndoRedoProps) {
   return (
     <div className="flex items-center space-x-0.5 rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-[5px]">
       <TipPopup title={t(($) => $['common.undo'], { ns: 'workflow' })!} shortcut="workflow.undo">
-        <Button
-          variant="ghost"
-          size="small"
+        <IconButton
+          size="lg"
+          className="rounded-md"
           aria-label={t(($) => $['common.undo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.undo"
           disabled={nodesReadOnly || buttonsDisabled.undo}
           focusableWhenDisabled
-          className={cn(
-            'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            (nodesReadOnly || buttonsDisabled.undo) &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
           onClick={handleUndo}
         >
           <span aria-hidden className="i-ri-arrow-go-back-line size-4" />
-        </Button>
+        </IconButton>
       </TipPopup>
       <TipPopup title={t(($) => $['common.redo'], { ns: 'workflow' })!} shortcut="workflow.redo">
-        <Button
-          variant="ghost"
-          size="small"
+        <IconButton
+          size="lg"
+          className="rounded-md"
           aria-label={t(($) => $['common.redo'], { ns: 'workflow' })!}
           data-tooltip-id="workflow.redo"
           disabled={nodesReadOnly || buttonsDisabled.redo}
           focusableWhenDisabled
-          className={cn(
-            'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-            (nodesReadOnly || buttonsDisabled.redo) &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
           onClick={handleRedo}
         >
           <span aria-hidden className="i-ri-arrow-go-forward-fill size-4" />
-        </Button>
+        </IconButton>
       </TipPopup>
       <Divider type="vertical" className="mx-0.5 h-3.5" />
       <ViewWorkflowHistory />

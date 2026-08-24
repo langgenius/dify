@@ -9,6 +9,7 @@ import {
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import {
   useNewKnowledgeGuideDismissedValue,
   useSetNewKnowledgeGuideDismissed,
@@ -21,6 +22,7 @@ export type KnowledgeViewSwitcherProps = {
 
 export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcherProps) {
   const { t } = useTranslation('dataset')
+  const docLink = useDocLink()
   const guideDismissed = useNewKnowledgeGuideDismissedValue()
   const setGuideDismissed = useSetNewKnowledgeGuideDismissed()
   const [guideOpenOverride, setGuideOpenOverride] = useState<boolean | null>(null)
@@ -36,11 +38,8 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
       <SegmentedControl
         className="max-w-full rounded-md p-px"
         aria-label={t(($) => $['newKnowledge.viewLabel'])}
-        value={[value]}
-        onValueChange={(values) => {
-          const nextValue = values[0]
-          if (nextValue === 'legacy' || nextValue === 'new') onChange(nextValue)
-        }}
+        value={value}
+        onValueChange={(value) => onChange(value)}
       >
         <SegmentedControlItem
           className="h-5.5 rounded-md px-1 py-px system-xs-medium"
@@ -70,7 +69,7 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
         <PopoverContent
           placement="bottom"
           sideOffset={13}
-          popupClassName="relative flex max-h-[calc(100dvh-2rem)] min-h-[162px] w-80 max-w-[calc(100vw-2rem)] flex-col"
+          className="relative flex max-h-[calc(100dvh-2rem)] min-h-[162px] w-80 max-w-[calc(100vw-2rem)] flex-col"
         >
           <span
             aria-hidden
@@ -87,10 +86,10 @@ export function KnowledgeViewSwitcher({ value, onChange }: KnowledgeViewSwitcher
             </PopoverDescription>
             <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-3">
               <a
-                href="https://docs.dify.ai/en/guides/knowledge-base"
+                href={docLink('/use-dify/knowledge/readme')}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-sm system-xs-regular text-text-accent outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="rounded-sm system-xs-regular text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               >
                 {t(($) => $['newKnowledge.learnMore'])}
               </a>

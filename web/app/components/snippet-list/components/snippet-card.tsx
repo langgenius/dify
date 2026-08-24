@@ -175,9 +175,8 @@ const SnippetCard = ({
 
         <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
           <div className="flex w-0 grow items-center gap-1">
-            <div className="mr-10.25 min-w-0 grow overflow-hidden">
+            <div className="mr-10.25 min-w-0 grow">
               <TagSelector
-                placement="bottom-start"
                 type="snippet"
                 targetId={snippet.id}
                 value={snippet.tags}
@@ -217,11 +216,7 @@ const SnippetCard = ({
                     <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
                   </div>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  placement="bottom-end"
-                  sideOffset={4}
-                  popupClassName="w-[216px]"
-                >
+                <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[216px]">
                   {canCreateAndModifySnippet && (
                     <>
                       <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
