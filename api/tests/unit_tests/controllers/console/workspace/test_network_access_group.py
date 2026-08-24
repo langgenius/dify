@@ -18,6 +18,7 @@ from controllers.console.workspace.network_access_group import (
     NetworkAccessGroupUpdatePayload,
     _translate_upstream_error,
 )
+from models import TenantAccountRole
 from services.billing_service import BillingService, NetworkAccessGroupUpstreamError
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
@@ -25,6 +26,10 @@ ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
 APP_ID = "33333333-3333-4333-8333-333333333333"
 GROUP_ID = "44444444-4444-4444-8444-444444444444"
 BINDING_ID = "55555555-5555-4555-8555-555555555555"
+
+
+def _current_user(role: TenantAccountRole = TenantAccountRole.OWNER) -> SimpleNamespace:
+    return SimpleNamespace(id=ACCOUNT_ID, current_role=role)
 
 
 def _group_payload() -> dict[str, object]:
@@ -59,17 +64,14 @@ def _binding_payload(*, group_id: str | None = GROUP_ID) -> dict[str, object]:
 def test_list_authorizes_and_forwards_tenant_and_actor() -> None:
     api = CurrentWorkspaceNetworkAccessGroupsApi()
     method = unwrap(api.get)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     upstream_payload = {"tenantId": TENANT_ID, "entitled": True, "groups": [_group_payload()]}
 
     with (
-        patch("controllers.console.workspace.network_access_group.db") as db,
-        patch.object(BillingService, "is_tenant_owner_or_admin") as authorize,
         patch.object(BillingService, "list_network_access_groups", return_value=upstream_payload) as list_groups,
     ):
         result = method(api, current_tenant_id=TENANT_ID, current_user=current_user)
 
-    authorize.assert_called_once_with(current_user, session=db.session())
     list_groups.assert_called_once_with(TENANT_ID, ACCOUNT_ID)
     assert result["tenant_id"] == TENANT_ID
     assert result["groups"][0]["name"] == "Office network"
@@ -80,7 +82,7 @@ def test_list_authorizes_and_forwards_tenant_and_actor() -> None:
 def test_create_injects_actor_and_returns_created_contract() -> None:
     api = CurrentWorkspaceNetworkAccessGroupsApi()
     method = unwrap(api.post)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     request_payload = NetworkAccessGroupCreatePayload(
         name="Office network",
         description="Reusable office egress addresses",
@@ -89,8 +91,6 @@ def test_create_injects_actor_and_returns_created_contract() -> None:
     )
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "create_network_access_group",
@@ -119,7 +119,7 @@ def test_create_injects_actor_and_returns_created_contract() -> None:
 def test_update_group_forwards_path_id_and_expected_version() -> None:
     api = CurrentWorkspaceNetworkAccessGroupApi()
     method = unwrap(api.put)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     request_payload = NetworkAccessGroupUpdatePayload(
         name="Office network",
         description="Updated",
@@ -129,8 +129,6 @@ def test_update_group_forwards_path_id_and_expected_version() -> None:
     )
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "update_network_access_group",
@@ -161,11 +159,9 @@ def test_update_group_forwards_path_id_and_expected_version() -> None:
 def test_delete_group_reads_expected_version_from_query_and_injects_actor() -> None:
     api = CurrentWorkspaceNetworkAccessGroupApi()
     method = unwrap(api.delete)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "delete_network_access_group",
@@ -192,13 +188,11 @@ def test_delete_group_reads_expected_version_from_query_and_injects_actor() -> N
 def test_app_get_forwards_tenant_scoped_app_and_supports_unbound_response() -> None:
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.get)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID)
     upstream_payload = {"tenantId": TENANT_ID, "appId": APP_ID, "entitled": True, "binding": None}
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "get_app_network_access_group",
@@ -220,13 +214,11 @@ def test_app_get_forwards_tenant_scoped_app_and_supports_unbound_response() -> N
 def test_app_put_assigns_or_unassigns_group(group_id: str | None) -> None:
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.put)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID)
     request_payload = AppNetworkAccessGroupUpdatePayload(group_id=group_id, expected_version=2)
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "update_app_network_access_group",
@@ -255,11 +247,9 @@ def test_app_put_assigns_or_unassigns_group(group_id: str | None) -> None:
 def test_list_rejects_non_privileged_workspace_member_before_upstream_call() -> None:
     api = CurrentWorkspaceNetworkAccessGroupsApi()
     method = unwrap(api.get)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user(TenantAccountRole.NORMAL)
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin", side_effect=ValueError("not privileged")),
         patch.object(BillingService, "list_network_access_groups") as list_groups,
         pytest.raises(Forbidden),
     ):
@@ -308,11 +298,9 @@ def test_internal_secret_error_is_not_reported_as_tenant_input_failure() -> None
 def test_list_maps_invalid_upstream_contract_to_bad_gateway() -> None:
     api = CurrentWorkspaceNetworkAccessGroupsApi()
     method = unwrap(api.get)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "list_network_access_groups",
@@ -326,14 +314,12 @@ def test_list_maps_invalid_upstream_contract_to_bad_gateway() -> None:
 def test_response_contract_accepts_protojson_omitted_empty_group_fields() -> None:
     api = CurrentWorkspaceNetworkAccessGroupsApi()
     method = unwrap(api.get)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     group = _group_payload()
     group.pop("description")
     group.pop("allowedCidrs")
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "list_network_access_groups",
@@ -349,15 +335,13 @@ def test_response_contract_accepts_protojson_omitted_empty_group_fields() -> Non
 def test_binding_response_accepts_protojson_omitted_null_group_id() -> None:
     api = AppNetworkAccessGroupApi()
     method = unwrap(api.put)
-    current_user = SimpleNamespace(id=ACCOUNT_ID)
+    current_user = _current_user()
     app_model = SimpleNamespace(id=UUID(APP_ID), tenant_id=TENANT_ID)
     request_payload = AppNetworkAccessGroupUpdatePayload(group_id=None, expected_version=2)
     binding = _binding_payload(group_id=None)
     binding.pop("groupId")
 
     with (
-        patch("controllers.console.workspace.network_access_group.db"),
-        patch.object(BillingService, "is_tenant_owner_or_admin"),
         patch.object(
             BillingService,
             "update_app_network_access_group",

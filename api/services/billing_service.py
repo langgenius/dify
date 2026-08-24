@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 import httpx
 from pydantic import TypeAdapter, ValidationError

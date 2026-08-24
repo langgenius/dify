@@ -17,11 +17,10 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import dump_response
 from libs.login import login_required
-from models import Account, App
+from models import Account, App, TenantAccountRole
 from services.billing_service import BillingService, NetworkAccessGroupUpstreamError
 
 NetworkAccessGroupMode = Literal["disabled", "shadow", "enforce"]
@@ -126,10 +125,8 @@ register_response_schema_models(
 def _ensure_workspace_admin_or_owner(current_user: Account) -> None:
     """Authorize management against the persisted current-workspace membership."""
 
-    try:
-        BillingService.is_tenant_owner_or_admin(current_user, session=db.session())
-    except ValueError as exc:
-        raise Forbidden("Only workspace owners and administrators can manage network access groups.") from exc
+    if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        raise Forbidden("Only workspace owners and administrators can manage network access groups.")
 
 
 def _translate_upstream_error(exc: NetworkAccessGroupUpstreamError) -> Exception:
