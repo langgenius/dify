@@ -15,6 +15,117 @@ root_packages =
     services
 include_external_packages = True
 
+[importlinter:contract:backend-layers]
+name = Backend modules follow the transport, application, domain, and shared-library layers
+type = layers
+layers =
+    controllers
+    services
+    core
+    libs
+# Migration baseline: keep every exception exact. The default unmatched-import
+# error makes this list shrink whenever a legacy dependency is removed.
+unmatched_ignore_imports_alerting = error
+ignore_imports =
+    core.app.app_config.easy_ui_based_app.dataset.manager -> services.dataset_service
+    core.app.apps.advanced_chat.app_generator -> controllers.console.app.workflow
+    core.app.apps.advanced_chat.app_generator -> services.conversation_service
+    core.app.apps.advanced_chat.app_generator -> services.errors.conversation
+    core.app.apps.advanced_chat.app_generator -> services.workflow_draft_variable_service
+    core.app.apps.advanced_chat.app_runner -> services.conversation_variable_updater
+    core.app.apps.agent_app.app_generator -> services.agent.composer_service
+    core.app.apps.agent_app.app_generator -> services.agent.workspace_service
+    core.app.apps.agent_app.app_generator -> services.conversation_service
+    core.app.apps.agent_app.runtime_request_builder -> services.agent.prompt_mentions
+    core.app.apps.agent_app.session_store -> services.agent.workspace_service
+    core.app.apps.agent_chat.app_generator -> services.conversation_service
+    core.app.apps.base_app_generator -> services.workflow_draft_variable_service
+    core.app.apps.chat.app_generator -> services.conversation_service
+    core.app.apps.common.workflow_response_converter -> services.variable_truncator
+    core.app.apps.completion.app_generator -> services.errors.app
+    core.app.apps.completion.app_generator -> services.errors.message
+    core.app.apps.message_based_app_generator -> services.errors.app_model_config
+    core.app.apps.message_based_app_generator -> services.errors.conversation
+    core.app.apps.message_based_app_generator -> services.errors.message
+    core.app.apps.pipeline.pipeline_generator -> services
+    core.app.apps.pipeline.pipeline_generator -> services.dataset_service
+    core.app.apps.pipeline.pipeline_generator -> services.datasource_provider_service
+    core.app.apps.pipeline.pipeline_generator -> services.feature_service
+    core.app.apps.pipeline.pipeline_generator -> services.workflow_draft_variable_service
+    core.app.apps.pipeline.pipeline_runner -> services.dataset_ref_service
+    core.app.apps.workflow.app_generator -> controllers.console.app.workflow
+    core.app.apps.workflow.app_generator -> services.snippet_generate_service
+    core.app.apps.workflow.app_generator -> services.workflow_draft_variable_service
+    core.app.apps.workflow_app_runner -> tasks.mail_human_input_delivery_task
+    core.app.features.annotation_reply.annotation_reply -> services.annotation_service
+    core.app.features.annotation_reply.annotation_reply -> services.dataset_service
+    core.app.llm.quota -> services.credit_pool_service
+    core.app.task_pipeline.message_cycle_manager -> services.account_service
+    core.app.task_pipeline.message_cycle_manager -> services.annotation_service
+    core.app.workflow.layers.persistence -> services.workflow.inspector_events
+    core.datasource.datasource_manager -> services.datasource_provider_service
+    core.helper.creators -> services.oauth_server
+    core.helper.credential_utils -> services.enterprise.plugin_manager_service
+    core.helper.credential_utils -> services.feature_service
+    core.indexing_runner -> services.vector_space_admission_service
+    core.mcp.auth_client -> services
+    core.provider_manager -> services.credential_permission_service
+    core.provider_manager -> services.credit_pool_service
+    core.provider_manager -> services.feature_service
+    core.rag.datasource.retrieval_service -> services.external_knowledge_service
+    core.rag.index_processor.index_processor -> services.vector_space_admission_service
+    core.rag.index_processor.index_processor_base -> services.file_service
+    core.rag.index_processor.processor.paragraph_index_processor -> services.account_service
+    core.rag.index_processor.processor.paragraph_index_processor -> services.summary_index_service
+    core.rag.index_processor.processor.parent_child_index_processor -> services.account_service
+    core.rag.index_processor.processor.parent_child_index_processor -> services.summary_index_service
+    core.rag.index_processor.processor.qa_index_processor -> services.summary_index_service
+    core.rag.retrieval.dataset_retrieval -> services.external_knowledge_service
+    core.rag.retrieval.dataset_retrieval -> services.feature_service
+    core.rag.summary_index.summary_index -> services.summary_index_service
+    core.rag.summary_index.summary_index -> tasks.generate_summary_index_task
+    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.file_service
+    core.repositories.sqlalchemy_workflow_node_execution_repository -> services.variable_truncator
+    core.tools.tool_manager -> services
+    core.workflow.node_runtime -> services
+    core.workflow.nodes.agent.message_transformer -> services
+    core.workflow.nodes.agent_v2.agent_node -> services.agent.prompt_mentions
+    core.workflow.nodes.agent_v2.agent_node -> services.agent.workspace_service
+    core.workflow.nodes.agent_v2.dify_tools_builder -> services
+    core.workflow.nodes.agent_v2.runtime_feature_manifest -> services.agent.knowledge_datasets
+    core.workflow.nodes.agent_v2.runtime_request_builder -> services.agent.prompt_mentions
+    core.workflow.nodes.agent_v2.runtime_request_builder -> services.skill_management_service
+    core.workflow.nodes.agent_v2.session_store -> services.agent.workspace_service
+    core.workflow.nodes.agent_v2.validators -> services.agent.knowledge_datasets
+    core.workflow.nodes.agent_v2.workspace_retirement_layer -> tasks.collect_agent_resources_task
+    libs.device_flow_security -> controllers.openapi._models
+    libs.device_flow_security -> services.entities.feature_entities
+    libs.device_flow_security -> services.feature_service
+    libs.email_i18n -> services.entities.feature_entities
+    libs.email_i18n -> services.feature_service
+    libs.external_api -> core
+    libs.external_api -> core.errors.error
+    libs.external_api -> extensions.ext_logging
+    libs.flask_utils -> models
+    libs.helper -> core.app.features.rate_limiting.rate_limit
+    libs.helper -> models
+    libs.helper -> models.model
+    libs.json_in_md_parser -> core.llm_generator.output_parser.errors
+    libs.login -> extensions.ext_login
+    libs.login -> models
+    libs.login -> models.model
+    libs.oauth -> core.helper.http_client_pooling
+    libs.oauth_bearer -> models
+    libs.oauth_data_source -> core.db.session_factory
+    libs.oauth_data_source -> core.helper.http_client_pooling
+    libs.rsa -> extensions.ext_storage
+    libs.workspace_permission -> services.enterprise.enterprise_service
+    libs.workspace_permission -> services.feature_service
+    services.account_service -> controllers
+    services.account_service -> controllers.console.error
+    services.app_generate_service -> controllers.console.app.workflow
+    services.billing_service -> controllers.console.error
+
 [importlinter:contract:no-direct-rsa-imports]
 # Note: `libs` itself is deliberately excluded from source_modules -- import-linter's
 # `forbidden` contract cannot check a package against its own descendant (libs.rsa lives
