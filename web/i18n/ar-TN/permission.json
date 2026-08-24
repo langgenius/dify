@@ -26,7 +26,6 @@
   "accessRule.deleted": "تم حذف قاعدة الوصول بنجاح",
   "accessRule.exceptionPermissionFor": "إذن استثنائي لـ {{name}}",
   "accessRule.expandSection": "توسيع {{title}}",
-  "accessRule.individualPermissionSettingsTip": "عيّن استثناءات الأذونات لمتعاونين أو مجموعات محددة. تتجاوز هذه الإعدادات أذونات أدوارهم.",
   "accessRule.maintainer": "مشرف الصيانة",
   "accessRule.newPermissionSet": "مجموعة أذونات جديدة",
   "accessRule.noAvailableMembers": "لا يوجد أعضاء متاحون للإضافة",

@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE_OPTIONS } from '@/service/access-control/constants'
@@ -13,7 +13,6 @@ import AddAccessSubjectPopover from './add-access-subject-popover'
 import AutomaticIncludeWorkspaceMembersSection from './automatic-include-workspace-members-section'
 import AccessRulesBatchAction from './batch-action'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
-import TitleInfotip from './title-infotip'
 import UserAccessPolicyRow from './user-access-policy-row'
 
 export type AccessPolicyMemberBindingRemoval = {
@@ -48,7 +47,7 @@ export type AccessRulesEditorProps = {
   onAddAccessSubject?: (accountId: string, accessPolicyIds: string[]) => void
 }
 
-export default function AccessRulesEditor({
+function AccessRulesEditor({
   rules,
   userAccessSettings,
   isLoadingRules,
@@ -77,10 +76,6 @@ export default function AccessRulesEditor({
   const isLoading = isLoadingRules || isLoadingUserAccessSettings
   const shouldCenterTableBody = isLoading || userAccessSettings.length === 0
   const areMembershipChangesDisabled = automaticIncludeWorkspaceMembers === true
-  const individualPermissionSettingsTip = t(
-    ($) => $['accessRule.individualPermissionSettingsTip'],
-    { ns: 'permission' },
-  )
   const policyOptions = useMemo(() => {
     return rules.map((rule) => ({
       id: rule.policy.id,
@@ -206,7 +201,6 @@ export default function AccessRulesEditor({
           <span className="flex min-w-4.5 items-center justify-center rounded-[5px] border border-divider-deep px-1.25 py-0.75 system-2xs-medium-uppercase text-text-tertiary">
             {totalCount ?? 0}
           </span>
-          <TitleInfotip content={individualPermissionSettingsTip} />
         </div>
         {onAddAccessSubject ? (
           <AddAccessSubjectPopover
@@ -361,3 +355,5 @@ export default function AccessRulesEditor({
     </div>
   )
 }
+
+export default memo(AccessRulesEditor)

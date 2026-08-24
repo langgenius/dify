@@ -146,17 +146,14 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
         appUserAccessSettings.length === 1
 
       setUpdatingAccountId(accountId)
-      removeAppAccessPolicyMemberBindings(
-        { accessPolicyId, accountIds: [accountId] },
-        {
-          onSuccess: () => {
-            if (shouldReturnToPreviousPage) {
-              setCurrentPage((page) => (page === currentPage ? page - 1 : page))
-            }
-          },
-          onSettled: () => setUpdatingAccountId(null),
+      removeAppAccessPolicyMemberBindings([{ accessPolicyId, accountIds: [accountId] }], {
+        onSuccess: () => {
+          if (shouldReturnToPreviousPage) {
+            setCurrentPage((page) => (page === currentPage ? page - 1 : page))
+          }
         },
-      )
+        onSettled: () => setUpdatingAccountId(null),
+      })
     },
     [
       appUserAccessSettings.length,
@@ -180,9 +177,7 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
         currentPage === appUserAccessSettingsPagination?.total_pages &&
         removedAccountCount >= appUserAccessSettings.length
 
-      await Promise.all(
-        removals.map((removal) => removeAppAccessPolicyMemberBindingsAsync(removal)),
-      )
+      await removeAppAccessPolicyMemberBindingsAsync(removals)
       if (shouldReturnToPreviousPage) {
         setCurrentPage((page) => (page === currentPage ? page - 1 : page))
       }

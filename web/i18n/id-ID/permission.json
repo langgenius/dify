@@ -26,7 +26,6 @@
   "accessRule.deleted": "Aturan akses berhasil dihapus",
   "accessRule.exceptionPermissionFor": "Izin pengecualian untuk {{name}}",
   "accessRule.expandSection": "Perluas {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Tetapkan pengecualian izin untuk kolaborator atau grup tertentu. Pengaturan ini menggantikan izin peran mereka.",
   "accessRule.maintainer": "Pengelola",
   "accessRule.newPermissionSet": "Set izin baru",
   "accessRule.noAvailableMembers": "Tidak ada anggota yang tersedia untuk ditambahkan",

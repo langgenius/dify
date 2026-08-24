@@ -112,16 +112,20 @@ export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'remove-app-access-policy-member-bindings', appId],
-    mutationFn: (payload: RemoveAppAccessPolicyMemberBindingsRequest) =>
-      appRbacClient.accessPolicies.byPolicyId.memberBindings.delete({
-        params: {
-          app_id: appId,
-          policy_id: payload.accessPolicyId,
-        },
-        body: {
-          account_ids: payload.accountIds,
-        },
-      }),
+    mutationFn: (removals: RemoveAppAccessPolicyMemberBindingsRequest[]) =>
+      Promise.all(
+        removals.map((removal) =>
+          appRbacClient.accessPolicies.byPolicyId.memberBindings.delete({
+            params: {
+              app_id: appId,
+              policy_id: removal.accessPolicyId,
+            },
+            body: {
+              account_ids: removal.accountIds,
+            },
+          }),
+        ),
+      ),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({

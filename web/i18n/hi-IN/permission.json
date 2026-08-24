@@ -26,7 +26,6 @@
   "accessRule.deleted": "एक्सेस नियम सफलतापूर्वक हटाया गया",
   "accessRule.exceptionPermissionFor": "{{name}} के लिए अपवाद अनुमति",
   "accessRule.expandSection": "{{title}} विस्तृत करें",
-  "accessRule.individualPermissionSettingsTip": "विशिष्ट सहयोगियों या समूहों के लिए अनुमति अपवाद सेट करें। ये सेटिंग्स उनकी भूमिका अनुमतियों को ओवरराइड करती हैं।",
   "accessRule.maintainer": "रखरखावकर्ता",
   "accessRule.newPermissionSet": "नया अनुमति सेट",
   "accessRule.noAvailableMembers": "जोड़ने के लिए कोई सदस्य उपलब्ध नहीं",

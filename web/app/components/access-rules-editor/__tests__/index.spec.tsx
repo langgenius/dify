@@ -8,12 +8,10 @@ const mockMembers = vi.hoisted(() => ({
   accounts: [] as Member[] | null,
   isLoading: false,
 }))
+const mockUseMembers = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/use-common', () => ({
-  useMembers: vi.fn(() => ({
-    data: { accounts: mockMembers.accounts },
-    isLoading: mockMembers.isLoading,
-  })),
+  useMembers: mockUseMembers,
 }))
 
 const createRule = (resourceType: 'app' | 'dataset'): AccessPolicyWithBindings => ({
@@ -88,6 +86,10 @@ describe('AccessRulesEditor', () => {
     vi.clearAllMocks()
     mockMembers.accounts = []
     mockMembers.isLoading = false
+    mockUseMembers.mockImplementation(() => ({
+      data: { accounts: mockMembers.accounts },
+      isLoading: mockMembers.isLoading,
+    }))
   })
 
   it('should render loading state before empty or row content', () => {
@@ -295,7 +297,7 @@ describe('AccessRulesEditor', () => {
     expect(onPageSizeChange).toHaveBeenCalledWith(25)
   })
 
-  it('should use the complete whitelist when opening the add-member popover', async () => {
+  it('should load members only after opening the add-member popover', async () => {
     const user = userEvent.setup()
     const onAddAccessSubject = vi.fn()
     mockMembers.accounts = [
@@ -321,7 +323,9 @@ describe('AccessRulesEditor', () => {
       />,
     )
 
+    expect(mockUseMembers).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+    expect(mockUseMembers).toHaveBeenCalledTimes(1)
 
     const dialog = await screen.findByRole('dialog', {
       name: 'permission.accessRule.addMembersTitle',

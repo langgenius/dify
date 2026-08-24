@@ -26,7 +26,6 @@
   "accessRule.deleted": "Pravilo za dostop uspešno izbrisano",
   "accessRule.exceptionPermissionFor": "Izjemno dovoljenje za {{name}}",
   "accessRule.expandSection": "Razširi {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Nastavite izjeme dovoljenj za določene sodelavce ali skupine. Te nastavitve preglasijo dovoljenja njihovih vlog.",
   "accessRule.maintainer": "Vzdrževalec",
   "accessRule.newPermissionSet": "Nov nabor dovoljenj",
   "accessRule.noAvailableMembers": "Ni članov, ki bi jih bilo mogoče dodati",

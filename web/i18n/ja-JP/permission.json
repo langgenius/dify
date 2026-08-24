@@ -26,7 +26,6 @@
   "accessRule.deleted": "アクセスルールを削除しました",
   "accessRule.exceptionPermissionFor": "{{name}} の例外権限",
   "accessRule.expandSection": "{{title}} を展開",
-  "accessRule.individualPermissionSettingsTip": "特定の共同編集者またはグループに権限の例外を設定します。これらの設定は、対象の共同編集者またはグループのロール権限を上書きします。",
   "accessRule.maintainer": "メンテナー",
   "accessRule.newPermissionSet": "新しい権限セット",
   "accessRule.noAvailableMembers": "追加できるメンバーがいません",

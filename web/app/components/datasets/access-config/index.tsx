@@ -172,17 +172,14 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
         datasetUserAccessSettings.length === 1
 
       setUpdatingAccountId(accountId)
-      removeDatasetAccessPolicyMemberBindings(
-        { accessPolicyId, accountIds: [accountId] },
-        {
-          onSuccess: () => {
-            if (shouldReturnToPreviousPage) {
-              setCurrentPage((page) => (page === currentPage ? page - 1 : page))
-            }
-          },
-          onSettled: () => setUpdatingAccountId(null),
+      removeDatasetAccessPolicyMemberBindings([{ accessPolicyId, accountIds: [accountId] }], {
+        onSuccess: () => {
+          if (shouldReturnToPreviousPage) {
+            setCurrentPage((page) => (page === currentPage ? page - 1 : page))
+          }
         },
-      )
+        onSettled: () => setUpdatingAccountId(null),
+      })
     },
     [
       automaticIncludeWorkspaceMembers,
@@ -207,9 +204,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
         currentPage === datasetUserAccessSettingsPagination?.total_pages &&
         removedAccountCount >= datasetUserAccessSettings.length
 
-      await Promise.all(
-        removals.map((removal) => removeDatasetAccessPolicyMemberBindingsAsync(removal)),
-      )
+      await removeDatasetAccessPolicyMemberBindingsAsync(removals)
       if (shouldReturnToPreviousPage) {
         setCurrentPage((page) => (page === currentPage ? page - 1 : page))
       }
@@ -236,7 +231,7 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
           {t(($) => $['accessRule.datasetDescription'], { ns: 'permission' })}
         </p>
       </header>
-      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-[50px]">
+      <main className="flex min-h-0 w-full max-w-240 flex-1 flex-col px-6 pt-8 pb-10 sm:pr-20 sm:pl-12.5">
         <AccessRulesEditor
           className="min-h-0 w-full flex-1"
           rules={datasetAccessRules}

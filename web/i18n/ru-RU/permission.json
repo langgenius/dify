@@ -26,7 +26,6 @@
   "accessRule.deleted": "Правило доступа успешно удалено",
   "accessRule.exceptionPermissionFor": "Исключение из прав для {{name}}",
   "accessRule.expandSection": "Развернуть {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Задайте исключения из прав для определенных участников или групп. Эти настройки переопределяют права их ролей.",
   "accessRule.maintainer": "Сопровождающий",
   "accessRule.newPermissionSet": "Новый набор прав",
   "accessRule.noAvailableMembers": "Нет участников для добавления",

@@ -26,7 +26,6 @@
   "accessRule.deleted": "Regula de acces a fost ștearsă cu succes",
   "accessRule.exceptionPermissionFor": "Permisiune de excepție pentru {{name}}",
   "accessRule.expandSection": "Extinde {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Setează excepții de permisiuni pentru colaboratori sau grupuri specifice. Aceste setări înlocuiesc permisiunile rolurilor lor.",
   "accessRule.maintainer": "Întreținător",
   "accessRule.newPermissionSet": "Set nou de permisiuni",
   "accessRule.noAvailableMembers": "Niciun membru disponibil pentru adăugare",

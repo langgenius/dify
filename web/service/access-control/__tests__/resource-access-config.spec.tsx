@@ -5,17 +5,21 @@ import {
   useAppResourceWhitelist,
   useAppResourceWhitelistConfig,
   useAppUserAccessSettings,
+  useRemoveAppAccessPolicyMemberBindings,
   useUpdateAppAutomaticIncludeWorkspaceMembers,
 } from '../use-app-access-config'
 import {
   useDatasetResourceWhitelistConfig,
   useDatasetUserAccessSettings,
+  useRemoveDatasetAccessPolicyMemberBindings,
   useUpdateDatasetAutomaticIncludeWorkspaceMembers,
 } from '../use-dataset-access-config'
 
 const mocks = vi.hoisted(() => ({
   appPut: vi.fn(),
   datasetPut: vi.fn(),
+  appDeleteMemberBindings: vi.fn(),
+  datasetDeleteMemberBindings: vi.fn(),
   appUserGet: vi.fn(),
   datasetUserGet: vi.fn(),
   appWhitelistGet: vi.fn(),
@@ -35,11 +39,21 @@ vi.mock('@/service/client', () => ({
         rbac: {
           apps: {
             byAppId: {
+              accessPolicies: {
+                byPolicyId: {
+                  memberBindings: { delete: mocks.appDeleteMemberBindings },
+                },
+              },
               whitelist: { put: mocks.appPut },
             },
           },
           datasets: {
             byDatasetId: {
+              accessPolicies: {
+                byPolicyId: {
+                  memberBindings: { delete: mocks.datasetDeleteMemberBindings },
+                },
+              },
               whitelist: { put: mocks.datasetPut },
             },
           },
@@ -170,6 +184,8 @@ describe('resource access config queries and mutations', () => {
     mocks.datasetPut.mockResolvedValue({
       account_ids: [],
     })
+    mocks.appDeleteMemberBindings.mockResolvedValue({ account_ids: [] })
+    mocks.datasetDeleteMemberBindings.mockResolvedValue({ account_ids: [] })
   })
 
   it('should request one stable page of app member policies', async () => {
@@ -287,5 +303,63 @@ describe('resource access config queries and mutations', () => {
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-user-access-policies'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-whitelist'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-whitelist-config'] })
+  })
+
+  it('should remove app member bindings in one mutation and invalidate queries once', async () => {
+    const { queryClient, wrapper } = createHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const { result } = renderHook(() => useRemoveAppAccessPolicyMemberBindings('app-1'), {
+      wrapper,
+    })
+
+    await act(async () =>
+      result.current.mutateAsync([
+        { accessPolicyId: 'policy-1', accountIds: ['account-1', 'account-2'] },
+        { accessPolicyId: 'default', accountIds: ['account-3'] },
+      ]),
+    )
+
+    expect(mocks.appDeleteMemberBindings).toHaveBeenCalledTimes(2)
+    expect(mocks.appDeleteMemberBindings).toHaveBeenNthCalledWith(1, {
+      params: { app_id: 'app-1', policy_id: 'policy-1' },
+      body: { account_ids: ['account-1', 'account-2'] },
+    })
+    expect(mocks.appDeleteMemberBindings).toHaveBeenNthCalledWith(2, {
+      params: { app_id: 'app-1', policy_id: 'default' },
+      body: { account_ids: ['account-3'] },
+    })
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-user-access-policies'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-access-policy'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['app-whitelist'] })
+  })
+
+  it('should remove dataset member bindings in one mutation and invalidate queries once', async () => {
+    const { queryClient, wrapper } = createHarness()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
+    const { result } = renderHook(() => useRemoveDatasetAccessPolicyMemberBindings('dataset-1'), {
+      wrapper,
+    })
+
+    await act(async () =>
+      result.current.mutateAsync([
+        { accessPolicyId: 'policy-1', accountIds: ['account-1', 'account-2'] },
+        { accessPolicyId: 'default', accountIds: ['account-3'] },
+      ]),
+    )
+
+    expect(mocks.datasetDeleteMemberBindings).toHaveBeenCalledTimes(2)
+    expect(mocks.datasetDeleteMemberBindings).toHaveBeenNthCalledWith(1, {
+      params: { dataset_id: 'dataset-1', policy_id: 'policy-1' },
+      body: { account_ids: ['account-1', 'account-2'] },
+    })
+    expect(mocks.datasetDeleteMemberBindings).toHaveBeenNthCalledWith(2, {
+      params: { dataset_id: 'dataset-1', policy_id: 'default' },
+      body: { account_ids: ['account-3'] },
+    })
+    expect(invalidateQueries).toHaveBeenCalledTimes(3)
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-user-access-policies'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-access-policy'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['dataset-whitelist'] })
   })
 })

@@ -26,7 +26,6 @@
   "accessRule.deleted": "Zugriffsregel erfolgreich gelöscht",
   "accessRule.exceptionPermissionFor": "Ausnahmeberechtigung für {{name}}",
   "accessRule.expandSection": "{{title}} ausklappen",
-  "accessRule.individualPermissionSettingsTip": "Legen Sie Berechtigungsausnahmen für bestimmte Mitarbeiter oder Gruppen fest. Diese Einstellungen überschreiben deren Rollenberechtigungen.",
   "accessRule.maintainer": "Betreuer",
   "accessRule.newPermissionSet": "Neuer Berechtigungssatz",
   "accessRule.noAvailableMembers": "Keine Mitglieder zum Hinzufügen verfügbar",

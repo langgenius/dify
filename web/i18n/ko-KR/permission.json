@@ -26,7 +26,6 @@
   "accessRule.deleted": "접근 규칙이 성공적으로 삭제되었습니다",
   "accessRule.exceptionPermissionFor": "{{name}}에 대한 예외 권한",
   "accessRule.expandSection": "{{title}} 펼치기",
-  "accessRule.individualPermissionSettingsTip": "특정 협업자 또는 그룹에 대한 권한 예외를 설정합니다. 이 설정은 해당 협업자 또는 그룹의 역할 권한을 재정의합니다.",
   "accessRule.maintainer": "관리자",
   "accessRule.newPermissionSet": "새 권한 집합",
   "accessRule.noAvailableMembers": "추가할 수 있는 멤버가 없습니다",

@@ -26,7 +26,6 @@
   "accessRule.deleted": "訪問規則已刪除",
   "accessRule.exceptionPermissionFor": "{{name}} 的例外權限",
   "accessRule.expandSection": "展開 {{title}}",
-  "accessRule.individualPermissionSettingsTip": "為指定協作者或群組設定權限例外。這些設定會覆蓋其角色權限。",
   "accessRule.maintainer": "維護者",
   "accessRule.newPermissionSet": "新增權限集",
   "accessRule.noAvailableMembers": "暫無可新增成員",

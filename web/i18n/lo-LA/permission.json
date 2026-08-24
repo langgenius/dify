@@ -26,7 +26,6 @@
   "accessRule.deleted": "ລຶບກົດລະບຽບການເຂົ້າເຖິງສຳເລັດແລ້ວ",
   "accessRule.exceptionPermissionFor": "ສິດຍົກເວັ້ນສຳລັບ {{name}}",
   "accessRule.expandSection": "ຂະຫຍາຍ {{title}}",
-  "accessRule.individualPermissionSettingsTip": "ກໍານົດການຍົກເວັ້ນສິດສໍາລັບຜູ້ຮ່ວມງານ ຫຼື ກຸ່ມສະເພາະ. ການຕັ້ງຄ່ານີ້ຈະຢູ່ເໜືອກວ່າສິດຂອງບົດບາດເຂົາເຈົ້າ.",
   "accessRule.maintainer": "ຜູ້ດູແລ",
   "accessRule.newPermissionSet": "ຊຸດສິດໃໝ່",
   "accessRule.noAvailableMembers": "ບໍ່ມີສະມາຊິກທີ່ສາມາດເພີ່ມໄດ້",

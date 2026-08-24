@@ -26,7 +26,6 @@
   "accessRule.deleted": "Правило доступу успішно видалено",
   "accessRule.exceptionPermissionFor": "Винятковий дозвіл для {{name}}",
   "accessRule.expandSection": "Розгорнути {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Установіть винятки дозволів для конкретних співавторів або груп. Ці налаштування перевизначають дозволи їхніх ролей.",
   "accessRule.maintainer": "Супроводжувач",
   "accessRule.newPermissionSet": "Новий набір дозволів",
   "accessRule.noAvailableMembers": "Немає доступних учасників для додавання",

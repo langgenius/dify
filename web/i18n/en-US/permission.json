@@ -26,7 +26,6 @@
   "accessRule.deleted": "Access rule deleted successfully",
   "accessRule.exceptionPermissionFor": "Exception permission for {{name}}",
   "accessRule.expandSection": "Expand {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Set permission exceptions for specific collaborators or groups. These settings override their role permissions.",
   "accessRule.maintainer": "Maintainer",
   "accessRule.newPermissionSet": "New permission set",
   "accessRule.noAvailableMembers": "No members available to add",

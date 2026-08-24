@@ -26,7 +26,6 @@
   "accessRule.deleted": "Toegangsregel succesvol verwijderd",
   "accessRule.exceptionPermissionFor": "Uitzonderingsrecht voor {{name}}",
   "accessRule.expandSection": "{{title}} uitvouwen",
-  "accessRule.individualPermissionSettingsTip": "Stel rechtenuitzonderingen in voor specifieke samenwerkers of groepen. Deze instellingen overschrijven hun rolrechten.",
   "accessRule.maintainer": "Beheerder",
   "accessRule.newPermissionSet": "Nieuwe rechtenset",
   "accessRule.noAvailableMembers": "Geen leden beschikbaar om toe te voegen",

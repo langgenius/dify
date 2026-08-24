@@ -26,7 +26,6 @@
   "accessRule.deleted": "قانون دسترسی با موفقیت حذف شد",
   "accessRule.exceptionPermissionFor": "مجوز استثنا برای {{name}}",
   "accessRule.expandSection": "گسترش {{title}}",
-  "accessRule.individualPermissionSettingsTip": "استثناهای مجوز را برای همکاران یا گروه‌های خاص تنظیم کنید. این تنظیمات مجوزهای نقش آن‌ها را لغو می‌کنند.",
   "accessRule.maintainer": "نگهدارنده",
   "accessRule.newPermissionSet": "مجموعه مجوز جدید",
   "accessRule.noAvailableMembers": "هیچ عضوی برای افزودن در دسترس نیست",

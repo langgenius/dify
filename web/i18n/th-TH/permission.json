@@ -26,7 +26,6 @@
   "accessRule.deleted": "ลบกฎการเข้าถึงสําเร็จ",
   "accessRule.exceptionPermissionFor": "สิทธิ์ข้อยกเว้นสําหรับ {{name}}",
   "accessRule.expandSection": "ขยาย {{title}}",
-  "accessRule.individualPermissionSettingsTip": "ตั้งค่าข้อยกเว้นสิทธิ์สําหรับผู้ร่วมงานหรือกลุ่มที่เฉพาะเจาะจง การตั้งค่าเหล่านี้จะแทนที่สิทธิ์ตามบทบาทของพวกเขา",
   "accessRule.maintainer": "ผู้ดูแล",
   "accessRule.newPermissionSet": "ชุดสิทธิ์ใหม่",
   "accessRule.noAvailableMembers": "ไม่มีสมาชิกที่จะเพิ่มได้",

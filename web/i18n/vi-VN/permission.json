@@ -26,7 +26,6 @@
   "accessRule.deleted": "Đã xóa quy tắc truy cập thành công",
   "accessRule.exceptionPermissionFor": "Quyền ngoại lệ cho {{name}}",
   "accessRule.expandSection": "Mở rộng {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Đặt các ngoại lệ về quyền cho các cộng tác viên hoặc nhóm cụ thể. Các cài đặt này sẽ ghi đè quyền vai trò của họ.",
   "accessRule.maintainer": "Người bảo trì",
   "accessRule.newPermissionSet": "Bộ quyền mới",
   "accessRule.noAvailableMembers": "Không có thành viên nào để thêm",

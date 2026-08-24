@@ -382,25 +382,19 @@ describe('DatasetAccessConfigPage', () => {
 
     mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
     expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith(
-      { accessPolicyId: 'policy-3', accountIds: ['account-3'] },
+      [{ accessPolicyId: 'policy-3', accountIds: ['account-3'] }],
       expect.objectContaining({ onSettled: expect.any(Function) }),
     )
 
+    const removals = [
+      { accessPolicyId: 'policy-1', accountIds: ['account-1', 'account-2'] },
+      { accessPolicyId: 'default', accountIds: ['account-4'] },
+    ]
     await act(async () => {
-      await mockAccessRulesEditor.props?.onBatchRemoveAccessPolicyMemberBindings?.([
-        { accessPolicyId: 'policy-1', accountIds: ['account-1', 'account-2'] },
-        { accessPolicyId: 'default', accountIds: ['account-4'] },
-      ])
+      await mockAccessRulesEditor.props?.onBatchRemoveAccessPolicyMemberBindings?.(removals)
     })
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledTimes(2)
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenNthCalledWith(1, {
-      accessPolicyId: 'policy-1',
-      accountIds: ['account-1', 'account-2'],
-    })
-    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenNthCalledWith(2, {
-      accessPolicyId: 'default',
-      accountIds: ['account-4'],
-    })
+    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledOnce()
+    expect(mockMutations.removeMemberBindingsAsync).toHaveBeenCalledWith(removals)
   })
 
   it('should block member changes but allow permission updates during automatic inclusion', async () => {

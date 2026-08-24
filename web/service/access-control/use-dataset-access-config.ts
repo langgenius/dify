@@ -131,16 +131,20 @@ export const useRemoveDatasetAccessPolicyMemberBindings = (datasetId: string) =>
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'remove-dataset-access-policy-member-bindings', datasetId],
-    mutationFn: (payload: RemoveDatasetAccessPolicyMemberBindingsRequest) =>
-      datasetRbacClient.accessPolicies.byPolicyId.memberBindings.delete({
-        params: {
-          dataset_id: datasetId,
-          policy_id: payload.accessPolicyId,
-        },
-        body: {
-          account_ids: payload.accountIds,
-        },
-      }),
+    mutationFn: (removals: RemoveDatasetAccessPolicyMemberBindingsRequest[]) =>
+      Promise.all(
+        removals.map((removal) =>
+          datasetRbacClient.accessPolicies.byPolicyId.memberBindings.delete({
+            params: {
+              dataset_id: datasetId,
+              policy_id: removal.accessPolicyId,
+            },
+            body: {
+              account_ids: removal.accountIds,
+            },
+          }),
+        ),
+      ),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({

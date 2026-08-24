@@ -26,7 +26,6 @@
   "accessRule.deleted": "Erişim kuralı başarıyla silindi",
   "accessRule.exceptionPermissionFor": "{{name}} için istisna izni",
   "accessRule.expandSection": "{{title}} genişlet",
-  "accessRule.individualPermissionSettingsTip": "Belirli işbirlikçiler veya gruplar için izin istisnaları ayarlayın. Bu ayarlar onların rol izinlerini geçersiz kılar.",
   "accessRule.maintainer": "Bakımcı",
   "accessRule.newPermissionSet": "Yeni izin kümesi",
   "accessRule.noAvailableMembers": "Eklenecek uygun üye yok",

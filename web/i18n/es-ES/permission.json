@@ -26,7 +26,6 @@
   "accessRule.deleted": "Regla de acceso eliminada correctamente",
   "accessRule.exceptionPermissionFor": "Permiso de excepción para {{name}}",
   "accessRule.expandSection": "Expandir {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Establece excepciones de permisos para colaboradores o grupos específicos. Estos ajustes anulan sus permisos de rol.",
   "accessRule.maintainer": "Mantenedor",
   "accessRule.newPermissionSet": "Nuevo conjunto de permisos",
   "accessRule.noAvailableMembers": "No hay miembros disponibles para añadir",

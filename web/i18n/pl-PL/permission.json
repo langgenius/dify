@@ -26,7 +26,6 @@
   "accessRule.deleted": "Pomyślnie usunięto regułę dostępu",
   "accessRule.exceptionPermissionFor": "Wyjątkowe uprawnienie dla {{name}}",
   "accessRule.expandSection": "Rozwiń {{title}}",
-  "accessRule.individualPermissionSettingsTip": "Ustaw wyjątki uprawnień dla określonych współpracowników lub grup. Te ustawienia zastępują uprawnienia ich ról.",
   "accessRule.maintainer": "Opiekun",
   "accessRule.newPermissionSet": "Nowy zestaw uprawnień",
   "accessRule.noAvailableMembers": "Brak członków dostępnych do dodania",
