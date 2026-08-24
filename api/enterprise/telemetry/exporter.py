@@ -48,9 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_enterprise_telemetry_enabled() -> bool:
-    return (
-        dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
-    )
+    return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
 
 
 def _parse_otlp_headers(raw: str) -> dict[str, str]:

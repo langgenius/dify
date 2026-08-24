@@ -511,7 +511,7 @@ class WeaveDataTrace(BaseTraceInstance):
             "weave": {"latency_ms": elapsed_ms},
         }
 
-        exception_str = run_data.exception if run_data.exception else None
+        exception_str = run_data.exception or None
 
         call_end_req = CallEndReq(
             end=EndedCallSchemaForInsert(

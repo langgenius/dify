@@ -27,9 +27,7 @@ _exporter: EnterpriseExporter | None = None
 
 
 def is_enabled() -> bool:
-    return (
-        dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
-    )
+    return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE and dify_config.ENTERPRISE_TELEMETRY_ENABLED
 
 
 def init_app(app: DifyApp) -> None:
