@@ -4496,9 +4496,8 @@ class SkillManagementService:
             or lower_name.endswith(".docx")
         ):
             return SkillManagementService._extract_docx_text(payload, max_chars=max_chars)
-        if (
-            mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            or lower_name.endswith(".xlsx")
+        if mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" or lower_name.endswith(
+            ".xlsx"
         ):
             return SkillManagementService._extract_xlsx_text(payload, max_chars=max_chars)
         if (
@@ -4518,11 +4517,7 @@ class SkillManagementService:
     @staticmethod
     def _xml_text_content(xml_payload: bytes, *, text_tags: set[str]) -> list[str]:
         root = ET.fromstring(xml_payload)
-        return [
-            (node.text or "")
-            for node in root.iter()
-            if node.text and node.tag.rsplit("}", 1)[-1] in text_tags
-        ]
+        return [(node.text or "") for node in root.iter() if node.text and node.tag.rsplit("}", 1)[-1] in text_tags]
 
     @staticmethod
     def _extract_docx_text(payload: bytes, *, max_chars: int) -> str:
@@ -4531,9 +4526,7 @@ class SkillManagementService:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
                 for name in sorted(archive.namelist()):
                     if not (
-                        name == "word/document.xml"
-                        or name.startswith("word/header")
-                        or name.startswith("word/footer")
+                        name == "word/document.xml" or name.startswith("word/header") or name.startswith("word/footer")
                     ):
                         continue
                     parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
@@ -4549,9 +4542,7 @@ class SkillManagementService:
         try:
             with zipfile.ZipFile(io.BytesIO(payload)) as archive:
                 slide_names = sorted(
-                    name
-                    for name in archive.namelist()
-                    if name.startswith("ppt/slides/slide") and name.endswith(".xml")
+                    name for name in archive.namelist() if name.startswith("ppt/slides/slide") and name.endswith(".xml")
                 )
                 for name in slide_names:
                     parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
