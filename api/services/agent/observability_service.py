@@ -135,7 +135,7 @@ class AgentObservabilityService:
 
     @staticmethod
     def _total_tokens(message: Message) -> int:
-        return message.message_tokens or 0 + message.answer_tokens or 0
+        return int(message.message_tokens or 0) + int(message.answer_tokens or 0)  # pyrefly: ignore[unnecessary-type-conversion]
 
     @classmethod
     def serialize_log_message(
@@ -160,8 +160,8 @@ class AgentObservabilityService:
             "from_account_id": message.from_account_id,
             "feedback_enabled": True,
             "feedbacks": [cls._serialize_message_feedback(feedback) for feedback in feedbacks],
-            "message_tokens": message.message_tokens or 0,
-            "answer_tokens": message.answer_tokens or 0,
+            "message_tokens": int(message.message_tokens or 0),  # pyrefly: ignore[unnecessary-type-conversion]
+            "answer_tokens": int(message.answer_tokens or 0),  # pyrefly: ignore[unnecessary-type-conversion]
             "total_tokens": cls._total_tokens(message),
             "total_price": str(message.total_price or Decimal(0)),
             "currency": message.currency,
@@ -419,10 +419,10 @@ class AgentObservabilityService:
 
     @staticmethod
     def _positive_feedback_rate(*, like_count: int | None, total_count: int | None) -> float | None:
-        total = total_count or 0
+        total = int(total_count or 0)  # pyrefly: ignore[unnecessary-type-conversion]
         if total == 0:
             return None
-        return like_count or 0 / total
+        return int(like_count or 0) / total  # pyrefly: ignore[unnecessary-type-conversion]
 
     def _list_workflow_messages(
         self,

@@ -154,7 +154,7 @@ def _hydrate_access_matrix_account_names(items: list[svc.AccessMatrixItem]) -> N
 
     for item in items:
         for account in item.accounts:
-            account_id = account.account_id or "".strip()
+            account_id = (account.account_id or "").strip()
             if account_id and not account.account_name:
                 account.account_name = account_names.get(account_id, {}).get("name", "")
             account.avatar = account_names.get(account_id, {}).get("avatar", "")
