@@ -153,8 +153,9 @@ class ConversationService:
             raise MessageNotExistsError()
 
         # generate conversation name
-        with contextlib.suppress(Exception), use_credit_usage_metadata(
-            {"app_type": get_credit_usage_app_type(app_model.mode)}
+        with (
+            contextlib.suppress(Exception),
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
         ):
             name = LLMGenerator.generate_conversation_name(
                 app_model.tenant_id, message.query, conversation.id, app_model.id

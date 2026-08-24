@@ -429,8 +429,9 @@ class MessageService:
             instruction_prompt = None
 
         configured_model = suggested_questions_after_answer_config.get("model")
-        with measure_time() as timer, use_credit_usage_metadata(
-            {"app_type": get_credit_usage_app_type(app_model.mode)}
+        with (
+            measure_time() as timer,
+            use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_model.mode)}),
         ):
             questions_sequence = LLMGenerator.generate_suggested_questions_after_answer(
                 tenant_id=app_model.tenant_id,
