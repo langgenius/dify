@@ -12,18 +12,18 @@ import type { MarketplaceBannerPage } from './banners'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
-import {
-  rememberMarketplaceSiteReferrer,
-  trackMarketplaceSiteEvent,
-} from '@/utils/marketplace-site-track'
-import { buildMarketplaceBannerClickProperties } from './home-trending-track'
 import Partner from '@/app/components/plugins/base/badges/partner'
 import Verified from '@/app/components/plugins/base/badges/verified'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Link from '@/next/link'
+import {
+  rememberMarketplaceSiteReferrer,
+  trackMarketplaceSiteEvent,
+} from '@/utils/marketplace-site-track'
 import { getPluginLinkInMarketplace } from '../utils'
 import background from './assets/background.webp'
 import difyUpdatesArt from './assets/dify-updates-art.png'
+import { buildMarketplaceBannerClickProperties } from './home-trending-track'
 import styles from './home-trending.module.css'
 
 const getMarketplaceAssetURL = (path?: string) => {
@@ -120,7 +120,12 @@ function TrendingCopy({
         <h2 className="shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary">
           {heading}
         </h2>
-        <p className="w-full text-[13px] leading-5 font-normal tracking-[-0.065px] text-text-tertiary">
+        <p
+          className={cn(
+            styles.copyDescription,
+            'w-full text-[13px] leading-5 font-normal tracking-[-0.065px] text-text-tertiary',
+          )}
+        >
           {description}
         </p>
       </div>
@@ -175,7 +180,10 @@ function TrendingCard({
       )}
     >
       <div
-        className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
+        className={cn(
+          styles.cardIcon,
+          'flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge',
+        )}
         style={{
           backgroundColor: !iconURL ? card.icon_background : undefined,
         }}
@@ -196,7 +204,7 @@ function TrendingCard({
         )}
       </div>
 
-      <div className="flex w-full items-end gap-1">
+      <div className={cn(styles.cardMeta, 'flex w-full items-end gap-1')}>
         <div className="flex min-w-0 flex-1 flex-col items-start gap-[3px]">
           <div className="flex w-full min-w-0 items-center gap-[3px]">
             <h3 className="min-w-0 truncate text-sm leading-[normal] font-medium text-text-primary">
@@ -257,9 +265,18 @@ function TrendingRecommendationSlide({
           height={900}
           alt=""
           aria-hidden
-          className="absolute top-[-173px] left-[-990px] h-[1201px] w-[2135px] max-w-none opacity-80"
+          className={cn(
+            styles.recommendBackdrop,
+            'absolute top-[-173px] left-[-990px] h-[1201px] w-[2135px] max-w-none opacity-80',
+          )}
         />
-        <div aria-hidden className="absolute inset-0 bg-text-accent mix-blend-color" />
+        <div
+          aria-hidden
+          className={cn(
+            styles.recommendBackdrop,
+            'absolute inset-0 bg-text-accent mix-blend-color',
+          )}
+        />
 
         <div className={cn(styles.recommendCards, 'relative z-10 h-full items-center')}>
           {banner.content.cards.map((card) => (
@@ -440,20 +457,12 @@ export function HomeBannerSlide({
 }) {
   if (banner.style_type === 'blog')
     return (
-      <BlogBannerSlide
-        banner={banner}
-        isMarketplacePlatform={isMarketplacePlatform}
-        page={page}
-      />
+      <BlogBannerSlide banner={banner} isMarketplacePlatform={isMarketplacePlatform} page={page} />
     )
 
   if (banner.style_type === 'event' || banner.style_type === 'ad')
     return (
-      <ImageBannerSlide
-        banner={banner}
-        isMarketplacePlatform={isMarketplacePlatform}
-        page={page}
-      />
+      <ImageBannerSlide banner={banner} isMarketplacePlatform={isMarketplacePlatform} page={page} />
     )
 
   return (

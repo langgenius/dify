@@ -8,6 +8,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '#i18n'
 import { MARKETPLACE_CONTAINER_ID } from '../constants'
+import styles from './carousel.module.css'
 import { CAROUSEL_PAGE_CLASS } from './collection-constants'
 
 export type CarouselPage = {
@@ -76,7 +77,7 @@ const CarouselControls = ({
   return (
     <div className="absolute -top-10 right-0 flex items-center gap-3">
       {showPagination && (
-        <div className="flex items-center gap-1">
+        <div className={cn(styles.pagination, 'flex items-center gap-1')}>
           {paginationItems.map((item, index) => (
             <button
               key={item.id}

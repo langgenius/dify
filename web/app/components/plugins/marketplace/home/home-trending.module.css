@@ -116,8 +116,60 @@
     width: 100%;
   }
 
+  /* Recommend mobile: 96px app icons (Figma 1026:24938), not desktop cards. */
+  :global([data-marketplace-standalone]) .recommendBackdrop {
+    display: none;
+  }
+
   :global([data-marketplace-standalone]) .recommendCards {
-    padding: 16px 20px;
+    justify-content: center;
+    gap: 20px;
+    overflow: hidden;
+    padding: 36px 12px;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards > .card {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    min-width: 96px;
+    max-width: 96px;
+    height: 96px;
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+    border-radius: 20px;
+    box-shadow: none;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards > .card:nth-child(-n + 3) {
+    display: flex;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards > .card:nth-child(n + 4) {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .cardIcon {
+    width: 96px;
+    height: 96px;
+    border-color: var(--color-effects-icon-border);
+    border-radius: 20px;
+    box-shadow:
+      0 0.5px 5px 0 var(--color-shadow-shadow-4),
+      0 0.5px 2px -0.5px var(--color-shadow-shadow-4);
+    backdrop-filter: blur(5px);
+  }
+
+  :global([data-marketplace-standalone]) .cardMeta {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .copyDescription {
+    font-size: 15px;
+    letter-spacing: -0.075px;
   }
 
   :global([data-marketplace-standalone]) .updatesArt {
@@ -167,6 +219,11 @@
     border-radius: 16px;
   }
 
+  :global([data-marketplace-standalone]) .recommendVisual {
+    border-radius: 12px;
+    background-color: var(--color-text-accent);
+  }
+
   :global([data-marketplace-standalone]) .stackedCopy {
     flex: none;
     height: 160px;
@@ -178,10 +235,18 @@
     gap: 4px;
   }
 
-  /* Event/ad mobile art is a 393×357 frame (Figma 1026:28881), matching
-     the stacked blog/recommend card height of 197 + 160. */
+  /* Event/ad mobile: show the full poster instead of cropping it into a
+     357px cover box. Height follows the selected image's aspect ratio. */
   :global([data-marketplace-standalone]) .imageSlide {
-    height: 357px;
+    height: auto;
+  }
+
+  :global([data-marketplace-standalone]) .imageSlide :is(picture, img) {
+    width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+    object-fit: contain;
+    object-position: center;
   }
 
   :global([data-marketplace-standalone]) .readMoreDesktop {
