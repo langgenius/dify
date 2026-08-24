@@ -11,6 +11,7 @@ import { Collapsible, CollapsiblePanel } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -379,7 +380,10 @@ function PublishBarActions({
         <span aria-hidden className="shrink-0">
           ·
         </span>
-        <span className="min-w-0 truncate">{metaLabel}</span>
+        <Tooltip>
+          <TooltipTrigger render={<span className="min-w-0 truncate">{metaLabel}</span>} />
+          <TooltipContent>{metaLabel}</TooltipContent>
+        </Tooltip>
       </div>
       <button
         type="button"
