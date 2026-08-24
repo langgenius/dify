@@ -717,17 +717,24 @@ describe('GotoAnything', () => {
       expect(screen.queryByText('app.gotoAnything.searchFailed')).not.toBeInTheDocument()
     })
 
-    it('should show default state when no query', async () => {
+    it('should show scope cards with the matching sidebar icons when opened', async () => {
       renderGotoAnything(<GotoAnything />)
       triggerSearchShortcut()
 
-      await waitFor(() => {
-        expect(
-          screen.getByPlaceholderText('app.gotoAnything.searchPlaceholder'),
-        ).toBeInTheDocument()
-      })
+      const expectedScopeIcons = [
+        ['@app', 'i-custom-vender-main-nav-studio'],
+        ['@kb', 'i-custom-vender-main-nav-knowledge'],
+        ['@plugin', 'i-custom-vender-main-nav-marketplace'],
+        ['@skill', 'i-custom-vender-main-nav-skill'],
+        ['@agents', 'i-custom-vender-main-nav-roster'],
+      ] as const
 
-      expect(screen.getAllByText('app.gotoAnything.searchTitle')).toHaveLength(2)
+      for (const [scope, icon] of expectedScopeIcons) {
+        const option = await screen.findByRole('option', { name: new RegExp(scope) })
+        expect(option.querySelector(`.${icon}`)).toBeInTheDocument()
+      }
+
+      expect(screen.getByText('app.gotoAnything.selectSearchType')).toBeInTheDocument()
     })
 
     it('should show no results state when search returns empty', async () => {

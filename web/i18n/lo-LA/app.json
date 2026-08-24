@@ -94,7 +94,6 @@
   "gotoAnything.groups.commands": "ຄຳສັ່ງ",
   "gotoAnything.groups.knowledgeBases": "ຄັງຄວາມຮູ້",
   "gotoAnything.groups.plugins": "ການເຊື່ອມຕໍ່",
-  "gotoAnything.groups.recent": "ຫວ່າງໆນີ້",
   "gotoAnything.groups.workflowNodes": "ໂນດໃນ Workflow",
   "gotoAnything.inScope": "ໃນ {{scope}}",
   "gotoAnything.noMatchingCommands": "ບໍ່ພົບຄຳສັ່ງທີ່ກົງກັນ",

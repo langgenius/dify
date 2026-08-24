@@ -2,7 +2,7 @@
 
 import type { AutocompleteChangeEventDetails } from '@langgenius/dify-ui/autocomplete'
 import type { Plugin } from '../plugins/types'
-import type { ActionItem, RecentSearchResult, SearchResult } from './actions/types'
+import type { ActionItem, SearchResult } from './actions/types'
 import {
   Autocomplete,
   AutocompleteCollection,
@@ -36,6 +36,7 @@ import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
 import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
@@ -52,7 +53,6 @@ import { slashCommandRegistry } from './actions/commands/registry'
 import { SlashCommandProvider } from './actions/commands/slash-provider'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
 import { pluginSearchQueryOptions } from './actions/plugin'
-import { addRecentItem, getRecentItems } from './actions/recent-store'
 import { skillSearchQueryOptions } from './actions/skill'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
@@ -67,6 +67,7 @@ type CommandOption = {
   kind: 'command-option'
   shortcut: string
   description: string
+  icon: string
 }
 
 type GotoAnythingOption = CommandOption | SearchResult
@@ -94,8 +95,24 @@ const groupLabelKeys = {
   knowledge: 'gotoAnything.groups.knowledgeBases',
   'workflow-node': 'gotoAnything.groups.workflowNodes',
   command: 'gotoAnything.groups.commands',
-  recent: 'gotoAnything.groups.recent',
 } as const
+
+type MainNavRouteKey = (typeof MAIN_NAV_ROUTES)[number]['key']
+
+const scopeMainNavRouteKeys = {
+  '@app': 'apps',
+  '@knowledge': 'datasets',
+  '@plugin': 'marketplace',
+  '@skill': 'skills',
+  '@agents': 'roster',
+} as const satisfies Partial<Record<ActionItem['key'], MainNavRouteKey>>
+
+function getScopeCardIcon(action: ActionItem) {
+  const routeKey = scopeMainNavRouteKeys[action.key as keyof typeof scopeMainNavRouteKeys]
+  if (!routeKey) return 'i-ri-node-tree'
+
+  return MAIN_NAV_ROUTES.find((route) => route.key === routeKey)?.icon ?? 'i-ri-node-tree'
+}
 
 function getCommandOptions(actions: Record<string, ActionItem>, query: string): CommandOption[] {
   const trimmedQuery = query.trim()
@@ -109,6 +126,7 @@ function getCommandOptions(actions: Record<string, ActionItem>, query: string): 
         kind: 'command-option',
         shortcut: `/${command.name}`,
         description: command.description,
+        icon: 'i-ri-terminal-box-line',
       }))
   }
 
@@ -119,6 +137,7 @@ function getCommandOptions(actions: Record<string, ActionItem>, query: string): 
       kind: 'command-option',
       shortcut: action.shortcut,
       description: action.description,
+      icon: getScopeCardIcon(action),
     }))
 }
 
@@ -147,7 +166,7 @@ function getSearchMode(
   isCommandsMode: boolean,
   actions: Record<string, ActionItem>,
 ) {
-  if (isCommandsMode) return searchQuery.trim().startsWith('@') ? 'scopes' : 'commands'
+  if (isCommandsMode) return searchQuery.trim().startsWith('/') ? 'commands' : 'scopes'
 
   const action = matchAction(searchQuery.trim().toLowerCase(), actions)
   if (!action) return 'general'
@@ -157,29 +176,12 @@ function getSearchMode(
 
 function isCommandSelectionQuery(query: string, actions: Record<string, ActionItem>) {
   const trimmedQuery = query.trim()
-  if (trimmedQuery === '@' || trimmedQuery === '/') return true
+  if (!trimmedQuery || trimmedQuery === '@' || trimmedQuery === '/') return true
 
   return (
     (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/')) &&
     !matchAction(trimmedQuery, actions)
   )
-}
-
-function getRecentSearchResults(): RecentSearchResult[] {
-  return getRecentItems().map((item) => ({
-    id: `recent-${item.id}`,
-    title: item.title,
-    description: item.description,
-    type: 'recent',
-    originalType: item.originalType,
-    path: item.path,
-    icon: (
-      <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <span aria-hidden className="i-ri-time-line size-4 text-text-tertiary" />
-      </div>
-    ),
-    data: { path: item.path },
-  }))
 }
 
 function dedupeSearchResults(results: SearchResult[]) {
@@ -307,8 +309,7 @@ function GotoAnythingDialog() {
     ? []
     : activeRemoteQueries.flatMap((query) => query.data ?? [])
   const searchResults = [...localSearchResults, ...remoteSearchResults]
-  const recentResults = trimmedSearchQuery || isCommandsMode ? [] : getRecentSearchResults()
-  const dedupedResults = dedupeSearchResults(recentResults.length ? recentResults : searchResults)
+  const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
   function resetSearch() {
@@ -359,19 +360,7 @@ function GotoAnythingDialog() {
       case 'workflow-node':
         if (result.metadata?.nodeId) selectWorkflowNode(result.metadata.nodeId, true)
         break
-      case 'recent':
-        if (result.path) router.push(result.path)
-        break
       default:
-        if ((result.type === 'app' || result.type === 'knowledge') && result.path) {
-          addRecentItem({
-            id: result.id,
-            title: result.title,
-            description: result.description,
-            path: result.path,
-            originalType: result.type,
-          })
-        }
         if (result.path) router.push(result.path)
     }
   }
@@ -547,10 +536,7 @@ function GotoAnythingDialog() {
                                   onClick={() => selectOption(option)}
                                 >
                                   <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default text-text-tertiary group-data-highlighted:text-text-accent">
-                                    <span
-                                      aria-hidden
-                                      className={`${isSlashMode ? 'i-ri-terminal-box-line' : 'i-ri-focus-3-line'} size-4`}
-                                    />
+                                    <span aria-hidden className={`${option.icon} size-4`} />
                                   </span>
                                   <span className="min-w-0 flex-1 text-left">
                                     <span className="block truncate font-mono text-xs font-semibold tracking-[-0.01em] text-text-primary">

@@ -94,7 +94,6 @@
   "gotoAnything.groups.commands": "Comandi",
   "gotoAnything.groups.knowledgeBases": "Basi di conoscenza",
   "gotoAnything.groups.plugins": "Integrazione",
-  "gotoAnything.groups.recent": "Recente",
   "gotoAnything.groups.workflowNodes": "Nodi del flusso di lavoro",
   "gotoAnything.inScope": "in {{scope}}s",
   "gotoAnything.noMatchingCommands": "Nessun comando corrispondente trovato",

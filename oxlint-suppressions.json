@@ -2476,11 +2476,6 @@
       "count": 2
     }
   },
-  "web/app/components/goto-anything/actions/recent-store.ts": {
-    "no-restricted-globals": {
-      "count": 2
-    }
-  },
   "web/app/components/header/account-setting/data-source-page-new/__tests__/item.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

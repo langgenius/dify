@@ -94,7 +94,6 @@
   "gotoAnything.groups.commands": "دستورات",
   "gotoAnything.groups.knowledgeBases": "پایگاه های دانش",
   "gotoAnything.groups.plugins": "یکپارچه‌سازی",
-  "gotoAnything.groups.recent": "اخیر",
   "gotoAnything.groups.workflowNodes": "گره های گردش کار",
   "gotoAnything.inScope": "در {{scope}}s",
   "gotoAnything.noMatchingCommands": "هیچ دستوری منطبق یافت نشد",

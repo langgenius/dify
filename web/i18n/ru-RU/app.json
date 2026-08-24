@@ -94,7 +94,6 @@
   "gotoAnything.groups.commands": "Команды",
   "gotoAnything.groups.knowledgeBases": "Базы знаний",
   "gotoAnything.groups.plugins": "Интеграции",
-  "gotoAnything.groups.recent": "Недавние",
   "gotoAnything.groups.workflowNodes": "Узлы рабочих процессов",
   "gotoAnything.inScope": "в {{scope}}s",
   "gotoAnything.noMatchingCommands": "Соответствующие команды не найдены",

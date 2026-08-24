@@ -94,7 +94,6 @@
   "gotoAnything.groups.commands": "Perintah",
   "gotoAnything.groups.knowledgeBases": "Basis Pengetahuan",
   "gotoAnything.groups.plugins": "Integrasi",
-  "gotoAnything.groups.recent": "Terbaru",
   "gotoAnything.groups.workflowNodes": "Node Alur Kerja",
   "gotoAnything.inScope": "di {{scope}}s",
   "gotoAnything.noMatchingCommands": "Tidak ada perintah yang cocok ditemukan",

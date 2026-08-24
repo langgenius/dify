@@ -15,7 +15,6 @@ type SearchResultType =
   | 'agent'
   | 'workflow-node'
   | 'command'
-  | 'recent'
 
 type BaseSearchResult<T> = {
   id: string
@@ -59,11 +58,6 @@ export type CommandSearchResult = {
   type: 'command'
 } & BaseSearchResult<{ command: string; args?: Record<string, unknown> }>
 
-export type RecentSearchResult = {
-  type: 'recent'
-  originalType: 'app' | 'knowledge'
-} & BaseSearchResult<{ path: string }>
-
 export type SearchResult =
   | AppSearchResult
   | PluginSearchResult
@@ -72,7 +66,6 @@ export type SearchResult =
   | AgentSearchResult
   | WorkflowNodeSearchResult
   | CommandSearchResult
-  | RecentSearchResult
 
 type ActionItemBase = {
   key: '@app' | '@knowledge' | '@plugin' | '@skill' | '@agents' | '@node' | '/'

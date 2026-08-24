@@ -94,7 +94,6 @@
   "gotoAnything.groups.commands": "コマンド",
   "gotoAnything.groups.knowledgeBases": "ナレッジベース",
   "gotoAnything.groups.plugins": "インテグレーション",
-  "gotoAnything.groups.recent": "最近",
   "gotoAnything.groups.workflowNodes": "ワークフローノード",
   "gotoAnything.inScope": "{{scope}}s 内",
   "gotoAnything.noMatchingCommands": "一致するコマンドが見つかりません",
