@@ -40,7 +40,7 @@ export function estimateFallbackTabWidth(value: string) {
   )
 }
 
-function rowWidth(widths: readonly number[]) {
+function getRowWidth(widths: readonly number[]) {
   if (widths.length === 0) return 0
   return widths.reduce((total, width) => total + width, 0) + (widths.length - 1) * TAB_GAP
 }
@@ -58,7 +58,7 @@ export function getEnvironmentTabLayout({
     (environmentId) => environmentTabWidths[environmentId] ?? ENVIRONMENT_TAB_MAX_WIDTH,
   )
   const allTabsFit =
-    !hasUndeployedEnvironments && rowWidth([builtInWidth, ...joinedWidths]) <= availableWidth
+    !hasUndeployedEnvironments && getRowWidth([builtInWidth, ...joinedWidths]) <= availableWidth
 
   if (allTabsFit) {
     return {
