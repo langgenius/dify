@@ -382,7 +382,7 @@ function PublishBarActions({
         </span>
         <Tooltip>
           <TooltipTrigger render={<span className="min-w-0 truncate">{metaLabel}</span>} />
-          <TooltipContent role="tooltip">{metaLabel}</TooltipContent>
+          <TooltipContent>{metaLabel}</TooltipContent>
         </Tooltip>
       </div>
       <button
