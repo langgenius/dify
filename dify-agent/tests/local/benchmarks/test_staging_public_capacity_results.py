@@ -57,9 +57,7 @@ def _sample(scenario: StagingPublicScenarioId, index: int, terminal_ms: float) -
         config_sha_valid=scenario == "config",
         file_payload_bytes=16 * 1024 * 1024 if scenario == "file" else 0,
         file_payload_sha256=(
-            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
-            if scenario == "file"
-            else None
+            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1" if scenario == "file" else None
         ),
         file_integrity_valid=scenario == "file",
         edge_version="v1",

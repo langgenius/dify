@@ -172,9 +172,7 @@ def _sample(
         config_sha_valid=scenario_id == "config",
         file_payload_bytes=16 * 1024 * 1024 if scenario_id == "file" else 0,
         file_payload_sha256=(
-            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
-            if scenario_id == "file"
-            else None
+            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1" if scenario_id == "file" else None
         ),
         file_integrity_valid=scenario_id == "file",
     )
@@ -400,8 +398,8 @@ def test_aggregates_three_valid_schema_v7_stages_offline(tmp_path: Path) -> None
     assert {(block.backend_replicas, block.scenario_id) for block in result.blocks} == {
         (1, "basic"),
         (1, "shell"),
-            (1, "config"),
-            (1, "file"),
+        (1, "config"),
+        (1, "file"),
         (2, "basic"),
         (2, "shell"),
         (2, "config"),

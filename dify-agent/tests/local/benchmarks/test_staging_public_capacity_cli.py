@@ -147,9 +147,7 @@ def _sample(scenario_id: StagingPublicScenarioId, benchmark_run_id: str) -> Stag
         config_sha_valid=scenario_id == "config",
         file_payload_bytes=16 * 1024 * 1024 if scenario_id == "file" else 0,
         file_payload_sha256=(
-            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
-            if scenario_id == "file"
-            else None
+            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1" if scenario_id == "file" else None
         ),
         file_integrity_valid=scenario_id == "file",
     )
@@ -736,11 +734,14 @@ def test_file_points_are_available_only_in_r1() -> None:
         scenario_filter="file",
         concurrency_filter=20,
     ) == [("file", 20)]
-    assert staging_public_capacity_cli._selected_stage_matrix(
-        2,
-        scenario_filter="file",
-        concurrency_filter=1,
-    ) == []
+    assert (
+        staging_public_capacity_cli._selected_stage_matrix(
+            2,
+            scenario_filter="file",
+            concurrency_filter=1,
+        )
+        == []
+    )
 
 
 def test_r1_file_matrix_fails_before_load_when_cleanup_capability_is_missing(

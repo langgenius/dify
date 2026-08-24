@@ -894,9 +894,7 @@ def _wait_for_joint_zero(
             resource_replay_attempted = True
         sleep(5)
     if database_zero_checks < 2:
-        database_errors.append(
-            "database and storage resources did not remain zero for two checks ten seconds apart"
-        )
+        database_errors.append("database and storage resources did not remain zero for two checks ten seconds apart")
     if joint_zero_checks < 2:
         joint_errors.append(
             "database, storage, and Vendor resources did not jointly remain zero for two checks ten seconds apart"
