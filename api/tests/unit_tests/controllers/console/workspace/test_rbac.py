@@ -127,6 +127,27 @@ class TestAccessMatrixAccountNames:
 
         assert items[0].account.account_name == "Alice"
 
+    def test_moves_resource_maintainer_to_first_position(self):
+        items = [
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-2"}),
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-maintainer"}),
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-3"}),
+        ]
+
+        rbac_mod._move_resource_maintainer_first(items, "acct-maintainer")
+
+        assert [item.account.account_id for item in items] == ["acct-maintainer", "acct-2", "acct-3"]
+
+    def test_keeps_resource_user_order_when_maintainer_is_not_on_page(self):
+        items = [
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-2"}),
+            rbac_mod.svc.ResourceUserAccessPolicies(account={"account_id": "acct-3"}),
+        ]
+
+        rbac_mod._move_resource_maintainer_first(items, "acct-maintainer")
+
+        assert [item.account.account_id for item in items] == ["acct-2", "acct-3"]
+
 
 class TestPydanticModels:
     """The internal `_…Request` models are the contract between the browser
