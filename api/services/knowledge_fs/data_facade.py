@@ -642,24 +642,35 @@ class KnowledgeFSDataFacade:
     def prepare_logical_document_download(
         self, *, tenant_id: str, account_id: str, control_space_id: str, document_id: str
     ) -> KnowledgeFSDocumentDownloadDescriptor:
-        """Resolve the readable active revision of a logical document to its stored asset."""
+        """Resolve a logical document's active or latest failed revision to its stored asset."""
         logical_document = self.get_logical_document(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
             document_id=document_id,
         )
-        active = logical_document.active
-        if active is None:
-            raise KnowledgeFSProductResourceNotFoundError("Logical document has no active revision")
+        downloadable_revision = logical_document.active
+        if downloadable_revision is None:
+            if logical_document.status != "failed":
+                raise KnowledgeFSProductResourceNotFoundError("Logical document has no downloadable revision")
+            revisions = self.list_document_revisions(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
+                document_id=document_id,
+                limit=1,
+            )
+            downloadable_revision = revisions.data[0] if revisions.data else None
+            if downloadable_revision is None or downloadable_revision.state != "failed":
+                raise KnowledgeFSProductResourceNotFoundError("Logical document has no downloadable revision")
         asset = self.get_document(
             tenant_id=tenant_id,
             account_id=account_id,
             control_space_id=control_space_id,
-            document_id=active.document_asset_id,
+            document_id=downloadable_revision.document_asset_id,
         )
-        if asset.version != active.document_asset_version:
-            raise KnowledgeFSProductResourceNotFoundError("Logical document active asset version is unavailable")
+        if asset.version != downloadable_revision.document_asset_version:
+            raise KnowledgeFSProductResourceNotFoundError("Logical document revision asset version is unavailable")
         return KnowledgeFSDocumentDownloadDescriptor(
             document_id=logical_document.id,
             filename=asset.filename,
@@ -971,6 +982,7 @@ class KnowledgeFSDataFacade:
         control_space_id: str,
         document_id: str,
         cursor: str | None = None,
+        limit: int | None = None,
     ) -> KnowledgeFSDocumentRevisionListResponse:
         raw = self._interactive_child(
             tenant_id=tenant_id,
@@ -979,7 +991,7 @@ class KnowledgeFSDataFacade:
             operation_id="listDocumentRevisions",
             resource_id=document_id,
             path_parameters=(("documentId", document_id),),
-            query=(("cursor", cursor),) if cursor else (),
+            query=_knowledge_fs_query(("cursor", cursor), ("limit", limit)),
         )
         return KnowledgeFSDocumentRevisionListResponse.model_validate(raw)
 

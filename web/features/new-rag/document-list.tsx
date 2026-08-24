@@ -197,6 +197,7 @@ const DocumentRow = memo(
     sourcePending,
     status,
     statusPending,
+    tasksPending,
   }: {
     canDownload: boolean
     document: LogicalDocument
@@ -219,6 +220,7 @@ const DocumentRow = memo(
     sourcePending: boolean
     status: DocumentDisplayStatus
     statusPending: boolean
+    tasksPending: boolean
   }) => {
     const { t } = useTranslation('dataset')
     const { t: tCommon } = useTranslation('common')
@@ -295,7 +297,7 @@ const DocumentRow = memo(
             canEdit={!selectionDisabled}
             documentEnabled={document.enabled}
             documentTitle={document.title}
-            downloadDisabled={!document.active || !documentCanDownload(status)}
+            downloadDisabled={tasksPending || !documentCanDownload(document, status)}
             onDownload={() => onDownload(document.id)}
             onRemove={() => onRemove(document.id)}
             onRename={(title) => onRename(document.id, title)}
@@ -659,6 +661,7 @@ export function DocumentsList({
                     tasksPending ||
                     (statusPending && document.sourceId && !sourceNames.has(document.sourceId)),
                   )}
+                  tasksPending={tasksPending}
                 />
               ))}
             </tbody>

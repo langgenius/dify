@@ -810,6 +810,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       ),
     [documentStatuses, documents, t, taskByDocument],
   )
+  const taskResultsIncomplete = Boolean(!tasksQuery.data || tasksQuery.isPending)
   const filterActive = filter !== 'all' || Boolean(search.trim())
   const availableDocumentIds = useMemo(
     () =>
@@ -851,12 +852,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const downloadableSelectedDocumentIds = useMemo(() => {
     if (
       bulkSelectionInvalid ||
-      selectedDocuments.some((document) => !document.active) ||
-      selectedDocumentStatuses.some((status) => !documentCanDownload(status))
+      taskResultsIncomplete ||
+      selectedDocuments.some((document) => {
+        const status = documentStatuses.get(document.id)
+        return !status || !documentCanDownload(document, status)
+      })
     )
       return []
     return selectedDocuments.map((document) => document.id)
-  }, [bulkSelectionInvalid, selectedDocuments, selectedDocumentStatuses])
+  }, [bulkSelectionInvalid, documentStatuses, selectedDocuments, taskResultsIncomplete])
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     return documents.filter((document) => {
@@ -895,7 +899,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (sourcesQuery.error && sourcesQuery.data) ||
     sourcesQuery.isFetchNextPageError,
   )
-  const taskResultsIncomplete = Boolean(!tasksQuery.data || tasksQuery.isPending)
   const sourceResultsIncomplete = Boolean(
     !sourcesQuery.data ||
     sourcesQuery.isPending ||
@@ -1931,7 +1934,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       if (!canDownload || documentActionPendingRef.current) return false
       const currentDocument = documents.find((document) => document.id === documentId)
       const status = documentStatuses.get(documentId)
-      if (!currentDocument?.active || !status || !documentCanDownload(status)) return false
+      if (
+        taskResultsIncomplete ||
+        !currentDocument ||
+        !status ||
+        !documentCanDownload(currentDocument, status)
+      )
+        return false
       documentActionPendingRef.current = true
       setPendingDocumentAction({ action: 'download', documentId })
       try {
@@ -1957,7 +1966,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         setPendingDocumentAction(undefined)
       }
     },
-    [canDownload, documentStatuses, documents, knowledgeSpaceId, tCommon],
+    [canDownload, documentStatuses, documents, knowledgeSpaceId, taskResultsIncomplete, tCommon],
   )
 
   const handleToggleDocumentAvailability = useCallback(

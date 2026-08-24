@@ -1147,6 +1147,122 @@ describe('DocumentsPage', () => {
     expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'source-report.md' })
   })
 
+  it('downloads a failed document without an active revision from the document action menu', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              active: null,
+              activeRevision: undefined,
+              id: 'failed-report',
+              status: 'failed',
+              title: 'Failed report.pdf',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'failed-report', documentRevision: 1, state: 'failed' })],
+        },
+      ],
+    }
+    const file = new File(['failed report'], 'failed-report.pdf', { type: 'application/pdf' })
+    downloadDocumentMutation.mockResolvedValue(file)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    const download = await screen.findByRole('menuitem', {
+      name: 'dataset.newKnowledge.downloadDocuments',
+    })
+    expect(download).toBeEnabled()
+    await user.click(download)
+
+    expect(downloadDocumentMutation).toHaveBeenCalledWith({
+      params: { control_space_id: 'space-1', document_id: 'failed-report' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({ data: file, fileName: 'failed-report.pdf' })
+  })
+
+  it('keeps downloads disabled when a pending document is displayed as failed by a canceled task', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              active: null,
+              activeRevision: undefined,
+              id: 'canceled-report',
+              status: 'pending',
+              title: 'Canceled report.pdf',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'canceled-report', documentRevision: 1, state: 'canceled' })],
+        },
+      ],
+    }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Canceled report.pdf' }))
+    const bulkActions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(bulkActions).getByRole('button', {
+        name: 'dataset.newKnowledge.downloadDocuments',
+      }),
+    ).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    expect(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.downloadDocuments',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(downloadDocumentMutation).not.toHaveBeenCalled()
+    expect(downloadDocumentsMutation).not.toHaveBeenCalled()
+  })
+
+  it('keeps row and selected-document downloads disabled until task status loads', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [{ items: [document({ id: 'report', title: 'Report.pdf' })] }],
+    }
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Report.pdf' }))
+
+    tasksQuery.data = undefined
+    tasksQuery.isPending = true
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    const bulkActions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    expect(
+      within(bulkActions).getByRole('button', {
+        name: 'dataset.newKnowledge.downloadDocuments',
+      }),
+    ).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }))
+    expect(
+      await screen.findByRole('menuitem', {
+        name: 'dataset.newKnowledge.downloadDocuments',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('creates a metadata field without scanning or rewriting documents', async () => {
     const user = userEvent.setup()
 
@@ -3519,7 +3635,57 @@ describe('DocumentsPage', () => {
     })
   })
 
-  it('disables bulk download when any selected document has no active revision', async () => {
+  it('downloads selected failed documents without active revisions as a ZIP archive', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = {
+      pages: [
+        {
+          items: [
+            document({
+              active: null,
+              activeRevision: undefined,
+              id: 'failed',
+              status: 'failed',
+              title: 'Failed.pdf',
+            }),
+          ],
+        },
+      ],
+    }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ documentId: 'failed', documentRevision: 1, state: 'failed' })],
+        },
+      ],
+    }
+    const archive = new File(['documents'], 'failed-documents.zip', {
+      type: 'application/zip',
+    })
+    downloadDocumentsMutation.mockResolvedValue(archive)
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
+    const actions = screen.getByRole('group', {
+      name: 'dataset.newKnowledge.bulkDocumentActions',
+    })
+    const download = within(actions).getByRole('button', {
+      name: 'dataset.newKnowledge.downloadDocuments',
+    })
+    expect(download).toBeEnabled()
+    await user.click(download)
+
+    expect(downloadDocumentsMutation).toHaveBeenCalledWith({
+      body: { document_ids: ['failed'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(downloadBlobMock).toHaveBeenCalledWith({
+      data: archive,
+      fileName: 'failed-documents.zip',
+    })
+  })
+
+  it('disables bulk download when any selected document is pending', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
@@ -3530,6 +3696,7 @@ describe('DocumentsPage', () => {
               active: null,
               activeRevision: undefined,
               id: 'pending',
+              status: 'pending',
               title: 'Pending.pdf',
             }),
           ],

@@ -2,8 +2,9 @@ import type { BackgroundTask, DocumentProcessingTask, LogicalDocument } from './
 
 export type DocumentDisplayStatus = 'ready' | 'queued' | 'processing' | 'failed' | 'disabled'
 
-export function documentCanDownload(status: DocumentDisplayStatus) {
-  return status !== 'queued' && status !== 'processing'
+export function documentCanDownload(document: LogicalDocument, status: DocumentDisplayStatus) {
+  const hasDownloadableRevision = Boolean(document.active) || document.status === 'failed'
+  return hasDownloadableRevision && status !== 'queued' && status !== 'processing'
 }
 
 export function documentCanReindex(status: DocumentDisplayStatus) {

@@ -1418,7 +1418,7 @@ class KnowledgeFSDocumentListResponse(ResponseModel):
 
 
 class KnowledgeFSDocumentDownloadDescriptor(ResponseModel):
-    """Trusted, internal description of the active object behind a logical document."""
+    """Trusted, internal description of an active or latest failed downloadable revision asset."""
 
     document_id: str
     filename: str
