@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
 import services
+from core.tools.signature import sign_tool_file
 from core.tools.tool_file_manager import ToolFileManager
 from dify_graph.file.helpers import verify_plugin_file_signature
 from fields.file_fields import FileResponse
@@ -110,7 +111,7 @@ class PluginUploadFileApi(Resource):
             )
 
             extension = guess_extension(tool_file.mimetype) or ".bin"
-            preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
+            preview_url = sign_tool_file(tool_file_id=tool_file.id, extension=extension, for_external=True)
 
             # Create a dictionary with all the necessary attributes
             result = FileResponse(
