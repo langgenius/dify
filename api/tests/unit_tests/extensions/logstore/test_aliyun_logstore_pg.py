@@ -11,11 +11,12 @@ shape is correct: the captured log record has a non-empty traceback.
 from __future__ import annotations
 
 from unittest.mock import patch
+import pytest
 
 from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
 
 
-def test_check_port_connectivity_captures_traceback_on_exception(caplog) -> None:
+def test_check_port_connectivity_captures_traceback_on_exception(caplog: pytest.LogCaptureFixture) -> None:
     """A socket failure during the port check must produce a log record with exc_info set.
 
     Before cycle 21: the record was logged as
