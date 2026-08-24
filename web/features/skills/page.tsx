@@ -34,7 +34,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
@@ -384,6 +384,7 @@ function SkillCard({
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
+  const nameId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
@@ -431,16 +432,20 @@ function SkillCard({
   }
 
   return (
-    <article className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out hover:shadow-lg">
+    <article
+      aria-labelledby={nameId}
+      className="group relative col-span-1 h-42 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid"
+    >
       <div className="flex h-full min-w-0 flex-col">
         <Link
           href={`/skills/${skill.id}`}
+          aria-labelledby={nameId}
           className="block min-w-0 shrink-0 cursor-pointer outline-hidden"
         >
           <div className="flex items-center gap-3 px-4 pt-4 pb-2">
             <SkillIcon />
             <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
-              <h2 className="truncate system-md-semibold text-text-secondary">
+              <h2 id={nameId} className="truncate system-md-semibold text-text-secondary">
                 {skill.display_name}
               </h2>
               {!skill.name.startsWith('untitled-skill-') && (
