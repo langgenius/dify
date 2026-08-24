@@ -1,7 +1,9 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
 import type { MarketplaceBannerPage } from './banners'
+import { cn } from '@langgenius/dify-ui/cn'
 import { HomeStickyStateProvider } from './home-sticky-state-provider'
+import styles from './home-sticky.module.css'
 import HomeTrending from './home-trending'
 
 type HomeShellProps = {
@@ -33,14 +35,20 @@ export function HomeShell({
 }: HomeShellProps) {
   return (
     <HomeStickyStateProvider>
-      <div className="flex min-h-full w-full shrink-0 flex-col bg-background-default">
+      <div
+        className="flex min-h-full w-full shrink-0 flex-col bg-background-default"
+        data-marketplace-standalone={isMarketplacePlatform ? '' : undefined}
+      >
         {header}
         <div className="relative flex w-full flex-col">
           {hero}
           {search}
           {banners.length > 0 && (
             <>
-              <div aria-hidden="true" className="h-12 shrink-0" />
+              <div
+                aria-hidden="true"
+                className={cn('h-12 shrink-0', isMarketplacePlatform && styles.bannerSpacer)}
+              />
               <HomeTrending
                 banners={banners}
                 isMarketplacePlatform={isMarketplacePlatform}

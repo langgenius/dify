@@ -81,8 +81,14 @@ function HomeCatalogNavigation({
           >
             {catalogLeading && (
               <>
-                <div className="shrink-0">{catalogLeading}</div>
-                <div aria-hidden className="shrink-0 px-1 system-md-regular text-text-tertiary">
+                <div className={cn('shrink-0', styles.catalogLeading)}>{catalogLeading}</div>
+                <div
+                  aria-hidden
+                  className={cn(
+                    'shrink-0 px-1 system-md-regular text-text-tertiary',
+                    styles.catalogLeadingDivider,
+                  )}
+                >
                   ·
                 </div>
               </>

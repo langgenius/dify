@@ -18,4 +18,8 @@
   .decorations {
     display: none;
   }
+
+  :global([data-marketplace-standalone]) .copyBlock {
+    max-width: 360px;
+  }
 }

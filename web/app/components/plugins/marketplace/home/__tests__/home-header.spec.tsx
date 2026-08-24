@@ -47,6 +47,7 @@ describe('HomeHeader', () => {
     expect(creatorCenterLink).toHaveAttribute('href', 'https://creators.dify.ai/')
     expect(creatorCenterLink).toHaveAttribute('target', '_blank')
     expect(creatorCenterLink).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(creatorCenterLink.parentElement?.className).toMatch(/standaloneHeaderActions/)
     expect(creatorCenterLink.compareDocumentPosition(guideButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )

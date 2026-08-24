@@ -77,6 +77,10 @@
   max-width: 400px;
 }
 
+.readMoreMobile {
+  display: none;
+}
+
 .updatesDescription {
   display: -webkit-box;
   max-height: 40px;
@@ -88,6 +92,104 @@
 @media (prefers-reduced-motion: reduce) {
   .contentTrack {
     transition-duration: 0ms;
+  }
+}
+
+@media (max-width: 879px) {
+  :global([data-marketplace-standalone]) .section {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  :global([data-marketplace-standalone]) .wrapper {
+    padding-bottom: 0;
+  }
+
+  :global([data-marketplace-standalone]) .copy {
+    width: 100%;
+    height: 160px;
+  }
+
+  :global([data-marketplace-standalone]) .navigation {
+    position: static;
+    top: auto;
+    width: 100%;
+  }
+
+  :global([data-marketplace-standalone]) .recommendCards {
+    padding: 16px 20px;
+  }
+
+  :global([data-marketplace-standalone]) .updatesArt {
+    width: 100%;
+    max-width: none;
+    height: 197px;
+  }
+
+  :global([data-marketplace-standalone]) .carouselRoot {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: auto;
+    border-radius: 0;
+  }
+
+  :global([data-marketplace-standalone]) .slideViewport {
+    height: auto;
+  }
+
+  :global([data-marketplace-standalone]) .contentTrack {
+    height: auto;
+    align-items: flex-start;
+  }
+
+  :global([data-marketplace-standalone]) .slide {
+    height: auto;
+  }
+
+  /* Flex rows size to the tallest item. Collapse hidden slides so image
+     banners do not inherit the stacked blog/recommend height. */
+  :global([data-marketplace-standalone]) .slideInactive {
+    height: 0;
+    overflow: hidden;
+  }
+
+  :global([data-marketplace-standalone]) .stackedSlide {
+    display: flex;
+    flex-direction: column-reverse;
+    height: auto;
+  }
+
+  :global([data-marketplace-standalone]) .stackedVisual {
+    flex: none;
+    width: 100%;
+    height: 197px;
+    border-radius: 16px;
+  }
+
+  :global([data-marketplace-standalone]) .stackedCopy {
+    flex: none;
+    height: 160px;
+    padding: 20px;
+    overflow: hidden;
+  }
+
+  :global([data-marketplace-standalone]) .stackedCopyMeta {
+    gap: 4px;
+  }
+
+  /* Event/ad mobile art is a 393×357 frame (Figma 1026:28881), matching
+     the stacked blog/recommend card height of 197 + 160. */
+  :global([data-marketplace-standalone]) .imageSlide {
+    height: 357px;
+  }
+
+  :global([data-marketplace-standalone]) .readMoreDesktop {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .readMoreMobile {
+    display: flex;
   }
 }
 

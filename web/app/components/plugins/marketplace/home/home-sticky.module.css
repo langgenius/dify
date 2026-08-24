@@ -72,4 +72,42 @@
     padding-right: 16px;
     padding-left: 16px;
   }
+
+  :global([data-marketplace-standalone]) .search {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  :global([data-marketplace-standalone]) .searchContent {
+    max-width: 360px;
+  }
+
+  :global([data-marketplace-standalone]) .headerCatalogTabs {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .standaloneHeaderActions {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .catalogNavigation {
+    padding: 24px 20px 16px;
+  }
+
+  :global([data-marketplace-standalone]) .catalogLeading {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .catalogLeadingDivider {
+    display: none;
+  }
+
+  :global([data-marketplace-standalone]) .catalogContent {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  :global([data-marketplace-standalone]) .bannerSpacer {
+    height: 24px;
+  }
 }

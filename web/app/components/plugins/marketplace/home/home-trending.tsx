@@ -46,7 +46,11 @@ function TrackedBannerSlide({
       aria-label={banner.title}
       aria-hidden={!isActive}
       inert={!isActive}
-      className="h-full min-w-0 shrink-0 grow-0 basis-full"
+      className={cn(
+        'h-full min-w-0 shrink-0 grow-0 basis-full',
+        isMarketplacePlatform && styles.slide,
+        isMarketplacePlatform && !isActive && styles.slideInactive,
+      )}
     >
       <HomeBannerSlide banner={banner} isMarketplacePlatform={isMarketplacePlatform} page={page} />
     </div>
@@ -80,6 +84,7 @@ function HomeTrending({
       className={cn(
         'shrink-0 bg-background-default pb-6',
         isMarketplacePlatform ? 'px-4 min-[1232px]:px-0' : 'px-4 md:px-9',
+        isMarketplacePlatform && styles.section,
       )}
     >
       <div
@@ -96,23 +101,15 @@ function HomeTrending({
           role="region"
           aria-roledescription="carousel"
           aria-label={t(($) => $['marketplace.home.trendingTitle'])}
-          className="relative h-[200px] w-full rounded-2xl"
+          className={cn(
+            'relative h-[200px] w-full rounded-2xl',
+            isMarketplacePlatform && styles.carouselRoot,
+          )}
           data-home-trending-carousel-root
         >
-          {/* A single banner has nothing to rotate through, so skip the
-              pagination/autoplay controls entirely. */}
-          {banners.length > 1 && (
-            <TrendingNavigation
-              banners={banners}
-              selectedIndex={selectedIndex}
-              carouselRootRef={carouselRootRef}
-              pauseWhenOffscreen={!isMarketplacePlatform}
-              onSelect={selectSlide}
-              onNext={selectNextSlide}
-              onPausedChange={setIsRotationPaused}
-            />
-          )}
-          <div className="h-full overflow-hidden rounded-2xl">
+          <div
+            className={cn('h-full overflow-hidden rounded-2xl', isMarketplacePlatform && styles.slideViewport)}
+          >
             <div
               // Keep automatic rotation silent for screen readers; announce
               // the current slide only once rotation is paused or user-driven.
@@ -131,6 +128,19 @@ function HomeTrending({
               ))}
             </div>
           </div>
+          {/* A single banner has nothing to rotate through, so skip the
+              pagination/autoplay controls entirely. */}
+          {banners.length > 1 && (
+            <TrendingNavigation
+              banners={banners}
+              selectedIndex={selectedIndex}
+              carouselRootRef={carouselRootRef}
+              pauseWhenOffscreen={!isMarketplacePlatform}
+              onSelect={selectSlide}
+              onNext={selectNextSlide}
+              onPausedChange={setIsRotationPaused}
+            />
+          )}
         </div>
       </div>
     </section>

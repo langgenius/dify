@@ -239,8 +239,8 @@ function TrendingRecommendationSlide({
   return (
     <div
       className={cn(
-        styles.recommendSlide,
         'flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body',
+        isMarketplacePlatform && styles.stackedSlide,
       )}
     >
       <TrendingCopy banner={banner} isMarketplacePlatform={isMarketplacePlatform} />
@@ -248,6 +248,7 @@ function TrendingRecommendationSlide({
         className={cn(
           styles.recommendVisual,
           'relative h-[200px] shrink-0 overflow-hidden rounded-xl bg-background-body',
+          isMarketplacePlatform && styles.stackedVisual,
         )}
       >
         <img
@@ -276,7 +277,15 @@ function TrendingRecommendationSlide({
   )
 }
 
-function BlogBannerSlide({ banner, page }: { banner: BannerBlog; page: MarketplaceBannerPage }) {
+function BlogBannerSlide({
+  banner,
+  isMarketplacePlatform,
+  page,
+}: {
+  banner: BannerBlog
+  isMarketplacePlatform: boolean
+  page: MarketplaceBannerPage
+}) {
   const { t } = useTranslation('plugin')
   const opensInNewTab = /^https?:\/\//.test(banner.content.link)
 
@@ -292,18 +301,45 @@ function BlogBannerSlide({ banner, page }: { banner: BannerBlog; page: Marketpla
       aria-label={t(($) => $['marketplace.home.trendingReadMoreAbout'], {
         title: banner.content.blog_title,
       })}
-      className="flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      className={cn(
+        'flex h-[200px] w-full overflow-hidden rounded-2xl bg-background-body outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        isMarketplacePlatform && styles.stackedSlide,
+      )}
     >
-      <div className="flex min-w-0 flex-1 flex-col items-start overflow-hidden px-6 py-5">
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 flex-col items-start overflow-hidden px-6 py-5',
+          isMarketplacePlatform && styles.stackedCopy,
+        )}
+      >
         <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
-          <p className="shrink-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success">
-            {banner.title}
-          </p>
+          <div className="flex w-full items-center justify-between gap-2">
+            <p className="shrink-0 rounded-sm bg-state-success-hover-alt px-1.5 py-0.5 text-[10px] leading-3 font-semibold tracking-[-0.2px] text-text-success">
+              {banner.title}
+            </p>
+            {isMarketplacePlatform && (
+              <span
+                aria-hidden
+                className={cn(
+                  styles.readMoreMobile,
+                  'shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2',
+                )}
+              >
+                <span>{t(($) => $['marketplace.home.trendingReadMore'])}</span>
+                <span className="i-ri-arrow-right-s-line size-4" />
+              </span>
+            )}
+          </div>
           <div className="flex min-h-0 w-full max-w-[800px] flex-1 flex-col items-start gap-3">
             <h2 className="shrink-0 text-xl leading-6 font-semibold tracking-[-0.4px] text-text-primary">
               {banner.content.blog_title}
             </h2>
-            <div className="flex min-h-0 w-full flex-1 flex-col items-start gap-2">
+            <div
+              className={cn(
+                'flex min-h-0 w-full flex-1 flex-col items-start gap-2',
+                isMarketplacePlatform && styles.stackedCopyMeta,
+              )}
+            >
               {banner.content.subtitle && (
                 <p className="shrink-0 text-[15px] leading-[18px] font-normal tracking-[-0.3px] text-text-primary">
                   {banner.content.subtitle}
@@ -316,7 +352,10 @@ function BlogBannerSlide({ banner, page }: { banner: BannerBlog; page: Marketpla
               )}
               <span
                 aria-hidden
-                className="flex shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2"
+                className={cn(
+                  'flex shrink-0 items-center gap-1 text-[13px] leading-[normal] font-medium text-text-accent underline decoration-[10%] underline-offset-2',
+                  isMarketplacePlatform && styles.readMoreDesktop,
+                )}
               >
                 <span>{t(($) => $['marketplace.home.trendingReadMore'])}</span>
                 <span className="i-ri-arrow-right-s-line size-4" />
@@ -331,7 +370,11 @@ function BlogBannerSlide({ banner, page }: { banner: BannerBlog; page: Marketpla
         height={200}
         alt=""
         aria-hidden
-        className={cn(styles.updatesArt, 'h-[200px] shrink-0 object-cover')}
+        className={cn(
+          styles.updatesArt,
+          isMarketplacePlatform && styles.stackedVisual,
+          'h-[200px] shrink-0 object-cover',
+        )}
       />
     </Link>
   )
@@ -339,9 +382,11 @@ function BlogBannerSlide({ banner, page }: { banner: BannerBlog; page: Marketpla
 
 function ImageBannerSlide({
   banner,
+  isMarketplacePlatform,
   page,
 }: {
   banner: BannerEvent | BannerAd
+  isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
   const desktopImage = getMarketplaceAssetURL(banner.content.images.desktop)
@@ -358,10 +403,18 @@ function ImageBannerSlide({
         trackMarketplaceBannerClick(banner)
       }}
       aria-label={banner.content.alt_text || banner.title}
-      className="block h-[200px] w-full overflow-hidden rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      className={cn(
+        'block h-[200px] w-full overflow-hidden rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        isMarketplacePlatform && styles.imageSlide,
+      )}
     >
       <picture className="block size-full">
-        {mobileImage && <source media="(max-width: 639px)" srcSet={mobileImage} />}
+        {mobileImage && (
+          <source
+            media={isMarketplacePlatform ? '(max-width: 879px)' : '(max-width: 639px)'}
+            srcSet={mobileImage}
+          />
+        )}
         {tabletImage && <source media="(max-width: 1023px)" srcSet={tabletImage} />}
         <img
           src={desktopImage}
@@ -385,10 +438,23 @@ export function HomeBannerSlide({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
-  if (banner.style_type === 'blog') return <BlogBannerSlide banner={banner} page={page} />
+  if (banner.style_type === 'blog')
+    return (
+      <BlogBannerSlide
+        banner={banner}
+        isMarketplacePlatform={isMarketplacePlatform}
+        page={page}
+      />
+    )
 
   if (banner.style_type === 'event' || banner.style_type === 'ad')
-    return <ImageBannerSlide banner={banner} page={page} />
+    return (
+      <ImageBannerSlide
+        banner={banner}
+        isMarketplacePlatform={isMarketplacePlatform}
+        page={page}
+      />
+    )
 
   return (
     <TrendingRecommendationSlide

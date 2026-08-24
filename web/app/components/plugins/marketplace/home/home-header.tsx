@@ -75,8 +75,15 @@ const HomeHeader = ({
       </div>
 
       <div className="flex h-full min-w-0 flex-1 items-center justify-end gap-2.5">
-        <HomeCreatorCenter />
-        <HomeGuide isMarketplacePlatform={isMarketplacePlatform} />
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-2.5',
+            isMarketplacePlatform && styles.standaloneHeaderActions,
+          )}
+        >
+          <HomeCreatorCenter />
+          <HomeGuide isMarketplacePlatform={isMarketplacePlatform} />
+        </div>
         {actions}
       </div>
     </header>

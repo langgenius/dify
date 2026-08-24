@@ -184,14 +184,14 @@ const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => 
     >
       <div className="relative flex h-[162px] w-full max-w-[726px] flex-col items-center pt-[41px]">
         <HeroDecorationIcons />
-        <div className="flex flex-col items-center gap-2 text-center">
+        <div className={cn('flex w-full flex-col items-center gap-2 text-center', styles.copyBlock)}>
           <h1
             className="text-[28px] leading-[1.2] font-medium tracking-[-0.56px] text-text-primary"
             style={{ fontFamily: "var(--font-family-brand, 'Söhne', var(--font-sans))" }}
           >
             {title ?? t(($) => $['marketplace.home.heroTitle'])}
           </h1>
-          <p className="text-[13px] leading-4 font-light tracking-[-0.065px] text-text-tertiary">
+          <p className="w-full text-[13px] leading-4 font-light tracking-[-0.065px] text-text-tertiary">
             {subtitle ?? t(($) => $['marketplace.home.heroSubtitle'])}
           </p>
         </div>

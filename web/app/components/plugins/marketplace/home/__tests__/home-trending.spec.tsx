@@ -125,6 +125,9 @@ describe('HomeTrending', () => {
 
     render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
 
+    expect(document.querySelector('[data-home-trending-carousel-root]')?.className).toMatch(
+      /carouselRoot/,
+    )
     expect(screen.getByRole('heading', { name: 'Popular plugins' })).toBeInTheDocument()
     const recommendationSlide = screen.getByRole('group', { name: 'Trending' })
     expect(
@@ -151,6 +154,36 @@ describe('HomeTrending', () => {
     expect(screen.getByRole('link', { name: 'DuckDuckGo plugin' })).toHaveAttribute(
       'href',
       'https://marketplace.dify.ai/plugin/langgenius/duckduckgo',
+    )
+  })
+
+  it('marks inactive standalone slides so mobile CSS can collapse mixed banner heights', () => {
+    render(<HomeTrending banners={banners} isMarketplacePlatform page="plugins" />)
+
+    const recommendSlide = screen.getByRole('group', { name: 'Trending' })
+    const blogSlide = document.querySelector('[aria-roledescription="slide"][aria-label="Dify Updates"]')
+    const eventSlide = document.querySelector('[aria-roledescription="slide"][aria-label="Duck Duck Go"]')
+    const eventLink = document.querySelector('a[aria-label="DuckDuckGo plugin"]')
+
+    expect(recommendSlide.className).toMatch(/slide/)
+    expect(recommendSlide.className).not.toMatch(/slideInactive/)
+    expect(blogSlide?.className).toMatch(/slideInactive/)
+    expect(eventSlide?.className).toMatch(/slideInactive/)
+    expect(recommendSlide.firstElementChild?.className).toMatch(/stackedSlide/)
+    expect(blogSlide?.firstElementChild?.className).toMatch(/stackedSlide/)
+    expect(eventLink?.className).toMatch(/imageSlide/)
+    expect(eventLink?.querySelector('source')).toHaveAttribute('media', '(max-width: 879px)')
+    expect(eventLink?.querySelector('source')?.getAttribute('srcset')).toContain(
+      'duckduckgo-mobile.png',
+    )
+  })
+
+  it('keeps the embedded event image breakpoint at 639px', () => {
+    render(<HomeTrending banners={banners} isMarketplacePlatform={false} page="plugins" />)
+
+    expect(document.querySelector('a[aria-label="DuckDuckGo plugin"] source')).toHaveAttribute(
+      'media',
+      '(max-width: 639px)',
     )
   })
 
