@@ -561,6 +561,7 @@ class TestWeaviateVector(unittest.TestCase):
             "doc_type": "image",
         }
         mock_obj.vector = {"default": [0.1] * 128}
+        mock_obj.metadata = SimpleNamespace(score=None)
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]
@@ -585,6 +586,42 @@ class TestWeaviateVector(unittest.TestCase):
         assert docs[0].metadata.get("doc_type") == "image"
 
     @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
+    def test_search_by_full_text_returns_bm25_score_in_metadata(self, mock_weaviate_module):
+        """search_by_full_text must request and propagate the BM25 score, otherwise
+        callers that rank results by metadata["score"] (e.g. hybrid search merging
+        vector + full-text hits) treat every full-text match as 0 regardless of
+        actual relevance, and it silently loses to vector hits."""
+        mock_client = MagicMock()
+        mock_client.is_ready.return_value = True
+        mock_weaviate_module.connect_to_custom.return_value = mock_client
+        mock_client.collections.exists.return_value = True
+        mock_col = MagicMock()
+        mock_client.collections.use.return_value = mock_col
+
+        mock_obj = MagicMock()
+        mock_obj.properties = {"text": "bm25 result", "doc_id": "segment-1"}
+        mock_obj.vector = [0.3, 0.4]
+        mock_obj.metadata = SimpleNamespace(score=2.5)
+
+        mock_result = MagicMock()
+        mock_result.objects = [mock_obj]
+        mock_col.query.bm25.return_value = mock_result
+
+        wv = WeaviateVector(
+            collection_name=self.collection_name,
+            config=self.config,
+            attributes=self.attributes,
+        )
+        docs = wv.search_by_full_text(query="bm25")
+
+        # The query must ask Weaviate for the score, not just properties/vector.
+        call_kwargs = mock_col.query.bm25.call_args.kwargs
+        assert call_kwargs.get("return_metadata") is not None
+
+        assert len(docs) == 1
+        assert docs[0].metadata["score"] == pytest.approx(2.5)
+
+    @patch("dify_vdb_weaviate.weaviate_vector.weaviate")
     def test_search_by_full_text_uses_document_filter(self, mock_weaviate_module):
         mock_client = MagicMock()
         mock_client.is_ready.return_value = True
@@ -596,6 +633,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_obj = MagicMock()
         mock_obj.properties = {"text": "bm25 result", "doc_id": "segment-1"}
         mock_obj.vector = [0.3, 0.4]
+        mock_obj.metadata = SimpleNamespace(score=None)
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]
@@ -644,6 +682,7 @@ class TestWeaviateVector(unittest.TestCase):
         mock_obj = MagicMock()
         mock_obj.properties = {"text": "retry bm25 result", "doc_id": "segment-1"}
         mock_obj.vector = {"default": [0.5, 0.6]}
+        mock_obj.metadata = SimpleNamespace(score=None)
 
         mock_result = MagicMock()
         mock_result.objects = [mock_obj]

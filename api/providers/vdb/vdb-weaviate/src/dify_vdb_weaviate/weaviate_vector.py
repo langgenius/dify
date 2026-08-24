@@ -480,6 +480,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -490,6 +491,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -503,6 +505,12 @@ class WeaviateVector(BaseVector):
             if isinstance(vec, dict):
                 vec = vec.get("default") or next(iter(vec.values()), None)
 
+            if obj.metadata and obj.metadata.score is not None:
+                # Without this, BM25 hits carry no score at all, so callers that
+                # rank documents by metadata["score"] (e.g. hybrid search merging
+                # vector + full-text results) treat every full-text match as 0 and
+                # it gets outranked/dropped regardless of how relevant it actually is.
+                properties["score"] = obj.metadata.score
             docs.append(Document(page_content=text, vector=vec, metadata=properties))
         return docs
 
