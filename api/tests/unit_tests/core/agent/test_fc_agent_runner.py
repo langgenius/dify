@@ -16,6 +16,7 @@ from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
 from core.app.entities.queue_entities import QueueMessageFileEvent
+from core.credit_usage import CreditUsageAppType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     DocumentPromptMessageContent,
@@ -438,7 +439,8 @@ class TestRunMethod:
         assert "session" not in runner.save_agent_thought.call_args.kwargs
         assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {
             "app_id": "app",
-            "created_by": CreditUsageCreatedBy.AGENT.value,
+            "app_type": CreditUsageAppType.AGENT,
+            "created_by": CreditUsageCreatedBy.APP.value,
         }
         runner.queue_manager.publish.assert_called()
 

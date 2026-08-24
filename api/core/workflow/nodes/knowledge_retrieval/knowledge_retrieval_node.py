@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING, Any, Literal, override
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, CreditUsageCreatedBy, DifyRunContext
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -188,7 +189,7 @@ class KnowledgeRetrievalNode(Node[KnowledgeRetrievalNodeData]):
         self._rag_retrieval.set_request_metadata(
             {
                 "app_id": dify_ctx.app_id,
-                "created_by": dify_ctx.created_by or CreditUsageCreatedBy.UNKNOWN,
+                "app_type": dify_ctx.app_type or CreditUsageAppType.UNKNOWN,
             }
         )
         dataset_ids = node_data.dataset_ids

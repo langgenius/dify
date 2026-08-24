@@ -14,6 +14,7 @@ from core.app.entities.app_invoke_entities import (
     AgentAppGenerateEntity,
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
+    get_credit_usage_app_type,
     get_credit_usage_created_by,
 )
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, SystemConfiguration
@@ -137,6 +138,7 @@ def handle(sender: Message, **kwargs):
         "provider": provider_name,
         "model": model_config.model,
         "model_type": ModelType.LLM.value,
+        "app_type": get_credit_usage_app_type(app_mode),
         "created_by": get_credit_usage_created_by(app_mode),
     }
     credit_deduction_context: _CreditDeductionContext = {

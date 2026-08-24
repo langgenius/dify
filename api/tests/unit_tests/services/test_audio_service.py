@@ -64,6 +64,7 @@ from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource, MessageStatus
 from models.model import App, AppMode, AppModelConfig, Message
@@ -283,7 +284,10 @@ class TestAudioServiceASR:
         mock_model_manager_class.assert_called_once_with(
             tenant_id=app.tenant_id,
             user_id="user-123",
-            request_metadata={"created_by": CreditUsageCreatedBy.CHATBOT.value},
+            request_metadata={
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
         )
 
     @patch("services.audio_service.ModelManager.for_tenant", autospec=True)
@@ -398,7 +402,10 @@ class TestAudioServiceASR:
         mock_model_manager_class.assert_called_once_with(
             tenant_id=app.tenant_id,
             user_id="account-1",
-            request_metadata={"created_by": CreditUsageCreatedBy.AGENT_V2.value},
+            request_metadata={
+                "app_type": CreditUsageAppType.AGENT_V2,
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
         )
 
     @pytest.mark.parametrize(
@@ -594,7 +601,10 @@ class TestAudioServiceTTS:
         mock_model_manager_class.assert_called_once_with(
             tenant_id=app.tenant_id,
             user_id="user-123",
-            request_metadata={"created_by": CreditUsageCreatedBy.CHATBOT.value},
+            request_metadata={
+                "app_type": CreditUsageAppType.CHATBOT,
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
         )
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Hello world",

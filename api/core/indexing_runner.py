@@ -39,6 +39,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from extensions.otel import propagate_context
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs import helper
 from libs.datetime_utils import naive_utc_now
@@ -658,7 +659,7 @@ class IndexingRunner:
         ):
             # create keyword index
             create_keyword_thread = threading.Thread(
-                target=self._process_keyword_index,
+                target=propagate_context(self._process_keyword_index),
                 args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
             )
             create_keyword_thread.start()
@@ -681,7 +682,7 @@ class IndexingRunner:
                         continue
                     futures.append(
                         executor.submit(
-                            self._process_chunk,
+                            propagate_context(self._process_chunk),
                             current_app._get_current_object(),  # type: ignore
                             dataset_document.doc_form,
                             chunk_documents,

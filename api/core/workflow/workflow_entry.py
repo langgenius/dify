@@ -8,13 +8,13 @@ from configs import dify_config
 from context import capture_current_context
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
-    CreditUsageCreatedBy,
     InvokeFrom,
     UserFrom,
     build_dify_run_context,
 )
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.layers.observability import ObservabilityLayer
+from core.credit_usage import CreditUsageAppType
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -233,7 +233,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
-            created_by=CreditUsageCreatedBy.WORKFLOW,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,
@@ -393,7 +393,7 @@ class WorkflowEntry:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
-            created_by=CreditUsageCreatedBy.WORKFLOW,
+            app_type=CreditUsageAppType.WORKFLOW,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id="",

@@ -14,7 +14,7 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
-    get_credit_usage_created_by,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     QueueAgentMessageEvent,
@@ -232,7 +232,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 tenant_id,
                 text_to_speech_dict.get("voice", ""),
                 text_to_speech_dict.get("language", None),
-                get_credit_usage_created_by(self._app_config.app_mode),
+                get_credit_usage_app_type(self._app_config.app_mode),
             )
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
             while True:

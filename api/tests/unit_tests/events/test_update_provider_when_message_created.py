@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import AgentAppGenerateEntity, ChatAppGenerateEntity, CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from events.event_handlers import update_provider_when_message_created
 from models import AppMode, Message, TenantCreditPool
@@ -123,7 +124,8 @@ def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:
             "provider": "openai",
             "model": "gpt-4o",
             "model_type": "llm",
-            "created_by": CreditUsageCreatedBy.CHATBOT.value,
+            "app_type": CreditUsageAppType.CHATBOT,
+            "created_by": CreditUsageCreatedBy.APP.value,
         },
     )
 

@@ -5,7 +5,14 @@ from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, 
 from uuid import UUID
 
 from configs import dify_config
-from core.credit_usage import CreditUsageCreatedBy, CreditUsageCreatedByInput, normalize_credit_usage_created_by
+from core.credit_usage import (
+    CreditUsageAppType,
+    CreditUsageAppTypeInput,
+    CreditUsageCreatedBy,
+    CreditUsageCreatedByInput,
+    normalize_credit_usage_app_type,
+    normalize_credit_usage_created_by,
+)
 from core.entities import PluginCredentialType
 from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -66,13 +73,14 @@ class ModelInstance:
         )
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
-        if self._request_metadata is None:
+        bound_request_metadata = getattr(self, "_request_metadata", None)
+        if bound_request_metadata is None:
             if request_metadata is None:
                 return get_credit_usage_metadata()
             return request_metadata
         if request_metadata is None:
-            return self._request_metadata
-        return {**self._request_metadata, **request_metadata}
+            return bound_request_metadata
+        return {**bound_request_metadata, **request_metadata}
 
     def get_model_schema(self) -> AIModelEntity:
         """Return the resolved schema for the current model instance."""
@@ -488,9 +496,17 @@ class ModelInstance:
 class QuotaManagedModelInstance(ModelInstance):
     """A system-hosted model instance that owns quota settlement per invocation."""
 
-    def reserve_quota(self, *, request_id: str | None = None, created_by: CreditUsageCreatedByInput = None):
+    def reserve_quota(
+        self,
+        *,
+        request_id: str | None = None,
+        app_type: CreditUsageAppTypeInput = None,
+        created_by: CreditUsageCreatedByInput = None,
+    ):
         from core.app.llm.quota import reserve_model_quota_for_model
 
+        if app_type is None:
+            app_type = self._get_reservation_app_type(self._request_metadata)
         if created_by is None:
             created_by = self._get_reservation_created_by(self._request_metadata)
 
@@ -500,6 +516,7 @@ class QuotaManagedModelInstance(ModelInstance):
             model_type=self.model_type_instance.model_type,
             model=self.model_name,
             request_id=request_id,
+            app_type=app_type,
             created_by=created_by,
         )
 
@@ -522,15 +539,27 @@ class QuotaManagedModelInstance(ModelInstance):
             return None
         return normalize_credit_usage_created_by(created_by)
 
+    @staticmethod
+    def _get_reservation_app_type(
+        request_metadata: Mapping[str, object] | None,
+    ) -> CreditUsageAppType | None:
+        app_type = request_metadata.get("app_type") if request_metadata else None
+        if app_type is None:
+            return None
+        return normalize_credit_usage_app_type(app_type)
+
     def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
         request_id = self._get_reservation_request_id(request_metadata)
+        app_type = self._get_reservation_app_type(request_metadata)
         created_by = self._get_reservation_created_by(request_metadata)
-        if request_id is None and created_by is None:
+        if request_id is None and app_type is None and created_by is None:
             return self.reserve_quota()
 
-        reservation_kwargs: dict[str, str | CreditUsageCreatedBy] = {}
+        reservation_kwargs: dict[str, str | CreditUsageAppType | CreditUsageCreatedBy] = {}
         if request_id is not None:
             reservation_kwargs["request_id"] = request_id
+        if app_type is not None:
+            reservation_kwargs["app_type"] = app_type
         if created_by is not None:
             reservation_kwargs["created_by"] = created_by
         return self.reserve_quota(**reservation_kwargs)

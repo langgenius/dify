@@ -11,7 +11,8 @@ from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
-from core.app.entities.app_invoke_entities import CreditUsageCreatedBy, get_credit_usage_created_by
+from core.app.entities.app_invoke_entities import get_credit_usage_app_type
+from core.credit_usage import CreditUsageCreatedBy
 from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.agent_config_entities import AgentSoulConfig
@@ -148,7 +149,10 @@ class AudioService:
         model_manager = ModelManager.for_tenant(
             tenant_id=app_model.tenant_id,
             user_id=end_user,
-            request_metadata={"created_by": get_credit_usage_created_by(app_model.mode)},
+            request_metadata={
+                "app_type": get_credit_usage_app_type(app_model.mode),
+                "created_by": CreditUsageCreatedBy.AUDIO,
+            },
         )
         model_instance = model_manager.get_default_model_instance(
             tenant_id=app_model.tenant_id, model_type=ModelType.SPEECH2TEXT
@@ -203,7 +207,10 @@ class AudioService:
             model_manager = ModelManager.for_tenant(
                 tenant_id=app_model.tenant_id,
                 user_id=end_user,
-                request_metadata={"created_by": get_credit_usage_created_by(app_model.mode)},
+                request_metadata={
+                    "app_type": get_credit_usage_app_type(app_model.mode),
+                    "created_by": CreditUsageCreatedBy.AUDIO,
+                },
             )
             model_instance = model_manager.get_default_model_instance(
                 tenant_id=app_model.tenant_id, model_type=ModelType.TTS

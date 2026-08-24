@@ -10,6 +10,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.credit_usage import CreditUsageAppType
 from core.workflow.system_variables import default_system_variables
 from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -106,7 +107,7 @@ def test_run_uses_single_node_execution_branch(
         single_iteration_run=single_iteration_run,
         single_loop_run=single_loop_run,
         user_id="user",
-        created_by="workflow",
+        app_type=CreditUsageAppType.WORKFLOW,
         trace_session_id="session-1",
     )
     init_graph.assert_not_called()

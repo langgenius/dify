@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.credit_usage import normalize_credit_usage_created_by
+from core.credit_usage import normalize_credit_usage_app_type, normalize_credit_usage_created_by
 from core.errors.error import QuotaExceededError
 from enums import DeploymentEdition
 from extensions.ext_redis import redis_client
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 FEATURE_KEY_CREDIT_POOL = "credit_pool"
 CREDIT_USAGE_CREATED_BY_META_KEY = "created_by"
+CREDIT_USAGE_APP_TYPE_META_KEY = "app_type"
 CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS = 10
 CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS = 5
 
@@ -136,6 +137,9 @@ class CreditPoolService:
         }
         billing_metadata[CREDIT_USAGE_CREATED_BY_META_KEY] = normalize_credit_usage_created_by(
             billing_metadata.get(CREDIT_USAGE_CREATED_BY_META_KEY)
+        ).value
+        billing_metadata[CREDIT_USAGE_APP_TYPE_META_KEY] = normalize_credit_usage_app_type(
+            billing_metadata.get(CREDIT_USAGE_APP_TYPE_META_KEY)
         ).value
         return billing_metadata
 

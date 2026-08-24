@@ -20,6 +20,7 @@ from core.app.llm.quota import (
     reserve_llm_quota_for_model,
     reserve_model_quota_for_model,
 )
+from core.credit_usage import CreditUsageAppType
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.errors.error import QuotaExceededError
@@ -134,7 +135,8 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
             provider="openai",
             model="gpt-4o",
             request_id="11111111-1111-5111-8111-111111111111",
-            created_by=CreditUsageCreatedBy.CHATBOT.value,
+            app_type=CreditUsageAppType.CHATBOT,
+            created_by=CreditUsageCreatedBy.APP.value,
         )
         reservation.commit(LLMUsage.empty_usage())
         reservation.release()
@@ -151,7 +153,8 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
             "source": "llm.invoke",
             "provider": "openai",
             "model": "gpt-4o",
-            "created_by": CreditUsageCreatedBy.CHATBOT.value,
+            "app_type": CreditUsageAppType.CHATBOT,
+            "created_by": CreditUsageCreatedBy.APP.value,
         },
     )
     credit_reservation.commit.assert_called_once_with()
@@ -234,6 +237,7 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
             "provider": "openai",
             "model_type": "text-embedding",
             "model": "text-embedding-3-small",
+            "app_type": CreditUsageAppType.UNKNOWN,
             "created_by": "unknown",
         },
     )
@@ -362,7 +366,13 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=42,
-        metadata={"provider": "openai", "model": "gpt-4o", "model_type": "llm", "created_by": "unknown"},
+        metadata={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "model_type": "llm",
+            "app_type": CreditUsageAppType.UNKNOWN,
+            "created_by": "unknown",
+        },
         session=ANY,
     )
 
@@ -483,7 +493,13 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=9,
-        metadata={"provider": "openai", "model": "gpt-4o", "model_type": "llm", "created_by": "unknown"},
+        metadata={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "model_type": "llm",
+            "app_type": CreditUsageAppType.UNKNOWN,
+            "created_by": "unknown",
+        },
         session=ANY,
     )
 
@@ -520,7 +536,13 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
     mock_deduct_credits.assert_called_once_with(
         tenant_id="tenant-id",
         credits_required=1,
-        metadata={"provider": "openai", "model": "gpt-4o", "model_type": "llm", "created_by": "unknown"},
+        metadata={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "model_type": "llm",
+            "app_type": CreditUsageAppType.UNKNOWN,
+            "created_by": "unknown",
+        },
         session=ANY,
     )
 
@@ -559,7 +581,13 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
         tenant_id="tenant-id",
         credits_required=5,
         pool_type="paid",
-        metadata={"provider": "openai", "model": "gpt-4o", "model_type": "llm", "created_by": "unknown"},
+        metadata={
+            "provider": "openai",
+            "model": "gpt-4o",
+            "model_type": "llm",
+            "app_type": CreditUsageAppType.UNKNOWN,
+            "created_by": "unknown",
+        },
         session=ANY,
     )
 

@@ -16,7 +16,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from core.app.app_config.entities import ModelConfig
-from core.app.entities.app_invoke_entities import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
 from core.workflow.generator import WorkflowGenerator
 from core.workflow.generator.tool_catalogue import (
@@ -151,13 +151,16 @@ class WorkflowGeneratorService:
         empty set, so we don't reject every tool node just because we couldn't
         enumerate the catalogue).
         """
-        created_by = {
-            "workflow": CreditUsageCreatedBy.WORKFLOW,
-            "advanced-chat": CreditUsageCreatedBy.CHATFLOW,
-        }.get(mode, CreditUsageCreatedBy.WORKFLOW_GENERATION)
+        app_type = {
+            "workflow": CreditUsageAppType.WORKFLOW,
+            "advanced-chat": CreditUsageAppType.CHATFLOW,
+        }.get(mode, CreditUsageAppType.UNKNOWN)
         model_manager = ModelManager.for_tenant(
             tenant_id=tenant_id,
-            request_metadata={"created_by": created_by},
+            request_metadata={
+                "app_type": app_type,
+                "created_by": CreditUsageCreatedBy.WORKFLOW_GENERATION,
+            },
         )
         model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,

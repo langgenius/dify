@@ -185,13 +185,13 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
         response = model_instance.invoke_llm(
             prompt_messages=[],
             stream=False,
-            request_metadata={"invocation_id": invocation_id, "created_by": CreditUsageCreatedBy.CHATBOT.value},
+            request_metadata={"invocation_id": invocation_id, "created_by": CreditUsageCreatedBy.APP.value},
         )
 
     assert response is result
     reserve_quota.assert_called_once_with(
         request_id=invocation_id,
-        created_by=CreditUsageCreatedBy.CHATBOT.value,
+        created_by=CreditUsageCreatedBy.APP.value,
     )
     invoke.assert_called_once()
     reservation.commit.assert_called_once_with(usage)

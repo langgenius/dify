@@ -14,7 +14,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     WorkflowQueueMessage,
 )
-from core.credit_usage import CreditUsageCreatedBy
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.model_manager import ModelInstance, ModelManager
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -59,6 +59,7 @@ class AppGeneratorTTSPublisher:
         tenant_id: str,
         voice: str,
         language: str | None = None,
+        app_type: CreditUsageAppType = CreditUsageAppType.UNKNOWN,
         created_by: CreditUsageCreatedBy = CreditUsageCreatedBy.AUDIO,
     ):
         self.logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ class AppGeneratorTTSPublisher:
         self.model_manager = ModelManager.for_tenant(
             tenant_id=self.tenant_id,
             user_id="responding_tts",
-            request_metadata={"created_by": created_by},
+            request_metadata={"app_type": app_type, "created_by": created_by},
         )
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS

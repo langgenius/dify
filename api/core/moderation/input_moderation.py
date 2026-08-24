@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.app.app_config.entities import AppConfig
-from core.app.entities.app_invoke_entities import get_credit_usage_created_by
+from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.model_context import use_credit_usage_metadata
 from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
@@ -44,7 +44,7 @@ class InputModeration:
         moderation_type = sensitive_word_avoidance_config.type
 
         with use_credit_usage_metadata(
-            {"created_by": get_credit_usage_created_by(getattr(app_config, "app_mode", None))}
+            {"app_type": get_credit_usage_app_type(getattr(app_config, "app_mode", None))}
         ):
             moderation_factory = ModerationFactory(
                 name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config

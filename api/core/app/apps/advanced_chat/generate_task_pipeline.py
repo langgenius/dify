@@ -19,7 +19,7 @@ from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
-    get_credit_usage_created_by,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     MessageQueueMessage,
@@ -371,7 +371,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 tenant_id,
                 features_dict["text_to_speech"].get("voice"),
                 features_dict["text_to_speech"].get("language"),
-                get_credit_usage_created_by(self._application_generate_entity.app_config.app_mode),
+                get_credit_usage_app_type(self._application_generate_entity.app_config.app_mode),
             )
 
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):

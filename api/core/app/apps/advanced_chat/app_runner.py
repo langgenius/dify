@@ -18,7 +18,7 @@ from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     DifyRunContext,
     InvokeFrom,
-    get_credit_usage_created_by,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -140,7 +140,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 invoke_from=invoke_from,
                 user_from=user_from,
-                created_by=get_credit_usage_created_by(app_config.app_mode),
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -150,7 +150,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
-                created_by=get_credit_usage_created_by(app_config.app_mode),
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
@@ -221,7 +221,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
-                created_by=get_credit_usage_created_by(app_config.app_mode),
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
@@ -280,7 +280,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                     user_id=self.application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=invoke_from,
-                    created_by=get_credit_usage_created_by(app_config.app_mode),
+                    app_type=get_credit_usage_app_type(app_config.app_mode),
                     trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 )
             )

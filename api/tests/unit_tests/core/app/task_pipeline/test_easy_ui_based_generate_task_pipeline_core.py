@@ -1036,7 +1036,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([payload]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
-            lambda tenant_id, voice, language: _Publisher(),
+            lambda tenant_id, voice, language, app_type: _Publisher(),
         )
 
         responses = list(pipeline._wrapper_process_stream_response())
@@ -1076,7 +1076,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(pipeline, "_process_stream_response", lambda publisher, trace_manager: iter([]))
         monkeypatch.setattr(
             "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.AppGeneratorTTSPublisher",
-            lambda tenant_id, voice, language: _Publisher(),
+            lambda tenant_id, voice, language, app_type: _Publisher(),
         )
         monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.time", _fake_time)
         monkeypatch.setattr("core.app.task_pipeline.easy_ui_based_generate_task_pipeline.time.sleep", lambda _: None)

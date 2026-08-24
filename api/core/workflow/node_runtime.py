@@ -364,8 +364,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         self.finalize_llm_polling()
 
         if isinstance(self._model_instance, QuotaManagedModelInstance):
-            created_by = QuotaManagedModelInstance._get_reservation_created_by(self._request_metadata)
-            self._polling_quota_reservation = self._model_instance.reserve_quota(created_by=created_by)
+            self._polling_quota_reservation = self._model_instance._reserve_quota_for_request(self._request_metadata)
 
         try:
             polling_result = self._polling_runtime.start_llm_polling(
@@ -631,7 +630,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
         try:
             request_metadata = (
-                {"created_by": self._run_context.created_by} if self._run_context.created_by is not None else None
+                {"app_type": self._run_context.app_type} if self._run_context.app_type is not None else None
             )
             with use_credit_usage_metadata(request_metadata):
                 session_maker = self._session_maker or session_factory.get_session_maker()

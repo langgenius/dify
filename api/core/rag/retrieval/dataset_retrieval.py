@@ -23,7 +23,7 @@ from core.app.entities.app_invoke_entities import (
     CreditUsageCreatedBy,
     InvokeFrom,
     ModelConfigWithCredentialsEntity,
-    get_credit_usage_created_by,
+    get_credit_usage_app_type,
 )
 from core.app.file_access import grant_retriever_segment_access, grant_upload_file_access
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -115,7 +115,7 @@ class DatasetRetrieval:
         app_config = getattr(application_generate_entity, "app_config", None)
         app_mode = getattr(app_config, "app_mode", None)
         if isinstance(app_mode, str):
-            self._request_metadata = {"created_by": get_credit_usage_created_by(app_mode)}
+            self._request_metadata = {"app_type": get_credit_usage_app_type(app_mode)}
             app_id = getattr(app_config, "app_id", None)
             if isinstance(app_id, str):
                 self._request_metadata["app_id"] = app_id
