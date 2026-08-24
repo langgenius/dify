@@ -1,5 +1,6 @@
 import type { MermaidConfig } from 'mermaid'
 import { cn } from '@langgenius/dify-ui/cn'
+import DOMPurify from 'dompurify'
 import mermaid from 'mermaid'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -269,8 +270,12 @@ const Flowchart = (props: FlowchartProps) => {
           THEMES,
         )
 
-        // Step 4: Clean up SVG code
-        const cleanedSvg = cleanUpSvgCode(processedSvg)
+        // Step 4: Clean up and sanitize SVG
+        const cleanedSvg = DOMPurify.sanitize(cleanUpSvgCode(processedSvg), {
+          USE_PROFILES: { svg: true, svgFilters: true },
+          FORBID_TAGS: ['script', 'foreignObject', 'iframe', 'object', 'embed'],
+          FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur'],
+        })
 
         diagramCache.set(cacheKey, cleanedSvg as string)
         setSvgString(cleanedSvg as string)
