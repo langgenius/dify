@@ -1,6 +1,8 @@
+from unittest.mock import Mock
+
 import pytest
 
-from enums import HostedTrialProvider
+from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services import feature_service as feature_service_module
 from services.feature_service import FeatureService
 
@@ -36,3 +38,41 @@ def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(monkeypat
         HostedTrialProvider.OPENAI.value,
         HostedTrialProvider.X.value,
     ]
+
+
+@pytest.mark.parametrize(
+    ("plan", "expected"),
+    [
+        (CloudPlan.SANDBOX, [HostedTrialProvider.OPENAI.value]),
+        (CloudPlan.PROFESSIONAL, [HostedTrialProvider.OPENAI.value, HostedTrialProvider.X.value]),
+    ],
+)
+def test_get_trial_models_filters_providers_by_workspace_plan(
+    monkeypatch: pytest.MonkeyPatch,
+    plan: CloudPlan,
+    expected: list[str],
+) -> None:
+    for provider in HostedTrialProvider:
+        monkeypatch.setattr(
+            feature_service_module.dify_config,
+            f"HOSTED_{provider.config_key}_PAID_ENABLED",
+            False,
+            raising=False,
+        )
+        monkeypatch.setattr(
+            feature_service_module.dify_config,
+            f"HOSTED_{provider.config_key}_TRIAL_ENABLED",
+            False,
+            raising=False,
+        )
+
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
+    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_XAI_PAID_ENABLED", True, raising=False)
+    get_info = Mock(return_value={"subscription": {"plan": plan}})
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+
+    result = FeatureService.get_trial_models("tenant_1")
+
+    assert result == expected
+    get_info.assert_called_once_with("tenant_1", exclude_vector_space=True)

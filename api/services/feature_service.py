@@ -183,20 +183,29 @@ class FeatureService:
         system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
 
     @classmethod
-    def _fulfill_trial_models_from_env(cls) -> list[str]:
+    def _fulfill_trial_models_from_env(cls, quota_types: tuple[str, ...] | None = None) -> list[str]:
+        allowed_quota_types = quota_types or ("PAID", "TRIAL")
         return [
             provider.value
             for provider in HostedTrialProvider
-            if (
-                getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
-                or getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
+            if any(
+                getattr(dify_config, f"HOSTED_{provider.config_key}_{quota_type}_ENABLED", False)
+                for quota_type in allowed_quota_types
             )
         ]
 
     @classmethod
-    def get_trial_models(cls) -> list[str]:
-        """Return hosted credit provider ids without requiring the full system-features payload."""
-        return cls._fulfill_trial_models_from_env()
+    def get_trial_models(cls, tenant_id: str | None = None) -> list[str]:
+        """Return hosted credit providers, optionally filtered by the workspace subscription plan."""
+        if tenant_id is None or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return cls._fulfill_trial_models_from_env()
+
+        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
+        subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
+        if subscription_plan == CloudPlan.SANDBOX:
+            return cls._fulfill_trial_models_from_env(("TRIAL",))
+
+        return cls._fulfill_trial_models_from_env(("PAID", "TRIAL"))
 
     @classmethod
     def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):

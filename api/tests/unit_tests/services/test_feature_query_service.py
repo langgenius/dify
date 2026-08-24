@@ -28,13 +28,16 @@ def test_workspace_queries_use_workspace_from_request_context() -> None:
     vector_space = VectorSpaceLimitationModel(size=1, limit=5)
     gateway.get_workspace_features.return_value = features
     gateway.get_vector_space.return_value = vector_space
+    gateway.get_trial_models.return_value = ["langgenius/openai/openai"]
     service = FeatureQueryService(features=gateway, trial_models=(), app_dsl_version="0.7.0")
     context = _request_context()
 
     assert service.get_features(context) is features
     assert service.get_vector_space(context) is vector_space
+    assert service.get_trial_models(context) == ["langgenius/openai/openai"]
     gateway.get_workspace_features.assert_called_once_with("workspace_123")
     gateway.get_vector_space.assert_called_once_with("workspace_123")
+    gateway.get_trial_models.assert_called_once_with("workspace_123")
 
 
 def test_deployment_queries_delegate_without_request_context() -> None:
