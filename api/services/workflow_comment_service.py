@@ -46,15 +46,14 @@ class WorkflowCommentService:
         if not unique_user_ids:
             return []
 
-        tenant_member_ids = {
-            account_id
-            for account_id in session.scalars(
+        tenant_member_ids = set(
+            session.scalars(
                 select(TenantAccountJoin.account_id).where(
                     TenantAccountJoin.tenant_id == tenant_id,
                     TenantAccountJoin.account_id.in_(unique_user_ids),
                 )
             ).all()
-        }
+        )
 
         return [user_id for user_id in unique_user_ids if user_id in tenant_member_ids]
 

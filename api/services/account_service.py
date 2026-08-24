@@ -183,7 +183,7 @@ class AccountService:
                 and rbac_role.category == "global_system_default"
                 and rbac_role.role_tag == expected_tag
             ):
-                return rbac_role.id
+                return str(rbac_role.id)  # pyrefly: ignore[unnecessary-type-conversion]
 
         raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
 
@@ -1610,9 +1610,7 @@ class TenantService:
             if (
                 action == "remove"
                 and member
-                and AccountService.is_rbac_workspace_owner(
-                    tenant.id, operator.id, member.id, session=session
-                )
+                and AccountService.is_rbac_workspace_owner(tenant.id, operator.id, member.id, session=session)
             ):
                 raise NoPermissionError(f"No permission to {action} member.")
             return
@@ -1671,9 +1669,7 @@ class TenantService:
 
         owner_id: str | None
         if dify_config.RBAC_ENABLED:
-            owner_id = AccountService.get_rbac_workspace_owner_account_id(
-                tenant.id, operator.id, session=session
-            )
+            owner_id = AccountService.get_rbac_workspace_owner_account_id(tenant.id, operator.id, session=session)
         else:
             owner_id = session.scalar(
                 select(TenantAccountJoin.account_id)

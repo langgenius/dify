@@ -39,7 +39,7 @@ class SavedMessageListApi(InstalledAppResource):
         args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         pagination = SavedMessageService.pagination_by_last_id(
-            app_model, current_user, args.last_id if args.last_id else None, args.limit, session=session
+            app_model, current_user, args.last_id or None, args.limit, session=session
         )
         adapter = TypeAdapter(SavedMessageItem)
         items = [

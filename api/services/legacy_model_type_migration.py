@@ -2080,9 +2080,7 @@ class Migration:
 
         for loser in plan.loser_rows:
             if self._apply:
-                session.execute(
-                    sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == loser.row.id)
-                )
+                session.execute(sa.delete(ProviderModelCredential).where(ProviderModelCredential.id == loser.row.id))
             self._log_row_deleted(
                 ProviderModelCredential.__tablename__,
                 loser,
