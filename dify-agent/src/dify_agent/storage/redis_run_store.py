@@ -82,6 +82,28 @@ return {1, ARGV[1], event_id}
 """
 
 
+_TERMINAL_RUN_STATUSES = ("succeeded", "failed", "cancelled")
+_LUA_TERMINAL_STATUS_TEST = " or ".join(f'record.status == "{status}"' for status in _TERMINAL_RUN_STATUSES)
+
+_APPEND_EVENT_SCRIPT = f"""
+local record_json = redis.call("GET", KEYS[1])
+if not record_json then
+    return {{0, ""}}
+end
+
+local record = cjson.decode(record_json)
+if {_LUA_TERMINAL_STATUS_TEST} then
+    return {{0, ""}}
+end
+
+local ttl = tonumber(ARGV[2])
+local event_id = redis.call("XADD", KEYS[2], "*", "payload", ARGV[1])
+redis.call("EXPIRE", KEYS[2], ttl)
+redis.call("EXPIRE", KEYS[1], ttl)
+return {{1, event_id}}
+"""
+
+
 _REQUEST_CANCELLATION_SCRIPT = """
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
@@ -192,19 +214,31 @@ class RedisRunStore(RunEventSink):
         return RunRecord.model_validate_json(value)
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Append a non-terminal event JSON payload with refreshed TTLs."""
-        events_key = run_events_key(self.prefix, event.run_id)
+        """Append a non-terminal event JSON payload with refreshed TTLs.
+
+        A terminal event seals the run: consumers are allowed to stop reading at
+        the first one, so a write that loses the race against ``finalize_run`` or
+        ``finalize_cancellation`` must not land after the terminal cursor. The
+        status check therefore happens inside the same script as the ``XADD``,
+        the way the terminal writers already do it. Returns an empty string when
+        the run was already sealed and nothing was written.
+        """
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
-        async with self.redis.pipeline(transaction=True) as pipeline:
-            _ = pipeline.xadd(
-                events_key,
-                {"payload": payload},
-            )
-            _ = pipeline.expire(events_key, self.run_retention_seconds)
-            _ = pipeline.expire(run_record_key(self.prefix, event.run_id), self.run_retention_seconds)
-            results = cast(list[object], await pipeline.execute())
-        event_id = results[0]
-        return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
+        evaluation = cast(
+            Awaitable[object],
+            self.redis.eval(
+                _APPEND_EVENT_SCRIPT,
+                2,
+                run_record_key(self.prefix, event.run_id),
+                run_events_key(self.prefix, event.run_id),
+                payload,
+                str(self.run_retention_seconds),
+            ),
+        )
+        result = cast(list[object], await evaluation)
+        if int(cast(int | bytes | str, result[0])) != 1:
+            return ""
+        return _decode_redis_text(result[1])
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first success/failure event and update its run record."""
