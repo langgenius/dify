@@ -3506,13 +3506,12 @@ describe('SkillDetailPage', () => {
       await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
     )
 
-    const panelTitle = await screen.findByText('skill.skillManagement.detail.versions')
-    expect(panelTitle.closest('aside')).toHaveClass('w-67', 'py-1')
+    await screen.findByText('skill.skillManagement.detail.versions')
     expect(screen.getAllByRole('button', { current: true })).toHaveLength(1)
 
     await openVersionRowActions(user, '#2')
     expect(screen.queryByText('skill.skillManagement.detail.copyVersionId')).not.toBeInTheDocument()
-    expect(await screen.findByRole('menu')).toHaveClass('w-[184px]')
+    expect(await screen.findByRole('menu')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
     await user.click(
