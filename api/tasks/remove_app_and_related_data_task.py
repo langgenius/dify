@@ -52,8 +52,49 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from services.api_token_service import ApiTokenCache
+from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
+
+NETWORK_ACCESS_BINDING_CLEANUP_DELAY_SECONDS = 10
+NETWORK_ACCESS_BINDING_CLEANUP_RETRY_BASE_SECONDS = 15
+NETWORK_ACCESS_BINDING_CLEANUP_RETRY_MAX_SECONDS = 10 * 60
+
+
+def _network_access_binding_cleanup_retry_delay(retries: int) -> int:
+    exponent = min(max(retries, 0), 6)
+    return min(
+        NETWORK_ACCESS_BINDING_CLEANUP_RETRY_BASE_SECONDS * (2**exponent),
+        NETWORK_ACCESS_BINDING_CLEANUP_RETRY_MAX_SECONDS,
+    )
+
+
+@shared_task(queue="app_deletion", bind=True, max_retries=24)
+def cleanup_app_network_access_group_binding_task(self, tenant_id: str, app_id: str) -> None:
+    """Reliably remove a SaaS binding after its owning App was committed deleted."""
+
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return
+    try:
+        BillingService.cleanup_app_network_access_group_binding(tenant_id, app_id)
+    except Exception as e:
+        countdown = _network_access_binding_cleanup_retry_delay(self.request.retries)
+        logger.exception(
+            "Failed to clean up App network access group binding",
+            extra={"tenant_id": tenant_id, "app_id": app_id, "retry_countdown": countdown},
+        )
+        raise self.retry(exc=e, countdown=countdown)
+
+
+def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: str) -> None:
+    """Schedule only from App lifecycle cleanup, never account/member deletion."""
+
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+        return
+    cleanup_app_network_access_group_binding_task.apply_async(
+        kwargs={"tenant_id": tenant_id, "app_id": app_id},
+        countdown=NETWORK_ACCESS_BINDING_CLEANUP_DELAY_SECONDS,
+    )
 
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
@@ -61,6 +102,10 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
+        # AppService publishes this task after the App transaction commits.
+        # Schedule the independent high-retry SaaS cleanup before legacy local
+        # cleanup so a later local failure cannot strand the binding.
+        _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id)
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)

@@ -187,7 +187,26 @@ def test_app_binding_read_and_write_use_tenant_and_app_path() -> None:
     ]
 
 
-@pytest.mark.parametrize("status_code", [400, 403, 404, 409, 500])
+@pytest.mark.usefixtures("billing_config")
+def test_app_lifecycle_cleanup_uses_internal_secret_endpoint() -> None:
+    response = MagicMock(status_code=httpx.codes.OK)
+    response.json.return_value = {"deleted": True}
+
+    with patch("services.billing_service._http_client.request", return_value=response) as request:
+        result = BillingService.cleanup_app_network_access_group_binding(TENANT_ID, APP_ID)
+
+    assert result == {"deleted": True}
+    request.assert_called_once_with(
+        "DELETE",
+        f"https://billing.internal/v1/tenants/{TENANT_ID}/apps/{APP_ID}/network-access-group-binding",
+        json=None,
+        params=None,
+        headers=HEADERS,
+        follow_redirects=True,
+    )
+
+
+@pytest.mark.parametrize("status_code", [400, 403, 404, 409, 500, 503])
 def test_network_access_group_request_preserves_upstream_status(status_code: int) -> None:
     response = MagicMock(status_code=status_code)
     with (

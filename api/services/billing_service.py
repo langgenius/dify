@@ -563,6 +563,20 @@ class BillingService:
         )
 
     @classmethod
+    def cleanup_app_network_access_group_binding(cls, tenant_id: str, app_id: str) -> dict[str, Any]:
+        """Remove an App binding through the internal App lifecycle endpoint.
+
+        This must only be called by the post-commit App deletion task. Account
+        or workspace-member deletion does not own App bindings and must not use
+        this operation.
+        """
+
+        return cls._send_network_access_group_request(
+            "DELETE",
+            f"/tenants/{tenant_id}/apps/{app_id}/network-access-group-binding",
+        )
+
+    @classmethod
     def _send_network_access_group_request(
         cls,
         method: Literal["GET", "POST", "PUT", "DELETE"],
