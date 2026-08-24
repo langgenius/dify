@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "विवरण से एक चैटफ़्लो (उन्नत चैट) ऐप बनाएं",
   "gotoAnything.actions.createWorkflow": "कार्यप्रवाह",
   "gotoAnything.actions.createWorkflowDesc": "विवरण से वर्कफ़्लो ऐप बनाएं",
-  "gotoAnything.actions.discordDesc": "ओपन डिस्कॉर्ड समुदाय",
+  "gotoAnything.actions.discordDesc": "डिस्कॉर्ड समुदाय खोलें",
   "gotoAnything.actions.docDesc": "सहायता दस्तावेज़ खोलें",
   "gotoAnything.actions.languageChangeDesc": "इंटरफेस भाषा बदलें",
   "gotoAnything.actions.refineCategoryDesc": "वर्तमान वर्कफ़्लो या चैटफ़्लो ग्राफ़ को परिष्कृत करें",
