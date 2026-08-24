@@ -1,8 +1,10 @@
 {
+  "agent.manage": "管理 Agents",
   "api_extension.manage": "管理API扩展",
   "app.access_config": "配置应用访问权限",
   "app.acl.access_config": "配置应用访问权限",
   "app.acl.delete": "删除应用",
+  "app.acl.deploy": "部署应用",
   "app.acl.edit": "编辑与编排应用",
   "app.acl.import_export_dsl": "导入 / 导出 DSL",
   "app.acl.log_and_annotation": "访问日志与标注",

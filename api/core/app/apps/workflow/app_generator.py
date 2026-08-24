@@ -399,19 +399,34 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             worker_thread.start()
 
-            draft_var_saver_factory = self._get_draft_var_saver_factory(invoke_from, user)
-
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                draft_var_saver_factory=draft_var_saver_factory,
-                stream=streaming,
+            draft_var_saver_factory = self._get_draft_var_saver_factory(
+                invoke_from,
+                user,
+                tenant_id=app_model.tenant_id,
             )
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                    stream=streaming,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
+
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def single_iteration_generate(
         self,
@@ -633,6 +648,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     raise ValueError("Workflow not found")
 
                 workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+                if graph_runtime_state is not None:
+                    self._restore_workflow_run_graph(
+                        session=session,
+                        workflow=workflow,
+                        workflow_run_id=application_generate_entity.workflow_execution_id,
+                    )
 
                 # Determine system_user_id based on invocation source
                 is_external_api_call = application_generate_entity.invoke_from in {
@@ -665,8 +686,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             try:
                 with active_workflow_task(application_generate_entity.task_id):
                     runner.run()
-            except GenerateTaskStoppedError as e:
-                logger.warning("Task stopped: %s", str(e))
+            except GenerateTaskStoppedError:
+                logger.warning("Task stopped", exc_info=True)
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(

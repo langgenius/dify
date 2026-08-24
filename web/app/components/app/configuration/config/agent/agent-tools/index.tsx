@@ -17,11 +17,12 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
+import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import AppIcon from '@/app/components/base/app-icon'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Infotip } from '@/app/components/base/infotip'
+import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import {
   addDefaultValue,
@@ -30,7 +31,6 @@ import {
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import { MAX_TOOLS_NUM } from '@/config'
 import ConfigContext from '@/context/debug-configuration'
-import { useMittContextSelector } from '@/context/mitt-context'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -76,21 +76,6 @@ const AgentTools: FC = () => {
       collection,
     }
   })
-  const useSubscribe = useMittContextSelector((s) => s.useSubscribe)
-  const handleUpdateToolsWhenInstallToolSuccess = useCallback(
-    (installedPluginNames: string[]) => {
-      const newModelConfig = produce(modelConfig, (draft) => {
-        draft.agentConfig.tools.forEach((item: any) => {
-          if (item.isDeleted && installedPluginNames.includes(item.provider_id))
-            item.isDeleted = false
-        })
-      })
-      setModelConfig(newModelConfig)
-    },
-    [modelConfig, setModelConfig],
-  )
-  useSubscribe('plugin:install:success', handleUpdateToolsWhenInstallToolSuccess as any)
-
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       const tool = draft.agentConfig.tools.find(
@@ -115,16 +100,17 @@ const AgentTools: FC = () => {
       ? toolParametersToFormSchemas(currToolWithConfigs.parameters)
       : []
     const paramsWithDefaultValue = addDefaultValue(tool.params, formSchemas)
+    const providerType = parseToolProviderType(tool.provider_type)
     return {
       provider_id: tool.provider_id,
-      provider_type: tool.provider_type as CollectionType,
+      provider_type: providerType,
       provider_name: tool.provider_name,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
       tool_parameters: paramsWithDefaultValue,
       notAuthor: !tool.is_team_authorization,
       enabled: true,
-      type: tool.provider_type as CollectionType,
+      type: providerType,
     }
   }
   const handleSelectTool = (tool: ToolDefaultValue) => {
@@ -181,7 +167,7 @@ const AgentTools: FC = () => {
         }
         headerRight={
           <div className="flex items-center">
-            <div className="text-xs leading-[18px] font-normal text-text-tertiary">
+            <div className="text-xs leading-4.5 font-normal text-text-tertiary">
               {tools.filter((item) => !!item.enabled).length}/{tools.length}
               &nbsp;
               {t(($) => $['agent.tools.enabled'], { ns: 'appDebug' })}
@@ -190,7 +176,7 @@ const AgentTools: FC = () => {
               <>
                 <div className="mr-1 ml-3 h-3.5 w-px bg-divider-regular"></div>
                 <ToolPicker
-                  trigger={<OperationBtn type="add" />}
+                  trigger={<OperationButton operation="add" />}
                   isShow={isShowChooseTool}
                   onShowChange={setIsShowChooseTool}
                   disabled={false}
@@ -288,7 +274,7 @@ const AgentTools: FC = () => {
                           </button>
                         }
                       />
-                      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                         {t(($) => $.toolRemoved, { ns: 'tools' })}
                       </PopoverContent>
                     </Popover>
@@ -380,7 +366,7 @@ const AgentTools: FC = () => {
                       }}
                     >
                       {t(($) => $.notAuthorized, { ns: 'tools' })}
-                      <StatusDot className="ml-2" status="warning" />
+                      <StatusDot status="warning" />
                     </Button>
                   )}
                 </div>

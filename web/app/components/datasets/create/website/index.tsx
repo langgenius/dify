@@ -3,11 +3,14 @@ import type { FC } from 'react'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import {
   ENABLE_WEBSITE_FIRECRAWL,
   ENABLE_WEBSITE_JINAREADER,
@@ -42,7 +45,7 @@ const Website: FC<Props> = ({
   authedDataSourceList,
 }) => {
   const { t } = useTranslation()
-  const openIntegrationsSetting = useIntegrationsSetting()
+  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const [selectedProvider, setSelectedProvider] = useState<DataSourceProvider>(
     DataSourceProvider.jinaReader,
   )
@@ -62,10 +65,8 @@ const Website: FC<Props> = ({
   )
 
   const handleOnConfig = useCallback(() => {
-    openIntegrationsSetting({
-      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-    })
-  }, [openIntegrationsSetting])
+    setSettingsDestination('data-source')
+  }, [setSettingsDestination])
 
   const source = availableProviders.find((source) => source.provider === selectedProvider)
 

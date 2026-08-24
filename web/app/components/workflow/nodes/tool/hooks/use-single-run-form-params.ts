@@ -6,9 +6,9 @@ import type { NodeTracing } from '@/types/workflow'
 import { produce } from 'immer'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useToolIcon } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
+import { useToolIcon } from '../../../hooks/use-tool-icon'
 import { VarType } from '../types'
 
 type Params = {

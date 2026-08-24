@@ -34,17 +34,17 @@ const PluginItem: FC<PluginItemProps> = ({
         {hasPluginIcon ? (
           <CardIcon size="small" src={getIconUrl(plugin.icon)} />
         ) : (
-          // oxlint-disable-next-line hyoban/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
+          // oxlint-disable-next-line dify/prefer-tailwind-icons -- Reuse the same MagicBox component as the marketplace install button.
           <MagicBox className="size-8 text-text-tertiary" />
         )}
         <div className="absolute -right-0.5 -bottom-0.5 z-10">{statusIcon}</div>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1 [overflow-wrap:anywhere]">
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 px-1 wrap-anywhere">
         <div className="truncate system-sm-medium text-text-secondary">
           {plugin.labels[language]}
         </div>
         <div
-          className={`max-w-full min-w-0 system-xs-regular [overflow-wrap:anywhere] wrap-break-word ${statusClassName || 'text-text-tertiary'}`}
+          className={`max-w-full min-w-0 system-xs-regular wrap-anywhere wrap-break-word ${statusClassName || 'text-text-tertiary'}`}
         >
           {statusText}
         </div>

@@ -9,11 +9,11 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
 import { useGetWebAppInfo, useGetWebAppMeta, useGetWebAppParams } from '@/service/use-share'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 
 const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation()
-  const shareCode = useWebAppStore((s) => s.shareCode)
   const updateAppInfo = useWebAppStore((s) => s.updateAppInfo)
   const updateAppParams = useWebAppStore((s) => s.updateAppParams)
   const updateWebAppMeta = useWebAppStore((s) => s.updateWebAppMeta)
@@ -59,10 +59,10 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   }, [searchParams, pathname])
 
   const backToHome = useCallback(async () => {
-    await webAppLogout(shareCode!)
+    await webAppLogout(resolveWebAppAddress())
     const url = getSigninUrl()
     router.replace(url)
-  }, [getSigninUrl, router, shareCode])
+  }, [getSigninUrl, router])
 
   if (appInfoError) {
     return (
@@ -96,9 +96,13 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-y-2">
         <AppUnavailable className="size-auto" code={403} unknownReason="no permission." />
-        <span className="cursor-pointer system-sm-regular text-text-tertiary" onClick={backToHome}>
+        <button
+          type="button"
+          className="cursor-pointer appearance-none system-sm-regular text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          onClick={backToHome}
+        >
           {t(($) => $['userProfile.logout'], { ns: 'common' })}
-        </span>
+        </button>
       </div>
     )
   }

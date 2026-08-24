@@ -4,10 +4,13 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session
 
 import core.rag.datasource.keyword.jieba.jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba, dumps_with_sets, set_orjson_default
 from core.rag.models.document import Document
+from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 
 
 class _DummyLock:
@@ -18,57 +21,30 @@ class _DummyLock:
         return False
 
 
-class _Field:
-    def __init__(self, name: str):
-        self._name = name
-
-    def __eq__(self, other):
-        return ("eq", self._name, other)
-
-    def in_(self, values):
-        return ("in", self._name, tuple(values))
-
-
-class _FakeExecuteResult:
-    def __init__(self, segments: list[SimpleNamespace]):
-        self._segments = segments
-
-    def scalars(self):
-        return self
-
-    def all(self):
-        return self._segments
-
-
-class _FakeSelect:
-    def __init__(self):
-        self.where_conditions: tuple | None = None
-
-    def where(self, *conditions):
-        self.where_conditions = conditions
-        return self
-
-
-def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None):
-    return SimpleNamespace(
+def _dataset_keyword_table(
+    data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None
+) -> DatasetKeywordTable:
+    keyword_table = DatasetKeywordTable(
+        dataset_id="dataset-1",
         data_source_type=data_source_type,
-        get_keyword_table_dict=MagicMock(return_value=keyword_table_dict),
         keyword_table="",
     )
+    keyword_table.get_keyword_table_dict = MagicMock(return_value=keyword_table_dict)
+    return keyword_table
 
 
-def _dataset(dataset_keyword_table=None, keyword_number=None):
-    return SimpleNamespace(
+def _dataset(dataset_keyword_table: DatasetKeywordTable | None = None, keyword_number: int | None = None) -> Dataset:
+    dataset = Dataset(
         id="dataset-1",
         tenant_id="tenant-1",
         keyword_number=keyword_number,
-        get_dataset_keyword_table=MagicMock(return_value=dataset_keyword_table),
     )
+    dataset.get_dataset_keyword_table = MagicMock(return_value=dataset_keyword_table)
+    return dataset
 
 
 @pytest.fixture
-def patched_runtime(monkeypatch: pytest.MonkeyPatch):
-    session = MagicMock()
+def patched_runtime(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
     storage = MagicMock()
     lock = MagicMock(return_value=_DummyLock())
     redis_client = SimpleNamespace(lock=lock)
@@ -76,7 +52,28 @@ def patched_runtime(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(jieba_module, "storage", storage)
     monkeypatch.setattr(jieba_module, "redis_client", redis_client)
 
-    return SimpleNamespace(session=session, storage=storage, lock=lock)
+    return SimpleNamespace(session=sqlite_session, storage=storage, lock=lock)
+
+
+def _segment(*, index_node_id: str = "node-2") -> DocumentSegment:
+    segment = DocumentSegment(
+        tenant_id="tenant-1",
+        dataset_id="dataset-1",
+        document_id="doc-2",
+        position=1,
+        content="segment-content",
+        word_count=1,
+        tokens=1,
+        created_by="user-1",
+        enabled=True,
+        keywords=[],
+        answer=None,
+        index_node_id=index_node_id,
+        index_node_hash="hash-2",
+        status="completed",
+    )
+    segment.id = "segment-1"
+    return segment
 
 
 def test_create_indexes_documents_and_returns_self(monkeypatch: pytest.MonkeyPatch, patched_runtime):
@@ -156,9 +153,11 @@ def test_add_texts_without_keywords_list_always_uses_extractor(monkeypatch: pyte
     assert keyword._update_segment_keywords.call_args.args[3] is patched_runtime.session
 
 
-def test_text_exists_handles_missing_and_existing_keyword_table(monkeypatch: pytest.MonkeyPatch):
+def test_text_exists_handles_missing_and_existing_keyword_table(
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session
+):
     keyword = Jieba(_dataset(_dataset_keyword_table(keyword_table_dict=None)))
-    session = MagicMock()
+    session = unbound_session
     assert keyword.text_exists("node-1", session=session) is False
 
     keyword = Jieba(
@@ -205,24 +204,9 @@ def test_delete_by_ids_saves_none_when_keyword_table_is_missing(monkeypatch: pyt
 
 
 def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch: pytest.MonkeyPatch, patched_runtime):
-    class _FakeDocumentSegment:
-        dataset_id = _Field("dataset_id")
-        index_node_id = _Field("index_node_id")
-        document_id = _Field("document_id")
-
     keyword = Jieba(_dataset(_dataset_keyword_table()))
-    patched_runtime.session.scalars.return_value.all.return_value = [
-        SimpleNamespace(
-            index_node_id="node-2",
-            content="segment-content",
-            index_node_hash="hash-2",
-            document_id="doc-2",
-            dataset_id="dataset-1",
-        )
-    ]
-
-    monkeypatch.setattr(jieba_module, "DocumentSegment", _FakeDocumentSegment)
-    monkeypatch.setattr(jieba_module, "select", lambda *_: _FakeSelect())
+    patched_runtime.session.add(_segment())
+    patched_runtime.session.flush()
     monkeypatch.setattr(keyword, "_retrieve_ids_by_query", MagicMock(return_value=["node-1", "node-2"]))
 
     documents = keyword.search("query", session=patched_runtime.session, top_k=2, document_ids_filter=["doc-2"])
@@ -233,39 +217,47 @@ def test_search_returns_documents_in_rank_order_and_applies_filter(monkeypatch: 
     assert documents[0].metadata["doc_hash"] == "hash-2"
 
 
-def test_delete_removes_keyword_table_and_optional_file(monkeypatch: pytest.MonkeyPatch, patched_runtime):
-    db_keyword = _dataset_keyword_table(data_source_type="database")
-    file_keyword = _dataset_keyword_table(data_source_type="object_storage")
+def test_delete_removes_keyword_table_and_optional_file(patched_runtime):
+    db_keyword = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="database")
+    patched_runtime.session.add(db_keyword)
+    patched_runtime.session.commit()
+    commits: list[str] = []
+    event.listen(patched_runtime.session, "after_commit", lambda _session: commits.append("commit"))
 
     keyword_db = Jieba(_dataset(db_keyword))
     keyword_db.delete(session=patched_runtime.session)
     patched_runtime.storage.delete.assert_not_called()
+    assert patched_runtime.session.get(DatasetKeywordTable, db_keyword.id) is None
 
+    file_keyword = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="object_storage")
+    patched_runtime.session.add(file_keyword)
+    patched_runtime.session.commit()
     keyword_file = Jieba(_dataset(file_keyword))
     keyword_file.delete(session=patched_runtime.session)
 
     patched_runtime.storage.delete.assert_called_once_with("keyword_files/tenant-1/dataset-1.txt")
-    assert patched_runtime.session.delete.call_count == 2
-    assert patched_runtime.session.commit.call_count == 2
+    assert patched_runtime.session.get(DatasetKeywordTable, file_keyword.id) is None
+    assert commits == ["commit", "commit", "commit"]
 
 
-def test_save_dataset_keyword_table_to_database(monkeypatch: pytest.MonkeyPatch, patched_runtime):
-    dataset_keyword_table = _dataset_keyword_table(data_source_type="database")
+def test_save_dataset_keyword_table_to_database(patched_runtime):
+    dataset_keyword_table = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="database")
+    patched_runtime.session.add(dataset_keyword_table)
+    patched_runtime.session.flush()
     keyword = Jieba(_dataset(dataset_keyword_table))
-    patched_runtime.session.scalar.return_value = dataset_keyword_table
 
     keyword._save_dataset_keyword_table({"kw": {"node-1"}}, patched_runtime.session)
 
     assert '"__type__":"keyword_table"' in dataset_keyword_table.keyword_table
     assert '"index_id":"dataset-1"' in dataset_keyword_table.keyword_table
-    patched_runtime.session.flush.assert_called_once()
 
 
-def test_save_dataset_keyword_table_to_file_storage(monkeypatch: pytest.MonkeyPatch, patched_runtime):
-    dataset_keyword_table = _dataset_keyword_table(data_source_type="file")
+def test_save_dataset_keyword_table_to_file_storage(patched_runtime):
+    dataset_keyword_table = DatasetKeywordTable(dataset_id="dataset-1", keyword_table="", data_source_type="file")
+    patched_runtime.session.add(dataset_keyword_table)
+    patched_runtime.session.flush()
     keyword = Jieba(_dataset(dataset_keyword_table))
     patched_runtime.storage.exists.return_value = True
-    patched_runtime.session.scalar.return_value = dataset_keyword_table
 
     keyword._save_dataset_keyword_table({"kw": {"node-1"}}, patched_runtime.session)
 
@@ -276,33 +268,38 @@ def test_save_dataset_keyword_table_to_file_storage(monkeypatch: pytest.MonkeyPa
     assert isinstance(save_args[1], bytes)
 
 
-def test_get_dataset_keyword_table_returns_existing_table_data(monkeypatch: pytest.MonkeyPatch, patched_runtime):
-    existing = _dataset_keyword_table(
-        keyword_table_dict={"__type__": "keyword_table", "__data__": {"table": {"kw": ["node-1"]}}}
+def test_get_dataset_keyword_table_returns_existing_table_data(patched_runtime):
+    existing = DatasetKeywordTable(
+        dataset_id="dataset-1",
+        keyword_table="",
+        data_source_type="database",
     )
+    existing.get_keyword_table_dict = MagicMock(
+        return_value={"__type__": "keyword_table", "__data__": {"table": {"kw": ["node-1"]}}}
+    )
+    patched_runtime.session.add(existing)
+    patched_runtime.session.flush()
     keyword = Jieba(_dataset(existing))
-    patched_runtime.session.scalar.return_value = existing
     assert keyword._get_dataset_keyword_table(patched_runtime.session) == {"kw": ["node-1"]}
 
-    missing_payload = _dataset_keyword_table(keyword_table_dict=None)
-    keyword_with_missing_payload = Jieba(_dataset(missing_payload))
-    patched_runtime.session.scalar.return_value = missing_payload
+    existing.get_keyword_table_dict = MagicMock(return_value=None)
+    keyword_with_missing_payload = Jieba(_dataset(existing))
     assert keyword_with_missing_payload._get_dataset_keyword_table(patched_runtime.session) == {}
 
 
 def test_get_dataset_keyword_table_creates_table_when_missing(monkeypatch: pytest.MonkeyPatch, patched_runtime):
     keyword = Jieba(_dataset(dataset_keyword_table=None))
     monkeypatch.setattr(jieba_module.dify_config, "KEYWORD_DATA_SOURCE_TYPE", "database")
-    patched_runtime.session.scalar.return_value = None
-
     result = keyword._get_dataset_keyword_table(patched_runtime.session)
 
     assert result == {}
-    created_table = patched_runtime.session.add.call_args.args[0]
+    created_table = patched_runtime.session.scalar(
+        select(DatasetKeywordTable).where(DatasetKeywordTable.dataset_id == "dataset-1")
+    )
+    assert created_table is not None
     assert created_table.dataset_id == "dataset-1"
     assert created_table.data_source_type == "database"
     assert '"index_id":"dataset-1"' in created_table.keyword_table
-    patched_runtime.session.flush.assert_called_once()
 
 
 def test_add_and_delete_ids_from_keyword_table_helpers():
@@ -334,31 +331,18 @@ def test_retrieve_ids_by_query_ranks_by_keyword_frequency(monkeypatch: pytest.Mo
     assert ranked_ids == ["node-2"]
 
 
-def test_update_segment_keywords_updates_when_segment_exists(monkeypatch: pytest.MonkeyPatch, patched_runtime):
-    class _FakeDocumentSegment:
-        dataset_id = _Field("dataset_id")
-        index_node_id = _Field("index_node_id")
-
-    monkeypatch.setattr(jieba_module, "DocumentSegment", _FakeDocumentSegment)
-    monkeypatch.setattr(jieba_module, "select", lambda *_: _FakeSelect())
-
+def test_update_segment_keywords_updates_when_segment_exists(patched_runtime):
     keyword = Jieba(_dataset(_dataset_keyword_table()))
-    segment = SimpleNamespace(keywords=[])
-    patched_runtime.session.scalar.return_value = segment
+    segment = _segment(index_node_id="node-1")
+    patched_runtime.session.add(segment)
+    patched_runtime.session.flush()
 
     keyword._update_segment_keywords("dataset-1", "node-1", ["kw1", "kw2"], patched_runtime.session)
 
     assert segment.keywords == ["kw1", "kw2"]
-    patched_runtime.session.add.assert_called_once_with(segment)
-    patched_runtime.session.flush.assert_called_once()
-
-    patched_runtime.session.reset_mock()
-    patched_runtime.session.scalar.return_value = None
 
     keyword._update_segment_keywords("dataset-1", "node-missing", ["kw3"], patched_runtime.session)
-
-    patched_runtime.session.add.assert_not_called()
-    patched_runtime.session.flush.assert_not_called()
+    assert segment.keywords == ["kw1", "kw2"]
 
 
 def test_create_segment_keywords_and_update_segment_keywords_index(monkeypatch: pytest.MonkeyPatch, patched_runtime):
@@ -389,8 +373,12 @@ def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
     monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
 
-    first_segment = SimpleNamespace(index_node_id="node-1", content="first content", keywords=None)
-    second_segment = SimpleNamespace(index_node_id="node-2", content="second content", keywords=None)
+    first_segment = _segment(index_node_id="node-1")
+    first_segment.content = "first content"
+    first_segment.keywords = None
+    second_segment = _segment(index_node_id="node-2")
+    second_segment.content = "second content"
+    second_segment.keywords = None
 
     keyword.multi_create_segment_keywords(
         [

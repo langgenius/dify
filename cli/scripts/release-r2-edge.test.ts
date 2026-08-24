@@ -3,15 +3,21 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
+import { FIXTURE_COMPAT, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
 
 const SCRIPT = fileURLToPath(new URL('./release-r2-edge.mjs', import.meta.url))
+
+const PKG_ENV = pkgManifestEnv()
 
 function run(args: string[]): { code: number; stdout: string; stderr: string } {
   try {
     return {
       code: 0,
-      stdout: execFileSync('node', [SCRIPT, ...args], { encoding: 'utf8' }),
+      stdout: execFileSync('node', [SCRIPT, ...args], {
+        encoding: 'utf8',
+        env: { ...process.env, ...PKG_ENV },
+      }),
       stderr: '',
     }
   } catch (e) {
@@ -108,7 +114,7 @@ describe('release-r2-edge manifest', () => {
 
   it('carries the compat window from package.json', () => {
     const { json } = buildManifest()
-    expect(json.compat).toEqual({ minDify: '1.16.0', maxDify: '1.16.0' })
+    expect(json.compat).toEqual(FIXTURE_COMPAT)
   })
 
   it('lists all 5 targets with asset name + sha256 from the checksums file', () => {

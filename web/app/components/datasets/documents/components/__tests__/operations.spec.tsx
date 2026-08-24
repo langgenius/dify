@@ -1,6 +1,7 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Operations from '../operations'
 
 const mockPush = vi.fn()
@@ -107,11 +108,6 @@ describe('Operations', () => {
   })
 
   describe('rendering', () => {
-    it('should render without crashing', () => {
-      render(<Operations {...defaultProps} />)
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
-    })
-
     it('should render buttons when embeddingAvailable', () => {
       render(<Operations {...defaultProps} />)
       const buttons = screen.getAllByRole('button')
@@ -683,22 +679,6 @@ describe('Operations', () => {
         })
       }
       expect(screen.queryByText('datasetDocuments.list.action.download')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect((Operations as unknown as { $$typeof: symbol }).$$typeof).toBe(
-        Symbol.for('react.memo'),
-      )
-    })
-  })
-
-  describe('className prop', () => {
-    it('should accept custom className prop', () => {
-      // The className is passed to CustomPopover, verify component renders without errors
-      render(<Operations {...defaultProps} className="custom-class" />)
-      expect(document.querySelector('.flex.items-center'))!.toBeInTheDocument()
     })
   })
 })

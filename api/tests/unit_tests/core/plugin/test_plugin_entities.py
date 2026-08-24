@@ -125,6 +125,9 @@ class TestPluginParameterEntities:
         parameter = PluginParameter(name="p", label=self._label(), options="invalid")  # type: ignore[arg-type]
         assert parameter.options == []
 
+    def test_plugin_parameter_excludes_tool_specific_multiple_declaration(self):
+        assert "multiple" not in PluginParameter.model_fields
+
     @pytest.mark.parametrize(
         ("parameter_type", "expected"),
         [
@@ -241,8 +244,14 @@ class TestPluginParameterEntities:
         with pytest.raises(
             ValueError,
             match=r"The tool parameter value <.*_BadString object at .* is not in correct type of string\.",
-        ):
+        ) as exc_info:
             cast_parameter_value(PluginParameterType.STRING, _BadString())
+
+        # PEP 3134: the re-raised ValueError must chain the underlying RuntimeError
+        # so the original traceback is preserved for debugging.
+        assert exc_info.value.__cause__ is not None
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
+        assert str(exc_info.value.__cause__) == "boom"
 
     def test_init_frontend_parameter(self):
         rule = PluginParameter(
@@ -261,6 +270,11 @@ class TestPluginParameterEntities:
         required_rule = PluginParameter(name="required", label=self._label(), required=True, default=None)
         with pytest.raises(ValueError, match="not found in tool config"):
             init_frontend_parameter(required_rule, PluginParameterType.STRING, None)
+
+        tools_rule = PluginParameter(name="tools", label=self._label(), required=True, default=None)
+        assert init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, []) == []
+        with pytest.raises(ValueError, match="not found in tool config"):
+            init_frontend_parameter(tools_rule, PluginParameterType.TOOLS_SELECTOR, None)
 
 
 class TestPluginDaemonEntities:

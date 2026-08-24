@@ -1,8 +1,6 @@
 'use client'
-import type { FC } from 'react'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
 import {
@@ -17,11 +15,11 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
+export function SchemaModal({ isShow, schema, rootName, onClose }: Props) {
   const { t } = useTranslation()
   return (
     <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="w-full max-w-[960px] p-0">
+      <DialogContent className="w-full max-w-240 p-0">
         <div className="pb-6">
           {/* Header */}
           <div className="relative flex p-6 pr-14 pb-3">
@@ -34,11 +32,11 @@ const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
               className="absolute top-5 right-5 flex size-8 items-center justify-center p-1.5"
               onClick={onClose}
             >
-              <span className="i-ri-close-line h-[18px] w-[18px] text-text-tertiary" />
+              <span className="i-ri-close-line h-4.5 w-4.5 text-text-tertiary" />
             </button>
           </div>
           {/* Content */}
-          <div className="flex max-h-[700px] overflow-y-auto px-6 py-2">
+          <div className="flex max-h-175 overflow-y-auto px-6 py-2">
             <MittProvider>
               <VisualEditorContextProvider>
                 <VisualEditor
@@ -55,4 +53,3 @@ const SchemaModal: FC<Props> = ({ isShow, schema, rootName, onClose }) => {
     </Dialog>
   )
 }
-export default React.memo(SchemaModal)

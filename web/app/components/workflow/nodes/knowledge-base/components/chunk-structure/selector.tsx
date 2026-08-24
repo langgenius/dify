@@ -48,9 +48,9 @@ const Selector = ({ options, value, onChange, readonly, trigger }: SelectorProps
         placement="bottom-end"
         sideOffset={0}
         alignOffset={-8}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
-        <div className="w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
+        <div className="w-101 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="px-3 pt-3.5 system-sm-semibold text-text-primary">
             {t(($) => $['nodes.knowledgeBase.changeChunkStructure'], { ns: 'workflow' })}
           </div>

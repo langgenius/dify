@@ -1,5 +1,4 @@
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -15,9 +14,26 @@ from controllers.console.workspace.models import (
     ModelProviderModelEnableApi,
     ModelProviderModelParameterRuleApi,
     ModelProviderModelValidateApi,
+    ParserCreateCredential,
+    ParserDeleteCredential,
+    ParserDeleteModels,
+    ParserGetCredentials,
+    ParserGetDefault,
+    ParserParameter,
+    ParserPostDefault,
+    ParserPostModels,
+    ParserSwitch,
+    ParserValidate,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
+from models import Account
+
+
+def _account() -> Account:
+    account = Account(name="Model User", email="model-user@example.com")
+    account.id = "u1"
+    return account
 
 
 class TestDefaultModelApi:
@@ -43,7 +59,7 @@ class TestDefaultModelApi:
                 },
             }
 
-            result = method(api, "tenant1")
+            result = method(api, ParserGetDefault(model_type=ModelType.LLM), "tenant1")
 
         assert "data" in result
 
@@ -65,7 +81,7 @@ class TestDefaultModelApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "tenant1")
+            result = method(api, ParserPostDefault.model_validate(payload), "tenant1")
 
         assert result["result"] == "success"
 
@@ -79,7 +95,7 @@ class TestDefaultModelApi:
         ):
             service.return_value.get_default_model_of_model_type.return_value = None
 
-            result = method(api, "t1")
+            result = method(api, ParserGetDefault(model_type=ModelType.LLM), "t1")
 
         assert "data" in result
 
@@ -117,7 +133,7 @@ class TestModelProviderModelApi:
             patch("controllers.console.workspace.models.ModelProviderService"),
             patch("controllers.console.workspace.models.ModelLoadBalancingService"),
         ):
-            result, status = method(api, "tenant1", "openai")
+            result, status = method(api, ParserPostModels.model_validate(payload), "tenant1", "openai")
 
         assert status == 200
 
@@ -134,7 +150,7 @@ class TestModelProviderModelApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, "tenant1", "openai")
+            result, status = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
 
         assert status == 204
 
@@ -177,7 +193,13 @@ class TestModelProviderModelCredentialApi:
             provider_service.return_value.provider_manager.get_provider_model_available_credentials.return_value = []
             lb_service.return_value.get_load_balancing_configs.return_value = (False, [])
 
-            result = method(api, "tenant1", SimpleNamespace(id="u1"), "openai")
+            result = method(
+                api,
+                ParserGetCredentials(model="gpt-4", model_type=ModelType.LLM),
+                "tenant1",
+                _account(),
+                "openai",
+            )
 
         assert "credentials" in result
 
@@ -195,7 +217,7 @@ class TestModelProviderModelCredentialApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, "tenant1", "openai")
+            result, status = method(api, ParserCreateCredential.model_validate(payload), "tenant1", "openai")
 
         assert status == 201
 
@@ -212,7 +234,13 @@ class TestModelProviderModelCredentialApi:
             service.return_value.provider_manager.get_provider_model_available_credentials.return_value = []
             lb.return_value.get_load_balancing_configs.return_value = (False, [])
 
-            result = method(api, "t1", SimpleNamespace(id="u1"), "openai")
+            result = method(
+                api,
+                ParserGetCredentials(model="gpt", model_type=ModelType.LLM),
+                "t1",
+                _account(),
+                "openai",
+            )
 
         assert result["credentials"] == {}
 
@@ -230,7 +258,7 @@ class TestModelProviderModelCredentialApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result, status = method(api, "t1", "openai")
+            result, status = method(api, ParserDeleteCredential.model_validate(payload), "t1", "openai")
 
         assert status == 204
 
@@ -250,7 +278,7 @@ class TestModelProviderModelCredentialSwitchApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "tenant1", "openai")
+            result = method(api, ParserSwitch.model_validate(payload), "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -269,7 +297,7 @@ class TestModelEnableDisableApis:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "tenant1", "openai")
+            result = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -286,7 +314,7 @@ class TestModelEnableDisableApis:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "tenant1", "openai")
+            result = method(api, ParserDeleteModels.model_validate(payload), "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -306,7 +334,7 @@ class TestModelProviderModelValidateApi:
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
         ):
-            result = method(api, "tenant1", "openai")
+            result = method(api, ParserValidate.model_validate(payload), "tenant1", "openai")
 
         assert result["result"] == "success"
 
@@ -327,7 +355,7 @@ class TestModelProviderModelValidateApi:
         ):
             service_mock.return_value.validate_model_credentials.side_effect = CredentialsValidateFailedError("invalid")
 
-            result = method(api, "tenant1", "openai")
+            result = method(api, ParserValidate.model_validate(payload), "tenant1", "openai")
 
         assert result["result"] == "error"
 
@@ -343,7 +371,7 @@ class TestParameterAndAvailableModels:
         ):
             service_mock.return_value.get_model_parameter_rules.return_value = []
 
-            result = method(api, "tenant1", "openai")
+            result = method(api, ParserParameter(model="gpt-4"), "tenant1", "openai")
 
         assert "data" in result
 
@@ -371,7 +399,7 @@ class TestParameterAndAvailableModels:
         ):
             service.return_value.get_model_parameter_rules.return_value = []
 
-            result = method(api, "t1", "openai")
+            result = method(api, ParserParameter(model="gpt"), "t1", "openai")
 
         assert result["data"] == []
 

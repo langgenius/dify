@@ -1,10 +1,11 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { ApiKeyEditModal } from '../apikey-edit-modal'
 import { EditModal } from '../index'
 import { ManualEditModal } from '../manual-edit-modal'
@@ -191,7 +192,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'test-subscription-id',
   name: 'Test Subscription',
   provider: 'test-provider',
-  credential_type: TriggerCredentialTypeEnum.Unauthorized,
+  credential_type: TriggerCredentialType.Unauthorized,
   credentials: {},
   endpoint: 'https://example.com/webhook',
   parameters: {},
@@ -317,9 +318,9 @@ describe('Edit Modal Components', () => {
 
   describe('EditModal (Router)', () => {
     it.each([
-      { type: TriggerCredentialTypeEnum.Unauthorized, name: 'ManualEditModal' },
-      { type: TriggerCredentialTypeEnum.Oauth2, name: 'OAuthEditModal' },
-      { type: TriggerCredentialTypeEnum.ApiKey, name: 'ApiKeyEditModal' },
+      { type: TriggerCredentialType.Unauthorized, name: 'ManualEditModal' },
+      { type: TriggerCredentialType.Oauth2, name: 'OAuthEditModal' },
+      { type: TriggerCredentialType.ApiKey, name: 'ApiKeyEditModal' },
     ])('should render $name for $type credential type', ({ type }) => {
       render(
         <EditModal
@@ -335,7 +336,7 @@ describe('Edit Modal Components', () => {
         <EditModal
           onClose={vi.fn()}
           subscription={createSubscription({
-            credential_type: 'unknown' as TriggerCredentialTypeEnum,
+            credential_type: 'unknown' as TriggerCredentialType,
           })}
         />,
       )
@@ -374,10 +375,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering', () => {
       it('should render modal with correct title', () => {
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -488,10 +490,11 @@ describe('Edit Modal Components', () => {
         expect(onClose).toHaveBeenCalledTimes(1)
       })
 
-      it('should call onClose when close button is clicked', () => {
+      it('should call onClose when close button is clicked', async () => {
+        const user = userEvent.setup()
         const onClose = vi.fn()
         render(<ManualEditModal {...createProps({ onClose })} />)
-        fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+        await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
         expect(onClose).toHaveBeenCalledTimes(1)
       })
 
@@ -706,17 +709,18 @@ describe('Edit Modal Components', () => {
 
     const createProps = (overrides = {}) => ({
       onClose: vi.fn(),
-      subscription: createSubscription({ credential_type: TriggerCredentialTypeEnum.Oauth2 }),
+      subscription: createSubscription({ credential_type: TriggerCredentialType.Oauth2 }),
       ...overrides,
     })
 
     describe('Rendering', () => {
       it('should render modal with correct title', () => {
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -742,7 +746,7 @@ describe('Edit Modal Components', () => {
           <OAuthEditModal
             {...createProps({
               subscription: createSubscription({
-                credential_type: TriggerCredentialTypeEnum.Oauth2,
+                credential_type: TriggerCredentialType.Oauth2,
                 parameters: { channel: 'general' },
               }),
             })}
@@ -806,7 +810,7 @@ describe('Edit Modal Components', () => {
           <OAuthEditModal
             {...createProps({
               subscription: createSubscription({
-                credential_type: TriggerCredentialTypeEnum.Oauth2,
+                credential_type: TriggerCredentialType.Oauth2,
                 parameters: { channel: 'general' },
               }),
             })}
@@ -828,7 +832,7 @@ describe('Edit Modal Components', () => {
           <OAuthEditModal
             {...createProps({
               subscription: createSubscription({
-                credential_type: TriggerCredentialTypeEnum.Oauth2,
+                credential_type: TriggerCredentialType.Oauth2,
                 parameters: { channel: 'old' },
               }),
             })}
@@ -980,7 +984,7 @@ describe('Edit Modal Components', () => {
 
     const createProps = (overrides = {}) => ({
       onClose: vi.fn(),
-      subscription: createSubscription({ credential_type: TriggerCredentialTypeEnum.ApiKey }),
+      subscription: createSubscription({ credential_type: TriggerCredentialType.ApiKey }),
       ...overrides,
     })
 
@@ -994,10 +998,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering - Step 1 (Credentials)', () => {
       it('should render modal with correct title', () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render EncryptedBottom in credentials step', () => {
@@ -1035,7 +1040,7 @@ describe('Edit Modal Components', () => {
           <ApiKeyEditModal
             {...createProps({
               subscription: createSubscription({
-                credential_type: TriggerCredentialTypeEnum.ApiKey,
+                credential_type: TriggerCredentialType.ApiKey,
                 credentials: { api_key: '[__HIDDEN__]' },
               }),
             })}
@@ -1372,7 +1377,7 @@ describe('Edit Modal Components', () => {
           <ApiKeyEditModal
             {...createProps({
               subscription: createSubscription({
-                credential_type: TriggerCredentialTypeEnum.ApiKey,
+                credential_type: TriggerCredentialType.ApiKey,
                 parameters: { param1: 'value' },
               }),
             })}
@@ -1401,7 +1406,7 @@ describe('Edit Modal Components', () => {
           <ApiKeyEditModal
             {...createProps({
               subscription: createSubscription({
-                credential_type: TriggerCredentialTypeEnum.ApiKey,
+                credential_type: TriggerCredentialType.ApiKey,
                 parameters: { param1: 'old_value' },
               }),
             })}

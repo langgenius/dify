@@ -20,16 +20,6 @@ type AppSortFilterProps = {
   onChange: (value: AppListSortBy) => void
 }
 
-const appListSortByValues: AppListSortBy[] = [
-  'last_modified',
-  'recently_created',
-  'earliest_created',
-]
-
-function isAppListSortBy(value: string): value is AppListSortBy {
-  return appListSortByValues.includes(value as AppListSortBy)
-}
-
 export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
   const { t } = useTranslation()
 
@@ -64,13 +54,17 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
         </span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-[220px]">
+        <DropdownMenuRadioGroup<AppListSortBy>
           value={value}
-          onValueChange={(nextValue) => isAppListSortBy(nextValue) && onChange(nextValue)}
+          onValueChange={(nextValue) => onChange(nextValue)}
         >
           {options.map((option) => (
-            <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>
+            <DropdownMenuRadioItem<AppListSortBy>
+              key={option.value}
+              value={option.value}
+              closeOnClick
+            >
               <span className="min-w-0 flex-1 truncate">{option.text}</span>
               <DropdownMenuRadioItemIndicator />
             </DropdownMenuRadioItem>

@@ -233,19 +233,6 @@ describe('BaseForm', () => {
     expect(container)!.toBeEmptyDOMElement()
   })
 
-  it('should fallback to schema class names if props are missing', () => {
-    const schemaWithClasses: FormSchema[] = [
-      {
-        ...baseSchemas[0]!,
-        fieldClassName: 'schema-field',
-        labelClassName: 'schema-label',
-      },
-    ]
-    render(<BaseForm formSchemas={schemaWithClasses} />)
-    expect(screen.getByText('Kind'))!.toHaveClass('schema-label')
-    expect(screen.getByText('Kind').parentElement)!.toHaveClass('schema-field')
-  })
-
   it('should handle preventDefaultSubmit', async () => {
     const onSubmit = vi.fn()
     const { container } = render(
@@ -307,17 +294,5 @@ describe('BaseForm', () => {
     // Simply rendering should trigger showOnValues selector
     render(<BaseForm formSchemas={schemaNoShowOn} />)
     expect(screen.getByText('Test'))!.toBeInTheDocument()
-  })
-
-  it('should apply prop-based class names', () => {
-    render(
-      <BaseForm
-        formSchemas={baseSchemas}
-        fieldClassName="custom-field"
-        labelClassName="custom-label"
-      />,
-    )
-    const label = screen.getByText('Kind')
-    expect(label)!.toHaveClass('custom-label')
   })
 })

@@ -1,7 +1,7 @@
 import type { Props as CreateContentProps } from '../create-content'
 import { Popover } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import { CreateContent } from '../create-content'
 
@@ -15,12 +15,6 @@ const renderCreateContent = (props: CreateContentProps) => {
 
 describe('CreateContent', () => {
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const handleSave = vi.fn()
-      renderCreateContent({ onSave: handleSave })
-      expect(screen.getByText('dataset.metadata.createMetadata.title')).toBeInTheDocument()
-    })
-
     it('should render modal title', () => {
       const handleSave = vi.fn()
       renderCreateContent({ onSave: handleSave })

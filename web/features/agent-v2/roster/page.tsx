@@ -3,8 +3,8 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { RosterFilterValue } from './components/roster-filter'
 import {
+  ScrollArea,
   ScrollAreaContent,
-  ScrollAreaRoot,
   ScrollAreaScrollbar,
   ScrollAreaThumb,
   ScrollAreaViewport,
@@ -13,6 +13,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
@@ -38,6 +39,7 @@ const getFilteredRosterItems = (agents: AgentAppPartial[], filter: RosterFilterV
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
   const [createdByMe] = useQueryState(
@@ -80,18 +82,18 @@ export default function RosterPage() {
   const publishedAgents = rosterItems.filter(isAgentPublished).length
   const draftAgents = Math.max(rosterItems.length - publishedAgents, 0)
   const filteredRosterItems = getFilteredRosterItems(rosterItems, rosterFilter)
-
-  useDocumentTitle('Agents')
+  const pageTitle = t(($) => $['roster.title'])
+  useDocumentTitle(pageTitle)
 
   return (
     <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
       <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1 className="min-w-0 flex-1 truncate text-[18px]/[21.6px] font-semibold text-text-primary">
-            Agents
+            {pageTitle}
           </h1>
           <a
-            href="https://docs.dify.ai/"
+            href={docLink('/use-dify/build/new-agent/overview')}
             target="_blank"
             rel="noreferrer"
             className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
@@ -106,7 +108,7 @@ export default function RosterPage() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <ScrollAreaRoot className="relative h-full min-h-0 min-w-0 overflow-hidden">
+        <ScrollArea className="relative h-full min-h-0 min-w-0 overflow-hidden">
           <ScrollAreaViewport tabIndex={-1} className="overscroll-contain">
             <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
               <AgentRosterList
@@ -125,7 +127,7 @@ export default function RosterPage() {
           <ScrollAreaScrollbar>
             <ScrollAreaThumb />
           </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
+        </ScrollArea>
       </div>
     </div>
   )

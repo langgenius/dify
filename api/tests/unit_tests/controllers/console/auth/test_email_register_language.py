@@ -1,14 +1,15 @@
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, patch
 
 import pytest
 from pydantic import ValidationError
 
 from controllers.console.auth.email_register import EmailRegisterResetApi, EmailRegisterResetPayload
+from models.account import Account
 
 
 @patch("controllers.console.auth.email_register.AccountService.create_account_and_tenant")
 def test_create_new_account_uses_requested_language(mock_create_account):
-    account = MagicMock()
+    account = Account(name="Invitee", email="invitee@example.com")
     mock_create_account.return_value = account
 
     result = EmailRegisterResetApi()._create_new_account(
@@ -25,6 +26,7 @@ def test_create_new_account_uses_requested_language(mock_create_account):
         password="ValidPass123!",
         interface_language="zh-Hans",
         timezone="Asia/Shanghai",
+        ip_address=None,
         session=ANY,
     )
 

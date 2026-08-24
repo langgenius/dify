@@ -1,6 +1,6 @@
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import IndexingProgressItem from '../indexing-progress-item'
 
@@ -106,14 +106,5 @@ describe('IndexingProgressItem', () => {
     render(<IndexingProgressItem detail={makeDetail()} name="test.pdf" enableBilling={false} />)
 
     expect(screen.queryByTestId('priority-label')).not.toBeInTheDocument()
-  })
-
-  it('should apply error styling for error status', () => {
-    const { container } = render(
-      <IndexingProgressItem detail={makeDetail({ indexing_status: 'error' })} name="error.pdf" />,
-    )
-
-    const wrapper = container.firstChild as HTMLElement
-    expect(wrapper.className).toContain('bg-state-destructive-hover-alt')
   })
 })

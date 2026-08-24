@@ -58,7 +58,6 @@ class Tool(ABC):
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
-        # try parse tool parameters into the correct type
         tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(
@@ -87,14 +86,14 @@ class Tool(ABC):
                 return result
 
     def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
-        """
-        Transform tool parameters type
-        """
-        # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
+        """Transform declared tool parameter values without resolving runtime schemas."""
         result = deepcopy(tool_parameters)
         for parameter in self.entity.parameters or []:
             if parameter.name in tool_parameters:
-                result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
+                if parameter.multiple:
+                    result[parameter.name] = parameter.init_frontend_parameter(result.get(parameter.name))
+                else:
+                    result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
 
         return result
 
@@ -196,17 +195,31 @@ class Tool(ABC):
             }:
                 continue
 
-            parameter_schema: dict[str, Any] = (
-                {
-                    "type": parameter.type.as_normal_type(),
-                    "description": parameter.llm_description or "",
-                }
-                if parameter.input_schema is None
-                else deepcopy(parameter.input_schema)
-            )
+            is_multiple_select = parameter.multiple and parameter.type in {
+                ToolParameter.ToolParameterType.SELECT,
+                ToolParameter.ToolParameterType.DYNAMIC_SELECT,
+            }
+            if is_multiple_select:
+                item_schema: dict[str, Any] = {"type": "string"}
+                if parameter.type == ToolParameter.ToolParameterType.SELECT and parameter.options:
+                    item_schema["enum"] = [option.value for option in parameter.options]
+                parameter_schema: dict[str, Any] = {"type": "array", "items": item_schema}
+            else:
+                parameter_schema = (
+                    {
+                        "type": parameter.type.as_normal_type(),
+                        "description": parameter.llm_description or "",
+                    }
+                    if parameter.input_schema is None
+                    else deepcopy(parameter.input_schema)
+                )
             parameter_schema.setdefault("description", parameter.llm_description or "")
 
-            if parameter.type == ToolParameter.ToolParameterType.SELECT and parameter.options:
+            if (
+                not is_multiple_select
+                and parameter.type == ToolParameter.ToolParameterType.SELECT
+                and parameter.options
+            ):
                 parameter_schema["enum"] = [option.value for option in parameter.options]
 
             schema["properties"][parameter.name] = parameter_schema

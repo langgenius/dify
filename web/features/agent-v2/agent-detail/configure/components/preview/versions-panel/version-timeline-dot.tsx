@@ -10,7 +10,7 @@ export function VersionTimelineDot({
   isLast: boolean
 }) {
   return (
-    <div className="relative flex w-[18px] shrink-0 justify-center pt-1.5">
+    <div className="relative flex w-4.5 shrink-0 justify-center pt-1.5">
       {!isFirst && <div className="absolute top-0 h-2 w-0.5 bg-divider-subtle" />}
       <span
         aria-hidden
@@ -19,7 +19,7 @@ export function VersionTimelineDot({
           isActive ? 'border-text-accent' : 'border-text-quaternary',
         )}
       />
-      {!isLast && <div className="absolute top-3 bottom-[-18px] w-0.5 bg-divider-subtle" />}
+      {!isLast && <div className="absolute top-3 -bottom-4.5 w-0.5 bg-divider-subtle" />}
     </div>
   )
 }

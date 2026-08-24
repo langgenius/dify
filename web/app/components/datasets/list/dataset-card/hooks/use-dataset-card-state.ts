@@ -1,9 +1,10 @@
 import type { DataSet } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
-import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
+import { consoleQuery } from '@/service/client'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 
@@ -22,6 +23,7 @@ type UseDatasetCardStateOptions = {
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
   const { t } = useTranslation()
   const { push } = useRouter()
+  const queryClient = useQueryClient()
 
   // Modal state
   const [modalState, setModalState] = useState<ModalState>({
@@ -56,8 +58,9 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   }, [])
 
   // API mutations
-  const { mutateAsync: checkUsage } = useCheckDatasetUsage()
-  const { mutateAsync: deleteDatasetMutation } = useDeleteDataset()
+  const { mutateAsync: deleteDatasetMutation } = useMutation(
+    consoleQuery.datasets.byDatasetId.delete.mutationOptions(),
+  )
   const { mutateAsync: exportPipelineConfig } = useExportPipelineDSL()
 
   // Export pipeline handler
@@ -86,7 +89,18 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
   // Delete flow handlers
   const detectIsUsedByApp = useCallback(async () => {
     try {
-      const { is_using: isUsedByApp } = await checkUsage(dataset.id)
+      const { is_using: isUsedByApp } = await queryClient.fetchQuery(
+        consoleQuery.datasets.byDatasetId.useCheck.get.queryOptions({
+          input: {
+            params: {
+              dataset_id: dataset.id,
+            },
+          },
+          staleTime: 0,
+          retry: false,
+          context: { silent: true },
+        }),
+      )
       const message = isUsedByApp
         ? t(($) => $.datasetUsedByApp, { ns: 'dataset' })!
         : t(($) => $.deleteDatasetConfirmContent, { ns: 'dataset' })!
@@ -103,11 +117,15 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
         toast.error((e as Error)?.message || t(($) => $.unknownError, { ns: 'dataset' }))
       }
     }
-  }, [dataset.id, checkUsage, t])
+  }, [dataset.id, queryClient, t])
 
   const onConfirmDelete = useCallback(async () => {
     try {
-      await deleteDatasetMutation(dataset.id)
+      await deleteDatasetMutation({
+        params: {
+          dataset_id: dataset.id,
+        },
+      })
       toast.success(t(($) => $.datasetDeleted, { ns: 'dataset' }))
       onSuccess?.()
     } finally {

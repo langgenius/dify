@@ -1,7 +1,9 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
+import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,9 +11,7 @@ import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Loading from '@/app/components/base/loading'
-import PermissionSelector from '@/app/components/base/permission-selector'
 import { PermissionLevel } from '@/models/permission'
-import { useMembers } from '@/service/use-common'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 import {
   useAddPluginCredentialHook,
@@ -19,6 +19,7 @@ import {
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
 import { CredentialTypeEnum } from '../types'
+import PermissionSelector from './permission-selector'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload
@@ -53,15 +54,11 @@ const ApiKeyModal = ({
     pluginPayload,
     CredentialTypeEnum.API_KEY,
   )
-  const [permission, setPermission] = useState<PermissionLevel | undefined>(
-    (editValues?.__visibility__ as PermissionLevel) ?? PermissionLevel.allTeamMembers,
+  const [permission, setPermission] = useState<CredentialPermission>(
+    editValues?.__visibility__ === PermissionLevel.onlyMe
+      ? PermissionLevel.onlyMe
+      : PermissionLevel.allTeamMembers,
   )
-  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
-    (editValues?.__partial_member_list__ as string[]) ?? [],
-  )
-  // Only need member list when creating (the permission selector is hidden on edit).
-  const { data: membersData } = useMembers()
-  const memberList = membersData?.accounts ?? []
   const mergedData = useMemo(() => {
     if (formSchemasFromProps?.length) return formSchemasFromProps
 
@@ -115,17 +112,11 @@ const ApiKeyModal = ({
           name: __name__ || '',
         })
       } else {
-        const permissionPayload = {
-          visibility: permission,
-          ...(permission === PermissionLevel.partialMembers
-            ? { partial_member_list: selectedMemberIDs.map((id) => ({ user_id: id })) }
-            : {}),
-        }
         await addPluginCredential({
           credentials: restValues,
           type: CredentialTypeEnum.API_KEY,
           name: __name__ || '',
-          ...permissionPayload,
+          visibility: permission,
         })
       }
       toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
@@ -146,7 +137,6 @@ const ApiKeyModal = ({
     editValues,
     handleSetDoingAction,
     permission,
-    selectedMemberIDs,
   ])
 
   const isDisabled = disabled || isLoading || doingAction
@@ -162,20 +152,27 @@ const ApiKeyModal = ({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[640px]! max-w-[calc(100vw-2rem)]! p-0!"
+        className="w-160! max-w-[calc(100vw-2rem)]! p-0!"
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle
-              data-testid="modal-title"
-              className="title-2xl-semi-bold text-text-primary"
-            >
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['auth.useApiAuth'], { ns: 'plugin' })}
             </DialogTitle>
             <div className="mt-1 system-xs-regular text-text-tertiary">
               {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
             </div>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginPayload.detail && (
@@ -202,11 +199,7 @@ const ApiKeyModal = ({
                 <PermissionSelector
                   disabled={disabled}
                   permission={permission}
-                  value={selectedMemberIDs}
-                  memberList={memberList}
-                  onChange={(v) => setPermission(v)}
-                  onMemberSelect={setSelectedMemberIDs}
-                  hidePartialMembers
+                  onChange={setPermission}
                 />
               </div>
             )}
@@ -216,12 +209,7 @@ const ApiKeyModal = ({
             <div className="flex items-center">
               {editValues && (
                 <>
-                  <Button
-                    data-testid="modal-extra"
-                    variant="primary"
-                    onClick={onRemove}
-                    disabled={isDisabled}
-                  >
+                  <Button variant="primary" onClick={onRemove} disabled={isDisabled}>
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </Button>
                   <div className="mx-3 h-4 w-px bg-divider-regular"></div>
@@ -231,7 +219,6 @@ const ApiKeyModal = ({
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <Button
-                data-testid="modal-confirm"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirm}

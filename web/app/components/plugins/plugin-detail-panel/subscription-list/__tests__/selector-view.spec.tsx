@@ -1,7 +1,7 @@
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { SubscriptionSelectorView } from '../selector-view'
 
 let mockSubscriptions: TriggerSubscription[] = []
@@ -25,7 +25,8 @@ vi.mock('@/service/use-triggers', () => ({
   useDeleteTriggerSubscription: () => ({ mutate: mockDelete, isPending: false }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: Object.assign(vi.fn(), {
     success: vi.fn(),
     error: vi.fn(),
@@ -41,7 +42,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'sub-1',
   name: 'Subscription One',
   provider: 'provider-1',
-  credential_type: TriggerCredentialTypeEnum.ApiKey,
+  credential_type: TriggerCredentialType.ApiKey,
   credentials: {},
   endpoint: 'https://example.com',
   parameters: {},
@@ -73,14 +74,6 @@ describe('SubscriptionSelectorView', () => {
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'sub-1', name: 'Subscription One' }),
     )
-  })
-
-  it('should handle missing onSelect without crashing', () => {
-    render(<SubscriptionSelectorView />)
-
-    expect(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Subscription One' }))
-    }).not.toThrow()
   })
 
   it('should distinguish selected vs unselected subscription row', () => {

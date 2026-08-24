@@ -13,6 +13,7 @@ from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_storage import storage
 from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
 from models.model import UploadFile
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,12 @@ BATCH_SIZE = 1000
 
 
 @shared_task(queue="dataset")
-def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form: str | None, file_ids: list[str]):
+def batch_clean_document_task(
+    document_ids: list[str],
+    dataset_id: str,
+    doc_form: str | None,
+    file_ids: list[str],
+) -> None:
     """
     Clean document when document deleted.
     :param document_ids: document ids
@@ -40,6 +46,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
     index_node_ids: list[str] = []
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
+    dataset_tenant_id: str | None = None
 
     try:
         # ============ Step 1: Query segment and file data (short read-only transaction) ============
@@ -88,6 +95,7 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                             delete_summaries=True,
                             session=session,
                         )
+                        dataset_tenant_id = dataset.tenant_id
             except Exception:
                 logger.exception(
                     "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
@@ -202,6 +210,9 @@ def batch_clean_document_task(document_ids: list[str], dataset_id: str, doc_form
                 len(storage_keys_to_delete),
                 dataset_id,
             )
+
+        if dataset_tenant_id is not None:
+            schedule_billing_vector_space_refresh(dataset_tenant_id)
 
         end_at = time.perf_counter()
         logger.info(

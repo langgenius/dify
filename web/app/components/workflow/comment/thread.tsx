@@ -22,14 +22,14 @@ import {
   RiDeleteBinLine,
   RiMoreFill,
 } from '@remixicon/react'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow, useViewport } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import InlineDeleteConfirm from '@/app/components/base/inline-delete-confirm'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { userProfileAtom, userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useParams } from '@/next/navigation'
 import { useStore } from '../store'
@@ -68,7 +68,10 @@ const ThreadMessage: FC<{
   className?: string
 }> = ({ authorId, authorName, avatarUrl, createdAt, content, mentionableNames, className }) => {
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isCurrentUser = authorId === currentUserId
   const userColor = isCurrentUser ? undefined : getUserColor(authorId)
 
@@ -179,7 +182,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(
     const appId = params.appId as string
     const { flowToScreenPosition } = useReactFlow()
     const viewport = useViewport()
-    const userProfile = useAtomValue(userProfileAtom)
+    const { data: userProfile } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile,
+    })
     const currentUserId = userProfile.id
     const { t } = useTranslation()
     const [replyContent, setReplyContent] = useState('')
@@ -431,7 +437,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
 
     return (
       <div
-        className="absolute z-30 w-[360px] max-w-[360px]"
+        className="absolute z-30 w-90 max-w-90"
         style={{
           left: canvasPosition.x + 40,
           top: canvasPosition.y,
@@ -442,7 +448,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
       >
         <div
           ref={threadRef}
-          className="relative flex h-[360px] flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
+          className="relative flex h-90 flex-col overflow-hidden rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl"
           role="dialog"
           aria-modal="true"
           aria-labelledby="comment-thread-title"
@@ -569,7 +575,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                     <DropdownMenuContent
                       placement="bottom-end"
                       sideOffset={4}
-                      popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                      className="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                     >
                       <button
                         className="flex w-full items-center justify-start rounded-xl px-3 py-2 text-left text-sm text-text-secondary hover:bg-state-base-hover"
@@ -666,7 +672,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                             <DropdownMenuContent
                               placement="bottom-end"
                               sideOffset={4}
-                              popupClassName="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
+                              className="w-36 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[10px]"
                               data-reply-menu
                             >
                               <div
@@ -789,7 +795,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(
                   size="sm"
                   className="size-8"
                 />
-                <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-[2px] shadow-sm">
+                <div className="flex-1 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-0.5 shadow-sm">
                   <MentionInput
                     ref={replyInputRef}
                     value={replyContent}

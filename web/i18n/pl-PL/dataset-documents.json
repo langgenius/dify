@@ -13,6 +13,8 @@
   "embedding.segmentLength": "Długość fragmentów",
   "embedding.segments": "Akapity",
   "embedding.textCleaning": "Predefinicja tekstu i czyszczenie",
+  "embedding.vectorSpaceEstimateExceeded.description": "Dokument odebrano, ale szacowane użycie pamięci wektorowej wynosi {{estimated}} MB i przekracza limit planu {{limit}} MB, dlatego nie zapisano żadnych wektorów. Jeśli inny dokument jest przetwarzany lub jego przetwarzanie właśnie się nie powiodło, spróbuj ponownie później. W przeciwnym razie zmniejsz rozmiar pliku lub liczbę fragmentów.",
+  "embedding.vectorSpaceEstimateExceeded.title": "Szacowane wykorzystanie pamięci wektorowej po przesłaniu przekracza limit Twojego planu",
   "embedding.waiting": "Oczekiwanie na osadzenie...",
   "list.action.addButton": "Dodaj fragment",
   "list.action.archive": "Archiwum",

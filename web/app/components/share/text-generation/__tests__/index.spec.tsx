@@ -173,10 +173,10 @@ describe('TextGeneration', () => {
     expect(screen.getByTestId('loading-app')).toHaveTextContent('app')
   })
 
-  it('should fall back to create mode for unsupported query params and keep installed-app layout classes', () => {
+  it('should fall back to create mode for unsupported query params', () => {
     mockMode.value = 'unsupported'
 
-    const { container } = render(<TextGeneration isInstalledApp />)
+    render(<TextGeneration isInstalledApp />)
 
     expect(screen.getByTestId('sidebar-current-tab')).toHaveTextContent('create')
     expect(sidebarPropsSpy).toHaveBeenCalledWith(
@@ -186,9 +186,6 @@ describe('TextGeneration', () => {
         isPC: true,
       }),
     )
-
-    const root = container.firstElementChild as HTMLElement
-    expect(root).toHaveClass('flex', 'h-full', 'rounded-2xl', 'shadow-md')
   })
 
   it('should orchestrate a run-once request and reveal the result panel', async () => {

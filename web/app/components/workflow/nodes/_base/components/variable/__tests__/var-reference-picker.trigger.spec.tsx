@@ -50,7 +50,7 @@ const renderWithPopover = (
   render(
     <Popover onOpenChange={onOpenChange}>
       <VarReferencePickerTrigger {...createProps(overrides)} />
-      <PopoverContent popupClassName="border-none bg-transparent p-0 shadow-none">
+      <PopoverContent className="border-none bg-transparent p-0 shadow-none">
         <div>picker-content</div>
       </PopoverContent>
     </Popover>,

@@ -1,6 +1,13 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
@@ -59,7 +66,7 @@ const IndexMethod = ({
           icon={
             <HighQuality
               className={cn(
-                'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-orange-orange-500',
+                'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-orange-orange-500',
                 isHighQuality && 'text-util-colors-orange-orange-500',
               )}
             />
@@ -77,7 +84,7 @@ const IndexMethod = ({
             icon={
               <Economic
                 className={cn(
-                  'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
+                  'h-3.75 w-3.75 text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
                   isEconomy && 'text-util-colors-indigo-indigo-500',
                 )}
               />
@@ -105,8 +112,15 @@ const IndexMethod = ({
                 className="mr-3 w-24 shrink-0"
                 value={keywordNumber}
                 onValueChange={onKeywordNumberChange}
-                aria-label={keywordNumberLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{keywordNumberLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
               <Input
                 aria-label={keywordNumberLabel}
                 disabled={readonly}

@@ -32,9 +32,9 @@ const VoiceSettings = ({
       <PopoverContent
         placement={placementLeft ? 'left' : 'top'}
         sideOffset={placementLeft ? 32 : 4}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
-        <div className="w-[360px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
+        <div className="w-90 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-2xl">
           <ParamConfigContent onClose={() => onOpen(false)} onChange={onChange} />
         </div>
       </PopoverContent>

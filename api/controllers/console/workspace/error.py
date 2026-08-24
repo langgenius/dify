@@ -1,6 +1,12 @@
 from libs.exception import BaseHTTPException
 
 
+class CurrentWorkspaceArchivedError(BaseHTTPException):
+    error_code = "current_workspace_archived"
+    description = "The current workspace has been archived."
+    code = 409
+
+
 class RepeatPasswordNotMatchError(BaseHTTPException):
     error_code = "repeat_password_not_match"
     description = "New password and repeat password does not match."
@@ -13,9 +19,21 @@ class CurrentPasswordIncorrectError(BaseHTTPException):
     code = 400
 
 
+class InvalidAccountPasswordRequestError(BaseHTTPException):
+    error_code = "invalid_account_password"
+    description = "The password does not satisfy the account password policy."
+    code = 400
+
+
 class InvalidInvitationCodeError(BaseHTTPException):
     error_code = "invalid_invitation_code"
     description = "Invalid invitation code."
+    code = 400
+
+
+class MissingInvitationCodeRequestError(BaseHTTPException):
+    error_code = "missing_invitation_code"
+    description = "Invitation code is required."
     code = 400
 
 

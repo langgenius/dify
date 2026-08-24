@@ -25,11 +25,11 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className)}>
-      <div className="flex py-[7px]">
+      <div className="flex py-1.75">
         <div
           className={cn(
             labelClassName,
-            'flex h-[18px] items-center text-[13px] font-medium text-text-primary',
+            'flex h-4.5 items-center text-[13px] font-medium text-text-primary',
           )}
         >
           {label}{' '}

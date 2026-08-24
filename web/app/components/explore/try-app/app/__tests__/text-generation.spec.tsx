@@ -1,6 +1,6 @@
 import type { AppData } from '@/models/share'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import TextGeneration from '../text-generation'
 
 const mockUpdateAppInfo = vi.fn()
@@ -255,21 +255,6 @@ describe('TextGeneration', () => {
 
       await waitFor(() => {
         expect(screen.getByText('explore.tryApp.tryInfo')).toBeInTheDocument()
-      })
-    })
-  })
-
-  describe('className prop', () => {
-    it('applies custom className', async () => {
-      const appData = createMockAppData()
-
-      const { container } = render(
-        <TextGeneration appId="test-app-id" appData={appData} className="custom-class" />,
-      )
-
-      await waitFor(() => {
-        const element = container.querySelector('.custom-class')
-        expect(element).toBeInTheDocument()
       })
     })
   })

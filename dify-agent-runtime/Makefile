@@ -1,7 +1,5 @@
-.PHONY: build clean test lint proto gen-cli-help integration integration-up integration-test integration-down
+.PHONY: build clean test lint gen-cli-help integration integration-up integration-test integration-down sync-e2b-template-dev sync-e2b-template-prod sync-e2b-template-dry-run
 BIN_DIR := bin
-PROTO_SRC := ../dify-agent/proto/dify/agent/stub/v1/agent_stub.proto
-PROTO_OUT := gen
 AGENT_CLI_HELP_JSON := ../dify-agent/src/dify_agent/layers/_agent_cli_help.json
 
 build: $(BIN_DIR)/shellctl $(BIN_DIR)/shellctl-sanitize-pty $(BIN_DIR)/shellctl-runner-exit $(BIN_DIR)/shellctl-runner $(BIN_DIR)/dify-agent gen-cli-help
@@ -19,7 +17,7 @@ $(BIN_DIR)/shellctl-runner: $(shell find cmd/runner internal/landlock internal/c
 	go build -o $@ ./cmd/runner
 
 
-$(BIN_DIR)/dify-agent: $(shell find cmd/dify-agent-cli internal/agentcli internal/stubclient -name '*.go') $(shell find gen -name '*.go' 2>/dev/null)
+$(BIN_DIR)/dify-agent: $(shell find cmd/dify-agent-cli internal/agentcli -name '*.go')
 	go build -o $@ ./cmd/dify-agent-cli
 
 # Regenerate the JSON help snapshot from the Go command tree. Runs as part of
@@ -32,14 +30,6 @@ test: lint
 
 lint:
 	golangci-lint run ./...
-
-proto:
-	@mkdir -p $(PROTO_OUT)
-	protoc \
-		--proto_path=../dify-agent/proto \
-		--go_out=$(PROTO_OUT) --go_opt=paths=source_relative \
-		--go-grpc_out=$(PROTO_OUT) --go-grpc_opt=paths=source_relative \
-		$(PROTO_SRC)
 
 clean:
 	rm -rf $(BIN_DIR)
@@ -138,3 +128,18 @@ integration:
 	@$(MAKE) integration-up
 	@trap '$(MAKE) integration-down' EXIT; \
 	$(MAKE) integration-test
+
+# --- E2B Template sync ---
+#
+# Both E2B projects publish the same template name (dify-agent-local-sandbox);
+# the project itself is the isolation boundary. Export E2B_API_KEY_DEV /
+# E2B_API_KEY_PROD in your shell before running the non-dry-run targets.
+
+sync-e2b-template-dry-run:
+	./docker/sync-e2b-template.sh --dry-run
+
+sync-e2b-template-dev:
+	E2B_API_KEY=$(E2B_API_KEY_DEV) ./docker/sync-e2b-template.sh
+
+sync-e2b-template-prod:
+	E2B_API_KEY=$(E2B_API_KEY_PROD) ./docker/sync-e2b-template.sh

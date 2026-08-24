@@ -2,7 +2,8 @@
 import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
@@ -26,10 +27,10 @@ export const CommonCreateModal = ({ open = true, onClose, createType, builder }:
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'flex max-h-[80%] min-h-[360px] flex-col overflow-hidden p-0 shadow-xs',
+          'flex max-h-[80%] min-h-90 flex-col overflow-hidden p-0 shadow-xs',
           createType === SupportedCreationMethods.MANUAL
-            ? 'w-[640px] max-w-[calc(100vw-2rem)]'
-            : 'w-[480px] max-w-[calc(100vw-2rem)]',
+            ? 'w-160 max-w-[calc(100vw-2rem)]'
+            : 'w-120 max-w-[calc(100vw-2rem)]',
         )}
       >
         <CommonCreateModalContent createType={createType} builder={builder} onClose={onClose} />
@@ -76,12 +77,19 @@ function CommonCreateModalContent({ onClose, createType, builder }: Omit<Props, 
       data-disabled={isDisabled}
     >
       <div className="relative shrink-0 p-6 pr-14 pb-3">
-        <DialogTitle className="title-2xl-semi-bold text-text-primary" data-testid="modal-title">
+        <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[MODAL_TITLE_KEY_MAP[createType]], { ns: 'pluginTrigger' })}
         </DialogTitle>
-        <DialogCloseButton
-          className="top-5 right-5 size-8 rounded-lg [&>span]:size-5"
-          onClick={onClose}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-5 right-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
       </div>
 

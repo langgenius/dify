@@ -6,7 +6,7 @@ import {
   renderWorkflowFlowHook,
   renderWorkflowHook,
 } from '../../__tests__/workflow-test-env'
-import { BlockClassificationEnum } from '../../block-selector/types'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum, WorkflowRunningStatus } from '../../types'
 import {
   useIsChatMode,
@@ -32,7 +32,7 @@ beforeEach(() => {
 function createNodeDefault(type: BlockEnum): NodeDefault {
   return {
     metaData: {
-      classification: BlockClassificationEnum.Default,
+      classification: BlockClassification.Default,
       sort: 0,
       type,
       title: type,

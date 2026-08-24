@@ -3,11 +3,11 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { $getRoot } from 'lexical'
 import { CustomTextNode } from '../custom-text/node'
-import { CaptureEditorPlugin } from '../test-utils'
 import UpdateBlock, {
   PROMPT_EDITOR_INSERT_QUICKLY,
   PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
 } from '../update-block'
+import { CaptureEditorPlugin } from './test-utils'
 
 const { mockUseEventEmitterContextContext } = vi.hoisted(() => ({
   mockUseEventEmitterContextContext: vi.fn(),

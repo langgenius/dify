@@ -1,8 +1,13 @@
-import type { ComponentProps, ReactNode } from 'react'
+import type {
+  CollapsiblePanelProps,
+  CollapsibleProps,
+  CollapsibleTriggerProps,
+} from '@langgenius/dify-ui/collapsible'
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 
-type CollapseProps = Omit<ComponentProps<typeof Collapsible>, 'open' | 'onOpenChange'> & {
+type CollapseProps = Omit<CollapsibleProps, 'open' | 'onOpenChange'> & {
   collapsed?: boolean
   onCollapse?: (collapsed: boolean) => void
 }
@@ -33,9 +38,7 @@ export function CollapseActions({ children }: CollapseActionsProps) {
   return <div className="ml-auto shrink-0">{children}</div>
 }
 
-type CollapseTriggerProps = ComponentProps<typeof CollapsibleTrigger>
-
-export function CollapseTrigger({ className, ...props }: CollapseTriggerProps) {
+export function CollapseTrigger({ className, ...props }: CollapsibleTriggerProps) {
   return (
     <CollapsibleTrigger
       className={cn(
@@ -71,9 +74,7 @@ export function CollapseIndicator() {
   )
 }
 
-type CollapseContentProps = ComponentProps<typeof CollapsiblePanel>
-
-export function CollapseContent({ className, ...props }: CollapseContentProps) {
+export function CollapseContent({ className, ...props }: CollapsiblePanelProps) {
   return <CollapsiblePanel className={cn(className)} {...props} />
 }
 

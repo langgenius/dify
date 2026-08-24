@@ -2,7 +2,7 @@ import type { Edge as ReactFlowEdge, Node as ReactFlowNode, Viewport, XYPosition
 import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type {
-  BlockClassificationEnum,
+  BlockClassification,
   BlockDefaultValue,
   PluginDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
@@ -170,11 +170,22 @@ export type Variable = {
   isParagraph?: boolean
 }
 
+export type LLMCompletionParams = Record<string, unknown>
+
+export type LLMEnvironmentVariableValue = {
+  provider: string
+  name: string
+  mode: string
+  completion_params?: LLMCompletionParams
+}
+
+export type EnvironmentVariableValue = string | number | LLMEnvironmentVariableValue
+
 export type EnvironmentVariable = {
   id: string
   name: string
-  value: any
-  value_type: 'string' | 'number' | 'secret'
+  value: EnvironmentVariableValue
+  value_type: 'string' | 'number' | 'secret' | 'llm'
   description: string
 }
 
@@ -234,11 +245,8 @@ export type InputVar = {
   json_schema?: string | Record<string, any> // for jsonObject type
 } & Partial<UploadFileSetting>
 
-export type ModelConfig = {
-  provider: string
-  name: string
-  mode: string
-  completion_params: Record<string, any>
+export type ModelConfig = LLMEnvironmentVariableValue & {
+  completion_params: LLMCompletionParams
 }
 
 export enum PromptRole {
@@ -329,7 +337,7 @@ export type NodeOutPutVar = {
 
 export type NodeDefault<T = {}> = {
   metaData: {
-    classification: BlockClassificationEnum
+    classification: BlockClassification
     sort: number
     type: BlockEnum
     title: string

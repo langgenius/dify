@@ -6,7 +6,6 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import InternalServerError
 
-from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Account, Tenant, TenantAccountRole
@@ -14,23 +13,9 @@ from models.model import App, EndUser
 from services.enterprise.enterprise_service import WebAppAccessMode
 
 
-class Edition(StrEnum):
-    CE = "ce"
-    EE = "ee"
-    SAAS = "saas"
-
-
 class CallerKind(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
-
-
-def current_edition() -> Edition:
-    if dify_config.EDITION == "CLOUD":
-        return Edition.SAAS
-    if dify_config.ENTERPRISE_ENABLED:
-        return Edition.EE
-    return Edition.CE
 
 
 class ExternalIdentity(BaseModel):

@@ -1,8 +1,9 @@
 """Controller decorators for console app resources.
 
 `get_app_model` still supports legacy handlers backed by Flask-SQLAlchemy's
-scoped session. Trial app handlers compose `get_app_model_with_trial` under
-`controllers.common.session.with_session` and always reuse that request session.
+scoped session. Preview handlers compose `get_previewable_app_model` under
+`controllers.common.session.with_session`; preview admission finishes before
+the request Session loads the accepted App.
 """
 
 from collections.abc import Callable
@@ -12,14 +13,23 @@ from typing import cast, overload
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from controllers.common.session import with_session
+from controllers.common.wraps import RBACPermission, RBACResourceScope, enforce_rbac_access
 from controllers.console.app.error import AppNotFoundError
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
-from models import App, AppMode, TrialApp
-from services.recommended_app_service import RecommendedAppService
+from models import App, AppMode
+from models.agent import AgentScope
+from services.app_service import AppService
 
-__all__ = ["get_app_model", "get_app_model_with_trial", "with_session"]
+__all__ = [
+    "agent_manage_required_for_agent_app",
+    "get_app_model",
+    "get_previewable_app_model",
+    "with_session",
+]
 
 
 def _load_app_model(session: Session, app_id: str) -> App | None:
@@ -40,12 +50,50 @@ def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     return app_model
 
 
-def _load_app_model_with_trial(session: Session, app_id: str) -> App | None:
-    """Load a normal app through its trial registration without applying current-tenant scope."""
-    app_model = session.scalar(
-        select(App).join(TrialApp, TrialApp.app_id == App.id).where(App.id == app_id, App.status == "normal").limit(1)
-    )
-    return app_model
+def _load_previewable_app_model(session: Session, app_id: str) -> App | None:
+    """Load a normal App after preview admission completes outside the request Session."""
+    if not application_services().recommended_app_queries.is_previewable(app_id):
+        return None
+    return AppService.get_normal_app_by_id(app_id, session)
+
+
+def agent_manage_required_for_agent_app[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Gate generic app management routes that target an Agent App.
+
+    A hidden workflow-only backing App only reuses the App runtime and is not
+    part of the general app management plane, so generic routes reject it
+    outright. Managing a roster Agent App mutates the roster Agent behind it
+    (rename/icon sync, archive, API enablement), so it additionally requires
+    workspace ``agent.manage`` on top of the route's existing App permission
+    checks when RBAC is enabled. A no-op for non-agent Apps. Must be placed
+    above ``get_app_model`` so the ``app_id`` path parameter is still present.
+    """
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        raw_app_id = kwargs.get("app_id") or kwargs.get("resource_id")
+        if raw_app_id is not None:
+            app_model = _load_app_model_from_scoped_session(str(raw_app_id))
+            binding = (
+                app_model.agent_app_binding_with_session(session=db.session(), include_archived=True)
+                if app_model is not None
+                else None
+            )
+            if binding is not None:
+                if binding.scope == AgentScope.WORKFLOW_ONLY:
+                    raise AppNotFoundError()
+                if dify_config.RBAC_ENABLED:
+                    current_user, current_tenant_id = current_account_with_tenant()
+                    enforce_rbac_access(
+                        tenant_id=current_tenant_id,
+                        account_id=current_user.id,
+                        resource_type=RBACResourceScope.WORKSPACE,
+                        scene=RBACPermission.AGENT_MANAGE,
+                        resource_required=False,
+                    )
+        return view(*args, **kwargs)
+
+    return decorated
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:
@@ -136,7 +184,7 @@ def get_app_model[**P, R](
 
 
 @overload
-def get_app_model_with_trial[**P, R](
+def get_previewable_app_model[**P, R](
     view: Callable[P, R],
     *,
     mode: AppMode | list[AppMode] | None = None,
@@ -144,19 +192,25 @@ def get_app_model_with_trial[**P, R](
 
 
 @overload
-def get_app_model_with_trial[**P, R](
+def get_previewable_app_model[**P, R](
     view: None = None,
     *,
     mode: AppMode | list[AppMode] | None = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
 
 
-def get_app_model_with_trial[**P, R](
+def get_previewable_app_model[**P, R](
     view: Callable[P, R] | None = None,
     *,
     mode: AppMode | list[AppMode] | None = None,
 ) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
-    """Inject a trial-registered or recommended App using the Session supplied by `with_session`."""
+    """Inject an App authorized for read-only template preview.
+
+    Preview reads accept either an explicit TrialApp registration or membership
+    in the recommended catalog. This does not grant trial execution, which is
+    separately protected by TrialAppResource's feature, registration, and quota
+    checks.
+    """
 
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
@@ -171,10 +225,8 @@ def get_app_model_with_trial[**P, R](
 
             session = _get_injected_session(args)
             if session is None:
-                raise RuntimeError("get_app_model_with_trial requires @with_session")
-            app_model = _load_app_model_with_trial(session, app_id)
-            if app_model is None:
-                app_model = RecommendedAppService.get_app(app_id, session=session)
+                raise RuntimeError("get_previewable_app_model requires @with_session")
+            app_model = _load_previewable_app_model(session, app_id)
 
             if not app_model:
                 raise AppNotFoundError()

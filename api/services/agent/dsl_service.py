@@ -3,8 +3,7 @@
 Agent runtime configuration is split across immutable Soul snapshots and
 workflow-node bindings, while App and Snippet DSLs must be independent of the
 source workspace's database identifiers. This module owns that translation.
-It deliberately excludes drive payloads and stored credentials from portable
-packages; same-workspace copies may use the separate server-side clone path.
+It deliberately excludes stored credentials from portable packages.
 """
 
 from __future__ import annotations
@@ -18,8 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
-from graphon.enums import BuiltinNodeTypes
 from models import Account
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
@@ -224,6 +223,7 @@ class AgentDslService:
                 account_id=None,
                 draft_owner_key="",
                 base_snapshot_id=snapshot.id,
+                home_snapshot_id=snapshot.home_snapshot_id,
                 config_snapshot=soul,
                 created_by=account.id,
                 updated_by=account.id,
@@ -243,7 +243,7 @@ class AgentDslService:
         portable_graph: Mapping[str, Any],
         raw_packages: Mapping[str, Any],
         account: Account,
-    ) -> tuple[dict[str, Any], list[DslImportWarning]]:
+    ) -> tuple[dict[str, Any], list[DslImportWarning], set[str]]:
         """Materialize every packaged Agent as a node-owned inline Agent."""
 
         graph = copy.deepcopy(dict(portable_graph))
@@ -256,6 +256,11 @@ class AgentDslService:
                 WorkflowAgentNodeBinding.workflow_version == Workflow.VERSION_DRAFT,
             )
         ).all()
+        retirement_candidates = {
+            binding.agent_id
+            for binding in previous_bindings
+            if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and binding.agent_id
+        }
         for binding in previous_bindings:
             self.session.delete(binding)
         self.session.flush()
@@ -312,7 +317,7 @@ class AgentDslService:
 
         workflow.graph = json.dumps(graph)
         self.session.flush()
-        return graph, warnings
+        return graph, warnings, retirement_candidates
 
     def clone_inline_binding_for_node(
         self,
@@ -321,7 +326,6 @@ class AgentDslService:
         node_id: str,
         source_agent: Agent,
         source_snapshot: AgentConfigSnapshot,
-        node_job: WorkflowNodeJobConfig,
         account_id: str,
     ) -> tuple[Agent, AgentConfigSnapshot]:
         """Clone a same-workspace Inline Agent for a pasted target node."""
@@ -343,17 +347,6 @@ class AgentDslService:
             soul=soul,
             source=AgentSource.WORKFLOW,
             operation=AgentConfigRevisionOperation.CREATE_VERSION,
-        )
-        from services.agent.composer_service import AgentComposerService
-
-        AgentComposerService._copy_agent_drive_rows(
-            tenant_id=workflow.tenant_id,
-            source_agent_id=source_agent.id,
-            target_agent_id=agent.id,
-            account_id=account_id,
-            agent_soul=soul,
-            node_job=node_job,
-            session=self.session,
         )
         return agent, snapshot
 
@@ -567,6 +560,7 @@ class AgentDslService:
             agent_id=agent.id,
             version=next_version,
             config_snapshot=soul,
+            home_snapshot_id=None,
             created_by=account_id,
         )
         self.session.add(snapshot)
@@ -629,7 +623,7 @@ class AgentDslService:
 
 def is_agent_v2_graph(graph: Mapping[str, Any]) -> bool:
     return any(
-        node.get("data", {}).get("type") == BuiltinNodeTypes.AGENT and node.get("data", {}).get("version") == "2"
+        isinstance(node.get("data"), Mapping) and is_dify_agent_node_data(node["data"])
         for node in graph.get("nodes", [])
         if isinstance(node, Mapping)
     )

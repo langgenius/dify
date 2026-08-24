@@ -2,25 +2,25 @@ import type { AddOAuthButtonProps, Credential } from '@/app/components/plugins/p
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import {
   agentComposerDraftAtom,
-  agentComposerOriginalDraftAtom,
-  agentComposerPublishedDraftAtom,
+  agentComposerSavedDraftAtom,
   isAgentComposerDirtyAtom,
 } from '@/features/agent-v2/agent-composer/store'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
-  builtInTools: [] as ToolWithProvider[],
+  builtInTools: [] as ToolWithProvider[] | undefined,
 }))
 const pluginAuthState = vi.hoisted(() => ({
   canOAuth: true as boolean | undefined,
@@ -28,6 +28,21 @@ const pluginAuthState = vi.hoisted(() => ({
   credentials: [] as Credential[],
   notAllowCustomCredential: false,
   invalidPluginCredentialInfo: vi.fn(),
+}))
+const pluginInstallState = vi.hoisted(() => ({
+  manifest: undefined as
+    | {
+        label: Record<string, string>
+        latest_package_identifier: string
+      }
+    | undefined,
+  fallbackManifest: undefined as
+    | {
+        latest_package_identifier: string
+      }
+    | undefined,
+  invalidateBuiltInTools: vi.fn(),
+  invalidateInstalledPluginList: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
@@ -42,20 +57,71 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
   ),
 }))
 
+vi.mock('@/app/components/workflow/nodes/_base/components/install-plugin-button', () => ({
+  InstallPluginButton: ({
+    uniqueIdentifier,
+    onSuccess,
+  }: {
+    uniqueIdentifier: string
+    onSuccess?: () => void
+  }) => (
+    <button type="button" data-unique-identifier={uniqueIdentifier} onClick={onSuccess}>
+      workflow.nodes.agent.pluginInstaller.install
+    </button>
+  ),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  useInvalidateInstalledPluginList: () => pluginInstallState.invalidateInstalledPluginList,
+  useFetchPluginsInMarketPlaceByInfo: (infos: Array<{ organization: string; plugin: string }>) => ({
+    data:
+      infos.length > 0 && pluginInstallState.manifest
+        ? {
+            data: {
+              list: infos.map(({ organization, plugin }) => ({
+                plugin: {
+                  ...pluginInstallState.manifest,
+                  name: plugin,
+                  plugin_id: `${organization}/${plugin}`,
+                },
+              })),
+            },
+          }
+        : undefined,
+  }),
+  usePluginManifestInfo: (pluginId: string) => ({
+    data:
+      pluginId && pluginInstallState.fallbackManifest
+        ? {
+            data: {
+              plugin: pluginInstallState.fallbackManifest,
+            },
+          }
+        : undefined,
+  }),
+}))
+
+vi.mock('@/utils/get-icon', () => ({
+  getIconFromMarketPlace: (pluginId: string) => `https://marketplace.example.com/${pluginId}/icon`,
+}))
+
 vi.mock('@/app/components/plugins/plugin-auth/authorize/add-oauth-button', () => ({
   default: ({ buttonText, onUpdate, renderTrigger }: AddOAuthButtonProps) => {
-    if (renderTrigger) {
-      return renderTrigger({
-        isConfigured: false,
-        onClick: () => onUpdate?.(),
-      })
-    }
-
-    return (
+    const trigger = (
       <button type="button" onClick={onUpdate}>
         {buttonText}
       </button>
     )
+
+    if (renderTrigger) {
+      return renderTrigger({
+        isConfigured: false,
+        onClick: () => onUpdate?.(),
+        trigger,
+      })
+    }
+
+    return trigger
   },
 }))
 
@@ -80,11 +146,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal
   }: {
     formSchemas: Array<{ label?: Record<string, string>; variable?: string }>
   }) => (
-    <div data-testid="tool-setting-form">
+    <form aria-label="tool settings">
       {formSchemas.map((schema) => (
         <div key={schema.variable}>{schema.label?.en_US}</div>
       ))}
-    </div>
+    </form>
   ),
 }))
 
@@ -93,6 +159,7 @@ vi.mock('@/service/use-tools', () => ({
   useAllCustomTools: () => ({ data: [] }),
   useAllWorkflowTools: () => ({ data: [] }),
   useAllMCPTools: () => ({ data: [] }),
+  useInvalidateAllBuiltInTools: () => pluginInstallState.invalidateBuiltInTools,
   useInvalidToolsByType: () => vi.fn(),
 }))
 
@@ -104,6 +171,7 @@ const agentToolsDraft = {
       kind: 'provider',
       name: 'DuckDuckGo',
       iconClassName: 'i-simple-icons-duckduckgo',
+      providerType: 'builtin',
       credentialKey: 'agentDetail.configure.tools.credential.authOne',
       credentialVariant: 'none',
       actions: [
@@ -137,6 +205,7 @@ const reflectedAgentToolsDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialVariant: 'none',
       actions: [
         {
@@ -158,11 +227,36 @@ const reflectedUnauthorizedNoCredentialDraft = {
       kind: 'provider',
       name: 'duckduckgo',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'unauthorized',
       actions: [
         {
           id: 'duckduckgo-search',
+          name: 'search',
+          toolName: 'search',
+          description: '',
+        },
+      ],
+    },
+  ],
+} satisfies AgentSoulConfigFormState
+
+const reflectedUninstalledPluginDraft = {
+  ...defaultAgentSoulConfigFormState,
+  tools: [
+    {
+      id: 'langgenius/google/google',
+      kind: 'provider',
+      name: 'langgenius/google/google',
+      pluginId: 'langgenius/google',
+      iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'plugin',
+      credentialType: 'unauthorized',
+      credentialVariant: 'unauthorized',
+      actions: [
+        {
+          id: 'langgenius/google/google:search',
           name: 'search',
           toolName: 'search',
           description: '',
@@ -180,6 +274,7 @@ const reflectedUnauthorizedOAuthCredentialTypeDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'none',
       actions: [
@@ -294,6 +389,7 @@ function renderAgentTools(initialDraft: AgentSoulConfigFormState = agentToolsDra
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -312,10 +408,10 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
   const store = createStore()
   store.set(agentComposerDraftAtom, initialDraft)
-  store.set(agentComposerOriginalDraftAtom, initialDraft)
-  store.set(agentComposerPublishedDraftAtom, initialDraft)
+  store.set(agentComposerSavedDraftAtom, initialDraft)
 
   const view = render(
     <QueryClientProvider client={queryClient}>
@@ -339,6 +435,7 @@ function renderReadonlyAgentTools(initialDraft: AgentSoulConfigFormState = agent
       },
     },
   })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -360,6 +457,10 @@ describe('AgentTools', () => {
     pluginAuthState.canApiKey = false
     pluginAuthState.credentials = []
     pluginAuthState.notAllowCustomCredential = false
+    pluginInstallState.manifest = undefined
+    pluginInstallState.fallbackManifest = undefined
+    pluginInstallState.invalidateBuiltInTools.mockResolvedValue(undefined)
+    pluginInstallState.invalidateInstalledPluginList.mockResolvedValue(undefined)
   })
 
   describe('User Interactions', () => {
@@ -519,6 +620,77 @@ describe('AgentTools', () => {
       expect(screen.getByText('Google Search')).toBeInTheDocument()
     })
 
+    it('should let users install a missing provider and show its marketplace icon', async () => {
+      const user = userEvent.setup()
+      pluginInstallState.manifest = {
+        label: {
+          en_US: 'Google Tools',
+        },
+        latest_package_identifier: 'langgenius/google:1.0.0@checksum',
+      }
+      renderAgentTools(reflectedUninstalledPluginDraft)
+
+      expect(screen.getByRole('button', { name: 'Google Tools' })).toBeInTheDocument()
+      expect(
+        screen.getByText('https://marketplace.example.com/langgenius/google/icon'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'tools.notAuthorized',
+        }),
+      ).not.toBeInTheDocument()
+
+      const installButton = screen.getByRole('button', {
+        name: 'workflow.nodes.agent.pluginInstaller.install',
+      })
+      expect(installButton).toHaveAttribute(
+        'data-unique-identifier',
+        'langgenius/google:1.0.0@checksum',
+      )
+
+      await user.click(installButton)
+
+      await waitFor(() => {
+        expect(pluginInstallState.invalidateBuiltInTools).toHaveBeenCalledTimes(1)
+        expect(pluginInstallState.invalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('should keep install actionable when batch marketplace metadata is unavailable', () => {
+      pluginInstallState.fallbackManifest = {
+        latest_package_identifier: 'langgenius/google:0.0.1@fallback',
+      }
+      renderAgentTools(reflectedUninstalledPluginDraft)
+
+      expect(
+        screen.getByRole('button', {
+          name: 'google',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('https://marketplace.example.com/langgenius/google/icon'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', {
+          name: 'workflow.nodes.agent.pluginInstaller.install',
+        }),
+      ).toHaveAttribute('data-unique-identifier', 'langgenius/google:0.0.1@fallback')
+    })
+
+    it('should wait for the provider catalog before showing an uninstalled status', () => {
+      toolProviderState.builtInTools = undefined
+      renderAgentTools(reflectedUnauthorizedNoCredentialDraft)
+
+      expect(
+        screen.queryByText('plugin.detailPanel.toolSelector.uninstalledTitle'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'tools.notAuthorized',
+        }),
+      ).not.toBeInTheDocument()
+    })
+
     it('should hide unauthorized status when reflected provider tools do not require credentials', () => {
       toolProviderState.builtInTools = [duckDuckGoProvider]
       renderAgentTools(reflectedUnauthorizedNoCredentialDraft)
@@ -618,7 +790,7 @@ describe('AgentTools', () => {
     it('should open provider tool settings with catalog icon and parameters', async () => {
       const user = userEvent.setup()
       toolProviderState.builtInTools = [duckDuckGoProvider]
-      const { baseElement } = renderAgentTools()
+      renderAgentTools()
 
       await user.click(
         screen.getByRole('button', {
@@ -631,8 +803,10 @@ describe('AgentTools', () => {
         }),
       )
 
-      expect(baseElement.querySelector('[style*="duckduckgo.svg"]')).toBeInTheDocument()
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByTestId('tool-icon')).toHaveTextContent(
+        'https://example.com/duckduckgo.svg',
+      )
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
       expect(screen.getByText('Search Query')).toBeInTheDocument()
     })
 
@@ -652,7 +826,7 @@ describe('AgentTools', () => {
         }),
       )
 
-      expect(screen.getByTestId('tool-setting-form')).toBeInTheDocument()
+      expect(screen.getByRole('form', { name: 'tool settings' })).toBeInTheDocument()
 
       act(() => {
         store.set(agentComposerDraftAtom, {
@@ -661,7 +835,7 @@ describe('AgentTools', () => {
         })
       })
 
-      expect(screen.queryByTestId('tool-setting-form')).not.toBeInTheDocument()
+      expect(screen.queryByRole('form', { name: 'tool settings' })).not.toBeInTheDocument()
     })
   })
 })

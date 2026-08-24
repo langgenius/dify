@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { commandTree } from '@/commands/tree.generated'
 import { collectCommands } from '@/framework/registry'
 import { versionInfo } from '@/version/info'

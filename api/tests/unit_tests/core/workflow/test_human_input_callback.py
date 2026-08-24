@@ -59,6 +59,27 @@ def test_dify_hitl_callback_creates_pause_requested_for_new_form() -> None:
     assert params.node_id == "node-1"
 
 
+def test_dify_hitl_callback_scopes_form_to_node_execution() -> None:
+    repository = MagicMock(spec=HumanInputFormRepository)
+    repository.get_form.return_value = None
+    repository.create_form.return_value = SimpleNamespace(id="execution-1")
+    callback = DifyHITLCallback(
+        form_repository=repository,
+        node_data=HumanInputNodeData(
+            title="Approval",
+            form_content="Please approve",
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+        ),
+        execution_id_getter=lambda: "execution-1",
+    )
+
+    callback(_ctx("run-1", "node-1"))
+
+    repository.get_form.assert_called_once_with("node-1", form_id="execution-1")
+    params: FormCreateParams = repository.create_form.call_args.args[0]
+    assert params.form_id == "execution-1"
+
+
 def test_dify_hitl_callback_returns_completed_for_submitted_form() -> None:
     repository = MagicMock(spec=HumanInputFormRepository)
     repository.get_form.return_value = SimpleNamespace(

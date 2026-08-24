@@ -134,7 +134,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
               <Button
                 disabled={!isFileLoaded}
                 variant="primary"
-                className="w-0 grow space-x-2"
+                className="w-0 grow"
                 onClick={handleRunOrGenerateForm}
               >
                 <div>{t(($) => $[`${i18nPrefix}.startRun`], { ns: 'workflow' })}</div>
@@ -144,7 +144,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
               <Button
                 disabled={!isFileLoaded}
                 variant="primary"
-                className="w-0 grow space-x-2"
+                className="w-0 grow"
                 onClick={handleRunOrGenerateForm}
               >
                 <div>{t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>

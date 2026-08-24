@@ -1,6 +1,6 @@
 import type { SegmentDetailModel } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
 import SegmentList from '../segment-list'
 
@@ -161,12 +161,6 @@ describe('SegmentList', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentList {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render segment cards for each item', () => {
       const items = [
         createMockSegment('seg-1', 'Content 1'),

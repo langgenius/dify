@@ -9,7 +9,6 @@ import Panel from '../panel'
 import { OrderBy } from '../types'
 
 const mockUseConfig = vi.hoisted(() => vi.fn())
-const mockSwitch = vi.hoisted(() => vi.fn())
 const mockVarReferencePicker = vi.hoisted(() => vi.fn())
 const mockFilterCondition = vi.hoisted(() => vi.fn())
 const mockExtractInput = vi.hoisted(() => vi.fn())
@@ -20,27 +19,6 @@ const mockOptionCard = vi.hoisted(() => vi.fn())
 vi.mock('../use-config', () => ({
   __esModule: true,
   default: (...args: unknown[]) => mockUseConfig(...args),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: {
-    checked?: boolean
-    disabled?: boolean
-    onCheckedChange: (value: boolean) => void
-  }) => {
-    mockSwitch(props)
-    return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={props.checked}
-        disabled={props.disabled}
-        onClick={() => props.onCheckedChange(!props.checked)}
-      >
-        {props.disabled ? 'switch:disabled' : 'switch:enabled'}
-      </button>
-    )
-  },
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
@@ -294,8 +272,8 @@ describe('list-operator/panel', () => {
       screen.queryByRole('button', { name: 'workflow.nodes.listFilter.asc:idle' }),
     ).not.toBeInTheDocument()
     expect(screen.getAllByRole('switch')).toHaveLength(3)
-    expect(screen.getAllByRole('switch').every((button) => button.hasAttribute('disabled'))).toBe(
-      true,
-    )
+    expect(
+      screen.getAllByRole('switch').every((control) => control.hasAttribute('data-disabled')),
+    ).toBe(true)
   })
 })

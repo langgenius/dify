@@ -6,6 +6,7 @@ import { LoroDoc } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
 import { webSocketClient } from '../websocket-manager'
+import { attachCrdtRuntime } from './test-crdt-runtime'
 
 type ReactFlowStore = {
   getState: () => {
@@ -34,6 +35,7 @@ type CollaborationManagerInternals = {
   leaderId: string | null
   isLeader: boolean
   graphViewActive: boolean | null
+  crdtTrusted: boolean
   pendingInitialSync: boolean
   onlineUsers: OnlineUser[]
   graphImportLogs: unknown[]
@@ -69,11 +71,13 @@ const createEdge = (id: string, source: string, target: string): Edge => ({
 
 const setupManagerWithDoc = () => {
   const manager = new CollaborationManager()
+  attachCrdtRuntime(manager)
   const doc = new LoroDoc()
   const internals = getManagerInternals(manager)
   internals.doc = doc
   internals.nodesMap = doc.getMap('nodes')
   internals.edgesMap = doc.getMap('edges')
+  internals.crdtTrusted = true
   return { manager, internals }
 }
 

@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import type { ChecklistItem } from '@/app/components/workflow/hooks/use-checklist'
+import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Node } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'

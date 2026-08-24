@@ -1,7 +1,7 @@
 import type { FormSchema } from '../../../base/form/types'
 import type { PluginDetail } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import EndpointModal from '../endpoint-modal'
 
 const mockToastNotify = vi.fn()
@@ -119,7 +119,7 @@ describe('EndpointModal', () => {
         'data-[swipe-direction=right]:top-2',
         'data-[swipe-direction=right]:bottom-2',
         'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:w-100',
         'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
       )
     })
@@ -408,13 +408,6 @@ describe('EndpointModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       expect(mockOnSaved).toHaveBeenCalledWith({ text: 'hello' })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      expect(EndpointModal).toBeDefined()
-      expect((EndpointModal as { $$typeof?: symbol }).$$typeof).toBeDefined()
     })
   })
 })

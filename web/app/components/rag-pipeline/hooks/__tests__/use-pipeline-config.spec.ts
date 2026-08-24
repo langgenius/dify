@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePipelineConfig } from '../use-pipeline-config'
 
 const mockUseStore = vi.fn()
@@ -55,10 +55,6 @@ describe('usePipelineConfig', () => {
   })
 
   describe('hook initialization', () => {
-    it('should render without crashing', () => {
-      expect(() => renderHook(() => usePipelineConfig())).not.toThrow()
-    })
-
     it('should call useWorkflowConfig with correct URL for nodes default configs', () => {
       renderHook(() => usePipelineConfig())
 

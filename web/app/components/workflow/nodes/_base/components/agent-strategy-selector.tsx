@@ -5,7 +5,7 @@ import type { StrategyPluginDetail } from '@/app/components/plugins/types'
 import type {
   ListProps,
   ListRef,
-} from '@/app/components/workflow/block-selector/market-place-plugin/list'
+} from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -17,12 +17,13 @@ import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-ico
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList from '@/app/components/workflow/block-selector/marketplace-plugin/list'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { useStrategyProviders } from '@/service/use-strategy'
 import Tools from '../../../block-selector/tools'
-import ViewTypeSelect, { ViewType } from '../../../block-selector/view-type-select'
+import { ViewType } from '../../../block-selector/types'
+import ViewTypeSelect from '../../../block-selector/view-type-select'
 import { useStrategyInfo } from '../../agent/use-config'
 import { InstallPluginButton } from './install-plugin-button'
 import { SwitchPluginVersion } from './switch-plugin-version'
@@ -241,7 +242,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       <PopoverContent
         placement="bottom"
         sideOffset={0}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-97 overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
           <header className="flex gap-1 p-2">

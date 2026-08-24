@@ -121,7 +121,6 @@ export const applyToNewApp = async ({
       params: {
         graph,
         features: {},
-        environment_variables: [],
         conversation_variables: [],
       },
     })
@@ -148,9 +147,9 @@ type ApplyToCurrentAppParams = {
  * The backend's ``sync_draft_workflow`` rejects writes whose ``hash`` doesn't
  * match the existing draft's ``unique_hash`` (WorkflowHashNotEqualError), so we
  * must read the current draft first to grab its hash. We also preserve the
- * existing ``features``, ``environment_variables`` and ``conversation_variables``
- * — only nodes / edges / viewport (the ``graph`` field) get replaced by the
- * generated graph.
+ * existing ``features`` and ``conversation_variables``. Environment variables
+ * are preserved by omitting them from the draft-sync payload, so only nodes /
+ * edges / viewport (the ``graph`` field) get replaced by the generated graph.
  *
  * Caller is responsible for showing the overwrite confirmation dialog before
  * invoking this.
@@ -178,7 +177,6 @@ export const applyToCurrentApp = async ({
       params: {
         graph,
         features: existing?.features ?? {},
-        environment_variables: existing?.environment_variables ?? [],
         conversation_variables: existing?.conversation_variables ?? [],
         // Field is accepted by the backend but not typed in the Pick<> shape of
         // ``syncWorkflowDraft``'s params — spread it in so it reaches the wire.

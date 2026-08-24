@@ -98,15 +98,6 @@ function makeNodeOutPutVar(
   return { nodeId, title, vars }
 }
 
-// ─── Shared mock render-prop arguments ───────────────────────────────────────
-// These are the props passed to renderMenuOption() in option objects
-const renderProps = {
-  isSelected: false,
-  onSelect: vi.fn(),
-  onSetHighlight: vi.fn(),
-  queryString: null as string | null,
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // usePromptOptions
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -147,13 +138,6 @@ describe('usePromptOptions', () => {
       })
       expect(result.current).toHaveLength(1)
       expect(result.current[0]!.group).toBe('prompt context')
-    })
-
-    it('should render the context PromptMenuItem without crashing', () => {
-      const { result } = renderHook(() => usePromptOptions(makeContextBlock()), { wrapper })
-      // renderMenuOption returns a React element – just verify it's truthy
-      const el = result.current[0]!.renderMenuOption(renderProps)
-      expect(el).toBeTruthy()
     })
 
     it('should dispatch INSERT_CONTEXT_BLOCK_COMMAND when selectable and onSelectMenuOption is called', () => {
@@ -212,14 +196,6 @@ describe('usePromptOptions', () => {
       expect(result.current[0]!.group).toBe('prompt query')
     })
 
-    it('should render the query PromptMenuItem without crashing', () => {
-      const { result } = renderHook(() => usePromptOptions(undefined, makeQueryBlock()), {
-        wrapper,
-      })
-      const el = result.current[0]!.renderMenuOption(renderProps)
-      expect(el).toBeTruthy()
-    })
-
     it('should dispatch INSERT_QUERY_BLOCK_COMMAND when selectable', () => {
       let capturedEditor: LexicalEditor | null = null
       const { result } = renderHook(
@@ -271,15 +247,6 @@ describe('usePromptOptions', () => {
       )
       expect(result.current).toHaveLength(1)
       expect(result.current[0]!.group).toBe('request URL')
-    })
-
-    it('should render the requestURL PromptMenuItem without crashing', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(undefined, undefined, undefined, makeRequestURLBlock()),
-        { wrapper },
-      )
-      const el = result.current[0]!.renderMenuOption(renderProps)
-      expect(el).toBeTruthy()
     })
 
     it('should dispatch INSERT_REQUEST_URL_BLOCK_COMMAND when selectable', () => {
@@ -342,15 +309,6 @@ describe('usePromptOptions', () => {
       )
       expect(result.current).toHaveLength(1)
       expect(result.current[0]!.group).toBe('prompt history')
-    })
-
-    it('should render the history PromptMenuItem without crashing', () => {
-      const { result } = renderHook(
-        () => usePromptOptions(undefined, undefined, makeHistoryBlock()),
-        { wrapper },
-      )
-      const el = result.current[0]!.renderMenuOption(renderProps)
-      expect(el).toBeTruthy()
     })
 
     it('should dispatch INSERT_HISTORY_BLOCK_COMMAND when selectable', () => {
@@ -478,14 +436,6 @@ describe('useVariableOptions', () => {
       expect(result.current[1]!.key).toBe('beta')
     })
 
-    it('should render variable VariableMenuItems without crashing', () => {
-      const vars: Option[] = [{ value: 'myvar', name: 'My Var' }]
-      const { result } = renderHook(() => useVariableOptions(makeVariableBlock(vars)), { wrapper })
-      // Pass a queryString so we exercise the highlight splitting code path in VariableMenuItem
-      const el = result.current[0]!.renderMenuOption({ ...renderProps, queryString: 'my' })
-      expect(el).toBeTruthy()
-    })
-
     it('should dispatch INSERT_VARIABLE_VALUE_BLOCK_COMMAND with correct payload when variable is selected', () => {
       let capturedEditor: LexicalEditor | null = null
       const vars: Option[] = [{ value: 'myvar', name: 'My Var' }]
@@ -543,13 +493,6 @@ describe('useVariableOptions', () => {
    * a real Lexical document with registered nodes.
    */
   describe('addOption (the last element)', () => {
-    it('should render addOption VariableMenuItem without crashing', () => {
-      const { result } = renderHook(() => useVariableOptions(makeVariableBlock([])), { wrapper })
-      const lastOption = result.current[result.current.length - 1]
-      const el = lastOption!.renderMenuOption(renderProps)
-      expect(el).toBeTruthy()
-    })
-
     it('should call editor.update() when addOption is selected', () => {
       let capturedEditor: LexicalEditor | null = null
       const { result } = renderHook(
@@ -641,16 +584,6 @@ describe('useExternalToolOptions', () => {
       expect(result.current[1]!.key).toBe('tool-b')
     })
 
-    it('should render tool VariableMenuItem (with AppIcon and variableName extra element) without crashing', () => {
-      const { result } = renderHook(
-        () => useExternalToolOptions(makeExternalToolBlock({}, [sampleTool])),
-        { wrapper },
-      )
-      // pass a queryString to also exercise the highlighting code path
-      const el = result.current[0]!.renderMenuOption({ ...renderProps, queryString: 'wea' })
-      expect(el).toBeTruthy()
-    })
-
     it('should dispatch INSERT_VARIABLE_VALUE_BLOCK_COMMAND with variableName when tool is selected', () => {
       let capturedEditor: LexicalEditor | null = null
       const { result } = renderHook(
@@ -701,15 +634,6 @@ describe('useExternalToolOptions', () => {
    * Its onSelect calls externalToolBlockType.onAddExternalTool() if provided.
    */
   describe('addOption (the last element)', () => {
-    it('should render addOption VariableMenuItem (with Tool03/ArrowUpRight icons) without crashing', () => {
-      const { result } = renderHook(() => useExternalToolOptions(makeExternalToolBlock({}, [])), {
-        wrapper,
-      })
-      const lastOption = result.current[result.current.length - 1]
-      const el = lastOption!.renderMenuOption(renderProps)
-      expect(el).toBeTruthy()
-    })
-
     it('should call onAddExternalTool when addOption is selected and callback provided', () => {
       const onAddExternalTool = vi.fn()
       const { result } = renderHook(

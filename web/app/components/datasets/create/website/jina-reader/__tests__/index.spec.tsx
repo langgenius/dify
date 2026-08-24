@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -6,9 +6,9 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import JinaReader from '../index'
 
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,12 +26,10 @@ vi.mock('@/utils', () => ({
   sleep: vi.fn(() => Promise.resolve()),
 }))
 
-// Mock modal context
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock doc link context
 vi.mock('@/context/i18n', () => ({
@@ -80,16 +78,6 @@ describe('JinaReader', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<JinaReader {...props} />)
-
-      expect(
-        screen.getByText('datasetCreation.stepOne.website.jinaReaderTitle'),
-      )!.toBeInTheDocument()
-    })
-
     it('should render header with configuration button', () => {
       const props = createDefaultProps()
 
@@ -410,14 +398,14 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(1)
       expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<JinaReader {...props} />)
       fireEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockSetSettingsDestination).toHaveBeenCalledTimes(2)
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
@@ -456,7 +444,7 @@ describe('JinaReader', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureJinaReader')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
@@ -750,15 +738,6 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalled()
       })
-    })
-  })
-
-  // Component Memoization Tests
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert - React.memo components have $$typeof Symbol(react.memo)
-      expect(JinaReader.$$typeof?.toString()).toBe('Symbol(react.memo)')
-      expect((JinaReader as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 

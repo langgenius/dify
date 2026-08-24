@@ -10,7 +10,6 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'
 import { segmentImportStatus } from '@/types/dataset'
 
@@ -32,7 +31,7 @@ export function SegmentAdd({
   const { t } = useTranslation()
   const [isPlanUpgradeModalOpen, setIsPlanUpgradeModalOpen] = useState(false)
   const { plan, enableBilling } = useProviderContext()
-  const canAddChunks = !enableBilling || plan.type !== Plan.sandbox
+  const canAddChunks = !enableBilling || plan.type !== 'sandbox'
 
   const textColor = embedding
     ? 'text-components-button-secondary-accent-text-disabled'
@@ -128,10 +127,7 @@ export function SegmentAdd({
       >
         <span aria-hidden className={cn('i-ri-add-line size-4', textColor)} />
         <span
-          className={cn(
-            'ml-0.5 px-0.5 text-[13px] leading-[16px] font-medium capitalize',
-            textColor,
-          )}
+          className={cn('ml-0.5 px-0.5 text-[13px] leading-4 font-medium capitalize', textColor)}
         >
           {t(($) => $['list.action.addButton'], { ns: 'datasetDocuments' })}
         </span>
@@ -146,7 +142,7 @@ export function SegmentAdd({
         >
           <span aria-hidden className={cn('i-ri-arrow-down-s-line size-4', textColor)} />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[120px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[120px]">
           <DropdownMenuItem
             className="system-md-regular"
             onClick={() => openSegmentDialog(showBatchModal)}

@@ -6,16 +6,16 @@ import type {
 } from '../app-card-utils'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
-import { useAtomValue } from 'jotai'
-import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, use, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
+import { createTheme } from '@/app/components/base/chat/embedded-chatbot/theme/theme'
 import { InputVarType } from '@/app/components/workflow/types'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { basePath } from '@/utils/var'
 import {
   compressAndEncodeBase64,
@@ -141,11 +141,15 @@ const EmbeddedContent = ({
   )
   const latestResolvedIframeUrlRef = useRef('')
 
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const themeBuilder = useThemeContext()
-  const isTestEnv =
-    langGeniusVersionInfo.current_env === 'TESTING' ||
-    langGeniusVersionInfo.current_env === 'DEVELOPMENT'
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
+  const theme = createTheme(
+    siteInfo?.chat_color_theme ?? null,
+    siteInfo?.chat_color_theme_inverted ?? false,
+  )
+  const isTestEnv = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   const handleHiddenInputValueChange = (variable: string, value: WorkflowLaunchInputValue) => {
     const nextHiddenInputValues = {
@@ -171,18 +175,11 @@ const EmbeddedContent = ({
         url: appBaseUrl,
         token: accessToken,
         webAppRoute,
-        primaryColor: themeBuilder.theme?.primaryColor ?? '#1C64F2',
+        primaryColor: theme.primaryColor,
         isTestEnv,
         inputValues: hiddenInputValues,
       }),
-    [
-      accessToken,
-      appBaseUrl,
-      hiddenInputValues,
-      isTestEnv,
-      themeBuilder.theme?.primaryColor,
-      webAppRoute,
-    ],
+    [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, theme.primaryColor, webAppRoute],
   )
 
   const onClickCopy = async () => {
@@ -217,13 +214,6 @@ const EmbeddedContent = ({
       'noopener,noreferrer',
     )
   }
-
-  useEffect(() => {
-    themeBuilder.buildTheme(
-      siteInfo?.chat_color_theme ?? null,
-      siteInfo?.chat_color_theme_inverted ?? false,
-    )
-  }, [siteInfo?.chat_color_theme, siteInfo?.chat_color_theme_inverted, themeBuilder])
 
   return (
     <>
@@ -315,7 +305,7 @@ const EmbeddedContent = ({
           <Tooltip>
             <TooltipTrigger
               render={
-                <ActionButton
+                <IconButton
                   aria-label={
                     (copiedOption === option
                       ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
@@ -323,13 +313,12 @@ const EmbeddedContent = ({
                   }
                   onClick={() => void onClickCopy()}
                 >
-                  {copiedOption === option && (
+                  {copiedOption === option ? (
                     <span aria-hidden="true" className="i-ri-clipboard-fill size-4" />
-                  )}
-                  {copiedOption !== option && (
+                  ) : (
                     <span aria-hidden="true" className="i-ri-clipboard-line size-4" />
                   )}
-                </ActionButton>
+                </IconButton>
               }
             />
             <TooltipContent>
@@ -382,15 +371,22 @@ const Embedded = ({
       }}
     >
       <DialogContent
-        className={cn(
-          'flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden!',
-          className,
-        )}
+        className={cn('flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!', className)}
       >
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixEmbedded}.title`], { ns: 'appOverview' })}
         </DialogTitle>
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {isShow && (
             <EmbeddedContent

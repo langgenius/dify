@@ -172,7 +172,7 @@ const TestRunMenu = forwardRef<TestRunMenuRef, TestRunMenuProps>(
           placement="bottom-start"
           sideOffset={8}
           alignOffset={-4}
-          popupClassName="w-[284px] p-1"
+          className="w-[284px] p-1"
         >
           <DropdownMenuGroup>
             <DropdownMenuLabel className="mb-1 px-3 pt-2 text-sm font-medium text-text-primary">

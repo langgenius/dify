@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -6,7 +7,9 @@ import { consoleQuery } from '@/service/client'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 
-export function useChangeProviderPriority(provider: ModelProvider | undefined) {
+export function useChangeProviderPriority(
+  provider: ModelProvider | ModelProviderSummaryResponse | undefined,
+) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()

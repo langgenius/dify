@@ -13,11 +13,6 @@ describe('ImageLinkInput', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ImageLinkInput {...defaultProps} />)
-      expect(screen.getByRole('textbox')).toBeInTheDocument()
-    })
-
     it('should render an input with placeholder text', () => {
       render(<ImageLinkInput {...defaultProps} />)
       const input = screen.getByRole('textbox')

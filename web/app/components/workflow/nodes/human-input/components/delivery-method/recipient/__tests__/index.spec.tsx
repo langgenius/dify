@@ -1,56 +1,34 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, screen } from '@testing-library/react'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { withSelectorKey } from '@/test/i18n-mock'
 import Recipient from '../index'
 
 const mockUseTranslation = vi.hoisted(() => vi.fn())
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 const mockUseMembers = vi.hoisted(() => vi.fn())
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { email: 'owner@example.com' },
   currentWorkspace: { name: "Dify's Lab" },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/service/use-common', () => ({
   useMembers: () => mockUseMembers(),
-}))
-
-vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: (props: { checked: boolean; onCheckedChange: (value: boolean) => void }) => (
-    <button type="button" onClick={() => props.onCheckedChange(!props.checked)}>
-      toggle-workspace
-    </button>
-  ),
 }))
 
 vi.mock('../member-selector', () => ({
@@ -99,7 +77,7 @@ describe('Recipient', () => {
         (key: string, options?: { workspaceName?: string }) => options?.workspaceName ?? key,
       ),
     })
-    mockUseAppContext.mockReturnValue(mockAppContextState)
+    mockConsoleStateReader.mockReturnValue(mockConsoleState)
     mockUseMembers.mockReturnValue({
       data: {
         accounts: [
@@ -133,7 +111,7 @@ describe('Recipient', () => {
     fireEvent.click(screen.getByText('add-email-member'))
     fireEvent.click(screen.getByText('delete-member'))
     fireEvent.click(screen.getByText('delete-external'))
-    fireEvent.click(screen.getByText('toggle-workspace'))
+    fireEvent.click(screen.getByRole('switch'))
 
     expect(onChange).toHaveBeenNthCalledWith(1, {
       whole_workspace: false,

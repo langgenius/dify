@@ -3,12 +3,12 @@
 import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import EnvNav from '@/app/components/header/env-nav'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import HelpMenu from '@/app/components/main-nav/components/help-menu'
-import { langGeniusVersionInfoAtom } from '@/context/version-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DETAIL_SIDEBAR_TOGGLE_HOTKEY } from './hotkeys'
 import { useDetailSidebarMode } from './storage'
 
@@ -29,7 +29,11 @@ const secondarySidebarHelpTriggerIcon = (
 
 function SecondarySidebarHelpMenu({ triggerClassName }: { triggerClassName?: string }) {
   return (
-    <HelpMenu triggerIcon={secondarySidebarHelpTriggerIcon} triggerClassName={triggerClassName} />
+    <HelpMenu
+      triggerIcon={secondarySidebarHelpTriggerIcon}
+      triggerSize="lg"
+      triggerClassName={triggerClassName}
+    />
   )
 }
 
@@ -38,7 +42,10 @@ export function DetailSidebarFrame({
   renderTop,
   renderSection,
 }: DetailSidebarFrameProps) {
-  const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const { data: currentEnv } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.meta.currentEnv,
+  })
   const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
   const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
   const detailNavigationExpanded = detailNavigationMode === 'expand'
@@ -54,7 +61,6 @@ export function DetailSidebarFrame({
   const detailNavigationVisibleExpanded =
     detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
   const bottomNavigationExpanded = detailNavigationVisibleExpanded
-  const currentEnv = langGeniusVersionInfo?.current_env
   const showEnvTag = currentEnv === 'TESTING' || currentEnv === 'DEVELOPMENT'
 
   function handleToggleDetailNavigation() {
@@ -150,7 +156,7 @@ export function DetailSidebarFrame({
           className={cn(
             !bottomNavigationExpanded
               ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'
-              : 'flex w-60 items-center justify-between bg-components-panel-bg py-3 pr-1 pl-3',
+              : 'flex w-60 items-center justify-between bg-components-panel-bg p-3',
           )}
         >
           {!bottomNavigationExpanded ? (
@@ -163,9 +169,7 @@ export function DetailSidebarFrame({
               <div className="flex min-w-0 items-center gap-1 overflow-hidden">
                 <AccountSection />
               </div>
-              <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-                <SecondarySidebarHelpMenu />
-              </div>
+              <SecondarySidebarHelpMenu />
             </>
           )}
         </div>

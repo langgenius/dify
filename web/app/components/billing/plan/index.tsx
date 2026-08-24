@@ -1,92 +1,74 @@
 'use client'
+import type { EducationStatusResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { RiBook2Line, RiFileEditLine, RiGroupLine } from '@remixicon/react'
-import { useUnmountedRef } from 'ahooks'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
-import { useSetEducationVerifying } from '@/app/education-apply/storage'
-import VerifyStateModal from '@/app/education-apply/verify-state-modal'
-import { IS_CLOUD_EDITION } from '@/config'
-import { userProfileEmailAtom } from '@/context/account-state'
-import { useModalContextSelector } from '@/context/modal-context'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { usePathname, useRouter } from '@/next/navigation'
-import { useEducationVerify } from '@/service/use-education'
-import { BillingPermission, hasPermission } from '@/utils/permission'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { getDaysUntilEndOfMonth } from '@/utils/time'
 import Loading from '../../base/icons/src/public/thought/Loading'
 import { NUM_INFINITE } from '../config'
 import { useEducationDiscount } from '../hooks/use-education-discount'
-import { Plan, SelfHostedPlan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 import AppsInfo from '../usage-info/apps-info'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
-import { Enterprise, Professional, Sandbox, Team } from './assets'
+import { Professional, Sandbox, Team } from './assets'
 
 type Props = Readonly<{
   loc: string
 }>
 
+const selectEducationPlanStatus = ({ allow_refresh, is_student }: EducationStatusResponse) => ({
+  isAboutToExpire: allow_refresh ?? false,
+  isEducationAccount: is_student ?? false,
+})
+
 const PlanComp: FC<Props> = ({ loc }) => {
   const { t } = useTranslation()
-  const router = useRouter()
-  const path = usePathname()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } =
-    useProviderContext()
-  const isAboutToExpire = allowRefreshEducationVerify
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const { plan, enableEducationPlan } = useProviderContext()
+  const { data: educationStatus } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: selectEducationPlanStatus,
+    }),
+  )
+  const { isAboutToExpire = false, isEducationAccount = false } = educationStatus ?? {}
   const { type } = plan
-  const isEnterprisePlan = String(type) === SelfHostedPlan.enterprise
 
   const { usage, total, reset } = plan
   const triggerEventsResetInDays =
-    type === Plan.professional && total.triggerEvents !== NUM_INFINITE
+    type === 'professional' && total.triggerEvents !== NUM_INFINITE
       ? (reset.triggerEvents ?? undefined)
       : undefined
   const apiRateLimitResetInDays = (() => {
     if (total.apiRateLimit === NUM_INFINITE) return undefined
     if (typeof reset.apiRateLimit === 'number') return reset.apiRateLimit
-    if (type === Plan.sandbox) return getDaysUntilEndOfMonth()
+    if (type === 'sandbox') return getDaysUntilEndOfMonth()
     return undefined
   })()
 
-  const [showModal, setShowModal] = React.useState(false)
   const { handleEducationDiscount, isEducationDiscountLoading } = useEducationDiscount()
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
-  const { mutateAsync, isPending } = useEducationVerify()
-  const setShowAccountSettingModal = useModalContextSelector((s) => s.setShowAccountSettingModal)
-  const setEducationVerifying = useSetEducationVerifying()
-  const unmountedRef = useUnmountedRef()
-  const handleVerify = () => {
-    if (isPending) return
-    mutateAsync()
-      .then((res) => {
-        setEducationVerifying(null)
-        if (unmountedRef.current) return
-        router.push(`/education-apply?token=${res.token}`)
-      })
-      .catch(() => {
-        setShowModal(true)
-      })
-  }
-  useEffect(() => {
-    // setShowAccountSettingModal would prevent navigation
-    if (path.startsWith('/education-apply')) setShowAccountSettingModal(null)
-  }, [path, setShowAccountSettingModal])
   return (
     <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
       <div className="p-6 pb-2">
-        {plan.type === Plan.sandbox && <Sandbox />}
-        {plan.type === Plan.professional && <Professional />}
-        {plan.type === Plan.team && <Team />}
-        {isEnterprisePlan && <Enterprise />}
+        {plan.type === 'sandbox' && <Sandbox />}
+        {plan.type === 'professional' && <Professional />}
+        {plan.type === 'team' && <Team />}
         <div className="mt-1 flex items-center">
           <div className="grow">
             <div className="mb-1 flex items-center gap-1">
@@ -99,32 +81,29 @@ const PlanComp: FC<Props> = ({ loc }) => {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {IS_CLOUD_EDITION &&
-              enableEducationPlan &&
-              (!isEducationAccount || isAboutToExpire) && (
-                <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
-                  {t(($) => $.toVerified, { ns: 'education' })}
-                  {isPending && <Loading className="ml-1 animate-spin-slow" />}
-                </Button>
-              )}
-            {IS_CLOUD_EDITION &&
+            {isCloudEdition && enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
+              <Link className={buttonVariants({ variant: 'ghost' })} href="/education/verify">
+                <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
+                {t(($) => $.toVerified, { ns: 'education' })}
+              </Link>
+            )}
+            {isCloudEdition &&
               enableEducationPlan &&
               isEducationAccount &&
-              type === Plan.sandbox &&
-              canManageBilling && (
+              type === 'sandbox' &&
+              isCurrentWorkspaceManager && (
                 <Button
                   variant="ghost"
                   onClick={handleEducationDiscount}
                   disabled={isEducationDiscountLoading}
                 >
-                  <span className="mr-1 i-ri-graduation-cap-line size-4" />
+                  <span className="i-ri-graduation-cap-line size-4" aria-hidden="true" />
                   {t(($) => $.useEducationDiscount, { ns: 'education' })}
-                  {isEducationDiscountLoading && <Loading className="ml-1 animate-spin-slow" />}
+                  {isEducationDiscountLoading && <Loading className="animate-spin-slow" />}
                 </Button>
               )}
-            {IS_CLOUD_EDITION && !isEnterprisePlan && (
-              <UpgradeBtn className="shrink-0" isPlain={type === Plan.team} isShort loc={loc} />
+            {isCloudEdition && (
+              <UpgradeBtn className="shrink-0" isPlain={type === 'team'} isShort loc={loc} />
             )}
           </div>
         </div>
@@ -172,15 +151,6 @@ const PlanComp: FC<Props> = ({ loc }) => {
           resetInDays={apiRateLimitResetInDays}
         />
       </div>
-      <VerifyStateModal
-        showLink
-        email={userProfileEmail}
-        isShow={showModal}
-        title={t(($) => $.rejectTitle, { ns: 'education' })}
-        content={t(($) => $.rejectContent, { ns: 'education' })}
-        onConfirm={() => setShowModal(false)}
-        onCancel={() => setShowModal(false)}
-      />
     </div>
   )
 }

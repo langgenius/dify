@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { AppModeEnum } from '@/types/app'
 import LinkedAppsPanel from '../index'
 
@@ -82,10 +82,9 @@ describe('LinkedAppsPanel Component', () => {
     })
 
     it('handles empty relatedApps list gracefully', () => {
-      const { container } = render(<LinkedAppsPanel relatedApps={[]} isMobile={false} />)
-      const items = screen.queryAllByTestId('link-item')
-      expect(items).toHaveLength(0)
-      expect(container.firstChild).toBeInTheDocument()
+      render(<LinkedAppsPanel relatedApps={[]} isMobile={false} />)
+
+      expect(screen.queryAllByTestId('link-item')).toHaveLength(0)
     })
   })
 

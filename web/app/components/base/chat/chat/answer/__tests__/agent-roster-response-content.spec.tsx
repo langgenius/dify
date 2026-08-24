@@ -1,7 +1,7 @@
 import type { ChatItem } from '../../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { AgentRosterResponseContent } from '../agent-roster-response-content'
 
 vi.mock('react-i18next', async () => {
@@ -548,7 +548,7 @@ describe('AgentRosterResponseContent', () => {
     render(<AgentRosterResponseContent item={item} content={item.content} />)
 
     const processToggle = screen.getByRole('button', {
-      name: 'Thinking · {{count}}m{{count}}s',
+      name: 'Thinking · 1m6s',
     })
     expect(processToggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('raw process detail')).not.toBeInTheDocument()

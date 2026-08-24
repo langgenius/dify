@@ -147,6 +147,10 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: (id: string, data: AgentV2NodeType) => mockUseNodeCrud(id, data),
 }))
 
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
   AgentSelectorContent: ({
     onSelect,
@@ -305,13 +309,26 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdate: mockHandleNodeDataUpdate,
-    handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
-  }),
-  useWorkflowVariableType: () => vi.fn(),
-}))
+vi.mock('../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-node-data-update')>()
+
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdate: mockHandleNodeDataUpdate,
+      handleNodeDataUpdateWithSyncDraft: mockHandleNodeDataUpdateWithSyncDraft,
+    }),
+  }
+})
+
+vi.mock('../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariableType: () => vi.fn(),
+  }
+})
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: (selector: (state: { configsMap: typeof mockConfigsMap }) => unknown) =>
@@ -430,11 +447,8 @@ describe('agent/panel', () => {
     expect(screen.getByText('text')).toBeInTheDocument()
     expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
     expect(screen.queryByText('usage')).not.toBeInTheDocument()
-    expect(screen.getByText('files')).toBeInTheDocument()
-    expect(screen.getByText('array[file]')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
-    expect(screen.getByText('json')).toBeInTheDocument()
-    expect(screen.getByText('object')).toBeInTheDocument()
+    expect(screen.queryByText('files')).not.toBeInTheDocument()
+    expect(screen.queryByText('json')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
     ).toBeInTheDocument()
@@ -1263,6 +1277,27 @@ describe('agent/panel', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps prompt output definitions stable when workflow data is unchanged', () => {
+    const data = createData({
+      agent_task: 'Use [§output:summary:summary§]',
+      agent_declared_outputs: [
+        {
+          name: 'summary',
+          type: 'string',
+        },
+      ],
+    })
+    const { rerender } = render(
+      <AgentV2Panel id="agent-node" data={data} panelProps={panelProps} />,
+    )
+    const initialOutputs = mockPromptEditorProps.at(-1)?.agentOutputBlock?.outputs
+    expect(initialOutputs).toBeDefined()
+
+    rerender(<AgentV2Panel id="agent-node" data={data} panelProps={panelProps} />)
+
+    expect(mockPromptEditorProps.at(-1)?.agentOutputBlock?.outputs).toBe(initialOutputs)
+  })
+
   it('opens the output variable editor from an agent task output token hover', () => {
     render(
       <AgentV2Panel
@@ -1739,58 +1774,65 @@ describe('agent/panel', () => {
     )
 
     expect(screen.getByText('summary')).toBeInTheDocument()
-    expect(screen.getByText('string')).toBeInTheDocument()
     expect(screen.getByText('Short summary')).toBeInTheDocument()
     expect(screen.getByText('attachments')).toBeInTheDocument()
     expect(screen.getByText('array[file]')).toBeInTheDocument()
     expect(screen.getByText('Generated files')).toBeInTheDocument()
-    expect(screen.queryByText('workflow.nodes.agent.outputVars.text')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
   })
 
-  it('adds a declared output to workflow draft node data', () => {
-    render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
+  it.each(['summary', 'files', 'json'])(
+    'adds custom output %s to workflow draft node data',
+    (outputName) => {
+      render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
-    )
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
-      {
-        target: {
-          value: 'summary',
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.newOutput' }),
+      )
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }),
+        {
+          target: {
+            value: outputName,
+          },
         },
-      },
-    )
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }),
-      {
-        target: {
-          value: 'Short summary',
+      )
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.descriptionLabel' }),
+        {
+          target: {
+            value: 'Short summary',
+          },
         },
-      },
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
+      )
+      fireEvent.click(
+        screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }),
+      )
 
-    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
-      {
-        id: 'agent-node',
-        data: expect.objectContaining({
-          agent_declared_outputs: expect.arrayContaining([
-            expect.objectContaining({
-              name: 'summary',
-              type: 'string',
-              required: false,
-              description: 'Short summary',
-            }),
-          ]),
+      expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+        {
+          id: 'agent-node',
+          data: expect.objectContaining({
+            agent_declared_outputs: expect.arrayContaining([
+              expect.objectContaining({
+                name: outputName,
+                type: 'string',
+                required: false,
+                description: 'Short summary',
+              }),
+            ]),
+          }),
+        },
+        expect.objectContaining({
+          sync: true,
+          notRefreshWhenSyncError: true,
         }),
-      },
-      expect.objectContaining({
-        sync: true,
-        notRefreshWhenSyncError: true,
-      }),
-    )
-  })
+      )
+      const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0]
+        .data as AgentV2NodeType
+      expect(updatedData.agent_declared_outputs?.map((output) => output.name)).toEqual([outputName])
+    },
+  )
 
   it('submits the output editor with a scoped Mod+Enter shortcut', () => {
     render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)

@@ -188,7 +188,7 @@ class PipelineGenerator(BaseAppGenerator):
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
                 dataset_id=dataset.id,
-                original_document_id=args.get("original_document_id"),
+                original_document_id=None if is_retry else args.get("original_document_id"),
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -349,18 +349,30 @@ class PipelineGenerator(BaseAppGenerator):
             draft_var_saver_factory = self._get_draft_var_saver_factory(
                 invoke_from,
                 user,
+                tenant_id=pipeline.tenant_id,
             )
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                stream=streaming,
-                draft_var_saver_factory=draft_var_saver_factory,
-            )
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    stream=streaming,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                self._join_worker_thread(worker_thread)
+                raise
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            self._join_worker_thread(worker_thread)
+            return converted_response
 
     def single_iteration_generate(
         self,
@@ -376,7 +388,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
@@ -478,7 +490,7 @@ class PipelineGenerator(BaseAppGenerator):
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param node_id: the node id
         :param user: account or end user
@@ -642,8 +654,6 @@ class PipelineGenerator(BaseAppGenerator):
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            finally:
-                db.session.close()
 
     def _handle_response(
         self,

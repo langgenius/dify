@@ -110,7 +110,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               )}
             </div>
           </SelectTrigger>
-          <SelectContent popupClassName="w-[512px]">
+          <SelectContent className="w-[512px]">
             {versions.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -145,7 +145,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               t(($) => $[`${i18nPrefix}.selectPackagePlaceholder`], { ns: 'plugin' }) ??
               ''}
           </SelectTrigger>
-          <SelectContent popupClassName="w-[512px]">
+          <SelectContent className="w-[512px]">
             {packages.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -157,18 +157,13 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       </Field>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit && (
-          <Button
-            variant="secondary"
-            className="min-w-[72px]"
-            onClick={onBack}
-            disabled={isUploading}
-          >
+          <Button variant="secondary" className="min-w-18" onClick={onBack} disabled={isUploading}>
             {t(($) => $['installModal.back'], { ns: 'plugin' })}
           </Button>
         )}
         <Button
           variant="primary"
-          className="min-w-[72px]"
+          className="min-w-18"
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >

@@ -57,11 +57,11 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
       </div>
       <div className="pointer-events-none flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
         <Button disabled={!canManage} onClick={handleOpenApiBasedExtensionModal}>
-          <span className="mr-1 i-ri-edit-line size-4" aria-hidden="true" />
+          <span className="i-ri-edit-line size-4" aria-hidden="true" />
           {t(($) => $['operation.edit'], { ns: 'common' })}
         </Button>
         <Button disabled={!canManage} onClick={() => canManage && setShowDeleteConfirm(true)}>
-          <span className="mr-1 i-ri-delete-bin-line size-4" aria-hidden="true" />
+          <span className="i-ri-delete-bin-line size-4" aria-hidden="true" />
           {t(($) => $['operation.delete'], { ns: 'common' })}
         </Button>
       </div>

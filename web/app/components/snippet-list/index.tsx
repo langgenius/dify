@@ -3,11 +3,11 @@
 import type { SnippetPublishStatus } from './components/snippet-publish-status-filter'
 import type { SnippetListItem } from '@/types/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
 import { useDebounce } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SearchInput } from '@/app/components/base/search-input'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceLoadingAtom } from '@/context/workspace-state'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
@@ -182,28 +182,14 @@ const SnippetList = () => {
               onChange={setTagIDs}
               onOpenTagManagement={() => setShowTagManagementModal(true)}
             />
-            <div className="relative w-50">
-              <span
-                aria-hidden
-                className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              />
-              <Input
-                className={cn('pl-6.5', keywords && 'pr-6.5')}
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
-              />
-              {!!keywords && (
-                <button
-                  type="button"
-                  aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                  className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                  onClick={() => setKeywords('')}
-                >
-                  <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              name="snippet-query"
+              className="w-50"
+              value={keywords}
+              onValueChange={setKeywords}
+              placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+              aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+            />
           </div>
           <SnippetCreateButton />
         </div>

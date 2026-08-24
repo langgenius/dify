@@ -1,9 +1,10 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
 import { Combobox } from '@langgenius/dify-ui/combobox'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
+import { render } from '@/test/console/render'
 import { isCreateTagOption } from '../components/tag-combobox-item'
 import { TagSearchContent } from '../components/tag-search-content'
 
@@ -15,47 +16,11 @@ const mockWorkspacePermissionKeys = vi.hoisted(() => ({
   value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 const i18n = {
@@ -179,9 +144,13 @@ describe('TagSearchContent', () => {
     expect(input).toHaveValue('Back')
     vi.clearAllMocks()
 
-    await user.click(screen.getByRole('button', { name: i18n.operationClear }))
+    const clearButton = screen.getByRole('button', { name: i18n.operationClear })
+    await user.pointer({ keys: '[MouseLeft>]', target: clearButton })
+    expect(input).toHaveFocus()
+    await user.pointer({ keys: '[/MouseLeft]', target: clearButton })
 
     expect(input).toHaveValue('')
+    expect(input).toHaveFocus()
     expect(onValueChangeSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
       'aria-selected',

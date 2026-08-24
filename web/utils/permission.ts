@@ -8,6 +8,7 @@ export const AppACLPermission = {
   ImportExportDSL: 'app.acl.import_export_dsl',
   Delete: 'app.acl.delete',
   ReleaseAndVersion: 'app.acl.release_and_version',
+  Deploy: 'app.acl.deploy',
   Monitor: 'app.acl.monitor',
   TracingConfig: 'app.acl.tracing_config',
   LogAndAnnotation: 'app.acl.log_and_annotation',
@@ -29,12 +30,6 @@ export const DatasetACLPermission = {
   AccessConfig: 'dataset.acl.access_config',
 } as const
 
-export const BillingPermission = {
-  View: 'billing.view',
-  Manage: 'billing.manage',
-  SubscriptionManage: 'billing.subscription.manage',
-} as const
-
 export type ResourceMaintainerPermissionOptions = {
   currentUserId?: string | null
   resourceMaintainer?: string | null
@@ -51,6 +46,7 @@ type AppACLCapabilities = {
   canImportExportDSL: boolean
   canDelete: boolean
   canReleaseAndVersion: boolean
+  canDeploy: boolean
   canMonitor: boolean
   canConfigureTracing: boolean
   canAccessLogAndAnnotation: boolean
@@ -159,6 +155,7 @@ export const getAppACLCapabilities = (
       AppACLPermission.ReleaseAndVersion,
       hasMaintainerPermissions,
     ),
+    canDeploy: hasPermission(permissionKeys, AppACLPermission.Deploy),
     canMonitor: hasResourcePermission(
       permissionKeys,
       AppACLPermission.Monitor,

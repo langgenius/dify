@@ -1,12 +1,22 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
+  deleteAgent: vi.fn(),
+  exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
+  replace: vi.fn(),
+}))
+
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: mocks.exportAppDsl,
+    isExporting: false,
+  }),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -25,6 +35,7 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => mocks.pathname,
   useRouter: () => ({
     back: vi.fn(),
+    replace: mocks.replace,
   }),
 }))
 
@@ -56,7 +67,7 @@ vi.mock('@/service/client', () => ({
         },
         delete: {
           mutationOptions: () => ({
-            mutationFn: vi.fn(),
+            mutationFn: mocks.deleteAgent,
           }),
         },
         put: {
@@ -70,6 +81,7 @@ vi.mock('@/service/client', () => ({
 }))
 
 const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite => ({
+  app_id: 'app-1',
   description: 'Find and summarize market materials.',
   enable_api: true,
   enable_site: true,
@@ -96,6 +108,9 @@ function renderAgentDetailSection(expand = true) {
 
 describe('AgentDetailSection', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.deleteAgent.mockResolvedValue({})
+    mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
   })
@@ -131,9 +146,67 @@ describe('AgentDetailSection', () => {
 
     await user.click(trigger)
 
-    expect(screen.getByRole('menuitem', { name: 'agentV2.roster.editInfo' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.duplicate' })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: 'common.operation.delete' })).toBeInTheDocument()
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      'agentV2.roster.editInfo',
+      'common.operation.duplicate',
+      'app.export',
+      'common.operation.delete',
+    ])
+  })
+
+  it('exports the Agent App DSL from the detail action menu', async () => {
+    const user = userEvent.setup()
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      appId: 'app-1',
+      appName: 'Research Agent',
+    })
+  })
+
+  it('returns to the roster after deleting the current agent', async () => {
+    const user = userEvent.setup()
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /agentV2\.roster\.deleteDialog\.title/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenCalledWith('/agents')
+    })
+    expect(mocks.deleteAgent.mock.calls[0]?.[0]).toEqual({
+      params: {
+        agent_id: 'agent-1',
+      },
+    })
+  })
+
+  it('keeps the current agent open when deletion fails', async () => {
+    const user = userEvent.setup()
+    mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /agentV2\.roster\.deleteDialog\.title/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
+
+    await waitFor(() => {
+      expect(mocks.deleteAgent).toHaveBeenCalled()
+    })
+    expect(mocks.replace).not.toHaveBeenCalled()
+    expect(dialog).toBeInTheDocument()
   })
 
   it('does not render more actions in collapsed sidebar mode', () => {

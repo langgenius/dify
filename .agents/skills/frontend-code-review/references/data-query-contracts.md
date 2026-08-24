@@ -12,7 +12,7 @@ Flag:
 - Re-declaring API DTOs in components.
 - Adding compatibility layers instead of migrating the pointed line and deleting the old layer.
 
-Use `web/contract/*` as the API shape source of truth. Follow existing `{ params, query?, body? }` input shape.
+Backend Pydantic and OpenAPI schemas own API shape. Generated clients and schemas under `packages/contracts/generated/*` are authoritative at frontend boundaries and use the `{ params, query?, body? }` input shape.
 
 ## Queries
 

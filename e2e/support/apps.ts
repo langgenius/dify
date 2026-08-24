@@ -8,6 +8,7 @@ export const waitForAppsConsole = async (page: Page, timeout?: number) => {
 
   await expect(page).toHaveURL(/\/apps(?:\?.*)?$/, options)
   await expect(page.getByRole('heading', { name: 'Studio' })).toBeVisible(options)
+  await expect(page.getByRole('status', { name: 'Loading' })).toBeHidden(options)
 }
 
 export const openBlankAppCreation = async (page: Page) => {

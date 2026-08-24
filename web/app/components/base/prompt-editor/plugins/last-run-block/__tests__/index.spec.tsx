@@ -1,14 +1,14 @@
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
 import { LAST_RUN_PLACEHOLDER_TEXT } from '../../../constants'
-import { CustomTextNode } from '../../custom-text/node'
 import {
   getNodeCount,
   readRootTextContent,
   renderLexicalEditor,
   selectRootEnd,
   waitForEditorReady,
-} from '../../test-helpers'
+} from '../../__tests__/test-helpers'
+import { CustomTextNode } from '../../custom-text/node'
 import {
   DELETE_LAST_RUN_COMMAND,
   INSERT_LAST_RUN_BLOCK_COMMAND,

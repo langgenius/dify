@@ -2,7 +2,6 @@ import type { EnableType } from '../../../types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Theme } from '../../../embedded-chatbot/theme/theme-context'
 import Operation from '../operation'
 
 vi.mock('@/app/components/base/file-uploader', () => ({
@@ -10,12 +9,6 @@ vi.mock('@/app/components/base/file-uploader', () => ({
     <div data-testid="file-uploader" data-readonly={readonly} />
   ),
 }))
-
-const createMockTheme = (overrides?: Partial<Theme>): Theme => {
-  const theme = new Theme()
-  theme.primaryColor = 'rgb(255, 0, 0)'
-  return Object.assign(theme, overrides || {})
-}
 
 describe('Operation', () => {
   beforeEach(() => {
@@ -105,20 +98,6 @@ describe('Operation', () => {
       await user.click(screen.getByRole('button'))
 
       expect(onSend).not.toHaveBeenCalled()
-    })
-
-    it('should apply theme primaryColor as background style when theme is provided', () => {
-      render(<Operation onSend={vi.fn()} theme={createMockTheme()} />)
-
-      expect(screen.getByRole('button'))!.toHaveStyle({
-        backgroundColor: 'rgb(255, 0, 0)',
-      })
-    })
-
-    it('should not apply background style when theme is null', () => {
-      render(<Operation onSend={vi.fn()} theme={null} />)
-
-      expect(screen.getByRole('button').style.backgroundColor).toBe('')
     })
   })
 

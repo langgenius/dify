@@ -7,7 +7,6 @@ using Aliyun SLS LogStore with append-only writes and version control.
 
 import json
 import logging
-import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
@@ -16,6 +15,7 @@ from typing import Any, override
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from core.ops.utils import JSON_DICT_ADAPTER
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
@@ -152,9 +152,9 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             triggered_from=triggered_from,
         )
 
-        # Control flag for dual-write (write to both LogStore and SQL database)
-        # Set to True to enable dual-write for safe migration, False to use LogStore only
-        self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "false").lower() == "true"
+        # Keep the migration switch on the typed application config so callers
+        # and tests share the same validated source.
+        self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
         logger.debug(
@@ -276,6 +276,12 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             except Exception:
                 logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
+
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Create the SQL caller row required by Agent v2 participant ownership."""
+
+        self.sql_repository.save_synchronously(execution)
 
     @override
     def save_execution_data(self, execution: WorkflowNodeExecution) -> None:

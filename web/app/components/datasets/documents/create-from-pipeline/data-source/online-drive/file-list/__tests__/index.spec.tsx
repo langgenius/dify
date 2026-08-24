@@ -1,5 +1,6 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import FileList from '../index'
@@ -7,10 +8,11 @@ import FileList from '../index'
 // Mock ahooks useDebounceFn: required because tests verify the debounced
 // callback is invoked with specific arguments (mockDebounceFnRun assertions).
 const mockDebounceFnRun = vi.fn()
+const mockDebounceFnCancel = vi.fn()
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: unknown[]) => void) => {
     mockDebounceFnRun.mockImplementation(fn)
-    return { run: mockDebounceFnRun }
+    return { run: mockDebounceFnRun, cancel: mockDebounceFnCancel }
   },
 }))
 
@@ -80,33 +82,10 @@ describe('FileList', () => {
     vi.clearAllMocks()
     resetMockStoreState()
     mockDebounceFnRun.mockClear()
+    mockDebounceFnCancel.mockClear()
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<FileList {...props} />)
-
-      // Assert - search input should be visible
-      expect(
-        screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
-      ).toBeInTheDocument()
-    })
-
-    it('should render with correct container styles', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<FileList {...props} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex')
-      expect(wrapper).toHaveClass('h-[400px]')
-      expect(wrapper).toHaveClass('flex-col')
-      expect(wrapper).toHaveClass('overflow-hidden')
-      expect(wrapper).toHaveClass('rounded-xl')
-    })
-
     it('should render Header component with search input', () => {
       const props = createDefaultProps()
 
@@ -352,32 +331,21 @@ describe('FileList', () => {
     })
 
     describe('handleResetKeywords', () => {
-      it('should call resetKeywords prop when clear button is clicked', () => {
+      it('should cancel the pending search before clearing the query', async () => {
+        const user = userEvent.setup()
         const mockResetKeywords = vi.fn()
-        const props = createDefaultProps({ resetKeywords: mockResetKeywords, keywords: 'to-reset' })
+        const props = createDefaultProps({ resetKeywords: mockResetKeywords })
         render(<FileList {...props} />)
+        const input = screen.getByRole('searchbox', {
+          name: 'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
+        })
 
-        // Act - Click the clear icon div (it contains RiCloseCircleFill icon)
-        const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-        expect(clearButton).toBeInTheDocument()
-        fireEvent.click(clearButton!)
+        await user.type(input, 'report')
+        await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
-        expect(mockResetKeywords).toHaveBeenCalledTimes(1)
-      })
-
-      it('should reset inputValue to empty string when clear is clicked', () => {
-        const props = createDefaultProps({ keywords: 'to-be-reset' })
-        render(<FileList {...props} />)
-        const input = screen.getByPlaceholderText(
-          'datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder',
-        )
-        fireEvent.change(input, { target: { value: 'some-search' } })
-
-        // Act - Find and click the clear icon
-        const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
-        expect(clearButton).toBeInTheDocument()
-        fireEvent.click(clearButton!)
-
+        expect(mockDebounceFnRun).toHaveBeenLastCalledWith('report')
+        expect(mockDebounceFnCancel).toHaveBeenCalledOnce()
+        expect(mockResetKeywords).toHaveBeenCalledOnce()
         expect(input).toHaveValue('')
       })
     })
@@ -511,13 +479,12 @@ describe('FileList', () => {
       { isInPipeline: false, supportBatchUpload: true },
       { isInPipeline: false, supportBatchUpload: false },
     ])(
-      'should render correctly with isInPipeline=$isInPipeline and supportBatchUpload=$supportBatchUpload',
+      'keeps search available with isInPipeline=$isInPipeline and supportBatchUpload=$supportBatchUpload',
       (propVariation) => {
         const props = createDefaultProps(propVariation)
 
         render(<FileList {...props} />)
 
-        // Assert - Component should render without crashing
         expect(
           screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder'),
         ).toBeInTheDocument()

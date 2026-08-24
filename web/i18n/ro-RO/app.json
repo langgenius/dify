@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Caută grupuri și membri",
   "accessControlDialog.title": "Controlul Accesului la Aplicația Web",
   "accessControlDialog.updateSuccess": "Actualizare reușită",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Accesul public a fost dezactivat de administratorul dumneavoastră.",
   "accessControlDialog.webAppSSONotEnabledTip": "Vă rugăm să contactați administratorul de întreprindere pentru a configura metoda de autentificare a aplicației web.",
   "accessItemsDescription.anyone": "Oricine poate accesa aplicația web",
   "accessItemsDescription.external": "Numai utilizatorii externi autentificați pot accesa aplicația web",

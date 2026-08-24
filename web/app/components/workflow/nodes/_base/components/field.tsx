@@ -2,8 +2,8 @@
 import type { FC, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useBoolean } from 'ahooks'
 import * as React from 'react'
+import { useState } from 'react'
 import { Infotip } from '@/app/components/base/infotip'
 
 type Props = Readonly<{
@@ -40,7 +40,7 @@ const Field: FC<Props> = ({
   required,
   warningDot,
 }) => {
-  const [fold, { toggle: toggleFold }] = useBoolean(true)
+  const [fold, setFold] = useState(true)
   const tooltipLabel = tooltip
     ? getTextFromNode(tooltip) || getTextFromNode(title) || 'Help'
     : undefined
@@ -48,7 +48,7 @@ const Field: FC<Props> = ({
   return (
     <div className={cn(className, inline && 'flex w-full items-center justify-between')}>
       <div
-        onClick={() => supportFold && toggleFold()}
+        onClick={() => supportFold && setFold((isFolded) => !isFolded)}
         className={cn('flex items-center justify-between', supportFold && 'cursor-pointer')}
       >
         <div className="flex h-6 items-center">
@@ -61,7 +61,7 @@ const Field: FC<Props> = ({
             )}
           >
             {warningDot && (
-              <span className="absolute top-1/2 left-[-9px] size-[5px] -translate-y-1/2 rounded-full bg-text-warning-secondary" />
+              <span className="absolute top-1/2 -left-2.25 size-1.25 -translate-y-1/2 rounded-full bg-text-warning-secondary" />
             )}
             {title} {required && <span className="text-text-destructive">*</span>}
           </div>

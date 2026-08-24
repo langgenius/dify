@@ -117,8 +117,8 @@ def enable_segment_to_index_task(segment_id: str):
                     dataset=dataset,
                     segment_ids=[segment.id],
                 )
-            except Exception as e:
-                logger.warning("Failed to enable summary for segment %s: %s", segment.id, str(e))
+            except Exception:
+                logger.warning("Failed to enable summary for segment %s", segment.id, exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))

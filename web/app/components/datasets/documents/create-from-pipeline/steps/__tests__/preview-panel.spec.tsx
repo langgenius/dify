@@ -9,7 +9,7 @@ import type {
 } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DatasourceType } from '@/models/pipeline'
 import { StepOnePreview, StepTwoPreview } from '../preview-panel'
 
@@ -85,11 +85,6 @@ describe('StepOnePreview', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<StepOnePreview {...defaultProps} />)
-      expect(container.querySelector('.h-full')).toBeInTheDocument()
-    })
-
     it('should render container with correct structure', () => {
       const { container } = render(<StepOnePreview {...defaultProps} />)
       expect(container.querySelector('.flex.h-full.flex-col')).toBeInTheDocument()
@@ -224,11 +219,6 @@ describe('StepTwoPreview', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<StepTwoPreview {...defaultProps} />)
-      expect(container.querySelector('.h-full')).toBeInTheDocument()
-    })
-
     it('should render ChunkPreview component structure', () => {
       const { container } = render(<StepTwoPreview {...defaultProps} />)
       expect(container.querySelector('.flex.h-full.flex-col')).toBeInTheDocument()
