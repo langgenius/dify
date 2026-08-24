@@ -288,7 +288,6 @@ def build_application_services(
         ),
         feature_queries=FeatureQueryService(
             features=feature_gateway,
-            trial_models=FeatureService.get_trial_models(),
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
         init_validation=InitValidationService(

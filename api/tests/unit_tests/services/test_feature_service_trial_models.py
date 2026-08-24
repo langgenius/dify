@@ -31,8 +31,9 @@ def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(monkeypat
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_PAID_ENABLED", True, raising=False)
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_XAI_PAID_ENABLED", True, raising=False)
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
-    result = FeatureService.get_trial_models()
+    result = FeatureService.get_trial_models("tenant_1")
 
     assert result == [
         HostedTrialProvider.OPENAI.value,

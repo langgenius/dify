@@ -1,6 +1,5 @@
 """Application service for feature queries exposed by API adapters."""
 
-from collections.abc import Sequence
 from typing import Protocol
 
 from machinery.context import RequestContext
@@ -31,11 +30,9 @@ class FeatureQueryService:
         self,
         *,
         features: FeatureQueryGateway,
-        trial_models: Sequence[str],
         app_dsl_version: str,
     ) -> None:
         self._features = features
-        self._trial_models = tuple(trial_models)
         self._app_dsl_version = app_dsl_version
 
     def get_features(self, context: RequestContext) -> FeatureModel:
@@ -44,10 +41,8 @@ class FeatureQueryService:
     def get_vector_space(self, context: RequestContext) -> VectorSpaceLimitationModel:
         return self._features.get_vector_space(self._require_active_workspace(context))
 
-    def get_trial_models(self, context: RequestContext | None = None) -> list[str]:
-        if context is not None:
-            return self._features.get_trial_models(self._require_active_workspace(context))
-        return list(self._trial_models)
+    def get_trial_models(self, context: RequestContext) -> list[str]:
+        return self._features.get_trial_models(self._require_active_workspace(context))
 
     def get_app_dsl_version(self) -> str:
         return self._app_dsl_version

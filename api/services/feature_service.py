@@ -195,9 +195,9 @@ class FeatureService:
         ]
 
     @classmethod
-    def get_trial_models(cls, tenant_id: str | None = None) -> list[str]:
-        """Return hosted credit providers, optionally filtered by the workspace subscription plan."""
-        if tenant_id is None or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+    def get_trial_models(cls, tenant_id: str) -> list[str]:
+        """Return hosted credit providers filtered by the workspace subscription plan."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return cls._fulfill_trial_models_from_env()
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
