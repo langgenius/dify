@@ -379,6 +379,14 @@ def validate_and_get_api_token(scope: str | None = None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
+    # Strip leading/trailing whitespace (including CR/LF). The legacy token
+    # path here was inconsistent with the OAuth bearer path in
+    # `api/libs/oauth_bearer.py:extract_bearer`, which already strips. A token
+    # with a trailing newline that passes this gate will either be rejected
+    # by the downstream JWT verifier (PyJWT) or silently accepted by a
+    # lenient verifier, depending on the deployment shape — see #41199.
+    auth_token = auth_token.strip()
+
     # Try to get token from cache first
     # Returns a CachedApiToken (plain Python object), not a SQLAlchemy model
     cached_token = ApiTokenCache.get(auth_token, scope)

@@ -59,7 +59,13 @@ def _try_extract_from_header(request: Request) -> str | None:
     auth_scheme, auth_token = auth_header.split(None, 1)
     if auth_scheme.lower() != "bearer":
         return None
-    return auth_token
+    # Strip leading/trailing whitespace (including the CR/LF that some
+    # copy-paste and log-export paths append to a token). Without this,
+    # downstream JWT validation can be library-dependent: PyJWT rejects,
+    # some custom verifiers accept — which is exactly the inconsistency
+    # that lets a token with a trailing newline bypass auth in some
+    # deployment shapes. See #41199.
+    return auth_token.strip()
 
 
 def extract_refresh_token(request: Request) -> str | None:

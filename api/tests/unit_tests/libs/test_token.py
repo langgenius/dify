@@ -41,6 +41,35 @@ def test_extract_access_token():
         assert extract_webapp_access_token(request) == expected_webapp
 
 
+@pytest.mark.parametrize(
+    ("header", "expected"),
+    [
+        # No whitespace - control.
+        ("Bearer abcdef", "abcdef"),
+        # Trailing newline from log export / copy-paste. Pre-fix the
+        # returned token is "abcdef\n", which is library-dependent on
+        # downstream JWT verification. See #41199.
+        ("Bearer abcdef\n", "abcdef"),
+        # Trailing CR/LF.
+        ("Bearer abcdef\r\n", "abcdef"),
+        # Trailing space.
+        ("Bearer abcdef ", "abcdef"),
+        # Leading + trailing mixed whitespace.
+        ("Bearer  abcdef\t", "abcdef"),
+    ],
+)
+def test_extract_access_token_strips_trailing_whitespace(header: str, expected: str) -> None:
+    """Regression for #41199: a token copied with a trailing newline must not
+    reach the downstream JWT verifier with the whitespace attached."""
+    request = cast(
+        Request,
+        MockRequest(headers={"Authorization": header}, cookies={}, args={}),
+    )
+
+    assert extract_access_token(request) == expected
+    assert token._try_extract_from_header(request) == expected
+
+
 def test_real_cookie_name_uses_host_prefix_without_domain(config_overrides):
     config_overrides(
         CONSOLE_WEB_URL="https://console.example.com",

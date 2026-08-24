@@ -153,6 +153,66 @@ class TestValidateAndGetApiToken:
                 validate_and_get_api_token("app")
             assert "Access token is invalid" in str(exc_info.value)
 
+    @pytest.mark.parametrize(
+        "header_token",
+        [
+            "valid_token_123\n",
+            "valid_token_123\r\n",
+            "valid_token_123 ",
+            "\tvalid_token_123",
+        ],
+    )
+    @patch("controllers.service_api.wraps.record_token_usage")
+    @patch("controllers.service_api.wraps.ApiTokenCache")
+    @patch("controllers.service_api.wraps.fetch_token_with_single_flight")
+    def test_trailing_whitespace_is_stripped(
+        self,
+        mock_fetch_token,
+        mock_cache_cls,
+        mock_record_usage,
+        header_token: str,
+    ):
+        """Regression for #41199: a token copied with trailing whitespace
+        must be normalised before the cache lookup so the lookup matches the
+        DB-cached value (which was stored without the whitespace).
+
+        Werkzeug's test client refuses to inject headers with newline
+        characters, so we mock the `request` symbol that the function reads
+        from. The function only touches `request.headers.get("Authorization")`
+        and nothing else on the request proxy.
+        """
+        # Arrange
+        api_token = _api_token(
+            tenant_id=str(uuid.uuid4()),
+            app_id=str(uuid.uuid4()),
+            token_type=ApiTokenType.APP,
+        )
+        api_token.token = "valid_token_123"
+
+        mock_cache_instance = Mock()
+        mock_cache_instance.get.return_value = None
+        mock_cache_cls.get = mock_cache_instance.get
+        mock_fetch_token.return_value = api_token
+
+        fake_request = Mock()
+        fake_request.headers.get.return_value = f"Bearer {header_token}"
+
+        from controllers.service_api import wraps as wraps_mod
+
+        # Act
+        with patch.object(wraps_mod, "request", fake_request):
+            result = validate_and_get_api_token("app")
+
+        # Assert: the helper was called with the stripped token, not the
+        # whitespace-padded version. Pre-fix the helper received
+        # "valid_token_123\n" and the cache+DB lookup missed.
+        assert result == api_token
+        mock_cache_instance.get.assert_called_once()
+        # First positional arg of the cache call is the token.
+        cache_call_token = mock_cache_instance.get.call_args[0][0]
+        assert cache_call_token == "valid_token_123"
+        mock_fetch_token.assert_called_once()
+
 
 class TestValidateAppToken:
     """Test suite for validate_app_token decorator"""
