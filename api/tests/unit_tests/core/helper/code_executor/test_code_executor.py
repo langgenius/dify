@@ -140,9 +140,7 @@ def test_execute_code_retries_transient_502_then_succeeds(mocker: MockerFixture)
     client = _make_client([502, 200])
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
-    assert code_executor_module.CodeExecutor.execute_code(
-        cast(Any, "python3"), preload="", code="print(1)"
-    ) == "done"
+    assert code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)") == "done"
     assert client.post.call_count == 2
 
 
@@ -150,9 +148,7 @@ def test_execute_code_retries_transient_503_then_succeeds(mocker: MockerFixture)
     client = _make_client([503, 200])
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
-    assert code_executor_module.CodeExecutor.execute_code(
-        cast(Any, "python3"), preload="", code="print(1)"
-    ) == "done"
+    assert code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)") == "done"
     assert client.post.call_count == 2
 
 
@@ -164,9 +160,7 @@ def test_execute_code_raises_when_persistent_502_exhausts_retries(mocker: Mocker
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
     with pytest.raises(code_executor_module.CodeExecutionError, match="sandbox service is running"):
-        code_executor_module.CodeExecutor.execute_code(
-            cast(Any, "python3"), preload="", code="print(1)"
-        )
+        code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
     # Default retry count is 1, so the total attempts is 2
     # (initial + 1 retry).
     assert client.post.call_count == 2
@@ -180,21 +174,15 @@ def test_execute_code_does_not_retry_persistent_500(mocker: MockerFixture) -> No
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
     with pytest.raises(code_executor_module.CodeExecutionError, match="likely a network issue"):
-        code_executor_module.CodeExecutor.execute_code(
-            cast(Any, "python3"), preload="", code="print(1)"
-        )
+        code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
     assert client.post.call_count == 1
 
 
 def test_execute_code_retry_count_zero_disables_retries(mocker: MockerFixture) -> None:
-    mocker.patch.object(
-        code_executor_module.dify_config, "CODE_EXECUTION_PROXY_RETRY_COUNT", 0
-    )
+    mocker.patch.object(code_executor_module.dify_config, "CODE_EXECUTION_PROXY_RETRY_COUNT", 0)
     client = _make_client([502, 200])
     mocker.patch("core.helper.code_executor.code_executor.get_pooled_http_client", return_value=client)
 
     with pytest.raises(code_executor_module.CodeExecutionError, match="sandbox service is running"):
-        code_executor_module.CodeExecutor.execute_code(
-            cast(Any, "python3"), preload="", code="print(1)"
-        )
+        code_executor_module.CodeExecutor.execute_code(cast(Any, "python3"), preload="", code="print(1)")
     assert client.post.call_count == 1
