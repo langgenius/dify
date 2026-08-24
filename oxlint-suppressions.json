@@ -1,9 +1,4 @@
 {
-  "cli/src/store/keychain-token-store.test.ts": {
-    "no-throw-literal": {
-      "count": 2
-    }
-  },
   "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
     "prefer-const": {
       "count": 1
@@ -1810,11 +1805,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
-    "eslint-react/error-boundaries": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -2830,9 +2820,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/index.spec.tsx": {
-    "no-throw-literal": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -3746,9 +3733,6 @@
       "count": 2
     },
     "no-restricted-imports": {
-      "count": 1
-    },
-    "no-throw-literal": {
       "count": 1
     },
     "typescript/no-explicit-any": {

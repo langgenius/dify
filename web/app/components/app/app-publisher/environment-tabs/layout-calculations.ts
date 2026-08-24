@@ -4,7 +4,7 @@ export const ENVIRONMENT_TAB_HORIZONTAL_PADDING = 16
 export const ENVIRONMENT_TAB_LABEL_MAX_WIDTH =
   ENVIRONMENT_TAB_MAX_WIDTH - ENVIRONMENT_TAB_HORIZONTAL_PADDING
 export const SELECTED_OVERFLOW_LABEL_MAX_WIDTH = ENVIRONMENT_TAB_LABEL_MAX_WIDTH - 16
-export const TAB_GAP = 4
+const TAB_GAP = 4
 
 type EnvironmentTabLayout = {
   overflowEnvironmentIds: string[]
@@ -40,7 +40,7 @@ export function estimateFallbackTabWidth(value: string) {
   )
 }
 
-function rowWidth(widths: readonly number[]) {
+function getRowWidth(widths: readonly number[]) {
   if (widths.length === 0) return 0
   return widths.reduce((total, width) => total + width, 0) + (widths.length - 1) * TAB_GAP
 }
@@ -58,7 +58,7 @@ export function getEnvironmentTabLayout({
     (environmentId) => environmentTabWidths[environmentId] ?? ENVIRONMENT_TAB_MAX_WIDTH,
   )
   const allTabsFit =
-    !hasUndeployedEnvironments && rowWidth([builtInWidth, ...joinedWidths]) <= availableWidth
+    !hasUndeployedEnvironments && getRowWidth([builtInWidth, ...joinedWidths]) <= availableWidth
 
   if (allTabsFit) {
     return {
