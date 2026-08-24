@@ -2,11 +2,13 @@
 
 import * as z from 'zod'
 
+export const zStepByStepTourTaskId = z.enum(['home', 'integration', 'knowledge', 'studio'])
+
 /**
  * StepByStepTourStateResponse
  */
 export const zStepByStepTourStateResponse = z.object({
-  completed_task_ids: z.array(z.enum(['home', 'integration', 'knowledge', 'studio'])).optional(),
+  completed_task_ids: z.array(zStepByStepTourTaskId).optional(),
   first_workspace_id: z.string().nullish(),
   manually_disabled_workspace_ids: z.array(z.string()).optional(),
   manually_enabled_workspace_ids: z.array(z.string()).optional(),
@@ -14,18 +16,20 @@ export const zStepByStepTourStateResponse = z.object({
   updated_at: z.iso.datetime().nullish(),
 })
 
+export const zStepByStepTourAction = z.enum([
+  'complete_task',
+  'disable_current_workspace',
+  'enable_current_workspace',
+  'skip',
+  'uncomplete_task',
+])
+
 /**
  * StepByStepTourStatePatchPayload
  */
 export const zStepByStepTourStatePatchPayload = z.object({
-  action: z.enum([
-    'complete_task',
-    'disable_current_workspace',
-    'enable_current_workspace',
-    'skip',
-    'uncomplete_task',
-  ]),
-  task_id: z.enum(['home', 'integration', 'knowledge', 'studio']).nullish(),
+  action: zStepByStepTourAction,
+  task_id: zStepByStepTourTaskId.nullish(),
 })
 
 /**
