@@ -185,9 +185,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                             total_tokens=stream_response.data.total_tokens,
                             total_steps=stream_response.data.total_steps,
                             created_at=stream_response.data.created_at,
-                            finished_at=stream_response.data.finished_at
-                            if stream_response.data.finished_at
-                            else None,
+                            finished_at=stream_response.data.finished_at or None,
                         ),
                     )
                 case _:

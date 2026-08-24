@@ -2000,8 +2000,8 @@ class MessageFeedback(TypeBase):
             "rating": self.rating,
             "content": self.content,
             "from_source": self.from_source,
-            "from_end_user_id": self.from_end_user_id if self.from_end_user_id else None,
-            "from_account_id": self.from_account_id if self.from_account_id else None,
+            "from_end_user_id": self.from_end_user_id or None,
+            "from_account_id": self.from_account_id or None,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
