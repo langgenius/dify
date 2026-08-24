@@ -649,6 +649,7 @@ class TestLists:
 
         with (
             app.test_request_context("/"),
+            patch("controllers.console.workspace.tool_providers.db") as db_mock,
             patch("controllers.console.workspace.tool_providers.sessionmaker") as sessionmaker_mock,
             patch("controllers.console.workspace.tool_providers.MCPToolManageService") as service_class,
         ):
@@ -657,6 +658,7 @@ class TestLists:
             list_providers.return_value = [provider_entity(provider_id="mcp-provider-id", provider_type="mcp")]
             assert method(api, "t")[0]["id"] == "mcp-provider-id"
 
+        sessionmaker_mock.assert_called_once_with(db_mock.engine)
         list_providers.assert_called_once_with(tenant_id="t", for_list=True, include_sensitive=False)
 
 
