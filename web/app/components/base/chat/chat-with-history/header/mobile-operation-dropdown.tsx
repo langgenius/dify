@@ -36,7 +36,7 @@ const MobileOperationDropdown = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
         <DropdownMenuItem
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}

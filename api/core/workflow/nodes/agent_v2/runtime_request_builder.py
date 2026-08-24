@@ -66,9 +66,6 @@ from models.agent_config_entities import (
     WorkflowNodeJobConfig,
     WorkflowPreviousNodeOutputRef,
 )
-from models.agent_config_entities import (
-    effective_declared_outputs as _effective_declared_outputs,
-)
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import (
     MentionKind,
@@ -514,15 +511,15 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
         """Build the structured-output layer config sent to Agent backend.
 
-        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
-        PRD-mandated defaults (text / files / json) at runtime so the backend
-        always receives a stable schema and the downstream Inspector + nodes
-        have consistent output names. The defaults are NOT persisted.
+        Plain-output jobs omit this layer. Structured jobs prepend the optional,
+        system-owned ``text`` field to the persisted custom declarations.
         """
-        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
-        properties: dict[str, Any] = {}
+        if not declared_outputs:
+            return None
+
+        properties: dict[str, Any] = {"text": {"type": "string"}}
         required: list[str] = []
-        for output in effective_outputs:
+        for output in declared_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -531,19 +528,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             schema["required"] = required
         return AgentBackendOutputConfig(
             json_schema=schema,
-            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(effective_outputs),
+            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(declared_outputs),
         )
-
-    @staticmethod
-    def effective_declared_outputs(
-        declared_outputs: Sequence[DeclaredOutputConfig],
-    ) -> Sequence[DeclaredOutputConfig]:
-        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
-
-        Kept as a static method on the builder so existing call sites
-        (``agent_node._run``, tests) don't need to change their import.
-        """
-        return _effective_declared_outputs(list(declared_outputs))
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:

@@ -155,7 +155,7 @@ export function PublisherEnvironmentTabs({
           <DropdownMenuContent
             placement="bottom-end"
             sideOffset={4}
-            popupClassName="w-42 rounded-xl p-0"
+            className="w-42 rounded-xl p-0"
           >
             {overflowEnvironments.length > 0 && (
               <DropdownMenuGroup className="p-1">

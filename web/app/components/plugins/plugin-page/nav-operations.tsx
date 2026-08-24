@@ -97,7 +97,7 @@ export function SubmitRequestDropdown({ dividerAfterFirst }: SubmitRequestDropdo
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px] p-1">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px] p-1">
         {options.map((option, index) => (
           <Fragment key={option.href}>
             {dividerAfterFirst && index === 1 && <DropdownMenuSeparator className="my-1" />}

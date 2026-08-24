@@ -15,7 +15,7 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
-import { memo, useState } from 'react'
+import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
@@ -86,6 +86,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   onEdit,
 }) => {
   const { t } = useTranslation()
+  const formId = useId()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [endpointError, setEndpointError] = useState<string>()
@@ -141,6 +142,14 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       setLoading(false)
     }
   }
+
+  const handleSubmit = () => {
+    if (hasEmptyInputs || loading) return
+
+    if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
+    else void handleSave()
+  }
+
   return (
     <Dialog
       open
@@ -180,7 +189,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                     />
                     <PopoverContent
                       placement="bottom"
-                      popupClassName="flex w-[320px] items-center self-stretch px-3 py-2"
+                      className="flex w-[320px] items-center self-stretch px-3 py-2"
                     >
                       <div className="p-1">
                         <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
@@ -212,8 +221,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
             <RiCloseLine aria-hidden className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
           </IconButton>
           <Form
+            id={formId}
             value={formData}
             onChange={handleDataChange}
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleSubmit()
+            }}
             formSchemas={formSchemas}
             errors={{ endpoint: endpointError }}
             className="min-h-0 w-full flex-1 overflow-y-auto px-6 py-3"
@@ -223,17 +237,11 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
             </Button>
             <Button
+              form={formId}
               type="submit"
               variant="primary"
-              onClick={() => {
-                if (!isValidHttpEndpoint(formData.settings.endpoint.trim())) {
-                  setEndpointError(t(($) => $['newKnowledge.invalidRootUrl'], { ns: 'dataset' }))
-                  return
-                }
-                if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
-                else void handleSave()
-              }}
-              disabled={hasEmptyInputs || loading}
+              loading={loading}
+              disabled={hasEmptyInputs}
             >
               {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
             </Button>

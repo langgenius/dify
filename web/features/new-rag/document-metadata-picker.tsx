@@ -81,7 +81,7 @@ export function DocumentMetadataPicker({
       <PopoverContent
         alignOffset={4}
         placement="left-start"
-        popupClassName="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
+        className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
         sideOffset={-38}
       >
         {view === 'select' ? (

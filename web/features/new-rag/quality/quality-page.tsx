@@ -139,7 +139,7 @@ function GoldenAnnotation({ annotation }: { annotation: string }) {
           </button>
         }
       />
-      <PopoverContent placement="top" popupClassName="max-w-67 px-3 py-2">
+      <PopoverContent placement="top" className="max-w-67 px-3 py-2">
         <p className="system-xs-regular wrap-break-word text-text-tertiary">{annotation}</p>
       </PopoverContent>
     </Popover>
@@ -573,7 +573,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                         <DropdownMenuContent
                           placement="bottom-end"
                           sideOffset={4}
-                          popupClassName="w-[200px]"
+                          className="w-[200px]"
                         >
                           <DropdownMenuItem
                             className="gap-2 px-3"
@@ -699,7 +699,7 @@ export function QualityPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       <DropdownMenuContent
                         placement="bottom-end"
                         sideOffset={4}
-                        popupClassName="w-[200px]"
+                        className="w-[200px]"
                       >
                         {canEdit &&
                           (item.status === 'fixed' ? (

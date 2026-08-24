@@ -2,9 +2,9 @@
 
 import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
 import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
-import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
+import * as React from 'react'
 import { cn } from '../cn'
 
 type SegmentedControlSelectionProps<Value> =

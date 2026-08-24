@@ -1,6 +1,7 @@
 'use client'
 
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DynamicPdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
@@ -73,9 +74,15 @@ function LocalTextFilePreview({ file, onClose }: { file: File; onClose: () => vo
               {file.name}
             </DialogTitle>
           </div>
-          <DialogCloseButton
-            aria-label={tCommon(($) => $['operation.close'])}
-            className="static shrink-0"
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={tCommon(($) => $['operation.close'])}
+                className="static shrink-0"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
           />
         </header>
         <div className="min-h-0 flex-1 bg-background-default-subtle p-4">

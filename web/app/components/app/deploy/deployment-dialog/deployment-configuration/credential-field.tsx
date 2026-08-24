@@ -83,7 +83,7 @@ export function CredentialField({
             </span>
           </span>
         </SelectTrigger>
-        <SelectContent popupClassName="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-[5px]">
+        <SelectContent className="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-[5px]">
           {slot.candidates.length === 0 ? (
             <div className="flex w-full flex-col items-start gap-2 rounded-[10px] bg-workflow-process-bg px-4 pt-4 pb-5">
               <div className="flex size-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-[5px]">

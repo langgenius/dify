@@ -117,7 +117,7 @@ export function DocumentActionsDropdown({
             )}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[200px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[200px]">
           <DropdownMenuItem
             className="mb-px h-7 gap-2 px-2 system-sm-medium"
             disabled={renameDisabled}

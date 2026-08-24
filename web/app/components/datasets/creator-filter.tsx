@@ -105,7 +105,7 @@ export function CreatorFilter({ value, onChange }: CreatorFilterProps) {
         )}
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-tertiary" />
       </PopoverTrigger>
-      <PopoverContent placement="bottom-start" sideOffset={4} popupClassName="w-[280px] p-0">
+      <PopoverContent placement="bottom-start" sideOffset={4} className="w-[280px] p-0">
         <PopoverTitle className="sr-only">{label}</PopoverTitle>
         <div className="flex items-center gap-1 p-2 pb-1">
           <div className="relative min-w-0 grow">

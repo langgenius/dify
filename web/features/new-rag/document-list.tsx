@@ -111,7 +111,7 @@ function DocumentStatus({
           </button>
         }
       />
-      <PopoverContent placement="top" popupClassName="max-w-80 px-3 py-2">
+      <PopoverContent placement="top" className="max-w-80 px-3 py-2">
         <PopoverDescription className="system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
           {failureReason}
         </PopoverDescription>

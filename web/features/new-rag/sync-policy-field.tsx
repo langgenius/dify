@@ -12,7 +12,13 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Popover, PopoverContent, PopoverTitle } from '@langgenius/dify-ui/popover'
+import {
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+} from '@langgenius/dify-ui/popover'
 import {
   Select,
   SelectContent,
@@ -133,80 +139,79 @@ function CustomIntervalPopover({
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverContent
-        placement="bottom-start"
-        sideOffset={4}
-        positionerProps={{ anchor: anchorRef }}
-        popupClassName="w-75 p-3.5"
-      >
-        <PopoverTitle className="system-sm-medium text-text-primary">
-          {t(($) => $['newKnowledge.syncPolicyCustom'])}
-        </PopoverTitle>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="shrink-0 system-sm-regular text-text-secondary">
-            {t(($) => $['newKnowledge.syncPolicyEvery'])}
-          </span>
-          <NumberField
-            disabled={disabled}
-            min={1}
-            max={maximum}
-            step={1}
-            value={amount}
-            onValueChange={(next) => setAmount(next)}
-          >
-            <NumberFieldGroup className="w-18">
-              <NumberFieldInput
-                aria-label={`${t(($) => $['newKnowledge.syncPolicyCustom'])} ${t(($) => $[`newKnowledge.syncPolicyUnit.${unit}`])}`}
-                onBlur={() => setAmount(normalizedAmount)}
-              />
-              <NumberFieldControls>
-                <NumberFieldIncrement />
-                <NumberFieldDecrement />
-              </NumberFieldControls>
-            </NumberFieldGroup>
-          </NumberField>
-          <Select<IntervalUnit>
-            disabled={disabled}
-            value={unit}
-            onValueChange={(nextUnit) => {
-              if (!nextUnit) return
-              setUnit(nextUnit)
-              setAmount(Math.min(nextUnit === 'days' ? 30 : 720, normalizedAmount))
-            }}
-          >
-            <SelectLabel className="sr-only">
+      <PopoverPortal>
+        <PopoverPositioner anchor={anchorRef} placement="bottom-start" sideOffset={4}>
+          <PopoverPopup className="w-75 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-3.5 shadow-lg">
+            <PopoverTitle className="system-sm-medium text-text-primary">
               {t(($) => $['newKnowledge.syncPolicyCustom'])}
-            </SelectLabel>
-            <SelectTrigger>{t(($) => $[`newKnowledge.syncPolicyUnit.${unit}`])}</SelectTrigger>
-            <SelectContent>
-              {(['hours', 'days'] as const).map((option) => (
-                <SelectItem key={option} value={option}>
-                  <SelectItemText>
-                    {t(($) => $[`newKnowledge.syncPolicyUnit.${option}`])}
-                  </SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <p className="mt-3 system-xs-regular leading-3.75 text-text-tertiary">
-          {t(($) => $['newKnowledge.syncPolicyCustomHelp'], { interval: intervalLabel })}
-        </p>
-        <div className="mt-3 flex justify-end gap-2">
-          <Button size="small" disabled={disabled} onClick={() => onOpenChange(false)}>
-            {tCommon(($) => $['operation.cancel'])}
-          </Button>
-          <Button
-            size="small"
-            variant="primary"
-            disabled={disabled}
-            onClick={() => onApply(intervalSeconds)}
-          >
-            {t(($) => $['newKnowledge.syncPolicyApply'])}
-          </Button>
-        </div>
-      </PopoverContent>
+            </PopoverTitle>
+            <div className="mt-3 flex items-center gap-2">
+              <span className="shrink-0 system-sm-regular text-text-secondary">
+                {t(($) => $['newKnowledge.syncPolicyEvery'])}
+              </span>
+              <NumberField
+                disabled={disabled}
+                min={1}
+                max={maximum}
+                step={1}
+                value={amount}
+                onValueChange={(next) => setAmount(next)}
+              >
+                <NumberFieldGroup className="w-18">
+                  <NumberFieldInput
+                    aria-label={`${t(($) => $['newKnowledge.syncPolicyCustom'])} ${t(($) => $[`newKnowledge.syncPolicyUnit.${unit}`])}`}
+                    onBlur={() => setAmount(normalizedAmount)}
+                  />
+                  <NumberFieldControls>
+                    <NumberFieldIncrement />
+                    <NumberFieldDecrement />
+                  </NumberFieldControls>
+                </NumberFieldGroup>
+              </NumberField>
+              <Select<IntervalUnit>
+                disabled={disabled}
+                value={unit}
+                onValueChange={(nextUnit) => {
+                  if (!nextUnit) return
+                  setUnit(nextUnit)
+                  setAmount(Math.min(nextUnit === 'days' ? 30 : 720, normalizedAmount))
+                }}
+              >
+                <SelectLabel className="sr-only">
+                  {t(($) => $['newKnowledge.syncPolicyCustom'])}
+                </SelectLabel>
+                <SelectTrigger>{t(($) => $[`newKnowledge.syncPolicyUnit.${unit}`])}</SelectTrigger>
+                <SelectContent>
+                  {(['hours', 'days'] as const).map((option) => (
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>
+                        {t(($) => $[`newKnowledge.syncPolicyUnit.${option}`])}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="mt-3 system-xs-regular leading-3.75 text-text-tertiary">
+              {t(($) => $['newKnowledge.syncPolicyCustomHelp'], { interval: intervalLabel })}
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <Button size="small" disabled={disabled} onClick={() => onOpenChange(false)}>
+                {tCommon(($) => $['operation.cancel'])}
+              </Button>
+              <Button
+                size="small"
+                variant="primary"
+                disabled={disabled}
+                onClick={() => onApply(intervalSeconds)}
+              >
+                {t(($) => $['newKnowledge.syncPolicyApply'])}
+              </Button>
+            </div>
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
     </Popover>
   )
 }

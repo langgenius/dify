@@ -7,11 +7,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,9 +102,15 @@ export function GoldenQuestionImportDialog({
             <DialogTitle className="system-md-semibold text-text-primary">
               {t(($) => $['newKnowledge.qualityPage.importTitle'])}
             </DialogTitle>
-            <DialogCloseButton
-              aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
-              className="static size-5"
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+                  className="static size-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
             />
           </div>
 

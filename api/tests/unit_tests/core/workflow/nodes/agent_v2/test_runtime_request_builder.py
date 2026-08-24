@@ -7,7 +7,7 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
-from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
@@ -1010,9 +1010,7 @@ def test_invalid_previous_node_output_ref_fails_request_build():
     assert exc_info.value.error_code == "invalid_previous_node_output_ref"
 
 
-def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
-    """Stage 4 §4.1 (D-3): empty declared_outputs → backend receives the PRD defaults
-    (text / files / json) as a stable structured-output contract."""
+def test_empty_declared_outputs_omits_structured_output_layer():
     context = _context()
     binding = WorkflowAgentNodeBinding(
         id="binding-1",
@@ -1028,22 +1026,7 @@ def test_empty_declared_outputs_injects_prd_defaults_text_files_json():
 
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
-    dumped = result.request.model_dump(mode="json")
-    output_layer = dumped["composition"]["layers"][-1]["config"]
-    properties = output_layer["json_schema"]["properties"]
-    assert set(properties) == {"text", "files", "json"}
-    assert properties["text"]["type"] == "string"
-    assert properties["files"]["type"] == "array"
-    # `files` defaults to array<file> → items is a file ref object.
-    file_item_branches = properties["files"]["items"]["anyOf"]
-    assert [branch["properties"]["transfer_method"]["enum"] for branch in file_item_branches] == [
-        ["tool_file"],
-        ["remote_url"],
-    ]
-    assert all(branch["additionalProperties"] is False for branch in file_item_branches)
-    assert properties["json"]["type"] == "object"
-    # Defaults are all required=False so no `required:` key on the schema.
-    assert "required" not in output_layer["json_schema"]
+    assert DIFY_AGENT_OUTPUT_LAYER_ID not in _request_layers(result)
 
 
 def test_array_output_emits_typed_items_per_array_item():
@@ -1074,6 +1057,7 @@ def test_array_output_emits_typed_items_per_array_item():
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
 
     output_schema = result.request.model_dump(mode="json")["composition"]["layers"][-1]["config"]["json_schema"]
+    assert output_schema["properties"]["text"] == {"type": "string"}
     tags_schema = output_schema["properties"]["tags"]
     assert tags_schema["type"] == "array"
     assert tags_schema["items"]["type"] == "string"
@@ -1113,16 +1097,6 @@ def test_nested_declared_output_emits_object_and_array_child_schema():
     assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
     assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
     assert schema["required"] == ["email", "addresses"]
-
-
-def test_effective_declared_outputs_passthrough_when_user_declared():
-    """effective_declared_outputs() must return user-provided outputs verbatim
-    when non-empty; only empty input gets PRD defaults injected."""
-    from models.agent_config_entities import DeclaredOutputConfig
-
-    declared = [DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)]
-    effective = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared)
-    assert list(effective) == declared
 
 
 def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():

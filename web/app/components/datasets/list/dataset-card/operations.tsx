@@ -88,7 +88,7 @@ const Operations = ({
               <DropdownMenuSubContent
                 placement="right-start"
                 sideOffset={12}
-                popupClassName="w-80 max-w-[calc(100vw-2rem)] overflow-visible rounded-xl border border-divider-subtle bg-components-panel-bg p-0 shadow-md"
+                className="w-80 max-w-[calc(100vw-2rem)] overflow-visible rounded-xl border border-divider-subtle bg-components-panel-bg p-0 shadow-md"
               >
                 <DropdownMenuArrow />
                 <div role="presentation" className="px-4 pt-3.5">

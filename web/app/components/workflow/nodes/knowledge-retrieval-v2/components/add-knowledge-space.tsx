@@ -4,7 +4,8 @@ import type { FC } from 'react'
 import type { KnowledgeRetrievalV2SpaceSummary } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useInfiniteScroll } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -121,7 +122,16 @@ const AddKnowledgeSpace: FC<Props> = ({ modal, onChange, selectedSpaces }) => {
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['feature.dataSet.selectTitle'], { ns: 'appDebug' })}
           </DialogTitle>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                className="absolute top-4 right-4"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
 
           {spacesQuery.isLoading && spaces.length === 0 && (
             <div className="flex h-50">

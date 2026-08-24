@@ -82,7 +82,7 @@ function CreateMetadataPopover({
         placement="left-start"
         sideOffset={20}
         alignOffset={-38}
-        popupClassName="w-[320px]"
+        className="w-[320px]"
       >
         <DocumentMetadataCreateForm
           allowedExistingName={allowedExistingName}

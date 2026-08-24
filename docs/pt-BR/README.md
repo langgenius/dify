@@ -96,7 +96,7 @@ Todas os recursos do Dify vêm com APIs correspondentes, permitindo que você in
   Oferecemos o serviço [Dify Cloud](https://dify.ai) para qualquer pessoa experimentar sem nenhuma configuração. Ele fornece todas as funcionalidades da versão auto-hospedada, incluindo 200 chamadas GPT-4 gratuitas no plano sandbox.
 
 - **Auto-hospedagem do Dify Community Edition</br>**
-  Configure rapidamente o Dify no seu ambiente com este [guia inicial](#quick-start).
+  Configure rapidamente o Dify no seu ambiente com este [guia inicial](#início-rápido).
   Use nossa [documentação](https://docs.dify.ai) para referências adicionais e instruções mais detalhadas.
 
 - **Dify para empresas/organizações</br>**
@@ -182,6 +182,10 @@ Implante o Dify na Alibaba Cloud com um clique usando o [Alibaba Cloud Data Mana
 #### Usando Azure Devops Pipeline para Implantar no AKS
 
 Implante o Dify no AKS com um clique usando [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
+
+#### Implantação com Sealos
+
+Implante o Dify com um clique usando a [Sealos App Store](https://sealos.io/products/app-store/dify/)
 
 ## Contribuindo
 

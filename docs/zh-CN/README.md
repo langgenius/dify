@@ -190,6 +190,10 @@ docker compose up -d
 
 使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 将 Dify 一键部署到 AKS
 
+#### 使用 Sealos 部署
+
+通过 [Sealos App Store](https://sealos.io/products/app-store/dify/) 一键部署 Dify
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

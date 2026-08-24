@@ -87,6 +87,45 @@ See [here](./internal/envvar/envvar.go)
 
 Requires Linux ≥ 5.13. On unsupported kernels, a warning is printed to stderr.
 
+## API Routes
+
+### Home snapshot
+
+Native save/restore of the runtime's Home directory (`$HOME`) as a tar+zstd
+stream. One snapshot operation runs at a time per runtime (`409 snapshot_busy`
+otherwise). **Neither endpoint imposes a size limit — callers own size policy
+and must bound the streams in their own logic** (count bytes while reading a
+save stream and abort at their cap; bound what they send to restore).
+
+Each operation carries a total I/O deadline set by `SHELLCTL_SNAPSHOT_TIMEOUT`,
+a Go duration string (`10m`, `15m30s`). It bounds how long a stalled peer —
+connection open, nobody reading — can hold the single-operation gate; a peer
+that closes the connection releases it immediately. Unset or empty uses the
+built-in default; an unparseable or non-positive value fails startup rather
+than falling back to it.
+
+- `POST /v1/snapshot/save` — optional JSON body `{"excludes": [...]}`, gitignore
+  syntax, matched at any depth; a malformed body is refused with
+  `400 invalid_request`. The runtime's own state directory
+  (`.local/share/shellctl`) is **always** excluded and no pattern can
+  re-include it; an excluded directory is not descended into. The Workspace
+  needs no such rule — it lives outside Home. Streams the
+  Home as `application/octet-stream` (chunked). An empty Home is not a special
+  case: it streams an ordinary archive with no entries. Success is signaled by
+  trailers `X-Snapshot-Status: ok`,
+  `X-Snapshot-Sha256`, `X-Snapshot-Bytes`; a cleanly terminated stream WITHOUT
+  the `ok` trailer, or an aborted connection, is a failure.
+- `POST /v1/snapshot/restore` — raw tar+zstd body, no parameters. Extracts
+  into `$HOME` under `os.Root` (path traversal, absolute names, and symlink
+  escapes are refused). Returns `{"entries": N, "bytes_written": M}`;
+  `400 archive_malformed` for invalid input, `500 restore_failed` for
+  non-format failures (e.g. filesystem or environmental errors). Restore is
+  NOT transactional — a mid-stream failure can leave a partially restored
+  Home, so callers must treat the sandbox as unusable and recreate it rather
+  than retry into it. Archives are plain tar+zstd; the decoder caps the zstd
+  window at 64 MiB, so foreign archives produced with long-window settings
+  are rejected as malformed.
+
 ## Dependencies
 
 - Go 1.26

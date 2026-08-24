@@ -133,7 +133,7 @@ const MemberMenu = ({
         <DropdownMenuContent
           placement="bottom-end"
           sideOffset={4}
-          popupClassName="min-w-[180px] rounded-xl"
+          className="min-w-[180px] rounded-xl"
         >
           {canAssignRoles && (
             <DropdownMenuItem

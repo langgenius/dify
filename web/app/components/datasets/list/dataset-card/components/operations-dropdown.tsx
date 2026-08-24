@@ -115,7 +115,7 @@ const OperationsDropdown = ({
           {...getStepByStepTourDropdownMenuContentProps({
             highlightPart: stepByStepTourHighlightPart,
             interactionMode: operationsMenu.controlled ? 'presentation' : 'interactive',
-            popupClassName: 'min-w-44',
+            className: 'min-w-44',
           })}
         >
           <Operations

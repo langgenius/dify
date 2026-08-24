@@ -8,7 +8,7 @@ import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
@@ -17,7 +17,7 @@ import { Field, FieldError, FieldItem, FieldLabel } from '@langgenius/dify-ui/fi
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
@@ -161,9 +161,15 @@ export function GoldenQuestionDialog({
           <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
             <div className="flex items-center justify-between">
               <DialogTitle className="system-md-semibold text-text-primary">{title}</DialogTitle>
-              <DialogCloseButton
-                aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
-                className="static size-5"
+              <DialogClose
+                render={
+                  <IconButton
+                    aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+                    className="static size-5"
+                  >
+                    <span aria-hidden className="i-ri-close-line size-4" />
+                  </IconButton>
+                }
               />
             </div>
             <Field name="question" invalid={questionInvalid}>

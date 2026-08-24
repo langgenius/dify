@@ -161,7 +161,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           </>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" popupClassName="w-[280px] p-0">
+      <DropdownMenuContent placement="bottom-start" className="w-[280px] p-0">
         <div className="flex items-center gap-1 p-2 pb-1">
           <div className="relative min-w-0 grow">
             <span

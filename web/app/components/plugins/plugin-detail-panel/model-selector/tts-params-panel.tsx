@@ -55,7 +55,7 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent popupClassName="w-[354px]">
+          <SelectContent className="w-[354px]">
             {supportedLanguages.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.name}</SelectItemText>
@@ -82,7 +82,7 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent popupClassName="w-[354px]">
+          <SelectContent className="w-[354px]">
             {voiceList.map((item) => (
               <SelectItem key={item.value} value={item.value}>
                 <SelectItemText>{item.label}</SelectItemText>

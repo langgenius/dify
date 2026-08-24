@@ -24,6 +24,9 @@ describe('ParamItem Slider onChange', () => {
     render(<ParamItem {...defaultProps} value={0.5} min={0} max={1} />)
     const slider = getSlider()
 
+    expect(slider).toHaveAttribute('aria-valuenow', '50')
+    expect(slider).toHaveAttribute('aria-valuetext', '0.5')
+
     slider.focus()
     await user.keyboard('{ArrowRight}')
 

@@ -151,7 +151,7 @@ export function KnowledgeSettingsMembers({
             <PopoverContent
               placement="bottom-start"
               sideOffset={4}
-              popupClassName="w-80 overflow-hidden p-0"
+              className="w-80 overflow-hidden p-0"
             >
               <PopoverTitle className="sr-only">
                 {tSettings(($) => $['form.permissionsInvitedMembers'])}

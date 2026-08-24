@@ -21,7 +21,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dif
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,

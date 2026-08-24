@@ -8,12 +8,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -305,7 +306,13 @@ function EvaluationReport({
                 {selectedReportItem.question}
               </p>
             )}
-            <DialogCloseButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])} />
+            <DialogClose
+              render={
+                <IconButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}>
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
 
           <div className="min-h-40 flex-1 overflow-y-auto px-6 py-5">
@@ -555,7 +562,13 @@ export function QualityEvaluationPanel({
             <DialogDescription className="mt-1.5 pr-10 system-sm-regular text-text-tertiary">
               {t(($) => $['newKnowledge.qualityPage.evaluation.dialogDescription'])}
             </DialogDescription>
-            <DialogCloseButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])} />
+            <DialogClose
+              render={
+                <IconButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}>
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div className="px-6 py-5">
             <p className="system-xs-medium-uppercase text-text-tertiary">

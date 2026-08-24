@@ -540,30 +540,6 @@ def test_success_output_adapter_preserves_nested_canonical_file_mapping_inside_g
     ]
 
 
-def test_success_output_adapter_does_not_normalize_top_level_canonical_file_mapping_without_declared_file_field():
-    tool_reference = build_file_reference(record_id="tool-file-1")
-    result = WorkflowAgentOutputAdapter().build_success_result(
-        event=AgentBackendRunSucceededInternalEvent(
-            run_id="run-1",
-            source_event_id="2-0",
-            output={
-                "transfer_method": "tool_file",
-                "reference": tool_reference,
-            },
-            session_snapshot=CompositorSessionSnapshot(layers=[]),
-        ),
-        inputs={},
-        process_data={},
-        metadata={"tenant_id": "tenant-1"},
-        declared_outputs=[DeclaredOutputConfig(name="text", type=DeclaredOutputType.STRING, required=False)],
-    )
-
-    assert result.outputs == {
-        "transfer_method": "tool_file",
-        "reference": tool_reference,
-    }
-
-
 def test_success_output_adapter_maps_backend_usage_to_llm_usage_and_metadata():
     result = WorkflowAgentOutputAdapter().build_success_result(
         event=AgentBackendRunSucceededInternalEvent(

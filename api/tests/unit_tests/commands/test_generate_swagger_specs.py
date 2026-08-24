@@ -60,7 +60,7 @@ def _nullable_schema_ref(schema):
     return next(item["$ref"] for item in schema["anyOf"] if "$ref" in item)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
+def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -78,7 +78,7 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
         assert "paths" in payload
 
 
-def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(tmp_path):
+def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -98,7 +98,7 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(t
         assert all(value is not None for value in _walk_values(payload))
 
 
-def test_generate_specs_writes_unique_operation_ids(tmp_path):
+def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -110,7 +110,7 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path):
         assert len(operation_ids) == len(set(operation_ids))
 
 
-def test_system_features_specs_exclude_backend_only_fields(tmp_path):
+def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -131,7 +131,7 @@ def test_system_features_specs_exclude_backend_only_fields(tmp_path):
         assert "PluginManagerModel" not in schemas
 
 
-def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
+def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -203,7 +203,7 @@ def test_generate_specs_include_command_oriented_knowledge_fs_contract(tmp_path)
     assert tree_operation["operationId"] == "tree_knowledge_fs"
 
 
-def test_generate_specs_writes_service_api_reference_descriptions(tmp_path):
+def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -236,7 +236,7 @@ def test_standalone_inline_model_name_includes_list_constraints():
         assert module._inline_model_name(first_inline_model) != module._inline_model_name(second_inline_model)
 
 
-def test_generate_specs_is_idempotent(tmp_path):
+def test_generate_specs_is_idempotent(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     first_paths = module.generate_specs(tmp_path / "first")
@@ -247,7 +247,7 @@ def test_generate_specs_is_idempotent(tmp_path):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
-def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path):
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -262,7 +262,7 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tm
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
 
 
-def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path):
+def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)

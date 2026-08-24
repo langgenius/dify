@@ -23,7 +23,7 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
