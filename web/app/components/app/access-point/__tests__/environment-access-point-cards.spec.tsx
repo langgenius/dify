@@ -84,6 +84,8 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
+let mockAppMode = 'workflow'
+
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
@@ -93,11 +95,13 @@ vi.mock('@/app/components/app/store', () => ({
     selector({
       appDetail: {
         id: 'app-1',
+        get mode() {
+          return mockAppMode
+        },
         icon: '🤖',
         icon_background: '#FFEAD5',
         icon_type: 'emoji',
         icon_url: null,
-        mode: 'workflow',
         site: {
           access_token: 'built-in-code',
           app_base_url: 'https://built-in.example.test',
@@ -225,6 +229,18 @@ describe('environment access point cards', () => {
       ...site,
       enabled: false,
     })
+  })
+
+  it('sends a chatflow app to the chat web app shell', async () => {
+    mockAppMode = 'advanced-chat'
+
+    renderCard(<EnvironmentWebAppCard appId="app-1" environmentId="staging" canEdit canManage />)
+
+    expect(await screen.findByText(/env\/chat\/site-code/)).toHaveTextContent(
+      'https://site.example.test/env/chat/site-code',
+    )
+
+    mockAppMode = 'workflow'
   })
 
   it('renders the real environment Web app URL and workflow actions without Embed', async () => {
