@@ -3076,6 +3076,26 @@ describe('SkillDetailPage', () => {
     )
   })
 
+  it('renders a non-interactive reference count when no agent uses the skill', async () => {
+    mocks.skillDetail = createSkillDetail({ reference_count: 0 })
+    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
+      queryKey: ['skill-references', options],
+      queryFn: async () => ({ data: [] }),
+    }))
+
+    renderSkillDetailPage()
+
+    const referenceCount = await screen.findByText(
+      'skill.skillManagement.detail.referencedBy_other:{"count":0}',
+    )
+    expect(referenceCount).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'skill.skillManagement.detail.referencedBy_other:{"count":0}',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('uses the references query count when the cached sidebar reference count is stale', async () => {
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
     mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
