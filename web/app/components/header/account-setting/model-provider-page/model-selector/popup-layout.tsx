@@ -22,13 +22,14 @@ export function ModelSelectorSearchHeader({
   const { t } = useTranslation()
 
   return (
-    <SearchInput
-      aria-label={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-      className="mx-2 mt-2 mb-1 shrink-0"
-      placeholder={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
-      value={inputValue}
-      onValueChange={onInputValueChange}
-    />
+    <div className="shrink-0 bg-components-panel-bg px-2 pt-2 pb-1">
+      <SearchInput
+        aria-label={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
+        placeholder={t(($) => $['form.searchModel'], { ns: 'datasetSettings' }) || ''}
+        value={inputValue}
+        onValueChange={onInputValueChange}
+      />
+    </div>
   )
 }
 
