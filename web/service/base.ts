@@ -447,10 +447,10 @@ export const handleStream = (
               } else if (bufferObj.event === 'datasource_error') {
                 onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
               } else if (bufferObj.event === 'error') {
-                const errorMessage
-                  = (typeof bufferObj.message === 'string' && bufferObj.message)
-                    || (typeof bufferObj.code === 'string' && bufferObj.code)
-                    || 'Error'
+                const errorMessage =
+                  (typeof bufferObj.message === 'string' && bufferObj.message) ||
+                  (typeof bufferObj.code === 'string' && bufferObj.code) ||
+                  'Error'
                 hasError = true
                 onData('', false, {
                   conversationId: bufferObj.conversation_id,
