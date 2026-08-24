@@ -12,6 +12,18 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
 
+  if (type === 'prompt') {
+    return (
+      <Trans
+        i18nKey={($) => $['agentDetail.configure.prompt.richTip']}
+        ns="agentV2"
+        components={{
+          docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#prompt')} />,
+        }}
+      />
+    )
+  }
+
   if (type === 'env') {
     return (
       <span className="whitespace-pre-line">
@@ -73,5 +85,5 @@ export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps
       <span className="whitespace-pre-line">{t(($) => $['agentDetail.configure.files.tip'])}</span>
     )
 
-  return <>{t(($) => $[`agentDetail.configure.${type}.tip`])}</>
+  return null
 }
