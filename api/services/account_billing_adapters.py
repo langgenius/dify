@@ -1,7 +1,7 @@
 """Billing adapters for account education and deletion-feedback use cases."""
 
 from datetime import UTC, datetime
-from typing import Any, override
+from typing import override
 
 from services.account_deletion_feedback_service import AccountDeletionFeedbackGateway
 from services.account_education_service import AccountEducationGateway
@@ -41,7 +41,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result: dict[str, Any] = BillingService.EducationIdentity.status(account_id) or {}
+        result = BillingService.EducationIdentity.status(account_id) or {}
         expire_at = result.get("expire_at")
         return AccountEducationStatus(
             result=result.get("result"),
@@ -52,7 +52,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result: dict[str, Any] = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
         return AccountEducationAutocomplete(
             data=tuple(result.get("data") or ()),
             curr_page=result.get("curr_page"),
