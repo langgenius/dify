@@ -73,7 +73,7 @@ class ModelInstance:
         )
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
-        bound_request_metadata = getattr(self, "_request_metadata", None)
+        bound_request_metadata = self._request_metadata
         if bound_request_metadata is None:
             if request_metadata is None:
                 return get_credit_usage_metadata()

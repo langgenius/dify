@@ -43,9 +43,7 @@ class InputModeration:
         sensitive_word_avoidance_config = app_config.sensitive_word_avoidance
         moderation_type = sensitive_word_avoidance_config.type
 
-        with use_credit_usage_metadata(
-            {"app_type": get_credit_usage_app_type(getattr(app_config, "app_mode", None))}
-        ):
+        with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_config.app_mode)}):
             moderation_factory = ModerationFactory(
                 name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config
             )

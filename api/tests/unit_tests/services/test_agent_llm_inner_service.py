@@ -64,6 +64,7 @@ def _model_instance(
     instance.credentials = {"api_key": "hosted"}
     instance.model_type_instance = MagicMock()
     instance.load_balancing_manager = None
+    instance._request_metadata = None
     return instance, provider_model
 
 

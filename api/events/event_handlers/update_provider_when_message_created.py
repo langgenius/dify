@@ -133,7 +133,7 @@ def handle(sender: Message, **kwargs):
     model_config = application_generate_entity.model_conf
     provider_model_bundle = model_config.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
-    app_mode = getattr(application_generate_entity.app_config, "app_mode", None)
+    app_mode = application_generate_entity.app_config.app_mode
     credit_deduction_metadata: dict[str, object] = {
         "provider": provider_name,
         "model": model_config.model,

@@ -143,7 +143,7 @@ def test_agent_app_gateway_accounting_skips_legacy_message_charge() -> None:
         ],
     )
     application_generate_entity = AgentAppGenerateEntity.model_construct(
-        app_config=SimpleNamespace(tenant_id=tenant_id),
+        app_config=SimpleNamespace(tenant_id=tenant_id, app_mode=AppMode.AGENT),
         model_conf=SimpleNamespace(
             provider="openai",
             model="gpt-4o",

@@ -618,8 +618,8 @@ class DifyNodeFactory(NodeFactory):
         validated_node_data = cast(LLMCompatibleNodeData, node_data)
         model_instance = self._build_model_instance_for_llm_node(validated_node_data)
         request_metadata: dict[str, object] = {"app_id": self._dify_context.app_id}
-        app_type = getattr(self._dify_context, "app_type", None)
-        created_by = getattr(self._dify_context, "created_by", None)
+        app_type = self._dify_context.app_type
+        created_by = self._dify_context.created_by
         if app_type is not None:
             request_metadata["app_type"] = app_type
             request_metadata["created_by"] = created_by_from_app_type(app_type)

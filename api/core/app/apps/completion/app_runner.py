@@ -195,10 +195,8 @@ class CompletionAppRunner(AppRunner):
         )
 
         request_metadata: dict[str, object] = {"app_id": app_config.app_id}
-        app_mode = getattr(app_config, "app_mode", None)
-        if isinstance(app_mode, str):
-            request_metadata["app_type"] = get_credit_usage_app_type(app_mode)
-            request_metadata["created_by"] = get_credit_usage_created_by(app_mode)
+        request_metadata["app_type"] = get_credit_usage_app_type(app_config.app_mode)
+        request_metadata["created_by"] = get_credit_usage_created_by(app_config.app_mode)
 
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,

@@ -21,6 +21,7 @@ from core.app.app_config.entities import (
 )
 from core.app.entities.app_invoke_entities import (
     CreditUsageCreatedBy,
+    EasyUIBasedAppGenerateEntity,
     InvokeFrom,
     ModelConfigWithCredentialsEntity,
     get_credit_usage_app_type,
@@ -108,17 +109,16 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetRetrieval:
-    def __init__(self, application_generate_entity=None):
+    def __init__(self, application_generate_entity: EasyUIBasedAppGenerateEntity | None = None):
         self.application_generate_entity = application_generate_entity
         self._llm_usage = LLMUsage.empty_usage()
         self._request_metadata: dict[str, object] | None = None
-        app_config = getattr(application_generate_entity, "app_config", None)
-        app_mode = getattr(app_config, "app_mode", None)
-        if isinstance(app_mode, str):
-            self._request_metadata = {"app_type": get_credit_usage_app_type(app_mode)}
-            app_id = getattr(app_config, "app_id", None)
-            if isinstance(app_id, str):
-                self._request_metadata["app_id"] = app_id
+        if application_generate_entity is not None:
+            app_config = application_generate_entity.app_config
+            self._request_metadata = {
+                "app_type": get_credit_usage_app_type(app_config.app_mode),
+                "app_id": app_config.app_id,
+            }
 
     def set_request_metadata(self, request_metadata: Mapping[str, object] | None) -> None:
         self._request_metadata = dict(request_metadata) if request_metadata else None

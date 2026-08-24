@@ -2,7 +2,7 @@ from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import wraps
-from typing import Any
+from typing import Any, Protocol, cast
 
 from core.credit_usage import CreditUsageCreatedByInput, normalize_credit_usage_created_by
 
@@ -10,6 +10,10 @@ _credit_usage_metadata: ContextVar[dict[str, object] | None] = ContextVar(
     "credit_usage_metadata",
     default=None,
 )
+
+
+class _CreditUsageMetadataCarrier(Protocol):
+    _request_metadata: Mapping[str, object] | None
 
 
 def get_credit_usage_metadata() -> Mapping[str, object] | None:
@@ -34,7 +38,8 @@ def use_credit_usage_metadata(metadata: Mapping[str, object] | None) -> Generato
 def with_credit_usage_metadata(method: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(method)
     def wrapper(self, *args: object, **kwargs: object):
-        with use_credit_usage_metadata(getattr(self, "_request_metadata", None)):
+        carrier = cast(_CreditUsageMetadataCarrier, self)
+        with use_credit_usage_metadata(carrier._request_metadata):
             return method(self, *args, **kwargs)
 
     return wrapper
