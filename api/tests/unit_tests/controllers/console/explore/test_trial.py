@@ -9,7 +9,6 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask, request
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -30,6 +29,7 @@ from controllers.console.explore.error import (
 )
 from controllers.console.explore.trial import ChatRequest, CompletionRequest, TextToSpeechRequest, WorkflowRunRequest
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
@@ -39,9 +39,12 @@ from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, StringVariable
-from models import Account
+from models import Account, Tenant
 from models.account import TenantStatus
-from models.model import AppMode, Site
+from models.dataset import Dataset
+from models.model import App, AppMode, Site, UploadFile
+from models.tools import WorkflowToolProvider
+from models.workflow import Workflow
 from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import SpeechToTextDisabledServiceError
 from services.errors.conversation import ConversationNotExistsError
@@ -54,10 +57,8 @@ class _UsesSQLiteSession:
     sqlite_session: Session
 
     @pytest.fixture(autouse=True)
-    def _provide_sqlite_session(self, sqlite_engine: Engine):
-        with Session(sqlite_engine, expire_on_commit=False) as session:
-            self.sqlite_session = session
-            yield
+    def _provide_sqlite_session(self, sqlite_session: Session):
+        self.sqlite_session = sqlite_session
 
 
 @pytest.fixture
@@ -65,6 +66,46 @@ def account() -> Account:
     acc = Account(name="User", email="user@example.com")
     acc.id = "u1"
     return acc
+
+
+@pytest.fixture
+def trial_app_usage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    usage = MagicMock()
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        MagicMock(return_value=SimpleNamespace(trial_app_usage=usage)),
+    )
+    return usage
+
+
+def _app(*, app_id: str, mode: AppMode, tenant_id: str = "tenant-1") -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name="Trial App",
+        mode=mode,
+        enable_site=True,
+        enable_api=False,
+    )
+
+
+def _upload_file(*, file_id: str = "upload-file-id", tenant_id: str = "app-tenant-id") -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type="opendal",
+        key="trial/file.txt",
+        name="file.txt",
+        size=1,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role="account",
+        created_by="u1",
+        created_at=datetime(2024, 1, 1),
+        used=False,
+    )
+    upload_file.id = file_id
+    return upload_file
 
 
 def _file_data() -> Any:
@@ -86,44 +127,18 @@ def _persist_site(sqlite_session: Session, app_id: str) -> Site:
 
 
 @pytest.fixture
-def trial_app_chat() -> MagicMock:
-    app = MagicMock()
-    app.id = "a-chat"
-    app.mode = AppMode.CHAT
-    return app
+def trial_app_chat() -> App:
+    return _app(app_id="a-chat", mode=AppMode.CHAT)
 
 
 @pytest.fixture
-def trial_app_completion() -> MagicMock:
-    app = MagicMock()
-    app.id = "a-comp"
-    app.mode = AppMode.COMPLETION
-    return app
+def trial_app_completion() -> App:
+    return _app(app_id="a-comp", mode=AppMode.COMPLETION)
 
 
 @pytest.fixture
-def trial_app_workflow() -> MagicMock:
-    app = MagicMock()
-    app.id = "a-workflow"
-    app.mode = AppMode.WORKFLOW
-    return app
-
-
-@pytest.fixture
-def valid_parameters() -> dict[str, object]:
-    return {
-        "user_input_form": [],
-        "system_parameters": {},
-        "suggested_questions": {},
-        "suggested_questions_after_answer": {},
-        "speech_to_text": {},
-        "text_to_speech": {},
-        "retriever_resource": {},
-        "annotation_reply": {},
-        "more_like_this": {},
-        "sensitive_word_avoidance": {},
-        "file_upload": {},
-    }
+def trial_app_workflow() -> App:
+    return _app(app_id="a-workflow", mode=AppMode.WORKFLOW)
 
 
 def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
@@ -132,30 +147,27 @@ def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
 
 
 def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask, unbound_session: Session):
-    class DatasetListItem:
-        id = "dataset-1"
-        name = "Dataset"
-        description = "description"
-        permission = "only_me"
-        data_source_type = "upload_file"
-        indexing_technique = "high_quality"
-        created_by = "user-1"
-        created_at = datetime(2024, 1, 1, tzinfo=UTC)
-        permission_keys = ["dataset.acl.readonly"]
-
-        @property
-        def app_count(self):
-            raise AssertionError("trial dataset list should not serialize detail-only computed fields")
-
     api = module.DatasetListApi()
     method = unwrap(api.get)
-    app_model = SimpleNamespace(tenant_id="tenant-1")
+    app_model = _app(app_id="app-1", mode=AppMode.CHAT)
+    dataset = Dataset(
+        id="dataset-1",
+        tenant_id=app_model.tenant_id,
+        name="Dataset",
+        description="description",
+        permission="only_me",
+        data_source_type="upload_file",
+        indexing_technique="high_quality",
+        created_by="user-1",
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+    dataset.permission_keys = ["dataset.acl.readonly"]  # type: ignore[attr-defined]
     with (
         app.test_request_context("/?page=1&limit=20&ids=dataset-1"),
         patch.object(
             module.DatasetService,
             "get_datasets_by_ids",
-            return_value=([DatasetListItem()], 1),
+            return_value=([dataset], 1),
         ) as get_datasets,
     ):
         result = method(api, unbound_session, app_model)
@@ -186,17 +198,17 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask, unbound_se
     "api_type",
     [module.TrialSitApi, module.TrialAppParameterApi, module.AppApi, module.AppWorkflowApi, module.DatasetListApi],
 )
-def test_trial_app_handlers_use_explicit_read_session(api_type: type) -> None:
+def test_preview_handlers_use_explicit_read_session(api_type: type) -> None:
     source = getsource(api_type.get)
 
-    assert "@with_session(write=False)\n    @get_app_model_with_trial(None)" in source
+    assert "@with_session(write=False)\n    @get_previewable_app_model(None)" in source
     assert tuple(signature(api_type.get).parameters)[:3] == ("self", "session", "app_model")
 
 
 def test_trial_app_detail_serializes_with_explicit_session(
     app: Flask, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
-    app_model = MagicMock()
+    app_model = _app(app_id="app-1", mode=AppMode.CHAT)
     response_view = MagicMock()
     get_app = MagicMock(return_value=app_model)
     build_view = MagicMock(return_value=response_view)
@@ -219,8 +231,8 @@ class TestTrialAppFileUploadApi:
     def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
         api = module.TrialAppFileUploadApi()
         method = unwrap(api.post)
-        app_model = SimpleNamespace(tenant_id="app-tenant-id")
-        upload_file = MagicMock()
+        app_model = _app(app_id="app-1", mode=AppMode.CHAT, tenant_id="app-tenant-id")
+        upload_file = _upload_file()
 
         with (
             app.test_request_context("/", method="POST"),
@@ -238,7 +250,7 @@ class TestTrialAppRemoteFileUploadApi:
     def test_upload_uses_trial_app_tenant(self, app: Flask, account: Account) -> None:
         api = module.TrialAppRemoteFileUploadApi()
         method = unwrap(api.post)
-        app_model = SimpleNamespace(tenant_id="app-tenant-id")
+        app_model = _app(app_id="app-1", mode=AppMode.CHAT, tenant_id="app-tenant-id")
         remote_file = MagicMock()
         remote_file.model_dump.return_value = {"id": "upload-file-id"}
 
@@ -265,17 +277,22 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     WorkflowRunRequest.model_validate(request.get_json()),
                     self.sqlite_session,
                     account,
-                    MagicMock(mode=AppMode.CHAT),
+                    _app(app_id="not-workflow", mode=AppMode.CHAT),
                 )
 
-    def test_success(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_workflow: App,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api,
@@ -286,8 +303,9 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
             )
 
         assert result is not None
+        trial_app_usage.record.assert_called_once_with(app_id="a-workflow", account_id="u1")
 
-    def test_workflow_provider_not_init(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_provider_not_init(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -308,7 +326,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     trial_app_workflow,
                 )
 
-    def test_workflow_quota_exceeded(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_quota_exceeded(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -329,7 +347,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     trial_app_workflow,
                 )
 
-    def test_workflow_model_not_support(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_model_not_support(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -350,7 +368,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     trial_app_workflow,
                 )
 
-    def test_workflow_invoke_error(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_invoke_error(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -371,7 +389,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     trial_app_workflow,
                 )
 
-    def test_workflow_rate_limit_error(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_rate_limit_error(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -392,7 +410,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     trial_app_workflow,
                 )
 
-    def test_workflow_value_error(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_value_error(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -413,7 +431,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     trial_app_workflow,
                 )
 
-    def test_workflow_generic_exception(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_workflow_generic_exception(self, app: Flask, trial_app_workflow: App, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
@@ -447,25 +465,31 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     ChatRequest.model_validate(request.get_json()),
                     self.sqlite_session,
                     account,
-                    MagicMock(mode="completion"),
+                    _app(app_id="not-chat", mode=AppMode.COMPLETION),
                 )
 
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_chat: App,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
             )
 
         assert result is not None
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
-    def test_chat_conversation_not_exists(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_conversation_not_exists(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -482,7 +506,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_conversation_completed(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_conversation_completed(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -499,7 +523,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_app_config_broken(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -516,7 +540,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_provider_not_init(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -533,7 +557,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -550,7 +574,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_model_not_support(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_model_not_support(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -567,7 +591,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_invoke_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_invoke_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -584,7 +608,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_rate_limit_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_rate_limit_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -601,7 +625,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_value_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_value_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -618,7 +642,7 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
                 )
 
-    def test_chat_generic_exception(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_chat_generic_exception(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
@@ -648,17 +672,22 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     CompletionRequest.model_validate(request.get_json()),
                     self.sqlite_session,
                     account,
-                    MagicMock(mode=AppMode.CHAT),
+                    _app(app_id="not-completion", mode=AppMode.CHAT),
                 )
 
-    def test_success(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_completion: App,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api,
@@ -669,8 +698,9 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
             )
 
         assert result is not None
+        trial_app_usage.record.assert_called_once_with(app_id="a-comp", account_id="u1")
 
-    def test_completion_app_config_broken(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_app_config_broken(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -691,7 +721,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_provider_not_init(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_provider_not_init(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -712,7 +742,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_quota_exceeded(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_quota_exceeded(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -733,7 +763,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_model_not_support(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_model_not_support(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -754,7 +784,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_invoke_error(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_invoke_error(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -775,7 +805,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_rate_limit_error(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_rate_limit_error(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -796,7 +826,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_value_error(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_value_error(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -817,7 +847,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     trial_app_completion,
                 )
 
-    def test_completion_generic_exception(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_completion_generic_exception(self, app: Flask, trial_app_completion: App, account: Account) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
@@ -846,9 +876,9 @@ class TestTrialMessageSuggestedQuestionApi:
 
         with app.test_request_context("/"):
             with pytest.raises(NotChatAppError):
-                method(api, account, MagicMock(mode="completion"), str(uuid4()))
+                method(api, account, _app(app_id="not-chat", mode=AppMode.COMPLETION), str(uuid4()))
 
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
@@ -864,7 +894,7 @@ class TestTrialMessageSuggestedQuestionApi:
 
         assert result == {"data": ["q1", "q2"]}
 
-    def test_conversation_not_exists(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_conversation_not_exists(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialMessageSuggestedQuestionApi()
         method = unwrap(api.get)
 
@@ -888,67 +918,43 @@ class TestTrialAppParameterApi:
         with pytest.raises(AppUnavailableError):
             method(api, unbound_session, None)
 
-    def test_success_non_workflow(self, valid_parameters: dict[str, object], unbound_session: Session) -> None:
+    def test_success(self, unbound_session: Session) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
+        parameters = get_parameters_from_feature_dict(features_dict={}, user_input_form=[])
+        expected = module.ParametersResponse.model_validate(parameters).model_dump(mode="json")
+        app_definitions = MagicMock()
+        app_definitions.get_parameters.return_value = parameters
+        services = SimpleNamespace(app_definitions=app_definitions)
 
-        app_model_config = MagicMock(app_id="app-1")
-        app_model_config.to_dict.return_value = {"user_input_form": []}
-        app_model = SimpleNamespace(
-            mode=AppMode.CHAT,
-            app_model_config_with_session=MagicMock(return_value=app_model_config),
-        )
-        annotation_reply = {"enabled": False}
+        with patch.object(module, "application_services", return_value=services):
+            result = method(api, unbound_session, _app(app_id="app-1", mode=AppMode.CHAT))
 
-        with (
-            patch.object(
-                module, "load_annotation_reply_config", return_value=annotation_reply
-            ) as load_annotation_reply,
-            patch.object(
-                module,
-                "get_parameters_from_feature_dict",
-                return_value=valid_parameters,
-            ),
-            patch.object(
-                module.ParametersResponse,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda mode=None: {"ok": True}),
-            ),
-        ):
-            result = method(api, unbound_session, app_model)
+        assert result == expected
+        app_definitions.get_parameters.assert_called_once_with("app-1")
 
-        assert result == {"ok": True}
-        app_model.app_model_config_with_session.assert_called_once_with(session=unbound_session)
-        load_annotation_reply.assert_called_once_with(unbound_session, "app-1")
-        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
-
-    def test_success_workflow(self, valid_parameters: dict[str, object], unbound_session: Session) -> None:
+    def test_unavailable_parameters(self, unbound_session: Session) -> None:
         api = module.TrialAppParameterApi()
         method = unwrap(api.get)
+        app_definitions = MagicMock()
+        app_definitions.get_parameters.side_effect = module.AppDefinitionUnavailableError
+        services = SimpleNamespace(app_definitions=app_definitions)
 
-        workflow = MagicMock(features_dict={})
-        workflow.user_input_form.return_value = []
-        app_model = SimpleNamespace(
-            mode=AppMode.WORKFLOW,
-            workflow_with_session=MagicMock(return_value=workflow),
-        )
         with (
-            patch.object(module, "get_parameters_from_feature_dict", return_value=valid_parameters),
-            patch.object(
-                module.ParametersResponse,
-                "model_validate",
-                return_value=MagicMock(model_dump=lambda mode=None: {"ok": True}),
-            ),
+            patch.object(module, "application_services", return_value=services),
+            pytest.raises(AppUnavailableError),
         ):
-            result = method(api, unbound_session, app_model)
-
-        assert result == {"ok": True}
-        app_model.workflow_with_session.assert_called_once_with(session=unbound_session)
-        workflow.user_input_form.assert_called_once_with(to_old_structure=True)
+            method(api, unbound_session, _app(app_id="app-1", mode=AppMode.CHAT))
 
 
 class TestTrialChatAudioApi:
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_chat: App,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -959,13 +965,13 @@ class TestTrialChatAudioApi:
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
             patch.object(module.AudioService, "transcript_asr", return_value={"text": "hello"}),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(api, account, trial_app_chat)
 
         assert result == {"text": "hello"}
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
-    def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_app_config_broken(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -988,7 +994,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_no_audio_uploaded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_no_audio_uploaded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1011,7 +1017,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_missing_file_field_returns_400(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_missing_file_field_returns_400(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         """A multipart POST with no `file` field must surface as 400, not 500.
 
         Verifies the controller passes file=None to AudioService.transcript_asr
@@ -1038,7 +1044,7 @@ class TestTrialChatAudioApi:
 
         assert exc_info.value.code == 400
 
-    def test_audio_too_large(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_audio_too_large(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1061,7 +1067,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_unsupported_audio_type(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_unsupported_audio_type(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1084,7 +1090,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_provider_not_support_tts(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_provider_not_support_tts(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1107,7 +1113,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_speech_to_text_disabled(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_speech_to_text_disabled(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
         file_data = _file_data()
@@ -1129,7 +1135,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_provider_not_init(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1148,7 +1154,7 @@ class TestTrialChatAudioApi:
                     trial_app_chat,
                 )
 
-    def test_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1169,22 +1175,34 @@ class TestTrialChatAudioApi:
 
 
 class TestTrialChatTextApi:
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_chat: App,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
             patch.object(module.AudioService, "transcript_tts", return_value={"audio": "base64_data"}),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api, TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}), account, trial_app_chat
             )
 
         assert result == {"audio": "base64_data"}
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
-    def test_success_with_message_ref(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success_with_message_ref(
+        self,
+        app: Flask,
+        trial_app_chat: App,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
         transcript_tts = MagicMock(return_value={"audio": "base64_data"})
@@ -1193,7 +1211,6 @@ class TestTrialChatTextApi:
         with (
             app.test_request_context("/", json={"text": "hello", "message_id": "message-1"}),
             patch.object(module.AudioService, "transcript_tts", transcript_tts),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api, TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}), account, trial_app_chat
@@ -1205,8 +1222,9 @@ class TestTrialChatTextApi:
             "message-1",
             account_id="u1",
         )
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
-    def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_app_config_broken(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1226,7 +1244,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_provider_not_support(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_provider_not_support(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1246,7 +1264,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_audio_too_large(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_audio_too_large(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1266,7 +1284,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_no_audio_uploaded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_no_audio_uploaded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1286,7 +1304,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_provider_not_init(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1302,7 +1320,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1318,7 +1336,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_model_not_support(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_model_not_support(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1334,7 +1352,7 @@ class TestTrialChatTextApi:
                     trial_app_chat,
                 )
 
-    def test_invoke_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_invoke_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1352,14 +1370,14 @@ class TestTrialChatTextApi:
 
 
 class TestTrialAppWorkflowTaskStopApi:
-    def test_not_workflow_app(self, app: Flask, trial_app_chat: MagicMock) -> None:
+    def test_not_workflow_app(self, app: Flask, trial_app_chat: App) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
 
         with app.test_request_context("/", json={"inputs": {}}):
             with pytest.raises(NotWorkflowAppError):
                 api.post(trial_app_chat, str(uuid4()))
 
-    def test_success(self, app: Flask, trial_app_workflow: MagicMock) -> None:
+    def test_success(self, app: Flask, trial_app_workflow: App) -> None:
         api = module.TrialAppWorkflowTaskStopApi()
 
         task_id = str(uuid4())
@@ -1376,7 +1394,6 @@ class TestTrialAppWorkflowTaskStopApi:
 
 
 class TestTrialSitApi:
-    @pytest.mark.parametrize("sqlite_session", [(Site,)], indirect=True)
     def test_no_site(
         self,
         app: Flask,
@@ -1384,14 +1401,12 @@ class TestTrialSitApi:
     ) -> None:
         api = module.TrialSitApi()
         method = unwrap(api.get)
-        app_model = MagicMock()
-        app_model.id = str(uuid4())
+        app_model = _app(app_id=str(uuid4()), mode=AppMode.CHAT)
 
         with app.test_request_context("/"):
             with pytest.raises(Forbidden):
                 method(api, sqlite_session, app_model)
 
-    @pytest.mark.parametrize("sqlite_session", [(Site,)], indirect=True)
     def test_archived_tenant(
         self,
         app: Flask,
@@ -1400,8 +1415,9 @@ class TestTrialSitApi:
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
-        app_model = SimpleNamespace(id=str(uuid4()), tenant_id="tenant-1")
-        tenant = SimpleNamespace(status=TenantStatus.ARCHIVE)
+        app_model = _app(app_id=str(uuid4()), mode=AppMode.CHAT)
+        tenant = Tenant(name="Archived Tenant", status=TenantStatus.ARCHIVE)
+        tenant.id = app_model.tenant_id
         _persist_site(sqlite_session, app_model.id)
 
         with (
@@ -1413,7 +1429,6 @@ class TestTrialSitApi:
 
         get_tenant_by_id.assert_called_once_with("tenant-1", session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(Site,)], indirect=True)
     def test_success(
         self,
         app: Flask,
@@ -1422,8 +1437,9 @@ class TestTrialSitApi:
         api = module.TrialSitApi()
         method = unwrap(api.get)
 
-        app_model = SimpleNamespace(id=str(uuid4()), tenant_id="tenant-1")
-        tenant = SimpleNamespace(status=TenantStatus.NORMAL)
+        app_model = _app(app_id=str(uuid4()), mode=AppMode.CHAT)
+        tenant = Tenant(name="Active Tenant", status=TenantStatus.NORMAL)
+        tenant.id = app_model.tenant_id
         site = _persist_site(sqlite_session, app_model.id)
 
         with (
@@ -1442,56 +1458,69 @@ class TestTrialSitApi:
 
 
 class TestAppWorkflowApi:
-    def test_uses_injected_session(self, unbound_session: Session) -> None:
+    def test_uses_injected_session(self, sqlite_session: Session) -> None:
         api = module.AppWorkflowApi()
         method = unwrap(api.get)
-        created_by = SimpleNamespace(id="account-1", name="Creator", email="creator@example.com")
-        workflow = SimpleNamespace(
-            id="workflow-1",
-            graph_dict={"nodes": []},
-            features_dict={},
-            unique_hash="workflow-hash",
-            version="draft",
-            marked_name="",
-            marked_comment="",
-            created_at=datetime(2024, 1, 1, tzinfo=UTC),
-            updated_at=datetime(2024, 1, 2, tzinfo=UTC),
-            environment_variables=[
-                SecretVariable(
-                    id="env-secret",
-                    name="api_key",
-                    value="plaintext-secret",
-                ),
-                LLMEnvironmentVariable(
-                    id="env-llm",
-                    name="shared_model",
-                    value={"provider": "provider", "name": "model", "mode": "chat"},
-                ),
-            ],
-            conversation_variables=[
-                StringVariable(
-                    id="conversation-variable-1",
-                    name="topic",
-                    value="sqlite",
-                    selector=["conversation", "topic"],
-                )
-            ],
-            rag_pipeline_variables=[],
-            get_created_by_account=MagicMock(return_value=created_by),
-            get_updated_by_account=MagicMock(return_value=None),
-            get_tool_published=MagicMock(return_value=True),
+        created_by = Account(name="Creator", email="creator@example.com")
+        created_by.id = "account-1"
+        app_model = _app(app_id="app-1", mode=AppMode.WORKFLOW)
+        with patch("models.workflow.encrypter.encrypt_token", return_value="encrypted-secret"):
+            workflow = Workflow.new(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="workflow",
+                version="draft",
+                graph='{"nodes": []}',
+                features="{}",
+                created_by=created_by.id,
+                environment_variables=[
+                    SecretVariable(
+                        id="env-secret",
+                        name="api_key",
+                        value="plaintext-secret",
+                    ),
+                    LLMEnvironmentVariable(
+                        id="env-llm",
+                        name="shared_model",
+                        value={"provider": "provider", "name": "model", "mode": "chat"},
+                    ),
+                ],
+                conversation_variables=[
+                    StringVariable(
+                        id="conversation-variable-1",
+                        name="topic",
+                        value="sqlite",
+                        selector=["conversation", "topic"],
+                    )
+                ],
+                rag_pipeline_variables=[],
+            )
+        workflow.id = "workflow-1"
+        workflow.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+        workflow.updated_at = datetime(2024, 1, 2, tzinfo=UTC)
+        app_model.workflow_id = workflow.id
+        tool_provider = WorkflowToolProvider(
+            name="trial-workflow",
+            label="Trial Workflow",
+            icon="icon",
+            app_id=app_model.id,
+            version="1.0.0",
+            user_id=created_by.id,
+            tenant_id=app_model.tenant_id,
+            description="Trial workflow provider",
+            parameter_configuration="[]",
         )
-        app_model = SimpleNamespace(
-            workflow_id="workflow-1",
-            workflow_with_session=MagicMock(return_value=workflow),
-        )
-        result = method(api, unbound_session, app_model)
+        sqlite_session.add_all([created_by, app_model, workflow, tool_provider])
+        sqlite_session.commit()
+
+        with patch("models.workflow.encrypter.decrypt_token", return_value="plaintext-secret"):
+            result = method(api, sqlite_session, app_model)
 
         assert result == {
             "id": "workflow-1",
             "graph": {"nodes": []},
             "features": {},
-            "hash": "workflow-hash",
+            "hash": workflow.unique_hash,
             "version": "draft",
             "marked_name": "",
             "marked_comment": "",
@@ -1507,7 +1536,7 @@ class TestAppWorkflowApi:
                     "id": "env-secret",
                     "name": "api_key",
                     "description": "",
-                    "selector": [],
+                    "selector": ["env", "api_key"],
                 },
                 {
                     "value_type": "llm",
@@ -1515,7 +1544,7 @@ class TestAppWorkflowApi:
                     "id": "env-llm",
                     "name": "shared_model",
                     "description": "",
-                    "selector": [],
+                    "selector": ["env", "shared_model"],
                 },
             ],
             "conversation_variables": [
@@ -1529,14 +1558,10 @@ class TestAppWorkflowApi:
             ],
             "rag_pipeline_variables": [],
         }
-        app_model.workflow_with_session.assert_called_once_with(session=unbound_session)
-        workflow.get_created_by_account.assert_called_once_with(session=unbound_session)
-        workflow.get_updated_by_account.assert_called_once_with(session=unbound_session)
-        workflow.get_tool_published.assert_called_once_with(session=unbound_session)
 
 
 class TestTrialChatAudioApiExceptionHandlers:
-    def test_provider_not_init(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_provider_not_init(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1559,7 +1584,7 @@ class TestTrialChatAudioApiExceptionHandlers:
                     trial_app_chat,
                 )
 
-    def test_quota_exceeded(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_quota_exceeded(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1582,7 +1607,7 @@ class TestTrialChatAudioApiExceptionHandlers:
                     trial_app_chat,
                 )
 
-    def test_invoke_error(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_invoke_error(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -1607,7 +1632,7 @@ class TestTrialChatAudioApiExceptionHandlers:
 
 
 class TestTrialChatTextApiExceptionHandlers:
-    def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_app_config_broken(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
@@ -1627,7 +1652,7 @@ class TestTrialChatTextApiExceptionHandlers:
                     trial_app_chat,
                 )
 
-    def test_unsupported_audio_type(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_unsupported_audio_type(self, app: Flask, trial_app_chat: App, account: Account) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 

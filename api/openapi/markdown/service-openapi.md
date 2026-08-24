@@ -265,7 +265,7 @@ Updates the question and answer of an existing annotation.
 ### [POST] /audio-to-text
 **Convert Audio to Text**
 
-Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
+Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
 
 #### Request Body
 
@@ -300,7 +300,7 @@ Convert text to speech.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly. |
+| 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |

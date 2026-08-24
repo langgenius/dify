@@ -5,7 +5,7 @@ import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // ==================== Imports (after mocks) ====================
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
 import MultipleToolSelector from '../index'

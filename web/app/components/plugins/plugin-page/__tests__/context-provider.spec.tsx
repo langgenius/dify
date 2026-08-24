@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { usePluginPageContext } from '../context'
 import { PluginPageContextProvider } from '../context-provider'

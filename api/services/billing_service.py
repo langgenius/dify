@@ -2,12 +2,10 @@ import json
 import logging
 import os
 from collections.abc import Sequence
-from typing import Any, Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 import httpx
-from pydantic import TypeAdapter
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
@@ -15,7 +13,12 @@ from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from models import Account, TenantAccountJoin, TenantAccountRole
+from models import Account
+from services.billing_portal_service import BillingPortalLink
+from services.errors.billing import (
+    BillingUpstreamInvalidResponseError,
+    BillingUpstreamUnavailableError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +31,23 @@ _http_client: httpx.Client = get_pooled_http_client(
 )
 
 
+EmailFreezeType = Literal["freeze", "email_domain_suspended"]
+
+
+class _BillingHTTPStatusError(ValueError):
+    def __init__(self, message: str, status_code: int):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 class SubscriptionPlan(TypedDict):
     """Tenant subscriptionplan information."""
 
     plan: str
     expiration_date: int
+
+
+_billing_portal_link_adapter = TypeAdapter(BillingPortalLink)
 
 
 class QuotaReserveResult(TypedDict):
@@ -184,14 +199,6 @@ class AccountNotificationDict(TypedDict, total=False):
     notifications: list[dict]
 
 
-class UpsertNotificationDict(TypedDict):
-    notification_id: str
-
-
-class BatchAddNotificationAccountsDict(TypedDict):
-    count: int
-
-
 class DismissNotificationDict(TypedDict):
     success: bool
 
@@ -207,6 +214,10 @@ class BillingService:
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
+
+    @classmethod
+    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
@@ -352,9 +363,11 @@ class BillingService:
         }
 
     @classmethod
-    def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):
+    def get_subscription(
+        cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
+    ) -> BillingPortalLink:
         params = {"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/subscription/payment-link", params=params)
+        return cls._send_billing_portal_request("/subscription/payment-link", params=params)
 
     @classmethod
     def get_model_provider_payment_link(cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str):
@@ -367,9 +380,9 @@ class BillingService:
         return cls._send_request("GET", "/model-provider/payment-link", params=params)
 
     @classmethod
-    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = ""):
+    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
         params = {"prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_request("GET", "/invoices", params=params)
+        return cls._send_billing_portal_request("/invoices", params=params)
 
     @classmethod
     def update_tenant_feature_plan_usage(
@@ -437,7 +450,10 @@ class BillingService:
         url = f"{base_url or cls.base_url}{endpoint}"
         response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
         if method == "GET" and response.status_code != httpx.codes.OK:
-            raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+            raise _BillingHTTPStatusError(
+                "Unable to retrieve billing information. Please try again later or contact support.",
+                response.status_code,
+            )
         if method == "PUT":
             if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
                 raise InternalServerError(
@@ -452,21 +468,28 @@ class BillingService:
             raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
         return response.json()
 
-    @staticmethod
-    def is_tenant_owner_or_admin(current_user: Account, *, session: Session):
-        tenant_id = current_user.current_tenant_id
-
-        join: TenantAccountJoin | None = session.scalar(
-            select(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
-            .limit(1)
-        )
-
-        if not join:
-            raise ValueError("Tenant account join not found")
-
-        if not TenantAccountRole.is_privileged_role(TenantAccountRole(join.role)):
-            raise ValueError("Only team owner or team admin can perform this action")
+    @classmethod
+    def _send_billing_portal_request(
+        cls,
+        endpoint: str,
+        *,
+        params: dict[str, str],
+    ) -> BillingPortalLink:
+        try:
+            response = cls._send_request("GET", endpoint, params=params)
+            return _billing_portal_link_adapter.validate_python(response)
+        except _BillingHTTPStatusError as error:
+            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
+                error.status_code >= 500
+            ):
+                raise BillingUpstreamUnavailableError from error
+            raise BillingUpstreamInvalidResponseError from error
+        except httpx.RequestError as error:
+            raise BillingUpstreamUnavailableError from error
+        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
+            raise BillingUpstreamInvalidResponseError from error
+        except ValueError as error:
+            raise RuntimeError("Unexpected billing service value error") from error
 
     @classmethod
     def delete_account(cls, account_id: str):
@@ -475,13 +498,26 @@ class BillingService:
         return cls._send_request("DELETE", "/account", params=params)
 
     @classmethod
-    def is_email_in_freeze(cls, email: str) -> bool:
+    def get_email_freeze_type(cls, email: str) -> EmailFreezeType | None:
         params = {"email": email}
         try:
             response = cls._send_request("GET", "/account/in-freeze", params=params)
-            return bool(response.get("data", False))
+            if not response.get("data", False):
+                return None
+
+            freeze_type = response.get("freeze_type") or response.get("freezeType")
+            if freeze_type in ("freeze", "email_domain_suspended"):
+                return freeze_type
+
+            # Keep compatibility with older billing services that only return
+            # the boolean `data` field.
+            return "freeze"
         except Exception:
-            return False
+            return None
+
+    @classmethod
+    def is_email_in_freeze(cls, email: str) -> bool:
+        return cls.get_email_freeze_type(email) is not None
 
     @classmethod
     def update_account_deletion_feedback(cls, email: str, feedback: str):
@@ -723,49 +759,6 @@ class BillingService:
           }
         """
         return cls._send_request("GET", "/notifications/active", params={"account_id": account_id})
-
-    @classmethod
-    def upsert_notification(
-        cls,
-        contents: list[LangContentDict],
-        frequency: str = "once",
-        status: str = "active",
-        notification_id: str | None = None,
-        start_time: str | None = None,
-        end_time: str | None = None,
-    ) -> UpsertNotificationDict:
-        """Create or update a notification.
-
-        contents: list of {"lang": str, "title": str, "subtitle": str, "body": str, "title_pic_url": str}
-        start_time / end_time: RFC3339 strings (e.g. "2026-03-01T00:00:00Z"), optional.
-        Returns {"notification_id": str}.
-        """
-        payload: dict[str, Any] = {
-            "contents": contents,
-            "frequency": frequency,
-            "status": status,
-        }
-        if notification_id:
-            payload["notification_id"] = notification_id
-        if start_time:
-            payload["start_time"] = start_time
-        if end_time:
-            payload["end_time"] = end_time
-        return cls._send_request("POST", "/notifications", json=payload)
-
-    @classmethod
-    def batch_add_notification_accounts(
-        cls, notification_id: str, account_ids: list[str]
-    ) -> BatchAddNotificationAccountsDict:
-        """Register target account IDs for a notification (max 1000 per call).
-
-        Returns {"count": int}.
-        """
-        return cls._send_request(
-            "POST",
-            f"/notifications/{notification_id}/accounts",
-            json={"account_ids": account_ids},
-        )
 
     @classmethod
     def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:

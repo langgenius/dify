@@ -193,7 +193,7 @@ const Editor: FC<Props> = ({
                       </button>
                     }
                   />
-                  <PopoverContent popupClassName="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary">
+                  <PopoverContent className="max-w-[300px] px-3 py-2 system-xs-regular text-text-tertiary">
                     {titleTooltip}
                   </PopoverContent>
                 </Popover>
@@ -238,7 +238,7 @@ const Editor: FC<Props> = ({
                           </button>
                         }
                       />
-                      <PopoverContent popupClassName="px-3 py-2 system-xs-regular text-text-tertiary">
+                      <PopoverContent className="px-3 py-2 system-xs-regular text-text-tertiary">
                         <div>
                           <div>{t(($) => $['common.enableJinja'], { ns: 'workflow' })}</div>
                           <a

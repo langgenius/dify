@@ -1,6 +1,6 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
 import {
@@ -326,6 +326,44 @@ describe('handleStream', () => {
 
       expect(onReasoning).toHaveBeenCalledWith(reasoningEvent)
       expect(onData).not.toHaveBeenCalled()
+    })
+
+    it('should pass the TTS MIME type through the stream boundary', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+      const onTTSChunk = vi.fn()
+      const ttsEvent = {
+        event: 'tts_message',
+        message_id: 'message-1',
+        audio: 'audio-chunk',
+        audio_type: 'audio/wav',
+      }
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(ttsEvent)}\n`),
+          })
+          .mockResolvedValueOnce({ done: true, value: undefined }),
+      }
+      const mockResponse = {
+        ok: true,
+        body: { getReader: () => mockReader },
+      } as unknown as Response
+      const interveningNoops = Array.from({ length: 18 }, () => undefined)
+
+      ;(handleStream as (...args: unknown[]) => void)(
+        mockResponse,
+        onData,
+        onCompleted,
+        ...interveningNoops,
+        onTTSChunk,
+      )
+
+      await waitFor(() => {
+        expect(onTTSChunk).toHaveBeenCalledWith('message-1', 'audio-chunk', 'audio/wav')
+      })
     })
 
     it('should complete with error when the stream reader rejects', async () => {

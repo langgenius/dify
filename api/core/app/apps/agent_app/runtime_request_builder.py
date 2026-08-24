@@ -29,6 +29,7 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.llm.model_access import resolve_model_context_window
 from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
@@ -129,6 +130,11 @@ class AgentAppRuntimeRequestBuilder:
         append_runtime_warnings(metadata, config_warnings)
         soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         knowledge_config = build_knowledge_layer_config(agent_soul)
+        context_window_tokens = resolve_model_context_window(
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+        )
         model_plugin_id, model_provider = normalize_plugin_daemon_provider_identity(
             ModelProviderID(agent_soul.model.model_provider),
             agent_soul.model.plugin_id,
@@ -141,6 +147,7 @@ class AgentAppRuntimeRequestBuilder:
                     model_provider=model_provider,
                     model=agent_soul.model.model,
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
+                    context_window_tokens=context_window_tokens,
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,

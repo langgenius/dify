@@ -923,8 +923,8 @@ class LBModelManager:
                         provider=self._provider,
                         credential_type=PluginCredentialType.MODEL,
                     )
-            except Exception as e:
-                logger.warning("Load balancing config %s failed policy compliance check: %s", config.id, str(e))
+            except Exception:
+                logger.warning("Load balancing config %s failed policy compliance check", config.id, exc_info=True)
                 cooldown_load_balancing_configs.append(config)
                 if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
                     # all configs are in cooldown or failed policy compliance

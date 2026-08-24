@@ -110,4 +110,48 @@ describe('AgentLogSourcePicker', () => {
     expect(workflowOption).toHaveAttribute('data-selected')
     expect(workflowOption.querySelector('.i-ri-check-line')).toBeInTheDocument()
   })
+
+  it('should show one named popup state and keep retry outside the listbox', async () => {
+    const user = userEvent.setup()
+    const onRetry = vi.fn()
+
+    render(
+      <AgentLogSourcePicker
+        value={[]}
+        groups={[]}
+        isLoading={false}
+        isError
+        onRetry={onRetry}
+        onChange={vi.fn()}
+      />,
+    )
+
+    await user.click(
+      screen.getByRole('combobox', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    )
+
+    const searchInput = screen.getByRole('combobox', {
+      name: 'agentV2.agentDetail.logs.filters.source.searchLabel',
+    })
+    const retryButton = screen.getByRole('button', { name: 'common.operation.retry' })
+
+    expect(
+      screen.getByRole('dialog', {
+        name: 'agentV2.agentDetail.logs.filters.source.label',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('agentV2.agentDetail.logs.filters.source.empty'),
+    ).not.toBeInTheDocument()
+    searchInput.focus()
+    expect(searchInput).toHaveFocus()
+
+    await user.tab()
+    expect(retryButton).toHaveFocus()
+    await user.click(retryButton)
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
 })

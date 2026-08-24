@@ -1,11 +1,13 @@
 import json
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -21,8 +23,9 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from models.enums import CreatorUserRole
-from models.model import StorageType, UploadFile
+from libs.datetime_utils import naive_utc_now
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.model import AppMode, Conversation, Message, StorageType, UploadFile
 
 # ==============================
 # Dummy Helper Classes
@@ -38,6 +41,35 @@ def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
     usage.completion_price = 0
     usage.total_price = 0
     return usage
+
+
+def _make_conversation(*, conversation_id: str = "conv1") -> Conversation:
+    return Conversation(
+        id=conversation_id,
+        app_id="app",
+        mode=AppMode.AGENT_CHAT,
+        name="Agent Conversation",
+        inputs={},
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _make_message(*, message_id: str = "m1", conversation_id: str = "conv1") -> Message:
+    return Message(
+        id=message_id,
+        app_id="app",
+        conversation_id=conversation_id,
+        inputs={},
+        query="query",
+        message={},
+        answer="",
+        status=MessageStatus.NORMAL,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        created_at=naive_utc_now(),
+    )
 
 
 class DummyMessage:
@@ -104,8 +136,8 @@ def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCal
     model_instance.model = "test-model"
     model_instance.model_name = "test-model"
 
-    message = MagicMock(id="msg1")
-    conversation = MagicMock(id="conv1")
+    message = _make_message(message_id="msg1")
+    conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
         tenant_id="tenant",
@@ -393,7 +425,7 @@ class TestBuildDatasetToolImageContents:
 
 class TestRunMethod:
     def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
         dummy_message = DummyMessage(content="hello")
         result = DummyResult(message=dummy_message, usage=build_usage())
 
@@ -409,24 +441,24 @@ class TestRunMethod:
         queue_calls = runner.queue_manager.publish.call_args_list
         assert any(call.args and call.args[0].__class__.__name__ == "QueueMessageEndEvent" for call in queue_calls)
 
-    def test_run_streaming_branch(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
-        message = MagicMock(id="m1")
+    def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
         runner.stream_tool_call = True
         events: list[str] = []
         session = runner.session
-        original_commit = session.commit
-        original_close = session.close
+        conversation = _make_conversation()
+        message = _make_message(conversation_id=conversation.id)
+        session.add_all([conversation, message])
+        session.commit()
 
-        def commit_session() -> None:
+        def record_commit(_session: Session) -> None:
             events.append("commit")
-            original_commit()
 
-        def close_session() -> None:
-            events.append("close")
-            original_close()
+        def record_detach(_session: Session, instance: object) -> None:
+            if instance is message:
+                events.append("close")
 
-        mocker.patch.object(session, "commit", side_effect=commit_session)
-        mocker.patch.object(session, "close", side_effect=close_session)
+        event.listen(session, "after_commit", record_commit)
+        event.listen(session, "persistent_to_detached", record_detach)
 
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
@@ -442,7 +474,7 @@ class TestRunMethod:
         assert len(outputs) == 1
 
     def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
         runner.stream_tool_call = True
 
         tool_call = MagicMock()
@@ -465,7 +497,7 @@ class TestRunMethod:
         assert len(outputs) >= 1
 
     def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
         content = [TextPromptMessageContent(data="hi")]
         dummy_message = DummyMessage(content=content)
         result = DummyResult(message=dummy_message, usage=build_usage())
@@ -477,7 +509,7 @@ class TestRunMethod:
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
     def test_run_streaming_tool_call_inputs_type_error(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
-        message = MagicMock(id="m1")
+        message = _make_message()
         runner.stream_tool_call = True
 
         tool_call = MagicMock()
@@ -505,7 +537,7 @@ class TestRunMethod:
         assert len(outputs) == 1
 
     def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
 
         tool_call = MagicMock()
         tool_call.id = "1"
@@ -523,7 +555,7 @@ class TestRunMethod:
         assert len(outputs) >= 1
 
     def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
-        message = MagicMock(id="m1")
+        message = _make_message()
 
         tool_call = MagicMock()
         tool_call.id = "1"
@@ -560,7 +592,7 @@ class TestRunMethod:
     def test_run_max_iteration_error(self, runner: FunctionCallAgentRunner):
         runner.app_config.agent.max_iteration = 0
 
-        message = MagicMock(id="m1")
+        message = _make_message()
 
         tool_call = MagicMock()
         tool_call.id = "1"

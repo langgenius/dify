@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "像已发布后用户体验到的那样运行 Agent。",
   "agentDetail.configure.preview.empty.title": "预览 {{name}}",
   "agentDetail.configure.preview.endUserAuth": "终端用户认证",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "本次 Agent 运行因达到模型请求次数上限而被终止。请重试，或把任务拆分成更小的步骤。",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "本次 Agent 运行因达到时长上限而被终止。请重试，或把任务拆分成更小的步骤。",
   "agentDetail.configure.preview.inputPlaceholder": "向 {{name}} 发送消息",
   "agentDetail.configure.preview.restart": "开启新对话",
@@ -382,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "例如：研究助理",
   "roster.createSuccess": "Agent 已创建。",
   "roster.dateTimeFormat": "YYYY-MM-DD HH:mm:ss",
-  "roster.deleteDialog.description": "此 Agent 将从 Agent 列表中移除。",
+  "roster.deleteDialog.description": "此操作将永久删除 {{name}}。其 Web 应用、API 访问及使用它的工作流将立即失效。",
   "roster.deleteDialog.title": "删除 {{name}}？",
   "roster.deleteFailed": "Agent 删除失败。",
   "roster.deleteSuccess": "Agent 已删除。",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "最后修改",
   "roster.sort.optionsLabel": "排序选项",
   "roster.sort.recentlyCreated": "最近创建",
+  "roster.title": "Agent",
   "roster.updateSuccess": "Agent 已更新。",
   "roster.usageStatus.draft": "草稿"
 }

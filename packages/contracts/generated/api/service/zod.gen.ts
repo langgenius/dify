@@ -3280,7 +3280,7 @@ export const zGetSiteResponse = zSite
 export const zPostTextToAudioBody = zTextToAudioPayloadWithUser
 
 /**
- * Returns the generated audio. Generator responses are streamed by the service as `audio/mpeg`; otherwise the provider output is returned directly.
+ * Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM.
  */
 export const zPostTextToAudioResponse = z.custom<Blob | File>(
   (value) => value instanceof Blob || value instanceof File,

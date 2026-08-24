@@ -3,8 +3,10 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from dify_agent.client import DifyAgentHTTPError, DifyAgentNotFoundError, DifyAgentTimeoutError
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -14,7 +16,11 @@ from models.agent import (
     AgentWorkingResourceStatus,
 )
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.errors import AgentBuildSandboxNotFoundError
+from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
+    AgentHomeSnapshotCreateFailedError,
+    AgentHomeSnapshotTooLargeError,
+)
 from services.agent.home_snapshot_service import AgentHomeSnapshotService, validate_home_snapshot_binding
 from services.agent.workspace_service import AgentWorkspaceService
 
@@ -37,6 +43,14 @@ def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
     client = MagicMock()
     client.create_home_snapshot_from_binding_sync.return_value = SimpleNamespace(snapshot_ref=snapshot_ref)
     return client
+
+
+def test_home_snapshot_client_outlasts_the_gateway_snapshot_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent.example")
+
+    client = AgentHomeSnapshotService._client()
+
+    assert client._timeout == 45.0
 
 
 def test_validate_home_snapshot_binding_accepts_default_home_without_ledger_lookup() -> None:
@@ -148,6 +162,42 @@ def test_home_snapshot_collection_database_failure_propagates(monkeypatch: pytes
     assert exc_info.value is error
 
 
+@pytest.mark.parametrize("snapshot_state", ["missing", "active"])
+@pytest.mark.parametrize("sqlite_session", [(AgentHomeSnapshot,)], indirect=True)
+def test_home_snapshot_collection_non_retired_target_is_idempotent_noop(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    snapshot_state: str,
+) -> None:
+    if snapshot_state == "active":
+        sqlite_session.add(
+            AgentHomeSnapshot(
+                id="home-1",
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                snapshot_ref="snapshot-ref-1",
+                status=AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+        sqlite_session.commit()
+    delete = MagicMock()
+    commit = MagicMock(wraps=sqlite_session.commit)
+    monkeypatch.setattr(
+        "services.agent.home_snapshot_service.session_factory.create_session",
+        lambda: nullcontext(sqlite_session),
+    )
+    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+    monkeypatch.setattr(sqlite_session, "commit", commit)
+
+    AgentHomeSnapshotService.collect_retired_home_snapshot(
+        tenant_id="tenant-1",
+        home_snapshot_id="home-1",
+    )
+
+    delete.assert_not_called()
+    commit.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "sqlite_session",
     [(AgentHomeSnapshot, AgentConfigDraft, AgentConfigSnapshot)],
@@ -190,6 +240,50 @@ def test_home_snapshot_collection_backend_failure_propagates_and_preserves_retir
     [(AgentHomeSnapshot, AgentConfigDraft, AgentConfigSnapshot)],
     indirect=True,
 )
+def test_home_snapshot_collection_ignores_config_references(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    snapshot = AgentHomeSnapshot(
+        id="home-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        snapshot_ref="snapshot-ref-1",
+        status=AgentWorkingResourceStatus.RETIRED,
+    )
+    draft = _build_draft(home_snapshot_id=snapshot.id)
+    config_snapshot = AgentConfigSnapshot(
+        id="config-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        home_snapshot_id=snapshot.id,
+        config_snapshot=AgentSoulConfig(),
+    )
+    sqlite_session.add_all([snapshot, draft, config_snapshot])
+    sqlite_session.commit()
+    delete = MagicMock()
+    monkeypatch.setattr(
+        "services.agent.home_snapshot_service.session_factory.create_session",
+        lambda: nullcontext(sqlite_session),
+    )
+    monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete)
+
+    AgentHomeSnapshotService.collect_retired_home_snapshot(
+        tenant_id="tenant-1",
+        home_snapshot_id=snapshot.id,
+    )
+
+    delete.assert_called_once_with(snapshot_ref=snapshot.snapshot_ref)
+    assert sqlite_session.get(AgentHomeSnapshot, snapshot.id) is None
+    assert sqlite_session.get(AgentConfigDraft, draft.id) is not None
+    assert sqlite_session.get(AgentConfigSnapshot, config_snapshot.id) is not None
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [(AgentHomeSnapshot, AgentConfigDraft, AgentConfigSnapshot)],
+    indirect=True,
+)
 def test_home_snapshot_collection_final_delete_failure_propagates(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -220,3 +314,93 @@ def test_home_snapshot_collection_final_delete_failure_propagates(
 
     assert exc_info.value is error
     delete.assert_called_once_with(snapshot_ref="snapshot-ref-1")
+
+
+def _apply_with_client_error(monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
+    session = MagicMock()
+    session.scalar.return_value = SimpleNamespace(app_id="app-1", backing_app_id=None)
+    binding = SimpleNamespace(
+        backend_binding_ref="binding-ref-1",
+        agent_id="agent-1",
+        base_home_snapshot_id="home-old",
+        agent_config_version_id="build-1",
+        agent_config_version_kind="build_draft",
+    )
+    client = MagicMock()
+    client.create_home_snapshot_from_binding_sync.side_effect = error
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+
+    AgentHomeSnapshotService.create_for_build_apply(session=session, build_draft=_build_draft())
+
+
+def test_build_apply_surfaces_the_backend_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentHTTPError(
+        status_code=502,
+        detail={
+            "code": "home_snapshot_create_failed",
+            "message": "500 snapshot_save_failed: object store unavailable",
+        },
+    )
+
+    with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_create_failed",
+        "message": "500 snapshot_save_failed: object store unavailable",
+        "status": 502,
+    }
+
+
+def test_build_apply_maps_a_too_large_snapshot_to_413(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentHTTPError(
+        status_code=413,
+        detail={
+            "code": "home_snapshot_too_large",
+            "message": "home snapshot exceeds the configured limit of 67108864 bytes",
+        },
+    )
+
+    with pytest.raises(AgentHomeSnapshotTooLargeError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_too_large",
+        "message": "home snapshot exceeds the configured limit of 67108864 bytes",
+        "status": 413,
+    }
+
+
+def test_build_apply_surfaces_a_non_dict_backend_detail(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentHTTPError(status_code=500, detail="upstream exploded")
+
+    with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_create_failed",
+        "message": "upstream exploded",
+        "status": 502,
+    }
+
+
+def test_build_apply_surfaces_a_transport_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentTimeoutError("read timed out after 45.0s")
+
+    with pytest.raises(AgentHomeSnapshotCreateFailedError) as excinfo:
+        _apply_with_client_error(monkeypatch, error)
+
+    assert excinfo.value.data == {
+        "code": "agent_home_snapshot_create_failed",
+        "message": "read timed out after 45.0s",
+        "status": 502,
+    }
+
+
+def test_build_apply_still_maps_404_to_a_missing_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = DifyAgentNotFoundError(status_code=404, detail={"code": "binding_lost", "message": "gone"})
+
+    with pytest.raises(AgentBuildSandboxNotFoundError):
+        _apply_with_client_error(monkeypatch, error)

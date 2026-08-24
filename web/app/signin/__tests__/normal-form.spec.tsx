@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import NormalForm from '../normal-form'

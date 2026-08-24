@@ -5,8 +5,8 @@ import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -60,6 +60,7 @@ function AddAccessSubjectPopover({
   }, [])
 
   const addExceptionLabel = t(($) => $['accessRule.addException'], { ns: 'permission' })
+  const addMembersTitle = t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })
   const addLabel = t(($) => $['operation.add'], { ns: 'common' })
   const addedLabel = t(($) => $['operation.added'], { ns: 'common' })
 
@@ -76,29 +77,28 @@ function AddAccessSubjectPopover({
       <PopoverContent
         placement="bottom-end"
         sideOffset={8}
-        popupClassName="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
-        popupProps={{
-          role: 'dialog',
-          'aria-label': t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' }),
-        }}
+        className="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
       >
+        <PopoverTitle className="sr-only">{addMembersTitle}</PopoverTitle>
         <div className="p-2 pb-1">
-          <div className="relative">
-            <span
-              className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              aria-hidden="true"
-            />
-            <Input
+          <InputGroup>
+            <InputGroupInput
               type="search"
               aria-label={t(($) => $['operation.search'], { ns: 'common' })}
               value={searchValue}
               placeholder={t(($) => $['placeholder.search'], { ns: 'common' })}
-              className="h-8 ps-7 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+              className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               onValueChange={setSearchValue}
               autoComplete="off"
               enterKeyHint="search"
             />
-          </div>
+            <InputGroupAddon className="ps-1.75 pe-1.25">
+              <span
+                className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                aria-hidden="true"
+              />
+            </InputGroupAddon>
+          </InputGroup>
         </div>
         {isLoading ? (
           <div className="flex h-20 items-center justify-center p-1">

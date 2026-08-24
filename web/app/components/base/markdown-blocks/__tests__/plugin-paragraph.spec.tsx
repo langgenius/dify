@@ -1,7 +1,7 @@
 import type { ExtraProps } from 'streamdown'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
 import { PluginParagraph } from '../plugin-paragraph'
 import { getMarkdownImageURL, hasImageChild } from '../utils'

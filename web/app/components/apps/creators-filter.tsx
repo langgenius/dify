@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useMembers } from '@/service/use-common'
@@ -38,6 +38,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   })
   const { data: membersData } = useMembers()
   const [keywords, setKeywords] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
     const members = membersData?.accounts ?? []
@@ -160,7 +161,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
           </>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" popupClassName="w-[280px] p-0">
+      <DropdownMenuContent placement="bottom-start" className="w-[280px] p-0">
         <div className="flex items-center gap-1 p-2 pb-1">
           <div className="relative min-w-0 grow">
             <span
@@ -168,7 +169,16 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               className="pointer-events-none absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
             />
             <Input
-              className={cn('pl-6.5', keywords && 'pr-6.5')}
+              ref={searchInputRef}
+              type="search"
+              name="creator-query"
+              autoComplete="off"
+              enterKeyHint="search"
+              aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+              className={cn(
+                'pl-6.5 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
+                keywords && 'pr-6.5',
+              )}
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
               placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
@@ -177,8 +187,11 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
               <button
                 type="button"
                 aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center text-components-input-text-placeholder hover:text-components-input-text-filled"
-                onClick={() => setKeywords('')}
+                className="absolute top-1/2 right-2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-components-input-text-placeholder outline-hidden hover:text-components-input-text-filled focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                onClick={() => {
+                  setKeywords('')
+                  searchInputRef.current?.focus()
+                }}
               >
                 <span aria-hidden className="i-ri-close-circle-fill size-4" />
               </button>

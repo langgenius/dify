@@ -65,7 +65,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
           placement="top-end"
           sideOffset={4}
           alignOffset={-148}
-          popupClassName="border-none bg-transparent shadow-none"
+          className="border-none bg-transparent shadow-none"
         >
           <div className="w-90 rounded-xl bg-white shadow-lg">
             <div className="p-4">

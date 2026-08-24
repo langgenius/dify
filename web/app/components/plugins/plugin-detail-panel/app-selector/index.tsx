@@ -1,7 +1,6 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { Placement } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -24,18 +23,11 @@ type AppSelectorProps = {
   value?: AppSelectorValue
   scope?: string
   disabled?: boolean
-  placement?: Placement
   offset?: number
   onSelect: (app: AppSelectorValue) => void
 }
 
-export function AppSelector({
-  value,
-  disabled,
-  placement = 'bottom',
-  offset = 4,
-  onSelect,
-}: AppSelectorProps) {
+export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelectorProps) {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
@@ -130,16 +122,18 @@ export function AppSelector({
           <button
             {...props}
             type="button"
-            className={cn('block w-full border-0 bg-transparent p-0 text-left', props.className)}
+            className={cn(
+              'block w-full rounded-lg border-0 bg-transparent p-0 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+              props.className,
+            )}
           >
             <AppTrigger open={state.open} appDetail={currentAppInfo} />
           </button>
         )}
       />
       <PopoverContent
-        placement={placement}
         sideOffset={offset}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="relative min-h-20 w-97.25 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="flex flex-col gap-1 px-4 py-3">

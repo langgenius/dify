@@ -6,7 +6,7 @@ import type { StepByStepTourTaskId } from '@/app/components/step-by-step-tour/ty
 import type { TrackCreateAppParams } from '@/utils/create-app-tracking'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -111,19 +111,8 @@ export function HomeContent() {
   )
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
 
   const [currCategory, setCurrCategory] = useQueryState('category', {
     defaultValue: allCategoriesEn,
@@ -360,7 +349,6 @@ export function HomeContent() {
           input: { params: { app_id: appId } },
         }),
       )
-      if (!appDetail) throw new Error('Recommended app not found')
 
       const { export_data, mode } = appDetail
       currentCreateAppModeRef.current = mode
@@ -437,7 +425,7 @@ export function HomeContent() {
           currCategory={activeCategory}
           keywords={keywords}
           onCategoryChange={setCurrCategory}
-          onKeywordsChange={handleKeywordsChange}
+          onKeywordsChange={setKeywords}
         />
 
         <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>

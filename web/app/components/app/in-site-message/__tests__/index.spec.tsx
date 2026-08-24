@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import type { InSiteMessageActionItem } from '../index'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import InSiteMessage from '../index'
 
 vi.mock('@/app/components/base/amplitude', () => ({

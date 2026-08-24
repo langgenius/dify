@@ -1,5 +1,5 @@
 import type { Plugin } from '@/app/components/plugins/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
