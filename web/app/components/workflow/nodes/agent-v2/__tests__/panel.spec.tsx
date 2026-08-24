@@ -3,6 +3,7 @@ import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
@@ -1230,7 +1231,8 @@ describe('agent/panel', () => {
     expect(screen.queryByText('Clarification Drafter')).not.toBeInTheDocument()
   })
 
-  it('updates agent task and opens prompt insertion shortcuts', () => {
+  it('updates agent task and opens prompt insertion shortcuts', async () => {
+    const user = userEvent.setup()
     render(
       <AgentV2Panel
         id="agent-node"
@@ -1267,9 +1269,9 @@ describe('agent/panel', () => {
       screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' }),
     ).not.toBeInTheDocument()
 
-    fireEvent.focus(editor)
+    await user.click(editor)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
+    await user.click(screen.getByRole('button', { name: 'workflow.nodes.agent.task.insert' }))
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
     expect(
