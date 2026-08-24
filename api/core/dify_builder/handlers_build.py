@@ -34,14 +34,20 @@ from core.dify_builder.contract import (
     Trace,
     TraceStep,
 )
-from core.dify_builder.handlers_fix import action_string, append_card, perform_revert
+from core.dify_builder.handlers_fix import (
+    action_kind,
+    action_string,
+    append_card,
+    build_change_set,
+    emit_canvas,
+    merge_known_keys,
+    mint_checkpoint,
+    perform_revert,
+)
 from core.dify_builder.models import (
-    ChangeSet,
-    Checkpoint,
     ConversationItem,
     DifyBuilderContext,
     Session,
-    Snapshot,
     Turn,
 )
 from core.dify_builder.runner import Env, Handler, StepResult
@@ -62,13 +68,6 @@ __all__ = [
     "handle_review",
     "handle_test_and_repair",
 ]
-
-
-def _emit_canvas(env: Env, event: str, **extra) -> None:
-    """Fire a granular canvas event iff the caller wired ``env.emit_canvas``
-    (opt-in; None is a no-op, mirroring how apply_repair treats on_canvas)."""
-    if env.emit_canvas is not None:
-        env.emit_canvas({"event": event, **extra})
 
 
 def _emit_completion(fc: DifyBuilderContext) -> list[ConversationItem]:
@@ -95,14 +94,14 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     """(waiting) Entry state. On ``send_goal`` reset the canvas, analyze the
     goal into requirements, and transition to build.goal_analysis emitting its
     form + challenge cards."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "send_goal":
         return StepResult(next=PcState.BUILD_CAPABILITY_CHECK, context=fc)
 
     text, ok = action_string(turn, "text")
     if ok and text:
         fc.goal_text = text
-    _emit_canvas(env, "reset_build_canvas")
+    emit_canvas(env, "reset_build_canvas")
     fc.requirements = env.agent.analyze_goal(fc.goal_text)
 
     form_items = append_card(
@@ -145,16 +144,12 @@ _REQUIREMENT_KEYS = ("report_types", "audience", "currency", "metrics", "output"
 def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``submit_requirements`` merge the form payload, propose
     plan v1, and transition to build.initial_plan emitting the plan card."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "submit_requirements":
         return StepResult(next=PcState.BUILD_GOAL_ANALYSIS, context=fc)
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
-        merged = dict(fc.requirements)
-        for key in _REQUIREMENT_KEYS:
-            if key in turn.action.payload:
-                merged[key] = turn.action.payload[key]
-        fc.requirements = merged
+        fc.requirements = merge_known_keys(fc.requirements, turn.action.payload, _REQUIREMENT_KEYS)
 
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
     fc.plan_version_tag = "v1"
@@ -188,7 +183,7 @@ def handle_goal_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
 def handle_initial_plan(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) On ``find_resources`` discover the (canned, ready) resource
     and transition to build.resource_recommendation."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "find_resources":
         return StepResult(next=PcState.BUILD_INITIAL_PLAN, context=fc)
 
@@ -225,7 +220,7 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     snapshot the pre-build graph as the restore checkpoint (self-minted id so
     the CheckpointCard shown at plan_approval carries a real id -- mirrors
     handle_verify's self-minted run id). Transition to build.plan_approval."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "confirm_resources":
         return StepResult(next=PcState.BUILD_RESOURCE_RECOMMENDATION, context=fc)
 
@@ -245,16 +240,12 @@ def handle_resource_recommendation(env: Env, turn: Turn, s: Session, fc: DifyBui
     fc.plan_version_tag = "v2"
 
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
-    checkpoint = Checkpoint(id=str(uuid.uuid4()), session_id=s.id, state=PcState.BUILD_PLAN_APPROVAL)
-    env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
-    fc.checkpoint_id = checkpoint.id
-    fc.last_snapshot_hash = graph_hash
-    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
+    checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.BUILD_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text="Confirmed resources"))
     plan_items = append_card(fc, PlanCard(title="Build plan", version_tag="v2", items=list(fc.plan_items)))
     checkpoint_items = append_card(
-        fc, CheckpointCard(checkpoint_id=checkpoint.id, label="Pre-build checkpoint", created_at="")
+        fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-build checkpoint", created_at="")
     )
     turn_items = append_card(
         fc,
@@ -303,11 +294,11 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     (nothing exists yet); a re-approve after a loop-back filters everything
     out (it all already exists), so apply_repair([]) is a no-op rather than
     raising on a colliding node id."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "approve_repair":
         return StepResult(next=PcState.BUILD_PLAN_APPROVAL, context=fc)
 
-    _emit_canvas(env, "create_checkpoint")
+    emit_canvas(env, "create_checkpoint")
     intents = env.agent.build_nodes(list(fc.plan_items))
 
     current_graph, _current_hash = env.dify.read_graph(s.app_id, turn.actor)
@@ -331,9 +322,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         for intent in intents
         if intent.op == "create_node" and isinstance(intent.args.get("node_id"), str)
     ]
-    changes = list(result.changes) if result.changes else list(result.changed_nodes)
-    scope = result.scope or "structure"
-    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "graph built")
+    changes, scope, fc.change_set = build_change_set(result, default_scope="structure", fallback_diff="graph built")
 
     change_set_items = append_card(
         fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
@@ -362,13 +351,13 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
     ``revert`` (resolved to ``undo``) -> build.reverted: restores the pre-build
     draft from the checkpoint and invalidates the approvals made since it (via
     perform_revert)."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.BUILD_REVERTED, context=fc, items=items)
     if kind == "run_test":
-        _emit_canvas(env, "start_test_run")
+        emit_canvas(env, "start_test_run")
         items = append_card(
             fc,
             AssistantTurnItem(
@@ -388,7 +377,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     real set_node_config fix via apply_repair -> retested green. Emits the
     error/change_set/test_result plus the review summary, transitions to
     build.review. No live run_draft (spec: canned test_and_repair)."""
-    _emit_canvas(env, "mark_test_error")
+    emit_canvas(env, "mark_test_error")
     error_items = append_card(
         fc,
         ErrorCard(
@@ -403,14 +392,12 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     result = env.dify.apply_repair(s.app_id, turn.actor, repair_intents, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
-    changes = list(result.changes) if result.changes else list(result.changed_nodes)
-    scope = result.scope or "configuration"
-    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "config edit")
+    changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
     change_set_items = append_card(
         fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
     )
 
-    _emit_canvas(env, "mark_test_success")
+    emit_canvas(env, "mark_test_success")
     test_result_items = append_card(
         fc,
         TestResultCard(
@@ -422,7 +409,7 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         ),
     )
 
-    _emit_canvas(env, "mark_review_ready")
+    emit_canvas(env, "mark_review_ready")
     summary_items = append_card(
         fc,
         SummaryCard(
@@ -458,16 +445,16 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     (resolved to re_fix) -> build.initial_plan (re-plan); revert (undo) ->
     build.reverted: restores the pre-build draft from the checkpoint and
     invalidates the approvals made since it (via perform_revert)."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "publish_workflow":
         items = append_card(fc, DecisionItem(text="Chose to publish"))
         return StepResult(next=PcState.BUILD_PUBLISH, context=fc, items=items)
     if kind == "keep_draft":
-        _emit_canvas(env, "cancel_publish")
+        emit_canvas(env, "cancel_publish")
         items = append_card(fc, DecisionItem(text="Kept the draft"))
         return StepResult(next=PcState.BUILD_GOVERNANCE_FEEDBACK, context=fc, items=items)
     if kind == "re_fix":  # continue_adjusting
-        _emit_canvas(env, "cancel_publish")
+        emit_canvas(env, "cancel_publish")
         fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
         fc.plan_version_tag = "v1"
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
@@ -498,7 +485,7 @@ def handle_publish(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> 
     """(working, auto) Publish the built workflow, emit the PublishCard, and
     auto-advance to build.governance_feedback."""
     env.dify.publish(s.app_id, turn.actor)
-    _emit_canvas(env, "publish_workflow")
+    emit_canvas(env, "publish_workflow")
     items = append_card(fc, PublishCard(version="1.0", badge="live"))
     return StepResult(next=PcState.BUILD_GOVERNANCE_FEEDBACK, context=fc, items=items)
 
@@ -530,7 +517,7 @@ def handle_await_learning(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     """(waiting) Resolve the ask-policy skill-learning prompt. accept_learning
     -> learn + accepted decision; anything else (skip_learning / absent) ->
     skipped. Either way emit the completion summary and reach build.complete."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "accept_learning":
         descriptor = env.agent.learn_from_build(
             fc.goal_text, dict(fc.requirements), list(fc.plan_items), list(fc.built_node_ids)
@@ -546,7 +533,7 @@ def handle_await_learning(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
 def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
     re-proposes plan v1 and returns to build.initial_plan."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "re_fix":
         return StepResult(next=PcState.BUILD_REVERTED, context=fc)
     fc.plan_items = env.agent.propose_plan_v1(fc.requirements)
