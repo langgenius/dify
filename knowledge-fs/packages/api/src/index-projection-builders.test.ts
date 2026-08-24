@@ -536,6 +536,78 @@ describe("index projection builders", () => {
     });
   });
 
+  it("skips FTS projections for nodes without searchable text", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createFtsProjectionBuilder({
+      maxBatchSize: 2,
+      projections: repository,
+    });
+    const searchableNode = knowledgeNode();
+    const punctuationNode = knowledgeNode({
+      endOffset: 14,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a01",
+      metadata: { chunkIndex: 1 },
+      sourceLocation: { endOffset: 14, sectionPath: ["Intro"], startOffset: 12 },
+      startOffset: 12,
+      text: "**",
+    });
+
+    const projections = await builder.build({
+      nodes: [searchableNode, punctuationNode],
+      projectionVersion: 1,
+    });
+
+    expect(projections).toHaveLength(1);
+    expect(projections[0]?.nodeId).toBe(searchableNode.id);
+    expect(created).toHaveLength(1);
+    expect(created[0]).toHaveLength(1);
+  });
+
+  it("does not persist an FTS batch when no node has searchable text", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createFtsProjectionBuilder({
+      maxBatchSize: 1,
+      projections: repository,
+    });
+
+    await expect(
+      builder.build({
+        nodes: [knowledgeNode({ text: "**" })],
+        projectionVersion: 1,
+      }),
+    ).resolves.toEqual([]);
+    expect(created).toEqual([]);
+  });
+
+  it("reuses generation-scoped FTS projections while consistently skipping unsearchable nodes", async () => {
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createFtsProjectionBuilder({
+      maxBatchSize: 2,
+      projections: repository,
+    });
+    const searchableNode = knowledgeNode();
+    const punctuationNode = knowledgeNode({
+      endOffset: 14,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8a01",
+      metadata: { chunkIndex: 1 },
+      sourceLocation: { endOffset: 14, sectionPath: ["Intro"], startOffset: 12 },
+      startOffset: 12,
+      text: "**",
+    });
+    const input = {
+      nodes: [searchableNode, punctuationNode],
+      projectionVersion: 1,
+      publicationGenerationId: PUBLICATION_GENERATION_A,
+    };
+
+    const first = await builder.build(input);
+    const retry = await builder.build(input);
+
+    expect(first).toHaveLength(1);
+    expect(retry).toEqual(first);
+    expect(created).toHaveLength(1);
+  });
+
   it("adds multimodal linkage metadata to dense and FTS projections", async () => {
     const imageNode = knowledgeNode({
       kind: "image",

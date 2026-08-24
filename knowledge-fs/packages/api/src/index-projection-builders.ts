@@ -497,35 +497,46 @@ export function createFtsProjectionBuilder({
       }
 
       const parsedNodes = nodes.map((node) => cloneKnowledgeNode(KnowledgeNodeSchema.parse(node)));
-      const ftsProjections = parsedNodes.map((node) =>
-        IndexProjectionSchema.parse({
-          id:
-            generateId?.() ??
-            deterministicChildId(
-              node.id,
-              generationScopedProjectionIdSeed(
-                `projection:fts:${projectionVersion}:database-fts@1`,
-                generationId,
+      const ftsProjections = parsedNodes.flatMap((node) => {
+        const ftsText = normalizeMixedLanguageFtsText(node.text);
+        if (!ftsText) {
+          return [];
+        }
+
+        return [
+          IndexProjectionSchema.parse({
+            id:
+              generateId?.() ??
+              deterministicChildId(
+                node.id,
+                generationScopedProjectionIdSeed(
+                  `projection:fts:${projectionVersion}:database-fts@1`,
+                  generationId,
+                ),
               ),
-            ),
-          knowledgeSpaceId: node.knowledgeSpaceId,
-          metadata: {
-            artifactHash: node.artifactHash,
-            documentAssetId: node.documentAssetId,
-            ftsLanguageStrategy: "mixed-cjk-latin-v1",
-            ftsText: normalizeMixedLanguageFtsText(node.text),
-            ...multimodalProjectionMetadata(node),
-            parseArtifactId: node.parseArtifactId,
-            parser: "database-fts",
-          },
-          model: "database-fts@1",
-          nodeId: node.id,
-          projectionVersion,
-          ...(generationId ? { publicationGenerationId: generationId } : {}),
-          status: projectionStatus,
-          type: "fts",
-        }),
-      );
+            knowledgeSpaceId: node.knowledgeSpaceId,
+            metadata: {
+              artifactHash: node.artifactHash,
+              documentAssetId: node.documentAssetId,
+              ftsLanguageStrategy: "mixed-cjk-latin-v1",
+              ftsText,
+              ...multimodalProjectionMetadata(node),
+              parseArtifactId: node.parseArtifactId,
+              parser: "database-fts",
+            },
+            model: "database-fts@1",
+            nodeId: node.id,
+            projectionVersion,
+            ...(generationId ? { publicationGenerationId: generationId } : {}),
+            status: projectionStatus,
+            type: "fts",
+          }),
+        ];
+      });
+
+      if (ftsProjections.length === 0) {
+        return [];
+      }
 
       const getManyProjections = projections.getMany;
       if (generationId && !generateId && getManyProjections) {
@@ -568,9 +579,10 @@ export function createFtsProjectionBuilder({
         const createdByNodeId = new Map(
           created.map((projection) => [projection.nodeId, projection]),
         );
-        return parsedNodes.map((node) =>
+        return ftsProjections.map((projection) =>
           cloneIndexProjection(
-            reusableByNodeId.get(node.id) ?? requiredProjection(createdByNodeId, node.id),
+            reusableByNodeId.get(projection.nodeId) ??
+              requiredProjection(createdByNodeId, projection.nodeId),
           ),
         );
       }
