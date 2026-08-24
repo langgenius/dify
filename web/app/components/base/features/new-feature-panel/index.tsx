@@ -26,6 +26,7 @@ type Props = Readonly<{
   onClose: () => void
   inWorkflow?: boolean
   showFileUpload?: boolean
+  fileUploadExtraContent?: ReactNode
   showModeration?: boolean
   showAnnotationReply?: boolean
   promptVariables?: PromptVariable[]
@@ -44,6 +45,7 @@ const NewFeaturePanel = ({
   onClose,
   inWorkflow = true,
   showFileUpload = true,
+  fileUploadExtraContent,
   showModeration = true,
   showAnnotationReply = true,
   promptVariables,
@@ -99,7 +101,12 @@ const NewFeaturePanel = ({
           {isChatMode && speech2textDefaultModel && (
             <SpeechToText disabled={disabled} onChange={onChange} />
           )}
-          {showFileUpload && isChatMode && <FileUpload disabled={disabled} onChange={onChange} />}
+          {showFileUpload && isChatMode && (
+            <>
+              <FileUpload disabled={disabled} onChange={onChange} />
+              {fileUploadExtraContent}
+            </>
+          )}
           {showFileUpload && !isChatMode && <ImageUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && <Citation disabled={disabled} onChange={onChange} />}
           {showModeration && (isChatMode || !inWorkflow) && (

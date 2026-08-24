@@ -6,11 +6,15 @@ import type {
   FileType,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { Features } from '@/app/components/base/features/types'
+import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FeaturesProvider } from '@/app/components/base/features'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { Infotip } from '@/app/components/base/infotip'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useSetAppFeatures } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { Resolution, TransferMethod } from '@/types/app'
 
@@ -18,7 +22,14 @@ type AgentChatFeaturesPanelProps = {
   appFeatures?: AgentSoulAppFeaturesConfig
   disabled?: boolean
   show: boolean
+  supportsVision: boolean | undefined
   onClose: () => void
+}
+
+type AgentVisionSettingsProps = {
+  disabled?: boolean
+  onChange: () => void
+  supportsVision: boolean | undefined
 }
 
 const defaultFeatureState: Features = {
@@ -130,10 +141,128 @@ function toAppFeatures(
   }
 }
 
+function isImageUploadConfigured(file: Features['file']) {
+  if (!file?.enabled) return false
+
+  return file.allowed_file_types !== undefined
+    ? file.allowed_file_types.includes(SupportUploadFileTypes.image)
+    : !!file.image?.enabled
+}
+
+function AgentVisionSettings({ disabled, onChange, supportsVision }: AgentVisionSettingsProps) {
+  const { t } = useTranslation()
+  const file = useFeatures((state) => state.features.file)
+  const featuresStore = useFeaturesStore()
+  const imageUploadConfigured = isImageUploadConfigured(file)
+
+  const handleResolutionChange = useCallback(
+    (detail: Resolution) => {
+      if (disabled || !featuresStore) return
+
+      const { features, setFeatures } = featuresStore.getState()
+      const nextFeatures = produce(features, (draft) => {
+        if (!draft.file) return
+
+        draft.file.image = {
+          ...draft.file.image,
+          detail,
+        }
+      })
+
+      setFeatures(nextFeatures)
+      onChange()
+    },
+    [disabled, featuresStore, onChange],
+  )
+
+  if (!imageUploadConfigured || supportsVision === undefined) return null
+
+  if (!supportsVision) {
+    return (
+      <div
+        role="status"
+        className="mt-1 flex items-start gap-2 rounded-lg border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover px-3 py-2.5"
+      >
+        <span
+          aria-hidden="true"
+          className="mt-0.5 i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+        />
+        <div className="system-xs-regular text-text-warning">
+          {t(($) => $['vision.onlySupportVisionModelTip'], { ns: 'appDebug' })}
+        </div>
+      </div>
+    )
+  }
+
+  const resolution = file?.image?.detail ?? Resolution.high
+
+  return (
+    <div className="mt-1 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
+      <div className="mb-2 flex items-center gap-1">
+        <div className="system-xs-medium-uppercase text-text-tertiary">
+          {t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+        </div>
+        <Infotip
+          aria-label={t(($) => $['vision.visionSettings.resolutionTooltip'], {
+            ns: 'appDebug',
+          })}
+          popupClassName="w-[180px]"
+        >
+          {t(($) => $['vision.visionSettings.resolutionTooltip'], { ns: 'appDebug' })
+            .split('\n')
+            .map((item) => (
+              <div key={item}>{item}</div>
+            ))}
+        </Infotip>
+      </div>
+      <div
+        aria-label={t(($) => $['vision.visionSettings.resolution'], { ns: 'appDebug' })}
+        className="flex items-center gap-1"
+        role="radiogroup"
+      >
+        {[
+          {
+            detail: Resolution.high,
+            title: t(($) => $['vision.visionSettings.high'], { ns: 'appDebug' }),
+          },
+          {
+            detail: Resolution.low,
+            title: t(($) => $['vision.visionSettings.low'], { ns: 'appDebug' }),
+          },
+        ].map(({ detail, title }) => (
+          <div
+            key={detail}
+            aria-checked={resolution === detail}
+            aria-disabled={disabled}
+            className="grow outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              if (resolution === detail) return
+              handleResolutionChange(detail)
+            }}
+            role="radio"
+            tabIndex={disabled ? -1 : 0}
+          >
+            <OptionCard
+              className="w-full"
+              title={title}
+              selected={resolution === detail}
+              disabled={disabled}
+              onSelect={() => handleResolutionChange(detail)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AgentChatFeaturesPanelContent({
   appFeatures,
   disabled,
   show,
+  supportsVision,
   onClose,
 }: AgentChatFeaturesPanelProps) {
   const { t } = useTranslation('agentV2')
@@ -163,6 +292,13 @@ function AgentChatFeaturesPanelContent({
       description={t(($) => $['agentDetail.configure.chatFeatures.description'])}
       onChange={handleChange}
       onClose={onClose}
+      fileUploadExtraContent={
+        <AgentVisionSettings
+          disabled={disabled}
+          onChange={handleChange}
+          supportsVision={supportsVision}
+        />
+      }
     />
   )
 }
