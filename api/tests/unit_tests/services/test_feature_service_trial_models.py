@@ -11,7 +11,7 @@ def test_get_system_features_excludes_trial_models():
     assert "trial_models" not in result
 
 
-def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypatch: pytest.MonkeyPatch):
+def test_get_trial_models_returns_providers_with_paid_or_trial_enabled(monkeypatch: pytest.MonkeyPatch):
     for provider in HostedTrialProvider:
         monkeypatch.setattr(
             feature_service_module.dify_config,
@@ -28,11 +28,11 @@ def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypat
 
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_PAID_ENABLED", True, raising=False)
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_ANTHROPIC_PAID_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_ANTHROPIC_TRIAL_ENABLED", False, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_GEMINI_PAID_ENABLED", False, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_GEMINI_TRIAL_ENABLED", True, raising=False)
+    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_XAI_PAID_ENABLED", True, raising=False)
 
     result = FeatureService.get_trial_models()
 
-    assert result == [HostedTrialProvider.OPENAI.value]
+    assert result == [
+        HostedTrialProvider.OPENAI.value,
+        HostedTrialProvider.X.value,
+    ]

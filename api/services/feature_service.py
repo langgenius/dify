@@ -189,13 +189,13 @@ class FeatureService:
             for provider in HostedTrialProvider
             if (
                 getattr(dify_config, f"HOSTED_{provider.config_key}_PAID_ENABLED", False)
-                and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
+                or getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
             )
         ]
 
     @classmethod
     def get_trial_models(cls) -> list[str]:
-        """Return hosted trial provider ids without requiring the full system-features payload."""
+        """Return hosted credit provider ids without requiring the full system-features payload."""
         return cls._fulfill_trial_models_from_env()
 
     @classmethod
