@@ -562,7 +562,7 @@ class LLMGenerator:
                 )
             ),
         ]
-        model_parameters = {"temperature": 0.4}
+        model_parameters = model_config.completion_params
 
         try:
             response: LLMResult = model_instance.invoke_llm(
