@@ -20,9 +20,13 @@ from controllers.common.schema import (
 )
 from controllers.console import console_ns
 from controllers.console.wraps import with_current_tenant_id, with_current_user
-from core.human_input_v2.channel_identity import ChannelKind
 from core.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
-from core.human_input_v2.entities import EmailProviderType, IMIntegrationStatus, IMProvider
+from core.human_input_v2.entities import (
+    EmailProviderType,
+    HumanInputDeliveryChannel,
+    IMIntegrationStatus,
+    IMProvider,
+)
 from core.human_input_v2.im_integration import IMIntegrationView, IntegrationRevisionToken
 from core.human_input_v2.shared import (
     AccountId,
@@ -109,7 +113,7 @@ class ChannelSummary(ResponseModel):
     id: ChannelId
     created_at: Timestamp
     updated_at: Timestamp
-    kind: ChannelKind
+    kind: Literal[HumanInputDeliveryChannel.EMAIL, HumanInputDeliveryChannel.IM]
     provider: EmailProviderType | IMProvider = Field(
         description="The provider of the Channel. The concrete provider type depends on the `kind` field."
     )
@@ -230,7 +234,7 @@ def _email_channel_summary_response(view: EmailChannelView) -> ChannelSummary:
         id=view.id,
         created_at=view.created_at,
         updated_at=view.updated_at,
-        kind=ChannelKind.EMAIL,
+        kind=HumanInputDeliveryChannel.EMAIL,
         provider=view.provider,
         status=ChannelStatus.CONNECTED,
         status_description="",
@@ -246,7 +250,7 @@ def _im_channel_summary_response(view: IMIntegrationView) -> ChannelSummary:
         id=view.id,
         created_at=view.created_at,
         updated_at=view.updated_at,
-        kind=ChannelKind.IM,
+        kind=HumanInputDeliveryChannel.IM,
         provider=view.provider,
         status=status,
         status_description=status_description,

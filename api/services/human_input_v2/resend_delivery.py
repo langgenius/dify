@@ -9,13 +9,13 @@ from typing import Any, Protocol
 
 import httpx
 
-from core.human_input_v2.channel_identity import ChannelProvider
 from core.human_input_v2.delivery_runtime import (
     DeliveryOutcome,
     DeliveryOutcomeStatus,
     PreparedRenderedEmailDelivery,
     fingerprint_rendered_email,
 )
+from core.human_input_v2.entities import EmailProviderType
 
 _RESEND_API_ORIGIN = "https://api.resend.com"
 
@@ -94,7 +94,7 @@ class HttpxResendTransport:
 
 
 class ResendEmailProviderAdapter:
-    provider = ChannelProvider.RESEND
+    provider = EmailProviderType.RESEND
 
     def __init__(
         self,

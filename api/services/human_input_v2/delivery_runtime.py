@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from core.helper import encrypter
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
     DeliveryPreparationError,
@@ -24,18 +23,16 @@ class TenantEmailConfigurationSnapshotResolver:
     def resolve(
         self,
         tenant_id: TenantId,
-        channel: ChannelRef,
+        provider: EmailProviderType,
         *,
         expected: ConfigurationSnapshotIdentity | None = None,
     ) -> ResolvedEmailChannelSnapshot:
-        if channel != ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND):
-            raise DeliveryPreparationError("unsupported_email_channel")
         configuration = self._repository.load(tenant_id)
         if configuration is None:
             raise DeliveryPreparationError("provider_not_configured")
         if configuration.tenant_id != tenant_id:
             raise DeliveryPreparationError("provider_configuration_scope_mismatch")
-        if configuration.provider is not EmailProviderType.RESEND:
+        if configuration.provider is not provider:
             raise DeliveryPreparationError("provider_configuration_mismatch")
         identity = ConfigurationSnapshotIdentity(configuration.id, configuration.updated_at)
         if expected is not None and identity != expected:
@@ -46,7 +43,7 @@ class TenantEmailConfigurationSnapshotResolver:
             raise DeliveryPreparationError("provider_credential_unavailable") from error
         return ResolvedEmailChannelSnapshot(
             identity=identity,
-            channel=channel,
+            provider=provider,
             sender_email=configuration.sender_email,
             sender_name=configuration.sender_name,
             credential=ProviderCredential(api_key),

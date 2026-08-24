@@ -35,7 +35,6 @@ from core.human_input_v2.approval import (
     UploadCapabilityRef,
     UploadFileAssociation,
 )
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity, DeliveryOutcome
 from core.human_input_v2.entities import (
     HumanInputDeliveryAttemptStatus,
@@ -211,7 +210,6 @@ def test_create_form_and_delivery_attempt_lifecycle_are_atomic_and_cas_guarded(r
     endpoint = creation.endpoints[0]
     data = DeliveryAttemptData(
         protected_request=ProtectedRenderedEmailRequest("ciphertext"),
-        selected_channel=ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND),
         payload_fingerprint="a" * 64,
         idempotency_key="hitl-v2-key",
     )
@@ -267,7 +265,6 @@ def test_stale_sending_recovery_respects_the_provider_idempotency_horizon(reposi
     creation = _creation()
     data = DeliveryAttemptData(
         protected_request=ProtectedRenderedEmailRequest("ciphertext"),
-        selected_channel=ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND),
         payload_fingerprint="a" * 64,
         idempotency_key="hitl-v2-key",
     )

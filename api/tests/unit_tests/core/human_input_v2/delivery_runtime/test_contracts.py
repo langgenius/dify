@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
     DeliveryOutcome,
@@ -16,6 +15,7 @@ from core.human_input_v2.delivery_runtime import (
     derive_idempotency_key,
     fingerprint_rendered_email,
 )
+from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
@@ -24,14 +24,14 @@ from core.human_input_v2.shared import (
 )
 
 _NOW = datetime(2026, 7, 31, 8)
-_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+_PROVIDER = EmailProviderType.RESEND
 
 
 def _request() -> RenderedEmailDeliveryRequest:
     delivery_id = DeliveryAttemptId("attempt-1")
     return RenderedEmailDeliveryRequest(
         tenant_id=TenantId("workspace-1"),
-        channel=_CHANNEL,
+        provider=_PROVIDER,
         delivery_id=delivery_id,
         recipient=NormalizedEmail("Reviewer@Example.com"),
         subject="Sensitive subject",
@@ -44,7 +44,7 @@ def _request() -> RenderedEmailDeliveryRequest:
 def _snapshot() -> ResolvedEmailChannelSnapshot:
     return ResolvedEmailChannelSnapshot(
         identity=ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW),
-        channel=_CHANNEL,
+        provider=_PROVIDER,
         sender_email=NormalizedEmail("sender@example.com"),
         sender_name="Dify",
         credential=ProviderCredential("secret-api-key"),
@@ -65,22 +65,11 @@ def test_rendered_request_and_snapshot_representations_are_secret_safe() -> None
     assert len(request.idempotency_key) <= 256
 
 
-def test_rendered_request_rejects_non_email_and_incomplete_content() -> None:
-    with pytest.raises(ValueError, match="Email channel"):
-        RenderedEmailDeliveryRequest(
-            tenant_id=TenantId("workspace-1"),
-            channel=ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
-            delivery_id=DeliveryAttemptId("attempt-1"),
-            recipient=NormalizedEmail("reviewer@example.com"),
-            subject="Subject",
-            html="<p>Body</p>",
-            idempotency_key="key",
-        )
-
+def test_rendered_request_rejects_incomplete_content() -> None:
     with pytest.raises(ValueError, match="subject"):
         RenderedEmailDeliveryRequest(
             tenant_id=TenantId("workspace-1"),
-            channel=_CHANNEL,
+            provider=_PROVIDER,
             delivery_id=DeliveryAttemptId("attempt-1"),
             recipient=NormalizedEmail("reviewer@example.com"),
             subject=" ",
@@ -91,14 +80,14 @@ def test_rendered_request_rejects_non_email_and_incomplete_content() -> None:
 
 def test_registry_rejects_duplicate_provider_and_runtime_owns_prepared_values() -> None:
     class Resolver:
-        def resolve(self, tenant_id, channel, *, expected=None):
+        def resolve(self, tenant_id, provider, *, expected=None):
             assert tenant_id == TenantId("workspace-1")
-            assert channel == _CHANNEL
+            assert provider is _PROVIDER
             assert expected is None
             return _snapshot()
 
     class Adapter:
-        provider = ChannelProvider.RESEND
+        provider = EmailProviderType.RESEND
 
         def send(self, prepared):
             assert prepared.payload_fingerprint == fingerprint_rendered_email(prepared.request)

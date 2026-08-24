@@ -4,9 +4,9 @@ from datetime import datetime
 import pytest
 
 from core.helper import encrypter
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity, DeliveryPreparationError
 from core.human_input_v2.email_channel import EmailChannelConfiguration
+from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
     EmailProviderId,
     NormalizedEmail,
@@ -15,7 +15,7 @@ from core.human_input_v2.shared import (
 from services.human_input_v2.delivery_runtime import TenantEmailConfigurationSnapshotResolver
 
 _NOW = datetime(2026, 7, 31, 8)
-_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+_PROVIDER = EmailProviderType.RESEND
 
 
 class Repository:
@@ -53,7 +53,7 @@ def _reveal_email_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_resolver_returns_detached_send_time_snapshot() -> None:
     resolver = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()))
 
-    snapshot = resolver.resolve(TenantId("workspace-1"), _CHANNEL)
+    snapshot = resolver.resolve(TenantId("workspace-1"), _PROVIDER)
 
     assert snapshot.identity == ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW)
     assert snapshot.credential.value == "secret-api-key"
@@ -63,14 +63,14 @@ def test_resolver_returns_detached_send_time_snapshot() -> None:
 def test_resolver_rejects_missing_or_rotated_configuration() -> None:
     missing = TenantEmailConfigurationSnapshotResolver(Repository(None))
     with pytest.raises(DeliveryPreparationError) as missing_error:
-        missing.resolve(TenantId("workspace-1"), _CHANNEL)
+        missing.resolve(TenantId("workspace-1"), _PROVIDER)
     assert missing_error.value.code == "provider_not_configured"
 
     resolver = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()))
     with pytest.raises(DeliveryPreparationError) as changed_error:
         resolver.resolve(
             TenantId("workspace-1"),
-            _CHANNEL,
+            _PROVIDER,
             expected=ConfigurationSnapshotIdentity(
                 EmailProviderId("configuration-2"),
                 _NOW,
@@ -79,21 +79,13 @@ def test_resolver_rejects_missing_or_rotated_configuration() -> None:
     assert changed_error.value.code == "provider_configuration_changed"
 
 
-def test_resolver_rejects_wrong_scope_channel_and_credential_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolver_rejects_wrong_scope_and_credential_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     wrong_scope = TenantEmailConfigurationSnapshotResolver(
         Repository(replace(_configuration(), tenant_id=TenantId("workspace-2"))),
     )
     with pytest.raises(DeliveryPreparationError) as scope_error:
-        wrong_scope.resolve(TenantId("workspace-1"), _CHANNEL)
+        wrong_scope.resolve(TenantId("workspace-1"), _PROVIDER)
     assert scope_error.value.code == "provider_configuration_scope_mismatch"
-
-    resolver = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()))
-    with pytest.raises(DeliveryPreparationError) as channel_error:
-        resolver.resolve(
-            TenantId("workspace-1"),
-            ChannelRef(ChannelKind.IM, ChannelProvider.SLACK),
-        )
-    assert channel_error.value.code == "unsupported_email_channel"
 
     def fail_reveal(_tenant_id: str, _protected_api_key: str) -> str:
         raise RuntimeError("decryption failed")
@@ -101,5 +93,5 @@ def test_resolver_rejects_wrong_scope_channel_and_credential_failure(monkeypatch
     monkeypatch.setattr(encrypter, "decrypt_token", fail_reveal)
     credential_failure = TenantEmailConfigurationSnapshotResolver(Repository(_configuration()))
     with pytest.raises(DeliveryPreparationError) as credential_error:
-        credential_failure.resolve(TenantId("workspace-1"), _CHANNEL)
+        credential_failure.resolve(TenantId("workspace-1"), _PROVIDER)
     assert credential_error.value.code == "provider_credential_unavailable"

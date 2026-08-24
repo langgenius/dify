@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import base64
 import json
+from typing import Literal
 
-from core.human_input_v2.channel_identity import ChannelKind
 from core.human_input_v2.email_channel import EmailConfigurationSnapshot
+from core.human_input_v2.entities import HumanInputDeliveryChannel
 from core.human_input_v2.im_integration import IntegrationRevisionToken
 from core.human_input_v2.shared import EmailProviderId, IntegrationId
 
 _FORMAT_VERSION = 1
+type _ConfigVersionChannel = Literal[
+    HumanInputDeliveryChannel.EMAIL,
+    HumanInputDeliveryChannel.IM,
+]
 
 
 class InvalidConfigVersionError(ValueError):
@@ -18,31 +23,31 @@ class InvalidConfigVersionError(ValueError):
 
 
 def encode_email_config_version(snapshot: EmailConfigurationSnapshot) -> str:
-    return _encode(ChannelKind.EMAIL, snapshot.configuration_id, snapshot.config_version)
+    return _encode(HumanInputDeliveryChannel.EMAIL, snapshot.configuration_id, snapshot.config_version)
 
 
 def decode_email_config_version(
     value: str,
     channel_id: EmailProviderId,
 ) -> EmailConfigurationSnapshot:
-    revision = _decode(value, ChannelKind.EMAIL, channel_id)
+    revision = _decode(value, HumanInputDeliveryChannel.EMAIL, channel_id)
     return EmailConfigurationSnapshot(channel_id, revision)
 
 
 def encode_im_config_version(revision: IntegrationRevisionToken) -> str:
-    return _encode(ChannelKind.IM, revision.integration_id, revision.config_version)
+    return _encode(HumanInputDeliveryChannel.IM, revision.integration_id, revision.config_version)
 
 
 def decode_im_config_version(
     value: str,
     channel_id: IntegrationId,
 ) -> IntegrationRevisionToken:
-    config_version = _decode(value, ChannelKind.IM, channel_id)
+    config_version = _decode(value, HumanInputDeliveryChannel.IM, channel_id)
     return IntegrationRevisionToken(channel_id, config_version)
 
 
 def _encode(
-    kind: ChannelKind,
+    kind: _ConfigVersionChannel,
     channel_id: EmailProviderId | IntegrationId,
     config_version: int,
 ) -> str:
@@ -55,7 +60,7 @@ def _encode(
 
 def _decode(
     value: str,
-    expected_kind: ChannelKind,
+    expected_kind: _ConfigVersionChannel,
     expected_channel_id: EmailProviderId | IntegrationId,
 ) -> int:
     try:

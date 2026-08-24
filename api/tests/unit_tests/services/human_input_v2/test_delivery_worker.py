@@ -10,7 +10,6 @@ from core.human_input_v2.approval import (
     FormRef,
     ProtectedRenderedEmailRequest,
 )
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
     DeliveryOutcome,
@@ -22,7 +21,7 @@ from core.human_input_v2.delivery_runtime import (
     derive_idempotency_key,
     fingerprint_rendered_email,
 )
-from core.human_input_v2.entities import HumanInputDeliveryAttemptStatus
+from core.human_input_v2.entities import EmailProviderType, HumanInputDeliveryAttemptStatus
 from core.human_input_v2.shared import (
     ApproverGrantId,
     DeliveryAttemptId,
@@ -36,14 +35,14 @@ from services.human_input_v2.delivery_worker import HumanInputV2DeliveryWorker
 from services.human_input_v2.notification_producer import serialize_rendered_email_request
 
 _NOW = datetime(2026, 7, 31, 8)
-_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+_PROVIDER = EmailProviderType.RESEND
 
 
 def _request() -> RenderedEmailDeliveryRequest:
     delivery_id = DeliveryAttemptId("attempt-1")
     return RenderedEmailDeliveryRequest(
         tenant_id=TenantId("workspace-1"),
-        channel=_CHANNEL,
+        provider=_PROVIDER,
         delivery_id=delivery_id,
         recipient=NormalizedEmail("reviewer@example.com"),
         subject="Approve",
@@ -63,7 +62,6 @@ def _claim() -> ClaimedDeliveryAttempt:
     )
     data = DeliveryAttemptData(
         protected_request=ProtectedRenderedEmailRequest("ciphertext"),
-        selected_channel=_CHANNEL,
         payload_fingerprint=fingerprint_rendered_email(request),
         idempotency_key=request.idempotency_key,
     )
@@ -120,11 +118,11 @@ class Protector:
 
 
 class Resolver:
-    def resolve(self, tenant_id, channel, *, expected=None):
-        del tenant_id, channel, expected
+    def resolve(self, tenant_id, provider, *, expected=None):
+        del tenant_id, provider, expected
         return ResolvedEmailChannelSnapshot(
             ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW),
-            _CHANNEL,
+            _PROVIDER,
             NormalizedEmail("sender@example.com"),
             "Dify",
             ProviderCredential("secret"),
@@ -132,7 +130,7 @@ class Resolver:
 
 
 class Adapter:
-    provider = ChannelProvider.RESEND
+    provider = EmailProviderType.RESEND
 
     def __init__(self, outcome):
         self.outcome = outcome

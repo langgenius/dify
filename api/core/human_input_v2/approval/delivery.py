@@ -16,7 +16,6 @@ from typing import assert_never
 
 from pydantic import JsonValue, NaiveDatetime
 
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import ConfigurationSnapshotIdentity
 from core.human_input_v2.entities import (
     EmailProviderType,
@@ -274,7 +273,6 @@ class DeliveryAttemptData:
     """Strict data stored in the existing provider-response JSON column."""
 
     protected_request: ProtectedRenderedEmailRequest
-    selected_channel: ChannelRef
     payload_fingerprint: str
     idempotency_key: str = field(repr=False)
     configuration_snapshot: ConfigurationSnapshotIdentity | None = None
@@ -283,8 +281,6 @@ class DeliveryAttemptData:
 
     def __post_init__(self) -> None:
         _validate_sha256(self.payload_fingerprint, label="delivery payload fingerprint")
-        if self.selected_channel.kind is not ChannelKind.EMAIL:
-            raise ValueError("rendered Email attempt requires an Email channel")
         if not self.idempotency_key or len(self.idempotency_key) > 256:
             raise ValueError("delivery idempotency key must contain 1 to 256 characters")
         if self.worker_retry_count < 0:
@@ -296,10 +292,6 @@ class DeliveryAttemptData:
             "protected_request": {
                 "version": self.protected_request.version,
                 "ciphertext": self.protected_request.ciphertext,
-            },
-            "selected_channel": {
-                "kind": self.selected_channel.kind.value,
-                "provider": self.selected_channel.provider.value,
             },
             "payload_fingerprint": self.payload_fingerprint,
             "idempotency_key": self.idempotency_key,
@@ -330,8 +322,7 @@ def delivery_attempt_data_from_mapping(
     if value.get("schema_version") != 1:
         return LegacyDeliveryAttemptData(value)
     protected = value.get("protected_request")
-    selected = value.get("selected_channel")
-    if not isinstance(protected, Mapping) or not isinstance(selected, Mapping):
+    if not isinstance(protected, Mapping):
         raise ValueError("delivery attempt data is malformed")
     snapshot_mapping = value.get("configuration_snapshot")
     snapshot = None
@@ -362,10 +353,6 @@ def delivery_attempt_data_from_mapping(
         protected_request=ProtectedRenderedEmailRequest(
             ciphertext=str(protected["ciphertext"]),
             version=_json_integer(protected.get("version"), label="protected request version"),
-        ),
-        selected_channel=ChannelRef(
-            ChannelKind(str(selected["kind"])),
-            ChannelProvider(str(selected["provider"])),
         ),
         payload_fingerprint=str(value["payload_fingerprint"]),
         idempotency_key=str(value["idempotency_key"]),

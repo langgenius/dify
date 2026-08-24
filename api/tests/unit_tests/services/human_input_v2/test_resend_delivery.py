@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from core.human_input_v2.channel_identity import ChannelKind, ChannelProvider, ChannelRef
 from core.human_input_v2.delivery_runtime import (
     ConfigurationSnapshotIdentity,
     DeliveryOutcomeStatus,
@@ -11,6 +10,7 @@ from core.human_input_v2.delivery_runtime import (
     derive_idempotency_key,
     fingerprint_rendered_email,
 )
+from core.human_input_v2.entities import EmailProviderType
 from core.human_input_v2.shared import (
     DeliveryAttemptId,
     EmailProviderId,
@@ -25,14 +25,14 @@ from services.human_input_v2.resend_delivery import (
 )
 
 _NOW = datetime(2026, 7, 31, 8)
-_CHANNEL = ChannelRef(ChannelKind.EMAIL, ChannelProvider.RESEND)
+_PROVIDER = EmailProviderType.RESEND
 
 
 def _prepared(token: object) -> PreparedRenderedEmailDelivery:
     delivery_id = DeliveryAttemptId("attempt-1")
     request = RenderedEmailDeliveryRequest(
         tenant_id=TenantId("workspace-1"),
-        channel=_CHANNEL,
+        provider=_PROVIDER,
         delivery_id=delivery_id,
         recipient=NormalizedEmail("reviewer@example.com"),
         subject="Approve",
@@ -41,7 +41,7 @@ def _prepared(token: object) -> PreparedRenderedEmailDelivery:
     )
     snapshot = ResolvedEmailChannelSnapshot(
         identity=ConfigurationSnapshotIdentity(EmailProviderId("configuration-1"), _NOW),
-        channel=_CHANNEL,
+        provider=_PROVIDER,
         sender_email=NormalizedEmail("sender@example.com"),
         sender_name="Dify",
         credential=ProviderCredential("secret-api-key"),

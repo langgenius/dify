@@ -20,7 +20,12 @@ from core.human_input_v2.approval import (
     ResolvedApprover,
     SubjectSnapshot,
 )
-from core.human_input_v2.entities import HumanInputDeliveryAttemptStatus, HumanInputV2FormKind, IMProvider
+from core.human_input_v2.entities import (
+    EmailProviderType,
+    HumanInputDeliveryAttemptStatus,
+    HumanInputV2FormKind,
+    IMProvider,
+)
 from core.human_input_v2.shared import (
     AppId,
     ApproverGrantId,
@@ -153,6 +158,8 @@ def test_producer_persists_one_protected_email_attempt_and_ignores_im() -> None:
     serialized = protector.reveal(TenantId("workspace-1"), data.protected_request)
     serialized_payload = json.loads(serialized)
     assert serialized_payload["tenant_id"] == "workspace-1"
+    assert serialized_payload["provider"] == EmailProviderType.RESEND
+    assert "channel" not in serialized_payload
     assert "workspace_id" not in serialized_payload
     request = deserialize_rendered_email_request(serialized)
     assert request.subject == "Approve request"
@@ -166,7 +173,7 @@ def _serialized_rendered_email_request(owner: dict[str, str]) -> str:
         {
             "schema_version": 1,
             **owner,
-            "channel": {"kind": "email", "provider": "resend"},
+            "provider": "resend",
             "delivery_id": "attempt-1",
             "recipient": "reviewer@example.com",
             "subject": "Approve request",

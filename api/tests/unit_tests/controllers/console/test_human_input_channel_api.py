@@ -54,8 +54,9 @@ def test_human_input_channel_controller_imports_successfully() -> None:
         raise AssertionError("the canonical Human Input Channel controller must be importable") from error
 
 
-def test_core_has_no_cross_kind_channel_management_package() -> None:
+def test_core_has_no_cross_kind_channel_contracts() -> None:
     assert importlib.util.find_spec("core.human_input_v2.channel_management") is None
+    assert importlib.util.find_spec("core.human_input_v2.channel_identity") is None
 
 
 def test_canonical_route_inventory_has_no_kind_specific_discovery_authority() -> None:
