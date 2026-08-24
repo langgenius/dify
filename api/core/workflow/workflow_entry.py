@@ -246,12 +246,15 @@ class WorkflowEntry:
             if node_type == BuiltinNodeTypes.START:
                 start_node_data = StartNodeData.model_validate(node_config_data.model_dump(mode="python"))
                 input_types = build_input_segment_types(start_node_data.variables)
-                add_node_inputs_to_pool(
-                    variable_pool,
-                    node_id=node_id,
-                    inputs=user_inputs,
-                    input_types=input_types,
-                )
+                if input_types:
+                    add_node_inputs_to_pool(
+                        variable_pool,
+                        node_id=node_id,
+                        inputs=user_inputs,
+                        input_types=input_types,
+                    )
+                else:
+                    add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
             else:
                 add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
 
