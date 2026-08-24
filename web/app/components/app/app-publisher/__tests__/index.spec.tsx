@@ -701,7 +701,7 @@ describe('AppPublisher', () => {
                   marked_name: 'Release 5',
                   version: 'v5',
                 },
-                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+                status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
               },
               environment: {
                 description: '',

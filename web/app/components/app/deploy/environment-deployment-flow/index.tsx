@@ -6,7 +6,7 @@ import type { DeploymentVersion } from '../version'
 import { useState } from 'react'
 import { DeploymentConfiguration } from '../deployment-dialog/deployment-configuration'
 import { EmbeddedVersionSelection } from '../deployment-dialog/version-selection'
-import { AppDeployStateBoundary, isEnvironmentDeploymentInProgress } from '../state'
+import { AppDeployStateBoundary, shouldPollEnvironmentDeployment } from '../state'
 
 type EnvironmentDeploymentFlowView = 'configuration' | 'overview' | 'versions'
 
@@ -38,7 +38,7 @@ function EnvironmentDeploymentFlowContent({
   const [view, setView] = useState<EnvironmentDeploymentFlowView>('overview')
   const [selectedVersion, setSelectedVersion] = useState<DeploymentVersion>()
   const currentVersionId = deployment?.deployment?.current_version?.id
-  const deploymentActionsDisabled = disabled || isEnvironmentDeploymentInProgress(deployment)
+  const deploymentActionsDisabled = disabled || shouldPollEnvironmentDeployment(deployment)
   const request = {
     currentVersionId,
     environment: environmentName,

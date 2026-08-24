@@ -575,16 +575,14 @@ describe('PublisherEnvironmentFlow', () => {
   })
 
   it.each([
-    DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
-    DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+    DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
+    DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
   ])(
     'disables deployment triggers but keeps environment navigation available while the status is %s',
     (status) => {
       renderFlow(createDeployment({ deployed: false, status }))
 
-      const deployButtonName =
-        status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ? 'Deploying...' : 'Deploy latest'
-      expect(screen.getByRole('button', { name: deployButtonName })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Deploy latest' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'All versions' })).toBeDisabled()
       expect(screen.getByRole('link', { name: 'Access Point' })).toHaveAttribute(
         'href',
@@ -599,7 +597,7 @@ describe('PublisherEnvironmentFlow', () => {
 
   it('keeps the deployment target and progress controls when a deploying status refresh fails', () => {
     const deployment = createDeployment({
-      status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
     })
     deployment.deployment!.latest_operation = {
       activity_at: 1_785_456_000,
@@ -643,7 +641,7 @@ describe('PublisherEnvironmentFlow', () => {
 
   it.each([
     DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
-    DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+    DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
   ])('shows the undeployed state when terminal status %s has no current version', (status) => {
     renderFlow(createDeployment({ deployed: false, status }))
 

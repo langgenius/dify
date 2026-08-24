@@ -215,17 +215,25 @@ export const undeployedAppEnvironmentsAtom = atom((get) =>
   get(appEnvironmentsAtom)?.filter((environment) => environment.in_use === false),
 )
 
-export function isEnvironmentDeploymentInProgress(deployment?: EnvironmentDeployment) {
-  const status = deployment?.deployment?.status
-
+export function isDeploymentOperationInProgress(deployment?: EnvironmentDeployment) {
   return (
-    status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-    status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
+    deployment?.deployment?.latest_operation?.status ===
+    DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS
   )
 }
 
-export function hasInProgressEnvironmentDeployments(deployments: EnvironmentDeployment[]) {
-  return deployments.some(isEnvironmentDeploymentInProgress)
+export function shouldPollEnvironmentDeployment(deployment?: EnvironmentDeployment) {
+  if (isDeploymentOperationInProgress(deployment)) return true
+
+  const status = deployment?.deployment?.status
+  return (
+    status === DeploymentStatus.DEPLOYMENT_STATUS_STARTING ||
+    status === DeploymentStatus.DEPLOYMENT_STATUS_STOPPING
+  )
+}
+
+export function hasDeploymentsRequiringPolling(deployments: EnvironmentDeployment[]) {
+  return deployments.some(shouldPollEnvironmentDeployment)
 }
 
 const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
@@ -242,7 +250,7 @@ const appEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
         : skipToken,
       refetchInterval: (query) => {
         const deployments = query.state.data?.environment_deployments ?? []
-        return hasInProgressEnvironmentDeployments(deployments)
+        return hasDeploymentsRequiringPolling(deployments)
           ? DEPLOYMENT_STATUS_POLLING_INTERVAL
           : false
       },
@@ -304,17 +312,21 @@ export function getEnvironmentDeploymentActions(
   const actions = (kinds: EnvironmentDeploymentActionKind[], disabled = false) =>
     deploymentActions(kinds, disabled, deployLatestDisabled)
 
-  if (!deployment || deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED) {
+  if (!deployment) {
     return actions(['deployLatest', 'changeVersion'])
   }
 
   const hasCurrentVersion = Boolean(deployment.current_version)
-  const hasFailedDeploy =
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_FAILED ||
-    (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_RUNNING &&
-      isLatestDeployOperationFailed(row))
+  if (isDeploymentOperationInProgress(row)) {
+    return actions(
+      hasCurrentVersion
+        ? ['changeVersion', 'redeploy', 'undeploy']
+        : ['deployLatest', 'changeVersion'],
+      true,
+    )
+  }
 
-  if (hasFailedDeploy) {
+  if (isLatestDeployOperationFailed(row)) {
     const hasRetryVersion = Boolean(
       deployment.latest_operation?.target_version ?? deployment.current_version,
     )
@@ -325,11 +337,8 @@ export function getEnvironmentDeploymentActions(
     )
   }
 
-  if (
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
-    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
-  ) {
-    return actions(['changeVersion', 'redeploy', 'undeploy'], true)
+  if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED) {
+    return actions(['deployLatest', 'changeVersion'])
   }
 
   if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_RUNNING) {
@@ -340,9 +349,17 @@ export function getEnvironmentDeploymentActions(
     return actions(['changeVersion', 'redeploy', 'undeploy'])
   }
 
-  if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_INVALID) {
-    return hasCurrentVersion ? actions(['redeploy', 'undeploy']) : actions(['changeVersion'])
+  if (
+    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_STARTING ||
+    deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_STOPPING
+  ) {
+    return actions(
+      hasCurrentVersion
+        ? ['changeVersion', 'redeploy', 'undeploy']
+        : ['deployLatest', 'changeVersion'],
+      true,
+    )
   }
 
-  return []
+  return hasCurrentVersion ? actions(['redeploy', 'undeploy']) : actions(['changeVersion'])
 }

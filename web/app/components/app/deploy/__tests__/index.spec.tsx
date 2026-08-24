@@ -247,7 +247,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Staging',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+    status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
   }),
   environmentDeployment({
     currentVersion: VERSIONS.sprint42,
@@ -328,7 +328,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
       targetVersion: VERSIONS.sprint42,
     }),
     name: 'Preview',
-    status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
   }),
 ]
 
@@ -393,11 +393,17 @@ const ACTION_MATRIX_CASES: Array<{
       { disabled: true, kind: 'redeploy' },
       { disabled: true, kind: 'undeploy' },
     ],
-    name: 'deploying',
+    name: 'upgrading while the current version keeps running',
     row: environmentDeployment({
+      currentVersion: VERSIONS.beta,
       id: 'deploying',
+      latestOperation: deploymentOperation({
+        id: 'deploying',
+        status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+        targetVersion: VERSIONS.sprint42,
+      }),
       name: 'Deploying',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_RUNNING,
     }),
   },
   {
@@ -410,8 +416,13 @@ const ACTION_MATRIX_CASES: Array<{
     row: environmentDeployment({
       currentVersion: VERSIONS.qa,
       id: 'undeploying',
+      latestOperation: deploymentOperation({
+        id: 'undeploying',
+        status: DeploymentOperationStatus.DEPLOYMENT_OPERATION_STATUS_IN_PROGRESS,
+        type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
+      }),
       name: 'Undeploying',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
     }),
   },
   {
@@ -428,7 +439,7 @@ const ACTION_MATRIX_CASES: Array<{
         targetVersion: VERSIONS.sprint42,
       }),
       name: 'Failed',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_FAILED,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED,
     }),
   },
   {
@@ -461,7 +472,7 @@ const ACTION_MATRIX_CASES: Array<{
       currentVersion: VERSIONS.qa,
       id: 'invalid',
       name: 'Invalid',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
     }),
   },
   {
@@ -470,17 +481,20 @@ const ACTION_MATRIX_CASES: Array<{
     row: environmentDeployment({
       id: 'invalid-without-version',
       name: 'Invalid without version',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_ERROR,
     }),
   },
   {
-    actions: [],
+    actions: [
+      { disabled: false, kind: 'redeploy' },
+      { disabled: false, kind: 'undeploy' },
+    ],
     name: 'unknown',
     row: environmentDeployment({
       currentVersion: VERSIONS.qa,
       id: 'unknown',
       name: 'Unknown',
-      status: DeploymentStatus.DEPLOYMENT_STATUS_UNSPECIFIED,
+      status: DeploymentStatus.DEPLOYMENT_STATUS_UNKNOWN,
     }),
   },
 ]
@@ -867,12 +881,16 @@ describe('AppDeploy', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
+    const stagingRow = within(screen.getByRole('row', { name: /Staging/ }))
+    const preReleaseRow = within(screen.getByRole('row', { name: /Pre-release/ }))
     await waitFor(() => {
-      for (const button of screen.getAllByRole('button', {
-        name: 'deployments.studio.deployLatest',
-      }))
-        expect(button).toBeEnabled()
+      expect(
+        preReleaseRow.getByRole('button', { name: 'deployments.studio.deployLatest' }),
+      ).toBeEnabled()
     })
+    expect(
+      stagingRow.getByRole('button', { name: 'deployments.studio.deployLatest' }),
+    ).toBeDisabled()
     expect(requestCount).toBe(2)
   })
 
@@ -1287,7 +1305,7 @@ describe('AppDeploy', () => {
                   targetVersion: workflowVersion('Release 6', 'workflow-version-6'),
                 }),
                 name: 'Dev',
-                status: DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING,
+                status: DeploymentStatus.DEPLOYMENT_STATUS_STARTING,
               }),
             ],
           }),
@@ -1436,7 +1454,7 @@ describe('AppDeploy', () => {
                       type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
                     }),
                     name: 'Canary',
-                    status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+                    status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
                   })
                 : deployment,
             ),
@@ -1576,7 +1594,7 @@ describe('AppDeploy', () => {
             type: DeploymentOperationType.DEPLOYMENT_OPERATION_TYPE_UNDEPLOY,
           }),
           name: 'Canary',
-          status: DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING,
+          status: DeploymentStatus.DEPLOYMENT_STATUS_STOPPING,
         }),
       ],
     })
@@ -1926,7 +1944,7 @@ describe('AppDeploy', () => {
     const stagingRow = within(screen.getByRole('row', { name: /Staging/ }))
     expect(
       stagingRow.getByRole('button', {
-        name: 'deployments.studio.changeVersion',
+        name: 'deployments.studio.deployLatest',
       }),
     ).toBeDisabled()
 
@@ -1937,7 +1955,7 @@ describe('AppDeploy', () => {
     )
 
     const menuItems = within(await screen.findByRole('menu')).getAllByRole('menuitem')
-    expect(menuItems).toHaveLength(2)
+    expect(menuItems).toHaveLength(1)
     for (const item of menuItems) expect(item).toHaveAttribute('aria-disabled', 'true')
   })
 

@@ -16,6 +16,7 @@ export const zApplicationInteractionStatus = z.enum([
   'APPLICATION_INTERACTION_STATUS_SUCCEEDED',
   'APPLICATION_INTERACTION_STATUS_FAILED',
   'APPLICATION_INTERACTION_STATUS_PARTIAL_SUCCEEDED',
+  'APPLICATION_INTERACTION_STATUS_STOPPED',
 ])
 
 export const zEnvironmentMode = z.enum([
@@ -90,11 +91,12 @@ export const zEnvironmentDeployedAppStatus = z.enum([
 export const zDeploymentStatus = z.enum([
   'DEPLOYMENT_STATUS_UNSPECIFIED',
   'DEPLOYMENT_STATUS_UNDEPLOYED',
-  'DEPLOYMENT_STATUS_DEPLOYING',
   'DEPLOYMENT_STATUS_RUNNING',
-  'DEPLOYMENT_STATUS_UNDEPLOYING',
-  'DEPLOYMENT_STATUS_INVALID',
-  'DEPLOYMENT_STATUS_FAILED',
+  'DEPLOYMENT_STATUS_STARTING',
+  'DEPLOYMENT_STATUS_STOPPING',
+  'DEPLOYMENT_STATUS_SUSPENDED',
+  'DEPLOYMENT_STATUS_ERROR',
+  'DEPLOYMENT_STATUS_UNKNOWN',
 ])
 
 export const zEnvVarValueSource = z.enum([
@@ -441,6 +443,7 @@ export const zError = z.object({
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
       'APPDEPLOY_REVISION_TIMEOUT',
       'APPDEPLOY_INTERNAL_ERROR',
+      'APPDEPLOY_RECEIPT_RETRY',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_AUTH_REJECTED',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_NAMESPACE_MISSING',
       'APPDEPLOY_ENVIRONMENT_BOOTSTRAP_INSUFFICIENT_RBAC',
@@ -589,17 +592,14 @@ export const zResolveApiTokenRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
-  deploymentStatus: zDeploymentStatus.optional(),
-  revoked: z.boolean().optional(),
-  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),
+  decision: z.string().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
@@ -617,13 +617,10 @@ export const zResolveWebAppRouteResponse = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
-  environmentStatus: zEnvironmentStatus.optional(),
   appId: z.string().optional(),
   tenantId: z.string().optional(),
   deploymentId: z.string().optional(),
   servingRevisionId: z.string().optional(),
-  deploymentStatus: zDeploymentStatus.optional(),
-  unavailableReason: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
   deploymentGeneration: z.string().optional(),
@@ -698,6 +695,20 @@ export const zSimpleAccount = z.object({
   id: z.string(),
   name: z.string().optional(),
   email: z.string().optional(),
+})
+
+export const zSourceVersionDeploymentEnvironment = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+})
+
+export const zSourceVersionDeployment = z.object({
+  sourceVersionId: z.string().optional(),
+  environments: z.array(zSourceVersionDeploymentEnvironment).optional(),
+})
+
+export const zBatchGetSourceVersionDeploymentsResponse = z.object({
+  items: z.array(zSourceVersionDeployment).optional(),
 })
 
 export const zTestConnectionRequest = z.object({
@@ -776,20 +787,6 @@ export const zUpdateEnvironmentRequest = z.object({
 
 export const zUpdateEnvironmentResponse = z.object({
   environment: zEnvironment,
-})
-
-export const zWorkflowDeploymentEnvironment = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-})
-
-export const zSourceVersionDeployment = z.object({
-  sourceVersionId: z.string().optional(),
-  environments: z.array(zWorkflowDeploymentEnvironment).optional(),
-})
-
-export const zBatchGetSourceVersionDeploymentsResponse = z.object({
-  items: z.array(zSourceVersionDeployment).optional(),
 })
 
 export const zWorkflowDeploymentInput = z.object({
