@@ -13,7 +13,6 @@ from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from models import Account
 from services.billing_portal_service import BillingPortalLink
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -547,14 +546,23 @@ class BillingService:
             return BillingService._send_request("GET", "/education/status", params=params)
 
         @classmethod
-        def activate(cls, account: Account, token: str, institution: str, role: str):
-            if cls.activation_rate_limit.is_rate_limited(account.email):
+        def activate(
+            cls,
+            *,
+            account_id: str,
+            email: str,
+            tenant_id: str,
+            token: str,
+            institution: str,
+            role: str,
+        ):
+            if cls.activation_rate_limit.is_rate_limited(email):
                 from controllers.console.error import EducationActivateLimitError
 
                 raise EducationActivateLimitError()
 
-            cls.activation_rate_limit.increment_rate_limit(account.email)
-            params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
+            cls.activation_rate_limit.increment_rate_limit(email)
+            params = {"account_id": account_id, "curr_tenant_id": tenant_id}
             json = {
                 "institution": institution,
                 "token": token,

@@ -16,7 +16,11 @@ from controllers.console.auth.error import (
     EmailCodeAccountDeletionRateLimitExceededError,
     EmailCodeError,
 )
-from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
+from controllers.console.error import (
+    AccountInFreezeError,
+    EmailDomainSuspendedError,
+    InvalidAccountPasswordRequestError,
+)
 from controllers.console.workspace.account import (
     AccountAvatarApi,
     AccountAvatarQuery,
@@ -39,7 +43,6 @@ from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountPasswordRequestError,
     MissingInvitationCodeRequestError,
 )
 from machinery.context import RequestContext

@@ -33,13 +33,13 @@ from controllers.console.error import (
     AccountNotFound,
     EmailDomainSuspendedError,
     EmailSendIpLimitError,
+    InvalidAccountPasswordRequestError,
 )
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidAccountDeletionCodeError,
-    InvalidAccountPasswordRequestError,
     InvalidInvitationCodeError,
     MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,

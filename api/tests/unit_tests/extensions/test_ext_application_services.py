@@ -22,11 +22,11 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from services import recommended_app_catalog_gateway
-from services.account_activation_adapters import (
+from services.account_adapters import (
     BillingAccountActivationEligibility,
     BillingWorkspaceMembershipCache,
     DeploymentWorkspaceInvitePolicy,
-    RegisterServiceInvitationTokenStore,
+    RedisInvitationTokenStore,
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
@@ -252,6 +252,8 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.change_email._accounts is accounts
     assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.authentication._accounts is accounts
+    assert services.accounts.authentication._workspaces is services.workspace_queries._workspaces
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
@@ -295,7 +297,7 @@ def test_build_application_services_wires_account_activation(
     )
 
     activation = services.account_activation
-    assert isinstance(activation._tokens, RegisterServiceInvitationTokenStore)
+    assert isinstance(activation._tokens, RedisInvitationTokenStore)
     assert isinstance(activation._accounts, SQLAlchemyAccountActivationRepository)
     assert activation._accounts._session_factory is sqlite_session_factory
     assert isinstance(activation._workspace_policy, DeploymentWorkspaceInvitePolicy)

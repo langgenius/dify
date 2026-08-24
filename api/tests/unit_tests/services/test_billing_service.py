@@ -1176,6 +1176,8 @@ class TestBillingServiceRateLimitEnforcement:
         institution = "MIT"
         role = "student"
         expected_response = {"result": "success", "activated": True}
+        tenant_id = account.current_tenant_id
+        assert tenant_id is not None
 
         # Mock the rate limiter to return False (not limited)
         with (
@@ -1189,7 +1191,14 @@ class TestBillingServiceRateLimitEnforcement:
             mock_send_request.return_value = expected_response
 
             # Act
-            result = BillingService.EducationIdentity.activate(account, token, institution, role)
+            result = BillingService.EducationIdentity.activate(
+                account_id=account.id,
+                email=account.email,
+                tenant_id=tenant_id,
+                token=token,
+                institution=institution,
+                role=role,
+            )
 
             # Assert
             assert result == expected_response
@@ -1209,6 +1218,8 @@ class TestBillingServiceRateLimitEnforcement:
         token = "verification-token"
         institution = "MIT"
         role = "student"
+        tenant_id = account.current_tenant_id
+        assert tenant_id is not None
 
         # Import the error class to properly catch it
         from controllers.console.error import EducationActivateLimitError
@@ -1219,7 +1230,14 @@ class TestBillingServiceRateLimitEnforcement:
         ) as mock_is_limited:
             # Act & Assert
             with pytest.raises(EducationActivateLimitError):
-                BillingService.EducationIdentity.activate(account, token, institution, role)
+                BillingService.EducationIdentity.activate(
+                    account_id=account.id,
+                    email=account.email,
+                    tenant_id=tenant_id,
+                    token=token,
+                    institution=institution,
+                    role=role,
+                )
 
             mock_is_limited.assert_called_once_with(account.email)
             mock_send_request.assert_not_called()
@@ -1937,6 +1955,8 @@ class TestBillingServiceIntegrationScenarios:
         """Test complete education verification and activation flow."""
         # Arrange
         account = _account(email="student@mit.edu")
+        tenant_id = account.current_tenant_id
+        assert tenant_id is not None
 
         # Step 1: Search for institution
         with (
@@ -1973,7 +1993,14 @@ class TestBillingServiceIntegrationScenarios:
             patch.object(BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"),
         ):
             mock_send_request.return_value = {"result": "success", "activated": True}
-            activate_result = BillingService.EducationIdentity.activate(account, "token-123", "MIT", "student")
+            activate_result = BillingService.EducationIdentity.activate(
+                account_id=account.id,
+                email=account.email,
+                tenant_id=tenant_id,
+                token="token-123",
+                institution="MIT",
+                role="student",
+            )
             assert activate_result["activated"] is True
 
 

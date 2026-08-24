@@ -87,3 +87,79 @@ class AccountEmailAlreadyInUseError(AccountApplicationError):
 
 class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
+
+
+class LoginRateLimitError(AccountApplicationError):
+    """Too many failed password-login attempts were made for the address."""
+
+
+class InvalidLoginCredentialsError(AccountApplicationError):
+    """The supplied login credentials are invalid."""
+
+
+class LoginAccountBannedError(AccountApplicationError):
+    """The account is banned from signing in."""
+
+
+class InvalidLoginInvitationEmailError(AccountApplicationError):
+    """The invitation belongs to a different email address."""
+
+
+class LoginWorkspaceLimitError(AccountApplicationError):
+    """A required workspace cannot be created because the limit was reached."""
+
+
+class LoginWorkspaceCreationNotAllowedError(AccountApplicationError):
+    """Workspace creation is disabled for this deployment."""
+
+
+class LoginSeatLimitError(AccountApplicationError):
+    """A new account cannot be created because the seat limit was reached."""
+
+
+class EmailCodeSendIPLimitedError(AccountApplicationError):
+    """The caller IP exceeded the email-code send policy."""
+
+
+class EmailCodeSendRateLimitError(AccountApplicationError):
+    """Too many email-code messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes
+
+
+class HumanVerificationRejectedError(AccountApplicationError):
+    """The anti-bot challenge was rejected."""
+
+
+class HumanVerificationUnavailableError(AccountApplicationError):
+    """The anti-bot verification provider is unavailable."""
+
+
+class EmailCodeLoginUnavailableError(AccountApplicationError):
+    """The email-code challenge store is unavailable."""
+
+
+class InvalidEmailCodeTokenError(AccountApplicationError):
+    """The email-code token is invalid or no longer usable."""
+
+
+class EmailCodeEmailMismatchError(AccountApplicationError):
+    """The email-code token belongs to a different address."""
+
+
+class InvalidEmailCodeError(AccountApplicationError):
+    """The supplied email verification code is invalid."""
+
+
+class InvalidRefreshTokenError(AccountApplicationError):
+    """The refresh token cannot be exchanged for a new session."""
+
+
+class ResetPasswordEmailRateLimitError(AccountApplicationError):
+    """Too many reset-password messages were requested for the address."""
+
+    def __init__(self, retry_after_minutes: int) -> None:
+        super().__init__(retry_after_minutes)
+        self.retry_after_minutes = retry_after_minutes

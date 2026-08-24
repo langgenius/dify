@@ -106,10 +106,13 @@ source_modules =
     services.account_errors
     services.account_initialization_service
     services.account_integration_service
+    services.account_login_service
     services.account_password_service
     services.account_ports
     services.account_profile_service
     services.entities.account_entities
+    services.entities.account_login_entities
+    services.entities.auth_audit_entities
 forbidden_modules =
     configs
     controllers

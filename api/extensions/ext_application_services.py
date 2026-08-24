@@ -16,7 +16,6 @@ from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from libs.datetime_utils import naive_utc_now
-from libs.helper import RateLimiter
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
@@ -31,39 +30,46 @@ from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
-from services.account_activation_adapters import (
-    BillingAccountActivationEligibility,
-    BillingWorkspaceMembershipCache,
-    DeploymentWorkspaceInvitePolicy,
-    RegisterServiceInvitationTokenStore,
-)
 from services.account_activation_service import AccountActivationService
-from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
-from services.account_avatar_service import AccountAvatarService
-from services.account_billing_adapters import (
+from services.account_adapters import (
+    BillingAccountActivationEligibility,
     BillingAccountDeletionFeedbackGateway,
     BillingAccountEducationGateway,
-)
-from services.account_change_email_adapters import (
     BillingAccountEmailPolicyGateway,
-    CeleryChangeEmailNotificationGateway,
-    RateLimiterChangeEmailSendLimiter,
-    RedisChangeEmailSecurityGateway,
-    SecureChangeEmailCodeGenerator,
-    TokenManagerChangeEmailTokenGateway,
-)
-from services.account_change_email_service import AccountChangeEmailService
-from services.account_deletion_adapters import (
+    BillingWorkspaceMembershipCache,
     CeleryAccountDeletionScheduler,
     CeleryAccountDeletionVerificationNotifier,
+    CeleryChangeEmailNotificationGateway,
+    DeploymentWorkspaceInvitePolicy,
     EnterpriseAccountDeletionSyncGateway,
+    RateLimiterChangeEmailSendLimiter,
+    RedisChangeEmailSecurityGateway,
+    RedisInvitationTokenStore,
+    SecureChangeEmailCodeGenerator,
     TokenManagerAccountDeletionVerificationGateway,
+    TokenManagerChangeEmailTokenGateway,
 )
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_avatar_service import AccountAvatarService
+from services.account_change_email_service import AccountChangeEmailService
 from services.account_deletion_feedback_service import AccountDeletionFeedbackService
 from services.account_deletion_service import AccountDeletionService
 from services.account_education_service import AccountEducationService
 from services.account_initialization_service import AccountInitializationService
 from services.account_integration_service import AccountIntegrationService
+from services.account_login_adapters import (
+    AccountActivationConsoleAuthInvitationGateway,
+    DeploymentConsoleAuthPolicyGateway,
+    LoggingConsoleAuthAuditGateway,
+    RedisAccountSessionGateway,
+    RedisConsoleAuthSecurityGateway,
+    RedisEmailCodeGateway,
+    RedisResetPasswordEmailGateway,
+    SQLAlchemyAccountRefreshPreparationGateway,
+    SQLAlchemyConsoleAuthProvisioningGateway,
+    TurnstileHumanVerificationGateway,
+)
+from services.account_login_service import ConsoleAuthenticationService
 from services.account_password_hasher import LegacyAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
@@ -128,6 +134,7 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class AccountServices:
+    authentication: ConsoleAuthenticationService
     avatar: AccountAvatarService
     change_email: AccountChangeEmailService
     deletion: AccountDeletionService
@@ -184,8 +191,38 @@ def build_application_services(
         builtin=builtin_catalog,
     )
     workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
+    password_hasher = LegacyAccountPasswordHasher()
+    invitation_tokens = RedisInvitationTokenStore(redis=redis)
+    activation_accounts = SQLAlchemyAccountActivationRepository(session_factory=database_client)
+    account_provisioning = SQLAlchemyConsoleAuthProvisioningGateway(session_factory=database_client)
     return ApplicationServices(
         accounts=AccountServices(
+            authentication=ConsoleAuthenticationService(
+                accounts=accounts,
+                workspaces=workspace_query_repository,
+                invitations=AccountActivationConsoleAuthInvitationGateway(
+                    tokens=invitation_tokens,
+                    accounts=activation_accounts,
+                ),
+                policies=DeploymentConsoleAuthPolicyGateway(
+                    billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
+                ),
+                security=RedisConsoleAuthSecurityGateway(redis=redis),
+                passwords=password_hasher,
+                human_verification=TurnstileHumanVerificationGateway(),
+                sessions=RedisAccountSessionGateway(redis=redis),
+                refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(session_factory=database_client),
+                account_provisioning=account_provisioning,
+                workspace_provisioning=account_provisioning,
+                email_codes=RedisEmailCodeGateway(redis=redis),
+                reset_password_emails=RedisResetPasswordEmailGateway(redis=redis),
+                audit=LoggingConsoleAuthAuditGateway(),
+                now=naive_utc_now,
+                turnstile_enabled=deployment_edition == DeploymentEdition.CLOUD,
+                turnstile_verify_required=(
+                    deployment_edition == DeploymentEdition.CLOUD and dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED
+                ),
+            ),
             avatar=AccountAvatarService(
                 files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
             ),
@@ -194,20 +231,8 @@ def build_application_services(
                 tokens=TokenManagerChangeEmailTokenGateway(),
                 codes=SecureChangeEmailCodeGenerator(),
                 notifications=CeleryChangeEmailNotificationGateway(),
-                send_limits=RateLimiterChangeEmailSendLimiter(
-                    rate_limiter=RateLimiter(
-                        prefix="change_email_rate_limit",
-                        max_attempts=1,
-                        time_window=60,
-                        redis_client=redis,
-                    )
-                ),
-                security=RedisChangeEmailSecurityGateway(
-                    redis=redis,
-                    email_send_ip_limit_per_minute=dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE,
-                    verification_failure_limit=5,
-                    verification_lockout_duration=dify_config.CHANGE_EMAIL_LOCKOUT_DURATION,
-                ),
+                send_limits=RateLimiterChangeEmailSendLimiter(redis=redis),
+                security=RedisChangeEmailSecurityGateway(redis=redis),
                 email_policy=BillingAccountEmailPolicyGateway(
                     billing_enabled=deployment_edition == DeploymentEdition.CLOUD,
                 ),
@@ -216,14 +241,7 @@ def build_application_services(
                 accounts=accounts,
                 memberships=workspace_query_repository,
                 verification=TokenManagerAccountDeletionVerificationGateway(),
-                notifications=CeleryAccountDeletionVerificationNotifier(
-                    rate_limiter=RateLimiter(
-                        prefix="email_code_account_deletion_rate_limit",
-                        max_attempts=1,
-                        time_window=60,
-                        redis_client=redis,
-                    )
-                ),
+                notifications=CeleryAccountDeletionVerificationNotifier(redis=redis),
                 synchronization=EnterpriseAccountDeletionSyncGateway(),
                 scheduler=CeleryAccountDeletionScheduler(),
             ),
@@ -242,13 +260,13 @@ def build_application_services(
             integrations=AccountIntegrationService(integrations=integrations),
             password=AccountPasswordService(
                 accounts=accounts,
-                passwords=LegacyAccountPasswordHasher(),
+                passwords=password_hasher,
             ),
             profile=AccountProfileService(accounts=accounts),
         ),
         account_activation=AccountActivationService(
-            tokens=RegisterServiceInvitationTokenStore(),
-            accounts=SQLAlchemyAccountActivationRepository(session_factory=database_client),
+            tokens=invitation_tokens,
+            accounts=activation_accounts,
             workspace_policy=DeploymentWorkspaceInvitePolicy(),
             eligibility=BillingAccountActivationEligibility(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
