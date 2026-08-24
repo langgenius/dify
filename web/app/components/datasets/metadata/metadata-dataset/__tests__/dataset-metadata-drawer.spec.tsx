@@ -1,6 +1,6 @@
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../../types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType } from '../../types'
 import DatasetMetadataDrawer from '../dataset-metadata-drawer'
 
@@ -85,13 +85,6 @@ describe('DatasetMetadataDrawer', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      render(<DatasetMetadataDrawer {...defaultProps} />)
-      await waitFor(() => {
-        expect(screen.getByRole('dialog'))!.toBeInTheDocument()
-      })
-    })
-
     it('should render user metadata items', async () => {
       render(<DatasetMetadataDrawer {...defaultProps} />)
       await waitFor(() => {

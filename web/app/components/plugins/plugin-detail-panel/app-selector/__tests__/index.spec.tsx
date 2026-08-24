@@ -1,15 +1,15 @@
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
 import type { AppSelectorValue } from '../index'
-import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AppModeEnum } from '@/types/app'
 import { AppSelector } from '../index'
 
-const apps: App[] = [
+const apps = [
   {
     id: 'app-1',
     name: 'Support Bot',
@@ -17,10 +17,8 @@ const apps: App[] = [
     icon_type: 'emoji',
     icon: '🤖',
     icon_background: '#FFEAD5',
-    model_config: {
-      user_input_form: [],
-    },
-  } as unknown as App,
+    icon_url: null,
+  },
   {
     id: 'app-2',
     name: 'Workflow App',
@@ -28,8 +26,21 @@ const apps: App[] = [
     icon_type: 'emoji',
     icon: '⚙️',
     icon_background: '#E0EAFF',
-  } as unknown as App,
-]
+    icon_url: null,
+  },
+  {
+    id: 'app-3',
+    name: 'Sales Bot',
+    mode: AppModeEnum.CHAT,
+    icon_type: 'emoji',
+    icon: '💼',
+    icon_background: '#FEE4E2',
+    icon_url: null,
+  },
+] satisfies AppPartial[]
+
+const mockAppDetailQuery = vi.hoisted(() => vi.fn())
+const mockUseAppWorkflow = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -65,23 +76,36 @@ vi.mock('@/service/client', () => ({
           placeholderData,
         }),
       },
+      byAppId: {
+        get: {
+          queryOptions: ({ input }: { input: unknown }) => {
+            const appId =
+              typeof input === 'object' && input && 'params' in input
+                ? (input.params as { app_id: string }).app_id
+                : undefined
+            return {
+              queryKey: ['apps', appId],
+              queryFn: () => mockAppDetailQuery(appId),
+              enabled: !!appId,
+            }
+          },
+        },
+      },
     },
   },
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  normalizeAppPagination: <T,>(response: T) => response,
-  useAppDetail: (appId: string) => ({
-    data: apps.find((app) => app.id === appId),
+vi.mock('@/service/use-common', () => ({
+  useFileUploadConfig: () => ({
+    data: undefined,
+    isError: false,
+    isFetching: false,
+    refetch: vi.fn(),
   }),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: () => ({ data: undefined }),
-}))
-
 vi.mock('@/service/use-workflow', () => ({
-  useAppWorkflow: () => ({ data: undefined, isFetching: false }),
+  useAppWorkflow: (appId: string) => mockUseAppWorkflow(appId),
 }))
 
 function renderWithQueryClient(children: ReactNode) {
@@ -113,6 +137,76 @@ function StatefulAppSelector({ onSelect }: { onSelect: (value: AppSelectorValue)
 describe('AppSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppDetailQuery.mockImplementation((appId: string) => apps.find((app) => app.id === appId))
+    mockUseAppWorkflow.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    })
+  })
+
+  it('should start the workflow query before selected app detail resolves', async () => {
+    const user = userEvent.setup()
+    mockAppDetailQuery.mockReturnValue(new Promise(() => {}))
+    mockUseAppWorkflow.mockReturnValue({
+      data: undefined,
+      isError: false,
+      isFetching: true,
+      refetch: vi.fn(),
+    })
+
+    renderWithQueryClient(
+      <AppSelector value={{ app_id: 'app-2', inputs: {} }} onSelect={vi.fn()} />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+
+    await waitFor(() => {
+      expect(mockUseAppWorkflow).toHaveBeenCalledWith('app-2')
+    })
+    expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+  })
+
+  it('should reset the input draft when switching apps', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    mockAppDetailQuery.mockImplementation((appId: string) => {
+      const app = apps.find((item) => item.id === appId)
+      if (!app) return undefined
+
+      const isFirstApp = app.id === 'app-1'
+      return {
+        ...app,
+        model_config: {
+          user_input_form: [
+            {
+              'text-input': {
+                label: isFirstApp ? 'First question' : 'Second question',
+                variable: isFirstApp ? 'first_question' : 'second_question',
+              },
+            },
+          ],
+        },
+      }
+    })
+
+    renderWithQueryClient(<StatefulAppSelector onSelect={onSelect} />)
+
+    await user.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('option', { name: /Support Bot/ }))
+    await user.type(await screen.findByPlaceholderText('First question'), 'alpha')
+
+    await user.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))
+    await user.click(await screen.findByRole('option', { name: /Sales Bot/ }))
+    await user.type(await screen.findByPlaceholderText('Second question'), 'beta')
+
+    expect(onSelect).toHaveBeenLastCalledWith({
+      app_id: 'app-3',
+      inputs: { second_question: 'beta' },
+      files: [],
+    })
   })
 
   it('should keep the main interaction: outer panel, inner app list, then inputs panel', async () => {
@@ -120,7 +214,12 @@ describe('AppSelector', () => {
 
     renderWithQueryClient(<AppSelector onSelect={onSelect} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'app.appSelector.label' }))
+    const trigger = screen.getByRole('button', { name: 'app.appSelector.label' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    fireEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByText('app.appSelector.label')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('combobox', { name: 'app.appSelector.label' }))

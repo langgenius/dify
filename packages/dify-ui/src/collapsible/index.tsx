@@ -4,19 +4,17 @@ import type { Collapsible as BaseCollapsibleNS } from '@base-ui/react/collapsibl
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
 
-export type CollapsibleProps = Omit<BaseCollapsibleNS.Root.Props, 'className'> & {
+type CollapsibleProps = Omit<BaseCollapsibleNS.Root.Props, 'className'> & {
   className?: string
 }
-
-export function Collapsible({ className, ...props }: CollapsibleProps) {
+function Collapsible({ className, ...props }: CollapsibleProps) {
   return <BaseCollapsible.Root className={cn('flex min-w-0 flex-col', className)} {...props} />
 }
 
-export type CollapsibleTriggerProps = Omit<BaseCollapsibleNS.Trigger.Props, 'className'> & {
+type CollapsibleTriggerProps = Omit<BaseCollapsibleNS.Trigger.Props, 'className'> & {
   className?: string
 }
-
-export function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
+function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
   return (
     <BaseCollapsible.Trigger
       className={cn(
@@ -32,11 +30,10 @@ export function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerPr
   )
 }
 
-export type CollapsiblePanelProps = Omit<BaseCollapsibleNS.Panel.Props, 'className'> & {
+type CollapsiblePanelProps = Omit<BaseCollapsibleNS.Panel.Props, 'className'> & {
   className?: string
 }
-
-export function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps) {
+function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps) {
   return (
     <BaseCollapsible.Panel
       className={cn(
@@ -49,3 +46,7 @@ export function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps)
     />
   )
 }
+
+export { Collapsible, CollapsiblePanel, CollapsibleTrigger }
+
+export type { CollapsiblePanelProps, CollapsibleProps, CollapsibleTriggerProps }

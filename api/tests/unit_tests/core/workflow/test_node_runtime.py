@@ -1,12 +1,17 @@
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, sentinel
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
+from core.model_manager import QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
@@ -44,7 +49,61 @@ from graphon.model_runtime.model_providers.base.large_language_model import Larg
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.variables.segments import ArrayFileSegment, FileSegment
+from models.base import TypeBase
+from models.dataset import SegmentAttachmentBinding
+from models.enums import CreatorUserRole
+from models.model import StorageType, UploadFile
+from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_run_context
+
+
+@pytest.fixture
+def attachment_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Provide real attachment and upload-file persistence to node runtime tests."""
+
+    TypeBase.metadata.create_all(sqlite_engine, tables=[SegmentAttachmentBinding.__table__, UploadFile.__table__])
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        yield session
+
+
+def _persist_attachment(
+    session: Session,
+    *,
+    segment_id: str,
+    upload_file_id: str,
+    upload_file_tenant_id: str = "tenant-id",
+) -> UploadFile:
+    """Persist an attachment binding for the test tenant and its referenced upload file."""
+
+    upload_file = UploadFile(
+        tenant_id=upload_file_tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="storage-key",
+        name="diagram.png",
+        size=128,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-id",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        used=False,
+        source_url="https://example.com/diagram.png",
+    )
+    upload_file.id = upload_file_id
+    session.add_all(
+        [
+            upload_file,
+            SegmentAttachmentBinding(
+                tenant_id="tenant-id",
+                dataset_id="dataset-id",
+                document_id="document-id",
+                segment_id=segment_id,
+                attachment_id=upload_file_id,
+            ),
+        ]
+    )
+    session.commit()
+    return upload_file
 
 
 def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIModelEntity:
@@ -89,6 +148,12 @@ class _ModelInstanceStub:
         )
         self.get_llm_num_tokens = Mock(return_value=get_llm_num_tokens_result)
         self.invoke_llm = Mock(return_value=invoke_llm_result)
+
+
+class _QuotaManagedModelInstanceStub(_ModelInstanceStub, QuotaManagedModelInstance):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.reserve_quota = Mock()
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
@@ -300,6 +365,146 @@ def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
     )
 
 
+def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    usage = node_runtime.LLMUsage.empty_usage().model_copy(update={"total_tokens": 5})
+    succeeded_result = LLMPollingResult(
+        status=LLMPollingStatus.SUCCEEDED,
+        result=node_runtime.LLMResult(
+            model="gpt-4o-mini",
+            prompt_messages=[],
+            message=AssistantPromptMessage(content="done"),
+            usage=usage,
+        ),
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+    plugin_runtime.check_llm_polling = Mock(return_value=succeeded_result)  # type: ignore[method-assign]
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.commit.assert_called_once_with(usage)
+    reservation.release.assert_not_called()
+
+
+def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    plugin_runtime = PluginModelRuntime(
+        tenant_id="tenant-id",
+        user_id="user-id",
+        client=Mock(spec=PluginModelClient),
+        plugin_service=PluginService,
+    )
+    plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+    first_reservation = MagicMock()
+    second_reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=plugin_runtime,
+    )
+    model_instance.reserve_quota.side_effect = [first_reservation, second_reservation]
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    for _ in range(2):
+        prepared.start_llm_polling(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            json_schema=None,
+        )
+
+    first_reservation.release.assert_called_once_with()
+    second_reservation.release.assert_not_called()
+    assert model_instance.reserve_quota.call_count == 2
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_finalized() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+    prepared.finalize_llm_polling()
+    prepared.finalize_llm_polling()
+
+    reservation.release.assert_called_once_with()
+
+
+def test_dify_prepared_polling_llm_releases_reservation_when_check_fails() -> None:
+    running_result = LLMPollingResult(
+        status=LLMPollingStatus.RUNNING,
+        plugin_state={"task_id": "poll-1"},
+    )
+    polling_runtime = SimpleNamespace(
+        start_llm_polling=Mock(return_value=running_result),
+        check_llm_polling=Mock(side_effect=RuntimeError("polling failed")),
+    )
+    reservation = MagicMock()
+    model_instance = _QuotaManagedModelInstanceStub(
+        model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
+        model_runtime=polling_runtime,
+    )
+    model_instance.reserve_quota.return_value = reservation
+    prepared = DifyPreparedPollingLLM(model_instance)
+
+    prepared.start_llm_polling(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        json_schema=None,
+    )
+
+    with pytest.raises(RuntimeError, match="polling failed"):
+        prepared.check_llm_polling(plugin_state={"task_id": "poll-1"})
+
+    reservation.release.assert_called_once_with()
+
+
 def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported() -> None:
     llm_result = node_runtime.LLMResult(
         model="gpt-4o-mini",
@@ -348,29 +553,12 @@ def test_dify_prompt_message_serializer_delegates(monkeypatch: pytest.MonkeyPatc
     )
 
 
-def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    upload_file = SimpleNamespace(
-        id="upload-file-id",
-        name="diagram.png",
-        extension="png",
-        mime_type="image/png",
-        source_url="https://example.com/diagram.png",
-        key="storage-key",
-        size=128,
-    )
-    session = MagicMock()
-    session.execute.return_value.all.return_value = [(None, upload_file)]
-
-    class _SessionContext:
-        def __enter__(self):
-            return session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
+def test_dify_retriever_attachment_loader_builds_graph_files(
+    monkeypatch: pytest.MonkeyPatch, attachment_session: Session
+) -> None:
+    _persist_attachment(attachment_session, segment_id="segment-id", upload_file_id="upload-file-id")
     build_from_mapping = MagicMock(return_value=sentinel.file)
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_SessionContext()))
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=attachment_session.get_bind()))
     loader = DifyRetrieverAttachmentLoader(
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
     )
@@ -388,39 +576,18 @@ def test_dify_retriever_attachment_loader_builds_graph_files(monkeypatch: pytest
 
 def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
     monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
 ) -> None:
     from factories.file_factory import builders as file_builders
 
     upload_file_id = str(uuid4())
     segment_id = str(uuid4())
-    upload_file = SimpleNamespace(
-        id=upload_file_id,
-        tenant_id="tenant-id",
-        name="diagram.png",
-        extension="png",
-        mime_type="image/png",
-        source_url="https://example.com/diagram.png",
-        key="storage-key",
-        size=128,
-    )
-    attachment_session = MagicMock()
-    attachment_session.execute.return_value.all.return_value = [(None, upload_file)]
-
-    class _AttachmentSessionContext:
-        def __enter__(self):
-            return attachment_session
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    upload_session = MagicMock()
-    upload_session.__enter__.return_value = upload_session
-    upload_session.__exit__.return_value = False
-    upload_session.scalar.return_value = upload_file
-
-    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=object()))
-    monkeypatch.setattr(node_runtime, "Session", MagicMock(return_value=_AttachmentSessionContext()))
-    monkeypatch.setattr(file_builders, "session_factory", SimpleNamespace(create_session=lambda: upload_session))
+    _persist_attachment(attachment_session, segment_id=segment_id, upload_file_id=upload_file_id)
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    session_maker = sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(file_builders.session_factory, "create_session", session_maker)
 
     loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
     scope = FileAccessScope(
@@ -435,18 +602,57 @@ def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segmen
         files = loader.load(segment_id=segment_id)
 
     assert files[0].related_id == upload_file_id
-    stmt = upload_session.scalar.call_args.args[0]
-    whereclause = str(stmt.whereclause)
-    assert "upload_files.tenant_id" in whereclause
-    assert "upload_files.id IN" in whereclause
+    assert files[0].filename == "diagram.png"
+
+
+def test_dify_retriever_attachment_loader_rejects_granted_upload_file_from_another_tenant(
+    monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
+) -> None:
+    from factories.file_factory import builders as file_builders
+
+    upload_file_id = str(uuid4())
+    segment_id = str(uuid4())
+    _persist_attachment(
+        attachment_session,
+        segment_id=segment_id,
+        upload_file_id=upload_file_id,
+        upload_file_tenant_id="other-tenant-id",
+    )
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    monkeypatch.setattr(file_builders.session_factory, "create_session", sessionmaker(engine, expire_on_commit=False))
+
+    loader = DifyRetrieverAttachmentLoader(file_reference_factory=DifyFileReferenceFactory(_build_run_context()))
+    scope = FileAccessScope(
+        tenant_id="tenant-id",
+        user_id="end-user-id",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+
+    with bind_file_access_scope(scope):
+        grant_retriever_segment_access([segment_id])
+        with pytest.raises(ValueError, match="Invalid upload file"):
+            loader.load(segment_id=segment_id)
 
 
 def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
     monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
 ) -> None:
     build_from_mapping = MagicMock()
-    session_factory = MagicMock()
-    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    statement_count = 0
+
+    def count_statements(*_args, **_kwargs) -> None:
+        nonlocal statement_count
+        statement_count += 1
+
+    event.listen(engine, "before_cursor_execute", count_statements)
     loader = DifyRetrieverAttachmentLoader(
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping)
     )
@@ -460,19 +666,31 @@ def test_dify_retriever_attachment_loader_skips_ungranted_segment_for_end_user(
     with bind_file_access_scope(scope):
         files = loader.load(segment_id=str(uuid4()))
 
-    assert files == []
-    session_factory.assert_not_called()
-    build_from_mapping.assert_not_called()
+    try:
+        assert files == []
+        assert statement_count == 0
+        build_from_mapping.assert_not_called()
+    finally:
+        event.remove(engine, "before_cursor_execute", count_statements)
 
 
 def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
     monkeypatch: pytest.MonkeyPatch,
+    attachment_session: Session,
 ) -> None:
     segment_id = str(uuid4())
     build_from_mapping = MagicMock()
-    session_factory = MagicMock()
     segment_access_checker = MagicMock(return_value=False)
-    monkeypatch.setattr(node_runtime, "Session", session_factory)
+    engine = attachment_session.get_bind()
+    assert engine is not None
+    monkeypatch.setattr(node_runtime, "db", SimpleNamespace(engine=engine))
+    statement_count = 0
+
+    def count_statements(*_args, **_kwargs) -> None:
+        nonlocal statement_count
+        statement_count += 1
+
+    event.listen(engine, "before_cursor_execute", count_statements)
     loader = DifyRetrieverAttachmentLoader(
         file_reference_factory=SimpleNamespace(build_from_mapping=build_from_mapping),
         segment_access_checker=segment_access_checker,
@@ -488,14 +706,27 @@ def test_dify_retriever_attachment_loader_skips_segment_rejected_by_checker(
         grant_retriever_segment_access([segment_id])
         files = loader.load(segment_id=segment_id)
 
-    assert files == []
-    segment_access_checker.assert_called_once_with(segment_id)
-    session_factory.assert_not_called()
-    build_from_mapping.assert_not_called()
+    try:
+        assert files == []
+        segment_access_checker.assert_called_once_with(segment_id)
+        assert statement_count == 0
+        build_from_mapping.assert_not_called()
+    finally:
+        event.remove(engine, "before_cursor_execute", count_statements)
 
 
 def test_dify_tool_file_manager_resolves_conversation_id_for_tool_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    create_file_by_raw = MagicMock(return_value=SimpleNamespace(id="tool-file-id"))
+    tool_file = ToolFile(
+        user_id="user-id",
+        tenant_id="tenant-id",
+        conversation_id="conversation-id",
+        file_key="tools/tenant-id/tool-file-id.png",
+        mimetype="image/png",
+        name="diagram.png",
+        size=len(b"file-bytes"),
+    )
+    tool_file.id = "tool-file-id"
+    create_file_by_raw = MagicMock(return_value=tool_file)
     manager_instance = SimpleNamespace(create_file_by_raw=create_file_by_raw)
     monkeypatch.setattr(node_runtime, "ToolFileManager", MagicMock(return_value=manager_instance))
     conversation_id_getter = MagicMock(return_value="conversation-id")

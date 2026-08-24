@@ -62,12 +62,6 @@ describe('ParamItem', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(<ParamItem {...defaultProps} className="my-custom-class" />)
-
-      expect(container.firstChild).toHaveClass('my-custom-class')
-    })
-
     it('should disable InputNumber when enable is false', () => {
       render(<ParamItem {...defaultProps} enable={false} />)
 

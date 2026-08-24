@@ -135,7 +135,7 @@ describe('InstallFromMarketplace Component', () => {
       )
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
       expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
-      expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-[146px]')
+      expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-36.5')
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import RegenerationModal from '../regeneration-modal'
@@ -42,12 +42,6 @@ describe('RegenerationModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing when isShow is true', () => {
-      render(<RegenerationModal {...defaultProps} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText(/segment\.regenerationConfirmTitle/i)).toBeInTheDocument()
-    })
-
     it('should not render content when isShow is false', () => {
       render(<RegenerationModal {...defaultProps} isShow={false} />, { wrapper: createWrapper() })
 

@@ -34,17 +34,30 @@ vi.mock('@/service/use-triggers', () => ({
   useTriggerPluginDynamicOptions: () => mockTriggerDynamicOptionsState,
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => false,
-  useWorkflow: () => ({
-    getTreeLeafNodes: () => [],
-    getNodeById: () => undefined,
-    getBeforeNodesInSameBranchIncludeParent: () => [],
-  }),
-  useWorkflowVariables: () => ({
-    getNodeAvailableVars: () => [],
-  }),
-}))
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getTreeLeafNodes: () => [],
+      getNodeById: () => undefined,
+      getBeforeNodesInSameBranchIncludeParent: () => [],
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow-variables', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow-variables')>()
+
+  return {
+    ...actual,
+    useWorkflowVariables: () => ({
+      getNodeAvailableVars: () => [],
+    }),
+  }
+})
 
 vi.mock('@/app/components/plugins/plugin-detail-panel/app-selector', () => ({
   AppSelector: ({ onSelect }: { onSelect: (value: AppSelectorValue) => void }) => (

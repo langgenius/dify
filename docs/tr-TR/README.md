@@ -92,7 +92,7 @@ Dify'ın tüm özellikleri ilgili API'lerle birlikte gelir, böylece Dify'ı ken
   Herkesin sıfır kurulumla denemesi için bir [Dify Cloud](https://dify.ai) hizmeti sunuyoruz. Bu hizmet, kendi kendine dağıtılan versiyonun tüm yeteneklerini sağlar ve sandbox planında 200 ücretsiz GPT-4 çağrısı içerir.
 
 - **Dify Topluluk Sürümünü Kendi Sunucunuzda Barındırma</br>**
-  Bu [başlangıç kılavuzu](#quick-start) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
+  Bu [başlangıç kılavuzu](#hızlı-başlangıç) ile Dify'ı kendi ortamınızda hızlıca çalıştırın.
   Daha fazla referans ve detaylı talimatlar için [dokümantasyonumuzu](https://docs.dify.ai) kullanın.
 
 - **Kurumlar / organizasyonlar için Dify</br>**
@@ -132,7 +132,7 @@ Yapılandırmayı özelleştirmeniz gerekiyorsa, lütfen [.env.example](../../do
 
 Uygulamalar, kiracılar, mesajlar ve daha fazlasının granularitesinde metrikleri izlemek için Dify'nin PostgreSQL veritabanını veri kaynağı olarak kullanarak panoyu Grafana'ya aktarın.
 
-- [@bowenliang123 tarafından Grafana Panosu](%E9%93%BE%E6%8E%A5)
+- [@bowenliang123 tarafından Grafana Panosu](https://github.com/bowenliang123/dify-grafana-dashboard)
 
 ### Kubernetes ile Dağıtım
 
@@ -176,6 +176,10 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 #### AKS'ye Dağıtım için Azure Devops Pipeline Kullanımı
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) kullanarak Dify'ı tek tıkla AKS'ye dağıtın
+
+#### Sealos ile Dağıtım
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/) kullanarak Dify'ı tek tıkla dağıtın
 
 ## Katkıda Bulunma
 

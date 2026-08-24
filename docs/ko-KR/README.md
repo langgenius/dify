@@ -91,7 +91,7 @@ Dify의 모든 제품에는 해당 API가 함께 제공되므로 Dify를 자신�
   우리는 누구나 설정이 필요 없이 사용해 볼 수 있도록 [Dify 클라우드](https://dify.ai) 서비스를 호스팅합니다. 이는 자체 배포 버전의 모든 기능을 제공하며, 샌드박스 플랜에서 무료로 200회의 GPT-4 호출을 포함합니다.
 
 - **셀프-호스팅 Dify 커뮤니티 에디션</br>**
-  환경에서 Dify를 빠르게 실행하려면 이 [스타터 가이드를](#quick-start) 참조하세요.
+  환경에서 Dify를 빠르게 실행하려면 이 [스타터 가이드를](#빠른-시작) 참조하세요.
   추가 참조 및 더 심층적인 지침은 [문서](https://docs.dify.ai)를 사용하세요.
 
 - **기업 / 조직을 위한 Dify</br>**
@@ -177,6 +177,10 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 #### AKS에 배포하기 위해 Azure Devops Pipeline 사용
 
 [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)을 사용하여 Dify를 AKS에 원클릭으로 배포
+
+#### Sealos를 사용한 배포
+
+[Sealos App Store](https://sealos.io/products/app-store/dify/)를 사용하여 Dify를 원클릭으로 배포할 수 있습니다
 
 ## 기여
 

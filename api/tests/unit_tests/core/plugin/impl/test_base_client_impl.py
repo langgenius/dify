@@ -5,9 +5,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
-from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
+from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -121,6 +121,26 @@ class TestBasePluginClientImpl:
         assert result is True
         assert transformed == {"code": 0, "message": "", "data": True}
 
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self, mocker: MockerFixture):
+        client = BasePluginClient()
+        mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": []}))
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
+
+        assert result.list == []
+        assert result.total == 0
+
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_top_level_array(
+        self, mocker: MockerFixture
+    ):
+        client = BasePluginClient()
+        mocker.patch.object(client, "_request", return_value=_ResponseStub([]))
+
+        result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
+
+        assert result.list == []
+        assert result.total == 0
+
     def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture):
         client = BasePluginClient()
         mocker.patch.object(client, "_stream_request", return_value=iter(['{"error":"bad-line"}']))
@@ -175,3 +195,25 @@ class TestBasePluginClientImpl:
 
         with pytest.raises(PluginLLMPollingUnsupportedError):
             client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+    def test_handle_plugin_daemon_error_maps_runtime_error_to_typed_exception(self):
+        client = BasePluginClient()
+        lambda_request_id = "45664803-3d3c-4d4f-93fe-e3b19e43092b"
+        message = json.dumps(
+            {
+                "error_type": PluginRuntimeError.__name__,
+                "message": (
+                    "Plugin runtime request failed: Runtime.ExitError: "
+                    f"RequestId: {lambda_request_id} Error: Runtime exited with error: exit status 1"
+                ),
+                "args": {"request_id": lambda_request_id, "status_code": 200},
+            }
+        )
+
+        with pytest.raises(PluginRuntimeError) as exc_info:
+            client._handle_plugin_daemon_error("PluginInvokeError", message)
+
+        assert exc_info.value.description == (
+            "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1"
+        )
+        assert exc_info.value.lambda_request_id == lambda_request_id

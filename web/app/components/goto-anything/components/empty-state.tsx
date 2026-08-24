@@ -1,6 +1,5 @@
 'use client'
 
-import type { FC } from 'react'
 import type { ActionItem } from '../actions/types'
 import { useTranslation } from 'react-i18next'
 
@@ -10,15 +9,15 @@ type EmptyStateProps = {
   variant: EmptyStateVariant
   searchMode?: string
   error?: Error | null
-  Actions?: Record<string, ActionItem>
+  actions?: Record<string, ActionItem>
 }
 
-const EmptyState: FC<EmptyStateProps> = ({
+export function EmptyState({
   variant,
   searchMode = 'general',
   error,
-  Actions = {},
-}) => {
+  actions = {},
+}: EmptyStateProps) {
   const { t } = useTranslation()
 
   if (variant === 'loading') {
@@ -67,7 +66,6 @@ const EmptyState: FC<EmptyStateProps> = ({
     )
   }
 
-  // variant === 'no-results'
   const isCommandSearch = searchMode !== 'general'
   const commandType = isCommandSearch ? searchMode.replace('@', '') : ''
 
@@ -93,7 +91,7 @@ const EmptyState: FC<EmptyStateProps> = ({
       return t(($) => $['gotoAnything.emptyState.tryDifferentTerm'], { ns: 'app' })
     }
 
-    const shortcuts = Object.values(Actions)
+    const shortcuts = Object.values(actions)
       .map((action) => action.shortcut)
       .join(', ')
     return t(($) => $['gotoAnything.emptyState.trySpecificSearch'], { ns: 'app', shortcuts })
@@ -108,5 +106,3 @@ const EmptyState: FC<EmptyStateProps> = ({
     </div>
   )
 }
-
-export default EmptyState

@@ -1,22 +1,19 @@
+import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { Field, FieldError, FieldLabel } from '../../field'
 import { Form } from '../../form'
 import { Input } from '../index'
 
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-
 describe('Input', () => {
-  it('should render a labelled Base UI input with its value', async () => {
-    const screen = await render(
-      <label>
-        Workspace name
-        <Input name="workspaceName" defaultValue="Dify" />
-      </label>,
-    )
+  it('should show keyboard focus when read-only', async () => {
+    const screen = await render(<Input aria-label="API key" defaultValue="sk-test" readOnly />)
+    const input = screen.getByRole('textbox', { name: 'API key' })
+    const restingBoxShadow = getComputedStyle(input.element()).boxShadow
 
-    const input = screen.getByRole('textbox', { name: 'Workspace name' })
+    await userEvent.keyboard('{Tab}')
 
-    await expect.element(input).toHaveValue('Dify')
+    await expect.element(input).toHaveFocus()
+    await expect.poll(() => getComputedStyle(input.element()).boxShadow).not.toBe(restingBoxShadow)
   })
 
   it('should use Field invalid state', async () => {
@@ -48,7 +45,7 @@ describe('Input', () => {
 
     const input = screen.getByRole('textbox', { name: 'Email' })
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     await vi.waitFor(async () => {
       await expect.element(screen.getByText('Email is required.')).toBeInTheDocument()

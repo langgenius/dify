@@ -34,19 +34,31 @@ import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
-  IS_CE_EDITION,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
+import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
+
+const isAbortError = (error: unknown) => {
+  if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
+
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  )
+}
+
+const shouldNotifyStreamError = (error: unknown) =>
+  !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
 
 export type IOnDataMoreInfo = {
   event?: string
@@ -64,6 +76,25 @@ type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
+
+const reportStreamResponseError = async (
+  response: Response,
+  onError: IOnError | undefined,
+  onNotifyError: IOnError,
+) => {
+  let errorMessage = 'Server Error'
+  try {
+    const data: unknown = await response.json()
+    if (typeof data === 'object' && data !== null && 'message' in data) {
+      const message = data.message
+      if (typeof message === 'string' && message) errorMessage = message
+    }
+  } catch {}
+
+  onError?.(errorMessage)
+  onNotifyError(errorMessage)
+}
+
 type UnhandledEventError = {
   conversationId?: string
   errorCode?: string
@@ -121,6 +152,8 @@ export type IOtherOptions = {
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
+  /** Replaces the default global error notification for this request. */
+  onNotifyError?: IOnError
   onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -162,17 +195,28 @@ function jumpTo(url: string) {
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
+const SIGNIN_PATH = '/signin'
 
 export const buildSigninUrlWithRedirect = (): string => {
   const loginUrl = `${isClient ? window.location.origin : ''}${basePath}/signin`
+  if (!isClient) return loginUrl
 
-  // Only preserve redirect URL for OAuth authorize pages
-  if (isClient && window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
+  const signinPath = `${basePath}${SIGNIN_PATH}`
+  if (window.location.pathname === signinPath || window.location.pathname === `${signinPath}/`)
+    return loginUrl
+
+  if (window.location.pathname.includes(OAUTH_AUTHORIZE_PATH)) {
     const currentUrl = window.location.href
     return `${loginUrl}?redirect_url=${encodeURIComponent(currentUrl)}`
   }
 
-  return loginUrl
+  const currentTarget = resolveLoginRedirectTarget(
+    `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    { allowSameOriginAbsolute: false },
+  )
+  if (!currentTarget || currentTarget.kind !== 'internal') return loginUrl
+
+  return `${loginUrl}?redirect_url=${encodeURIComponent(currentTarget.href)}`
 }
 
 function unicodeToChar(text: string) {
@@ -184,26 +228,52 @@ function unicodeToChar(text: string) {
 }
 
 const WBB_APP_LOGIN_PATH = '/webapp-signin'
+
+export function isWebAppSigninPath(pathname: string) {
+  const basePathSegment = basePath.replace(/^\/+|\/+$/g, '')
+  const signinPath = `${basePathSegment ? `/${basePathSegment}` : ''}${WBB_APP_LOGIN_PATH}`
+  return pathname === signinPath || pathname === `${signinPath}/`
+}
+
+export function buildWebAppSigninUrlWithRedirect(
+  origin: string,
+  pathname: string,
+  search: string,
+  message?: string,
+  code?: number,
+) {
+  const params = new URLSearchParams()
+  params.set('redirect_url', `${pathname}${search}`)
+  if (message) params.set('message', message)
+  if (code) params.set('code', String(code))
+
+  return `${origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
+}
+
 function requiredWebSSOLogin(message?: string, code?: number) {
   if (!isClient) return
 
-  const params = new URLSearchParams()
   // prevent redirect loop
-  if (window.location.pathname === WBB_APP_LOGIN_PATH) return
+  if (isWebAppSigninPath(window.location.pathname)) return
 
-  params.append(
-    'redirect_url',
-    encodeURIComponent(`${window.location.pathname}${window.location.search}`),
+  window.location.href = buildWebAppSigninUrlWithRedirect(
+    window.location.origin,
+    window.location.pathname,
+    window.location.search,
+    message,
+    code,
   )
-  if (message) params.append('message', message)
-  if (code) params.append('code', String(code))
-  window.location.href = `${window.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  let urlPrefix = API_PREFIX
+  if (isPublicAPI) urlPrefix = PUBLIC_API_PREFIX
   if (url.startsWith('http://') || url.startsWith('https://')) return url
-  const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
+  const urlWithoutProtocol = isPublicAPI
+    ? getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : url.startsWith('/')
+      ? url
+      : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
 }
 
@@ -295,7 +365,8 @@ export const handleStream = (
                 onCompleted?.(true, 'Invalid response data')
                 return
               }
-              if (bufferObj.status === 400 || !bufferObj.event) {
+              const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
+              if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
                 onData('', false, {
                   conversationId: undefined,
                   messageId: '',
@@ -435,15 +506,21 @@ export const upload = async (
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const address = resolveWebAppAddress()
+  const shareCode = address?.code
+  const publicApiPrefix = PUBLIC_API_PREFIX
+  const urlPrefix = isPublicAPI ? publicApiPrefix : API_PREFIX
   const defaultOptions = {
     method: 'POST',
-    url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
+    url:
+      (url
+        ? `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, url) : url}`
+        : `${urlPrefix}${isPublicAPI ? getWebAppPublicApiPath(address, '/files/upload') : '/files/upload'}`) +
+      (searchParams || ''),
     headers: {
       [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-      [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
-      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
+      [PASSPORT_HEADER_NAME]: getWebAppPassport(address),
+      [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
     },
   }
   const mergedOptions = {
@@ -500,6 +577,7 @@ export const ssePost = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -518,7 +596,7 @@ export const ssePost = async (
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
+  const shareCode = resolveWebAppAddress()?.code
   const options = Object.assign(
     {},
     baseOptions,
@@ -527,8 +605,8 @@ export const ssePost = async (
       signal: abortController.signal,
       headers: new Headers({
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
       }),
     } as RequestInit,
     fetchOptions,
@@ -572,10 +650,14 @@ export const ssePost = async (
               })
           }
         } else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
-          })
-          onError?.('Server Error')
+          if (onNotifyError) {
+            void reportStreamResponseError(res, onError, onNotifyError)
+          } else {
+            res.json().then((data) => {
+              toast.error(data.message || 'Server Error')
+            })
+            onError?.('Server Error')
+          }
         }
         return
       }
@@ -584,12 +666,11 @@ export const ssePost = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (
-              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
-              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
-            )
-              toast.error(moreInfo.errorMessage)
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -630,11 +711,10 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (
-        errorMessage !== 'AbortError: The user aborted a request.' &&
-        !errorMessage.includes('TypeError: Cannot assign to read only property')
-      )
-        toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
       onError?.(errorMessage)
     })
 }
@@ -669,6 +749,7 @@ export const sseGet = async (
     onTextReplace,
     onAgentLog,
     onError,
+    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -685,7 +766,7 @@ export const sseGet = async (
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
+  const shareCode = resolveWebAppAddress()?.code
   const options = Object.assign(
     {},
     baseOptions,
@@ -693,8 +774,8 @@ export const sseGet = async (
       signal: abortController.signal,
       headers: new Headers({
         [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME())! || '',
-        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode,
-        [PASSPORT_HEADER_NAME]: getWebAppPassport(shareCode!),
+        [WEB_APP_SHARE_CODE_HEADER_NAME]: shareCode || '',
+        [PASSPORT_HEADER_NAME]: getWebAppPassport(resolveWebAppAddress()),
       }),
     } as RequestInit,
     fetchOptions,
@@ -735,10 +816,14 @@ export const sseGet = async (
               })
           }
         } else {
-          res.json().then((data) => {
-            toast.error(data.message || 'Server Error')
-          })
-          onError?.('Server Error')
+          if (onNotifyError) {
+            void reportStreamResponseError(res, onError, onNotifyError)
+          } else {
+            res.json().then((data) => {
+              toast.error(data.message || 'Server Error')
+            })
+            onError?.('Server Error')
+          }
         }
         return
       }
@@ -747,12 +832,11 @@ export const sseGet = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (
-              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
-              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
-            )
-              toast.error(moreInfo.errorMessage)
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) {
+              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
+              else toast.error(moreInfo.errorMessage)
+            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -793,11 +877,10 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (
-        errorMessage !== 'AbortError: The user aborted a request.' &&
-        !errorMessage.includes('TypeError: Cannot assign to read only property')
-      )
-        toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) {
+        if (onNotifyError) onNotifyError(errorMessage)
+        else toast.error(errorMessage)
+      }
       onError?.(errorMessage)
     })
 }
@@ -920,9 +1003,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       if (!isClient) return Promise.reject(err)
 
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${window.location.origin}${basePath}/signin`
       if (parseErr) {
-        window.location.href = loginUrl
+        window.location.href = buildSigninUrlWithRedirect()
         return Promise.reject(err)
       }
       if (/\/login/.test(url)) return Promise.reject(errRespData)
@@ -947,15 +1029,15 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
+      if (code === 'init_validate_failed' && !silent) {
         toast.error(message, { timeout: 4000 })
         return Promise.reject(err)
       }
-      if (code === 'not_init_validated' && IS_CE_EDITION) {
+      if (code === 'not_init_validated') {
         jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
       }
-      if (code === 'not_setup' && IS_CE_EDITION) {
+      if (code === 'not_setup') {
         jumpTo(`${window.location.origin}${basePath}/install`)
         return Promise.reject(err)
       }
@@ -967,7 +1049,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`) return Promise.reject(err)
-      if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      if (window.location.pathname !== `${basePath}/signin`) {
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }

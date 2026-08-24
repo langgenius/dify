@@ -89,6 +89,11 @@ type PluralBaseResources = {
   billing: {
     'plansCommon.teamMember': string
   }
+  common: {
+    'members.recipientCount': string
+    'members.seatsRemaining': string
+    'members.sendInviteCount': string
+  }
   dataset: {
     docAllEnabled: string
     partialEnabled: string

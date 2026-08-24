@@ -147,17 +147,6 @@ describe('DebugItem', () => {
       expect(indexElement?.textContent?.trim()).toContain('2')
     })
 
-    it('should apply className and style props', () => {
-      const { container } = renderComponent({
-        className: 'custom-class',
-        style: { backgroundColor: 'red' },
-      })
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper)!.toHaveClass('custom-class')
-      expect(wrapper.style.backgroundColor).toBe('red')
-    })
-
     it('should pass modelAndParameter to ModelParameterTrigger', () => {
       const modelAndParameter = createModelAndParameter({ id: 'test-model' })
       renderComponent({ modelAndParameter })

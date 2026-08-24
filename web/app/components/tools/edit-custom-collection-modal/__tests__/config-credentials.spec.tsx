@@ -1,6 +1,6 @@
 import type { Credential } from '@/app/components/tools/types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 import ConfigCredential from '../config-credentials'
 
@@ -17,20 +17,6 @@ describe('ConfigCredential', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      await act(async () => {
-        render(
-          <ConfigCredential
-            credential={baseCredential}
-            onChange={mockOnChange}
-            onHide={mockOnHide}
-          />,
-        )
-      })
-
-      expect(screen.getByText('tools.createTool.authMethod.title')).toBeInTheDocument()
-    })
-
     it('should render all three auth type options', async () => {
       await act(async () => {
         render(

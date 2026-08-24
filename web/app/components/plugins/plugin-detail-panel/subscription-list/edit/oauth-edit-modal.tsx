@@ -3,7 +3,8 @@ import type { FormRefObject, FormSchema } from '@/app/components/base/form/types
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
 import { useMemo, useRef } from 'react'
@@ -187,13 +188,18 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
           className="flex max-h-[80dvh] flex-col"
         >
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle
-              data-testid="modal-title"
-              className="title-2xl-semi-bold text-text-primary"
-            >
-              {title}
-            </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">{title}</DialogTitle>
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div data-testid="modal-content" className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
             {pluginDetail && <ReadmeEntrance pluginDetail={pluginDetail} presentation="dialog" />}

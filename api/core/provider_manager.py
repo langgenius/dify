@@ -10,7 +10,7 @@ from enum import StrEnum
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -34,6 +34,9 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from enums import DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -571,16 +574,23 @@ class ProviderManager:
     instance scope.
     """
 
-    decoding_rsa_key: Any | None
-    decoding_cipher_rsa: Any | None
+    # Keyed by tenant_id -- a single ProviderManager instance may be asked to decrypt
+    # credentials belonging to different tenants (e.g. load balancing configs each carry
+    # their own tenant_id), so this cache must not collapse to a single shared value.
+    _decoding_contexts: dict[str, Any]
     _model_runtime: ModelRuntime
     _configurations_cache: dict[str, ProviderConfigurations]
 
     def __init__(self, model_runtime: ModelRuntime):
-        self.decoding_rsa_key = None
-        self.decoding_cipher_rsa = None
+        self._decoding_contexts = {}
         self._model_runtime = model_runtime
         self._configurations_cache = {}
+
+    def _get_decoding_context(self, tenant_id: str) -> Any:
+        """Return this manager's cached decoding context for `tenant_id`, fetching it once if absent."""
+        if tenant_id not in self._decoding_contexts:
+            self._decoding_contexts[tenant_id] = encrypter.get_decrypt_decoding(tenant_id)
+        return self._decoding_contexts[tenant_id]
 
     def clear_configurations_cache(self, tenant_id: str | None = None) -> None:
         """Drop assembled provider configurations cached on this manager instance."""
@@ -743,7 +753,7 @@ class ProviderManager:
 
             if preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
-            elif dify_config.EDITION == "CLOUD" and system_configuration.enabled:
+            elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_configuration.enabled:
                 preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
@@ -756,7 +766,11 @@ class ProviderManager:
             has_valid_quota = any(quota_conf.is_valid for quota_conf in system_configuration.quota_configurations)
 
             if preferred_provider_type == ProviderType.SYSTEM:
-                if not system_configuration.enabled or not has_valid_quota:
+                if not system_configuration.enabled or not system_configuration.quota_configurations:
+                    using_provider_type = ProviderType.CUSTOM
+                elif not has_valid_quota and (custom_configuration.provider or custom_configuration.models):
+                    # Only configured alternatives can serve as fallbacks; otherwise downstream checks must surface
+                    # system quota exhaustion instead of reporting missing custom credentials.
                     using_provider_type = ProviderType.CUSTOM
 
             else:
@@ -1494,16 +1508,14 @@ class ProviderManager:
             return {}
 
         # Decrypt secret variables
-        if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-            self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+        decoding_context = self._get_decoding_context(tenant_id)
 
         for variable in secret_variables:
             if variable in credentials:
                 with contextlib.suppress(ValueError):
                     credentials[variable] = encrypter.decrypt_token_with_decoding(
                         credentials.get(variable) or "",
-                        self.decoding_rsa_key,
-                        self.decoding_cipher_rsa,
+                        decoding_context,
                     )
 
         # Cache the decrypted credentials
@@ -1528,6 +1540,19 @@ class ProviderManager:
         if provider_hosting_configuration is None or not provider_hosting_configuration.enabled:
             return SystemConfiguration(enabled=False)
 
+        try:
+            plugin_provider_entity = PluginModelProviderDeclaration.model_validate(provider_entity)
+        except ValidationError:
+            return SystemConfiguration(enabled=False)
+
+        if plugin_provider_entity.installation_source != PluginInstallationSource.Marketplace:
+            return SystemConfiguration(enabled=False)
+
+        from core.plugin.plugin_service import PluginService
+
+        if not PluginService.is_plugin_verified(tenant_id, plugin_provider_entity.plugin_unique_identifier):
+            return SystemConfiguration(enabled=False)
+
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}
         for provider_record in provider_records:
@@ -1538,19 +1563,20 @@ class ProviderManager:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
         quota_configurations = []
 
-        if dify_config.EDITION == "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
-            trail_pool = CreditPoolService.get_pool(
-                tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.TRIAL,
-                session=db.session(),
-            )
-            paid_pool = CreditPoolService.get_pool(
-                tenant_id=tenant_id,
-                pool_type=ProviderQuotaType.PAID,
-                session=db.session(),
-            )
+            with session_factory.create_session() as session:
+                trail_pool = CreditPoolService.get_pool(
+                    tenant_id=tenant_id,
+                    pool_type=ProviderQuotaType.TRIAL,
+                    session=session,
+                )
+                paid_pool = CreditPoolService.get_pool(
+                    tenant_id=tenant_id,
+                    pool_type=ProviderQuotaType.PAID,
+                    session=session,
+                )
         else:
             trail_pool = None
             paid_pool = None
@@ -1641,17 +1667,15 @@ class ProviderManager:
                         else []
                     )
 
-                    # Get decoding rsa key and cipher for decrypting credentials
-                    if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                        self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+                    # Get decoding context for decrypting credentials
+                    decoding_context = self._get_decoding_context(tenant_id)
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
                             try:
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
-                                    self.decoding_rsa_key,
-                                    self.decoding_cipher_rsa,
+                                    decoding_context,
                                 )
                             except ValueError:
                                 pass
@@ -1785,19 +1809,15 @@ class ProviderManager:
                             except (ValueError, JSONDecodeError):
                                 continue
 
-                            # Get decoding rsa key and cipher for decrypting credentials
-                            if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
-                                self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(
-                                    load_balancing_model_config.tenant_id
-                                )
+                            # Get decoding context for decrypting credentials
+                            decoding_context = self._get_decoding_context(load_balancing_model_config.tenant_id)
 
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
                                     try:
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
-                                            self.decoding_rsa_key,
-                                            self.decoding_cipher_rsa,
+                                            decoding_context,
                                         )
                                     except ValueError:
                                         pass

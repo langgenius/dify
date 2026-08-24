@@ -83,7 +83,7 @@ User-scoped operations
 | mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| workspace_id | query |  | Yes | string |
+| workspace_id | query |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -129,7 +129,7 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | include_secret | query | Include encrypted secret values in the exported DSL | No | boolean |
-| workflow_id | query | Export a specific workflow version instead of the current draft | No | string |
+| workflow_id | query | Export a specific workflow version instead of the current draft | No | string (uuid) |
 | app_id | path |  | Yes | string |
 
 #### Responses
@@ -600,7 +600,7 @@ mode is a closed enum of listable app types.
 | mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| workspace_id | string |  | Yes |
+| workspace_id | string (uuid) |  | Yes |
 
 #### AppListResponse
 
@@ -647,6 +647,14 @@ mode is a closed enum of listable app types.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | leaked_dependencies | [ [PluginDependency](#plugindependency) ] |  | No |
+
+#### DeploymentEdition
+
+Enum representing the deployment edition of the platform.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
 
 #### DeviceCodeRequest
 
@@ -712,6 +720,17 @@ mode is a closed enum of listable app types.
 | token_id | string |  | Yes |
 | workspaces | [ [WorkspacePayload](#workspacepayload) ], <br>**Default:**  |  | No |
 
+#### DslImportWarning
+
+Portable DSL reference that could not be restored in the target workspace.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | object |  | No |
+| message | string |  | Yes |
+| path | string |  | Yes |
+
 #### ErrorBody
 
 Canonical non-2xx body. ``code`` is typed ``str`` (not the enum) so the
@@ -730,7 +749,7 @@ future server adds a code. Formatter tests pin emitted values to the enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| loc | [  ], <br>**Default:**  |  | No |
+| loc | [ string<br>integer ] |  | No |
 | msg | string |  | Yes |
 | type | string |  | Yes |
 
@@ -809,12 +828,13 @@ Liveness payload for `GET /openapi/v1/_health` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | app_id | string |  | No |
 | app_mode | string |  | No |
-| current_dsl_version | string, <br>**Default:** 0.6.0 |  | No |
+| current_dsl_version | string, <br>**Default:** 0.7.0 |  | No |
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
 | permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
+| warnings | [ [DslImportWarning](#dslimportwarning) ] |  | No |
 
 #### ImportStatus
 
@@ -962,7 +982,7 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| edition | string, <br>**Available values:** "CLOUD", "SELF_HOSTED" | *Enum:* `"CLOUD"`, `"SELF_HOSTED"` | Yes |
+| edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | version | string |  | Yes |
 
 #### SessionListQuery

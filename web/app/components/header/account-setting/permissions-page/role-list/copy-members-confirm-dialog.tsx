@@ -37,12 +37,7 @@ export function CopyMembersConfirmDialog({
 
   return (
     <AlertDialog open onOpenChange={onOpenChange}>
-      <AlertDialogContent
-        backdropProps={{
-          forceRender: true,
-          onClick: () => onOpenChange(false),
-        }}
-      >
+      <AlertDialogContent backdropProps={{ forceRender: true }}>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
             {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}

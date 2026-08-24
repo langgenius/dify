@@ -131,7 +131,7 @@ const ValueContent = ({ currentVar, handleValueChange, isTruncated }: Props) => 
           />
         )}
         {showBoolEditor && (
-          <div className="w-[295px]">
+          <div className="w-73.75">
             <BoolValue
               value={currentVar.value as boolean}
               onChange={(newValue) => {

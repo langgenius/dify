@@ -2,11 +2,15 @@ import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/
 import type { HumanInputFormValue } from '@/types/workflow'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { FileList } from '@/app/components/base/file-uploader'
@@ -48,7 +52,7 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
   if (isParagraphFormInput(field)) {
     return (
       <span
-        className="body-md-regular break-words text-text-primary"
+        className="body-md-regular wrap-break-word text-text-primary"
         data-testid={`submitted-field-${fieldName}`}
       >
         {typeof value === 'string' ? value : ''}
@@ -68,16 +72,22 @@ const SubmittedContentItem = ({ content, formInputFields, values }: SubmittedCon
             aria-label={field.output_variable_name}
             disabled
           >
-            {selectedValue}
+            <SelectValue />
           </SelectTrigger>
-          <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-            {field.option_source.value.map((option) => (
-              <SelectItem key={option} value={option}>
-                <SelectItemText>{option}</SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            ))}
-          </SelectContent>
+          <SelectPortal>
+            <SelectPositioner>
+              <SelectPopup>
+                <SelectList className="max-h-[140px] overflow-y-auto">
+                  {field.option_source.value.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      <SelectItemText>{option}</SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  ))}
+                </SelectList>
+              </SelectPopup>
+            </SelectPositioner>
+          </SelectPortal>
         </Select>
       </div>
     )

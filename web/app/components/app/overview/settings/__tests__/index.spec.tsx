@@ -4,7 +4,6 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue } from '@/context/provider-context'
 import { AppModeEnum } from '@/types/app'
 import SettingsModal from '../index'
@@ -59,22 +58,18 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowPricingModal = vi.fn()
-const mockSetShowAccountSettingModal = vi.fn()
 const mockUseProviderContext = vi.fn<() => ProviderContextState>()
 
 const buildModalContext = (): ModalContextState => ({
-  setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  hasBlockingModalOpen: false,
   setShowModerationSettingModal: vi.fn(),
   setShowExternalDataToolModal: vi.fn(),
   setShowPricingModal: mockSetShowPricingModal,
   setShowAnnotationFullModal: vi.fn(),
   setShowModelModal: vi.fn(),
   setShowExternalKnowledgeAPIModal: vi.fn(),
-  setShowModelLoadBalancingModal: vi.fn(),
   setShowOpeningModal: vi.fn(),
   setShowUpdatePluginModal: vi.fn(),
-  setShowEducationExpireNoticeModal: vi.fn(),
-  setShowTriggerEventsLimitModal: vi.fn(),
 })
 
 vi.mock('@/context/modal-context', () => ({
@@ -121,9 +116,16 @@ const mockAppInfo = {
   enable_sso: false,
 } as unknown as AppDetailResponse & Partial<AppSSO>
 
-const renderSettingsModal = (appInfo = mockAppInfo) =>
+const renderSettingsModal = (appInfo = mockAppInfo, canDeploy = false) =>
   render(
-    <SettingsModal isChat isShow appInfo={appInfo} onClose={mockOnClose} onSave={mockOnSave} />,
+    <SettingsModal
+      isChat
+      canDeploy={canDeploy}
+      isShow
+      appInfo={appInfo}
+      onClose={mockOnClose}
+      onSave={mockOnSave}
+    />,
   )
 
 const inputPlaceholderName = 'appOverview.overview.appInfo.settings.more.inputPlaceholder'
@@ -134,13 +136,12 @@ describe('SettingsModal', () => {
     mockOnClose.mockClear()
     mockOnSave.mockClear()
     mockSetShowPricingModal.mockClear()
-    mockSetShowAccountSettingModal.mockClear()
     mockUseProviderContext.mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.professional,
+        type: 'professional',
       },
       webappCopyrightEnabled: true,
     })
@@ -153,6 +154,7 @@ describe('SettingsModal', () => {
   it('should render the modal with all settings exposed by default', async () => {
     renderSettingsModal()
     expect(screen.getByText('appOverview.overview.appInfo.settings.title')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
     expect(
       screen.queryByText('appOverview.overview.appInfo.settings.more.entry'),
@@ -168,6 +170,14 @@ describe('SettingsModal', () => {
         'appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('should explain that Web app settings apply to every environment when ACL allows deploy', () => {
+    renderSettingsModal(mockAppInfo, true)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'appOverview.overview.appInfo.settings.multiEnvironmentNotice',
+    )
   })
 
   it('should notify the user when the name is empty', async () => {
@@ -266,6 +276,7 @@ describe('SettingsModal', () => {
     const { rerender } = render(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -281,6 +292,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={false}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -290,6 +302,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -311,6 +324,7 @@ describe('SettingsModal', () => {
     const { rerender } = render(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={mockAppInfo}
         onClose={mockOnClose}
@@ -324,6 +338,7 @@ describe('SettingsModal', () => {
     rerender(
       <SettingsModal
         isChat
+        canDeploy={false}
         isShow={true}
         appInfo={
           {
@@ -350,7 +365,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       webappCopyrightEnabled: true,
     })
@@ -385,7 +400,7 @@ describe('SettingsModal', () => {
       enableBilling: false,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       webappCopyrightEnabled: false,
     })
@@ -413,7 +428,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: 'sandbox',
       },
       webappCopyrightEnabled: false,
     })
@@ -422,7 +437,6 @@ describe('SettingsModal', () => {
     fireEvent.click((await screen.findAllByText('billing.upgradeBtn.encourageShort'))[0]!)
 
     expect(mockSetShowPricingModal).toHaveBeenCalled()
-    expect(mockSetShowAccountSettingModal).not.toHaveBeenCalled()
   })
 
   it('should hide the upgrade badge for non-sandbox plans', async () => {
@@ -431,7 +445,7 @@ describe('SettingsModal', () => {
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.professional,
+        type: 'professional',
       },
       webappCopyrightEnabled: true,
     })

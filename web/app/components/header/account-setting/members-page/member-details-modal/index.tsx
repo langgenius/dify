@@ -1,10 +1,10 @@
 'use client'
-
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -55,8 +55,8 @@ const MemberDetailsModal = ({
           defaultValue: 'Assigned Roles',
         })
   const assignActionIconClassName = allowMultipleRoles
-    ? 'mr-0.5 i-ri-add-line h-3.5 w-3.5'
-    : 'mr-0.5 i-ri-edit-line h-3.5 w-3.5'
+    ? 'i-ri-add-line h-3.5 w-3.5'
+    : 'i-ri-edit-line h-3.5 w-3.5'
   const assignActionLabel = allowMultipleRoles
     ? t(($) => $['members.memberDetails.assign'], {
         ns: 'common',
@@ -109,7 +109,17 @@ const MemberDetailsModal = ({
       >
         <DialogContent className="w-110 overflow-visible p-0" backdropProps={{ forceRender: true }}>
           <div className="relative px-6 pt-6 pb-5">
-            <DialogCloseButton />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute inset-e-6 top-6"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
             <DialogTitle className="pr-8 system-xl-semibold text-text-primary">
               {t(($) => $['members.memberDetails.title'], {
                 ns: 'common',

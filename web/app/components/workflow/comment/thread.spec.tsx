@@ -1,18 +1,27 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentDetail } from '@/app/components/workflow/comment/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentThread } from './thread'
 
 const mockSetCommentPreviewHovering = vi.hoisted(() => vi.fn())
 const mockFlowToScreenPosition = vi.hoisted(() =>
   vi.fn(({ x, y }: { x: number; y: number }) => ({ x, y })),
 )
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
     name: 'Alice',
     avatar_url: 'alice.png',
   },
 }))
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper(mockConsoleState.userProfile),
+  })
 
 const storeState = vi.hoisted(() => ({
   mentionableUsersCache: {
@@ -32,33 +41,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
     formatTimeFromNow: () => 'just now',
   }),
 }))
-
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
@@ -85,45 +67,6 @@ vi.mock('@/app/components/base/inline-delete-confirm', () => ({
       confirm delete
     </button>
   ),
-}))
-
-vi.mock('@langgenius/dify-ui/avatar', () => ({
-  Avatar: ({ name }: { name: string }) => <div data-testid="avatar">{name}</div>,
-  AvatarRoot: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="avatar-root">{children}</div>
-  ),
-  AvatarImage: ({ alt }: { alt: string }) => <div data-testid="avatar-image">{alt}</div>,
-  AvatarFallback: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="avatar-fallback">{children}</div>
-  ),
-}))
-
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button type="button" {...props}>
-      {children}
-    </button>
-  ),
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  TooltipTrigger: ({
-    children,
-    render,
-    ...props
-  }: React.ComponentProps<'button'> & { children?: React.ReactNode; render?: React.ReactNode }) => {
-    if (render) return <>{render}</>
-
-    return (
-      <button type="button" {...props}>
-        {children}
-      </button>
-    )
-  },
-  TooltipContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 vi.mock('./mention-input', () => ({
@@ -285,6 +228,7 @@ describe('CommentThread', () => {
   })
 
   it('supports editing and direct deleting an existing reply', async () => {
+    const user = userEvent.setup()
     const onReplyEdit = vi.fn()
     const onReplyDeleteDirect = vi.fn()
 
@@ -297,18 +241,20 @@ describe('CommentThread', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('workflow.comments.actions.editReply'))
-    fireEvent.click(screen.getByText('submit-workflow.comments.placeholder.editReply'))
+    await user.click(screen.getByLabelText('workflow.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflow.comments.actions.editReply'))
+    await user.click(screen.getByText('submit-workflow.comments.placeholder.editReply'))
 
     await waitFor(() => {
       expect(onReplyEdit).toHaveBeenCalledWith('reply-1', 'first reply', ['user-2'])
     })
 
     await waitFor(() => {
-      expect(screen.getByText('workflow.comments.actions.deleteReply')).toBeInTheDocument()
+      expect(screen.getByLabelText('workflow.comments.aria.replyActions')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByText('workflow.comments.actions.deleteReply'))
-    fireEvent.click(screen.getByTestId('confirm-delete-reply'))
+    await user.click(screen.getByLabelText('workflow.comments.aria.replyActions'))
+    await user.click(await screen.findByText('workflow.comments.actions.deleteReply'))
+    await user.click(screen.getByTestId('confirm-delete-reply'))
 
     expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
   })

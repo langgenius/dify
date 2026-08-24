@@ -1,5 +1,6 @@
 import type { NodeTracing } from '@/types/workflow'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import NodePanel from '../node'
 

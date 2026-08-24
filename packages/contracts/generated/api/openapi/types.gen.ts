@@ -125,6 +125,8 @@ export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
 export type DeviceCodeRequest = {
   client_id: string
   device_label: string
@@ -171,6 +173,15 @@ export type DeviceTokenResponse = {
   token: string
   token_id: string
   workspaces?: Array<WorkspacePayload>
+}
+
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
 }
 
 export type ErrorBody = {
@@ -252,6 +263,7 @@ export type Import = {
   imported_dsl_version?: string
   permission_keys?: Array<string>
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
@@ -382,7 +394,7 @@ export type RevokeResponse = {
 }
 
 export type ServerVersionResponse = {
-  edition: 'CLOUD' | 'SELF_HOSTED'
+  edition: DeploymentEdition
   version: string
 }
 

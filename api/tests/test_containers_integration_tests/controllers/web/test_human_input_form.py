@@ -37,7 +37,7 @@ from models.human_input import (
 from models.model import App, AppMode, CustomizeTokenStrategy, Site
 from models.workflow import WorkflowRun, WorkflowType
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 class _TestWorkflowRunRepository(DifyAPISQLAlchemyWorkflowRunRepository):
@@ -231,7 +231,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
         return features
 
     monkeypatch.setattr(
-        "controllers.web.site.FeatureService.get_features",
+        "controllers.web.human_input_form.FeatureService.get_features",
         mock_get_features,
     )
 

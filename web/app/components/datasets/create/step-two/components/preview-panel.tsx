@@ -86,7 +86,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
         }
         className={cn(
           'relative flex h-full w-1/2 shrink-0 p-4 pr-0',
-          isMobile && 'w-full max-w-[524px]',
+          isMobile && 'w-full max-w-131',
         )}
         mainClassName="space-y-6"
       >
@@ -176,7 +176,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
                 </SkeletonRow>
                 <SkeletonRectangle className="w-full" />
                 <SkeletonRectangle className="w-full" />
-                <SkeletonRectangle className="w-[422px]" />
+                <SkeletonRectangle className="w-105.5" />
               </SkeletonContainer>
             ))}
           </div>

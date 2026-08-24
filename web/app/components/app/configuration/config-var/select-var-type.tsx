@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
+import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -50,14 +50,12 @@ const SelectVarType: FC<Props> = ({ onChange }) => {
   }
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger nativeButton={false} render={<div className="block" />}>
-        <OperationBtn type="add" />
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger render={<OperationButton operation="add" />} />
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={8}
         alignOffset={-2}
-        popupClassName="min-w-[192px] rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"
+        className="min-w-[192px] rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"
       >
         <div className="p-1">
           <SelectItem

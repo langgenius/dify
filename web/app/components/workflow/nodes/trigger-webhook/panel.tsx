@@ -86,7 +86,7 @@ const WebhookMethodSelector = ({
       <SelectTrigger aria-label={label} className="h-8 pr-8 text-sm">
         {selectedMethod?.name}
       </SelectTrigger>
-      <SelectContent popupClassName="w-26 min-w-26">
+      <SelectContent className="w-26 min-w-26">
         {HTTP_METHODS.map((item) => (
           <SelectItem key={item.value} value={item.value}>
             <SelectItemText>{item.name}</SelectItemText>
@@ -197,7 +197,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                   </TooltipContent>
                 </Tooltip>
                 {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
-                  <div className="mt-1 px-0 py-[2px] system-xs-regular text-text-warning">
+                  <div className="mt-1 px-0 py-0.5 system-xs-regular text-text-warning">
                     {t(($) => $[`${i18nPrefix}.debugUrlPrivateAddressWarning`], { ns: 'workflow' })}
                   </div>
                 )}
@@ -208,7 +208,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
 
         {/* Content Type */}
         <Field title={t(($) => $[`${i18nPrefix}.contentType`], { ns: 'workflow' })}>
-          <div className="w-full max-w-[392px]">
+          <div className="w-full max-w-98">
             <Select
               key={`${id}-content-type-${inputs.content_type}`}
               value={selectedContentType?.value ?? null}
@@ -265,7 +265,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({ id, data }) => {
                 {t(($) => $[`${i18nPrefix}.statusCode`], { ns: 'workflow' })}
               </label>
               <NumberField
-                className="w-[120px]"
+                className="w-30"
                 min={DEFAULT_STATUS_CODE}
                 max={MAX_STATUS_CODE}
                 value={inputs.status_code ?? DEFAULT_STATUS_CODE}

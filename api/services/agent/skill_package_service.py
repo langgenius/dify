@@ -1,4 +1,4 @@
-"""Validate and normalize uploaded Skill packages for drive standardization.
+"""Validate and normalize uploaded Skill packages.
 
 A Skill is a ``.zip`` / ``.skill`` archive that must contain a ``SKILL.md`` entry
 file (Anthropic Skills convention: YAML frontmatter with ``name`` + ``description``,
@@ -10,8 +10,7 @@ archive-root ``SKILL.md`` bytes.
 
 It does NOT execute or load the skill — the agent backend owns execution. It also
 does not persist anything into Agent Soul or bind anything to config versions;
-``SkillStandardizeService`` consumes the normalized package and commits the
-canonical drive rows instead.
+``ConfigSkillNormalizeService`` consumes the normalized package for Agent config.
 """
 
 from __future__ import annotations
@@ -26,8 +25,9 @@ import zlib
 import yaml
 from pydantic import BaseModel
 
+from configs import dify_config
+
 # Bounds — generous but finite so a hostile upload can't exhaust memory/disk.
-_MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 _MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024
 _MAX_SKILL_MD_BYTES = 1 * 1024 * 1024
 _MAX_ENTRIES = 5000
@@ -62,7 +62,7 @@ class SkillManifest(BaseModel):
 
 
 class NormalizedSkillPackage(BaseModel):
-    """Canonical skill package bytes and metadata ready to store in agent drive."""
+    """Canonical skill package bytes and metadata ready to store as Agent config."""
 
     manifest: SkillManifest
     archive_bytes: bytes
@@ -71,10 +71,10 @@ class NormalizedSkillPackage(BaseModel):
 
 
 class SkillPackageService:
-    """Validate Skill archives and produce the normalized package stored in drive."""
+    """Validate Skill archives and produce a normalized package."""
 
     def validate_and_normalize(self, *, content: bytes, filename: str) -> NormalizedSkillPackage:
-        """Return the canonical drive package for an uploaded skill archive.
+        """Return the canonical package for an uploaded skill archive.
 
         The shallowest ``SKILL.md`` defines the skill root. When exactly one
         depth-2 ``<folder>/SKILL.md`` exists, normalization strips that top-level
@@ -127,7 +127,8 @@ class SkillPackageService:
         self._check_extension(filename)
         if not content:
             raise SkillPackageError("empty_archive", "skill archive is empty", status_code=400)
-        if len(content) > _MAX_ARCHIVE_BYTES:
+        max_archive_bytes = dify_config.UPLOAD_SKILL_FILE_SIZE_LIMIT * 1024 * 1024
+        if len(content) > max_archive_bytes:
             raise SkillPackageError("archive_too_large", "skill archive exceeds size limit", status_code=400)
 
         try:

@@ -4,11 +4,15 @@ import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,16 +160,22 @@ const SelectPreview: React.FC<{ label: string; options: string[] }> = ({ label, 
           className="w-full rounded-[10px]"
           aria-label="human-input-note-select"
         >
-          {value}
+          <SelectValue />
         </SelectTrigger>
-        <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-          {options.map((option) => (
-            <SelectItem key={option} value={option}>
-              <SelectItemText>{option}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList className="max-h-[140px] overflow-y-auto">
+                {options.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    <SelectItemText>{option}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </Select>
     </div>
   )

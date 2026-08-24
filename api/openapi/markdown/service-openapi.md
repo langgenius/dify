@@ -265,7 +265,7 @@ Updates the question and answer of an existing annotation.
 ### [POST] /audio-to-text
 **Convert Audio to Text**
 
-Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
+Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, `audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`.
 
 #### Request Body
 
@@ -327,7 +327,7 @@ Send a request to the chat application.
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |
 | 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |
 | 404 | `not_found` : Conversation does not exist. |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |
 | 500 | `internal_server_error` : Internal server error. |
@@ -474,7 +474,7 @@ Send a request to the chat application.
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. |
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |
 | 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |
 | 404 | `not_found` : Conversation does not exist. |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |
 | 500 | `internal_server_error` : Internal server error. |
@@ -1165,9 +1165,10 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 413 | `file_too_large` : File size exceeded. |  |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 **Create Document by Text**
@@ -1220,9 +1221,10 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
+| 413 | `file_too_large` : File size exceeded. |  |
 
 ### [GET] /datasets/{dataset_id}/documents
 **List Documents**
@@ -1391,10 +1393,11 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 413 | `file_too_large` : File size exceeded. |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1443,10 +1446,11 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 413 | `file_too_large` : File size exceeded. |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1502,10 +1506,11 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, file too large, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
+| 413 | `file_too_large` : File size exceeded. |  |
 
 ---
 ## default
@@ -1534,7 +1539,7 @@ Update metadata values for multiple documents at once. Each document in the requ
 | 200 | Document metadata updated successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 404 | Dataset, document, or metadata not found |  |
 
 ### [GET] /datasets/{dataset_id}/metadata
 **List Metadata Fields**
@@ -2995,7 +3000,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string | Document ID whose metadata should be updated. | Yes |
+| document_id | string (uuid) | Document ID whose metadata should be updated. | Yes |
 | metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
 | partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
@@ -3057,6 +3062,8 @@ Request payload for bulk downloading documents as a zip archive.
 | completed_at | integer |  | Yes |
 | completed_segments | integer |  | No |
 | error | string |  | Yes |
+| error_code | string |  | No |
+| estimated_vector_space_mb | integer |  | No |
 | id | string |  | Yes |
 | indexing_status | string |  | Yes |
 | parsing_completed_at | integer |  | Yes |
@@ -3065,6 +3072,7 @@ Request payload for bulk downloading documents as a zip archive.
 | splitting_completed_at | integer |  | Yes |
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
+| vector_space_limit_mb | integer |  | No |
 
 #### DocumentTextCreatePayload
 
@@ -3505,7 +3513,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string | Metadata field ID. | Yes |
+| id | string (uuid) | Metadata field ID. | Yes |
 | name | string | Metadata field name. | Yes |
 | value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
@@ -3609,7 +3617,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasource_info_list | [  ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
+| datasource_info_list | [ object<br>object<br>object<br>object ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
 | datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource. Determines which fields are expected in `datasource_info_list` items.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
 | inputs | object | Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has no input variables. | Yes |
 | is_published | boolean | Whether to run the published or draft version of the pipeline. `true` runs the latest published version; `false` runs the current draft (useful for testing unpublished changes). | Yes |
@@ -4052,11 +4060,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### WeightKeywordSetting
 

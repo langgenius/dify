@@ -1,34 +1,18 @@
-import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { UsagePlanInfo } from '../../type'
-import { render } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
-import { Plan } from '../../type'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import Pricing from '../index'
 
-type DialogProps = {
-  children: ReactNode
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
-
-let latestOnOpenChange: DialogProps['onOpenChange']
-let mockAppCtx: Record<string, unknown> = {}
-
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, onOpenChange }: DialogProps) => {
-    latestOnOpenChange = onOpenChange
-    return <div data-testid="dialog">{children}</div>
-  },
-  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
-}))
+let mockConsoleState: Record<string, unknown> = {}
 
 vi.mock('../header', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
-    <button data-testid="pricing-header-close" onClick={onClose}>
+    <button type="button" onClick={onClose}>
       close
     </button>
   ),
@@ -46,31 +30,9 @@ vi.mock('../footer', () => ({
   default: () => <div>footer</div>,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -94,14 +56,13 @@ const buildUsage = (): UsagePlanInfo => ({
 describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    latestOnOpenChange = undefined
-    mockAppCtx = {
+    mockConsoleState = {
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['billing.manage'],
     }
     ;(useProviderContext as Mock).mockReturnValue({
+      enableEducationPlan: false,
       plan: {
-        type: Plan.sandbox,
+        type: 'sandbox',
         usage: buildUsage(),
         total: buildUsage(),
       },
@@ -109,12 +70,13 @@ describe('Pricing dialog lifecycle', () => {
     ;(useGetPricingPageLanguage as Mock).mockReturnValue('en')
   })
 
-  it('should only call onCancel when the dialog requests closing', () => {
+  it('should call onCancel when the pricing dialog is closed', async () => {
+    const user = userEvent.setup()
     const onCancel = vi.fn()
-    render(<Pricing onCancel={onCancel} />)
+    const { wrapper } = createConsoleQueryWrapper()
+    render(<Pricing onCancel={onCancel} />, { wrapper })
 
-    latestOnOpenChange?.(true)
-    latestOnOpenChange?.(false)
+    await user.click(screen.getByRole('button', { name: 'close' }))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
   })

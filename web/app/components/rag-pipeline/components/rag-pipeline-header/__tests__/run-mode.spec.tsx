@@ -1,18 +1,45 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import RunMode from '../run-mode'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { RunMode } from '../run-mode'
 
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockSetIsPreparingDataSource = vi.fn()
 const mockSetShowDebugAndPreviewPanel = vi.fn()
+const hotkeyRegistrations = vi.hoisted(
+  () =>
+    new Map<
+      string,
+      {
+        callback: () => void
+        options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean }
+      }
+    >(),
+)
+
+vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
+  return {
+    ...actual,
+    useHotkey: (
+      hotkey: string,
+      callback: () => void,
+      options?: { enabled?: boolean; ignoreInputs?: boolean; preventDefault?: boolean },
+    ) => {
+      hotkeyRegistrations.set(hotkey, { callback, options })
+    },
+  }
+})
 
 let mockWorkflowRunningData: { task_id: string; result: { status: string } } | undefined
 let mockIsPreparingDataSource = false
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow-run', () => ({
   useWorkflowRun: () => ({
     handleStopRun: mockHandleStopRun,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-start-run', () => ({
   useWorkflowStartRun: () => ({
     handleWorkflowStartRunInWorkflow: mockHandleWorkflowStartRunInWorkflow,
   }),
@@ -75,6 +102,7 @@ describe('RunMode', () => {
     vi.clearAllMocks()
     mockWorkflowRunningData = undefined
     mockIsPreparingDataSource = false
+    hotkeyRegistrations.clear()
   })
 
   describe('Idle state', () => {
@@ -108,6 +136,20 @@ describe('RunMode', () => {
       fireEvent.click(screen.getByText('pipeline.common.testRun'))
 
       expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalled()
+    })
+
+    it('should run through the enabled application shortcut', () => {
+      render(<RunMode />)
+
+      const registration = hotkeyRegistrations.get('Alt+R')
+      registration?.callback()
+
+      expect(mockHandleWorkflowStartRunInWorkflow).toHaveBeenCalledOnce()
+      expect(registration?.options).toEqual({
+        enabled: true,
+        ignoreInputs: true,
+        preventDefault: true,
+      })
     })
   })
 

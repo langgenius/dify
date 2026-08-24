@@ -15,7 +15,7 @@ const Drive = ({ breadcrumbs, handleBackToRoot }: DriveProps) => {
       <button
         type="button"
         className={cn(
-          'max-w-full shrink truncate rounded-md px-[5px] py-1',
+          'max-w-full shrink truncate rounded-md px-1.25 py-1',
           breadcrumbs.length > 0 &&
             'system-sm-regular text-text-tertiary hover:bg-state-base-hover',
           breadcrumbs.length === 0 && 'system-sm-medium text-text-secondary',

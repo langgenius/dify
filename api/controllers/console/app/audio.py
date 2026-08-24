@@ -31,6 +31,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -127,6 +128,7 @@ def _transcribe_audio_to_text(
     *,
     app_model: App,
     file: FileStorage | None,
+    session: Session,
     agent_soul: AgentSoulConfig | None = None,
 ) -> dict[str, str]:
     try:
@@ -134,6 +136,7 @@ def _transcribe_audio_to_text(
             response = AudioService.transcript_asr(
                 app_model=app_model,
                 file=file,
+                session=session,
                 end_user=None,
             )
         else:
@@ -141,6 +144,7 @@ def _transcribe_audio_to_text(
                 app_model=app_model,
                 agent_soul=agent_soul,
                 file=file,
+                session=session,
                 end_user=None,
             )
         return dump_response(AudioTranscriptResponse, response)
@@ -194,7 +198,11 @@ class ChatMessageAudioApi(Resource):
     @account_initialization_required
     @get_app_model(mode=_CONSOLE_AUDIO_TRANSCRIPT_APP_MODES)
     def post(self, app_model: App):
-        return _transcribe_audio_to_text(app_model=app_model, file=request.files.get("file"))
+        return _transcribe_audio_to_text(
+            app_model=app_model,
+            file=request.files.get("file"),
+            session=db.session(),
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/audio-to-text")
@@ -228,7 +236,11 @@ class AgentChatMessageAudioApi(Resource):
         agent_id: UUID,
     ):
         payload = AgentAudioTranscriptFormPayload.model_validate(request.form.to_dict(flat=True))
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(
+            session=session,
+            tenant_id=current_tenant_id,
+            agent_id=agent_id,
+        )
         # Agent routes expose Agent ids, while APP RBAC is keyed by the resolved runtime App id.
         enforce_rbac_access(
             tenant_id=current_tenant_id,
@@ -248,6 +260,7 @@ class AgentChatMessageAudioApi(Resource):
             app_model=app_model,
             agent_soul=agent_soul,
             file=request.files.get("file"),
+            session=session,
         )
 
 
@@ -264,15 +277,15 @@ class ChatMessageTextApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
-    def post(self, app_model: App):
+    @model_validate(TextToSpeechPayload)
+    def post(self, req_data: TextToSpeechPayload, app_model: App):
         try:
-            payload = TextToSpeechPayload.model_validate(console_ns.payload)
             message_ref = None
-            if payload.message_id:
+            if req_data.message_id:
                 app_ref = AppRefService.create_app_ref(app_model)
                 message_ref = AppRefService.create_message_ref(
                     app_ref,
-                    payload.message_id,
+                    req_data.message_id,
                     account_id=current_user.id,
                 )
 
@@ -280,8 +293,8 @@ class ChatMessageTextApi(Resource):
             return AudioService.transcript_tts(
                 app_model=app_model,
                 session=db.session(),
-                text=payload.text,
-                voice=payload.voice,
+                text=req_data.text,
+                voice=req_data.voice,
                 message_ref=message_ref,
                 is_draft=True,
             )
@@ -327,13 +340,12 @@ class TextModesApi(Resource):
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
-    def get(self, app_model: App):
+    @model_validate(TextToSpeechVoiceQuery)
+    def get(self, req_data: TextToSpeechVoiceQuery, app_model: App):
         try:
-            args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))
-
             response = AudioService.transcript_tts_voices(
                 tenant_id=app_model.tenant_id,
-                language=args.language,
+                language=req_data.language,
             )
 
             return dump_response(TextToSpeechVoiceListResponse, response)

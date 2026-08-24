@@ -7,7 +7,6 @@ import pytest
 
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueMessageFileEvent
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from models.enums import CreatorUserRole
@@ -81,54 +80,40 @@ class TestBaseAppRunnerMultimodal:
                 mock_msg_file_class.return_value = mock_message_file
 
                 file_session = MagicMock()
-                mock_session_factory = MagicMock()
-                mock_session_factory.begin.return_value.__enter__ = MagicMock(return_value=file_session)
-                mock_session_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                # Act
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                with patch("core.app.apps.base_app_runner.sessionmaker", return_value=mock_session_factory) as mock_sm:
-                    with patch("core.app.apps.base_app_runner.db") as mock_db:
-                        # Act
-                        runner = MagicMock()
-                        method = AppRunner._handle_multimodal_image_content
-                        runner._handle_multimodal_image_content = lambda *args, **kwargs: method(
-                            runner, *args, **kwargs
-                        )
+                message_file_id = runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                        runner._handle_multimodal_image_content(
-                            content=content,
-                            message_id=mock_message_id,
-                            user_id=mock_user_id,
-                            tenant_id=mock_tenant_id,
-                            queue_manager=mock_queue_manager,
-                        )
+                # Assert
+                mock_mgr.create_file_by_url.assert_called_once_with(
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    file_url=image_url,
+                    conversation_id=None,
+                )
 
-                        # Assert
-                        mock_mgr.create_file_by_url.assert_called_once_with(
-                            user_id=mock_user_id,
-                            tenant_id=mock_tenant_id,
-                            file_url=image_url,
-                            conversation_id=None,
-                        )
+                mock_msg_file_class.assert_called_once()
+                call_kwargs = mock_msg_file_class.call_args[1]
+                assert call_kwargs["message_id"] == mock_message_id
+                assert call_kwargs["type"] == FileType.IMAGE
+                assert call_kwargs["transfer_method"] == FileTransferMethod.TOOL_FILE
+                assert call_kwargs["belongs_to"] == "assistant"
+                assert call_kwargs["created_by"] == mock_user_id
 
-                        mock_msg_file_class.assert_called_once()
-                        call_kwargs = mock_msg_file_class.call_args[1]
-                        assert call_kwargs["message_id"] == mock_message_id
-                        assert call_kwargs["type"] == FileType.IMAGE
-                        assert call_kwargs["transfer_method"] == FileTransferMethod.TOOL_FILE
-                        assert call_kwargs["belongs_to"] == "assistant"
-                        assert call_kwargs["created_by"] == mock_user_id
-
-                        # Verify independent session was used (not db.session)
-                        mock_sm.assert_called_once_with(bind=mock_db.engine, expire_on_commit=False)
-                        file_session.add.assert_called_once_with(mock_message_file)
-                        mock_db.session.commit.assert_not_called()
-                        mock_db.session.close.assert_not_called()
-
-                        # Verify event was published
-                        mock_queue_manager.publish.assert_called_once()
-                        publish_call = mock_queue_manager.publish.call_args
-                        assert isinstance(publish_call[0][0], QueueMessageFileEvent)
-                        assert publish_call[0][0].message_file_id == mock_message_file.id
+                file_session.add.assert_called_once_with(mock_message_file)
+                file_session.flush.assert_called_once()
+                assert message_file_id == mock_message_file.id
+                mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_base64(
         self,
@@ -163,41 +148,34 @@ class TestBaseAppRunnerMultimodal:
                 mock_msg_file_class.return_value = mock_message_file
 
                 file_session = MagicMock()
-                mock_session_factory = MagicMock()
-                mock_session_factory.begin.return_value.__enter__ = MagicMock(return_value=file_session)
-                mock_session_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                with patch("core.app.apps.base_app_runner.sessionmaker", return_value=mock_session_factory):
-                    with patch("core.app.apps.base_app_runner.db") as mock_db:
-                        runner = MagicMock()
-                        method = AppRunner._handle_multimodal_image_content
-                        runner._handle_multimodal_image_content = lambda *args, **kwargs: method(
-                            runner, *args, **kwargs
-                        )
+                message_file_id = runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                        runner._handle_multimodal_image_content(
-                            content=content,
-                            message_id=mock_message_id,
-                            user_id=mock_user_id,
-                            tenant_id=mock_tenant_id,
-                            queue_manager=mock_queue_manager,
-                        )
+                mock_mgr.create_file_by_raw.assert_called_once()
+                call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
+                assert call_kwargs["user_id"] == mock_user_id
+                assert call_kwargs["tenant_id"] == mock_tenant_id
+                assert call_kwargs["conversation_id"] is None
+                assert "file_binary" in call_kwargs
+                assert call_kwargs["mimetype"] == "image/png"
+                assert call_kwargs["filename"].startswith("generated_image")
+                assert call_kwargs["filename"].endswith(".png")
 
-                        mock_mgr.create_file_by_raw.assert_called_once()
-                        call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
-                        assert call_kwargs["user_id"] == mock_user_id
-                        assert call_kwargs["tenant_id"] == mock_tenant_id
-                        assert call_kwargs["conversation_id"] is None
-                        assert "file_binary" in call_kwargs
-                        assert call_kwargs["mimetype"] == "image/png"
-                        assert call_kwargs["filename"].startswith("generated_image")
-                        assert call_kwargs["filename"].endswith(".png")
-
-                        mock_msg_file_class.assert_called_once()
-                        file_session.add.assert_called_once()
-                        mock_db.session.commit.assert_not_called()
-
-                        mock_queue_manager.publish.assert_called_once()
+                mock_msg_file_class.assert_called_once()
+                file_session.add.assert_called_once()
+                file_session.flush.assert_called_once()
+                assert message_file_id == mock_message_file.id
+                mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_base64_data_uri(
         self,
@@ -230,29 +208,22 @@ class TestBaseAppRunnerMultimodal:
                 mock_msg_file_class.return_value = mock_message_file
 
                 file_session = MagicMock()
-                mock_session_factory = MagicMock()
-                mock_session_factory.begin.return_value.__enter__ = MagicMock(return_value=file_session)
-                mock_session_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                with patch("core.app.apps.base_app_runner.sessionmaker", return_value=mock_session_factory):
-                    with patch("core.app.apps.base_app_runner.db"):
-                        runner = MagicMock()
-                        method = AppRunner._handle_multimodal_image_content
-                        runner._handle_multimodal_image_content = lambda *args, **kwargs: method(
-                            runner, *args, **kwargs
-                        )
+                runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                        runner._handle_multimodal_image_content(
-                            content=content,
-                            message_id=mock_message_id,
-                            user_id=mock_user_id,
-                            tenant_id=mock_tenant_id,
-                            queue_manager=mock_queue_manager,
-                        )
-
-                        mock_mgr.create_file_by_raw.assert_called_once()
-                        call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
-                        assert "file_binary" in call_kwargs
+                mock_mgr.create_file_by_raw.assert_called_once()
+                call_kwargs = mock_mgr.create_file_by_raw.call_args[1]
+                assert "file_binary" in call_kwargs
 
     def test_handle_multimodal_image_content_without_url_or_base64(
         self,
@@ -272,22 +243,23 @@ class TestBaseAppRunnerMultimodal:
 
         with patch("core.app.apps.base_app_runner.ToolFileManager", autospec=True) as mock_mgr_class:
             with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
-                with patch("core.app.apps.base_app_runner.db"):
-                    runner = MagicMock()
-                    method = AppRunner._handle_multimodal_image_content
-                    runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
+                file_session = MagicMock()
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                    runner._handle_multimodal_image_content(
-                        content=content,
-                        message_id=mock_message_id,
-                        user_id=mock_user_id,
-                        tenant_id=mock_tenant_id,
-                        queue_manager=mock_queue_manager,
-                    )
+                runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                    mock_mgr_class.assert_not_called()
-                    mock_msg_file_class.assert_not_called()
-                    mock_queue_manager.publish.assert_not_called()
+                mock_mgr_class.assert_not_called()
+                mock_msg_file_class.assert_not_called()
+                mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_with_error(
         self,
@@ -311,21 +283,22 @@ class TestBaseAppRunnerMultimodal:
             mock_mgr_class.return_value = mock_mgr
 
             with patch("core.app.apps.base_app_runner.MessageFile", autospec=True) as mock_msg_file_class:
-                with patch("core.app.apps.base_app_runner.db"):
-                    runner = MagicMock()
-                    method = AppRunner._handle_multimodal_image_content
-                    runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
+                file_session = MagicMock()
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                    runner._handle_multimodal_image_content(
-                        content=content,
-                        message_id=mock_message_id,
-                        user_id=mock_user_id,
-                        tenant_id=mock_tenant_id,
-                        queue_manager=mock_queue_manager,
-                    )
+                runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                    mock_msg_file_class.assert_not_called()
-                    mock_queue_manager.publish.assert_not_called()
+                mock_msg_file_class.assert_not_called()
+                mock_queue_manager.publish.assert_not_called()
 
     def test_handle_multimodal_image_content_debugger_mode(
         self,
@@ -355,28 +328,21 @@ class TestBaseAppRunnerMultimodal:
                 mock_msg_file_class.return_value = mock_message_file
 
                 file_session = MagicMock()
-                mock_session_factory = MagicMock()
-                mock_session_factory.begin.return_value.__enter__ = MagicMock(return_value=file_session)
-                mock_session_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                with patch("core.app.apps.base_app_runner.sessionmaker", return_value=mock_session_factory):
-                    with patch("core.app.apps.base_app_runner.db"):
-                        runner = MagicMock()
-                        method = AppRunner._handle_multimodal_image_content
-                        runner._handle_multimodal_image_content = lambda *args, **kwargs: method(
-                            runner, *args, **kwargs
-                        )
+                runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                        runner._handle_multimodal_image_content(
-                            content=content,
-                            message_id=mock_message_id,
-                            user_id=mock_user_id,
-                            tenant_id=mock_tenant_id,
-                            queue_manager=mock_queue_manager,
-                        )
-
-                        call_kwargs = mock_msg_file_class.call_args[1]
-                        assert call_kwargs["created_by_role"] == CreatorUserRole.ACCOUNT
+                call_kwargs = mock_msg_file_class.call_args[1]
+                assert call_kwargs["created_by_role"] == CreatorUserRole.ACCOUNT
 
     def test_handle_multimodal_image_content_service_api_mode(
         self,
@@ -406,25 +372,18 @@ class TestBaseAppRunnerMultimodal:
                 mock_msg_file_class.return_value = mock_message_file
 
                 file_session = MagicMock()
-                mock_session_factory = MagicMock()
-                mock_session_factory.begin.return_value.__enter__ = MagicMock(return_value=file_session)
-                mock_session_factory.begin.return_value.__exit__ = MagicMock(return_value=False)
+                runner = MagicMock()
+                method = AppRunner._handle_multimodal_image_content
+                runner._handle_multimodal_image_content = lambda *args, **kwargs: method(runner, *args, **kwargs)
 
-                with patch("core.app.apps.base_app_runner.sessionmaker", return_value=mock_session_factory):
-                    with patch("core.app.apps.base_app_runner.db"):
-                        runner = MagicMock()
-                        method = AppRunner._handle_multimodal_image_content
-                        runner._handle_multimodal_image_content = lambda *args, **kwargs: method(
-                            runner, *args, **kwargs
-                        )
+                runner._handle_multimodal_image_content(
+                    session=file_session,
+                    content=content,
+                    message_id=mock_message_id,
+                    user_id=mock_user_id,
+                    tenant_id=mock_tenant_id,
+                    queue_manager=mock_queue_manager,
+                )
 
-                        runner._handle_multimodal_image_content(
-                            content=content,
-                            message_id=mock_message_id,
-                            user_id=mock_user_id,
-                            tenant_id=mock_tenant_id,
-                            queue_manager=mock_queue_manager,
-                        )
-
-                        call_kwargs = mock_msg_file_class.call_args[1]
-                        assert call_kwargs["created_by_role"] == CreatorUserRole.END_USER
+                call_kwargs = mock_msg_file_class.call_args[1]
+                assert call_kwargs["created_by_role"] == CreatorUserRole.END_USER

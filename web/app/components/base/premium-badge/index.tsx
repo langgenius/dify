@@ -49,7 +49,7 @@ function BadgeHighlight({ size }: { size?: PremiumBadgeProps['size'] }) {
       aria-hidden="true"
       className={cn(
         'absolute top-0 right-1/2 translate-x-[20%] opacity-50 transition-[opacity,transform] duration-100 ease-out hover:translate-x-[30%] hover:opacity-80 motion-reduce:transition-none',
-        size === 's' ? 'h-[18px] w-12' : 'h-6 w-12',
+        size === 's' ? 'h-4.5 w-12' : 'h-6 w-12',
       )}
     />
   )

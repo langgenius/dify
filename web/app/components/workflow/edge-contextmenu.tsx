@@ -1,7 +1,7 @@
 import { ContextMenuContent, ContextMenuItem } from '@langgenius/dify-ui/context-menu'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import { useEdgesInteractions } from './hooks'
+import { useEdgesInteractions } from './hooks/use-edges-interactions'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore } from './store'
 
@@ -16,7 +16,7 @@ export function EdgeContextmenu({ onClose }: { onClose: () => void }) {
   if (!edgeId || !currentEdgeExists) return null
 
   return (
-    <ContextMenuContent popupClassName="rounded-lg" sideOffset={4}>
+    <ContextMenuContent className="rounded-lg" sideOffset={4}>
       <ContextMenuItem
         variant="destructive"
         className="justify-between gap-4 px-3"

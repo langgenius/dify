@@ -5,21 +5,41 @@ export type ClientOptions = {
 }
 
 export type WorkflowGeneratePayload = {
-  current_graph?: {
-    [key: string]: unknown
-  } | null
+  current_graph?: WorkflowGraph | null
   ideal_output?: string
   instruction: string
   mode: 'advanced-chat' | 'auto' | 'workflow'
   model_config: ModelConfig
 }
 
-export type GeneratorResponse = unknown
+export type WorkflowGenerateResponse = {
+  app_name?: string
+  error?: string
+  errors?: Array<WorkflowGenerateErrorResponse>
+  graph: WorkflowGraph
+  icon?: string
+  message?: string
+  mode?: 'advanced-chat' | 'workflow' | null
+}
+
+export type WorkflowGenerateStreamEventResponse =
+  | WorkflowGeneratePlanEventResponse
+  | WorkflowGenerateResultEventResponse
 
 export type WorkflowInstructionSuggestionsPayload = {
   count?: number
   language?: string | null
   mode: 'advanced-chat' | 'workflow'
+}
+
+export type WorkflowInstructionSuggestionsResponse = {
+  suggestions: Array<string>
+}
+
+export type WorkflowGraph = {
+  edges: Array<WorkflowGraphEdge>
+  nodes: Array<WorkflowGraphNode>
+  viewport: WorkflowGraphViewport
 }
 
 export type ModelConfig = {
@@ -31,7 +51,93 @@ export type ModelConfig = {
   provider: string
 }
 
+export type WorkflowGenerateErrorResponse = {
+  code: WorkflowGenerateErrorCode
+  detail: string
+  node_id?: string | null
+}
+
+export type WorkflowGeneratePlanEventResponse = {
+  app_name?: string
+  description?: string
+  event?: 'plan'
+  icon?: string
+  mode: 'advanced-chat' | 'workflow'
+  nodes: Array<WorkflowPlanNodeResponse>
+  start_inputs?: Array<WorkflowPlanStartInputResponse>
+  title?: string
+}
+
+export type WorkflowGenerateResultEventResponse = {
+  app_name?: string
+  error?: string
+  errors?: Array<WorkflowGenerateErrorResponse>
+  event?: 'result'
+  graph: WorkflowGraph
+  icon?: string
+  message?: string
+  mode?: 'advanced-chat' | 'workflow' | null
+}
+
+export type WorkflowGraphEdge = {
+  id: string
+  source: string
+  target: string
+  type: string
+  [key: string]: unknown
+}
+
+export type WorkflowGraphNode = {
+  data: {
+    [key: string]: unknown
+  }
+  id: string
+  position: WorkflowGraphPosition
+  type: string
+  [key: string]: unknown
+}
+
+export type WorkflowGraphViewport = {
+  x: number
+  y: number
+  zoom: number
+}
+
 export type LlmMode = 'chat' | 'completion'
+
+export type WorkflowGenerateErrorCode =
+  | 'DANGLING_EDGE'
+  | 'DUPLICATE_NODE_ID'
+  | 'EMPTY_INSTRUCTION'
+  | 'EMPTY_PLAN'
+  | 'GRAPH_CYCLE'
+  | 'INSTRUCTION_TOO_LONG'
+  | 'INVALID_CONTAINER'
+  | 'INVALID_JSON'
+  | 'INVALID_SCHEMA'
+  | 'MISSING_START'
+  | 'MISSING_TERMINAL'
+  | 'MODEL_ERROR'
+  | 'UNKNOWN_NODE_REFERENCE'
+  | 'UNKNOWN_TOOL'
+  | 'UNRESOLVED_REFERENCE'
+
+export type WorkflowPlanNodeResponse = {
+  label: string
+  node_type: string
+  purpose?: string
+}
+
+export type WorkflowPlanStartInputResponse = {
+  label?: string
+  type?: string
+  variable: string
+}
+
+export type WorkflowGraphPosition = {
+  x: number
+  y: number
+}
 
 export type PostWorkflowGenerateData = {
   body: WorkflowGeneratePayload
@@ -46,7 +152,7 @@ export type PostWorkflowGenerateErrors = {
 }
 
 export type PostWorkflowGenerateResponses = {
-  200: GeneratorResponse
+  200: WorkflowGenerateResponse
 }
 
 export type PostWorkflowGenerateResponse =
@@ -64,9 +170,7 @@ export type PostWorkflowGenerateStreamErrors = {
 }
 
 export type PostWorkflowGenerateStreamResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: WorkflowGenerateStreamEventResponse
 }
 
 export type PostWorkflowGenerateStreamResponse =
@@ -84,7 +188,7 @@ export type PostWorkflowGenerateSuggestionsErrors = {
 }
 
 export type PostWorkflowGenerateSuggestionsResponses = {
-  200: GeneratorResponse
+  200: WorkflowInstructionSuggestionsResponse
 }
 
 export type PostWorkflowGenerateSuggestionsResponse =

@@ -21,7 +21,8 @@ vi.mock('@/service/log', () => ({
   fetchTracingList: (...args: unknown[]) => mockFetchTracingList(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => ({
+  ...(await importOriginal()),
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },

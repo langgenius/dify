@@ -1,9 +1,11 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
@@ -18,7 +20,8 @@ import {
   OUTPUT_NAME_PATTERN_SOURCE,
 } from './utils'
 
-const CONFIRM_HOTKEY = 'Mod+Enter'
+const CANCEL_HOTKEY = 'Escape' satisfies Hotkey
+const CONFIRM_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 function ConfirmHotkeyHint() {
   const displayKeys = formatForDisplay(CONFIRM_HOTKEY, { separatorToken: ' ' })
@@ -40,6 +43,7 @@ export function OutputEditCard({
   existingOutputs,
   editingIndex,
   allowDefaultValue = true,
+  reservedNames,
   state,
   onCancel,
   onConfirm,
@@ -47,6 +51,7 @@ export function OutputEditCard({
   existingOutputs: EditableOutputConfig[]
   editingIndex?: number
   allowDefaultValue?: boolean
+  reservedNames?: ReadonlySet<string>
   state: EditingState
   onCancel: () => void
   onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
@@ -60,9 +65,11 @@ export function OutputEditCard({
     (output, index) => output.name === trimmedName && index !== editingIndex,
   )
   const nameInvalid = !!trimmedName && !OUTPUT_NAME_PATTERN.test(trimmedName)
-  const hasNameError = duplicateName || nameInvalid
+  const reservedName = reservedNames?.has(trimmedName) ?? false
+  const hasNameError = duplicateName || nameInvalid || reservedName
   const defaultValueErrorKey = getDefaultValueErrorKey(draft)
-  const confirmDisabled = !trimmedName || nameInvalid || duplicateName || !!defaultValueErrorKey
+  const confirmDisabled =
+    !trimmedName || nameInvalid || duplicateName || reservedName || !!defaultValueErrorKey
   function updateDraft(next: Partial<OutputDraft>) {
     setDraft((prev) => ({ ...prev, ...next }))
   }
@@ -70,8 +77,11 @@ export function OutputEditCard({
     if (confirmDisabled) return
     onConfirm(createOutputFromDraft(draft, { includeDefaultValue: allowDefaultValue }), state)
   }
-  useHotkey(CONFIRM_HOTKEY, handleConfirm, { target: editorRef, ignoreInputs: false })
-  useHotkey('Escape', onCancel, { target: editorRef, ignoreInputs: false })
+  useHotkey(CONFIRM_HOTKEY, handleConfirm, {
+    target: editorRef,
+    ignoreInputs: false,
+  })
+  useHotkey(CANCEL_HOTKEY, onCancel, { target: editorRef, ignoreInputs: false })
   return (
     <div ref={editorRef}>
       <Form
@@ -88,18 +98,17 @@ export function OutputEditCard({
               <FieldLabel className="sr-only">
                 {t(($) => $['nodes.agent.outputVars.nameLabel'], { ns: 'workflow' })}
               </FieldLabel>
-              <FieldControl
+              <Input
                 aria-describedby={hasNameError ? nameErrorId : undefined}
                 // oxlint-disable-next-line jsx-a11y/no-autofocus -- Inline editor opens from an explicit user action and should focus the first editable field.
                 autoFocus
                 required
                 pattern={OUTPUT_NAME_PATTERN_SOURCE}
-                size="small"
                 value={draft.name}
                 placeholder={t(($) => $['nodes.agent.outputVars.namePlaceholder'], {
                   ns: 'workflow',
                 })}
-                className="h-6 w-24 px-1.5 py-0 code-sm-semibold"
+                className="h-6 w-24 rounded-md px-1.5 py-0 code-sm-semibold"
                 onChange={(event) => updateDraft({ name: event.currentTarget.value })}
               />
             </Field>
@@ -138,13 +147,12 @@ export function OutputEditCard({
             <FieldLabel className="sr-only">
               {t(($) => $['nodes.agent.outputVars.descriptionLabel'], { ns: 'workflow' })}
             </FieldLabel>
-            <FieldControl
-              size="small"
+            <Input
               value={draft.description}
               placeholder={t(($) => $['nodes.agent.outputVars.descriptionPlaceholder'], {
                 ns: 'workflow',
               })}
-              className="mt-2 h-5 border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
+              className="mt-2 h-5 rounded-md border-transparent bg-transparent px-1 py-0 system-xs-regular shadow-none hover:border-transparent hover:bg-transparent focus:bg-transparent"
               onChange={(event) => updateDraft({ description: event.currentTarget.value })}
             />
           </Field>
@@ -193,7 +201,6 @@ export function OutputEditCard({
             variant="primary"
             disabled={confirmDisabled}
             aria-label={t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
-            className="gap-x-1"
           >
             {t(($) => $['nodes.agent.outputVars.confirm'], { ns: 'workflow' })}
             <ConfirmHotkeyHint />

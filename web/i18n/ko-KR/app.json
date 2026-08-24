@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "그룹 및 구성원 검색",
   "accessControlDialog.title": "웹 애플리케이션 접근 제어",
   "accessControlDialog.updateSuccess": "업데이트가 성공적으로 완료되었습니다.",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "공개 액세스가 관리자에 의해 비활성화되었습니다.",
   "accessControlDialog.webAppSSONotEnabledTip": "웹 앱 인증 방법을 구성하려면 엔터프라이즈 관리자인에게 문의하십시오.",
   "accessItemsDescription.anyone": "누구나 웹 앱에 접근할 수 있습니다.",
   "accessItemsDescription.external": "인증된 외부 사용자만 웹 애플리케이션에 접근할 수 있습니다.",

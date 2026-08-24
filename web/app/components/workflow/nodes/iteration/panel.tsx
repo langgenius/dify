@@ -11,7 +11,14 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -70,7 +77,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
           title={t(($) => $[`${i18nPrefix}.input`], { ns: 'workflow' })}
           required
           operations={
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
               Array
             </div>
           }
@@ -91,7 +98,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
           title={t(($) => $[`${i18nPrefix}.output`], { ns: 'workflow' })}
           required
           operations={
-            <div className="flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
+            <div className="flex h-4.5 items-center rounded-[5px] border border-divider-deep px-1 system-2xs-medium-uppercase text-text-tertiary capitalize">
               Array
             </div>
           }
@@ -111,7 +118,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
         <Field
           title={t(($) => $[`${i18nPrefix}.parallelMode`], { ns: 'workflow' })}
           tooltip={
-            <div className="w-[230px]">
+            <div className="w-57.5">
               {t(($) => $[`${i18nPrefix}.parallelPanelDesc`], { ns: 'workflow' })}
             </div>
           }
@@ -126,7 +133,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
             title={maxParallelismLabel}
             isSubTitle
             tooltip={
-              <div className="w-[230px]">
+              <div className="w-57.5">
                 {t(($) => $[`${i18nPrefix}.MaxParallelismDesc`], { ns: 'workflow' })}
               </div>
             }
@@ -150,8 +157,15 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
                 max={MAX_PARALLEL_LIMIT}
                 min={MIN_ITERATION_PARALLEL_NUM}
                 className="mt-4 flex-1 shrink-0"
-                aria-label={maxParallelismLabel}
-              />
+              >
+                <SliderLabel className="sr-only">{maxParallelismLabel}</SliderLabel>
+                <SliderControl>
+                  <SliderTrack>
+                    <SliderIndicator />
+                    <SliderThumb />
+                  </SliderTrack>
+                </SliderControl>
+              </Slider>
             </Fieldset>
           </Field>
         </div>
@@ -190,7 +204,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({ id, data }) => {
         <Field
           title={t(($) => $[`${i18nPrefix}.flattenOutput`], { ns: 'workflow' })}
           tooltip={
-            <div className="w-[230px]">
+            <div className="w-57.5">
               {t(($) => $[`${i18nPrefix}.flattenOutputDesc`], { ns: 'workflow' })}
             </div>
           }

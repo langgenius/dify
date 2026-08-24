@@ -3,7 +3,14 @@ import type { FC } from 'react'
 import type { Memory } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -37,7 +44,7 @@ const RoleItem: FC<RoleItemProps> = ({ readonly, title, value, onChange }) => {
         readOnly={readonly}
         value={value}
         onChange={handleChange}
-        className="h-8 w-[200px]"
+        className="h-8 w-50"
         type="text"
       />
     </div>
@@ -168,15 +175,22 @@ const MemoryConfig: FC<Props> = ({
               <Fieldset className="flex h-8 items-center space-x-2">
                 <FieldsetLegend className="sr-only">{windowSizeLabel}</FieldsetLegend>
                 <Slider
-                  className="w-[144px]"
+                  className="w-36"
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
                   step={1}
                   onValueChange={handleWindowSizeChange}
                   disabled={readonly || !payload.window?.enabled}
-                  aria-label={windowSizeLabel}
-                />
+                >
+                  <SliderLabel className="sr-only">{windowSizeLabel}</SliderLabel>
+                  <SliderControl>
+                    <SliderTrack>
+                      <SliderIndicator />
+                      <SliderThumb />
+                    </SliderTrack>
+                  </SliderControl>
+                </Slider>
                 <Input
                   aria-label={windowSizeLabel}
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}

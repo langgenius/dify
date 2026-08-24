@@ -3,5 +3,3 @@ export { default as ArrowUpRight } from './ArrowUpRight'
 
 export { default as ChevronRight } from './ChevronRight'
 export { default as ChevronSelectorVertical } from './ChevronSelectorVertical'
-
-export { default as RefreshCcw01 } from './RefreshCcw01'

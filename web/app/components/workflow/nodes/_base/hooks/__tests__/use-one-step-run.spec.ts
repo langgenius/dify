@@ -26,36 +26,49 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useIsChatMode: () => false,
-  useNodeDataUpdate: () => ({
-    handleNodeDataUpdate: vi.fn(),
-  }),
-  useWorkflow: () => ({
-    getBeforeNodesInSameBranch: () => [
-      {
-        id: 'start',
-        data: {
-          type: 'start',
-          title: 'Start',
-          variables: [],
-        },
-      },
-    ],
-    getBeforeNodesInSameBranchIncludeParent: () => [
-      {
-        id: 'start',
-        data: {
-          type: 'start',
-          title: 'Start',
-          variables: [],
-        },
-      },
-    ],
-  }),
-}))
+vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
 
-vi.mock('@/app/components/workflow/hooks/use-inspect-vars-crud', () => ({
+  return {
+    ...actual,
+    useNodeDataUpdate: () => ({
+      handleNodeDataUpdate: vi.fn(),
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-workflow')>()
+
+  return {
+    ...actual,
+    useIsChatMode: () => false,
+    useWorkflow: () => ({
+      getBeforeNodesInSameBranch: () => [
+        {
+          id: 'start',
+          data: {
+            type: 'start',
+            title: 'Start',
+            variables: [],
+          },
+        },
+      ],
+      getBeforeNodesInSameBranchIncludeParent: () => [
+        {
+          id: 'start',
+          data: {
+            type: 'start',
+            title: 'Start',
+            variables: [],
+          },
+        },
+      ],
+    }),
+  }
+})
+
+vi.mock('../../../../hooks/use-inspect-vars-crud', () => ({
   default: () => ({
     appendNodeInspectVars: vi.fn(),
     invalidateSysVarValues: vi.fn(),

@@ -2,9 +2,9 @@
 
 import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 import { textControlFocusClassName } from '../form-control-shared'
 
@@ -35,8 +35,7 @@ const textareaVariants = cva(
 )
 
 type TextareaValue = string | number
-export type TextareaSize = NonNullable<VariantProps<typeof textareaVariants>['size']>
-export type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
+type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
 type TextareaOnValueChange = (value: string, eventDetails: TextareaChangeEventDetails) => void
 
 type ControlledTextareaProps = {
@@ -73,7 +72,7 @@ type FieldControlTextareaProps = Omit<
   'className' | 'defaultValue' | 'onValueChange' | 'render' | 'value'
 >
 
-export type TextareaProps = TextareaElementProps &
+type TextareaProps = TextareaElementProps &
   TextareaOnlyProps &
   TextareaControlProps &
   TextareaVariantProps & {
@@ -81,7 +80,7 @@ export type TextareaProps = TextareaElementProps &
     className?: string
   }
 
-export function Textarea({
+function Textarea({
   className,
   cols,
   defaultValue,
@@ -108,3 +107,7 @@ export function Textarea({
     />
   )
 }
+
+export { Textarea }
+
+export type { TextareaProps }

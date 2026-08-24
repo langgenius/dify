@@ -76,10 +76,10 @@ const OutputVarList: FC<Props> = ({ readonly, outputs, outputKeyOrders, onChange
 
   const handleVarTypeChange = useCallback(
     (index: number) => {
-      return (value: string) => {
+      return (value: VarType) => {
         const key = list[index]!.variable
         const newOutputs = produce(outputs, (draft) => {
-          draft[key]!.type = value as VarType
+          draft[key]!.type = value
         })
         onChange(newOutputs)
       }

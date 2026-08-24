@@ -1,7 +1,8 @@
 import type { PluginPayload } from '../types'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useForm, useStore } from '@tanstack/react-form'
 import { memo, useCallback, useRef, useState } from 'react'
@@ -22,7 +23,7 @@ export type OAuthClientSettingsProps = {
   editValues?: Record<string, unknown>
   disabled?: boolean
   schemas: FormSchema[]
-  onAuth?: () => Promise<void>
+  onRequestAuthorization?: () => Promise<void> | void
   hasOriginalClientParams?: boolean
   onUpdate?: () => void
 }
@@ -34,7 +35,7 @@ const OAuthClientSettings = ({
   editValues,
   disabled,
   schemas,
-  onAuth,
+  onRequestAuthorization,
   hasOriginalClientParams,
   onUpdate,
 }: OAuthClientSettingsProps) => {
@@ -64,7 +65,7 @@ const OAuthClientSettings = ({
   const invalidPluginOAuthClientSchema = useInvalidPluginOAuthClientSchemaHook(pluginPayload)
   const formRef = useRef<FormRefObject>(null)
   const handleConfirm = useCallback(async () => {
-    if (doingActionRef.current) return
+    if (doingActionRef.current) return false
 
     try {
       const { isCheckValidated, values } = formRef.current?.getFormValues({
@@ -85,6 +86,7 @@ const OAuthClientSettings = ({
       onClose?.()
       onUpdate?.()
       invalidPluginOAuthClientSchema()
+      return true
     } finally {
       handleSetDoingAction(false)
     }
@@ -99,9 +101,14 @@ const OAuthClientSettings = ({
   ])
 
   const handleConfirmAndAuthorize = useCallback(async () => {
-    await handleConfirm()
-    if (onAuth) await onAuth()
-  }, [handleConfirm, onAuth])
+    try {
+      const isSaved = await handleConfirm()
+      if (isSaved) await onRequestAuthorization?.()
+    } catch {
+      // The request layer reports the save error. Keep settings open and stop
+      // before opening the permission dialog.
+    }
+  }, [handleConfirm, onRequestAuthorization])
   const { mutateAsync: deletePluginOAuthCustomClient } =
     useDeletePluginOAuthCustomClientHook(pluginPayload)
   const handleRemove = useCallback(async () => {
@@ -137,17 +144,24 @@ const OAuthClientSettings = ({
     <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="w-[480px]! max-w-[calc(100vw-2rem)]! p-0!"
+        className="w-120! max-w-[calc(100vw-2rem)]! p-0!"
       >
         <div data-testid="modal" className="flex max-h-[80dvh] flex-col">
           <div className="relative shrink-0 p-6 pr-14 pb-3">
-            <DialogTitle
-              data-testid="modal-title"
-              className="title-2xl-semi-bold text-text-primary"
-            >
+            <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['auth.oauthClientSettings'], { ns: 'plugin' })}
             </DialogTitle>
-            <DialogCloseButton className="top-5 right-5 size-8 rounded-lg" />
+            <DialogClose
+              render={
+                <IconButton
+                  aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  size="lg"
+                  className="absolute top-5 right-5"
+                >
+                  <span aria-hidden className="i-ri-close-line size-4" />
+                </IconButton>
+              }
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 pt-0">
             {pluginPayload.detail && (
@@ -165,7 +179,6 @@ const OAuthClientSettings = ({
             <div>
               {__oauth_client__ === 'custom' && hasOriginalClientParams && (
                 <Button
-                  data-testid="modal-extra"
                   variant="secondary"
                   className="text-components-button-destructive-secondary-text"
                   disabled={isDisabled || !editValues}
@@ -184,11 +197,10 @@ const OAuthClientSettings = ({
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </Button>
               <div className="mx-3 h-4 w-px bg-divider-regular"></div>
-              <Button data-testid="modal-cancel" onClick={handleConfirm} disabled={isDisabled}>
+              <Button onClick={handleConfirm} disabled={isDisabled}>
                 {t(($) => $['auth.saveOnly'], { ns: 'plugin' })}
               </Button>
               <Button
-                data-testid="modal-confirm"
                 className="ml-2"
                 variant="primary"
                 onClick={handleConfirmAndAuthorize}

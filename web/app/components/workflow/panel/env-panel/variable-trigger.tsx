@@ -30,7 +30,7 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
       <PopoverTrigger
         render={
           <Button variant="primary">
-            <RiAddLine className="mr-1 size-4" />
+            <RiAddLine className="size-4" />
             <span className="system-sm-medium">
               {t(($) => $['env.envPanelButton'], { ns: 'workflow' })}
             </span>
@@ -41,7 +41,7 @@ const VariableTrigger = ({ open, setOpen, env, onClose, onSave }: Props) => {
         placement="left-start"
         sideOffset={8}
         alignOffset={-104}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <VariableModal
           env={env}

@@ -2,7 +2,6 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CrawlStep } from '@/models/datasets'
 import WebsiteCrawl from '../index'
 
@@ -20,16 +19,11 @@ vi.mock('@/context/dataset-detail', () => ({
   ) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
-// Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = vi.fn()
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-  useModalContextSelector: (
-    selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown,
-  ) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
-}))
+const mockSetSettingsDestination = vi.fn()
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock ssePost - API service requires mocking
 const { mockSsePost } = vi.hoisted(() => ({
@@ -257,7 +251,7 @@ describe('WebsiteCrawl', () => {
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
-    mockSetShowAccountSettingModal.mockClear()
+    mockSetSettingsDestination.mockClear()
 
     // Default mock return values
     mockUseGetDataSourceAuth.mockReturnValue({
@@ -278,15 +272,6 @@ describe('WebsiteCrawl', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<WebsiteCrawl {...props} />)
-
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-      expect(screen.getByTestId('options')).toBeInTheDocument()
-    })
-
     it('should render Header with correct props', () => {
       mockStoreState.currentCredentialId = 'cred-123'
       const props = createDefaultProps({
@@ -625,9 +610,7 @@ describe('WebsiteCrawl', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should have stable handleCredentialChange that resets state', () => {
@@ -662,9 +645,7 @@ describe('WebsiteCrawl', () => {
 
       fireEvent.click(screen.getByTestId('header-config-btn'))
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
-      })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
     })
 
     it('should handle credential change', () => {
@@ -1276,17 +1257,6 @@ describe('WebsiteCrawl', () => {
 
   // Component Memoization
   describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      const props = createDefaultProps()
-
-      const { rerender } = render(<WebsiteCrawl {...props} />)
-      rerender(<WebsiteCrawl {...props} />)
-
-      // Assert - Component should still render correctly after rerender
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-      expect(screen.getByTestId('options')).toBeInTheDocument()
-    })
-
     it('should not re-run callbacks when props are the same', () => {
       const onCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange })
@@ -1302,15 +1272,6 @@ describe('WebsiteCrawl', () => {
 
   // Styling
   describe('Styling', () => {
-    it('should apply correct container classes', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<WebsiteCrawl {...props} />)
-
-      const rootDiv = container.firstChild as HTMLElement
-      expect(rootDiv).toHaveClass('flex', 'flex-col')
-    })
-
     it('should apply correct classes to options container', () => {
       const props = createDefaultProps()
 

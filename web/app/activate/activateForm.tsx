@@ -9,7 +9,6 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { useInvitationCheck } from '@/service/use-common'
 
 const ActivateForm = () => {
-  useDocumentTitle('')
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()
@@ -32,6 +31,11 @@ const ActivateForm = () => {
     },
     true,
   )
+  useDocumentTitle(
+    checkRes?.is_valid === false
+      ? t(($) => $.invalid, { ns: 'login' })
+      : t(($) => $.setYourAccount, { ns: 'login' }),
+  )
 
   useEffect(() => {
     if (checkRes?.is_valid) {
@@ -46,15 +50,11 @@ const ActivateForm = () => {
 
   return (
     <div
-      className={cn(
-        'flex w-full grow flex-col items-center justify-center',
-        'px-6',
-        'md:px-[108px]',
-      )}
+      className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
     >
       {!checkRes && <Loading />}
       {checkRes && !checkRes.is_valid && (
-        <div className="flex flex-col md:w-[400px]">
+        <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
               🤷‍♂️

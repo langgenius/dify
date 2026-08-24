@@ -1,6 +1,6 @@
 import type { MetadataItemWithEdit } from '../../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { DataType, UpdateType } from '../../types'
 import EditMetadatabatchItem from '../edit-row'
 
@@ -78,18 +78,6 @@ describe('EditMetadatabatchItem', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <EditMetadatabatchItem
-          payload={mockPayload}
-          onChange={vi.fn()}
-          onRemove={vi.fn()}
-          onReset={vi.fn()}
-        />,
-      )
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render label with payload name', () => {
       render(
         <EditMetadatabatchItem

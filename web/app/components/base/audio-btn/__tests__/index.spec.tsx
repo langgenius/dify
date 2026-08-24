@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
 import { useParams, usePathname } from '@/next/navigation'
-import AudioBtn from '../index'
+import { AudioBtn } from '../index'
 
 const mockPlayAudio = vi.fn()
 const mockPauseAudio = vi.fn()
@@ -67,13 +67,6 @@ describe('AudioBtn', () => {
       expect(getButton())!.toBeInTheDocument()
       expect(getButton()).not.toBeDisabled()
       await hoverAndCheckTooltip('play')
-    })
-
-    it('should apply className in initial state', () => {
-      const { container } = render(<AudioBtn value="hello" className="custom-wrapper" />)
-      const wrapper = container.firstElementChild
-
-      expect(wrapper)!.toHaveClass('custom-wrapper')
     })
   })
 

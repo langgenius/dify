@@ -407,6 +407,7 @@ export const zWorkflowRunNodeExecutionResponse = z.object({
   predecessor_node_id: z.string().nullish(),
   process_data: z.unknown().optional(),
   process_data_truncated: z.boolean().nullish(),
+  retry_index: z.int().nullish(),
   status: z.string().nullish(),
   title: z.string().nullish(),
 })
@@ -479,6 +480,7 @@ export const zWorkflowResponse = z.object({
   updated_at: z.int(),
   updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
+  version_number: z.int().nullish(),
 })
 
 /**

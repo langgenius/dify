@@ -3,15 +3,20 @@
 import type { FC, PropsWithChildren } from 'react'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppData, AppMeta } from '@/models/share'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { create } from 'zustand'
+import {
+  isWebAppSigninPath,
+  resolveWebAppLoginRedirect,
+} from '@/app/(shareLayout)/webapp-signin/login-redirect'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 import Loading from '@/app/components/base/loading'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useSearchParams } from '@/next/navigation'
 import { useGetWebAppAccessModeByCode } from '@/service/use-share'
+import { parseWebAppAddress } from '@/service/webapp-address'
 
 type WebAppStore = {
   shareCode: string | null
@@ -53,22 +58,15 @@ export const useWebAppStore = create<WebAppStore>((set) => ({
 }))
 
 const getShareCodeFromRedirectUrl = (redirectUrl: string | null): string | null => {
-  if (!redirectUrl || redirectUrl.length === 0) return null
-  try {
-    const url = new URL(decodeURIComponent(redirectUrl), 'https://dify.local')
-    return url.pathname.split('/').pop() || null
-  } catch {
-    return null
-  }
+  const currentOrigin = typeof window === 'undefined' ? undefined : window.location.origin
+  return resolveWebAppLoginRedirect(redirectUrl, currentOrigin)?.address.code || null
 }
 const getShareCodeFromPathname = (pathname: string): string | null => {
-  const code = pathname.split('/').pop() || null
-  if (code === 'webapp-signin') return null
-  return code
+  return parseWebAppAddress(pathname)?.code || null
 }
 
 const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
-  const { isPending: isGlobalPending } = useQuery(systemFeaturesQueryOptions())
+  useSuspenseQuery(systemFeaturesQueryOptions())
   const updateWebAppAccessMode = useWebAppStore((state) => state.updateWebAppAccessMode)
   const updateShareCode = useWebAppStore((state) => state.updateShareCode)
   const updateEmbeddedUserId = useWebAppStore((state) => state.updateEmbeddedUserId)
@@ -79,8 +77,9 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   const searchParamsString = searchParams.toString()
 
   // Compute shareCode directly
+  const redirectShareCode = getShareCodeFromRedirectUrl(redirectUrlParam)
   const shareCode =
-    getShareCodeFromRedirectUrl(redirectUrlParam) || getShareCodeFromPathname(pathname)
+    redirectShareCode || (isWebAppSigninPath(pathname) ? null : getShareCodeFromPathname(pathname))
   useEffect(() => {
     updateShareCode(shareCode)
   }, [shareCode, updateShareCode])
@@ -113,7 +112,7 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
     if (accessModeResult?.accessMode) updateWebAppAccessMode(accessModeResult.accessMode)
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
-  if (isGlobalPending || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex size-full items-center justify-center">
         <Loading />

@@ -63,7 +63,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <ul className="relative w-full p-1">
             {allTypes.map((mode) => (
@@ -148,7 +148,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
     return (
       <div className={cn('flex h-8 items-center justify-between gap-1')}>
         <RiFilter3Line className="size-4 text-text-tertiary" />
-        <div className="min-w-[65px] grow text-center system-sm-medium text-text-tertiary">
+        <div className="min-w-16.25 grow text-center system-sm-medium text-text-tertiary">
           {t(($) => $['typeSelector.all'], { ns: 'app' })}
         </div>
         <RiArrowDownSLine className="size-4 text-text-tertiary" />

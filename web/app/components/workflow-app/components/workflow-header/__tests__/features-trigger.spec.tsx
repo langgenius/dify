@@ -1,11 +1,11 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { ReactElement } from 'react'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher/types'
 import type { App } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/client'
 import FeaturesTrigger from '../features-trigger'
@@ -55,7 +55,6 @@ const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
 const mockInvalidateQueries = vi.fn()
-const mockSetQueryData = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -75,12 +74,18 @@ const mockWorkflowStore = {
   setState: mockWorkflowStoreSetState,
 }
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-workflow', () => ({
+  useNodesReadOnly: () => mockUseNodesReadOnly(),
+  useIsChatMode: () => mockUseIsChatMode(),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-checklist', () => ({
   useChecklist: (...args: unknown[]) => mockUseChecklist(...args),
   useChecklistBeforePublish: () => mockUseChecklistBeforePublish(),
-  useNodesReadOnly: () => mockUseNodesReadOnly(),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => mockUseNodesSyncDraft(),
-  useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -113,7 +118,6 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...actual,
     useQueryClient: () => ({
       invalidateQueries: mockInvalidateQueries,
-      setQueryData: mockSetQueryData,
     }),
   }
 })
@@ -232,10 +236,10 @@ vi.mock('@/hooks/use-theme', () => ({
 // Use real app store - global zustand mock will auto-reset between tests
 
 const createProviderContext = ({
-  type = Plan.sandbox,
+  type = 'sandbox',
   isFetchedPlan = true,
 }: {
-  type?: Plan
+  type?: CloudPlan
   isFetchedPlan?: boolean
 }) => ({
   plan: { type },
@@ -269,6 +273,7 @@ describe('FeaturesTrigger', () => {
     })
     mockHandleCheckBeforePublish.mockResolvedValue(true)
     mockUseNodesSyncDraft.mockReturnValue({ handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft })
+    mockHandleSyncWorkflowDraft.mockResolvedValue({ hash: 'draft-hash', updatedAt: 1 })
     mockUseFeatures.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
       selector({ features: { file: {} } }),
     )
@@ -472,6 +477,43 @@ describe('FeaturesTrigger', () => {
 
   // Verifies publishing behavior across warnings, validation, and success.
   describe('Publishing', () => {
+    it('should wait for the draft save barrier before publishing', async () => {
+      const user = userEvent.setup()
+      let resolveDraftSync: ((value: { hash: string; updatedAt: number }) => void) | undefined
+      mockHandleSyncWorkflowDraft.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveDraftSync = resolve
+        }),
+      )
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      })
+      expect(mockPublishWorkflow).not.toHaveBeenCalled()
+
+      resolveDraftSync?.({ hash: 'saved-hash', updatedAt: 2 })
+
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+    })
+
+    it('should not publish when the draft save barrier fails', async () => {
+      const user = userEvent.setup()
+      mockHandleSyncWorkflowDraft.mockResolvedValueOnce(null)
+      renderWithToast(<FeaturesTrigger />)
+
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      await waitFor(() => {
+        expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true)
+      })
+      expect(mockPublishWorkflow).not.toHaveBeenCalled()
+    })
+
     it('should notify error and reject publish when checklist has warning nodes', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -533,12 +575,6 @@ describe('FeaturesTrigger', () => {
           message: 'common.api.actionSuccess',
         })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(mockSetQueryData).toHaveBeenCalledWith(
-          ['apps', 'detail', 'app-id'],
-          expect.objectContaining({
-            name: 'Updated App',
-          }),
-        )
         expect(useAppStore.getState().appDetail).toEqual(
           expect.objectContaining({
             name: 'Updated App',

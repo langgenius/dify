@@ -17,7 +17,14 @@ import {
   NumberFieldIncrement,
   NumberFieldInput,
 } from '@langgenius/dify-ui/number-field'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -157,7 +164,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               tooltip={def.tooltip && renderI18nObject(def.tooltip)}
               inline
             >
-              <Fieldset className="flex w-[200px] items-center gap-3">
+              <Fieldset className="flex w-50 items-center gap-3">
                 <FieldsetLegend className="sr-only">{label}</FieldsetLegend>
                 <Slider
                   value={value}
@@ -165,8 +172,15 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                   className="w-full"
                   min={def.min}
                   max={def.max}
-                  aria-label={label}
-                />
+                >
+                  <SliderLabel className="sr-only">{label}</SliderLabel>
+                  <SliderControl>
+                    <SliderTrack>
+                      <SliderIndicator />
+                      <SliderThumb />
+                    </SliderTrack>
+                  </SliderControl>
+                </Slider>
                 <NumberField
                   value={value}
                   min={def.min}
@@ -255,7 +269,6 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             validating={false}
             showOnVariableMap={{}}
             isEditMode={true}
-            isAgentStrategy={true}
             fieldLabelClassName="uppercase"
             customRenderField={renderField}
             override={override}

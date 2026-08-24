@@ -23,7 +23,6 @@ import { features } from './features/orpc.gen'
 import { files } from './files/orpc.gen'
 import { forgotPassword } from './forgot-password/orpc.gen'
 import { form } from './form/orpc.gen'
-import { info } from './info/orpc.gen'
 import { init } from './init/orpc.gen'
 import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
@@ -32,6 +31,7 @@ import { logout } from './logout/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
+import { onboarding } from './onboarding/orpc.gen'
 import { ping } from './ping/orpc.gen'
 import { rag } from './rag/orpc.gen'
 import { refreshToken } from './refresh-token/orpc.gen'
@@ -46,12 +46,12 @@ import { spec } from './spec/orpc.gen'
 import { systemFeatures } from './system-features/orpc.gen'
 import { tagBindings } from './tag-bindings/orpc.gen'
 import { tags } from './tags/orpc.gen'
-import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
 import { trialModels } from './trial-models/orpc.gen'
 import { version } from './version/orpc.gen'
 import { website } from './website/orpc.gen'
 import { workflowGenerate } from './workflow-generate/orpc.gen'
+import { workflowRunArchives } from './workflow-run-archives/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
 import { workspaces } from './workspaces/orpc.gen'
 
@@ -78,7 +78,6 @@ const communityContract = {
   files,
   forgotPassword,
   form,
-  info,
   init,
   installedApps,
   instructionGenerate,
@@ -87,6 +86,7 @@ const communityContract = {
   notification,
   notion,
   oauth,
+  onboarding,
   ping,
   rag,
   refreshToken,
@@ -101,13 +101,13 @@ const communityContract = {
   systemFeatures,
   tagBindings,
   tags,
-  test,
   trialApps,
   trialModels,
   version,
   website,
   workflow,
   workflowGenerate,
+  workflowRunArchives,
   workspaces,
 }
 

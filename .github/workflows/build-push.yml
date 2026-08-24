@@ -3,13 +3,13 @@ name: Build and Push API & Web
 on:
   push:
     branches:
-      - "main"
-      - "deploy/**"
-      - "build/**"
-      - "release/e-*"
-      - "hotfix/**"
+      - 'main'
+      - 'deploy/**'
+      - 'build/**'
+      - 'release/e-*'
+      - 'hotfix/**'
     tags:
-      - "*"
+      - '*'
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}
@@ -33,60 +33,60 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "build-api-amd64"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            artifact_context: "api"
-            build_context: "{{defaultContext}}"
-            file: "api/Dockerfile"
+          - service_name: 'build-api-amd64'
+            image_name_env: 'DIFY_API_IMAGE_NAME'
+            artifact_context: 'api'
+            build_context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-api-arm64"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            artifact_context: "api"
-            build_context: "{{defaultContext}}"
-            file: "api/Dockerfile"
+          - service_name: 'build-api-arm64'
+            image_name_env: 'DIFY_API_IMAGE_NAME'
+            artifact_context: 'api'
+            build_context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-web-amd64"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            artifact_context: "web"
-            build_context: "{{defaultContext}}"
-            file: "web/Dockerfile"
+          - service_name: 'build-web-amd64'
+            image_name_env: 'DIFY_WEB_IMAGE_NAME'
+            artifact_context: 'web'
+            build_context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-web-arm64"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            artifact_context: "web"
-            build_context: "{{defaultContext}}"
-            file: "web/Dockerfile"
+          - service_name: 'build-web-arm64'
+            image_name_env: 'DIFY_WEB_IMAGE_NAME'
+            artifact_context: 'web'
+            build_context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-agent-amd64"
-            image_name_env: "DIFY_AGENT_IMAGE_NAME"
-            artifact_context: "agent"
-            build_context: "{{defaultContext}}"
-            file: "dify-agent/Dockerfile"
+          - service_name: 'build-agent-amd64'
+            image_name_env: 'DIFY_AGENT_IMAGE_NAME'
+            artifact_context: 'agent'
+            build_context: '{{defaultContext}}'
+            file: 'dify-agent/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-agent-arm64"
-            image_name_env: "DIFY_AGENT_IMAGE_NAME"
-            artifact_context: "agent"
-            build_context: "{{defaultContext}}"
-            file: "dify-agent/Dockerfile"
+          - service_name: 'build-agent-arm64'
+            image_name_env: 'DIFY_AGENT_IMAGE_NAME'
+            artifact_context: 'agent'
+            build_context: '{{defaultContext}}'
+            file: 'dify-agent/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-agent-local-sandbox-amd64"
-            image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
-            artifact_context: "local-sandbox"
-            build_context: "{{defaultContext}}:dify-agent"
-            file: "docker/local-sandbox/Dockerfile"
+          - service_name: 'build-agent-local-sandbox-amd64'
+            image_name_env: 'DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME'
+            artifact_context: 'local-sandbox'
+            build_context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile'
             platform: linux/amd64
             runs_on: depot-ubuntu-24.04-4
-          - service_name: "build-agent-local-sandbox-arm64"
-            image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
-            artifact_context: "local-sandbox"
-            build_context: "{{defaultContext}}:dify-agent"
-            file: "docker/local-sandbox/Dockerfile"
+          - service_name: 'build-agent-local-sandbox-arm64'
+            image_name_env: 'DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME'
+            artifact_context: 'local-sandbox'
+            build_context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile'
             platform: linux/arm64
             runs_on: depot-ubuntu-24.04-4
 
@@ -97,7 +97,7 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
@@ -120,6 +120,7 @@ jobs:
           file: ${{ matrix.file }}
           platforms: ${{ matrix.platform }}
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          build-contexts: ${{ matrix.build_contexts }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env[matrix.image_name_env] }},push-by-digest=true,name-canonical=true,push=true
 
@@ -145,18 +146,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "validate-api-amd64"
-            build_context: "{{defaultContext}}"
-            file: "api/Dockerfile"
-          - service_name: "validate-web-amd64"
-            build_context: "{{defaultContext}}"
-            file: "web/Dockerfile"
-          - service_name: "validate-agent-amd64"
-            build_context: "{{defaultContext}}"
-            file: "dify-agent/Dockerfile"
-          - service_name: "validate-agent-local-sandbox-amd64"
-            build_context: "{{defaultContext}}:dify-agent"
-            file: "docker/local-sandbox/Dockerfile"
+          - service_name: 'validate-api-amd64'
+            build_context: '{{defaultContext}}'
+            file: 'api/Dockerfile'
+          - service_name: 'validate-web-amd64'
+            build_context: '{{defaultContext}}'
+            file: 'web/Dockerfile'
+          - service_name: 'validate-agent-amd64'
+            build_context: '{{defaultContext}}'
+            file: 'dify-agent/Dockerfile'
+          - service_name: 'validate-agent-local-sandbox-amd64'
+            build_context: '{{defaultContext}}:dify-agent-runtime'
+            file: 'docker/Dockerfile'
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -167,6 +168,7 @@ jobs:
           push: false
           context: ${{ matrix.build_context }}
           file: ${{ matrix.file }}
+          build-contexts: ${{ matrix.build_contexts }}
           platforms: linux/amd64
 
   create-manifest:
@@ -176,18 +178,18 @@ jobs:
     strategy:
       matrix:
         include:
-          - service_name: "merge-api-images"
-            image_name_env: "DIFY_API_IMAGE_NAME"
-            context: "api"
-          - service_name: "merge-web-images"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            context: "web"
-          - service_name: "merge-agent-images"
-            image_name_env: "DIFY_AGENT_IMAGE_NAME"
-            context: "agent"
-          - service_name: "merge-agent-local-sandbox-images"
-            image_name_env: "DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME"
-            context: "local-sandbox"
+          - service_name: 'merge-api-images'
+            image_name_env: 'DIFY_API_IMAGE_NAME'
+            context: 'api'
+          - service_name: 'merge-web-images'
+            image_name_env: 'DIFY_WEB_IMAGE_NAME'
+            context: 'web'
+          - service_name: 'merge-agent-images'
+            image_name_env: 'DIFY_AGENT_IMAGE_NAME'
+            context: 'agent'
+          - service_name: 'merge-agent-local-sandbox-images'
+            image_name_env: 'DIFY_AGENT_LOCAL_SANDBOX_IMAGE_NAME'
+            context: 'local-sandbox'
     steps:
       - name: Download digests
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -197,7 +199,7 @@ jobs:
           merge-multiple: true
 
       - name: Login to Docker Hub
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
@@ -227,3 +229,32 @@ jobs:
           IMAGE_VERSION: ${{ steps.meta.outputs.version }}
         run: |
           docker buildx imagetools inspect "$IMAGE_NAME:$IMAGE_VERSION"
+
+  sync-e2b-template:
+    needs: create-manifest
+    runs-on: ubuntu-24.04
+    if: github.repository == 'langgenius/dify' && startsWith(github.ref, 'refs/tags/')
+    strategy:
+      matrix:
+        include:
+          - project: dev
+            api_key_secret: E2B_API_KEY_DEV
+          - project: prod
+            api_key_secret: E2B_API_KEY_PROD
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Sync E2B Template (${{ matrix.project }})
+        env:
+          E2B_API_KEY: ${{ secrets[matrix.api_key_secret] }}
+        run: ./dify-agent-runtime/docker/sync-e2b-template.sh

@@ -3,9 +3,10 @@ import type {
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { OAuthClientSettingsModal } from '../oauth-client'
 
 type PluginDetail = {
@@ -59,7 +60,7 @@ function createMockSubscriptionBuilder(
     id: 'builder-123',
     name: 'Test Builder',
     provider: 'test-provider',
-    credential_type: TriggerCredentialTypeEnum.Oauth2,
+    credential_type: TriggerCredentialType.Oauth2,
     credentials: {},
     endpoint: 'https://example.com/callback',
     parameters: {},
@@ -172,7 +173,7 @@ describe('OAuthClientSettingsModal', () => {
   }
   const title = 'pluginTrigger.modal.oauth.title'
   const getDialog = () => screen.getByRole('dialog', { name: title })
-  const getCloseButton = () => screen.getByRole('button', { name: 'Close' })
+  const getCloseButton = () => screen.getByRole('button', { name: 'common.operation.close' })
   const getCancelButton = () => screen.getByRole('button', { name: 'common.operation.cancel' })
   const getSaveOnlyButton = () => screen.getByRole('button', { name: 'plugin.auth.saveOnly' })
   const getConfirmButton = () =>
@@ -525,11 +526,12 @@ describe('OAuthClientSettingsModal', () => {
   })
 
   describe('Modal Actions', () => {
-    it('should call onOpenChange when close button is clicked', () => {
+    it('should call onOpenChange when close button is clicked', async () => {
+      const user = userEvent.setup()
       const mockOnOpenChange = vi.fn()
       render(<OAuthClientSettingsModal {...defaultProps} onOpenChange={mockOnOpenChange} />)
 
-      fireEvent.click(getCloseButton())
+      await user.click(getCloseButton())
 
       expect(mockOnOpenChange.mock.calls[0]?.[0]).toBe(false)
     })

@@ -7,13 +7,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { resetUser } from '@/app/components/base/amplitude/utils'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
 
 export default function AppSelector() {
@@ -22,7 +23,13 @@ export default function AppSelector() {
   // Cache is hydrated by CommonLayoutHydrationBoundary; this hits cache synchronously.
   const { data: userProfileResp } = useSuspenseQuery(userProfileQueryOptions())
   const userProfile = userProfileResp.profile
-  const { isEducationAccount } = useProviderContext()
+  const { enableEducationPlan } = useProviderContext()
+  const { data: isEducationAccount = false } = useQuery(
+    consoleQuery.account.education.get.queryOptions({
+      enabled: enableEducationPlan,
+      select: ({ is_student }) => is_student ?? false,
+    }),
+  )
 
   const { mutateAsync: logout } = useLogout()
 
@@ -51,7 +58,7 @@ export default function AppSelector() {
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0"
+        className="w-60 max-w-80 divide-y divide-divider-subtle bg-components-panel-bg-blur p-0"
       >
         <div className="p-1">
           <div className="flex flex-nowrap items-center px-3 py-2">

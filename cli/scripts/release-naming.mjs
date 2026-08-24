@@ -114,9 +114,15 @@ function die(msg) {
   process.exit(1)
 }
 
+// Tests point this at a fixture manifest so their assertions stay fixed while
+// the real version and compat window move with every release. The name is
+// mirrored in test/fixtures/pkg-manifest.ts rather than imported from here,
+// because this file's shebang breaks the Windows test runner.
+const PKG_PATH_ENV = 'DIFYCTL_PKG_PATH'
+
 function loadPkg() {
-  const pkgUrl = new URL('../package.json', import.meta.url)
-  const pkg = JSON.parse(readFileSync(pkgUrl, 'utf8'))
+  const pkgPath = process.env[PKG_PATH_ENV] || new URL('../package.json', import.meta.url)
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
   if (!pkg.difyctl?.release) die('cli/package.json missing difyctl.release')
   return {
     version: pkg.version,

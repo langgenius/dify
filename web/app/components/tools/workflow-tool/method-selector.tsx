@@ -26,11 +26,11 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
           render={
             <div
               className={cn(
-                'flex h-9 min-h-[56px] cursor-pointer items-center gap-1 bg-transparent px-3 py-2 hover:bg-background-section-burn',
+                'flex h-9 min-h-14 cursor-pointer items-center gap-1 bg-transparent px-3 py-2 hover:bg-background-section-burn',
                 'data-popup-open:bg-background-section-burn! data-popup-open:hover:bg-background-section-burn',
               )}
             >
-              <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
+              <div className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary')}>
                 {value === 'llm'
                   ? t(($) => $['createTool.toolInput.methodParameter'], { ns: 'tools' })
                   : t(($) => $['createTool.toolInput.methodSetting'], { ns: 'tools' })}
@@ -55,11 +55,11 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
                       <Check className="size-4 shrink-0 text-text-accent" aria-hidden />
                     )}
                   </div>
-                  <div className="text-[13px] leading-[18px] font-medium text-text-secondary">
+                  <div className="text-[13px] leading-4.5 font-medium text-text-secondary">
                     {t(($) => $['createTool.toolInput.methodParameter'], { ns: 'tools' })}
                   </div>
                 </div>
-                <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">
+                <div className="pl-5 text-[13px] leading-4.5 text-text-tertiary">
                   {t(($) => $['createTool.toolInput.methodParameterTip'], { ns: 'tools' })}
                 </div>
               </button>
@@ -74,11 +74,11 @@ const MethodSelector: FC<MethodSelectorProps> = ({ value, onChange }) => {
                       <Check className="size-4 shrink-0 text-text-accent" aria-hidden />
                     )}
                   </div>
-                  <div className="text-[13px] leading-[18px] font-medium text-text-secondary">
+                  <div className="text-[13px] leading-4.5 font-medium text-text-secondary">
                     {t(($) => $['createTool.toolInput.methodSetting'], { ns: 'tools' })}
                   </div>
                 </div>
-                <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">
+                <div className="pl-5 text-[13px] leading-4.5 text-text-tertiary">
                   {t(($) => $['createTool.toolInput.methodSettingTip'], { ns: 'tools' })}
                 </div>
               </button>

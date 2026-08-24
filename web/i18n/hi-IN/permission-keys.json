@@ -1,8 +1,10 @@
 {
+  "agent.manage": "Agents प्रबंधित करें",
   "api_extension.manage": "API एक्सटेंशन कॉन्फ़िगरेशन प्रबंधित करें",
   "app.access_config": "ऐप एक्सेस अनुमतियाँ कॉन्फ़िगर करें",
   "app.acl.access_config": "ऐप एक्सेस अनुमतियाँ कॉन्फ़िगर करें",
   "app.acl.delete": "ऐप हटाएं",
+  "app.acl.deploy": "ऐप डिप्लॉय करें",
   "app.acl.edit": "ऐप संपादित और ऑर्केस्ट्रेट करें",
   "app.acl.import_export_dsl": "DSL आयात / निर्यात करें",
   "app.acl.log_and_annotation": "लॉग और एनोटेशन तक पहुंच",

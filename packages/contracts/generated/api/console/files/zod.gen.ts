@@ -20,7 +20,9 @@ export const zUploadConfig = z.object({
   file_upload_limit: z.int(),
   image_file_batch_limit: z.int(),
   image_file_size_limit: z.int(),
+  knowledge_file_size_limit: z.int(),
   single_chunk_attachment_limit: z.int(),
+  skill_file_size_limit: z.int(),
   video_file_size_limit: z.int(),
   workflow_file_upload_limit: z.int(),
 })
@@ -64,7 +66,7 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
 export const zGetFilesUploadResponse = zUploadConfig
 
 export const zPostFilesUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   source: z.enum(['datasets']).optional(),
 })
 

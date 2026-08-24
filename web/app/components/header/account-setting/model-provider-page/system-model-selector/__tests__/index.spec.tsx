@@ -1,6 +1,8 @@
 import type { DefaultModelResponse } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { vi } from 'vite-plus/test'
+import { render } from '@/test/console/render'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
 
@@ -22,6 +24,7 @@ vi.mock('react-i18next', async () => {
     'modelProvider.ttsModel.tip': 'TTS model tip',
     'operation.cancel': 'Cancel',
     'operation.save': 'Save',
+    loading: 'Loading',
     'actionMsg.modifiedSuccessfully': 'Modified successfully',
   })
 })
@@ -30,6 +33,7 @@ const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockUpdateModelList = vi.hoisted(() => vi.fn())
 const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
+const mockUseModelList = vi.hoisted(() => vi.fn())
 const mockModelSelectorProps = vi.hoisted(
   () =>
     [] as Array<{
@@ -41,41 +45,11 @@ const mockModelSelectorProps = vi.hoisted(
 
 let mockWorkspacePermissionKeys = ['plugin.model_config']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -96,9 +70,7 @@ vi.mock('@langgenius/dify-ui/toast', async (importOriginal) => {
 })
 
 vi.mock('../../hooks', () => ({
-  useModelList: () => ({
-    data: [],
-  }),
+  useModelList: mockUseModelList,
   useSystemDefaultModelAndModelList: (defaultModel: DefaultModelResponse | undefined) => [
     defaultModel || {
       model: '',
@@ -115,16 +87,16 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('../../model-selector', () => ({
-  default: (props: {
+  ModelSelector: (props: {
     hideProviderSettingsFooter?: boolean
     onConfigureEmptyState?: () => void
     showModelMeta?: boolean
-    onSelect: (model: { model: string; provider: string }) => void
+    onValueChange: (model: { model: string; provider: string }) => void
   }) => {
     mockModelSelectorProps.push(props)
     return (
       <div>
-        <button onClick={() => props.onSelect({ model: 'test', provider: 'test' })}>
+        <button onClick={() => props.onValueChange({ model: 'test', provider: 'test' })}>
           Mock Model Selector
         </button>
         {props.onConfigureEmptyState && (
@@ -157,6 +129,7 @@ const defaultProps = {
 describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseModelList.mockReturnValue({ data: [], isLoading: false })
     mockModelSelectorProps.length = 0
     mockWorkspacePermissionKeys = ['plugin.model_config']
   })
@@ -173,6 +146,41 @@ describe('SystemModel', () => {
     await waitFor(() => {
       expect(screen.getByText(/system reasoning model/i)).toBeInTheDocument()
     })
+  })
+
+  it('loads non-text model lists only after the dialog opens', async () => {
+    const user = userEvent.setup()
+    render(<SystemModel {...defaultProps} />)
+
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.rerank, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.speech2text, { enabled: false })
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.tts, { enabled: false })
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    await waitFor(() => {
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.rerank, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.speech2text, { enabled: true })
+      expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.tts, { enabled: true })
+    })
+  })
+
+  it('shows loading instead of empty model selectors while model lists load', async () => {
+    const user = userEvent.setup()
+    mockUseModelList.mockReturnValue({ data: [], isLoading: true })
+    render(<SystemModel {...defaultProps} />)
+
+    await user.click(screen.getByRole('button', { name: /system model settings/i }))
+
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mock Model Selector' })).not.toBeInTheDocument()
+    const saveButton = screen.getByRole('button', { name: /save/i })
+    expect(saveButton).toBeDisabled()
+
+    await user.click(saveButton)
+    expect(mockUpdateDefaultModel).not.toHaveBeenCalled()
   })
 
   it('should disable button when loading', () => {

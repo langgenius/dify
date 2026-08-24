@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "ค้นหากลุ่มและสมาชิก",
   "accessControlDialog.title": "การควบคุมการเข้าถึงเว็บแอปพลิเคชัน",
   "accessControlDialog.updateSuccess": "อัปเดตสำเร็จแล้ว",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "การเข้าถึงแบบสาธารณะถูกปิดใช้งานโดยผู้ดูแลระบบของคุณ",
   "accessControlDialog.webAppSSONotEnabledTip": "กรุณาติดต่อผู้ดูแลระบบองค์กรเพื่อกำหนดวิธีการตรวจสอบสิทธิ์แอปเว็บ.",
   "accessItemsDescription.anyone": "ใครก็สามารถเข้าถึงเว็บแอปได้",
   "accessItemsDescription.external": "ผู้ใช้งานภายนอกที่ได้รับการยืนยันตัวตนเท่านั้นที่สามารถเข้าถึงแอปพลิเคชันเว็บได้",

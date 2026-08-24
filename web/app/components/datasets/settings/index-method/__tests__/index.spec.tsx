@@ -20,11 +20,6 @@ describe('IndexMethod', () => {
     })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<IndexMethod {...defaultProps} />)
-      expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()
-    })
-
     it('should render High Quality option', () => {
       render(<IndexMethod {...defaultProps} />)
       expect(screen.getByText(/stepTwo\.qualified/))!.toBeInTheDocument()

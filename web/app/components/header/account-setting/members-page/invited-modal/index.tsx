@@ -1,30 +1,39 @@
-import type { InvitationResult } from '@/models/common'
+import type {
+  MemberInviteAlreadyMemberResponse,
+  MemberInviteFailedResponse,
+  MemberInviteResponse,
+  MemberInviteSuccessResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InvitationLink from './invitation-link'
 
-export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
-type AlreadyMemberInvitationResult = Extract<InvitationResult, { status: 'already_member' }>
-type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
-
 type IInvitedModalProps = {
-  invitationResults: InvitationResult[]
+  invitationResults: MemberInviteResponse['invitation_results']
   onCancel: () => void
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const successInvitationResults = invitationResults.filter(
-    (item): item is SuccessInvitationResult => item.status === 'success',
+    (item): item is MemberInviteSuccessResponse => item.status === 'success',
   )
   const alreadyMemberInvitationResults = invitationResults.filter(
-    (item): item is AlreadyMemberInvitationResult => item.status === 'already_member',
+    (item): item is MemberInviteAlreadyMemberResponse => item.status === 'already_member',
   )
   const failedInvitationResults = invitationResults.filter(
-    (item): item is FailedInvitationResult => item.status === 'failed',
+    (item): item is MemberInviteFailedResponse => item.status === 'failed',
   )
   const onlyAlreadyMembers =
     alreadyMemberInvitationResults.length > 0 &&
@@ -42,11 +51,21 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
         if (!open) onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="w-[480px] p-8">
-        <DialogCloseButton className="top-8 right-8" />
+      <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-8 right-8"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mb-3 flex justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
-            <div className="i-heroicons-check-circle-solid h-[22px] w-[22px] text-[#039855]" />
+            <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
           </div>
         </div>
         <DialogTitle className="mb-1 text-xl font-semibold text-text-primary">
@@ -56,12 +75,14 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
             { ns: 'common' },
           )}
         </DialogTitle>
-        {!IS_CE_EDITION && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
-        {(IS_CE_EDITION || !!alreadyMemberInvitationResults.length) && (
+        {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
+        {(isNonCloudEdition || !!alreadyMemberInvitationResults.length) && (
           <>
-            {IS_CE_EDITION && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
+            {isNonCloudEdition && (
+              <div className="mb-5 text-sm text-text-tertiary">{description}</div>
+            )}
             <div className="mb-9 flex flex-col gap-2">
-              {IS_CE_EDITION && !!successInvitationResults.length && (
+              {isNonCloudEdition && !!successInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
                     {t(($) => $['members.invitationLink'], { ns: 'common' })}
@@ -93,7 +114,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                   </div>
                 </>
               )}
-              {IS_CE_EDITION && !!failedInvitationResults.length && (
+              {isNonCloudEdition && !!failedInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
                     {t(($) => $['members.failedInvitationEmails'], { ns: 'common' })}
@@ -124,7 +145,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
           </>
         )}
         <div className="flex justify-end">
-          <Button className="w-[96px]" onClick={onCancel} variant="primary">
+          <Button className="w-24" onClick={onCancel} variant="primary">
             {t(($) => $['members.ok'], { ns: 'common' })}
           </Button>
         </div>

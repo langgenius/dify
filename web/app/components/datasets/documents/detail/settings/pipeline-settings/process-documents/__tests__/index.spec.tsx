@@ -128,18 +128,6 @@ describe('ProcessDocuments', () => {
   // ==================== Rendering Tests ====================
   // Test basic rendering and component structure
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      renderWithProviders(<ProcessDocuments {...props} />)
-
-      // Assert - verify both Form and Actions are rendered
-      expect(screen.getByTestId('process-form')).toBeInTheDocument()
-      expect(
-        screen.getByRole('button', { name: 'datasetPipeline.operations.saveAndProcess' }),
-      ).toBeInTheDocument()
-    })
-
     it('should render with correct container structure', () => {
       const props = createDefaultProps()
 

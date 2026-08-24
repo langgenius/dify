@@ -1,6 +1,6 @@
 import type { Dependency, InstallStatusResponse, PackageDependency } from '../../../../types'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
@@ -53,12 +53,6 @@ vi.mock('../../../hooks/use-refresh-plugin-list', () => ({
   default: () => ({
     refreshPluginList: mockRefreshPluginList,
   }),
-}))
-
-// Mock mitt context
-const mockEmit = vi.fn()
-vi.mock('@/context/mitt-context', () => ({
-  useMittContextSelector: () => mockEmit,
 }))
 
 // Mock useCanInstallPluginFromMarketplace
@@ -260,12 +254,6 @@ describe('Install Component', () => {
 
   // ==================== Rendering Tests ====================
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Install {...defaultProps} />)
-
-      expect(screen.getByTestId('install-multi')).toBeInTheDocument()
-    })
-
     it('should render InstallMulti component with correct props', () => {
       render(<Install {...defaultProps} />)
 
@@ -533,25 +521,6 @@ describe('Install Component', () => {
 
       await waitFor(() => {
         expect(mockRefreshPluginList).toHaveBeenCalled()
-      })
-    })
-
-    it('should emit plugin:install:success event on successful installation', async () => {
-      render(<Install {...defaultProps} />)
-
-      // Select all plugins
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('select-all-plugins'))
-      })
-
-      // Click install
-      const installButton = screen.getByText(/plugin\.installModal\.install/i)
-      await act(async () => {
-        fireEvent.click(installButton)
-      })
-
-      await waitFor(() => {
-        expect(mockEmit).toHaveBeenCalledWith('plugin:install:success', expect.any(Array))
       })
     })
 
@@ -864,11 +833,4 @@ describe('Install Component', () => {
   })
 
   // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const InstallModule = await import('../install')
-      // memo returns an object with $$typeof
-      expect(typeof InstallModule.default).toBe('object')
-    })
-  })
 })

@@ -1,5 +1,6 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
+import pytest
 from redis import RedisError
 from redis.retry import Retry
 
@@ -14,16 +15,30 @@ from extensions.ext_redis import (
 )
 
 
-class TestGetConnectionHealthParams:
-    @patch("extensions.ext_redis.dify_config")
-    def test_includes_all_health_params(self, mock_config):
-        mock_config.REDIS_RETRY_RETRIES = 3
-        mock_config.REDIS_RETRY_BACKOFF_BASE = 1.0
-        mock_config.REDIS_RETRY_BACKOFF_CAP = 10.0
-        mock_config.REDIS_SOCKET_TIMEOUT = 5.0
-        mock_config.REDIS_SOCKET_CONNECT_TIMEOUT = 5.0
-        mock_config.REDIS_HEALTH_CHECK_INTERVAL = 30
+@pytest.fixture(autouse=True)
+def _redis_config(config_overrides) -> None:
+    config_overrides(
+        REDIS_USERNAME=None,
+        REDIS_PASSWORD=None,
+        REDIS_DB=0,
+        REDIS_SERIALIZATION_PROTOCOL=3,
+        REDIS_ENABLE_CLIENT_SIDE_CACHE=False,
+        REDIS_RETRY_RETRIES=3,
+        REDIS_RETRY_BACKOFF_BASE=1.0,
+        REDIS_RETRY_BACKOFF_CAP=10.0,
+        REDIS_SOCKET_TIMEOUT=5.0,
+        REDIS_SOCKET_CONNECT_TIMEOUT=5.0,
+        REDIS_HEALTH_CHECK_INTERVAL=30,
+        REDIS_KEEPALIVE=True,
+        REDIS_KEEPALIVE_IDLE=60,
+        REDIS_KEEPALIVE_INTERVAL=10,
+        REDIS_KEEPALIVE_COUNT=3,
+        REDIS_KEY_PREFIX="",
+    )
 
+
+class TestGetConnectionHealthParams:
+    def test_includes_all_health_params(self):
         params = _get_connection_health_params()
 
         assert "retry" in params
@@ -38,15 +53,7 @@ class TestGetConnectionHealthParams:
 
 
 class TestGetClusterConnectionHealthParams:
-    @patch("extensions.ext_redis.dify_config")
-    def test_excludes_health_check_interval(self, mock_config):
-        mock_config.REDIS_RETRY_RETRIES = 3
-        mock_config.REDIS_RETRY_BACKOFF_BASE = 1.0
-        mock_config.REDIS_RETRY_BACKOFF_CAP = 10.0
-        mock_config.REDIS_SOCKET_TIMEOUT = 5.0
-        mock_config.REDIS_SOCKET_CONNECT_TIMEOUT = 5.0
-        mock_config.REDIS_HEALTH_CHECK_INTERVAL = 30
-
+    def test_excludes_health_check_interval(self):
         params = _get_cluster_connection_health_params()
 
         assert "retry" in params
@@ -56,20 +63,7 @@ class TestGetClusterConnectionHealthParams:
 
 
 class TestGetBaseRedisParams:
-    @patch("extensions.ext_redis.dify_config")
-    def test_includes_retry_and_health_params(self, mock_config):
-        mock_config.REDIS_USERNAME = None
-        mock_config.REDIS_PASSWORD = None
-        mock_config.REDIS_DB = 0
-        mock_config.REDIS_SERIALIZATION_PROTOCOL = 3
-        mock_config.REDIS_ENABLE_CLIENT_SIDE_CACHE = False
-        mock_config.REDIS_RETRY_RETRIES = 3
-        mock_config.REDIS_RETRY_BACKOFF_BASE = 1.0
-        mock_config.REDIS_RETRY_BACKOFF_CAP = 10.0
-        mock_config.REDIS_SOCKET_TIMEOUT = 5.0
-        mock_config.REDIS_SOCKET_CONNECT_TIMEOUT = 5.0
-        mock_config.REDIS_HEALTH_CHECK_INTERVAL = 30
-
+    def test_includes_retry_and_health_params(self):
         params = _get_base_redis_params()
 
         assert "retry" in params
@@ -77,6 +71,8 @@ class TestGetBaseRedisParams:
         assert params["socket_timeout"] == 5.0
         assert params["socket_connect_timeout"] == 5.0
         assert params["health_check_interval"] == 30
+        assert params["socket_keepalive"] is True
+        assert isinstance(params["socket_keepalive_options"], dict)
         # Existing params still present
         assert params["db"] == 0
         assert params["encoding"] == "utf-8"
@@ -143,86 +139,74 @@ class TestRedisKeyPrefixHelpers:
 
 
 class TestRedisClientWrapperKeyPrefix:
-    def test_wrapper_get_prefixes_string_keys(self):
+    def test_wrapper_get_prefixes_string_keys(self, config_overrides):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
         wrapper.initialize(mock_client)
 
-        with patch("extensions.ext_redis.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
-            wrapper.get("oauth_state:abc")
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        wrapper.get("oauth_state:abc")
 
         mock_client.get.assert_called_once_with("enterprise-a:oauth_state:abc")
 
-    def test_wrapper_delete_prefixes_multiple_keys(self):
+    def test_wrapper_delete_prefixes_multiple_keys(self, config_overrides):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
         wrapper.initialize(mock_client)
 
-        with patch("extensions.ext_redis.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
-            wrapper.delete("key:a", "key:b")
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        wrapper.delete("key:a", "key:b")
 
         mock_client.delete.assert_called_once_with("enterprise-a:key:a", "enterprise-a:key:b")
 
-    def test_wrapper_lock_prefixes_lock_name(self):
+    def test_wrapper_lock_prefixes_lock_name(self, config_overrides):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
         wrapper.initialize(mock_client)
 
-        with patch("extensions.ext_redis.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
-            wrapper.lock("resource-lock", timeout=10)
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        wrapper.lock("resource-lock", timeout=10)
 
         mock_client.lock.assert_called_once()
         args, kwargs = mock_client.lock.call_args
         assert args == ("enterprise-a:resource-lock",)
         assert kwargs["timeout"] == 10
 
-    def test_wrapper_hash_operations_prefix_key_name(self):
+    def test_wrapper_hash_operations_prefix_key_name(self, config_overrides):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
         wrapper.initialize(mock_client)
 
-        with patch("extensions.ext_redis.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
-            wrapper.hset("hash:key", "field", "value")
-            wrapper.hgetall("hash:key")
-            wrapper.hkeys("hash:key")
-            wrapper.hexists("hash:key", "field")
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        wrapper.hset("hash:key", "field", "value")
+        wrapper.hgetall("hash:key")
+        wrapper.hkeys("hash:key")
+        wrapper.hexists("hash:key", "field")
 
         mock_client.hset.assert_called_once_with("enterprise-a:hash:key", "field", "value")
         mock_client.hgetall.assert_called_once_with("enterprise-a:hash:key")
         mock_client.hkeys.assert_called_once_with("enterprise-a:hash:key")
         mock_client.hexists.assert_called_once_with("enterprise-a:hash:key", "field")
 
-    def test_wrapper_zadd_prefixes_sorted_set_name(self):
+    def test_wrapper_zadd_prefixes_sorted_set_name(self, config_overrides):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
         wrapper.initialize(mock_client)
 
-        with patch("extensions.ext_redis.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-
-            wrapper.zadd("zset:key", {"member": 1})
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        wrapper.zadd("zset:key", {"member": 1})
 
         mock_client.zadd.assert_called_once()
         args, kwargs = mock_client.zadd.call_args
         assert args == ("enterprise-a:zset:key", {"member": 1})
         assert kwargs["nx"] is False
 
-    def test_wrapper_preserves_keys_when_prefix_is_empty(self):
+    def test_wrapper_preserves_keys_when_prefix_is_empty(self, config_overrides):
         mock_client = MagicMock()
         wrapper = RedisClientWrapper()
         wrapper.initialize(mock_client)
 
-        with patch("extensions.ext_redis.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "   "
-
-            wrapper.get("plain:key")
+        config_overrides(REDIS_KEY_PREFIX="   ")
+        wrapper.get("plain:key")
 
         mock_client.get.assert_called_once_with("plain:key")

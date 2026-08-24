@@ -34,6 +34,7 @@ def test_update_node_execution_prefers_event_finished_at(monkeypatch: pytest.Mon
     node_execution = Mock()
     node_execution.id = "node-exec-1"
     node_execution.created_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+    node_execution.process_data = None
     node_execution.update_from_mapping = Mock()
 
     layer._node_snapshots[node_execution.id] = _NodeRuntimeSnapshot(
@@ -66,6 +67,7 @@ def test_update_node_execution_projects_start_outputs() -> None:
     node_execution.id = "node-exec-2"
     node_execution.node_type = BuiltinNodeTypes.START
     node_execution.created_at = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC).replace(tzinfo=None)
+    node_execution.process_data = None
     node_execution.update_from_mapping = Mock()
 
     layer._node_snapshots[node_execution.id] = _NodeRuntimeSnapshot(

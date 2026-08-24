@@ -6,13 +6,11 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models import AgentRuntimeSession, AgentRuntimeSessionOwnerType, AgentRuntimeSessionStatus, TenantAccountRole
+from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, EndUserType
 from models.model import App, Conversation, EndUser, Message, MessageAnnotation
@@ -853,11 +851,7 @@ class TestConversationServiceMessageAnnotation:
 
         # Act
         result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id,
-            page=1,
-            limit=10,
-            keyword="",
-            session=db_session_with_containers,
+            app_id=app_model.id, page=1, limit=10, keyword="", session=db_session_with_containers
         )
 
         # Assert
@@ -934,9 +928,7 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.insert_app_annotation_directly(
-            args, app_model.id, session=db_session_with_containers
-        )
+        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id, db_session_with_containers)
 
         # Assert
         assert result.question == args["question"]
@@ -1011,7 +1003,7 @@ class TestConversationServiceExport:
         mock_current_account.return_value = (account, app_model.tenant_id)
 
         # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, session=db_session_with_containers)
+        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, db_session_with_containers)
 
         # Assert
         assert len(result) == 10
@@ -1083,14 +1075,13 @@ class TestConversationServiceExport:
         # Assert
         assert result == conversation
 
-    @patch("services.conversation_service.cleanup_conversation_agent_runtime_session")
     @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_conversation(self, mock_delete_task, mock_cleanup_task, db_session_with_containers: Session):
+    def test_delete_conversation(self, mock_delete_task, db_session_with_containers: Session):
         """
         Test conversation deletion with async cleanup.
 
         Deletion is a two-step process:
-        1. Immediately delete the conversation record from database
+        1. Immediately hide the conversation with a durable soft-delete marker
         2. Trigger async background task to clean up related data
            (messages, annotations, vector embeddings, file uploads)
         """
@@ -1104,20 +1095,6 @@ class TestConversationServiceExport:
             user,
         )
         conversation_id = conversation.id
-        runtime_session = AgentRuntimeSession(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-            agent_id=str(uuid4()),
-            agent_config_snapshot_id=str(uuid4()),
-            backend_run_id="backend-run-1",
-            session_snapshot=CompositorSessionSnapshot(layers=[]).model_dump_json(),
-            composition_layer_specs='[{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
-            conversation_id=conversation.id,
-            status=AgentRuntimeSessionStatus.ACTIVE,
-        )
-        db_session_with_containers.add(runtime_session)
-        db_session_with_containers.commit()
 
         # Act - Delete the conversation
         ConversationService.delete(
@@ -1125,34 +1102,19 @@ class TestConversationServiceExport:
         )
 
         # Assert - Verify two-step deletion process
-        # Step 1: Immediate database deletion
+        # Step 1: Immediate logical deletion
         deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
-        assert deleted is None
+        assert deleted is not None
+        assert deleted.is_deleted is True
 
         # Step 2: Async cleanup task triggered
         # The Celery task will handle cleanup of messages, annotations, etc.
         mock_delete_task.delay.assert_called_once_with(conversation_id)
-        mock_cleanup_task.delay.assert_called_once()
-        cleanup_payload = mock_cleanup_task.delay.call_args.args[0]
-        assert cleanup_payload["metadata"]["conversation_id"] == conversation_id
-        assert (
-            cleanup_payload["idempotency_key"]
-            == f"{app_model.tenant_id}:{app_model.id}:{conversation_id}:agent-runtime-session-cleanup:"
-            f"{runtime_session.agent_id}:{runtime_session.agent_config_snapshot_id}:{runtime_session.backend_run_id}"
-        )
 
-        runtime_session_row = db_session_with_containers.scalar(
-            select(AgentRuntimeSession).where(AgentRuntimeSession.id == runtime_session.id)
-        )
-        assert runtime_session_row is not None
-        assert runtime_session_row.status == AgentRuntimeSessionStatus.CLEANED
-
-    @patch("services.conversation_service.cleanup_conversation_agent_runtime_session")
     @patch("services.conversation_service.delete_conversation_related_data")
     def test_delete_conversation_not_owned_by_account(
         self,
         mock_delete_task,
-        mock_cleanup_task,
         db_session_with_containers: Session,
     ):
         """
@@ -1184,22 +1146,17 @@ class TestConversationServiceExport:
         not_deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
         assert not_deleted is not None
         mock_delete_task.delay.assert_not_called()
-        mock_cleanup_task.delay.assert_not_called()
 
-    @patch("services.conversation_service.cleanup_conversation_agent_runtime_session")
     @patch("services.conversation_service.delete_conversation_related_data")
     def test_delete_handles_exception_and_rollback(
         self,
         mock_delete_task,
-        mock_cleanup_task,
         db_session_with_containers: Session,
     ):
         """
         Test that delete propagates exceptions and does not trigger the cleanup task.
 
-        When a DB error occurs during deletion, the conversation row stays in
-        place, but any already-enqueued Agent backend cleanup remains a
-        best-effort terminal lifecycle action.
+        When a DB error occurs during deletion, the conversation row stays in place.
         """
         # Arrange
         app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
@@ -1209,23 +1166,9 @@ class TestConversationServiceExport:
             db_session_with_containers, app_model, user
         )
         conversation_id = conversation.id
-        runtime_session = AgentRuntimeSession(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-            agent_id=str(uuid4()),
-            agent_config_snapshot_id=str(uuid4()),
-            backend_run_id="backend-run-rollback",
-            session_snapshot=CompositorSessionSnapshot(layers=[]).model_dump_json(),
-            composition_layer_specs='[{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
-            conversation_id=conversation.id,
-            status=AgentRuntimeSessionStatus.ACTIVE,
-        )
-        db_session_with_containers.add(runtime_session)
-        db_session_with_containers.commit()
 
-        # Act — force an error during the delete to exercise the rollback path
-        with patch.object(db_session_with_containers, "delete", side_effect=Exception("DB error")):
+        # Act — force an error during the soft-delete commit to exercise rollback
+        with patch.object(db_session_with_containers, "commit", side_effect=Exception("DB error")):
             with pytest.raises(Exception, match="DB error"):
                 ConversationService.delete(
                     app_model=app_model,
@@ -1234,111 +1177,9 @@ class TestConversationServiceExport:
                     session=db_session_with_containers,
                 )
 
-        # Assert — related-data deletion is not scheduled, but the backend
-        # cleanup task was already enqueued before the row delete failed.
+        # Assert — related-data deletion is not scheduled.
         mock_delete_task.delay.assert_not_called()
-        mock_cleanup_task.delay.assert_called_once()
-        cleanup_payload = mock_cleanup_task.delay.call_args.args[0]
-        assert (
-            cleanup_payload["idempotency_key"]
-            == f"{app_model.tenant_id}:{app_model.id}:{conversation_id}:agent-runtime-session-cleanup:"
-            f"{runtime_session.agent_id}:{runtime_session.agent_config_snapshot_id}:{runtime_session.backend_run_id}"
-        )
 
         # Conversation is still present because the deletion was never committed
         still_there = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
         assert still_there is not None
-
-    @patch("services.conversation_service.cleanup_conversation_agent_runtime_session")
-    @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_ignores_mark_cleaned_failure(
-        self,
-        mock_delete_task,
-        mock_cleanup_task,
-        db_session_with_containers: Session,
-    ):
-        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers,
-            app_model,
-            user,
-        )
-        runtime_session = AgentRuntimeSession(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-            agent_id=str(uuid4()),
-            agent_config_snapshot_id=str(uuid4()),
-            backend_run_id="backend-run-cleanup-failure",
-            session_snapshot=CompositorSessionSnapshot(layers=[]).model_dump_json(),
-            composition_layer_specs='[{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
-            conversation_id=conversation.id,
-            status=AgentRuntimeSessionStatus.ACTIVE,
-        )
-        db_session_with_containers.add(runtime_session)
-        db_session_with_containers.commit()
-
-        with patch.object(AgentAppRuntimeSessionStore, "mark_cleaned", side_effect=RuntimeError("cleanup failed")):
-            ConversationService.delete(
-                app_model=app_model,
-                conversation_id=conversation.id,
-                user=user,
-                session=db_session_with_containers,
-            )
-
-        deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation.id))
-        assert deleted is None
-        mock_delete_task.delay.assert_called_once_with(conversation.id)
-        mock_cleanup_task.delay.assert_called_once()
-
-    @patch("services.conversation_service.cleanup_conversation_agent_runtime_session")
-    @patch("services.conversation_service.delete_conversation_related_data")
-    def test_delete_ignores_cleanup_enqueue_failure_and_still_retires_runtime_session(
-        self,
-        mock_delete_task,
-        mock_cleanup_task,
-        db_session_with_containers: Session,
-    ):
-        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
-            db_session_with_containers,
-            app_model,
-            user,
-        )
-        conversation_id = conversation.id
-        runtime_session = AgentRuntimeSession(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-            agent_id=str(uuid4()),
-            agent_config_snapshot_id=str(uuid4()),
-            backend_run_id="backend-run-enqueue-failure",
-            session_snapshot=CompositorSessionSnapshot(layers=[]).model_dump_json(),
-            composition_layer_specs='[{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
-            conversation_id=conversation.id,
-            status=AgentRuntimeSessionStatus.ACTIVE,
-        )
-        db_session_with_containers.add(runtime_session)
-        db_session_with_containers.commit()
-        mock_cleanup_task.delay.side_effect = RuntimeError("queue down")
-
-        ConversationService.delete(
-            app_model=app_model,
-            conversation_id=conversation_id,
-            user=user,
-            session=db_session_with_containers,
-        )
-
-        deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
-        assert deleted is None
-        mock_delete_task.delay.assert_called_once_with(conversation_id)
-        mock_cleanup_task.delay.assert_called_once()
-        runtime_session_row = db_session_with_containers.scalar(
-            select(AgentRuntimeSession).where(AgentRuntimeSession.id == runtime_session.id)
-        )
-        assert runtime_session_row is not None
-        assert runtime_session_row.status == AgentRuntimeSessionStatus.CLEANED

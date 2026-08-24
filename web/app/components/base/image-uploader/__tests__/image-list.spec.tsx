@@ -29,13 +29,6 @@ describe('ImageList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing with empty list', () => {
-      render(<ImageList list={[]} />)
-      expect(
-        screen.getByRole('list', { name: 'common.imageUploader.imageList' }),
-      ).toBeInTheDocument()
-    })
-
     it('should render images for each item in the list', () => {
       const list = [createLocalFile({ _id: 'file-1' }), createLocalFile({ _id: 'file-2' })]
       render(<ImageList list={list} />)

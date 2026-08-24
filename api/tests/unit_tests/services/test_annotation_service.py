@@ -1,8 +1,14 @@
-"""
-Unit tests for services.annotation_service
-"""
+"""SQLite-backed unit tests for :mod:`services.annotation_service`."""
+
+# Test functions explicitly request the identity fixture to make the patched
+# request context visible at each service call, even when they do not inspect it.
+# ruff: noqa: ARG002
+
+from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
+from decimal import Decimal
 from io import BytesIO
 from types import SimpleNamespace
 from typing import Any, cast
@@ -10,1399 +16,933 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
-from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+import services.annotation_service as annotation_service_module
+from models.account import Account
+from models.dataset import DatasetCollectionBinding
+from models.enums import CollectionBindingType
+from models.model import (
+    App,
+    AppAnnotationHitHistory,
+    AppAnnotationSetting,
+    AppMode,
+    ConversationFromSource,
+    IconType,
+    Message,
+    MessageAnnotation,
+)
 from services.annotation_service import AppAnnotationService
 from services.app_ref_service import AnnotationRef, AppRef
 
+TENANT_ID = "tenant-1"
+OTHER_TENANT_ID = "tenant-2"
 
-def _make_app(app_id: str = "app-1", tenant_id: str = "tenant-1") -> MagicMock:
-    app = MagicMock(spec=App)
-    app.id = app_id
-    app.tenant_id = tenant_id
-    app.status = "normal"
+
+@pytest.fixture
+def current_user(monkeypatch: pytest.MonkeyPatch) -> Account:
+    """Install a real account model as the request identity."""
+
+    account = Account(name="Annotation Tester", email="annotation@example.com")
+    account.id = "account-1"
+    monkeypatch.setattr(
+        annotation_service_module,
+        "current_account_with_tenant",
+        lambda: (account, TENANT_ID),
+    )
+    return account
+
+
+def _persist_app(
+    session: Session,
+    *,
+    app_id: str = "app-1",
+    tenant_id: str = TENANT_ID,
+    status: str = "normal",
+) -> App:
+    app = App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name=f"Annotation App {app_id}",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="chat",
+        icon_background="#FFFFFF",
+        status=status,
+        enable_site=False,
+        enable_api=False,
+    )
+    session.add(app)
+    session.commit()
     return app
 
 
-def _make_app_ref(app: MagicMock) -> AppRef:
-    return AppRef(tenant_id=app.tenant_id, app_id=app.id)
-
-
-def _make_annotation_ref(app: MagicMock, annotation_id: str = "ann-1") -> AnnotationRef:
-    return AnnotationRef(tenant_id=app.tenant_id, app_id=app.id, annotation_id=annotation_id)
-
-
-def _make_user(user_id: str = "user-1") -> MagicMock:
-    user = MagicMock()
-    user.id = user_id
-    return user
-
-
-def _make_message(message_id: str = "msg-1", app_id: str = "app-1") -> MagicMock:
-    message = MagicMock(spec=Message)
-    message.id = message_id
-    message.app_id = app_id
-    message.conversation_id = "conv-1"
-    message.query = "default-question"
-    message.annotation = None
+def _persist_message(
+    session: Session,
+    app: App,
+    *,
+    message_id: str = "msg-1",
+    query: str = "default-question",
+) -> Message:
+    message = Message(
+        id=message_id,
+        app_id=app.id,
+        conversation_id="conv-1",
+        _inputs={},
+        query=query,
+        message={},
+        message_unit_price=Decimal(0),
+        answer="answer",
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    session.add(message)
+    session.commit()
     return message
 
 
-def _make_annotation(annotation_id: str = "ann-1", app_id: str = "app-1") -> MagicMock:
-    annotation = MagicMock(spec=MessageAnnotation)
+def _persist_annotation(
+    session: Session,
+    app: App,
+    *,
+    annotation_id: str = "ann-1",
+    question: str = "question",
+    content: str = "answer",
+    message_id: str | None = None,
+    created_at: datetime | None = None,
+) -> MessageAnnotation:
+    annotation = MessageAnnotation(
+        app_id=app.id,
+        question=question,
+        content=content,
+        account_id="account-1",
+        message_id=message_id,
+    )
     annotation.id = annotation_id
-    annotation.app_id = app_id
-    annotation.content = ""
-    annotation.question = ""
-    annotation.question_text = ""
+    if created_at is not None:
+        annotation.created_at = created_at
+    session.add(annotation)
+    session.commit()
     return annotation
 
 
-def _make_setting(setting_id: str = "setting-1", with_detail: bool = True) -> MagicMock:
-    setting = MagicMock(spec=AppAnnotationSetting)
+def _persist_binding(
+    session: Session,
+    *,
+    binding_id: str = "collection-1",
+    provider_name: str = "provider-a",
+    model_name: str = "model-a",
+) -> DatasetCollectionBinding:
+    binding = DatasetCollectionBinding(
+        provider_name=provider_name,
+        model_name=model_name,
+        type=CollectionBindingType.ANNOTATION,
+        collection_name=f"collection-{binding_id}",
+    )
+    binding.id = binding_id
+    session.add(binding)
+    session.commit()
+    return binding
+
+
+def _persist_setting(
+    session: Session,
+    app: App,
+    *,
+    setting_id: str = "setting-1",
+    binding_id: str = "collection-1",
+    score_threshold: float = 0.5,
+) -> AppAnnotationSetting:
+    setting = AppAnnotationSetting(
+        app_id=app.id,
+        score_threshold=score_threshold,
+        collection_binding_id=binding_id,
+        created_user_id="account-1",
+        updated_user_id="account-1",
+    )
     setting.id = setting_id
-    setting.score_threshold = 0.5
-    setting.collection_binding_id = "collection-1"
-    if with_detail:
-        setting.collection_binding_detail = SimpleNamespace(provider_name="provider-a", model_name="model-a")
-    else:
-        setting.collection_binding_detail = None
+    session.add(setting)
+    session.commit()
     return setting
 
 
-def _make_file(content: bytes) -> FileStorage:
+def _persist_history(
+    session: Session,
+    app: App,
+    annotation: MessageAnnotation,
+    *,
+    history_id: str = "history-1",
+    created_at: datetime | None = None,
+) -> AppAnnotationHitHistory:
+    history = AppAnnotationHitHistory(
+        app_id=app.id,
+        annotation_id=annotation.id,
+        source="hit-testing",
+        question="query",
+        account_id="account-1",
+        score=0.8,
+        message_id="message-1",
+        annotation_question=annotation.question,
+        annotation_content=annotation.content,
+    )
+    history.id = history_id
+    if created_at is not None:
+        history.created_at = created_at
+    session.add(history)
+    session.commit()
+    return history
+
+
+def _app_ref(app: App) -> AppRef:
+    return AppRef(tenant_id=app.tenant_id, app_id=app.id)
+
+
+def _annotation_ref(app: App, annotation_id: str) -> AnnotationRef:
+    return AnnotationRef(app=_app_ref(app), annotation_id=annotation_id)
+
+
+def _file(content: bytes) -> FileStorage:
     return FileStorage(stream=BytesIO(content))
 
 
-def _assert_statement_binds_annotation(stmt: Any, annotation_id: str, app_id: str) -> None:
-    compiled = stmt.compile()
-    statement = str(compiled)
-    assert "message_annotations.id" in statement
-    assert "message_annotations.app_id" in statement
-    assert annotation_id in compiled.params.values()
-    assert app_id in compiled.params.values()
+def _observer_get(factory: sessionmaker[Session], model: type[Any], identifier: str) -> Any:
+    with factory() as observer:
+        return observer.get(model, identifier)
 
 
-class TestAppAnnotationServiceUpInsert:
-    """Test suite for up_insert_app_annotation_from_message."""
+class TestAppAnnotationServiceUpsert:
+    def test_rejects_missing_or_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
+        _persist_app(sqlite_session, app_id="other-app", tenant_id=OTHER_TENANT_ID)
 
-    def test_up_insert_app_annotation_from_message_should_raise_not_found_when_app_missing(self) -> None:
-        """Test missing app raises NotFound."""
-        # Arrange
-        args = {"answer": "hello", "message_id": "msg-1"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, "app-1", session=mock_db.session)
-
-    def test_up_insert_app_annotation_from_message_should_raise_value_error_when_answer_missing(self) -> None:
-        """Test missing answer and content raises ValueError."""
-        # Arrange
-        args = {"message_id": "msg-1"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-        app = _make_app()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
-
-    def test_up_insert_app_annotation_from_message_should_raise_not_found_when_message_missing(self) -> None:
-        """Test missing message raises NotFound."""
-        # Arrange
-        args = {"answer": "hello", "message_id": "msg-1"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-        app = _make_app()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.side_effect = [app, None]
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
-
-    def test_up_insert_app_annotation_from_message_should_update_existing_annotation_when_found(self) -> None:
-        """Test existing annotation is updated and indexed."""
-        # Arrange
-        args = {"answer": "updated", "message_id": "msg-1"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation = _make_annotation("ann-1")
-        message = _make_message(message_id="msg-1", app_id=app.id)
-        message.annotation = annotation
-        setting = _make_setting()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
-        ):
-            mock_db.session.scalar.side_effect = [app, message, setting]
-
-            # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
-
-            # Assert
-            assert result == annotation
-            assert annotation.content == "updated"
-            assert annotation.question == message.query
-            mock_db.session.add.assert_called_once_with(annotation)
-            mock_db.session.commit.assert_called_once()
-            mock_task.delay.assert_called_once_with(
-                annotation.id,
-                message.query,
-                tenant_id,
-                app.id,
-                setting.collection_binding_id,
+        with pytest.raises(NotFound):
+            AppAnnotationService.up_insert_app_annotation_from_message(
+                {"answer": "hello", "question": "q"}, "other-app", sqlite_session
             )
 
-    def test_up_insert_app_annotation_from_message_should_create_annotation_when_message_has_no_annotation(
+    def test_validates_answer_and_question(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+
+        with pytest.raises(ValueError, match="answer.*content"):
+            AppAnnotationService.up_insert_app_annotation_from_message({"question": "q"}, app.id, sqlite_session)
+        with pytest.raises(ValueError, match="question"):
+            AppAnnotationService.up_insert_app_annotation_from_message({"answer": "a"}, app.id, sqlite_session)
+
+    def test_rejects_message_from_another_app(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        message = _persist_message(sqlite_session, other_app)
+
+        with pytest.raises(NotFound, match="Message"):
+            AppAnnotationService.up_insert_app_annotation_from_message(
+                {"answer": "hello", "message_id": message.id}, app.id, sqlite_session
+            )
+
+    def test_updates_existing_message_annotation_and_enqueues_index(
         self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
     ) -> None:
-        """Test new annotation is created when message has no annotation."""
-        # Arrange
-        args = {"answer": "hello", "message_id": "msg-1", "question": "q1"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-        app = _make_app()
-        message = _make_message(message_id="msg-1", app_id=app.id)
-        message.annotation = None
-        annotation_instance = _make_annotation("ann-1")
+        app = _persist_app(sqlite_session)
+        message = _persist_message(sqlite_session, app)
+        annotation = _persist_annotation(sqlite_session, app, message_id=message.id, content="old")
+        setting = _persist_setting(sqlite_session, app)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
-            patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
-        ):
-            mock_db.session.scalar.side_effect = [app, message, None]
-
-            # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
-
-            # Assert
-            assert result == annotation_instance
-            mock_cls.assert_called_once_with(
-                app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                content="hello",
-                question="q1",
-                account_id=current_user.id,
+        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
+            result = AppAnnotationService.up_insert_app_annotation_from_message(
+                {"answer": "updated", "message_id": message.id}, app.id, sqlite_session
             )
-            mock_db.session.add.assert_called_once_with(annotation_instance)
-            mock_db.session.commit.assert_called_once()
-            mock_task.delay.assert_not_called()
 
-    def test_up_insert_app_annotation_from_message_should_raise_value_error_when_question_missing(self) -> None:
-        """Test missing question without message_id raises ValueError."""
-        # Arrange
-        args = {"answer": "hello"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-        app = _make_app()
+        assert result.id == annotation.id
+        stored = _observer_get(sqlite_session_factory, MessageAnnotation, annotation.id)
+        assert stored is not None
+        assert (stored.question, stored.content) == (message.query, "updated")
+        task.delay.assert_called_once_with(
+            annotation.id, message.query, TENANT_ID, app.id, setting.collection_binding_id
+        )
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = app
+    def test_creates_message_annotation_without_setting(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        message = _persist_message(sqlite_session, app)
 
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
-
-    def test_up_insert_app_annotation_from_message_should_create_annotation_when_message_missing(self) -> None:
-        """Test annotation is created when message_id is not provided."""
-        # Arrange
-        args = {"answer": "hello", "question": "q1"}
-        current_user = _make_user()
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation_instance = _make_annotation("ann-1")
-        setting = _make_setting()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
-            patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
-        ):
-            mock_db.session.scalar.side_effect = [app, setting]
-
-            # Act
-            result = AppAnnotationService.up_insert_app_annotation_from_message(args, app.id, session=mock_db.session)
-
-            # Assert
-            assert result == annotation_instance
-            mock_cls.assert_called_once_with(
-                app_id=app.id,
-                conversation_id=None,
-                message_id=None,
-                content="hello",
-                question="q1",
-                account_id=current_user.id,
+        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
+            result = AppAnnotationService.up_insert_app_annotation_from_message(
+                {"answer": "hello", "question": "override", "message_id": message.id}, app.id, sqlite_session
             )
-            mock_db.session.add.assert_called_once_with(annotation_instance)
-            mock_db.session.commit.assert_called_once()
-            mock_task.delay.assert_called_once_with(
-                annotation_instance.id,
-                "q1",
-                tenant_id,
-                app.id,
-                setting.collection_binding_id,
+
+        stored = _observer_get(sqlite_session_factory, MessageAnnotation, result.id)
+        assert stored is not None
+        assert (stored.app_id, stored.message_id, stored.question, stored.content) == (
+            app.id,
+            message.id,
+            "override",
+            "hello",
+        )
+        assert stored.account_id == current_user.id
+        task.delay.assert_not_called()
+
+    def test_creates_direct_annotation_and_enqueues_index(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        setting = _persist_setting(sqlite_session, app)
+
+        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
+            result = AppAnnotationService.up_insert_app_annotation_from_message(
+                {"answer": "hello", "question": "q1"}, app.id, sqlite_session
             )
+
+        stored = _observer_get(sqlite_session_factory, MessageAnnotation, result.id)
+        assert stored is not None
+        assert (stored.conversation_id, stored.message_id, stored.question, stored.content) == (
+            None,
+            None,
+            "q1",
+            "hello",
+        )
+        task.delay.assert_called_once_with(result.id, "q1", TENANT_ID, app.id, setting.collection_binding_id)
 
 
 class TestAppAnnotationServiceEnableDisable:
-    """Test suite for enable/disable app annotation."""
-
-    def test_enable_app_annotation_should_return_processing_when_cache_hit(self) -> None:
-        """Test cache hit returns processing status."""
-        # Arrange
+    def test_enable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
         args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
-
         with (
-            patch("services.annotation_service.redis_client") as mock_redis,
-            patch("services.annotation_service.enable_annotation_reply_task") as mock_task,
+            patch.object(annotation_service_module, "redis_client") as redis,
+            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
         ):
-            mock_redis.get.return_value = "job-1"
-
-            # Act
+            redis.get.return_value = "job-1"
             result = AppAnnotationService.enable_app_annotation(args, "app-1")
 
-            # Assert
-            assert result == {"job_id": "job-1", "job_status": "processing"}
-            mock_task.delay.assert_not_called()
+        assert result == {"job_id": "job-1", "job_status": "processing"}
+        task.delay.assert_not_called()
 
-    def test_enable_app_annotation_should_enqueue_job_when_cache_miss(self) -> None:
-        """Test cache miss enqueues enable task."""
-        # Arrange
+    def test_enable_enqueues_on_cache_miss(self, current_user: Account) -> None:
         args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
-        current_user = _make_user("user-1")
-        tenant_id = "tenant-1"
-
         with (
-            patch("services.annotation_service.redis_client") as mock_redis,
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.uuid.uuid4", return_value="uuid-1"),
-            patch("services.annotation_service.enable_annotation_reply_task") as mock_task,
+            patch.object(annotation_service_module, "redis_client") as redis,
+            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-1"),
+            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
         ):
-            mock_redis.get.return_value = None
-
-            # Act
+            redis.get.return_value = None
             result = AppAnnotationService.enable_app_annotation(args, "app-1")
 
-            # Assert
-            assert result == {"job_id": "uuid-1", "job_status": "waiting"}
-            mock_redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
-            mock_task.delay.assert_called_once_with(
-                "uuid-1",
-                "app-1",
-                current_user.id,
-                tenant_id,
-                0.5,
-                "p",
-                "m",
-            )
+        assert result == {"job_id": "uuid-1", "job_status": "waiting"}
+        redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
+        task.delay.assert_called_once_with("uuid-1", "app-1", current_user.id, TENANT_ID, 0.5, "p", "m")
 
-    def test_disable_app_annotation_should_return_processing_when_cache_hit(self) -> None:
-        """Test disable cache hit returns processing status."""
-        # Arrange
-        tenant_id = "tenant-1"
+    def test_disable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
         with (
-            patch("services.annotation_service.redis_client") as mock_redis,
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.disable_annotation_reply_task") as mock_task,
+            patch.object(annotation_service_module, "redis_client") as redis,
+            patch.object(annotation_service_module, "disable_annotation_reply_task") as task,
         ):
-            mock_redis.get.return_value = "job-2"
-
-            # Act
+            redis.get.return_value = "job-2"
             result = AppAnnotationService.disable_app_annotation("app-1")
 
-            # Assert
-            assert result == {"job_id": "job-2", "job_status": "processing"}
-            mock_task.delay.assert_not_called()
+        assert result == {"job_id": "job-2", "job_status": "processing"}
+        task.delay.assert_not_called()
 
-    def test_disable_app_annotation_should_enqueue_job_when_cache_miss(self) -> None:
-        """Test disable cache miss enqueues disable task."""
-        # Arrange
-        tenant_id = "tenant-1"
-
+    def test_disable_enqueues_on_cache_miss(self, current_user: Account) -> None:
         with (
-            patch("services.annotation_service.redis_client") as mock_redis,
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.uuid.uuid4", return_value="uuid-2"),
-            patch("services.annotation_service.disable_annotation_reply_task") as mock_task,
+            patch.object(annotation_service_module, "redis_client") as redis,
+            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-2"),
+            patch.object(annotation_service_module, "disable_annotation_reply_task") as task,
         ):
-            mock_redis.get.return_value = None
-
-            # Act
+            redis.get.return_value = None
             result = AppAnnotationService.disable_app_annotation("app-1")
 
-            # Assert
-            assert result == {"job_id": "uuid-2", "job_status": "waiting"}
-            mock_redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
-            mock_task.delay.assert_called_once_with("uuid-2", "app-1", tenant_id)
+        assert result == {"job_id": "uuid-2", "job_status": "waiting"}
+        redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
+        task.delay.assert_called_once_with("uuid-2", "app-1", TENANT_ID)
 
 
 class TestAppAnnotationServiceListAndExport:
-    """Test suite for list and export methods."""
+    def test_list_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-    def test_get_annotation_list_by_app_id_should_raise_not_found_when_app_missing(self) -> None:
-        """Test missing app raises NotFound."""
-        # Arrange
-        tenant_id = "tenant-1"
+        with pytest.raises(NotFound):
+            AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "", sqlite_session)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
+    def test_list_filters_orders_and_paginates(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        now = datetime(2026, 1, 1)
+        first = _persist_annotation(sqlite_session, app, annotation_id="ann-1", question="needle first", created_at=now)
+        second = _persist_annotation(
+            sqlite_session,
+            app,
+            annotation_id="ann-2",
+            question="other",
+            content="needle second",
+            created_at=now + timedelta(seconds=1),
+        )
+        _persist_annotation(sqlite_session, app, annotation_id="ann-3", question="not matched")
+        _persist_annotation(sqlite_session, other_app, annotation_id="decoy", question="needle decoy")
 
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.get_annotation_list_by_app_id("app-1", 1, 10, "", session=mock_db.session)
+        items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 1, "needle", sqlite_session)
 
-    def test_get_annotation_list_by_app_id_should_return_items_with_keyword(self) -> None:
-        """Test keyword search returns items and total."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        pagination = SimpleNamespace(items=["a1"], total=1)
+        assert total == 2
+        assert [item.id for item in items] == [second.id]
+        items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 2, 1, "needle", sqlite_session)
+        assert total == 2
+        assert [item.id for item in items] == [first.id]
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.paginate_query") as mock_paginate,
-            patch("libs.helper.escape_like_pattern", return_value="safe"),
-        ):
-            mock_db.session.scalar.return_value = app
-            mock_paginate.return_value = pagination
+    def test_list_without_keyword_is_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        expected = _persist_annotation(sqlite_session, app)
+        _persist_annotation(sqlite_session, other_app, annotation_id="decoy")
 
-            # Act
-            items, total = AppAnnotationService.get_annotation_list_by_app_id(
-                app.id, 1, 10, "keyword", session=mock_db.session
-            )
+        items, total = AppAnnotationService.get_annotation_list_by_app_id(app.id, 1, 10, "", sqlite_session)
 
-            # Assert
-            assert items == ["a1"]
-            assert total == 1
+        assert total == 1
+        assert [item.id for item in items] == [expected.id]
 
-    def test_get_annotation_list_by_app_id_should_return_items_without_keyword(self) -> None:
-        """Test list query without keyword returns paginated items."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        pagination = SimpleNamespace(items=["a1", "a2"], total=2)
+    def test_export_sanitizes_and_scopes_rows(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        first = _persist_annotation(sqlite_session, app, annotation_id="ann-1", question="=cmd", content="+1")
+        second = _persist_annotation(sqlite_session, app, annotation_id="ann-2", question="@bad", content="-2")
+        _persist_annotation(sqlite_session, other_app, annotation_id="decoy", question="=decoy")
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.paginate_query") as mock_paginate,
-        ):
-            mock_db.session.scalar.return_value = app
-            mock_paginate.return_value = pagination
+        result = AppAnnotationService.export_annotation_list_by_app_id(app.id, sqlite_session)
 
-            # Act
-            items, total = AppAnnotationService.get_annotation_list_by_app_id(
-                app.id, 1, 10, "", session=mock_db.session
-            )
-
-            # Assert
-            assert items == ["a1", "a2"]
-            assert total == 2
-
-    def test_export_annotation_list_by_app_id_should_sanitize_fields(self) -> None:
-        """Test export sanitizes question and content fields."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation1 = _make_annotation("ann-1")
-        annotation1.question = "=cmd"
-        annotation1.content = "+1"
-        annotation2 = _make_annotation("ann-2")
-        annotation2.question = "@bad"
-        annotation2.content = "-2"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.CSVSanitizer.sanitize_value", side_effect=lambda v: f"safe:{v}"),
-        ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.scalars.return_value.all.return_value = [annotation1, annotation2]
-
-            # Act
-            result = AppAnnotationService.export_annotation_list_by_app_id(app.id, session=mock_db.session)
-
-            # Assert
-            assert result == [annotation1, annotation2]
-            assert annotation1.question == "safe:=cmd"
-            assert annotation1.content == "safe:+1"
-            assert annotation2.question == "safe:@bad"
-            assert annotation2.content == "safe:-2"
-
-    def test_export_annotation_list_by_app_id_should_raise_not_found_when_app_missing(self) -> None:
-        """Test export raises NotFound when app is missing."""
-        # Arrange
-        tenant_id = "tenant-1"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.export_annotation_list_by_app_id("app-1", session=mock_db.session)
+        assert {annotation.id for annotation in result} == {first.id, second.id}
+        assert {(annotation.question, annotation.content) for annotation in result} == {
+            ("'=cmd", "'+1"),
+            ("'@bad", "'-2"),
+        }
 
 
 class TestAppAnnotationServiceDirectManipulation:
-    """Test suite for direct insert/update/delete methods."""
-
-    def test_insert_app_annotation_directly_should_raise_not_found_when_app_missing(self) -> None:
-        """Test insert raises NotFound when app is missing."""
-        # Arrange
-        args = {"answer": "hello", "question": "q1"}
-        tenant_id = "tenant-1"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.insert_app_annotation_directly(args, "app-1", session=mock_db.session)
-
-    def test_insert_app_annotation_directly_should_raise_value_error_when_question_missing(self) -> None:
-        """Test missing question raises ValueError."""
-        # Arrange
-        args = {"answer": "hello"}
-        tenant_id = "tenant-1"
-        app = _make_app()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AppAnnotationService.insert_app_annotation_directly(args, app.id, session=mock_db.session)
-
-    def test_insert_app_annotation_directly_should_create_annotation_and_index(self) -> None:
-        """Test insert creates annotation and triggers index task."""
-        # Arrange
-        args = {"answer": "hello", "question": "q1"}
-        current_user = _make_user("user-1")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation_instance = _make_annotation("ann-1")
-        setting = _make_setting()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.MessageAnnotation", return_value=annotation_instance) as mock_cls,
-            patch("services.annotation_service.add_annotation_to_index_task") as mock_task,
-        ):
-            mock_db.session.scalar.side_effect = [app, setting]
-
-            # Act
-            result = AppAnnotationService.insert_app_annotation_directly(args, app.id, session=mock_db.session)
-
-            # Assert
-            assert result == annotation_instance
-            mock_cls.assert_called_once_with(
-                app_id=app.id,
-                content="hello",
-                question="q1",
-                account_id=current_user.id,
-            )
-            mock_db.session.add.assert_called_once_with(annotation_instance)
-            mock_db.session.commit.assert_called_once()
-            mock_task.delay.assert_called_once_with(
-                annotation_instance.id,
-                "q1",
-                tenant_id,
-                app.id,
-                setting.collection_binding_id,
+    def test_insert_rejects_cross_tenant_app_and_missing_question(
+        self, sqlite_session: Session, current_user: Account
+    ) -> None:
+        other_app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
+        with pytest.raises(NotFound):
+            AppAnnotationService.insert_app_annotation_directly(
+                {"answer": "hello", "question": "q"}, other_app.id, sqlite_session
             )
 
-    def test_update_app_annotation_directly_should_raise_not_found_when_annotation_missing(self) -> None:
-        """Test missing annotation raises NotFound."""
-        # Arrange
-        args = {"answer": "hello", "question": "q1"}
-        tenant_id = "tenant-1"
-        app = _make_app()
+        app = _persist_app(sqlite_session, app_id="app-2")
+        with pytest.raises(ValueError, match="question"):
+            AppAnnotationService.insert_app_annotation_directly({"answer": "hello"}, app.id, sqlite_session)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
+    def test_insert_persists_and_enqueues_index(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        setting = _persist_setting(sqlite_session, app)
 
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_directly(
-                    args,
-                    _make_annotation_ref(app, "ann-1"),
-                    mock_db.session,
-                )
+        with patch.object(annotation_service_module, "add_annotation_to_index_task") as task:
+            result = AppAnnotationService.insert_app_annotation_directly(
+                {"answer": "hello", "question": "q1"}, app.id, sqlite_session
+            )
 
-    def test_update_app_annotation_directly_should_raise_value_error_when_question_missing(self) -> None:
-        """Test missing question raises ValueError."""
-        # Arrange
-        args = {"answer": "hello"}
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation = _make_annotation("ann-1")
+        stored = _observer_get(sqlite_session_factory, MessageAnnotation, result.id)
+        assert stored is not None
+        assert (stored.app_id, stored.question, stored.content, stored.account_id) == (
+            app.id,
+            "q1",
+            "hello",
+            current_user.id,
+        )
+        task.delay.assert_called_once_with(result.id, "q1", TENANT_ID, app.id, setting.collection_binding_id)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = annotation
+    def test_update_is_app_scoped_and_validates_fields(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        annotation = _persist_annotation(sqlite_session, other_app)
 
-            # Act & Assert
-            with pytest.raises(ValueError):
-                AppAnnotationService.update_app_annotation_directly(
-                    args, _make_annotation_ref(app, annotation.id), mock_db.session
-                )
+        with pytest.raises(NotFound):
+            AppAnnotationService.update_app_annotation_directly(
+                {"answer": "a", "question": "q"}, _annotation_ref(app, annotation.id), sqlite_session
+            )
 
-    def test_update_app_annotation_directly_should_update_annotation_and_index(self) -> None:
-        """Test update changes fields and triggers index update."""
-        # Arrange
-        args = {"answer": "hello", "question": "q1"}
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation = _make_annotation("ann-1")
-        annotation.question_text = "q1"
-        setting = _make_setting()
+        own_annotation = _persist_annotation(sqlite_session, app, annotation_id="own-ann")
+        with pytest.raises(ValueError, match="question"):
+            AppAnnotationService.update_app_annotation_directly(
+                {"answer": "a"}, _annotation_ref(app, own_annotation.id), sqlite_session
+            )
+        with pytest.raises(ValueError, match="answer"):
+            AppAnnotationService.update_app_annotation_directly(
+                {"question": "q"}, _annotation_ref(app, own_annotation.id), sqlite_session
+            )
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.update_annotation_to_index_task") as mock_task,
-        ):
-            mock_db.session.scalar.side_effect = [annotation, setting]
+    def test_update_persists_and_enqueues_index(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        annotation = _persist_annotation(sqlite_session, app, content="old")
+        setting = _persist_setting(sqlite_session, app)
 
-            # Act
+        with patch.object(annotation_service_module, "update_annotation_to_index_task") as task:
             result = AppAnnotationService.update_app_annotation_directly(
-                args, _make_annotation_ref(app, annotation.id), mock_db.session
+                {"answer": "new", "question": "new q"}, _annotation_ref(app, annotation.id), sqlite_session
             )
 
-            # Assert
-            assert result == annotation
-            assert annotation.content == "hello"
-            assert annotation.question == "q1"
-            _assert_statement_binds_annotation(mock_db.session.scalar.call_args_list[0].args[0], annotation.id, app.id)
-            mock_db.session.get.assert_not_called()
-            mock_db.session.commit.assert_called_once()
-            mock_task.delay.assert_called_once_with(
-                annotation.id,
-                annotation.question_text,
-                tenant_id,
-                app.id,
-                setting.collection_binding_id,
-            )
+        stored = _observer_get(sqlite_session_factory, MessageAnnotation, annotation.id)
+        assert stored is not None
+        assert (stored.question, stored.content) == ("new q", "new")
+        assert result.id == stored.id
+        task.delay.assert_called_once_with(annotation.id, "new q", TENANT_ID, app.id, setting.collection_binding_id)
 
-    def test_delete_app_annotation_should_delete_annotation_and_histories(self) -> None:
-        """Test delete removes annotation and hit histories."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation = _make_annotation("ann-1")
-        history1 = MagicMock(spec=AppAnnotationHitHistory)
-        history2 = MagicMock(spec=AppAnnotationHitHistory)
-        setting = _make_setting()
+    def test_delete_is_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        annotation = _persist_annotation(sqlite_session, other_app)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.delete_annotation_index_task") as mock_task,
-        ):
-            mock_db.session.scalar.side_effect = [annotation, setting]
+        with pytest.raises(NotFound):
+            AppAnnotationService.delete_app_annotation(_annotation_ref(app, annotation.id), sqlite_session)
 
-            scalars_result = MagicMock()
-            scalars_result.all.return_value = [history1, history2]
-            mock_db.session.scalars.return_value = scalars_result
+        assert sqlite_session.get(MessageAnnotation, annotation.id) is not None
 
-            # Act
-            AppAnnotationService.delete_app_annotation(_make_annotation_ref(app, annotation.id), mock_db.session)
+    def test_delete_removes_annotation_and_histories_and_enqueues_index(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        annotation = _persist_annotation(sqlite_session, app)
+        histories = [
+            _persist_history(sqlite_session, app, annotation, history_id="history-1"),
+            _persist_history(sqlite_session, app, annotation, history_id="history-2"),
+        ]
+        setting = _persist_setting(sqlite_session, app)
 
-            # Assert
-            _assert_statement_binds_annotation(mock_db.session.scalar.call_args_list[0].args[0], annotation.id, app.id)
-            mock_db.session.get.assert_not_called()
-            mock_db.session.delete.assert_any_call(annotation)
-            mock_db.session.delete.assert_any_call(history1)
-            mock_db.session.delete.assert_any_call(history2)
-            mock_db.session.commit.assert_called_once()
-            mock_task.delay.assert_called_once_with(
-                annotation.id,
-                app.id,
-                tenant_id,
-                setting.collection_binding_id,
-            )
+        with patch.object(annotation_service_module, "delete_annotation_index_task") as task:
+            AppAnnotationService.delete_app_annotation(_annotation_ref(app, annotation.id), sqlite_session)
 
-    def test_delete_app_annotation_should_raise_not_found_when_annotation_missing(self) -> None:
-        """Test delete raises NotFound when annotation is missing."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
+        with sqlite_session_factory() as observer:
+            assert observer.get(MessageAnnotation, annotation.id) is None
+            assert [observer.get(AppAnnotationHitHistory, history.id) for history in histories] == [None, None]
+        task.delay.assert_called_once_with(annotation.id, app.id, TENANT_ID, setting.collection_binding_id)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
+    def test_batch_delete_returns_zero_without_matching_rows(
+        self, sqlite_session: Session, current_user: Account
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        _persist_annotation(sqlite_session, other_app, annotation_id="ann-1")
 
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.delete_app_annotation(_make_annotation_ref(app, "ann-1"), mock_db.session)
+        result = AppAnnotationService.delete_app_annotations_in_batch(_app_ref(app), ["ann-1"], sqlite_session)
 
-    def test_delete_app_annotations_in_batch_should_return_zero_when_none_found(self) -> None:
-        """Test batch delete returns zero when no annotations found."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
+        assert result == {"deleted_count": 0}
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.execute.return_value.all.return_value = []
+    def test_batch_delete_scopes_rows_and_histories(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        annotation1 = _persist_annotation(sqlite_session, app, annotation_id="ann-1")
+        annotation2 = _persist_annotation(sqlite_session, app, annotation_id="ann-2")
+        decoy = _persist_annotation(sqlite_session, other_app, annotation_id="ann-3")
+        history1 = _persist_history(sqlite_session, app, annotation1, history_id="history-1")
+        history2 = _persist_history(sqlite_session, app, annotation2, history_id="history-2")
+        decoy_history = _persist_history(sqlite_session, other_app, decoy, history_id="history-3")
+        setting = _persist_setting(sqlite_session, app)
 
-            # Act
+        with patch.object(annotation_service_module, "delete_annotation_index_task") as task:
             result = AppAnnotationService.delete_app_annotations_in_batch(
-                _make_app_ref(app), ["ann-1"], session=mock_db.session
+                _app_ref(app), [annotation1.id, annotation2.id, decoy.id], sqlite_session
             )
 
-            # Assert
-            assert result == {"deleted_count": 0}
-
-    def test_delete_app_annotations_in_batch_should_delete_annotations_and_histories(self) -> None:
-        """Test batch delete removes annotations and triggers index deletion."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation1 = _make_annotation("ann-1")
-        annotation2 = _make_annotation("ann-2")
-        setting = _make_setting()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.delete_annotation_index_task") as mock_task,
-        ):
-            # First execute().all() for multi-column query, subsequent execute() calls for deletes
-            execute_result_multi = MagicMock()
-            execute_result_multi.all.return_value = [(annotation1, setting), (annotation2, None)]
-            execute_result_delete = MagicMock()
-            execute_result_delete.rowcount = 2
-            mock_db.session.execute.side_effect = [execute_result_multi, MagicMock(), execute_result_delete]
-
-            # Act
-            result = AppAnnotationService.delete_app_annotations_in_batch(
-                _make_app_ref(app), ["ann-1", "ann-2"], session=mock_db.session
-            )
-
-            # Assert
-            assert result == {"deleted_count": 2}
-            fetch_stmt = mock_db.session.execute.call_args_list[0].args[0]
-            compiled = fetch_stmt.compile()
-            statement = str(compiled)
-            assert "message_annotations.id IN" in statement
-            assert "message_annotations.app_id" in statement
-            assert ["ann-1", "ann-2"] in compiled.params.values()
-            assert app.id in compiled.params.values()
-            mock_task.delay.assert_called_once_with(annotation1.id, app.id, tenant_id, setting.collection_binding_id)
-            mock_db.session.commit.assert_called_once()
+        assert result == {"deleted_count": 2}
+        with sqlite_session_factory() as observer:
+            assert [observer.get(MessageAnnotation, item.id) for item in (annotation1, annotation2)] == [None, None]
+            assert [observer.get(AppAnnotationHitHistory, item.id) for item in (history1, history2)] == [None, None]
+            assert observer.get(MessageAnnotation, decoy.id) is not None
+            assert observer.get(AppAnnotationHitHistory, decoy_history.id) is not None
+        assert task.delay.call_count == 2
+        task.delay.assert_any_call(annotation1.id, app.id, TENANT_ID, setting.collection_binding_id)
+        task.delay.assert_any_call(annotation2.id, app.id, TENANT_ID, setting.collection_binding_id)
 
 
 class TestAppAnnotationServiceBatchImport:
-    """Test suite for batch import."""
-
-    def test_batch_import_app_annotations_should_raise_not_found_when_app_missing(self) -> None:
-        """Test missing app raises NotFound."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-
+    @staticmethod
+    def _invoke(
+        sqlite_session: Session,
+        app: App,
+        *,
+        dataframe: Any,
+        content: bytes = b"question,answer\nq,a\n",
+        maximum: int = 5,
+        minimum: int = 1,
+        features: Any | None = None,
+    ) -> dict[str, Any]:
+        if features is None:
+            features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
         with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.batch_import_app_annotations("app-1", file, session=mock_db.session)
-
-    def test_batch_import_app_annotations_should_return_error_when_columns_invalid(self) -> None:
-        """Test invalid column count returns error message."""
-        # Arrange
-        file = _make_file(b"question\nq\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["only"]})
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
+            patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
+            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
             patch(
                 "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
+                new=SimpleNamespace(
+                    ANNOTATION_IMPORT_MAX_RECORDS=maximum,
+                    ANNOTATION_IMPORT_MIN_RECORDS=minimum,
+                ),
             ),
         ):
-            mock_db.session.scalar.return_value = app
+            return AppAnnotationService.batch_import_app_annotations(app.id, _file(content), sqlite_session)
 
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+    def test_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "Invalid CSV format" in error_msg
+        with pytest.raises(NotFound):
+            AppAnnotationService.batch_import_app_annotations(app.id, _file(b"question,answer\nq,a\n"), sqlite_session)
 
-    def test_batch_import_app_annotations_should_return_error_when_file_empty(self) -> None:
-        """Test empty file returns validation error before CSV parsing."""
-        # Arrange
-        file = _make_file(b"")
-        tenant_id = "tenant-1"
-        app = _make_app()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
+    @pytest.mark.parametrize(
+        ("dataframe", "content", "maximum", "minimum", "expected"),
+        [
+            (pd.DataFrame({"q": ["only"]}), b"question\nq\n", 5, 1, "Invalid CSV format"),
+            (pd.DataFrame({"q": ["q"], "a": ["a"]}), b"", 5, 1, "empty or invalid"),
+            (pd.DataFrame({"q": ["q"], "a": ["a"]}), b"question,answer\nq,a\n", 5, 2, "at least"),
+            (
+                pd.DataFrame({"q": ["q1", "q2"], "a": ["a1", "a2"]}),
+                b"question,answer\nq1,a1\nq2,a2\n",
+                1,
+                1,
+                "too many records",
             ),
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
-
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "empty or invalid" in error_msg
-
-    def test_batch_import_app_annotations_should_return_error_when_min_records_not_met(self) -> None:
-        """Test min records validation returns error message."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
-        features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch("services.annotation_service.FeatureService.get_features", return_value=features),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=2),
+            (pd.DataFrame({"q": ["nan"], "a": ["nan"]}), b"question,answer\nnan,nan\n", 5, 1, "at least"),
+            (
+                pd.DataFrame({"q": ["q" * 2001], "a": ["a"]}),
+                b"question,answer\nq,a\n",
+                5,
+                1,
+                "Question at row",
             ),
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
-
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "at least" in error_msg
-
-    def test_batch_import_app_annotations_should_return_error_when_row_limit_exceeded(self) -> None:
-        """Test row count over max limit returns explicit error."""
-        # Arrange
-        file = _make_file(b"question,answer\nq1,a1\nq2,a2\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q1", "q2"], "a": ["a1", "a2"]})
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=1, ANNOTATION_IMPORT_MIN_RECORDS=1),
+            (
+                pd.DataFrame({"q": ["q"], "a": ["a" * 10001]}),
+                b"question,answer\nq,a\n",
+                5,
+                1,
+                "Answer at row",
             ),
-        ):
-            mock_db.session.scalar.return_value = app
+        ],
+    )
+    def test_validation_errors(
+        self,
+        sqlite_session: Session,
+        current_user: Account,
+        dataframe: pd.DataFrame,
+        content: bytes,
+        maximum: int,
+        minimum: int,
+        expected: str,
+    ) -> None:
+        app = _persist_app(sqlite_session)
 
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+        result = self._invoke(
+            sqlite_session,
+            app,
+            dataframe=dataframe,
+            content=content,
+            maximum=maximum,
+            minimum=minimum,
+        )
 
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "too many records" in error_msg
+        assert expected in cast(str, result["error_msg"])
 
-    def test_batch_import_app_annotations_should_skip_malformed_rows_and_fail_min_records(self) -> None:
-        """Test malformed row extraction is skipped and can fail min record validation."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
+    def test_skips_malformed_rows(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
         malformed_row = MagicMock()
         malformed_row.iloc.__getitem__.side_effect = IndexError()
-        df = MagicMock()
-        df.columns = ["q", "a"]
-        df.iterrows.return_value = [(0, malformed_row)]
+        dataframe = MagicMock()
+        dataframe.columns = ["q", "a"]
+        dataframe.iterrows.return_value = [(0, malformed_row)]
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
-        ):
-            mock_db.session.scalar.return_value = app
+        result = self._invoke(sqlite_session, app, dataframe=dataframe)
 
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+        assert "at least" in cast(str, result["error_msg"])
 
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "at least" in error_msg
-
-    def test_batch_import_app_annotations_should_skip_nan_rows_and_fail_min_records(self) -> None:
-        """Test NaN rows are skipped by validation and reported via min record check."""
-        # Arrange
-        file = _make_file(b"question,answer\nnan,nan\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["nan"], "a": ["nan"]})
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
-
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "at least" in error_msg
-
-    def test_batch_import_app_annotations_should_return_error_when_question_too_long(self) -> None:
-        """Test oversized question is rejected with row context."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q" * 2001], "a": ["a"]})
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
-
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "Question at row" in error_msg
-
-    def test_batch_import_app_annotations_should_return_error_when_answer_too_long(self) -> None:
-        """Test oversized answer is rejected with row context."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q"], "a": ["a" * 10001]})
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
-        ):
-            mock_db.session.scalar.return_value = app
-
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
-
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "Answer at row" in error_msg
-
-    def test_batch_import_app_annotations_should_return_error_when_quota_exceeded(self) -> None:
-        """Test quota validation returns error message."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
+    def test_rejects_subscription_quota_overflow(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
         features = SimpleNamespace(
             billing=SimpleNamespace(enabled=True),
             annotation_quota_limit=SimpleNamespace(limit=1, size=1),
         )
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch("services.annotation_service.FeatureService.get_features", return_value=features),
-            patch(
-                "configs.dify_config",
-                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
-            ),
-        ):
-            mock_db.session.scalar.return_value = app
+        result = self._invoke(
+            sqlite_session,
+            app,
+            dataframe=pd.DataFrame({"q": ["q1"], "a": ["a1"]}),
+            features=features,
+        )
 
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+        assert "exceeds the limit" in cast(str, result["error_msg"])
 
-            # Assert
-            error_msg = cast(str, result["error_msg"])
-            assert "exceeds the limit" in error_msg
-
-    def test_batch_import_app_annotations_should_enqueue_job_when_valid(self) -> None:
-        """Test successful batch import enqueues job and returns status."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        current_user = _make_user("user-1")
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
+    def test_valid_import_enqueues_job(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        dataframe = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
         features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
-
         with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch("services.annotation_service.FeatureService.get_features", return_value=features),
-            patch("services.annotation_service.batch_import_annotations_task") as mock_task,
-            patch("services.annotation_service.redis_client") as mock_redis,
-            patch("services.annotation_service.uuid.uuid4", return_value="uuid-3"),
-            patch("services.annotation_service.naive_utc_now", return_value=SimpleNamespace(timestamp=lambda: 1)),
+            patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
+            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
+            patch.object(annotation_service_module, "batch_import_annotations_task") as task,
+            patch.object(annotation_service_module, "redis_client") as redis,
+            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-3"),
+            patch.object(annotation_service_module, "naive_utc_now", return_value=datetime.fromtimestamp(1)),
             patch(
                 "configs.dify_config",
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            mock_db.session.scalar.return_value = app
+            result = AppAnnotationService.batch_import_app_annotations(
+                app.id, _file(b"question,answer\nq,a\n"), sqlite_session
+            )
 
-            # Act
-            result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+        assert result == {"job_id": "uuid-3", "job_status": "waiting", "record_count": 1}
+        redis.zadd.assert_called_once_with(f"annotation_import_active:{TENANT_ID}", {"uuid-3": 1000})
+        redis.expire.assert_called_once_with(f"annotation_import_active:{TENANT_ID}", 7200)
+        redis.setnx.assert_called_once_with("app_annotation_batch_import_uuid-3", "waiting")
+        task.delay.assert_called_once_with(
+            "uuid-3", [{"question": "q1", "answer": "a1"}], app.id, TENANT_ID, current_user.id
+        )
 
-            # Assert
-            assert result == {"job_id": "uuid-3", "job_status": "waiting", "record_count": 1}
-            mock_redis.zadd.assert_called_once()
-            mock_redis.expire.assert_called_once()
-            mock_redis.setnx.assert_called_once_with("app_annotation_batch_import_uuid-3", "waiting")
-            mock_task.delay.assert_called_once()
-
-    def test_batch_import_app_annotations_should_cleanup_active_job_on_unexpected_exception(
-        self, caplog: pytest.LogCaptureFixture
+    def test_unexpected_error_cleans_active_job(
+        self, sqlite_session: Session, current_user: Account, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """Test unexpected runtime errors trigger cleanup and return wrapped error."""
-        # Arrange
-        file = _make_file(b"question,answer\nq,a\n")
-        tenant_id = "tenant-1"
-        current_user = _make_user("user-1")
-        app = _make_app()
-        df = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
+        app = _persist_app(sqlite_session)
+        dataframe = pd.DataFrame({"q": ["q1"], "a": ["a1"]})
         features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
-
         with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.pd.read_csv", return_value=df),
-            patch("services.annotation_service.FeatureService.get_features", return_value=features),
-            patch("services.annotation_service.redis_client") as mock_redis,
-            patch("services.annotation_service.uuid.uuid4", return_value="uuid-4"),
-            patch("services.annotation_service.naive_utc_now", return_value=SimpleNamespace(timestamp=lambda: 1)),
+            patch.object(annotation_service_module.pd, "read_csv", return_value=dataframe),
+            patch.object(annotation_service_module.FeatureService, "get_features", return_value=features),
+            patch.object(annotation_service_module, "redis_client") as redis,
+            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-4"),
+            patch.object(annotation_service_module, "naive_utc_now", return_value=datetime.fromtimestamp(1)),
             patch(
                 "configs.dify_config",
                 new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
             ),
         ):
-            mock_db.session.scalar.return_value = app
-            mock_redis.zadd.side_effect = RuntimeError("boom")
-            mock_redis.zrem.side_effect = RuntimeError("cleanup-failed")
-
-            # Act
+            redis.zadd.side_effect = RuntimeError("boom")
+            redis.zrem.side_effect = RuntimeError("cleanup-failed")
             with caplog.at_level(logging.DEBUG):
-                result = AppAnnotationService.batch_import_app_annotations(app.id, file, session=mock_db.session)
+                result = AppAnnotationService.batch_import_app_annotations(
+                    app.id, _file(b"question,answer\nq,a\n"), sqlite_session
+                )
 
-            # Assert
-            assert result["error_msg"] == "An error occurred while processing the file: boom"
-            mock_redis.zrem.assert_called_once_with(f"annotation_import_active:{tenant_id}", "uuid-4")
-            assert len(caplog.records) == 1
-            assert caplog.records[0].levelname == "DEBUG"
-            assert "Failed to clean up active job tracking during error handling" in caplog.records[0].message
+        assert result["error_msg"] == "An error occurred while processing the file: boom"
+        redis.zrem.assert_called_once_with(f"annotation_import_active:{TENANT_ID}", "uuid-4")
+        assert "Failed to clean up active job tracking" in caplog.text
 
 
 class TestAppAnnotationServiceHitHistoryAndSettings:
-    """Test suite for hit history and settings methods."""
+    def test_hit_histories_are_annotation_and_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        other_annotation = _persist_annotation(sqlite_session, other_app)
 
-    def test_get_annotation_hit_histories_should_raise_not_found_when_annotation_missing(self) -> None:
-        """Test missing annotation raises NotFound."""
-        # Arrange
-        app = _make_app()
-
-        with patch("services.annotation_service.db") as mock_db:
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.get_annotation_hit_histories(
-                    _make_annotation_ref(app, "ann-1"), 1, 10, session=mock_db.session
-                )
-
-    def test_get_annotation_hit_histories_should_return_items_and_total(self) -> None:
-        """Test hit histories pagination returns items and total."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        annotation = _make_annotation("ann-1")
-        pagination = SimpleNamespace(items=["h1"], total=2)
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.paginate_query") as mock_paginate,
-        ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = annotation
-            mock_paginate.return_value = pagination
-
-            # Act
-            items, total = AppAnnotationService.get_annotation_hit_histories(
-                _make_annotation_ref(app, annotation.id),
-                1,
-                10,
-                session=mock_db.session,
+        with pytest.raises(NotFound):
+            AppAnnotationService.get_annotation_hit_histories(
+                _annotation_ref(app, other_annotation.id), 1, 10, sqlite_session
             )
 
-            # Assert
-            assert items == ["h1"]
-            assert total == 2
-            _assert_statement_binds_annotation(mock_db.session.scalar.call_args_list[0].args[0], annotation.id, app.id)
-            mock_db.session.get.assert_not_called()
+        annotation = _persist_annotation(sqlite_session, app, annotation_id="own-ann")
+        now = datetime(2026, 1, 1)
+        old = _persist_history(sqlite_session, app, annotation, history_id="old", created_at=now)
+        new = _persist_history(sqlite_session, app, annotation, history_id="new", created_at=now + timedelta(seconds=1))
+        _persist_history(sqlite_session, other_app, other_annotation, history_id="decoy")
 
-    def test_get_annotation_by_id_should_return_none_when_missing(self) -> None:
-        """Test get_annotation_by_id returns None when not found."""
-        # Arrange
-        with patch("services.annotation_service.db") as mock_db:
-            mock_db.session.get.return_value = None
+        items, total = AppAnnotationService.get_annotation_hit_histories(
+            _annotation_ref(app, annotation.id), 1, 1, sqlite_session
+        )
+        assert total == 2
+        assert [item.id for item in items] == [new.id]
+        items, total = AppAnnotationService.get_annotation_hit_histories(
+            _annotation_ref(app, annotation.id), 2, 1, sqlite_session
+        )
+        assert total == 2
+        assert [item.id for item in items] == [old.id]
 
-            # Act
-            result = AppAnnotationService.get_annotation_by_id("ann-1", session=mock_db.session)
+    def test_get_annotation_by_id_uses_real_identity_lookup(
+        self, sqlite_session: Session, current_user: Account
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        annotation = _persist_annotation(sqlite_session, app)
 
-            # Assert
-            assert result is None
+        assert AppAnnotationService.get_annotation_by_id("missing", sqlite_session) is None
+        assert AppAnnotationService.get_annotation_by_id(annotation.id, sqlite_session) is annotation
 
-    def test_get_annotation_by_id_should_return_annotation_when_exists(self) -> None:
-        """Test get_annotation_by_id returns annotation when found."""
-        # Arrange
-        annotation = _make_annotation("ann-1")
-        with patch("services.annotation_service.db") as mock_db:
-            mock_db.session.get.return_value = annotation
+    def test_add_history_increments_count_and_flushes_row(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        annotation = _persist_annotation(sqlite_session, app)
 
-            # Act
-            result = AppAnnotationService.get_annotation_by_id("ann-1", session=mock_db.session)
+        AppAnnotationService.add_annotation_history(
+            annotation_id=annotation.id,
+            app_id=app.id,
+            annotation_question="q",
+            annotation_content="a",
+            query="user q",
+            user_id=current_user.id,
+            message_id="msg-1",
+            from_source="chat",
+            score=0.8,
+            session=sqlite_session,
+        )
 
-            # Assert
-            assert result == annotation
+        sqlite_session.refresh(annotation)
+        assert annotation.hit_count == 1
+        history = sqlite_session.scalar(
+            select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation.id)
+        )
+        assert history is not None
+        assert (history.question, history.annotation_question, history.annotation_content, history.score) == (
+            "user q",
+            "q",
+            "a",
+            0.8,
+        )
 
-    def test_add_annotation_history_should_update_hit_count_and_store_history(self) -> None:
-        """Test add_annotation_history updates hit count and creates history."""
-        # Arrange
-        with (
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.AppAnnotationHitHistory") as mock_history_cls,
-        ):
-            # Act
-            AppAnnotationService.add_annotation_history(
-                annotation_id="ann-1",
-                app_id="app-1",
-                annotation_question="q",
-                annotation_content="a",
-                query="q",
-                user_id="user-1",
-                message_id="msg-1",
-                from_source="chat",
-                score=0.8,
-                session=mock_db.session,
+    def test_get_setting_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
+
+        with pytest.raises(NotFound):
+            AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
+
+    def test_get_setting_returns_disabled_without_row(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+
+        assert AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session) == {"enabled": False}
+
+    def test_get_setting_returns_binding_detail(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        binding = _persist_binding(sqlite_session)
+        setting = _persist_setting(sqlite_session, app, binding_id=binding.id)
+
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
+
+        assert result == {
+            "id": setting.id,
+            "enabled": True,
+            "score_threshold": 0.5,
+            "embedding_model": {
+                "embedding_provider_name": binding.provider_name,
+                "embedding_model_name": binding.model_name,
+            },
+        }
+
+    def test_get_setting_returns_empty_detail_for_missing_binding(
+        self, sqlite_session: Session, current_user: Account
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        setting = _persist_setting(sqlite_session, app, binding_id="missing-binding")
+
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, sqlite_session)
+
+        assert result == {
+            "id": setting.id,
+            "enabled": True,
+            "score_threshold": 0.5,
+            "embedding_model": {},
+        }
+
+    def test_update_setting_is_app_scoped(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        other_setting = _persist_setting(sqlite_session, other_app)
+
+        with pytest.raises(NotFound):
+            AppAnnotationService.update_app_annotation_setting(
+                app.id, other_setting.id, {"score_threshold": 0.8}, sqlite_session
             )
 
-            # Assert
-            mock_db.session.execute.assert_called_once()
-            mock_history_cls.assert_called_once()
-            mock_db.session.add.assert_called_once()
-            mock_db.session.commit.assert_called_once()
+    def test_update_setting_flushes_changes_and_returns_binding(
+        self, sqlite_session: Session, current_user: Account
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        binding = _persist_binding(sqlite_session)
+        setting = _persist_setting(sqlite_session, app, binding_id=binding.id)
 
-    def test_get_app_annotation_setting_by_app_id_should_return_embedding_model_when_detail_exists(self) -> None:
-        """Test setting detail returns embedding model info."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        setting = _make_setting(with_detail=True)
+        result = AppAnnotationService.update_app_annotation_setting(
+            app.id, setting.id, {"score_threshold": 0.8}, sqlite_session
+        )
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.side_effect = [app, setting]
+        assert result["enabled"] is True
+        assert result["score_threshold"] == 0.8
+        assert result["embedding_model"] == {
+            "embedding_provider_name": binding.provider_name,
+            "embedding_model_name": binding.model_name,
+        }
+        assert setting.score_threshold == 0.8
+        assert setting.updated_user_id == current_user.id
 
-            # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
+    def test_update_setting_returns_empty_detail_for_missing_binding(
+        self, sqlite_session: Session, current_user: Account
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        setting = _persist_setting(sqlite_session, app, binding_id="missing-binding")
 
-            # Assert
-            assert result["enabled"] is True
-            embedding_model = cast(dict[str, Any], result["embedding_model"])
-            assert embedding_model["embedding_provider_name"] == "provider-a"
-            assert embedding_model["embedding_model_name"] == "model-a"
+        result = AppAnnotationService.update_app_annotation_setting(
+            app.id, setting.id, {"score_threshold": 0.7}, sqlite_session
+        )
 
-    def test_get_app_annotation_setting_by_app_id_should_raise_not_found_when_app_missing(self) -> None:
-        """Test missing app raises NotFound."""
-        # Arrange
-        tenant_id = "tenant-1"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.get_app_annotation_setting_by_app_id("app-1", session=mock_db.session)
-
-    def test_get_app_annotation_setting_by_app_id_should_return_empty_embedding_model_when_no_detail(self) -> None:
-        """Test setting without detail returns empty embedding model."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        setting = _make_setting(with_detail=False)
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.side_effect = [app, setting]
-
-            # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
-
-            # Assert
-            assert result["enabled"] is True
-            assert result["embedding_model"] == {}
-
-    def test_get_app_annotation_setting_by_app_id_should_return_disabled_when_setting_missing(self) -> None:
-        """Test missing setting returns disabled payload."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.side_effect = [app, None]
-
-            # Act
-            result = AppAnnotationService.get_app_annotation_setting_by_app_id(app.id, session=mock_db.session)
-
-            # Assert
-            assert result == {"enabled": False}
-
-    def test_update_app_annotation_setting_should_update_and_return_detail(self) -> None:
-        """Test update_app_annotation_setting updates fields and returns detail."""
-        # Arrange
-        tenant_id = "tenant-1"
-        current_user = _make_user("user-1")
-        app = _make_app()
-        setting = _make_setting(with_detail=True)
-        args = {"score_threshold": 0.8}
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.naive_utc_now", return_value="now"),
-        ):
-            mock_db.session.scalar.side_effect = [app, setting]
-
-            # Act
-            result = AppAnnotationService.update_app_annotation_setting(
-                app.id, setting.id, args, session=mock_db.session
-            )
-
-            # Assert
-            assert result["enabled"] is True
-            assert result["score_threshold"] == 0.8
-            embedding_model = cast(dict[str, Any], result["embedding_model"])
-            assert embedding_model["embedding_provider_name"] == "provider-a"
-            mock_db.session.add.assert_called_once_with(setting)
-            mock_db.session.commit.assert_called_once()
-
-    def test_update_app_annotation_setting_should_return_empty_embedding_model_when_detail_missing(self) -> None:
-        """Test update returns empty embedding_model when collection detail is absent."""
-        # Arrange
-        tenant_id = "tenant-1"
-        current_user = _make_user("user-1")
-        app = _make_app()
-        setting = _make_setting(with_detail=False)
-        args = {"score_threshold": 0.7}
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.naive_utc_now", return_value="now"),
-        ):
-            mock_db.session.scalar.side_effect = [app, setting]
-
-            # Act
-            result = AppAnnotationService.update_app_annotation_setting(
-                app.id, setting.id, args, session=mock_db.session
-            )
-
-            # Assert
-            assert result["enabled"] is True
-            assert result["score_threshold"] == 0.7
-            assert result["embedding_model"] == {}
-
-    def test_update_app_annotation_setting_should_raise_not_found_when_app_missing(self) -> None:
-        """Test update raises NotFound when app is missing."""
-        # Arrange
-        tenant_id = "tenant-1"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_setting(
-                    "app-1", "setting-1", {"score_threshold": 0.5}, session=mock_db.session
-                )
-
-    def test_update_app_annotation_setting_should_raise_not_found_when_setting_missing(self) -> None:
-        """Test update raises NotFound when setting is missing."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.side_effect = [app, None]
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.update_app_annotation_setting(
-                    app.id, "setting-1", {"score_threshold": 0.5}, session=mock_db.session
-                )
+        assert result["score_threshold"] == 0.7
+        assert result["embedding_model"] == {}
 
 
 class TestAppAnnotationServiceClearAll:
-    """Test suite for clear_all_annotations."""
+    def test_clear_all_deletes_only_app_rows_and_enqueues_indexes(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        current_user: Account,
+    ) -> None:
+        app = _persist_app(sqlite_session)
+        other_app = _persist_app(sqlite_session, app_id="app-2")
+        annotations = [
+            _persist_annotation(sqlite_session, app, annotation_id="ann-1"),
+            _persist_annotation(sqlite_session, app, annotation_id="ann-2"),
+        ]
+        histories = [
+            _persist_history(sqlite_session, app, annotations[0], history_id="history-1"),
+            _persist_history(sqlite_session, app, annotations[1], history_id="history-2"),
+        ]
+        decoy = _persist_annotation(sqlite_session, other_app, annotation_id="decoy")
+        decoy_history = _persist_history(sqlite_session, other_app, decoy, history_id="decoy-history")
+        setting = _persist_setting(sqlite_session, app)
 
-    def test_clear_all_annotations_should_delete_annotations_and_histories(self) -> None:
-        """Test clear_all_annotations deletes all data and triggers index removal."""
-        # Arrange
-        tenant_id = "tenant-1"
-        app = _make_app()
-        setting = _make_setting()
-        annotation1 = _make_annotation("ann-1")
-        annotation2 = _make_annotation("ann-2")
-        history = MagicMock(spec=AppAnnotationHitHistory)
+        with patch.object(annotation_service_module, "delete_annotation_index_task") as task:
+            result = AppAnnotationService.clear_all_annotations(app.id, sqlite_session)
 
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-            patch("services.annotation_service.delete_annotation_index_task") as mock_task,
-        ):
-            # scalar calls: app lookup, annotation_setting lookup
-            mock_db.session.scalar.side_effect = [app, setting]
-            # scalars calls: first for annotations iteration, then for each annotation's hit histories
-            annotations_scalars = MagicMock()
-            annotations_scalars.yield_per.return_value = [annotation1, annotation2]
-            histories_scalars_1 = MagicMock()
-            histories_scalars_1.yield_per.return_value = [history]
-            histories_scalars_2 = MagicMock()
-            histories_scalars_2.yield_per.return_value = []
-            mock_db.session.scalars.side_effect = [annotations_scalars, histories_scalars_1, histories_scalars_2]
+        assert result == {"result": "success"}
+        with sqlite_session_factory() as observer:
+            assert [observer.get(MessageAnnotation, item.id) for item in annotations] == [None, None]
+            assert [observer.get(AppAnnotationHitHistory, item.id) for item in histories] == [None, None]
+            assert observer.get(MessageAnnotation, decoy.id) is not None
+            assert observer.get(AppAnnotationHitHistory, decoy_history.id) is not None
+        assert task.delay.call_count == 2
+        for annotation in annotations:
+            task.delay.assert_any_call(annotation.id, app.id, TENANT_ID, setting.collection_binding_id)
 
-            # Act
-            result = AppAnnotationService.clear_all_annotations(app.id, session=mock_db.session)
+    def test_clear_all_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
+        app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
-            # Assert
-            assert result == {"result": "success"}
-            mock_db.session.delete.assert_any_call(annotation1)
-            mock_db.session.delete.assert_any_call(annotation2)
-            mock_db.session.delete.assert_any_call(history)
-            mock_task.delay.assert_any_call(annotation1.id, app.id, tenant_id, setting.collection_binding_id)
-            mock_task.delay.assert_any_call(annotation2.id, app.id, tenant_id, setting.collection_binding_id)
-            mock_db.session.commit.assert_called_once()
+        with pytest.raises(NotFound):
+            AppAnnotationService.clear_all_annotations(app.id, sqlite_session)
 
-    def test_clear_all_annotations_should_raise_not_found_when_app_missing(self) -> None:
-        """Test missing app raises NotFound."""
-        # Arrange
-        tenant_id = "tenant-1"
-
-        with (
-            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
-            patch("services.annotation_service.db") as mock_db,
-        ):
-            mock_db.session.scalar.return_value = None
-
-            # Act & Assert
-            with pytest.raises(NotFound):
-                AppAnnotationService.clear_all_annotations("app-1", session=mock_db.session)
+        assert sqlite_session.scalar(select(func.count()).select_from(MessageAnnotation)) == 0

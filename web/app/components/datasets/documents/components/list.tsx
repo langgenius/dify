@@ -1,17 +1,19 @@
 'use client'
+
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { Pagination } from '@langgenius/dify-ui/pagination'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
@@ -63,7 +65,10 @@ const DocumentList = ({
   const pageSize = pagination.limit ?? 10
   const totalPages = Math.max(Math.ceil(pagination.total / pageSize), 1)
   const datasetConfig = useDatasetDetailContext((s) => s.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const datasetACLCapabilities = useMemo(
     () =>
@@ -144,7 +149,7 @@ const DocumentList = ({
         className="relative h-0 grow overflow-x-auto"
       >
         <table
-          className={`w-full max-w-full min-w-[700px] border-collapse border-0 text-sm ${s.documentTable}`}
+          className={`w-full max-w-full min-w-175 border-collapse border-0 text-sm ${s.documentTable}`}
         >
           <thead className="h-8 border-b border-divider-subtle text-xs/8 font-medium text-text-tertiary uppercase">
             <tr>
@@ -161,7 +166,7 @@ const DocumentList = ({
                 </div>
               </td>
               <td>{t(($) => $['list.table.header.fileName'], { ns: 'datasetDocuments' })}</td>
-              <td className="w-[130px]">
+              <td className="w-32.5">
                 {t(($) => $['list.table.header.chunkingMode'], { ns: 'datasetDocuments' })}
               </td>
               <td className="w-24">

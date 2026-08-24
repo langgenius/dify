@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { LoopNodeType } from './types'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { LOOP_NODE_MAX_COUNT } from '@/config'
@@ -14,7 +14,7 @@ import { isEmptyRelatedOperator } from './utils'
 const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Logic,
+  classification: BlockClassification.Logic,
   sort: 3,
   type: BlockEnum.Loop,
   author: 'AICT-Team',

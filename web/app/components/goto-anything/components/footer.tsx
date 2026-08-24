@@ -1,35 +1,36 @@
 'use client'
 
-import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type FooterProps = {
   resultCount: number
   searchMode: string
-  isError: boolean
+  isLoading: boolean
+  hasUnavailableServices: boolean
   isCommandsMode: boolean
   hasQuery: boolean
 }
 
-const Footer: FC<FooterProps> = ({
+export function Footer({
   resultCount,
   searchMode,
-  isError,
+  isLoading,
+  hasUnavailableServices,
   isCommandsMode,
   hasQuery,
-}) => {
+}: FooterProps) {
   const { t } = useTranslation()
 
   const renderLeftContent = () => {
-    if (resultCount > 0 || isError) {
-      if (isError) {
-        return (
-          <span className="text-red-500">
-            {t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })}
-          </span>
-        )
-      }
+    if (hasUnavailableServices) {
+      return (
+        <span className="text-red-500">
+          {t(($) => $['gotoAnything.someServicesUnavailable'], { ns: 'app' })}
+        </span>
+      )
+    }
 
+    if (resultCount > 0) {
       return (
         <>
           {t(($) => $['gotoAnything.resultCount'], { ns: 'app', count: resultCount })}
@@ -50,7 +51,7 @@ const Footer: FC<FooterProps> = ({
         {(() => {
           if (isCommandsMode) return t(($) => $['gotoAnything.selectToNavigate'], { ns: 'app' })
 
-          if (hasQuery) return t(($) => $['gotoAnything.searching'], { ns: 'app' })
+          if (isLoading) return t(($) => $['gotoAnything.searching'], { ns: 'app' })
 
           return t(($) => $['gotoAnything.startTyping'], { ns: 'app' })
         })()}
@@ -59,7 +60,7 @@ const Footer: FC<FooterProps> = ({
   }
 
   const renderRightContent = () => {
-    if (resultCount > 0 || isError) {
+    if (resultCount > 0 || hasUnavailableServices) {
       return (
         <span className="opacity-60">
           {searchMode !== 'general'
@@ -80,12 +81,10 @@ const Footer: FC<FooterProps> = ({
 
   return (
     <div className="border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary">
-      <div className="flex min-h-[16px] items-center justify-between">
+      <div className="flex min-h-4 items-center justify-between">
         <span>{renderLeftContent()}</span>
         {renderRightContent()}
       </div>
     </div>
   )
 }
-
-export default Footer

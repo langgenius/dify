@@ -47,13 +47,6 @@ describe('FileUploaderInAttachmentWrapper', () => {
     vi.clearAllMocks()
   })
 
-  it('should render without crashing', () => {
-    render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
-
-    // FileContextProvider wraps children with a Zustand context — verify children render
-    expect(screen.getAllByRole('button').length).toBeGreaterThan(0)
-  })
-
   it('should render upload buttons when not disabled', () => {
     render(<FileUploaderInAttachmentWrapper onChange={vi.fn()} fileConfig={createFileConfig()} />)
 
@@ -203,7 +196,7 @@ describe('FileUploaderInAttachmentWrapper', () => {
       />,
     )
 
-    // ReplayLine is inside ActionButton (a <button>) with data-icon attribute
+    // ReplayLine is inside an icon button with a data-icon attribute.
     const replayIcon = container.querySelector('svg[data-icon="ReplayLine"]')
     const replayBtn = replayIcon!.closest('button')
     fireEvent.click(replayBtn!)

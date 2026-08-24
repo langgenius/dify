@@ -15,7 +15,7 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="chat on Discord"></a>
-    <a href="https://reddit.com/r/difyai" target="_blank">  
+    <a href="https://reddit.com/r/difyai" target="_blank">
         <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
             alt="join Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
@@ -71,7 +71,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 
 <br/>
 
-The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
+The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and Docker Compose v2.24.0 or later are installed on your machine:
 
 ```bash
 cd dify
@@ -187,6 +187,10 @@ One-Click deploy Dify to Alibaba Cloud with [Alibaba Cloud Data Management](http
 
 One-Click deploy Dify to AKS with [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Using Sealos for Deployment
+
+Deploy Dify with one click using the [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
@@ -207,9 +211,15 @@ At the same time, please consider supporting Dify by sharing it on social media 
   <img src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Star history
+## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+<a href="https://star-history.dera.page/#langgenius/dify&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## Security disclosure
 

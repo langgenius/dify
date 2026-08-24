@@ -1,6 +1,6 @@
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { ExtraContent } from '../chat/type'
-import type { Callback, ChatConfig, ChatItem, Feedback } from '../types'
-import type { InstalledApp } from '@/models/explore'
+import type { Callback, ChatConfig, ChatItem, OnFeedback } from '../types'
 import type { AppData, ConversationItem } from '@/models/share'
 import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -9,7 +9,7 @@ import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useConversationIdInfo,
+  useConversationSelection,
   useWebAppSidebarCollapseState,
 } from '@/app/components/base/chat/storage'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -61,6 +61,18 @@ function getFormattedChatList(messages: any[]) {
     })
     const answerFiles =
       item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+    const answerTokens = item.answer_tokens ?? 0
+    const messageTokens = item.message_tokens ?? 0
+    const latency = Number(item.provider_response_latency)
+    const more =
+      item.provider_response_latency == null || !Number.isFinite(latency)
+        ? undefined
+        : {
+            time: '',
+            tokens: answerTokens + messageTokens,
+            latency: latency.toFixed(2),
+            tokens_per_second: latency > 0 ? (answerTokens / latency).toFixed(2) : undefined,
+          }
     const humanInputFormDataList: HumanInputFormData[] = []
     const humanInputFilledFormDataList: HumanInputFilledFormData[] = []
     let workflowRunId = ''
@@ -111,11 +123,12 @@ function getFormattedChatList(messages: any[]) {
       humanInputFormDataList,
       humanInputFilledFormDataList,
       workflow_run_id: workflowRunId,
+      more,
     })
   })
   return newChatList
 }
-export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
+export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const appInfo = useWebAppStore((s) => s.appInfo)
@@ -137,7 +150,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           title: app.name,
           description: app.description,
           icon_type: app.icon_type,
-          icon: app.icon,
+          icon: app.icon ?? undefined,
           icon_background: app.icon_background,
           icon_url: app.icon_url,
           prompt_public: false,
@@ -145,9 +158,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           show_workflow_steps: true,
           use_icon_as_answer_icon: app.use_icon_as_answer_icon,
         },
-        plan: 'basic',
         custom_config: null,
-      } as AppData
+      } satisfies AppData
     }
     return appInfo
   }, [isInstalledApp, installedAppInfo, appInfo])
@@ -173,27 +185,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     },
     [appId, setStoredSidebarCollapseState],
   )
-  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
-  const currentConversationId = useMemo(
-    () => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '',
-    [appId, conversationIdInfo, userId],
-  )
-  const handleConversationIdInfoChange = useCallback(
-    (changeConversationId: string) => {
-      if (appId) {
-        let prevValue = conversationIdInfo?.[appId || '']
-        if (typeof prevValue === 'string') prevValue = {}
-        setConversationIdInfo({
-          ...conversationIdInfo,
-          [appId || '']: {
-            ...prevValue,
-            [userId || 'DEFAULT']: changeConversationId,
-          },
-        })
-      }
-    },
-    [appId, conversationIdInfo, setConversationIdInfo, userId],
-  )
+  const { currentConversationId, handleConversationIdInfoChange } = useConversationSelection({
+    appId,
+    userId,
+  })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -526,7 +521,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       handleUpdateConversationList()
     },
     [
-      isInstalledApp,
+      appSourceType,
       appId,
       t,
       handleUpdateConversationList,
@@ -562,7 +557,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         setConversationRenaming(false)
       }
     },
-    [isInstalledApp, appId, t, conversationRenaming, originConversationList],
+    [appSourceType, appId, t, conversationRenaming, originConversationList],
   )
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {
@@ -573,8 +568,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     },
     [handleConversationIdInfoChange, invalidateShareConversations],
   )
-  const handleFeedback = useCallback(
-    async (messageId: string, feedback: Feedback) => {
+  const handleFeedback: OnFeedback = useCallback(
+    async (messageId, feedback) => {
       await updateFeedback(
         {
           url: `/messages/${messageId}/feedbacks`,

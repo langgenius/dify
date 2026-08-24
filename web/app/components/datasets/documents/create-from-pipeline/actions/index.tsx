@@ -45,7 +45,7 @@ const Actions = ({
     <div className="flex items-center gap-x-2 overflow-hidden">
       {showSelect && (
         <>
-          <label className="flex shrink-0 cursor-pointer items-center gap-x-2 py-[3px] pr-2 pl-4">
+          <label className="flex shrink-0 cursor-pointer items-center gap-x-2 py-0.75 pr-2 pl-4">
             <Checkbox
               onCheckedChange={(checked) => onSelectAll?.(checked)}
               indeterminate={indeterminate}
@@ -68,13 +68,8 @@ const Actions = ({
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         </Link>
-        <Button
-          disabled={disabled}
-          variant="primary"
-          onClick={handleNextStep}
-          className="gap-x-0.5"
-        >
-          <span className="px-0.5">{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
+        <Button disabled={disabled} variant="primary" onClick={handleNextStep}>
+          <span>{t(($) => $['stepOne.button'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4" />
         </Button>
       </div>

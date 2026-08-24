@@ -26,6 +26,7 @@ type Props = Readonly<{
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
+  usageUnknown?: boolean
 }>
 
 const UsageInfo: FC<Props> = ({
@@ -44,11 +45,12 @@ const UsageInfo: FC<Props> = ({
   storageThreshold = 50,
   storageTooltip,
   isSandboxPlan = false,
+  usageUnknown = false,
 }) => {
   const { t } = useTranslation()
 
-  const isBelowThreshold = storageMode && usage < storageThreshold
-  const isSandboxFull = storageMode && isSandboxPlan && usage >= storageThreshold
+  const isBelowThreshold = !usageUnknown && storageMode && usage < storageThreshold
+  const isSandboxFull = !usageUnknown && storageMode && isSandboxPlan && usage >= storageThreshold
 
   // Single source of truth: sandbox full is visually clamped to 100%; all other
   // determinate cases show the real percent capped at 100. Tone derives from
@@ -79,6 +81,8 @@ const UsageInfo: FC<Props> = ({
   ) : null
 
   const usageDisplay: ReactNode = (() => {
+    if (usageUnknown) return <span>--</span>
+
     if (storageMode) {
       if (isSandboxFull) {
         return (
@@ -142,7 +146,7 @@ const UsageInfo: FC<Props> = ({
   )
 
   const wrapWithStorageTooltip = (children: ReactNode) => {
-    if (storageMode && storageTooltip) {
+    if (!usageUnknown && storageMode && storageTooltip) {
       return (
         <Tooltip>
           <TooltipTrigger render={<div className="cursor-default">{children}</div>} />
@@ -154,21 +158,30 @@ const UsageInfo: FC<Props> = ({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
+    <div
+      role="group"
+      aria-label={name}
+      className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
+    >
       {!hideIcon && Icon && <Icon className="size-4 text-text-tertiary" />}
-      <div className="flex items-center gap-1">
-        <div className="system-xs-medium text-text-tertiary">{name}</div>
-        {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-            {tooltip}
-          </Infotip>
-        )}
-      </div>
-      <div className="flex items-center gap-1 system-md-semibold text-text-primary">
-        {wrapWithStorageTooltip(usageDisplay)}
-        {rightInfo}
-      </div>
-      {wrapWithStorageTooltip(bar)}
+      <dl className="flex flex-col gap-2">
+        <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
+          {name}
+          {tooltip && (
+            <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
+              {tooltip}
+            </Infotip>
+          )}
+        </dt>
+        <dd
+          data-testid="billing-quota-value"
+          className="flex items-center gap-1 system-md-semibold text-text-primary"
+        >
+          {wrapWithStorageTooltip(usageDisplay)}
+          {rightInfo}
+        </dd>
+      </dl>
+      {!usageUnknown && wrapWithStorageTooltip(bar)}
     </div>
   )
 }

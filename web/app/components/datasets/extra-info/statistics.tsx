@@ -28,8 +28,8 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
           {t(($) => $['datasetMenus.documents'], { ns: 'common' })}
         </div>
       </div>
-      <div className="flex h-[42px] w-[15px] shrink-0 items-center justify-center">
-        <div className="h-7 w-px rotate-[15deg] bg-divider-subtle" />
+      <div className="flex h-10.5 w-3.75 shrink-0 items-center justify-center">
+        <div className="h-7 w-px rotate-15 bg-divider-subtle" />
       </div>
       <div className="flex min-w-0 flex-col rounded-lg px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
@@ -51,10 +51,7 @@ const Statistics = ({ expand, documentCount, relatedApps }: StatisticsProps) => 
               </button>
             }
           />
-          <PopoverContent
-            placement="top-start"
-            popupClassName="border-0 bg-transparent p-0 shadow-none"
-          >
+          <PopoverContent placement="top-start" className="border-0 bg-transparent p-0 shadow-none">
             {hasRelatedApps ? (
               <LinkedAppsPanel relatedApps={relatedApps.data} isMobile={!expand} />
             ) : (
