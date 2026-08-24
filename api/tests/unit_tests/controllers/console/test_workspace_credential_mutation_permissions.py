@@ -9,6 +9,7 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import Datasource
 from controllers.console.workspace.model_providers import ModelProviderCredentialApi
 from controllers.console.workspace.models import DefaultModelApi, ModelProviderModelApi, ModelProviderModelCredentialApi
 from controllers.console.workspace.tool_providers import ToolBuiltinProviderAddApi, ToolOAuthCustomClient
+from controllers.console.workspace.trigger_providers import TriggerOAuthAuthorizeApi
 
 
 @pytest.mark.parametrize(
@@ -98,6 +99,21 @@ def test_workspace_model_preferences_get_require_admin_and_rbac(
     the same admin + RBAC gates as their sibling POST/DELETE methods."""
     legacy_wrapper = unwrap(method, stop=lambda wrapper: "is_admin_or_owner_required" in wrapper.__code__.co_qualname)
     assert "is_admin_or_owner_required" in legacy_wrapper.__code__.co_qualname
+
+    rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
+    rbac_config = getclosurevars(rbac_wrapper).nonlocals
+    assert rbac_config["resource_type"] == RBACResourceScope.WORKSPACE
+    assert rbac_config["scene"] == RBACPermission.PLUGIN_PREFERENCES
+    assert rbac_config["resource_required"] is False
+
+
+def test_trigger_oauth_authorize_get_requires_edit_and_rbac() -> None:
+    """GET endpoint that initiates trigger OAuth authorization must enforce
+    the same edit + RBAC gates as sibling trigger subscription methods."""
+    method = TriggerOAuthAuthorizeApi.get
+
+    edit_wrapper = unwrap(method, stop=lambda wrapper: "edit_permission_required" in wrapper.__code__.co_qualname)
+    assert "edit_permission_required" in edit_wrapper.__code__.co_qualname
 
     rbac_wrapper = unwrap(method, stop=lambda wrapper: "rbac_permission_required" in wrapper.__code__.co_qualname)
     rbac_config = getclosurevars(rbac_wrapper).nonlocals

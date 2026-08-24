@@ -557,6 +557,8 @@ class TriggerOAuthAuthorizeApi(Resource):
     )
     @setup_required
     @login_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
