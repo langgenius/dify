@@ -36,6 +36,7 @@ import { consoleQuery } from '@/service/client'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { HomeBanner } from '../banner/home-banner'
+import { HomeIntro } from '../home-intro'
 import { HomeShell } from '../home-shell'
 import { TemplateCard } from '../template-card'
 import { HomeRecommendations } from './recommendations'
@@ -410,6 +411,7 @@ export function HomeContent() {
   return (
     <HomeShell>
       <div className="flex flex-1 flex-col overflow-y-auto">
+        <HomeIntro />
         {systemFeatures.enable_explore_banner && <HomeBanner />}
         <HomeRecommendations
           canCreate={canCreateApp}
