@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { zAccountProfilePatchPayload } from './generated/api/console/account/zod.gen'
 
 describe('generated account profile schema', () => {
