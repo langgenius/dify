@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} wijzigingen om toe te passen",
   "agentDetail.configure.buildDraft.discard": "Negeren",
   "agentDetail.configure.buildDraft.modeBadge": "Buildmodus",
-  "agentDetail.configure.buildDraft.modeDescription": "Je bent in buildmodus. Configure kan in deze modus alleen door de agent worden bijgewerkt. Werk deze configuratie bij via de chat rechts en pas daarna toe.",
+  "agentDetail.configure.buildDraft.modeDescription": "Je bevindt je in de buildmodus. Geef deze configuratie vorm door met de agent te chatten en klik daarna op Toepassen.",
   "agentDetail.configure.buildDraft.rewritten": "Herschreven",
   "agentDetail.configure.buildDraft.title": "Buildconcept",
   "agentDetail.configure.buildDraft.updated": "Bijgewerkt",

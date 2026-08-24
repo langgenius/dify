@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} zmiany do zastosowania",
   "agentDetail.configure.buildDraft.discard": "Odrzuć",
   "agentDetail.configure.buildDraft.modeBadge": "Tryb budowania",
-  "agentDetail.configure.buildDraft.modeDescription": "Jesteś w trybie budowania. W tym trybie Configure może być aktualizowane tylko przez agenta. Dostosuj tę konfigurację przez czat po prawej, a następnie zastosuj.",
+  "agentDetail.configure.buildDraft.modeDescription": "Jesteś w trybie budowania. Ukształtuj tę konfigurację podczas rozmowy z agentem, a następnie kliknij Zastosuj.",
   "agentDetail.configure.buildDraft.rewritten": "Przepisano",
   "agentDetail.configure.buildDraft.title": "Szkic budowania",
   "agentDetail.configure.buildDraft.updated": "Zaktualizowano",

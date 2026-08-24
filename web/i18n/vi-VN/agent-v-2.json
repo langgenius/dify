@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} thay đổi để áp dụng",
   "agentDetail.configure.buildDraft.discard": "Hủy bỏ",
   "agentDetail.configure.buildDraft.modeBadge": "Chế độ build",
-  "agentDetail.configure.buildDraft.modeDescription": "Bạn đang ở chế độ build. Configure chỉ có thể được cập nhật bởi tác nhân trong chế độ này. Điều chỉnh thiết lập này qua khung chat bên phải, rồi Áp dụng.",
+  "agentDetail.configure.buildDraft.modeDescription": "Bạn đang ở chế độ build. Định hình thiết lập này bằng cách trò chuyện với tác nhân, sau đó chọn Áp dụng.",
   "agentDetail.configure.buildDraft.rewritten": "Đã viết lại",
   "agentDetail.configure.buildDraft.title": "Bản nháp build",
   "agentDetail.configure.buildDraft.updated": "Đã cập nhật",

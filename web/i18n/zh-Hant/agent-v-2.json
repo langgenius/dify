@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} 項變更待套用",
   "agentDetail.configure.buildDraft.discard": "放棄",
   "agentDetail.configure.buildDraft.modeBadge": "建置模式",
-  "agentDetail.configure.buildDraft.modeDescription": "你正在使用建置模式。在此模式下，Configure 只能由 Agent 更新。透過右側聊天調整此設定，然後套用。",
+  "agentDetail.configure.buildDraft.modeDescription": "目前處於建置模式。請與 Agent 對話來建構設定，完成後點擊套用。",
   "agentDetail.configure.buildDraft.rewritten": "已重寫",
   "agentDetail.configure.buildDraft.title": "Build 草稿",
   "agentDetail.configure.buildDraft.updated": "已更新",

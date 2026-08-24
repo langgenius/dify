@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} spremembe za uveljavitev",
   "agentDetail.configure.buildDraft.discard": "Zavrzi",
   "agentDetail.configure.buildDraft.modeBadge": "Način gradnje",
-  "agentDetail.configure.buildDraft.modeDescription": "Ste v načinu gradnje. Configure lahko v tem načinu posodobi samo agent. Nastavitev oblikujte s klepetom na desni, nato jo uporabite.",
+  "agentDetail.configure.buildDraft.modeDescription": "Ste v načinu gradnje. To nastavitev oblikujte v klepetu z agentom, nato pa kliknite Uporabi.",
   "agentDetail.configure.buildDraft.rewritten": "Prepisano",
   "agentDetail.configure.buildDraft.title": "Osnutek gradnje",
   "agentDetail.configure.buildDraft.updated": "Posodobljeno",

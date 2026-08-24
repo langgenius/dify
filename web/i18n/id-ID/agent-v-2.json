@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} perubahan untuk diterapkan",
   "agentDetail.configure.buildDraft.discard": "Buang",
   "agentDetail.configure.buildDraft.modeBadge": "Mode build",
-  "agentDetail.configure.buildDraft.modeDescription": "Anda berada dalam mode build. Configure hanya dapat diperbarui oleh agen dalam mode ini. Bentuk pengaturan ini lewat chat di kanan, lalu terapkan.",
+  "agentDetail.configure.buildDraft.modeDescription": "Anda berada dalam mode build. Bentuk pengaturan ini dengan mengobrol bersama agen, lalu pilih Terapkan.",
   "agentDetail.configure.buildDraft.rewritten": "Ditulis ulang",
   "agentDetail.configure.buildDraft.title": "Draf build",
   "agentDetail.configure.buildDraft.updated": "Diperbarui",

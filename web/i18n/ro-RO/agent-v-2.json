@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} modificări de aplicat",
   "agentDetail.configure.buildDraft.discard": "Renunță",
   "agentDetail.configure.buildDraft.modeBadge": "Mod build",
-  "agentDetail.configure.buildDraft.modeDescription": "Ești în modul build. Configure poate fi actualizat doar de agent în acest mod. Ajustează această configurare prin chatul din dreapta, apoi aplică.",
+  "agentDetail.configure.buildDraft.modeDescription": "Ești în modul build. Conturează această configurare discutând cu agentul, apoi apasă Aplică.",
   "agentDetail.configure.buildDraft.rewritten": "Rescris",
   "agentDetail.configure.buildDraft.title": "Schiță de build",
   "agentDetail.configure.buildDraft.updated": "Actualizat",

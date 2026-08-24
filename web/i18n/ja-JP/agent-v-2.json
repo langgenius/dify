@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "適用する変更 {{count}} 件",
   "agentDetail.configure.buildDraft.discard": "破棄",
   "agentDetail.configure.buildDraft.modeBadge": "ビルドモード",
-  "agentDetail.configure.buildDraft.modeDescription": "ビルドモードです。このモードでは、Configure はエージェントのみが更新できます。右側のチャットでこの設定を調整してから適用してください。",
+  "agentDetail.configure.buildDraft.modeDescription": "ビルドモード中です。Agent とチャットしてこのセットアップを形づくり、最後に適用してください。",
   "agentDetail.configure.buildDraft.rewritten": "書き換え済み",
   "agentDetail.configure.buildDraft.title": "ビルドドラフト",
   "agentDetail.configure.buildDraft.updated": "更新済み",

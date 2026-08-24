@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} modifications à appliquer",
   "agentDetail.configure.buildDraft.discard": "Ignorer",
   "agentDetail.configure.buildDraft.modeBadge": "Mode build",
-  "agentDetail.configure.buildDraft.modeDescription": "Vous êtes en mode build. Configure ne peut être mis à jour que par l’agent dans ce mode. Ajustez cette configuration avec le chat à droite, puis appliquez.",
+  "agentDetail.configure.buildDraft.modeDescription": "Vous êtes en mode build. Façonnez cette configuration en discutant avec l’agent, puis cliquez sur Appliquer.",
   "agentDetail.configure.buildDraft.rewritten": "Réécrit",
   "agentDetail.configure.buildDraft.title": "Brouillon de build",
   "agentDetail.configure.buildDraft.updated": "Mis à jour",

@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} змін для застосування",
   "agentDetail.configure.buildDraft.discard": "Відхилити",
   "agentDetail.configure.buildDraft.modeBadge": "Режим збірки",
-  "agentDetail.configure.buildDraft.modeDescription": "Ви в режимі збірки. У цьому режимі Configure може оновлювати лише агент. Налаштуйте цю конфігурацію через чат праворуч, а потім застосуйте.",
+  "agentDetail.configure.buildDraft.modeDescription": "Ви в режимі збірки. Сформуйте це налаштування в чаті з агентом, а потім натисніть «Застосувати».",
   "agentDetail.configure.buildDraft.rewritten": "Переписано",
   "agentDetail.configure.buildDraft.title": "Чернетка збірки",
   "agentDetail.configure.buildDraft.updated": "Оновлено",

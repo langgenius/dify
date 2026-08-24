@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} alterações para aplicar",
   "agentDetail.configure.buildDraft.discard": "Descartar",
   "agentDetail.configure.buildDraft.modeBadge": "Modo build",
-  "agentDetail.configure.buildDraft.modeDescription": "Você está no modo build. O Configure só pode ser atualizado pelo agente neste modo. Ajuste esta configuração pelo chat à direita e depois aplique.",
+  "agentDetail.configure.buildDraft.modeDescription": "Você está no modo build. Defina esta configuração conversando com o agente e depois clique em Aplicar.",
   "agentDetail.configure.buildDraft.rewritten": "Reescrito",
   "agentDetail.configure.buildDraft.title": "Rascunho de build",
   "agentDetail.configure.buildDraft.updated": "Atualizado",

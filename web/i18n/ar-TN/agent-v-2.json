@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} تغييرات للتطبيق",
   "agentDetail.configure.buildDraft.discard": "تجاهل",
   "agentDetail.configure.buildDraft.modeBadge": "وضع البناء",
-  "agentDetail.configure.buildDraft.modeDescription": "أنت في وضع البناء. لا يمكن تحديث Configure في هذا الوضع إلا بواسطة الوكيل. شكّل هذا الإعداد عبر الدردشة على اليمين، ثم طبّق.",
+  "agentDetail.configure.buildDraft.modeDescription": "أنت في وضع البناء. شكّل هذا الإعداد من خلال الدردشة مع الوكيل، ثم اضغط على تطبيق.",
   "agentDetail.configure.buildDraft.rewritten": "أُعيدت صياغته",
   "agentDetail.configure.buildDraft.title": "مسودة البناء",
   "agentDetail.configure.buildDraft.updated": "تم التحديث",

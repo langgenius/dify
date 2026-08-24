@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "ມີ {{count}} ການປ່ຽນແປງທີ່ຈະນຳໃຊ້",
   "agentDetail.configure.buildDraft.discard": "ຍົກເລີກ",
   "agentDetail.configure.buildDraft.modeBadge": "ໂໝດສ້າງ (Build mode)",
-  "agentDetail.configure.buildDraft.modeDescription": "ທ່ານຢູ່ໃນໂໝດສ້າງ. ການຕັ້ງຄ່າສາມາດອັບເດດໄດ້ໂດຍຕົວແທນໃນໂໝດນີ້ເທົ່ານັ້ນ. ປັບແຕ່ງການຕັ້ງຄ່ານີ້ຜ່ານການສົນທະນາດ້ານຂວາ, ແລ້ວກົດ 'ນຳໃຊ້'.",
+  "agentDetail.configure.buildDraft.modeDescription": "ທ່ານຢູ່ໃນໂໝດສ້າງ. ປັບແຕ່ງການຕັ້ງຄ່ານີ້ໂດຍສົນທະນາກັບຕົວແທນ, ແລ້ວກົດ ນຳໃຊ້.",
   "agentDetail.configure.buildDraft.rewritten": "ຂຽນໃໝ່ແລ້ວ",
   "agentDetail.configure.buildDraft.title": "ຮ່າງການສ້າງ",
   "agentDetail.configure.buildDraft.updated": "ອັບເດດແລ້ວ",

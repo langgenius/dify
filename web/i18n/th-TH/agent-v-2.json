@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} การเปลี่ยนแปลงที่ต้องนำไปใช้",
   "agentDetail.configure.buildDraft.discard": "ทิ้ง",
   "agentDetail.configure.buildDraft.modeBadge": "โหมด Build",
-  "agentDetail.configure.buildDraft.modeDescription": "คุณอยู่ในโหมด Build ในโหมดนี้ Configure จะอัปเดตได้โดยเอเจนต์เท่านั้น ปรับแต่งการตั้งค่านี้ผ่านแชททางขวา แล้วกดนำไปใช้",
+  "agentDetail.configure.buildDraft.modeDescription": "คุณอยู่ในโหมด Build ปรับแต่งการตั้งค่านี้ด้วยการแชทกับเอเจนต์ แล้วกดนำไปใช้",
   "agentDetail.configure.buildDraft.rewritten": "เขียนใหม่แล้ว",
   "agentDetail.configure.buildDraft.title": "ฉบับร่าง Build",
   "agentDetail.configure.buildDraft.updated": "อัปเดตแล้ว",

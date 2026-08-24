@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "लागू करने के लिए {{count}} बदलाव",
   "agentDetail.configure.buildDraft.discard": "छोड़ें",
   "agentDetail.configure.buildDraft.modeBadge": "बिल्ड मोड",
-  "agentDetail.configure.buildDraft.modeDescription": "आप बिल्ड मोड में हैं। इस मोड में Configure को केवल एजेंट ही अपडेट कर सकता है। दाईं ओर की चैट से इस सेटअप को आकार दें, फिर लागू करें।",
+  "agentDetail.configure.buildDraft.modeDescription": "आप बिल्ड मोड में हैं। एजेंट से चैट करके इस सेटअप को आकार दें, फिर लागू करें।",
   "agentDetail.configure.buildDraft.rewritten": "फिर से लिखा गया",
   "agentDetail.configure.buildDraft.title": "बिल्ड ड्राफ्ट",
   "agentDetail.configure.buildDraft.updated": "अपडेट किया गया",

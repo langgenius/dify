@@ -82,7 +82,7 @@
   "agentDetail.configure.buildDraft.changesToApply_other": "{{count}} изменений для применения",
   "agentDetail.configure.buildDraft.discard": "Отменить",
   "agentDetail.configure.buildDraft.modeBadge": "Режим сборки",
-  "agentDetail.configure.buildDraft.modeDescription": "Вы в режиме сборки. В этом режиме Configure может обновлять только агент. Настройте эту конфигурацию через чат справа, затем примените изменения.",
+  "agentDetail.configure.buildDraft.modeDescription": "Вы в режиме сборки. Сформируйте эту конфигурацию в чате с агентом, а затем нажмите «Применить».",
   "agentDetail.configure.buildDraft.rewritten": "Переписано",
   "agentDetail.configure.buildDraft.title": "Черновик сборки",
   "agentDetail.configure.buildDraft.updated": "Обновлено",
