@@ -17,7 +17,9 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
+    PromptMessageContentType,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -411,6 +413,133 @@ class TestBuildPromptMessageWithFiles:
 
         mock_build.assert_called_once()
         assert "config" not in mock_build.call_args.kwargs
+
+    def test_unsupported_document_content_replaced_with_text(self):
+        """History documents are downgraded to a text note when the model
+        lacks the DOCUMENT feature, instead of being sent as content parts
+        the provider rejects with a 400 (regression test for #41059)."""
+        conv = _make_conversation(AppMode.CHAT)
+        mi = _make_model_instance()
+        schema = MagicMock()
+        schema.supports_prompt_content_type.side_effect = lambda ct: ct != PromptMessageContentType.DOCUMENT
+        mi.get_model_schema.return_value = schema
+        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
+
+        mock_file_extra_config = MagicMock()
+        mock_file_extra_config.image_config = None
+
+        real_document_content = DocumentPromptMessageContent(
+            base64_data="ZGF0YQ==", format="txt", mime_type="text/plain", filename="notes.txt"
+        )
+        mock_file_obj = MagicMock()
+        mock_file_obj.type = FileType.DOCUMENT
+        mock_file_obj.filename = "notes.txt"
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+                return_value=mock_file_extra_config,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=mock_file_obj,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=real_document_content,
+            ),
+        ):
+            result = mem._build_prompt_message_with_files(
+                message_files=[_make_message_file()],
+                text_content="second turn",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+        assert isinstance(result.content, list)
+        kinds = {type(part).__name__ for part in result.content}
+        assert "DocumentPromptMessageContent" not in kinds
+        text_parts = [p for p in result.content if isinstance(p, TextPromptMessageContent)]
+        assert any("Unsupported file type" in p.data for p in text_parts)
+        assert result.content[-1].data == "second turn"
+
+    def test_supported_image_content_kept_when_vision_enabled(self):
+        """Images stay as native content parts when the model has VISION."""
+        conv = _make_conversation(AppMode.CHAT)
+        mi = _make_model_instance()
+        schema = MagicMock()
+        schema.supports_prompt_content_type.return_value = True
+        mi.get_model_schema.return_value = schema
+        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
+
+        mock_file_extra_config = MagicMock()
+        mock_file_extra_config.image_config = None
+        real_image_content = ImagePromptMessageContent(
+            url="http://example.com/img.png", format="png", mime_type="image/png"
+        )
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+                return_value=mock_file_extra_config,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=real_image_content,
+            ),
+        ):
+            result = mem._build_prompt_message_with_files(
+                message_files=[_make_message_file()],
+                text_content="user text",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+        assert any(isinstance(part, ImagePromptMessageContent) for part in result.content)
+
+    def test_schema_unresolved_keeps_previous_behavior(self):
+        """When the model schema cannot be resolved, files are sent unchanged
+        (backward-compatible fallback)."""
+        conv = _make_conversation(AppMode.CHAT)
+        mi = _make_model_instance()
+        mi.get_model_schema.side_effect = ValueError("model schema not found")
+        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
+
+        mock_file_extra_config = MagicMock()
+        mock_file_extra_config.image_config = None
+        real_document_content = DocumentPromptMessageContent(
+            base64_data="ZGF0YQ==", format="pdf", mime_type="application/pdf", filename="doc.pdf"
+        )
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+                return_value=mock_file_extra_config,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=real_document_content,
+            ),
+        ):
+            result = mem._build_prompt_message_with_files(
+                message_files=[_make_message_file()],
+                text_content="user text",
+                message=_make_message(),
+                app_record=_make_app(),
+                is_user_message=True,
+            )
+
+        assert any(isinstance(part, DocumentPromptMessageContent) for part in result.content)
 
     @pytest.mark.parametrize("mode", [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION])
     def test_chat_mode_with_files_assistant_message(self, mode):

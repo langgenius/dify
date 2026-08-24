@@ -106,12 +106,26 @@ class TokenBufferMemory:
             else:
                 return AssistantPromptMessage(content=text_content)
         else:
+            try:
+                model_schema = self.model_instance.get_model_schema()
+            except ValueError:
+                # Schema unresolved: keep the previous send-anyway behavior.
+                model_schema = None
             prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in file_objs:
                 prompt_message = file_manager.to_prompt_message_content(
                     file,
                     image_detail_config=detail,
                 )
+                if model_schema is not None and not model_schema.supports_prompt_content_type(prompt_message.type):
+                    # The model cannot consume this content type natively (e.g.
+                    # documents replayed from earlier turns to a text/vision-only
+                    # model). Preserve the conversational context as text instead
+                    # of sending a part the provider would reject with a 400.
+                    prompt_message_contents.append(
+                        TextPromptMessageContent(data=f"[Unsupported file type: {file.type.value}]")
+                    )
+                    continue
                 prompt_message_contents.append(prompt_message)
             prompt_message_contents.append(TextPromptMessageContent(data=text_content))
 
