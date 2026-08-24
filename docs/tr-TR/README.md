@@ -130,24 +130,27 @@ docker compose up -d
 
 ## Katkıda Bulunma
 
-Kod katkısında bulunmak isteyenler için [Katkı Kılavuzumuza](./CONTRIBUTING.md) bakabilirsiniz.
-Aynı zamanda, lütfen Dify'ı sosyal medyada, etkinliklerde ve konferanslarda paylaşarak desteklemeyi düşünün.
+Dify her türlü katkıyı memnuniyetle karşılar:
 
-> Dify'ı Mandarin veya İngilizce dışındaki dillere çevirmemize yardımcı olacak katkıda bulunanlara ihtiyacımız var. Yardımcı olmakla ilgileniyorsanız, lütfen daha fazla bilgi için [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) dosyasına bakın ve [Discord Topluluk Sunucumuzdaki](https://discord.gg/8Tpq4AcN9c) `global-users` kanalında bize bir yorum bırakın.
+- **Kod**: [Katkı Kılavuzu'nu](./CONTRIBUTING.md) okuyun, ardından [yeni katkıda bulunanlara uygun sorunlara](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) göz atın.
+- **Fikirler ve geri bildirim**: Bir [GitHub tartışması](https://github.com/langgenius/dify/discussions) başlatın veya mevcut bir tartışmaya katılın.
+- **Çeviriler**: Bir dil eklemek veya güncellemek için [uluslararasılaştırma kılavuzunu](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) izleyin.
+- **Topluluk**: Oluşturduğunuz uygulamaları paylaşın, diğer kullanıcılara yardımcı olun ve Dify'ı duyurun.
 
-**Katkıda Bulunanlar**
+### Katkıda bulunanlar
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Topluluk & iletişim
+## Topluluk ve iletişim
 
-- [GitHub Tartışmaları](https://github.com/langgenius/dify/discussions). En uygun: geri bildirim paylaşmak ve soru sormak için.
-- [GitHub Sorunları](https://github.com/langgenius/dify/issues). En uygun: Dify.AI kullanırken karşılaştığınız hatalar ve özellik önerileri için. [Katkı Kılavuzumuza](./CONTRIBUTING.md) bakın.
-- [Discord](https://discord.gg/FngNHpbcY7). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
-- [X(Twitter)](https://twitter.com/dify_ai). En uygun: uygulamalarınızı paylaşmak ve toplulukla vakit geçirmek için.
+Sorunuza en uygun kanalı seçin:
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): Yardım alın, geri bildirim paylaşın ve fikir önerin.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): Tekrarlanabilir hataları bildirin ve mühendislik çalışmalarını takip edin. Bir sorun açmadan önce [Katkı Kılavuzu'nu](./CONTRIBUTING.md) okuyun.
+- [Discord](https://discord.gg/FngNHpbcY7): Gerçek zamanlı sohbet edin, uygulamalarınızı paylaşın ve diğer Dify kullanıcılarıyla bağlantı kurun.
+- [X](https://x.com/dify_ai): Sürüm haberleri ve proje güncellemeleri için Dify'ı takip edin.
 ## Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

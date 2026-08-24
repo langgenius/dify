@@ -136,24 +136,27 @@ For custom configuration, observability, and deployment options, see [Advanced S
 
 ## Contributing
 
-For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
+Dify welcomes contributions of all kinds:
 
-> We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/8Tpq4AcN9c).
+- **Code**: Read the [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), then browse [good first issues](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ideas and feedback**: Start or join a [GitHub Discussion](https://github.com/langgenius/dify/discussions).
+- **Translations**: Follow the [internationalization guide](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) to add or update a locale.
+- **Community**: Share the apps you build, help other users, and spread the word about Dify.
 
-**Contributors**
+### Contributors
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## Community & Contact
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
-- [X(Twitter)](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
+Choose the channel that best fits your question:
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): Get help, share feedback, and propose ideas.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): Report reproducible bugs and track engineering work. Read the [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) before opening one.
+- [Discord](https://discord.gg/FngNHpbcY7): Chat in real time, share your apps, and connect with other Dify users.
+- [X](https://x.com/dify_ai): Follow Dify for release news and project updates.
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

@@ -141,24 +141,27 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 ## 貢獻
 
-對於想要貢獻程式碼的開發者，請參閱我們的[貢獻指南](./CONTRIBUTING.md)。
-同時，也請考慮透過在社群媒體和各種活動與會議上分享 Dify 來支持我們。
+Dify 歡迎各種形式的貢獻：
 
-> 我們正在尋找貢獻者協助將 Dify 翻譯成中文和英文以外的語言。如果您有興趣幫忙，請查看 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) 獲取更多資訊，並在我們的 [Discord 社群伺服器](https://discord.gg/8Tpq4AcN9c) 的 `global-users` 頻道留言給我們。
+- **程式碼**：閱讀[貢獻指南](./CONTRIBUTING.md)，再瀏覽[適合新手的議題](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)。
+- **想法與意見**：發起或加入 [GitHub Discussions](https://github.com/langgenius/dify/discussions)。
+- **翻譯**：依照[國際化指南](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)新增或更新語言。
+- **社群**：分享您建立的應用程式、協助其他使用者，並向更多人介紹 Dify。
+
+### 貢獻者
+
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
 
 ## 社群與聯絡方式
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions)：最適合分享反饋和提問。
-- [GitHub Issues](https://github.com/langgenius/dify/issues)：最適合報告使用 Dify.AI 時遇到的問題和提出功能建議。請參閱我們的[貢獻指南](./CONTRIBUTING.md)。
-- [Discord](https://discord.gg/FngNHpbcY7)：最適合分享您的應用程式並與社群互動。
-- [X(Twitter)](https://twitter.com/dify_ai)：最適合分享您的應用程式並與社群互動。
+請選擇最符合您問題的管道：
 
-**貢獻者**
-
-<a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
-</a>
-
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions)：取得協助、分享意見並提出想法。
+- [GitHub Issues](https://github.com/langgenius/dify/issues)：回報可重現的錯誤並追蹤工程工作。建立議題前，請先閱讀[貢獻指南](./CONTRIBUTING.md)。
+- [Discord](https://discord.gg/FngNHpbcY7)：即時交流、分享您的應用程式，並與其他 Dify 使用者互動。
+- [X](https://x.com/dify_ai)：追蹤版本消息與專案更新。
 ## 星星歷史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

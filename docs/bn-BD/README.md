@@ -139,26 +139,29 @@ GitHub-এ ডিফাইকে স্টার দিয়ে রাখুন �
 
 কাস্টম কনফিগারেশন, পর্যবেক্ষণ এবং ডেপ্লয়মেন্ট বিকল্পের জন্য, [উন্নত সেটআপ](ADVANCED_SETUP.md) দেখুন।
 
-## Contributing
+## অবদান
 
-যারা কোড অবদান রাখতে চান, তাদের জন্য আমাদের [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) দেখুন।
-একই সাথে, সোশ্যাল মিডিয়া এবং ইভেন্ট এবং কনফারেন্সে এটি শেয়ার করে Dify কে সমর্থন করুন।
+Dify সব ধরনের অবদানকে স্বাগত জানায়:
 
-> আমরা ম্যান্ডারিন বা ইংরেজি ছাড়া অন্য ভাষায় Dify অনুবাদ করতে সাহায্য করার জন্য অবদানকারীদের খুঁজছি। আপনি যদি সাহায্য করতে আগ্রহী হন, তাহলে আরও তথ্যের জন্য [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) দেখুন এবং আমাদের [ডিসকর্ড কমিউনিটি সার্ভার](https://discord.gg/8Tpq4AcN9c) এর `গ্লোবাল-ইউজারস` চ্যানেলে আমাদের একটি মন্তব্য করুন।
+- **কোড**: [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) পড়ুন, তারপর [নতুন অবদানকারীদের উপযোগী সমস্যাগুলো](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22) দেখুন।
+- **ধারণা ও প্রতিক্রিয়া**: একটি [GitHub আলোচনা](https://github.com/langgenius/dify/discussions) শুরু করুন বা বিদ্যমান আলোচনায় যোগ দিন।
+- **অনুবাদ**: কোনো লোকেল যোগ বা হালনাগাদ করতে [আন্তর্জাতিকীকরণ নির্দেশিকা](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) অনুসরণ করুন।
+- **কমিউনিটি**: আপনার তৈরি অ্যাপ শেয়ার করুন, অন্য ব্যবহারকারীদের সাহায্য করুন এবং Dify সম্পর্কে সবাইকে জানান।
+
+### অবদানকারীরা
+
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
 
 ## কমিউনিটি এবং যোগাযোগ
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions) ফিডব্যাক এবং প্রতিক্রিয়া জানানোর মাধ্যম।
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Dify.AI ব্যবহার করে আপনি যেসব বাগের সম্মুখীন হন এবং ফিচার প্রস্তাবনা। আমাদের [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) দেখুন।
-- [Discord](https://discord.gg/FngNHpbcY7) আপনার এপ্লিকেশন শেয়ার এবং কমিউনিটি আড্ডার মাধ্যম।
-- [X(Twitter)](https://twitter.com/dify_ai) আপনার এপ্লিকেশন শেয়ার এবং কমিউনিটি আড্ডার মাধ্যম।
+আপনার প্রশ্নের জন্য সবচেয়ে উপযুক্ত মাধ্যমটি বেছে নিন:
 
-**অবদানকারীদের তালিকা**
-
-<a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
-</a>
-
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): সাহায্য নিন, প্রতিক্রিয়া জানান এবং ধারণা প্রস্তাব করুন।
+- [GitHub Issues](https://github.com/langgenius/dify/issues): পুনরুৎপাদনযোগ্য বাগ রিপোর্ট করুন এবং ইঞ্জিনিয়ারিং কাজ অনুসরণ করুন। নতুন ইস্যু খোলার আগে [অবদান নির্দেশিকা](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) পড়ুন।
+- [Discord](https://discord.gg/FngNHpbcY7): সরাসরি আলোচনা করুন, আপনার অ্যাপ শেয়ার করুন এবং অন্যান্য Dify ব্যবহারকারীর সঙ্গে যুক্ত হন।
+- [X](https://x.com/dify_ai): রিলিজের খবর এবং প্রকল্পের হালনাগাদ পেতে Dify অনুসরণ করুন।
 ## স্টার হিস্ট্রি
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

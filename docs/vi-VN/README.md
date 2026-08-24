@@ -131,24 +131,27 @@ Sau khi chạy, bạn có thể truy cập bảng điều khiển Dify trong tr�
 
 ## Đóng góp
 
-Đối với những người muốn đóng góp mã, xem [Hướng dẫn Đóng góp](./CONTRIBUTING.md) của chúng tôi.
-Đồng thời, vui lòng xem xét hỗ trợ Dify bằng cách chia sẻ nó trên mạng xã hội và tại các sự kiện và hội nghị.
+Dify chào đón mọi hình thức đóng góp:
 
-> Chúng tôi đang tìm kiếm người đóng góp để giúp dịch Dify sang các ngôn ngữ khác ngoài tiếng Trung hoặc tiếng Anh. Nếu bạn quan tâm đến việc giúp đỡ, vui lòng xem [README i18n](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) để biết thêm thông tin và để lại bình luận cho chúng tôi trong kênh `global-users` của [Máy chủ Cộng đồng Discord](https://discord.gg/8Tpq4AcN9c) của chúng tôi.
+- **Mã nguồn**: đọc [Hướng dẫn đóng góp](./CONTRIBUTING.md), sau đó xem các [issue phù hợp cho người mới](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ý tưởng và phản hồi**: bắt đầu hoặc tham gia một [thảo luận trên GitHub](https://github.com/langgenius/dify/discussions).
+- **Bản dịch**: làm theo [hướng dẫn quốc tế hóa](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) để thêm hoặc cập nhật một ngôn ngữ.
+- **Cộng đồng**: chia sẻ ứng dụng bạn xây dựng, hỗ trợ người dùng khác và giới thiệu Dify đến nhiều người hơn.
 
-**Người đóng góp**
+### Người đóng góp
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Cộng đồng & liên hệ
+## Cộng đồng và liên hệ
 
-- [Thảo luận GitHub](https://github.com/langgenius/dify/discussions). Tốt nhất cho: chia sẻ phản hồi và đặt câu hỏi.
-- [Vấn đề GitHub](https://github.com/langgenius/dify/issues). Tốt nhất cho: lỗi bạn gặp phải khi sử dụng Dify.AI và đề xuất tính năng. Xem [Hướng dẫn Đóng góp](./CONTRIBUTING.md) của chúng tôi.
-- [Discord](https://discord.gg/FngNHpbcY7). Tốt nhất cho: chia sẻ ứng dụng của bạn và giao lưu với cộng đồng.
-- [X(Twitter)](https://twitter.com/dify_ai). Tốt nhất cho: chia sẻ ứng dụng của bạn và giao lưu với cộng đồng.
+Chọn kênh phù hợp nhất với câu hỏi của bạn:
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): nhận trợ giúp, chia sẻ phản hồi và đề xuất ý tưởng.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): báo cáo lỗi có thể tái hiện và theo dõi công việc kỹ thuật. Đọc [Hướng dẫn đóng góp](./CONTRIBUTING.md) trước khi mở issue.
+- [Discord](https://discord.gg/FngNHpbcY7): trò chuyện theo thời gian thực, chia sẻ ứng dụng và kết nối với những người dùng Dify khác.
+- [X](https://x.com/dify_ai): theo dõi tin tức phát hành và cập nhật dự án.
 ## Lịch sử Yêu thích
 
 [![Biểu đồ Lịch sử Yêu thích](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

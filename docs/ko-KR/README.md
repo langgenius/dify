@@ -130,24 +130,27 @@ docker compose up -d
 
 ## 기여
 
-코드에 기여하고 싶은 분들은 [기여 가이드](./CONTRIBUTING.md)를 참조하세요.
-동시에 Dify를 소셜 미디어와 행사 및 컨퍼런스에 공유하여 지원하는 것을 고려해 주시기 바랍니다.
+Dify는 모든 형태의 기여를 환영합니다.
 
-> 우리는 Dify를 중국어나 영어 이외의 언어로 번역하는 데 도움을 줄 수 있는 기여자를 찾고 있습니다. 도움을 주고 싶으시다면 [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)에서 더 많은 정보를 확인하시고 [Discord 커뮤니티 서버](https://discord.gg/8Tpq4AcN9c)의 `global-users` 채널에 댓글을 남겨주세요.
+- **코드**: [기여 가이드](./CONTRIBUTING.md)를 읽고 [good first issue](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)를 살펴보세요.
+- **아이디어 및 피드백**: [GitHub 토론](https://github.com/langgenius/dify/discussions)을 시작하거나 기존 토론에 참여하세요.
+- **번역**: 언어를 추가하거나 업데이트하려면 [국제화 가이드](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)를 따르세요.
+- **커뮤니티**: 만든 앱을 공유하고, 다른 사용자를 돕고, Dify를 널리 알려주세요.
 
-**기여자**
+### 기여자
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## 커뮤니티 & 연락처
 
-- [GitHub 토론](https://github.com/langgenius/dify/discussions). 피드백 공유 및 질문하기에 적합합니다.
-- [GitHub 이슈](https://github.com/langgenius/dify/issues). Dify.AI 사용 중 발견한 버그와 기능 제안에 적합합니다. [기여 가이드](./CONTRIBUTING.md)를 참조하세요.
-- [디스코드](https://discord.gg/FngNHpbcY7). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
-- [트위터](https://twitter.com/dify_ai). 애플리케이션 공유 및 커뮤니티와 소통하기에 적합합니다.
+문의 내용에 가장 적합한 채널을 선택하세요.
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): 도움을 받고, 피드백을 공유하고, 아이디어를 제안하세요.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): 재현 가능한 버그를 보고하고 개발 작업을 추적하세요. 이슈를 열기 전에 [기여 가이드](./CONTRIBUTING.md)를 읽어주세요.
+- [Discord](https://discord.gg/FngNHpbcY7): 실시간으로 대화하고, 앱을 공유하고, 다른 Dify 사용자와 교류하세요.
+- [X](https://x.com/dify_ai): 릴리스 소식과 프로젝트 업데이트를 확인하세요.
 ## Star 히스토리
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

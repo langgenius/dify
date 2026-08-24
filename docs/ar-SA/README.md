@@ -125,24 +125,27 @@ docker compose up -d
 
 ## المساهمة
 
-لأولئك الذين يرغبون في المساهمة، انظر إلى [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) لدينا.
-في الوقت نفسه، يرجى النظر في دعم Dify عن طريق مشاركته على وسائل التواصل الاجتماعي وفي الفعاليات والمؤتمرات.
+يرحب Dify بالمساهمات بجميع أشكالها:
 
-> نحن نبحث عن مساهمين لمساعدة في ترجمة Dify إلى لغات أخرى غير اللغة الصينية المندرين أو الإنجليزية. إذا كنت مهتمًا بالمساعدة، يرجى الاطلاع على [README للترجمة](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) لمزيد من المعلومات، واترك لنا تعليقًا في قناة `global-users` على [خادم المجتمع على Discord](https://discord.gg/8Tpq4AcN9c).
+- **الشفرة البرمجية**: اقرأ [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)، ثم تصفح [المشكلات المناسبة للمساهمين الجدد](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **الأفكار والملاحظات**: ابدأ أو انضم إلى [مناقشة على GitHub](https://github.com/langgenius/dify/discussions).
+- **الترجمات**: اتبع [دليل التدويل](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md) لإضافة لغة أو تحديثها.
+- **المجتمع**: شارك التطبيقات التي تبنيها، وساعد المستخدمين الآخرين، وساهم في نشر Dify.
 
-**المساهمون**
+### المساهمون
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## المجتمع والاتصال
 
-- [مناقشة GitHub](https://github.com/langgenius/dify/discussions). الأفضل لـ: مشاركة التعليقات وطرح الأسئلة.
-- [المشكلات على GitHub](https://github.com/langgenius/dify/issues). الأفضل لـ: الأخطاء التي تواجهها في استخدام Dify.AI، واقتراحات الميزات. انظر [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). الأفضل لـ: مشاركة تطبيقاتك والترفيه مع المجتمع.
-- [تويتر](https://twitter.com/dify_ai). الأفضل لـ: مشاركة تطبيقاتك والترفيه مع المجتمع.
+اختر القناة الأنسب لسؤالك:
 
+- [مناقشات GitHub](https://github.com/langgenius/dify/discussions): للحصول على المساعدة ومشاركة الملاحظات واقتراح الأفكار.
+- [مشكلات GitHub](https://github.com/langgenius/dify/issues): للإبلاغ عن الأخطاء القابلة لإعادة الإنتاج ومتابعة العمل الهندسي. اقرأ [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) قبل فتح مشكلة.
+- [Discord](https://discord.gg/FngNHpbcY7): للدردشة الفورية ومشاركة تطبيقاتك والتواصل مع مستخدمي Dify الآخرين.
+- [X](https://x.com/dify_ai): لمتابعة أخبار الإصدارات وتحديثات المشروع.
 ## تاريخ النجمة
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

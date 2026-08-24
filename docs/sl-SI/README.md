@@ -135,25 +135,29 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 Za možnosti konfiguracije po meri, opazovanja in namestitve glejte [Napredne nastavitve](ADVANCED_SETUP.md).
 
-## Prispevam
+## Prispevanje
 
-Za tiste, ki bi radi prispevali kodo, si oglejte naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah.
+Dify pozdravlja vse vrste prispevkov:
 
-> Iščemo sodelavce za pomoč pri prevajanju Difyja v jezike, ki niso mandarinščina ali angleščina. Če želite pomagati, si oglejte i18n README za več informacij in nam pustite komentar v global-userskanalu našega strežnika skupnosti Discord .
+- **Koda**: preberite [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md), nato pa preglejte [naloge za nove sodelavce](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22).
+- **Ideje in povratne informacije**: začnite ali se pridružite [razpravi na GitHubu](https://github.com/langgenius/dify/discussions).
+- **Prevodi**: sledite [vodniku za internacionalizacijo](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md), da dodate ali posodobite jezik.
+- **Skupnost**: delite ustvarjene aplikacije, pomagajte drugim uporabnikom in razširite glas o Difyju.
+
+### Sodelavci
+
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
 
 ## Skupnost in stik
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions). Najboljše za: izmenjavo povratnih informacij in postavljanje vprašanj.
-- [GitHub Issues](https://github.com/langgenius/dify/issues). Najboljše za: hrošče, na katere naletite pri uporabi Dify.AI, in predloge funkcij. Oglejte si naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-- [Discord](https://discord.gg/FngNHpbcY7). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
-- [X(Twitter)](https://twitter.com/dify_ai). Najboljše za: deljenje vaših aplikacij in druženje s skupnostjo.
+Izberite kanal, ki najbolj ustreza vašemu vprašanju:
 
-**Contributors**
-
-<a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
-</a>
-
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions): poiščite pomoč, delite povratne informacije in predlagajte ideje.
+- [GitHub Issues](https://github.com/langgenius/dify/issues): prijavite ponovljive napake in spremljajte razvojno delo. Pred odprtjem težave preberite [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+- [Discord](https://discord.gg/FngNHpbcY7): klepetajte v živo, delite svoje aplikacije in se povežite z drugimi uporabniki Difyja.
+- [X](https://x.com/dify_ai): spremljajte novice o izdajah in posodobitve projekta.
 ## Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
