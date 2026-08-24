@@ -9,10 +9,11 @@ import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.tools.entities.tool_entities import EmojiIconDict
 from core.tools.tool_manager import ToolManager
 from libs.login import current_user
 from models import Account
-from models.model import App, Conversation, EndUser, Message
+from models.model import App, Conversation, EndUser, Message, load_annotation_reply_config
 
 
 class AgentService:
@@ -48,7 +49,7 @@ class AgentService:
         if not message:
             raise ValueError(f"Message not found: {message_id}")
 
-        agent_thoughts = message.agent_thoughts
+        agent_thoughts = message.agent_thoughts_with_session(session=session)
 
         if conversation.from_end_user_id:
             # only select name field
@@ -61,7 +62,7 @@ class AgentService:
         assert current_user.timezone is not None
         timezone = pytz.timezone(current_user.timezone)
 
-        app_model_config = app_model.app_model_config
+        app_model_config = app_model.app_model_config_with_session(session=session)
         if not app_model_config:
             raise ValueError("App model config not found")
 
@@ -76,10 +77,11 @@ class AgentService:
                 "iterations": len(agent_thoughts),
             },
             "iterations": [],
-            "files": message.message_files,
+            "files": message.message_files_with_session(session=session),
         }
 
-        agent_config = AgentConfigManager.convert(app_model_config.to_dict())
+        annotation_reply = load_annotation_reply_config(session, app_model.id)
+        agent_config = AgentConfigManager.convert(app_model_config.to_dict(annotation_reply=annotation_reply))
         if not agent_config:
             raise ValueError("Agent config not found")
 
@@ -104,11 +106,22 @@ class AgentService:
                 tool_output = tool_outputs.get(tool_name, {})
                 tool_meta_data = tool_meta.get(tool_name, {})
                 tool_config = tool_meta_data.get("tool_config", {})
-                if tool_config.get("tool_provider_type", "") != "dataset-retrieval":
+                tool_provider_type = tool_config.get("tool_provider_type", "")
+                tool_provider_id = tool_config.get("tool_provider", "")
+
+                if not tool_provider_type:
+                    tool_entity = find_agent_tool(tool_name)
+                    if tool_entity:
+                        tool_provider_type = tool_entity.provider_type
+                        tool_provider_id = tool_provider_id or tool_entity.provider_id
+
+                tool_icon: str | EmojiIconDict = ""
+
+                if tool_provider_type and tool_provider_type != "dataset-retrieval":
                     tool_icon = ToolManager.get_tool_icon(
                         tenant_id=app_model.tenant_id,
-                        provider_type=tool_config.get("tool_provider_type", ""),
-                        provider_id=tool_config.get("tool_provider", ""),
+                        provider_type=tool_provider_type,
+                        provider_id=tool_provider_id,
                     )
                     if not tool_icon:
                         tool_entity = find_agent_tool(tool_name)

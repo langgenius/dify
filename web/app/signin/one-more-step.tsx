@@ -14,13 +14,16 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useOneMoreStep } from '@/service/use-common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { timezones } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 import Input from '../components/base/input'
 
 type IState = {
@@ -108,7 +111,7 @@ const OneMoreStep = () => {
         timezone: state.timezone,
       })
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-      router.replace('/')
+      replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
     } catch (error: unknown) {
       if (hasStatus(error) && error.status === 400)
         toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
@@ -119,9 +122,9 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">
+        <h1 className="title-4xl-semi-bold text-text-secondary">
           {t(($) => $.oneMoreStep, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-1 body-md-regular text-text-tertiary">
           {t(($) => $.createSample, { ns: 'login' })}
         </p>
@@ -146,7 +149,7 @@ const OneMoreStep = () => {
                 />
                 <PopoverContent
                   placement="top"
-                  popupClassName="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
+                  className="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>
                     <div className="font-medium">{t(($) => $.sendUsMail, { ns: 'login' })}</div>

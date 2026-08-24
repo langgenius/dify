@@ -14,6 +14,8 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
+import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -67,14 +69,18 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 }
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
-  return async ({ response }) => {
+  return async ({ request, response }) => {
     if (!/^[23]\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
       try {
         const data: unknown = await response.clone().json()
         errorData = data as ResponseError
       } catch {}
-      const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
+      const shouldNotifyError =
+        response.status !== 401 &&
+        errorData &&
+        !otherOptions.silent &&
+        !shouldSuppressAppDeletionErrorToast(request.url, response.status)
 
       const errorMessage = errorData?.message || errorData?.error
       if (shouldNotifyError && errorMessage) toast.error(errorMessage)
@@ -85,35 +91,16 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
   }
 }
 
-const SHARE_ROUTE_DENY_LIST = new Set(['webapp-signin', 'check-code', 'login'])
-
-const resolveShareCode = () => {
-  const pathnameSegments = globalThis.location.pathname.split('/').filter(Boolean)
-  const lastSegment = pathnameSegments.at(-1) || ''
-  if (lastSegment && !SHARE_ROUTE_DENY_LIST.has(lastSegment)) return lastSegment
-
-  const redirectParam = new URLSearchParams(globalThis.location.search).get('redirect_url')
-  if (!redirectParam) return ''
-  try {
-    const redirectUrl = new URL(decodeURIComponent(redirectParam), globalThis.location.origin)
-    const redirectSegments = redirectUrl.pathname.split('/').filter(Boolean)
-    const redirectSegment = redirectSegments.at(-1) || ''
-    return SHARE_ROUTE_DENY_LIST.has(redirectSegment) ? '' : redirectSegment
-  } catch {
-    return ''
-  }
-}
-
 const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
   if (!request.headers.has('Authorization')) {
     const accessToken = getWebAppAccessToken()
     if (accessToken) request.headers.set('Authorization', `Bearer ${accessToken}`)
     else request.headers.delete('Authorization')
   }
-  const shareCode = resolveShareCode()
-  if (!shareCode) return
-  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, shareCode)
-  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(shareCode))
+  const address = resolveWebAppAddress()
+  if (!address) return
+  request.headers.set(WEB_APP_SHARE_CODE_HEADER_NAME, address.code)
+  request.headers.set(PASSPORT_HEADER_NAME, getWebAppPassport(address))
 }
 
 const baseHooks: Hooks = {
@@ -182,7 +169,9 @@ async function base<T>(
     options.signal = abortController.signal
   }
 
-  const fetchPathname = base + (url.startsWith('/') ? url : `/${url}`)
+  const fetchPathname = isPublicAPI
+    ? base + getWebAppPublicApiPath(resolveWebAppAddress(), url)
+    : base + (url.startsWith('/') ? url : `/${url}`)
   if (!isMarketplaceAPI) headers.set(CSRF_HEADER_NAME, Cookies.get(CSRF_COOKIE_NAME()) || '')
 
   if (deleteContentType) headers.delete('Content-Type')

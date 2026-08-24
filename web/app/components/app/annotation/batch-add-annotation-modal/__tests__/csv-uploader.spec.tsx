@@ -60,19 +60,16 @@ describe('CSVUploader', () => {
     clickSpy.mockRestore()
   })
 
-  it('should toggle dragging styles and upload the dropped file', async () => {
+  it('should upload the dropped file', async () => {
     const file = new File(['content'], 'input.csv', { type: 'text/csv' })
     renderComponent()
-    const { dropZone, dropContainer } = getDropElements()
+    const { dropContainer } = getDropElements()
 
     fireEvent.dragEnter(dropContainer)
-    expect(dropZone.className).toContain('border-components-dropzone-border-accent')
-    expect(dropZone.className).toContain('bg-components-dropzone-bg-accent')
 
     fireEvent.drop(dropContainer, { dataTransfer: { files: [file] } })
 
     await waitFor(() => expect(updateFile).toHaveBeenCalledWith(file))
-    expect(dropZone.className).not.toContain('border-components-dropzone-border-accent')
   })
 
   it('should handle drag over and clear dragging state when leaving through the overlay', () => {

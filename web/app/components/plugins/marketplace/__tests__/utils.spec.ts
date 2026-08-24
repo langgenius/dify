@@ -1,5 +1,5 @@
 import type { Plugin } from '@/app/components/plugins/types'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../constants'
 
@@ -119,6 +119,22 @@ describe('getPluginLinkInMarketplace', () => {
     const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
     const link = getPluginLinkInMarketplace(bundle)
     expect(link).toBe('https://marketplace.dify.ai/bundles/test-org/test-bundle')
+  })
+})
+
+describe('getPluginDetailLinkInMarketplace', () => {
+  it('should return the local detail link for a regular plugin', async () => {
+    const { getPluginDetailLinkInMarketplace } = await import('../utils')
+    const plugin = createMockPlugin({ org: 'test-org', name: 'test-plugin', type: 'plugin' })
+
+    expect(getPluginDetailLinkInMarketplace(plugin)).toBe('/plugin/test-org/test-plugin')
+  })
+
+  it('should return the local detail link for a bundle', async () => {
+    const { getPluginDetailLinkInMarketplace } = await import('../utils')
+    const bundle = createMockPlugin({ org: 'test-org', name: 'test-bundle', type: 'bundle' })
+
+    expect(getPluginDetailLinkInMarketplace(bundle)).toBe('/bundles/test-org/test-bundle')
   })
 })
 

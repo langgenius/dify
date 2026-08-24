@@ -165,13 +165,6 @@ describe('RenameDatasetModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<RenameDatasetModal {...defaultProps} />)
-      // Check title is rendered (translation mock returns 'datasetSettings.title')
-      // Check title is rendered (translation mock returns 'datasetSettings.title')
-      expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()
-    })
-
     it('should render modal when show is true', () => {
       render(<RenameDatasetModal {...defaultProps} show={true} />)
       expect(screen.getByText('datasetSettings.title'))!.toBeInTheDocument()

@@ -6,7 +6,7 @@ import * as z from 'zod'
  * RecommendedAppDetailResponse
  */
 export const zRecommendedAppDetailResponse = z.object({
-  can_trial: z.boolean().nullish(),
+  can_trial: z.boolean(),
   export_data: z.string(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
@@ -14,28 +14,6 @@ export const zRecommendedAppDetailResponse = z.object({
   mode: z.string(),
   name: z.string(),
 })
-
-/**
- * RecommendedAppDetailNullableResponse
- */
-export const zRecommendedAppDetailNullableResponse = zRecommendedAppDetailResponse.nullable()
-
-/**
- * BannerResponse
- */
-export const zBannerResponse = z.object({
-  content: z.unknown(),
-  created_at: z.string().nullish(),
-  id: z.string(),
-  link: z.string().nullish(),
-  sort: z.int(),
-  status: z.string(),
-})
-
-/**
- * BannerListResponse
- */
-export const zBannerListResponse = z.array(zBannerResponse)
 
 /**
  * RecommendedAppInfoResponse
@@ -56,7 +34,7 @@ export const zRecommendedAppInfoResponse = z.object({
 export const zRecommendedAppResponse = z.object({
   app: zRecommendedAppInfoResponse.nullish(),
   app_id: z.string(),
-  can_trial: z.boolean().nullish(),
+  can_trial: z.boolean(),
   categories: z.array(z.string()).optional(),
   copyright: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),
@@ -82,6 +60,40 @@ export const zLearnDifyAppListResponse = z.object({
 })
 
 /**
+ * BannerContentResponse
+ */
+export const zBannerContentResponse = z.object({
+  category: z.string(),
+  description: z.string(),
+  'img-src': z.string().min(1),
+  title: z.string().min(1),
+})
+
+/**
+ * BannerStatus
+ *
+ * ExporleBanner status
+ */
+export const zBannerStatus = z.enum(['disabled', 'enabled'])
+
+/**
+ * BannerResponse
+ */
+export const zBannerResponse = z.object({
+  content: zBannerContentResponse,
+  created_at: z.string(),
+  id: z.string(),
+  link: z.string(),
+  sort: z.int(),
+  status: zBannerStatus,
+})
+
+/**
+ * BannerListResponse
+ */
+export const zBannerListResponse = z.array(zBannerResponse)
+
+/**
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponseWritable = z.object({
@@ -99,7 +111,7 @@ export const zRecommendedAppInfoResponseWritable = z.object({
 export const zRecommendedAppResponseWritable = z.object({
   app: zRecommendedAppInfoResponseWritable.nullish(),
   app_id: z.string(),
-  can_trial: z.boolean().nullish(),
+  can_trial: z.boolean(),
   categories: z.array(z.string()).optional(),
   copyright: z.string().nullish(),
   custom_disclaimer: z.string().nullish(),
@@ -149,7 +161,7 @@ export const zGetExploreAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailNullableResponse
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailResponse
 
 export const zGetExploreBannersQuery = z.object({
   language: z.string().optional().default('en-US'),

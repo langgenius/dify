@@ -7,9 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
@@ -80,15 +80,15 @@ const DebugItem: FC<DebugItemProps> = ({ modelAndParameter, className, style }) 
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <ActionButton
-                className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+              <IconButton
                 aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+                className="data-popup-open:bg-state-base-hover"
               >
                 <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-              </ActionButton>
+              </IconButton>
             }
           />
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
             {showDuplicate && (
               <DropdownMenuItem className="system-md-regular" onClick={handleDuplicate}>
                 {t(($) => $.duplicateModel, { ns: 'appDebug' })}

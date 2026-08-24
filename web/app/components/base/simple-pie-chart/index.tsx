@@ -5,7 +5,7 @@ import ReactECharts from 'echarts-for-react'
 import { memo, useMemo } from 'react'
 import style from './index.module.css'
 
-export type SimplePieChartProps = {
+type SimplePieChartProps = {
   percentage?: number
   fill?: string
   stroke?: string

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from controllers.common import wraps as common_wraps
@@ -13,8 +13,11 @@ from controllers.console import console_ns
 from controllers.console import wraps as console_wraps
 from controllers.console.app import ops_trace as ops_trace_module
 from controllers.console.app import wraps as app_wraps
+from enums import DeploymentEdition
 from libs import login as login_lib
+from models import Tenant
 from models.account import Account, AccountStatus, TenantAccountRole
+from models.model import App, AppMode, IconType
 
 
 def _make_account(role: TenantAccountRole) -> Account:
@@ -22,25 +25,39 @@ def _make_account(role: TenantAccountRole) -> Account:
     account.id = "account-123"  # type: ignore[assignment]
     account.status = AccountStatus.ACTIVE
     account.role = role
-    account._current_tenant = SimpleNamespace(id="tenant-123")  # type: ignore[assignment]
+    tenant = Tenant(name="Test tenant")
+    tenant.id = "tenant-123"
+    account._current_tenant = tenant
     account._get_current_object = lambda: account  # type: ignore[attr-defined]
     return account
 
 
-def _make_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-123", tenant_id="tenant-123", status="normal", mode="chat")
+def _make_app() -> App:
+    return App(
+        id="app-123",
+        tenant_id="tenant-123",
+        name="Trace app",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=True,
+        max_active_requests=None,
+    )
 
 
 def _patch_console_guards(
     monkeypatch: pytest.MonkeyPatch,
     account: Account,
-    app_model: SimpleNamespace,
+    app_model: App,
     *,
     rbac_enabled: bool = False,
 ) -> None:
     monkeypatch.setattr(login_lib.dify_config, "LOGIN_DISABLED", True)
     monkeypatch.setattr(login_lib.dify_config, "RBAC_ENABLED", rbac_enabled)
-    monkeypatch.setattr(console_wraps.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(console_wraps.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(login_lib, "current_user", account)
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
@@ -137,11 +154,33 @@ def test_trace_config_mutations_require_rbac_permission(
     payload: dict[str, object] | None,
     service_method_name: str,
     service_result: object,
+    sqlite_session: Session,
 ) -> None:
     app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
     account = _make_account(TenantAccountRole.NORMAL)
     _patch_console_guards(monkeypatch, account, _make_app(), rbac_enabled=True)
-    monkeypatch.setattr(common_wraps.db, "session", SimpleNamespace(scalar=lambda _stmt: "other-account"))
+    owned_app = App()
+    owned_app.id = "app-123"
+    owned_app.tenant_id = "tenant-123"
+    owned_app.name = "Trace app"
+    owned_app.description = ""
+    owned_app.mode = AppMode.CHAT
+    owned_app.icon_type = IconType.EMOJI
+    owned_app.icon = "robot"
+    owned_app.icon_background = "#ffffff"
+    owned_app.enable_site = False
+    owned_app.enable_api = False
+    owned_app.api_rpm = 0
+    owned_app.api_rph = 0
+    owned_app.is_demo = False
+    owned_app.is_public = False
+    owned_app.is_universal = False
+    owned_app.max_active_requests = None
+    owned_app.maintainer = "other-account"
+    owned_app.use_icon_as_answer_icon = False
+    sqlite_session.add(owned_app)
+    sqlite_session.commit()
+    monkeypatch.setattr(common_wraps.db, "session", sqlite_session)
     monkeypatch.setattr(common_wraps.RBACService.CheckAccess, "check", MagicMock(return_value=False))
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(ops_trace_module.OpsService, service_method_name, service_mock)

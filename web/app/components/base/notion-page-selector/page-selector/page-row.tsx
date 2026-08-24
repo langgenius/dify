@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { NotionPageRow as NotionPageRowData, NotionPageSelectionMode } from './types'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Radio } from '@langgenius/dify-ui/radio'
+import { Radio } from '@langgenius/dify-ui/radio-group'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,7 +44,7 @@ const NotionPageRow = ({
   return (
     <div
       className={cn(
-        'group flex cursor-pointer items-center rounded-md pr-[2px] pl-2 hover:bg-state-base-hover',
+        'group flex cursor-pointer items-center rounded-md pr-0.5 pl-2 hover:bg-state-base-hover',
         isPreviewed && 'bg-state-base-hover',
       )}
       style={style}
@@ -87,7 +87,6 @@ const NotionPageRow = ({
       <div
         className="grow truncate text-[13px] leading-4 font-medium text-text-secondary"
         title={row.page.page_name}
-        data-testid={`notion-page-name-${pageId}`}
       >
         {row.page.page_name}
       </div>
@@ -102,7 +101,7 @@ const NotionPageRow = ({
       )}
       {searchValue && (
         <div
-          className="ml-1 max-w-[120px] shrink-0 truncate text-xs text-text-quaternary"
+          className="ml-1 max-w-30 shrink-0 truncate text-xs text-text-quaternary"
           title={breadcrumbs.join(' / ')}
         >
           {breadcrumbs.join(' / ')}

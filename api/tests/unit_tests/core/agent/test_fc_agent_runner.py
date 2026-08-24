@@ -1,9 +1,15 @@
 import json
+from collections.abc import Iterator
+from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
@@ -13,9 +19,13 @@ from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
+    PromptMessageContentType,
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from libs.datetime_utils import naive_utc_now
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.model import AppMode, Conversation, Message, StorageType, UploadFile
 
 # ==============================
 # Dummy Helper Classes
@@ -31,6 +41,35 @@ def build_usage(pt=1, ct=1, tt=2) -> LLMUsage:
     usage.completion_price = 0
     usage.total_price = 0
     return usage
+
+
+def _make_conversation(*, conversation_id: str = "conv1") -> Conversation:
+    return Conversation(
+        id=conversation_id,
+        app_id="app",
+        mode=AppMode.AGENT_CHAT,
+        name="Agent Conversation",
+        inputs={},
+        from_source=ConversationFromSource.API,
+    )
+
+
+def _make_message(*, message_id: str = "m1", conversation_id: str = "conv1") -> Message:
+    return Message(
+        id=message_id,
+        app_id="app",
+        conversation_id=conversation_id,
+        inputs={},
+        query="query",
+        message={},
+        answer="",
+        status=MessageStatus.NORMAL,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        created_at=naive_utc_now(),
+    )
 
 
 class DummyMessage:
@@ -69,7 +108,7 @@ class DummyResult:
 
 
 @pytest.fixture
-def runner(mocker: MockerFixture):
+def runner(mocker: MockerFixture, sqlite_engine: Engine) -> Iterator[FunctionCallAgentRunner]:
     # Completely bypass BaseAgentRunner __init__ to avoid DB / Flask context
     mocker.patch(
         "core.agent.base_agent_runner.BaseAgentRunner.__init__",
@@ -97,8 +136,8 @@ def runner(mocker: MockerFixture):
     model_instance.model = "test-model"
     model_instance.model_name = "test-model"
 
-    message = MagicMock(id="msg1")
-    conversation = MagicMock(id="conv1")
+    message = _make_message(message_id="msg1")
+    conversation = _make_conversation()
 
     runner = FunctionCallAgentRunner(
         tenant_id="tenant",
@@ -130,8 +169,9 @@ def runner(mocker: MockerFixture):
     runner.history_prompt_messages = []
     runner._current_thoughts = []
     runner.files = []
+    runner.vision_enabled = False
     runner.agent_callback = MagicMock()
-    runner.session = MagicMock()
+    runner.session = Session(sqlite_engine)
 
     runner._init_prompt_tools = MagicMock(return_value=({}, []))
     runner.create_agent_thought = MagicMock(return_value="thought1")
@@ -139,7 +179,10 @@ def runner(mocker: MockerFixture):
     runner.recalc_llm_max_tokens = MagicMock()
     runner.update_prompt_message_tool = MagicMock()
 
-    return runner
+    try:
+        yield runner
+    finally:
+        runner.session.close()
 
 
 # ==============================
@@ -284,6 +327,96 @@ class TestClearUserPromptImageMessages:
 
         assert result[0].content == "hello\n[image]\n[file]"
 
+    def test_keeps_knowledge_retrieval_image_message(self, runner: FunctionCallAgentRunner):
+        text = TextPromptMessageContent(data="query")
+        image = ImagePromptMessageContent(format="url", mime_type="image/png")
+        user_msg = UserPromptMessage(name="knowledge_retrieval", content=[image, text])
+
+        result = runner._clear_user_prompt_image_messages([user_msg])
+
+        assert result[0].content == [image, text]
+
+
+# ==============================
+# Dataset Tool Image Content
+# ==============================
+
+
+class TestBuildDatasetToolImageContents:
+    def test_returns_empty_when_vision_disabled(self, runner: FunctionCallAgentRunner):
+        tool = MagicMock()
+        tool.__class__.__name__ = "DatasetRetrieverTool"
+        response = "![image](http://localhost:5001/files/890985e9-c2f1-484e-bc7b-62010a337e6d/file-preview)"
+
+        assert runner._build_dataset_tool_image_contents(runner.session, response, tool) == []
+
+    def test_builds_image_contents_from_dataset_tool_preview_links(
+        self, runner: FunctionCallAgentRunner, mocker: MockerFixture
+    ):
+        from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
+
+        runner.vision_enabled = True
+        image_content = ImagePromptMessageContent(format="url", mime_type="image/png")
+        to_prompt_content = mocker.patch(
+            "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
+            return_value=image_content,
+        )
+        grant_access = mocker.patch("core.agent.fc_agent_runner.grant_upload_file_access")
+        sign_preview = mocker.patch(
+            "core.agent.fc_agent_runner.sign_upload_file_preview_url",
+            return_value="http://localhost:5001/files/file-id/file-preview?sign=1",
+        )
+        build_reference = mocker.patch("core.agent.fc_agent_runner.build_file_reference", return_value="file-ref")
+
+        upload_file = UploadFile(
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            storage_type=StorageType.LOCAL,
+            key="image_files/chart.png",
+            name="chart.png",
+            size=123,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="00000000-0000-0000-0000-000000000002",
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        upload_file.id = "890985e9-c2f1-484e-bc7b-62010a337e6d"
+        non_image_file = UploadFile(
+            tenant_id=upload_file.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="files/report.pdf",
+            name="report.pdf",
+            size=10,
+            extension="pdf",
+            mime_type="application/pdf",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=upload_file.created_by,
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        non_image_file.id = "11111111-1111-1111-1111-111111111111"
+        session = runner.session
+        session.add_all([upload_file, non_image_file])
+        session.commit()
+
+        response = (
+            "![image](http://localhost:5001/files/890985e9-c2f1-484e-bc7b-62010a337e6d/file-preview?sign=1)\n"
+            "duplicate ![image](http://localhost:5001/files/890985e9-c2f1-484e-bc7b-62010a337e6d/file-preview)\n"
+            "file ![file](http://localhost:5001/files/11111111-1111-1111-1111-111111111111/file-preview)"
+        )
+
+        tool = MagicMock(spec=DatasetRetrieverTool)
+        contents = runner._build_dataset_tool_image_contents(session, response, tool)
+
+        assert contents == [image_content]
+        assert contents[0].type == PromptMessageContentType.IMAGE
+        grant_access.assert_called_once()
+        assert list(grant_access.call_args.args[0]) == ["890985e9-c2f1-484e-bc7b-62010a337e6d"]
+        sign_preview.assert_called_once_with(upload_file.id, upload_file.extension)
+        build_reference.assert_called_once_with(record_id=str(upload_file.id))
+        to_prompt_content.assert_called_once()
+
 
 # ==============================
 # Run Method Tests
@@ -292,7 +425,7 @@ class TestClearUserPromptImageMessages:
 
 class TestRunMethod:
     def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
         dummy_message = DummyMessage(content="hello")
         result = DummyResult(message=dummy_message, usage=build_usage())
 
@@ -300,6 +433,8 @@ class TestRunMethod:
 
         outputs = list(runner.run(runner.session, message, "query"))
         assert len(outputs) == 1
+        assert "session" not in runner.create_agent_thought.call_args.kwargs
+        assert "session" not in runner.save_agent_thought.call_args.kwargs
         assert runner.model_instance.invoke_llm.call_args.kwargs["request_metadata"] == {"app_id": "app"}
         runner.queue_manager.publish.assert_called()
 
@@ -307,22 +442,39 @@ class TestRunMethod:
         assert any(call.args and call.args[0].__class__.__name__ == "QueueMessageEndEvent" for call in queue_calls)
 
     def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
         runner.stream_tool_call = True
+        events: list[str] = []
+        session = runner.session
+        conversation = _make_conversation()
+        message = _make_message(conversation_id=conversation.id)
+        session.add_all([conversation, message])
+        session.commit()
+
+        def record_commit(_session: Session) -> None:
+            events.append("commit")
+
+        def record_detach(_session: Session, instance: object) -> None:
+            if instance is message:
+                events.append("close")
+
+        event.listen(session, "after_commit", record_commit)
+        event.listen(session, "persistent_to_detached", record_detach)
 
         content = [TextPromptMessageContent(data="hi")]
         chunk = DummyChunk(message=DummyMessage(content=content), usage=build_usage())
 
         def generator():
+            events.append("first-chunk")
             yield chunk
 
         runner.model_instance.invoke_llm.return_value = generator()
 
-        outputs = list(runner.run(runner.session, message, "query"))
+        outputs = list(runner.run(session, message, "query"))
+        assert events == ["commit", "close", "first-chunk"]
         assert len(outputs) == 1
 
     def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
         runner.stream_tool_call = True
 
         tool_call = MagicMock()
@@ -345,7 +497,7 @@ class TestRunMethod:
         assert len(outputs) >= 1
 
     def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
         content = [TextPromptMessageContent(data="hi")]
         dummy_message = DummyMessage(content=content)
         result = DummyResult(message=dummy_message, usage=build_usage())
@@ -357,7 +509,7 @@ class TestRunMethod:
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
     def test_run_streaming_tool_call_inputs_type_error(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
-        message = MagicMock(id="m1")
+        message = _make_message()
         runner.stream_tool_call = True
 
         tool_call = MagicMock()
@@ -385,7 +537,7 @@ class TestRunMethod:
         assert len(outputs) == 1
 
     def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
-        message = MagicMock(id="m1")
+        message = _make_message()
 
         tool_call = MagicMock()
         tool_call.id = "1"
@@ -403,7 +555,7 @@ class TestRunMethod:
         assert len(outputs) >= 1
 
     def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
-        message = MagicMock(id="m1")
+        message = _make_message()
 
         tool_call = MagicMock()
         tool_call.id = "1"
@@ -440,7 +592,7 @@ class TestRunMethod:
     def test_run_max_iteration_error(self, runner: FunctionCallAgentRunner):
         runner.app_config.agent.max_iteration = 0
 
-        message = MagicMock(id="m1")
+        message = _make_message()
 
         tool_call = MagicMock()
         tool_call.id = "1"

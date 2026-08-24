@@ -2,9 +2,11 @@ import type { EmailConfig, FormInputItem } from '../../types'
 import type { Node, NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightSFill } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
 import { memo, useCallback, useMemo, useState } from 'react'
@@ -21,8 +23,8 @@ import {
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { getHumanInputFormDependencySelectors, isOutput } from '../../utils'
@@ -128,7 +130,10 @@ const EmailSenderModal = ({
   availableNodes = [],
 }: EmailSenderModalProps) => {
   const { t } = useTranslation()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const appDetail = useAppStore((state) => state.appDetail)
   const { mutateAsync: testEmailSender } = useTestEmailSender()
@@ -317,7 +322,7 @@ const EmailSenderModal = ({
             </div>
           )}
           <div className="mt-6 flex flex-row-reverse gap-2">
-            <Button variant="primary" className="w-[72px]" onClick={() => onOpenChange(false)}>
+            <Button variant="primary" className="w-18" onClick={() => onOpenChange(false)}>
               {t(($) => $['operation.ok'], { ns: 'common' })}
             </Button>
           </div>
@@ -329,7 +334,17 @@ const EmailSenderModal = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="space-y-1 pr-8">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.title`], { ns: 'workflow' })}
@@ -470,7 +485,7 @@ const EmailSenderModal = ({
           >
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], { ns: 'workflow' })}
           </Button>
-          <Button className="w-[72px]" onClick={() => onOpenChange(false)}>
+          <Button className="w-18" onClick={() => onOpenChange(false)}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
           </Button>
         </div>

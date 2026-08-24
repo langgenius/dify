@@ -49,6 +49,8 @@ type FormInputState = {
   isBoolean: boolean
   isCheckbox: boolean
   isConstant: boolean
+  isDate: boolean
+  isDateRange: boolean
   isDynamicSelect: boolean
   isFile: boolean
   isFiles: boolean
@@ -92,6 +94,8 @@ export const getFormInputState = (
     _type,
   } = schema
 
+  const isDateRange = type === FormTypeEnum.dateRange
+  const isDate = type === FormTypeEnum.date
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
@@ -105,7 +109,7 @@ export const getFormInputState = (
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
+  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect || isDate
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
   const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
@@ -117,6 +121,8 @@ export const getFormInputState = (
     isBoolean,
     isCheckbox,
     isConstant,
+    isDate,
+    isDateRange,
     isDynamicSelect,
     isFile,
     isFiles,
@@ -140,6 +146,7 @@ export const getTargetVarType = (state: FormInputState) => {
   if (state.isString) return VarType.string
   if (state.isNumber) return VarType.number
   if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
+  if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
   if (state.isSelect) return VarType.string
   if (state.isBoolean) return VarType.boolean
   if (state.isObject) return VarType.object
@@ -149,7 +156,9 @@ export const getTargetVarType = (state: FormInputState) => {
 
 export const getFilterVar = (state: FormInputState) => {
   if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
-  if (state.isString)
+  if (state.isSelect && state.isMultipleSelect)
+    return (varPayload: Var) => [VarType.array, VarType.arrayString].includes(varPayload.type)
+  if (state.isString || state.isDate)
     return (varPayload: Var) =>
       [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
   if (state.isFile)
@@ -172,7 +181,9 @@ export const getVarKindType = (state: FormInputState) => {
     state.isBoolean ||
     state.isNumber ||
     state.isArray ||
-    state.isObject
+    state.isObject ||
+    state.isDate ||
+    state.isDateRange
   )
     return VarKindType.constant
   if (state.isString) return VarKindType.mixed

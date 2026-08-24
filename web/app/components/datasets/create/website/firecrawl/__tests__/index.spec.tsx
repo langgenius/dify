@@ -1,7 +1,7 @@
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Component Import (after mocks)
 import FireCrawl from '../index'
 
@@ -10,9 +10,9 @@ import FireCrawl from '../index'
 // Mock API service
 const mockCreateFirecrawlTask = vi.fn()
 const mockCheckFirecrawlTaskStatus = vi.fn()
-const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+const { mockRouterPush, mockSetSettingsDestination } = vi.hoisted(() => ({
   mockRouterPush: vi.fn(),
-  mockSetShowAccountSettingModal: vi.fn(),
+  mockSetSettingsDestination: vi.fn(),
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -26,12 +26,10 @@ vi.mock('@/service/datasets', () => ({
   checkFirecrawlTaskStatus: (...args: unknown[]) => mockCheckFirecrawlTaskStatus(...args),
 }))
 
-// Mock modal context
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: mockSetShowAccountSettingModal,
-  }),
-}))
+vi.mock('nuqs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('nuqs')>()
+  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
+})
 
 // Mock sleep utility to speed up tests
 vi.mock('@/utils', () => ({
@@ -108,12 +106,6 @@ describe('FireCrawl', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<FireCrawl {...defaultProps} />)
-
-      expect(screen.getByText(/firecrawlTitle/i))!.toBeInTheDocument()
-    })
-
     it('should render Header component with correct props', () => {
       render(<FireCrawl {...defaultProps} />)
 
@@ -184,7 +176,7 @@ describe('FireCrawl', () => {
       const configButton = screen.getByText(/configureFirecrawl/i)
       await user.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
       expect(mockRouterPush).not.toHaveBeenCalled()
     })
   })
@@ -736,16 +728,6 @@ describe('FireCrawl', () => {
         // Total should be capped to limit (5)
         expect(mockOnCheckedCrawlResultChange).toHaveBeenCalledWith([])
       })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<FireCrawl {...defaultProps} />)
-
-      rerender(<FireCrawl {...defaultProps} />)
-
-      expect(screen.getByText(/firecrawlTitle/i))!.toBeInTheDocument()
     })
   })
 })

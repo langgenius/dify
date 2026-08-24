@@ -1,17 +1,17 @@
 'use client'
-
 import type { AgentAppCreatePayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -19,15 +19,21 @@ import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
+import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
-export function CreateAgentDialog() {
+type CreateAgentDialogProps = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps = {}) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -46,7 +52,8 @@ export function CreateAgentDialog() {
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
+    if (open === undefined) setUncontrolledOpen(nextOpen)
+    onOpenChange?.(nextOpen)
     if (!nextOpen) resetForm()
   }
 
@@ -70,6 +77,10 @@ export function CreateAgentDialog() {
       },
       {
         onSuccess: (createdAgent) => {
+          trackCreateApp({
+            source: 'studio_blank',
+            appMode: 'agent-v2',
+          })
           toast.success(t(($) => $['roster.createSuccess']))
           handleOpenChange(false)
           router.push(getAgentDetailPath(createdAgent.id, 'configure'))
@@ -80,13 +91,29 @@ export function CreateAgentDialog() {
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
-        <DialogTrigger render={<Button variant="primary" className="h-8 gap-0.5 px-3" />}>
-          <span aria-hidden className="i-ri-add-line size-4" />
-          <span className="px-0.5 system-sm-medium">{t(($) => $['roster.createAgent'])}</span>
-        </DialogTrigger>
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[520px] flex-col overflow-hidden! p-0!">
-          <DialogCloseButton />
+      <Dialog
+        open={open ?? uncontrolledOpen}
+        onOpenChange={handleOpenChange}
+        disablePointerDismissal
+      >
+        {open === undefined && (
+          <DialogTrigger render={<Button variant="primary" className="h-8" />}>
+            <span aria-hidden className="i-ri-add-line size-4" />
+            <span className="system-sm-medium">{t(($) => $['roster.createAgent'])}</span>
+          </DialogTrigger>
+        )}
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['roster.createDialog.title'])}

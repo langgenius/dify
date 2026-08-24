@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { BuiltInMetadataItem, MetadataItemInBatchEdit, MetadataItemWithEdit } from '../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -128,8 +129,18 @@ const EditMetadataBatchModal: FC<Props> = ({
         if (!open) onHide()
       }}
     >
-      <DialogContent className="w-full max-w-[640px]! overflow-hidden! border-none text-left align-middle">
-        <DialogCloseButton />
+      <DialogContent className="w-full max-w-160! overflow-hidden! border-none text-left align-middle">
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}.editMetadata`], { ns: 'dataset' })}
         </DialogTitle>
@@ -137,7 +148,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         <div className="mt-1 system-xs-medium text-text-accent">
           {t(($) => $[`${i18nPrefix}.editDocumentsNum`], { ns: 'dataset', num: documentNum })}
         </div>
-        <div className="max-h-[305px] overflow-x-hidden overflow-y-auto">
+        <div className="max-h-76.25 overflow-x-hidden overflow-y-auto">
           <div className="mt-4 space-y-2">
             {templeList.map((item) => (
               <EditMetadataBatchItem
@@ -149,7 +160,7 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             ))}
           </div>
-          <div className="mt-4 pl-[18px]">
+          <div className="mt-4 pl-4.5">
             <div className="flex items-center">
               <div className="mr-2 shrink-0 system-xs-medium-uppercase text-text-tertiary">
                 {t(($) => $['metadata.createMetadata.title'], { ns: 'dataset' })}

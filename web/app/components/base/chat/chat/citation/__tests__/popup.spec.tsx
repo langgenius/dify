@@ -1,11 +1,9 @@
 import type { Resources } from '../index'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useDocumentDownload } from '@/service/knowledge/use-document'
 import { downloadUrl } from '@/utils/download'
 import Popup from '../popup'
-
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
 
 vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentDownload: vi.fn(),
@@ -65,8 +63,12 @@ const makeData = (overrides: Partial<Resources> = {}): Resources => ({
 const openPopup = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByTestId('popup-trigger'))
 }
-const getDownloadButton = (name = 'report.pdf') => screen.getByRole('button', { name })
-const queryDownloadButton = (name = 'report.pdf') => screen.queryByRole('button', { name })
+const getDownloadButton = (name = 'report.pdf') =>
+  within(screen.getByTestId('popup-content')).getByRole('button', { name })
+const queryDownloadButton = (name = 'report.pdf') =>
+  screen.queryByTestId('popup-content')
+    ? within(screen.getByTestId('popup-content')).queryByRole('button', { name })
+    : null
 
 describe('Popup', () => {
   beforeEach(() => {
@@ -317,7 +319,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.queryByTestId('popup-dataset-link')).not.toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /linkToDataset/i })).not.toBeInTheDocument()
     })
 
     it('should not render hit info section when showHitInfo is false', async () => {
@@ -357,7 +359,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-dataset-link'))!.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toBeInTheDocument()
     })
 
     it('should render the dataset link with correct href', async () => {
@@ -366,7 +368,7 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-dataset-link'))!.toHaveAttribute(
+      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toHaveAttribute(
         'href',
         `/datasets/${dataWithScore.sources[0]!.dataset_id}/documents/${dataWithScore.sources[0]!.document_id}`,
       )
@@ -378,7 +380,9 @@ describe('Popup', () => {
 
       await openPopup(user)
 
-      expect(screen.getByTestId('popup-dataset-link'))!.toHaveTextContent(/linkToDataset/i)
+      expect(screen.getByRole('link', { name: /linkToDataset/i }))!.toHaveTextContent(
+        /linkToDataset/i,
+      )
     })
 
     it('should render hit info section when showHitInfo is true', async () => {
@@ -618,14 +622,6 @@ describe('Popup', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing with minimum required props', () => {
-      expect(() => render(<Popup data={makeData()} />)).not.toThrow()
-    })
-
-    it('should render without crashing with an empty sources array', () => {
-      expect(() => render(<Popup data={makeData({ sources: [] })} />)).not.toThrow()
-    })
-
     it('should render correctly when source has no score (undefined)', async () => {
       const user = userEvent.setup()
       render(

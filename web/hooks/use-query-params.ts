@@ -13,19 +13,7 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import type { SettingsTab } from '@/app/components/header/account-setting/constants'
-import {
-  createParser,
-  parseAsStringEnum,
-  parseAsStringLiteral,
-  useQueryState,
-  useQueryStates,
-} from 'nuqs'
-import { useCallback } from 'react'
-import {
-  ACCOUNT_SETTING_MODAL_ACTION,
-  SETTINGS_TAB_VALUES,
-} from '@/app/components/header/account-setting/constants'
+import { createParser, useQueryState, useQueryStates } from 'nuqs'
 
 /**
  * Modal State Query Parameters
@@ -51,51 +39,6 @@ const parseAsPricingModal = createParser<boolean>({
  */
 export function usePricingModal() {
   return useQueryState(PRICING_MODAL_QUERY_PARAM, parseAsPricingModal)
-}
-
-const settingsTabValues = [...SETTINGS_TAB_VALUES] as SettingsTab[]
-const parseAsAccountSettingAction = parseAsStringLiteral([ACCOUNT_SETTING_MODAL_ACTION] as const)
-const parseAsSettingsTab = parseAsStringEnum<SettingsTab>(settingsTabValues)
-
-/**
- * Hook to manage account setting modal state via URL
- * @returns [state, setState] - Object with isOpen + payload (tab) and setter
- *
- * @example
- * const [accountModalState, setAccountModalState] = useAccountSettingModal()
- * setAccountModalState({ payload: 'billing' }) // Sets ?action=showSettings&tab=billing
- * setAccountModalState(null) // Removes both params
- */
-export function useAccountSettingModal() {
-  const [accountState, setAccountState] = useQueryStates(
-    {
-      action: parseAsAccountSettingAction,
-      tab: parseAsSettingsTab,
-    },
-    {
-      history: 'replace',
-    },
-  )
-
-  const setState = useCallback(
-    (state: { payload: SettingsTab } | null) => {
-      if (!state) {
-        setAccountState({ action: null, tab: null }, { history: 'replace' })
-        return
-      }
-      const shouldPush = accountState.action !== ACCOUNT_SETTING_MODAL_ACTION
-      setAccountState(
-        { action: ACCOUNT_SETTING_MODAL_ACTION, tab: state.payload },
-        { history: shouldPush ? 'push' : 'replace' },
-      )
-    },
-    [accountState.action, setAccountState],
-  )
-
-  const isOpen = accountState.action === ACCOUNT_SETTING_MODAL_ACTION
-  const currentTab = isOpen ? accountState.tab : null
-
-  return [{ isOpen, payload: currentTab }, setState] as const
 }
 
 /**

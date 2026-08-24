@@ -1,21 +1,17 @@
-import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import * as React from 'react'
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
+import { VERSION_HISTORY_HOTKEY } from '../hotkeys'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
-
-const VERSION_HISTORY_HOTKEY = 'Mod+Shift+H'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown
 }
 
-const PopupContent = React.memo(() => {
+function PopupContent() {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-x-1">
@@ -25,20 +21,17 @@ const PopupContent = React.memo(() => {
       <ShortcutKbd hotkey={VERSION_HISTORY_HOTKEY} bgColor="gray" textColor="secondary" />
     </div>
   )
-})
+}
 
-PopupContent.displayName = 'PopupContent'
-
-const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({ onClick }) => {
+export function VersionHistoryButton({ onClick }: VersionHistoryButtonProps) {
   const { theme } = useTheme()
-  const handleViewVersionHistory = useCallback(async () => {
-    await onClick?.()
-  }, [onClick])
+  const { t } = useTranslation()
+  const label = t(($) => $['common.versionHistory'], { ns: 'workflow' })
 
   useHotkey(
     VERSION_HISTORY_HOTKEY,
     () => {
-      void handleViewVersionHistory()
+      void onClick()
     },
     {
       ignoreInputs: true,
@@ -49,15 +42,21 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({ onClick }) => {
     <Tooltip>
       <TooltipTrigger
         render={
-          <Button
+          <IconButton
+            aria-label={label}
+            variant="secondary"
+            size="lg"
             className={cn(
-              'rounded-lg border border-transparent p-2',
-              theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-xs',
+              'inset-ring-1 inset-ring-transparent',
+              theme === 'dark' && 'bg-white/10 inset-ring-black/5 backdrop-blur-xs',
             )}
-            onClick={handleViewVersionHistory}
+            onClick={onClick}
           >
-            <span className="i-ri-history-line size-4 text-components-button-secondary-text" />
-          </Button>
+            <span
+              aria-hidden
+              className="i-ri-history-line size-4 text-components-button-secondary-text"
+            />
+          </IconButton>
         }
       />
       <TooltipContent className="rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -66,5 +65,3 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({ onClick }) => {
     </Tooltip>
   )
 }
-
-export default VersionHistoryButton

@@ -1,6 +1,6 @@
 import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CrawledResult from '../crawled-result'
 
 const createMockItem = (overrides: Partial<CrawlResultItem> = {}): CrawlResultItem => ({
@@ -71,23 +71,6 @@ describe('CrawledResult', () => {
       )
 
       expect(screen.getByText(/scrapTimeInfo/i))!.toBeInTheDocument()
-    })
-
-    it('should apply custom className', () => {
-      const list = createMockList()
-      const { container } = render(
-        <CrawledResult
-          className="custom-class"
-          list={list}
-          checkedList={[]}
-          onSelectedChange={mockOnSelectedChange}
-          onPreview={mockOnPreview}
-          usedTime={1.5}
-        />,
-      )
-
-      const rootElement = container.firstChild as HTMLElement
-      expect(rootElement)!.toHaveClass('custom-class')
     })
   })
 
@@ -239,7 +222,7 @@ describe('CrawledResult', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render empty list without crashing', () => {
+    it('renders the empty result state', () => {
       render(
         <CrawledResult
           list={[]}

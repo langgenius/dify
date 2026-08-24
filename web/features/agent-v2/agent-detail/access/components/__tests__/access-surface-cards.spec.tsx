@@ -1,8 +1,11 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -15,6 +18,14 @@ const mocks = vi.hoisted(() => ({
   apiEnableMutation: vi.fn(),
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
+  accessControlRender: vi.fn(),
+}))
+
+vi.mock('@/app/components/app/app-access-control', () => ({
+  default: ({ app }: { app: { id: string; access_mode: string } }) => {
+    mocks.accessControlRender(app)
+    return <div role="dialog" aria-label="access-control" />
+  },
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -34,19 +45,9 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: () => ({
-    buildTheme: vi.fn(),
-    theme: {
-      primaryColor: '#1C64F2',
-    },
-  }),
-}))
-
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: ['app.acl.edit'],
@@ -55,16 +56,13 @@ vi.mock('@/context/account-state', async (importOriginal) => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'user-1' },
     currentWorkspace: { id: 'workspace-1' },
     workspacePermissionKeys: ['app.acl.edit'],
@@ -73,76 +71,28 @@ vi.mock('@/context/workspace-state', async (importOriginal) => {
       current_version: '',
       latest_version: '',
       version: '',
-      release_date: '',
       release_notes: '',
-      can_auto_update: false,
     },
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'user-1' },
-    currentWorkspace: { id: 'workspace-1' },
-    workspacePermissionKeys: ['app.acl.edit'],
-    langGeniusVersionInfo: {
-      current_env: 'PRODUCTION',
-      current_version: '',
-      latest_version: '',
-      version: '',
-      release_date: '',
-      release_notes: '',
-      can_auto_update: false,
-    },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     apps: {
       byAppId: {
         siteEnable: {
@@ -228,6 +178,7 @@ vi.mock('@/service/client', () => ({
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
+    access_ready: true,
     enable_api: true,
     enable_site: true,
     icon_url: null,
@@ -235,6 +186,7 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     mode: 'agent',
     name: 'Support Agent',
     app_id: 'app-1',
+    backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
     site: {
@@ -254,16 +206,19 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
   }
 }
 
-function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = createTestQueryClient()
+function renderWithQueryClient(
+  ui: React.ReactElement,
+  { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
+) {
+  const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
   render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 
   return queryClient
 }
 
-function createTestQueryClient() {
-  return new QueryClient({
+function createConsoleQueryClient(webAppAuthEnabled = true) {
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -273,6 +228,13 @@ function createTestQueryClient() {
       },
     },
   })
+  seedSystemFeatures(queryClient, {
+    webapp_auth: {
+      enabled: webAppAuthEnabled,
+    },
+  })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  return queryClient
 }
 
 describe('Agent access surface cards', () => {
@@ -379,7 +341,7 @@ describe('Agent access surface cards', () => {
         name: 'appOverview.overview.appInfo.embedded.title',
       })
 
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
         expect(
@@ -533,6 +495,23 @@ describe('Agent access surface cards', () => {
       })
     })
 
+    it('should not show the multi-environment settings notice', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(dialog).queryByRole('status')).not.toBeInTheDocument()
+    })
+
     it('should keep embedded disabled until the backing app id and web app token are available', () => {
       renderWithQueryClient(
         <WebAppAccessCard
@@ -561,7 +540,7 @@ describe('Agent access surface cards', () => {
       const agentWithoutSite = createAgent({
         site: null,
       })
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
           <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
@@ -596,17 +575,35 @@ describe('Agent access surface cards', () => {
         screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
       ).toBeDisabled()
     })
+
+    it('should keep the Web App switch disabled until the Agent is published', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_ready: false, enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+    })
   })
 
   describe('Service API access', () => {
     it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        access_ready: true,
         api_key_count: 2,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
       })
       mocks.apiEnableMutation.mockResolvedValueOnce({
+        access_ready: true,
         api_key_count: 2,
         enabled: false,
         service_api_base_url: 'https://api.example.test/v1',
@@ -638,6 +635,7 @@ describe('Agent access surface cards', () => {
     it('should manage API keys with the Agent API key endpoints', async () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValue({
+        access_ready: true,
         api_key_count: 1,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
@@ -698,6 +696,119 @@ describe('Agent access surface cards', () => {
             api_key_id: 'key-1',
           },
         })
+      })
+    })
+
+    it('should disable the Service API switch and key action until the Agent is published', async () => {
+      mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        access_ready: false,
+        api_key_count: 0,
+        enabled: false,
+        service_api_base_url: 'https://api.example.test/v1',
+      })
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      expect(
+        await screen.findByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByRole('button', {
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+        }),
+      ).toBeDisabled()
+    })
+  })
+
+  describe('Web app access control', () => {
+    const accessControlAgent = () =>
+      createAgent({
+        access_mode: 'private',
+        maintainer: 'user-1',
+        permission_keys: ['app.acl.release_and_version'],
+      })
+
+    const accessControlButtonName = 'agentV2.agentDetail.access.webApp.actions.accessControl'
+
+    it('should render the access control button when webapp auth is enabled and user can manage', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      expect(screen.getByRole('button', { name: accessControlButtonName })).toBeInTheDocument()
+    })
+
+    it('should hide the access control button when webapp auth is disabled', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+        { webAppAuthEnabled: false },
+      )
+
+      expect(
+        screen.queryByRole('button', { name: accessControlButtonName }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the access control button when the user cannot manage access control', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: 'private', permission_keys: [] })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(
+        screen.queryByRole('button', { name: accessControlButtonName }),
+      ).not.toBeInTheDocument()
+    })
+
+    it.each([null, 'future-access-mode'])(
+      'should hide the access control button when the access mode is %s',
+      (accessMode) => {
+        renderWithQueryClient(
+          <WebAppAccessCard
+            agent={createAgent({
+              access_mode: accessMode,
+              maintainer: 'user-1',
+              permission_keys: ['app.acl.release_and_version'],
+            })}
+            agentId="agent-1"
+            isLoading={false}
+          />,
+        )
+
+        expect(
+          screen.queryByRole('button', { name: accessControlButtonName }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it('should open the access control dialog wired with the backing app id', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: 'private',
+            app_id: 'source-app-1',
+            backing_app_id: 'backing-app-1',
+            maintainer: 'user-1',
+            permission_keys: ['app.acl.release_and_version'],
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: accessControlButtonName }))
+
+      expect(screen.getByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
+      expect(mocks.accessControlRender).toHaveBeenCalledWith({
+        id: 'backing-app-1',
+        access_mode: 'private',
       })
     })
   })

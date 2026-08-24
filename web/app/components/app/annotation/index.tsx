@@ -5,6 +5,7 @@ import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -13,7 +14,6 @@ import { useDebounce } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import Loading from '@/app/components/base/loading'
@@ -202,9 +202,17 @@ const Annotation: FC<Props> = (props) => {
                   {annotationConfig?.enabled && (
                     <div className="flex items-center pr-1 pl-1.5">
                       <div className="mr-1 h-3.5 w-px shrink-0 bg-divider-subtle"></div>
-                      <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className="size-4 text-text-tertiary" />
-                      </ActionButton>
+                      <IconButton
+                        aria-label={t(($) => $['initSetup.configTitle'], {
+                          ns: 'appAnnotation',
+                        })}
+                        onClick={() => setIsShowEdit(true)}
+                      >
+                        <RiEqualizer2Line
+                          aria-hidden="true"
+                          className="size-4 text-text-tertiary"
+                        />
+                      </IconButton>
                     </div>
                   )}
                 </div>

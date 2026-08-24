@@ -10,9 +10,14 @@ vi.mock('reactflow', () => ({
   useStoreApi: () => mockUseStoreApi(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => mockUseNodeDataUpdate(),
-}))
+vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
+
+  return {
+    ...actual,
+    useNodeDataUpdate: () => mockUseNodeDataUpdate(),
+  }
+})
 
 const createNode = (
   overrides: Partial<DataSourceNodeType> = {},

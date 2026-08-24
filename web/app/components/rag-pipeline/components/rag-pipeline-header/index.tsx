@@ -4,7 +4,7 @@ import Header from '@/app/components/workflow/header'
 import { useStore } from '@/app/components/workflow/store'
 import InputFieldButton from './input-field-button'
 import Publisher from './publisher'
-import RunMode from './run-mode'
+import { RunMode } from './run-mode'
 
 const RagPipelineHeader = () => {
   const pipelineId = useStore((s) => s.pipelineId)

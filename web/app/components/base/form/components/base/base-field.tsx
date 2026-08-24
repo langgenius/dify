@@ -3,7 +3,7 @@ import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -277,7 +277,7 @@ const BaseField = ({
           )}
           {formItemType === FormTypeEnum.select &&
             (multiple ? (
-              <Select
+              <Select<string, true>
                 multiple
                 items={memorizedOptions}
                 value={Array.isArray(value) ? value : []}
@@ -289,9 +289,9 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={translatedPlaceholder}>
-                    {(selectedValue: string[]) =>
-                      selectedValue.length
+                  <SelectValue<string, true> placeholder={translatedPlaceholder}>
+                    {(selectedValue) =>
+                      selectedValue?.length
                         ? t(($) => $['dynamicSelect.selected'], {
                             ns: 'common',
                             count: selectedValue.length,
@@ -300,7 +300,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
+                <SelectContent className="max-h-[320px] bg-components-panel-bg-blur">
                   {memorizedOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <SelectItemText>{option.label}</SelectItemText>
@@ -310,7 +310,7 @@ const BaseField = ({
                 </SelectContent>
               </Select>
             ) : (
-              <Select
+              <Select<string>
                 items={memorizedOptions}
                 value={getSingleSelectValue(value, memorizedOptions)}
                 disabled={disabled}
@@ -324,13 +324,13 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={translatedPlaceholder}>
+                  <SelectValue<string> placeholder={translatedPlaceholder}>
                     {(nextValue) =>
                       getSingleSelectLabel(nextValue, memorizedOptions, translatedPlaceholder)
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
+                <SelectContent className="max-h-[320px] bg-components-panel-bg-blur">
                   {memorizedOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <SelectItemText>{option.label}</SelectItemText>
@@ -352,7 +352,7 @@ const BaseField = ({
           )}
           {formItemType === FormTypeEnum.dynamicSelect &&
             (multiple ? (
-              <Select
+              <Select<string, true>
                 multiple
                 items={dynamicOptions}
                 value={Array.isArray(value) ? value : []}
@@ -364,9 +364,9 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={dynamicPlaceholder}>
-                    {(selectedValue: string[]) =>
-                      selectedValue.length
+                  <SelectValue<string, true> placeholder={dynamicPlaceholder}>
+                    {(selectedValue) =>
+                      selectedValue?.length
                         ? t(($) => $['dynamicSelect.selected'], {
                             ns: 'common',
                             count: selectedValue.length,
@@ -375,11 +375,11 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="bg-components-panel-bg-blur">
+                <SelectContent className="bg-components-panel-bg-blur">
                   {dynamicNoticeTitle && (
                     <div
                       className={cn(
-                        'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                        'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                         dynamicNoticeClassName,
                       )}
                     >
@@ -395,7 +395,7 @@ const BaseField = ({
                 </SelectContent>
               </Select>
             ) : (
-              <Select
+              <Select<string>
                 items={dynamicOptions}
                 value={getSingleSelectValue(value, dynamicOptions)}
                 disabled={disabled || isDynamicOptionsLoading}
@@ -409,17 +409,17 @@ const BaseField = ({
                   aria-label={translatedLabel || field.name}
                   className="px-2"
                 >
-                  <SelectValue placeholder={dynamicPlaceholder}>
+                  <SelectValue<string> placeholder={dynamicPlaceholder}>
                     {(nextValue) =>
                       getSingleSelectLabel(nextValue, dynamicOptions, dynamicPlaceholder)
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="bg-components-panel-bg-blur">
+                <SelectContent className="bg-components-panel-bg-blur">
                   {dynamicNoticeTitle && (
                     <div
                       className={cn(
-                        'flex h-[22px] items-center px-3 system-xs-medium-uppercase text-text-tertiary',
+                        'flex h-5.5 items-center px-3 system-xs-medium-uppercase text-text-tertiary',
                         dynamicNoticeClassName,
                       )}
                     >
@@ -507,7 +507,7 @@ const BaseField = ({
             ) && (
               <div
                 className={cn(
-                  'mt-1 px-0 py-[2px] system-xs-regular',
+                  'mt-1 px-0 py-0.5 system-xs-regular',
                   VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
                 )}
               >

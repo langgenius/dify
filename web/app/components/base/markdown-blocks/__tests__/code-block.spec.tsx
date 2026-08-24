@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
-import CodeBlock from '../code-block'
+import { CodeBlock } from '../code-block'
 
 const { mockHighlightCode } = vi.hoisted(() => ({
   mockHighlightCode: vi.fn(),
@@ -203,12 +203,6 @@ describe('CodeBlock', () => {
       const code = container.querySelector('code')
       expect(code).toBeTruthy()
       expect(code?.textContent).toBe('const a=1;')
-    })
-
-    it('should render code element when className does not include language prefix', () => {
-      const { container } = render(<CodeBlock className="plain">abc</CodeBlock>)
-
-      expect(container.querySelector('code')?.textContent).toBe('abc')
     })
 
     it('should render code element when className is not provided', () => {

@@ -17,7 +17,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.conversation_fields import ResultResponse
+from fields.conversation_fields import MessageResponseSource, ResultResponse
 from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from models.enums import FeedbackRating
 from models.model import App, AppMode, EndUser
@@ -111,11 +111,15 @@ class MessageListApi(Resource):
         first_id = query_args.first_id or None
 
         try:
+            session = db.session()
             pagination = MessageService.pagination_by_first_id(
-                app_model, end_user, conversation_id, first_id, query_args.limit, session=db.session()
+                app_model, end_user, conversation_id, first_id, query_args.limit, session=session
             )
             adapter = TypeAdapter(MessageListItem)
-            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+            items = [
+                adapter.validate_python(MessageResponseSource(message, session=session), from_attributes=True)
+                for message in pagination.data
+            ]
             return MessageInfiniteScrollPagination(
                 limit=pagination.limit, has_more=pagination.has_more, data=items
             ).model_dump(mode="json")

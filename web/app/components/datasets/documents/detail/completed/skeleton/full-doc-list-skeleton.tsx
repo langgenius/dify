@@ -4,7 +4,7 @@ const Slice = React.memo(() => {
   return (
     <div className="flex flex-col gap-y-1">
       <div className="flex h-5 w-full items-center bg-state-base-hover">
-        <span className="h-5 w-[30px] bg-state-base-hover-alt" />
+        <span className="h-5 w-7.5 bg-state-base-hover-alt" />
       </div>
       <div className="h-5 w-2/3 bg-state-base-hover" />
     </div>

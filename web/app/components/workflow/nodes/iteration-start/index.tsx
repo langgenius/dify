@@ -33,7 +33,7 @@ export const IterationStartNodeDumb = () => {
   const { t } = useTranslation()
 
   return (
-    <div className="nodrag relative top-[21px] left-[17px] z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
+    <div className="nodrag relative top-5.25 left-4.25 z-11 flex h-11 w-11 items-center justify-center rounded-2xl border border-workflow-block-border bg-workflow-block-bg">
       <Tooltip>
         <TooltipTrigger
           aria-label={t(($) => $['blocks.iteration-start'], { ns: 'workflow' })}

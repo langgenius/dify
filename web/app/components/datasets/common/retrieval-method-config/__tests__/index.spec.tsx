@@ -1,22 +1,17 @@
 import type { RetrievalConfig } from '@/types/app'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { DEFAULT_WEIGHTED_SCORE, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import { consoleQuery } from '@/service/client'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from '../index'
 
-// Mock provider context with controllable supportRetrievalMethods
-let mockSupportRetrievalMethods: RETRIEVE_METHOD[] = [
+let mockRetrievalMethods: string[] = [
   RETRIEVE_METHOD.semantic,
   RETRIEVE_METHOD.fullText,
   RETRIEVE_METHOD.hybrid,
 ]
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    supportRetrievalMethods: mockSupportRetrievalMethods,
-  }),
-}))
 
 // Mock model hooks with controllable return values
 let mockRerankDefaultModel: { provider: { provider: string }; model: string } | undefined = {
@@ -72,6 +67,14 @@ const createMockRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Re
   ...overrides,
 })
 
+const render = (ui: React.ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryOptions().queryKey, {
+    retrieval_method: mockRetrievalMethods,
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
+
 // Helper to render component with default props
 const renderComponent = (
   props: Partial<React.ComponentProps<typeof RetrievalMethodConfig>> = {},
@@ -87,7 +90,7 @@ describe('RetrievalMethodConfig', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset mock values to defaults
-    mockSupportRetrievalMethods = [
+    mockRetrievalMethods = [
       RETRIEVE_METHOD.semantic,
       RETRIEVE_METHOD.fullText,
       RETRIEVE_METHOD.hybrid,
@@ -101,12 +104,6 @@ describe('RetrievalMethodConfig', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      renderComponent()
-
-      expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
-    })
-
     it('should render all three retrieval methods when all are supported', () => {
       renderComponent()
 
@@ -124,7 +121,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should only render semantic search when only semantic is supported', () => {
-      mockSupportRetrievalMethods = [RETRIEVE_METHOD.semantic]
+      mockRetrievalMethods = [RETRIEVE_METHOD.semantic]
       renderComponent()
 
       expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
@@ -133,7 +130,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should only render fullText search when only fullText is supported', () => {
-      mockSupportRetrievalMethods = [RETRIEVE_METHOD.fullText]
+      mockRetrievalMethods = [RETRIEVE_METHOD.fullText]
       renderComponent()
 
       expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()
@@ -142,7 +139,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should only render hybrid search when only hybrid is supported', () => {
-      mockSupportRetrievalMethods = [RETRIEVE_METHOD.hybrid]
+      mockRetrievalMethods = [RETRIEVE_METHOD.hybrid]
       renderComponent()
 
       expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()
@@ -151,7 +148,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should render nothing when no retrieval methods are supported', () => {
-      mockSupportRetrievalMethods = []
+      mockRetrievalMethods = []
       const { container } = renderComponent()
 
       // Only the wrapper div should exist
@@ -624,13 +621,6 @@ describe('RetrievalMethodConfig', () => {
 
   // Tests for component memoization
   describe('Component Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      // Verify the component is wrapped with React.memo by checking its displayName or type
-      expect(RetrievalMethodConfig).toBeDefined()
-      // React.memo components have a $$typeof property
-      expect((RetrievalMethodConfig as unknown as { $$typeof: symbol }).$$typeof).toBeDefined()
-    })
-
     it('should not re-render when props are the same', () => {
       const onChange = vi.fn()
       const value = createMockRetrievalConfig()
@@ -660,7 +650,6 @@ describe('RetrievalMethodConfig', () => {
         onChange,
       })
 
-      // Should not crash
       expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     })
 
@@ -777,15 +766,15 @@ describe('RetrievalMethodConfig', () => {
       expect(onChange).toHaveBeenCalledTimes(3)
     })
 
-    it('should handle empty supportRetrievalMethods array', () => {
-      mockSupportRetrievalMethods = []
+    it('should ignore unknown retrieval methods from the API', () => {
+      mockRetrievalMethods = ['unknown_search']
       const { container } = renderComponent()
 
       expect(container.querySelector('[class*="flex-col"]')?.childNodes.length).toBe(0)
     })
 
-    it('should handle partial supportRetrievalMethods', () => {
-      mockSupportRetrievalMethods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.hybrid]
+    it('should handle partial retrieval methods', () => {
+      mockRetrievalMethods = [RETRIEVE_METHOD.semantic, RETRIEVE_METHOD.hybrid]
       renderComponent()
 
       expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
@@ -826,14 +815,6 @@ describe('RetrievalMethodConfig', () => {
 
   // Tests for all prop variations
   describe('Prop Variations', () => {
-    it('should render with minimum required props', () => {
-      const { container } = render(
-        <RetrievalMethodConfig value={createMockRetrievalConfig()} onChange={vi.fn()} />,
-      )
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render with all props set', () => {
       renderComponent({
         disabled: true,

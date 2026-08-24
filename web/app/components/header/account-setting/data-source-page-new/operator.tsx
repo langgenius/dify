@@ -6,9 +6,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {
@@ -46,16 +46,16 @@ const Operator = ({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <ActionButton
-            size="l"
-            className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+          <IconButton
+            size="lg"
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            className="data-popup-open:bg-state-base-hover"
           >
             <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
-          </ActionButton>
+          </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[200px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[200px]">
         <DropdownMenuItem
           disabled={!canUseCredential}
           className="h-auto gap-2 py-2"

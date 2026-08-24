@@ -1,13 +1,15 @@
 'use client'
+
 import type { KeyboardEvent, MouseEvent } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DatasetCardTags } from '@/features/tag-management/components/dataset-card-tags'
 import { useRouter } from '@/next/navigation'
 import {
@@ -29,12 +31,25 @@ type DatasetCardProps = {
   dataset: DataSet
   onSuccess?: () => void
   onOpenTagManagement?: () => void
+  stepByStepTourActionMenuHighlightPart?: string
+  stepByStepTourActionMenuOpen?: boolean
+  stepByStepTourCardTarget?: string
 }
 
-const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: DatasetCardProps) => {
+const DatasetCard = ({
+  dataset,
+  onSuccess,
+  onOpenTagManagement = () => {},
+  stepByStepTourActionMenuHighlightPart,
+  stepByStepTourActionMenuOpen,
+  stepByStepTourCardTarget,
+}: DatasetCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const datasetCard = useDatasetCardController({ dataset, onSuccess })
@@ -98,10 +113,6 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
     showPreviewOnlyAccessWarning()
   }
 
-  const handleTagAreaClick = (e: MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-  }
   const cardClassName = cn(
     'group relative col-span-1 flex h-41.5 flex-col overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-[background-color,box-shadow] duration-200 ease-in-out',
     isPreviewOnly
@@ -114,10 +125,10 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
       <div
         role={isPreviewOnly ? 'button' : undefined}
         tabIndex={isPreviewOnly ? 0 : undefined}
-        aria-disabled={isPreviewOnly ? 'true' : undefined}
         aria-label={isPreviewOnly ? dataset.name : undefined}
         className={cardClassName}
         data-disable-nprogress={true}
+        data-step-by-step-tour-target={stepByStepTourCardTarget}
         onClick={handleCardClick}
         onKeyDown={handlePreviewOnlyCardKeyDown}
       >
@@ -128,7 +139,6 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
           datasetId={dataset.id}
           embeddingAvailable={dataset.embedding_available}
           tags={dataset.tags}
-          onClick={handleTagAreaClick}
           onOpenTagManagement={onOpenTagManagement}
           onTagsChange={onSuccess}
           canBindOrUnbindTags={canBindOrUnbindTags}
@@ -141,6 +151,8 @@ const DatasetCard = ({ dataset, onSuccess, onOpenTagManagement = () => {} }: Dat
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
             openAccessConfig={openAccessConfig}
+            stepByStepTourHighlightPart={stepByStepTourActionMenuHighlightPart}
+            stepByStepTourOpen={stepByStepTourActionMenuOpen}
           />
         )}
       </div>

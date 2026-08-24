@@ -13,7 +13,7 @@ from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigR
 from models import Tenant, TenantStatus
 from models.account import TenantCustomConfigDict
 from models.model import App, AppMode, AppModelConfig, CustomizeTokenStrategy, EndUser, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def _site_model(*, app_id: str) -> Site:
 
 
 class TestAppSiteApi:
-    @patch("controllers.web.site.FeatureService.get_features")
+    @patch("services.feature_service.FeatureService.get_features")
     def test_happy_path(self, mock_features: MagicMock, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
         tenant = _create_tenant(db_session_with_containers)
@@ -95,6 +95,7 @@ class TestAppSiteApi:
         assert result["end_user_id"] == end_user.id
         assert result["plan"] == "basic"
         assert result["enable_site"] is True
+        assert result["mode"] == AppMode.CHAT
 
     def test_missing_site_raises_forbidden(self, app: Flask, db_session_with_containers: Session) -> None:
         app.config["RESTX_MASK_HEADER"] = "X-Fields"
@@ -143,6 +144,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=_site_model(app_id=app_model.id),
             end_user_id="eu-1",
             features=FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True),
@@ -150,6 +152,7 @@ class TestWebAppSiteResponse:
         )
 
         assert response.app_id == app_model.id
+        assert response.mode == AppMode.CHAT
         assert response.end_user_id == "eu-1"
         assert response.enable_site is True
         assert response.plan == "basic"
@@ -174,6 +177,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=site,
             end_user_id=None,
             features=FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True),
@@ -201,6 +205,7 @@ class TestWebAppSiteResponse:
         response = WebAppSiteResponse.from_app_site(
             tenant=tenant,
             app_model=app_model,
+            mode=AppMode.CHAT,
             site=_site_model(app_id=app_model.id),
             end_user_id="eu-1",
             features=FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),

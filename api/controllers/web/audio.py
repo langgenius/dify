@@ -76,10 +76,15 @@ class AudioApi(WebApiResource):
     @web_ns.response(200, "Success", web_ns.models[AudioToTextResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
-            response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=end_user.external_user_id)
+            response = AudioService.transcript_asr(
+                app_model=app_model,
+                file=file,
+                session=db.session(),
+                end_user=end_user.external_user_id,
+            )
 
             return dump_response(AudioToTextResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:

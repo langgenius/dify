@@ -1,8 +1,9 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Input } from '@langgenius/dify-ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,28 +45,34 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
   const triggerLabel = selectedTags.length
     ? selectedTags.map((tag) => tag.name).join(', ')
     : t(($) => $['tag.placeholder'], { ns: 'common' })
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) setSearchText('')
+  }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="small"
             aria-label={triggerLabel}
             className={cn(
-              'relative flex cursor-pointer items-center justify-center text-text-tertiary select-none',
+              'relative text-text-tertiary select-none focus-visible:ring-inset',
               embedded
-                ? 'h-7 rounded-md p-0.5'
+                ? 'mr-1 h-7 rounded-md'
                 : 'h-8 min-w-8 rounded-lg border-[0.5px] border-components-panel-border bg-components-input-bg-normal px-2',
-              embedded && !value.length && 'py-1 pr-2 pl-1.5',
+              embedded && !value.length && 'size-7 min-h-0 p-0',
               embedded &&
                 value.length > 0 &&
                 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg py-0.5 pr-1.5 pl-1 shadow-xs shadow-shadow-shadow-3',
               !embedded && 'hover:bg-components-input-bg-hover',
-              open &&
-                (embedded
-                  ? !value.length && 'bg-state-base-hover'
-                  : 'border-components-input-border-active bg-components-input-bg-active text-text-secondary'),
+              embedded &&
+                !value.length &&
+                'data-popup-open:bg-state-base-hover data-popup-open:hover:bg-components-button-ghost-bg-hover',
+              !embedded &&
+                'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active data-popup-open:text-text-secondary data-popup-open:hover:bg-components-input-bg-hover',
               value.length > 0 && 'text-text-secondary',
             )}
           >
@@ -74,29 +81,37 @@ const SnippetTagsFilter = ({ embedded = false, value, onChange }: SnippetTagsFil
               aria-hidden="true"
             />
             {value.length > 0 && (
-              <span className="ml-1 system-xs-medium text-text-secondary">{value.length}</span>
+              <span className="system-xs-medium text-text-secondary">{value.length}</span>
             )}
-          </button>
+          </Button>
         }
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={6}
-        popupClassName="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-xs"
+        className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-xs"
       >
+        <PopoverTitle className="sr-only">{triggerLabel}</PopoverTitle>
         <div className="p-2 pb-1">
-          <div className="relative">
-            <span
-              className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              aria-hidden="true"
-            />
-            <Input
-              className="pl-6.5"
+          <InputGroup>
+            <InputGroupInput
+              type="search"
+              name="tag-query"
+              aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+              autoComplete="off"
+              enterKeyHint="search"
+              className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
               value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
+              onValueChange={setSearchText}
               placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
             />
-          </div>
+            <InputGroupAddon className="ps-1.75 pe-0.75">
+              <span
+                className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                aria-hidden="true"
+              />
+            </InputGroupAddon>
+          </InputGroup>
         </div>
         <CheckboxGroup
           aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}

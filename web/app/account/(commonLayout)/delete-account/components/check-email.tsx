@@ -1,10 +1,10 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileEmailAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { useSendDeleteAccountEmail } from '../state'
 
@@ -15,7 +15,10 @@ type DeleteAccountProps = {
 
 export default function CheckEmail(props: DeleteAccountProps) {
   const { t } = useTranslation()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const [userInputEmail, setUserInputEmail] = useState('')
 
   const { isPending: isSendingEmail, mutateAsync: getDeleteEmailVerifyCode } =
@@ -41,10 +44,14 @@ export default function CheckEmail(props: DeleteAccountProps) {
           {t(($) => $['account.deletePrivacyLink'], { ns: 'common' })}
         </Link>
       </div>
-      <label className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
+      <label
+        htmlFor="delete-account-email"
+        className="mt-3 mb-1 flex h-6 items-center system-sm-semibold text-text-secondary"
+      >
         {t(($) => $['account.deleteLabel'], { ns: 'common' })}
       </label>
       <Input
+        id="delete-account-email"
         placeholder={t(($) => $['account.deletePlaceholder'], { ns: 'common' }) as string}
         onChange={(e) => {
           setUserInputEmail(e.target.value)

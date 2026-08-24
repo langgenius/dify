@@ -1,8 +1,8 @@
 'use client'
-
 import type { Dependency, Plugin, PluginCategoryEnum, PluginManifestInMarket } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -86,10 +86,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'w-[560px] max-w-none! overflow-hidden! text-left align-middle',
+          'w-140 max-w-none! overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >
@@ -133,7 +133,17 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
             )}
           </>
         )}
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   )

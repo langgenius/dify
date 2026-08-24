@@ -23,13 +23,15 @@ When('I confirm the deletion', async function (this: DifyWorld) {
 
 Then('the app should no longer appear in the apps console', async function (this: DifyWorld) {
   const appName = this.lastCreatedAppName
-  if (!appName) {
+  const appId = this.createdAppIds.at(-1)
+  if (!appName || !appId) {
     throw new Error(
-      'No app name stored. Run "there is an existing E2E app available for testing" first.',
+      'No app stored. Run "there is an existing E2E app available for testing" first.',
     )
   }
 
   await expect(this.getPage().getByRole('link', { name: appName, exact: true })).not.toBeVisible({
     timeout: 10_000,
   })
+  this.createdAppIds = this.createdAppIds.filter((createdAppId) => createdAppId !== appId)
 })

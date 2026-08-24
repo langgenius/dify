@@ -2,6 +2,9 @@ import logging
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, override
 
+from sqlalchemy.orm import Session
+
+from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
@@ -83,9 +86,15 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 # Get indexing_technique and summary_index_setting from node_data (workflow graph config)
                 # or fallback to dataset if not available in node_data
 
-                outputs = self.index_processor.get_preview_output(
-                    chunks, dataset_id, document_id, node_data.chunk_structure, summary_index_setting
-                )
+                with session_factory.create_session() as session:
+                    outputs = self.index_processor.get_preview_output(
+                        chunks,
+                        dataset_id,
+                        document_id,
+                        node_data.chunk_structure,
+                        summary_index_setting,
+                        session=session,
+                    )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=variables,
@@ -97,15 +106,17 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             if not batch:
                 raise KnowledgeIndexNodeError("Batch is required.")
 
-            results = self._invoke_knowledge_index(
-                dataset_id=dataset_id,
-                document_id=document_id,
-                original_document_id=original_document_id_segment.value if original_document_id_segment else "",
-                is_preview=is_preview,
-                batch=batch.value,
-                chunks=chunks,
-                summary_index_setting=summary_index_setting,
-            )
+            with session_factory.create_session() as session:
+                results = self._invoke_knowledge_index(
+                    session=session,
+                    dataset_id=dataset_id,
+                    document_id=document_id,
+                    original_document_id=original_document_id_segment.value if original_document_id_segment else "",
+                    is_preview=is_preview,
+                    batch=batch.value,
+                    chunks=chunks,
+                    summary_index_setting=summary_index_setting,
+                )
             return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=results)
 
         except KnowledgeIndexNodeError as e:
@@ -134,12 +145,16 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         batch: Any,
         chunks: Mapping[str, Any],
         summary_index_setting: SummaryIndexSettingDict | None = None,
+        *,
+        session: Session,
     ):
         if not document_id:
             raise KnowledgeIndexNodeError("document_id is required.")
         rst = self.index_processor.index_and_clean(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting
+            dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session=session
         )
+        # Summary generation opens independent sessions and must see the indexed rows.
+        session.commit()
         self.summary_index_service.generate_and_vectorize_summary(
             dataset_id, document_id, is_preview, summary_index_setting
         )

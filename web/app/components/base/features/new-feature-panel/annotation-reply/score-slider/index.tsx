@@ -1,6 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,7 +32,7 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
 
   return (
     <div className={className}>
-      <div className="relative mt-[14px]">
+      <div className="relative mt-3.5">
         <Slider
           className="w-full"
           value={safeValue}
@@ -33,10 +40,21 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
           max={SCORE_MAX}
           step={1}
           onValueChange={onChange}
-          aria-label={t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
-        />
+        >
+          <SliderLabel className="sr-only">
+            {t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
+          </SliderLabel>
+          <SliderControl>
+            <SliderTrack>
+              <SliderIndicator />
+              <SliderThumb
+                getAriaValueText={(_formattedValue, sliderValue) => (sliderValue / 100).toFixed(2)}
+              />
+            </SliderTrack>
+          </SliderControl>
+        </Slider>
         <div
-          className="pointer-events-none absolute top-[-16px] system-sm-semibold text-text-primary"
+          className="pointer-events-none absolute -top-4 system-sm-semibold text-text-primary"
           style={{
             left: `calc(4px + ${safeValue / SCORE_MAX} * (100% - 8px))`,
             transform: 'translateX(-50%)',
@@ -45,7 +63,7 @@ const ScoreSlider: FC<Props> = ({ className, value, onChange }) => {
           {(safeValue / 100).toFixed(2)}
         </div>
       </div>
-      <div className="mt-[10px] flex items-center justify-between system-xs-semibold-uppercase">
+      <div className="mt-2.5 flex items-center justify-between system-xs-semibold-uppercase">
         <div className="flex space-x-1 text-util-colors-cyan-cyan-500">
           <div>0.0</div>
           <div>·</div>

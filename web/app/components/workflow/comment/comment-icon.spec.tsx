@@ -1,12 +1,15 @@
+import type { ReactElement } from 'react'
 import type { WorkflowCommentList } from '@/app/components/workflow/comment/types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { CommentIcon } from './comment-icon'
 
 type Position = { x: number; y: number }
 
 let mockUserId = 'user-1'
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
     id: 'user-1',
     name: 'User',
@@ -16,6 +19,14 @@ const mockAppContextState = vi.hoisted(() => ({
 
 const mockFlowToScreenPosition = vi.fn((position: Position) => position)
 const mockScreenToFlowPosition = vi.fn((position: Position) => position)
+
+const render = (ui: ReactElement) =>
+  renderWithConsoleState(ui, {
+    wrapper: createAccountProfileQueryWrapper({
+      ...mockConsoleState.userProfile,
+      id: mockUserId,
+    }),
+  })
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
@@ -28,63 +39,6 @@ vi.mock('reactflow', () => ({
     zoom: 1,
   }),
 }))
-
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...mockAppContextState,
-    userProfile: {
-      ...mockAppContextState.userProfile,
-      id: mockUserId,
-    },
-  }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...mockAppContextState,
-    userProfile: {
-      ...mockAppContextState.userProfile,
-      id: mockUserId,
-    },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...mockAppContextState,
-    userProfile: {
-      ...mockAppContextState.userProfile,
-      id: mockUserId,
-    },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...mockAppContextState,
-    userProfile: {
-      ...mockAppContextState.userProfile,
-      id: mockUserId,
-    },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    ...mockAppContextState,
-    userProfile: {
-      ...mockAppContextState.userProfile,
-      id: mockUserId,
-    },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
-})
 
 vi.mock('@/app/components/base/user-avatar-list', () => ({
   UserAvatarList: ({ users }: { users: Array<{ id: string }> }) => (

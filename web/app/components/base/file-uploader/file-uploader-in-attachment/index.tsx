@@ -39,29 +39,23 @@ const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAtta
   ]
 
   const renderButton = useCallback(
-    (option: Option, open?: boolean) => {
+    (option: Option) => {
       return (
         <Button
           variant="tertiary"
           className={cn(
             'relative w-full min-w-0',
-            open && 'bg-components-button-tertiary-bg-hover',
+            'data-popup-open:bg-components-button-tertiary-bg-hover',
           )}
           disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
         >
           <span className="shrink-0">{option.icon}</span>
-          <span className="ml-1 min-w-0 truncate">{option.label}</span>
+          <span className="min-w-0 truncate">{option.label}</span>
           {option.value === TransferMethod.local_file && <FileInput fileConfig={fileConfig} />}
         </Button>
       )
     },
     [fileConfig, files.length],
-  )
-  const renderTrigger = useCallback(
-    (option: Option) => {
-      return (open: boolean) => renderButton(option, open)
-    },
-    [renderButton],
   )
   const renderOption = useCallback(
     (option: Option) => {
@@ -84,14 +78,14 @@ const FileUploaderInAttachment = ({ isDisabled, fileConfig }: FileUploaderInAtta
           <div key={option.value} className="min-w-0 flex-1">
             <FileFromLinkOrLocal
               showFromLocal={false}
-              trigger={renderTrigger(option)}
+              trigger={renderButton(option)}
               fileConfig={fileConfig}
             />
           </div>
         )
       }
     },
-    [renderButton, renderTrigger, fileConfig],
+    [renderButton, fileConfig],
   )
 
   return (

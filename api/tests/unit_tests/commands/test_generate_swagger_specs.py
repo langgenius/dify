@@ -60,7 +60,7 @@ def _nullable_schema_ref(schema):
     return next(item["$ref"] for item in schema["anyOf"] if "$ref" in item)
 
 
-def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
+def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -78,7 +78,7 @@ def test_generate_specs_writes_console_web_and_service_openapi_files(tmp_path):
         assert "paths" in payload
 
 
-def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(tmp_path):
+def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -98,7 +98,7 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_no_nulls(t
         assert all(value is not None for value in _walk_values(payload))
 
 
-def test_generate_specs_writes_unique_operation_ids(tmp_path):
+def test_generate_specs_writes_unique_operation_ids(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -110,7 +110,28 @@ def test_generate_specs_writes_unique_operation_ids(tmp_path):
         assert len(operation_ids) == len(set(operation_ids))
 
 
-def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
+def test_system_features_specs_exclude_backend_only_fields(tmp_path: Path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    excluded_fields = {
+        "enable_trial_app",
+        "is_allow_create_workspace",
+        "max_plugin_package_size",
+        "plugin_manager",
+    }
+
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in written_paths if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        system_features_schema = schemas["SystemFeatureModel"]
+
+        assert excluded_fields.isdisjoint(system_features_schema["properties"])
+        assert "PluginManagerModel" not in schemas
+
+
+def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -121,7 +142,7 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
-def test_generate_specs_writes_service_api_reference_descriptions(tmp_path):
+def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -154,7 +175,7 @@ def test_standalone_inline_model_name_includes_list_constraints():
         assert module._inline_model_name(first_inline_model) != module._inline_model_name(second_inline_model)
 
 
-def test_generate_specs_is_idempotent(tmp_path):
+def test_generate_specs_is_idempotent(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     first_paths = module.generate_specs(tmp_path / "first")
@@ -165,7 +186,7 @@ def test_generate_specs_is_idempotent(tmp_path):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
 
 
-def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path):
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -180,7 +201,7 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tm
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
 
 
-def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path):
+def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp_path: Path):
     module = _load_generate_swagger_specs_module()
 
     written_paths = module.generate_specs(tmp_path)
@@ -195,6 +216,16 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert file_upload_schema["properties"]["file"]["type"] == "string"
     assert file_upload_schema["properties"]["source"]["enum"] == ["datasets"]
 
+    api_key_auth_binding_schema = _request_schema(paths["/api-key-auth/data-source/binding"]["post"])
+    assert api_key_auth_binding_schema["$ref"] == "#/components/schemas/ApiKeyAuthBindingPayload"
+    assert schemas["ApiKeyAuthBindingPayload"]["properties"]["credentials"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthCredentialsPayload"
+    )
+    assert schemas["ApiKeyAuthCredentialsPayload"]["properties"]["config"]["$ref"] == (
+        "#/components/schemas/ApiKeyAuthConfigPayload"
+    )
+    assert schemas["ApiKeyAuthConfigPayload"]["properties"]["api_key"]["minLength"] == 1
+
     invoices_schema_ref = _response_schema(paths["/billing/invoices"]["get"])["$ref"].removeprefix(
         "#/components/schemas/"
     )
@@ -203,15 +234,31 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     app_detail_schema = schemas["RecommendedAppDetailResponse"]
     assert app_detail_schema["properties"]["id"]["type"] == "string"
     assert app_detail_schema["properties"]["export_data"]["type"] == "string"
-    assert {"type": "boolean"} in app_detail_schema["properties"]["can_trial"]["anyOf"]
-    app_detail_nullable_schema = schemas["RecommendedAppDetailNullableResponse"]
+    assert app_detail_schema["properties"]["can_trial"]["type"] == "boolean"
+    assert "anyOf" not in app_detail_schema["properties"]["can_trial"]
+    assert "can_trial" in app_detail_schema["required"]
+    app_list_item_schema = schemas["RecommendedAppResponse"]
+    assert app_list_item_schema["properties"]["can_trial"]["type"] == "boolean"
+    assert "anyOf" not in app_list_item_schema["properties"]["can_trial"]
+    assert "can_trial" in app_list_item_schema["required"]
     assert _response_schema(paths["/explore/apps/{app_id}"]["get"])["$ref"] == (
-        "#/components/schemas/RecommendedAppDetailNullableResponse"
+        "#/components/schemas/RecommendedAppDetailResponse"
     )
-    assert {"$ref": "#/components/schemas/RecommendedAppDetailResponse"} in app_detail_nullable_schema["anyOf"]
-    assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
+    assert "404" in paths["/explore/apps/{app_id}"]["get"]["responses"]
+    assert "RecommendedAppDetailNullableResponse" not in schemas
     assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"
+    app_model_config = schemas["AppDetailWithSite"]["properties"]["model_config"]
+    assert {"$ref": "#/components/schemas/AppModelConfigResponse"} in app_model_config["anyOf"]
+    app_detail = schemas["AppDetail"]
+    assert "mode" in app_detail["properties"]
+    assert "mode_compatible_with_agent" not in app_detail["properties"]
+    sync_draft_workflow = schemas["SyncDraftWorkflowResponse"]
+    assert _response_schema(paths["/apps/{app_id}/workflows/draft"]["post"])["$ref"] == (
+        "#/components/schemas/SyncDraftWorkflowResponse"
+    )
+    assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
     assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]

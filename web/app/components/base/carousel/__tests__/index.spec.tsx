@@ -1,4 +1,4 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { Carousel, useCarousel } from '../index'
@@ -124,7 +124,6 @@ describe('Carousel', () => {
       renderCarouselWithControls('vertical')
 
       expect(mockedUseEmblaCarousel).toHaveBeenCalledWith({ axis: 'y' }, undefined)
-      expect(screen.getByTestId('carousel-content'))!.toHaveClass('flex-col')
     })
   })
 

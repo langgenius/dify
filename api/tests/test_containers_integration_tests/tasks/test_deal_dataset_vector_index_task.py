@@ -7,7 +7,7 @@ add, update, and remove actions.
 """
 
 import uuid
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from faker import Faker
@@ -330,7 +330,13 @@ class TestDealDatasetVectorIndexTask:
         # Verify index processor clean and load methods were called
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
-        mock_processor.clean.assert_called_once_with(ANY, None, with_keywords=False, delete_child_chunks=False)
+        mock_processor.clean.assert_called_once()
+        clean_args, clean_kwargs = mock_processor.clean.call_args
+        assert clean_args[0].id == dataset.id
+        assert clean_args[1] is None
+        assert clean_kwargs["with_keywords"] is False
+        assert clean_kwargs["delete_child_chunks"] is False
+        assert clean_kwargs["session"] is not None
         mock_processor.load.assert_called_once()
 
     def test_deal_dataset_vector_index_task_dataset_not_found_error(
@@ -470,7 +476,13 @@ class TestDealDatasetVectorIndexTask:
         # Verify that index processor clean was called but no load
         mock_factory = mock_index_processor_factory.return_value
         mock_processor = mock_factory.init_index_processor.return_value
-        mock_processor.clean.assert_called_once_with(ANY, None, with_keywords=False, delete_child_chunks=False)
+        mock_processor.clean.assert_called_once()
+        clean_args, clean_kwargs = mock_processor.clean.call_args
+        assert clean_args[0].id == dataset.id
+        assert clean_args[1] is None
+        assert clean_kwargs["with_keywords"] is False
+        assert clean_kwargs["delete_child_chunks"] is False
+        assert clean_kwargs["session"] is not None
         mock_processor.load.assert_not_called()
 
     def test_deal_dataset_vector_index_task_add_action_with_exception_handling(

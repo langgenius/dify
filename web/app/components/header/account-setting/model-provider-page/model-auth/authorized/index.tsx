@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
 import type {
   ConfigurationMethodEnum,
@@ -31,7 +31,7 @@ type PopoverOffsetOptions = {
   alignmentAxis?: number
 }
 
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
@@ -52,8 +52,6 @@ type AuthorizedProps = {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: number | PopoverOffsetOptions
-  placement?: Placement
-  triggerPopupSameWidth?: boolean
   popupClassName?: string
   showItemSelectedIcon?: boolean
   onItemClick?: (credential: Credential, model?: CustomModel) => void
@@ -78,7 +76,6 @@ const Authorized = ({
   onOpenChange,
   offset = 8,
   placement = 'bottom-end',
-  triggerPopupSameWidth = false,
   popupClassName,
   showItemSelectedIcon,
   onItemClick,
@@ -157,9 +154,6 @@ const Authorized = ({
     typeof offset === 'number'
       ? 0
       : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
-  const popupProps = triggerPopupSameWidth
-    ? { style: { width: 'var(--anchor-width, auto)' } }
-    : undefined
   const handleTriggerClick = useCallback(
     (event: MouseEvent<HTMLElement>) => {
       if (!triggerOnlyOpenModal) return
@@ -177,32 +171,31 @@ const Authorized = ({
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
           nativeButton={false}
-          render={
-            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
-              {renderTrigger(mergedIsOpen)}
+          render={(props, state) => (
+            <div {...props} className={cn('inline-block', props.className)}>
+              {renderTrigger(state.open)}
             </div>
-          }
+          )}
           onClick={handleTriggerClick}
         />
         <PopoverContent
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupProps={popupProps}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div
             className={cn(
-              'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
+              'w-90 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
               popupClassName,
             )}
           >
             {popupTitle && (
-              <div className="px-3 pt-[10px] pb-0.5 system-xs-medium text-text-tertiary">
+              <div className="px-3 pt-2.5 pb-0.5 system-xs-medium text-text-tertiary">
                 {popupTitle}
               </div>
             )}
-            <div className="max-h-[304px] overflow-y-auto">
+            <div className="max-h-76 overflow-y-auto">
               {items.map((item) => (
                 <Fragment
                   key={
@@ -251,7 +244,7 @@ const Authorized = ({
                         : undefined,
                     )
                   }
-                  className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
+                  className="flex h-10 cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
                   <span className="mr-1 i-ri-add-line size-4" />
                   {t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'common' })}

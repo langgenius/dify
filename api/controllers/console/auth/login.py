@@ -1,9 +1,11 @@
 import logging
+from uuid import UUID
 
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -16,30 +18,37 @@ from controllers.common.fields import (
     SimpleResultResponse,
 )
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
+    EmailCodeLoginServiceUnavailableError,
     EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
+    TurnstileServiceUnavailableError,
+    TurnstileVerificationFailedError,
 )
 from controllers.console.error import (
     AccountBannedError,
     AccountInFreezeError,
     AccountNotFound,
+    EmailDomainSuspendedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
+    SeatsLimitExceeded,
     WorkspacesLimitExceeded,
 )
 from controllers.console.wraps import (
     decrypt_code_field,
     decrypt_password_field,
     email_password_login_enabled,
+    model_validate,
     setup_required,
     with_current_user,
 )
-from events.tenant_event import tenant_was_created
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
@@ -55,10 +64,28 @@ from libs.token import (
 from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeStatus,
+    EmailCodeLoginChallengeUnavailableError,
+)
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
-from services.errors.account import AccountRegisterError, RefreshTokenAccountNotFoundError, RefreshTokenNotFoundError
+from services.errors.account import (
+    AccountRegisterError,
+    RefreshTokenAccountNotFoundError,
+    RefreshTokenNotFoundError,
+    SeatsLimitExceededError,
+)
+from services.errors.account import (
+    EmailDomainSuspendedError as EmailDomainSuspendedRegistrationError,
+)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.turnstile_service import (
+    EMAIL_CODE_VERIFY_ACTION,
+    TurnstileChallengeRejectedError,
+    TurnstileService,
+    TurnstileUpstreamError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +100,23 @@ class EmailPayload(BaseModel):
     language: str | None = Field(default=None)
 
 
+class EmailCodeSendPayload(EmailPayload):
+    turnstile_token: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="Cloudflare Turnstile token. Required at runtime for Dify Cloud.",
+    )
+
+
 class EmailCodeLoginPayload(BaseModel):
     email: EmailStr = Field(...)
-    code: str = Field(...)
-    token: str = Field(...)
+    code: str
+    token: UUID
+    turnstile_token: str | None = Field(
+        default=None,
+        max_length=2048,
+        description="Cloudflare Turnstile token for email-code verification.",
+    )
     language: str | None = Field(default=None)
     timezone: str | None = Field(default=None)
 
@@ -88,7 +128,7 @@ class EmailCodeLoginPayload(BaseModel):
         return validate_timezone_string(value)
 
 
-register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeLoginPayload)
+register_schema_models(console_ns, LoginPayload, EmailPayload, EmailCodeSendPayload, EmailCodeLoginPayload)
 register_response_schema_models(
     console_ns,
     SimpleResultDataResponse,
@@ -107,22 +147,26 @@ class LoginApi(Resource):
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultOptionalDataResponse.__name__])
     @decrypt_password_field
-    def post(self):
+    @model_validate(LoginPayload)
+    def post(self, req_data: LoginPayload):
         """Authenticate user and login."""
-        args = LoginPayload.model_validate(console_ns.payload)
-        request_email = args.email
+        request_email = req_data.email
         normalized_email = request_email.lower()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
-            _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            freeze_type = BillingService.get_email_freeze_type(normalized_email)
+            if freeze_type:
+                _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                if freeze_type == "email_domain_suspended":
+                    raise EmailDomainSuspendedError()
+                raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(normalized_email)
         if is_login_error_rate_limit:
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.LOGIN_RATE_LIMITED)
             raise EmailPasswordLoginLimitError()
 
-        invite_token = args.invite_token
+        invite_token = req_data.invite_token
         invitation_data: InvitationDetailDict | None = None
         if invite_token:
             invitation_data = RegisterService.get_invitation_with_case_fallback(
@@ -143,7 +187,7 @@ class LoginApi(Resource):
                     )
                     raise InvalidEmailError()
             account = _authenticate_account_with_case_fallback(
-                request_email, normalized_email, args.password, invite_token
+                request_email, normalized_email, req_data.password, invite_token
             )
         except services.errors.account.AccountLoginError:
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.ACCOUNT_BANNED)
@@ -152,12 +196,12 @@ class LoginApi(Resource):
             AccountService.add_login_error_rate_limit(normalized_email)
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError() from exc
-        # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
-            system_features = FeatureService.get_system_features()
-
-            if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
+            if (
+                FeatureService.is_workspace_creation_allowed()
+                and not FeatureService.get_license().workspaces.is_available()
+            ):
                 raise WorkspacesLimitExceeded()
             else:
                 return SimpleResultOptionalDataResponse(
@@ -207,18 +251,20 @@ class ResetPasswordSendEmailApi(Resource):
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
-    def post(self):
-        args = EmailPayload.model_validate(console_ns.payload)
-        normalized_email = args.email.lower()
+    @model_validate(EmailPayload)
+    def post(self, req_data: EmailPayload):
+        normalized_email = req_data.email.lower()
 
-        if args.language is not None and args.language == "zh-Hans":
+        if req_data.language is not None and req_data.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
         try:
-            account = _get_account_with_case_fallback(args.email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+            account = _get_account_with_case_fallback(req_data.email)
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc
 
         token = AccountService.send_reset_password_email(
             email=normalized_email,
@@ -233,24 +279,36 @@ class ResetPasswordSendEmailApi(Resource):
 @console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
-    @console_ns.expect(console_ns.models[EmailPayload.__name__])
+    @console_ns.expect(console_ns.models[EmailCodeSendPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
-    def post(self):
-        args = EmailPayload.model_validate(console_ns.payload)
-        normalized_email = args.email.lower()
+    @model_validate(EmailCodeSendPayload)
+    def post(self, req_data: EmailCodeSendPayload):
+        normalized_email = req_data.email.lower()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
 
-        if args.language is not None and args.language == "zh-Hans":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            try:
+                TurnstileService.verify(token=req_data.turnstile_token, remote_ip=ip_address)
+            except TurnstileChallengeRejectedError as exc:
+                logger.info("Turnstile rejected an email-code login challenge")
+                raise TurnstileVerificationFailedError() from exc
+            except TurnstileUpstreamError as exc:
+                logger.warning("Turnstile verification is unavailable", exc_info=True)
+                raise TurnstileServiceUnavailableError() from exc
+
+        if req_data.language is not None and req_data.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
         try:
-            account = _get_account_with_case_fallback(args.email)
-        except AccountRegisterError:
-            raise AccountInFreezeError()
+            account = _get_account_with_case_fallback(req_data.email)
+        except EmailDomainSuspendedRegistrationError as exc:
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            raise AccountInFreezeError() from exc
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -269,50 +327,82 @@ class EmailCodeLoginApi(Resource):
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @decrypt_code_field
-    def post(self):
-        args = EmailCodeLoginPayload.model_validate(console_ns.payload)
+    @model_validate(EmailCodeLoginPayload)
+    def post(self, req_data: EmailCodeLoginPayload):
 
-        original_email = args.email
+        original_email = req_data.email
         user_email = original_email.lower()
-        language = args.language
+        language = req_data.language
+        ip_address = extract_remote_ip(request)
 
-        token_data = AccountService.get_email_code_login_data(args.token)
-        if token_data is None:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
-            raise InvalidTokenError()
-
-        token_email = token_data.get("email")
-        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
-        if normalized_token_email != user_email:
-            _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
-            raise InvalidEmailError()
-
-        if token_data["code"] != args.code:
+        # ``code`` is Base64 on the wire and is decoded by
+        # ``decrypt_code_field`` before model validation reaches this handler.
+        if len(req_data.code) != 6 or not req_data.code.isascii() or not req_data.code.isdigit():
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
-        AccountService.revoke_email_code_login_token(args.token)
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+            dify_config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED or req_data.turnstile_token
+        ):
+            try:
+                TurnstileService.verify(
+                    token=req_data.turnstile_token,
+                    remote_ip=ip_address,
+                    expected_action=EMAIL_CODE_VERIFY_ACTION,
+                )
+            except TurnstileChallengeRejectedError as exc:
+                logger.info("Turnstile rejected an email-code verification challenge")
+                raise TurnstileVerificationFailedError() from exc
+            except TurnstileUpstreamError as exc:
+                logger.warning("Turnstile verification is unavailable", exc_info=True)
+                raise TurnstileServiceUnavailableError() from exc
+
+        try:
+            verification = AccountService.verify_email_code_login_challenge(
+                email=user_email,
+                code=req_data.code,
+                token=str(req_data.token),
+            )
+        except EmailCodeLoginChallengeUnavailableError as exc:
+            logger.warning("Email-code challenge verification is unavailable", exc_info=True)
+            raise EmailCodeLoginServiceUnavailableError() from exc
+
+        if verification.status == EmailCodeLoginChallengeStatus.INVALID_TOKEN:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
+            raise InvalidTokenError()
+
+        if verification.status == EmailCodeLoginChallengeStatus.EMAIL_MISMATCH:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
+            raise InvalidEmailError()
+
+        if verification.status in {
+            EmailCodeLoginChallengeStatus.INVALID_CODE,
+            EmailCodeLoginChallengeStatus.EXHAUSTED,
+        }:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
+            raise EmailCodeError()
+
         try:
             account = _get_account_with_case_fallback(original_email)
         except Unauthorized as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_BANNED)
             raise AccountBannedError() from exc
-        except AccountRegisterError:
+        except EmailDomainSuspendedRegistrationError as exc:
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-            raise AccountInFreezeError()
+            raise EmailDomainSuspendedError() from exc
+        except AccountRegisterError as exc:
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+            raise AccountInFreezeError() from exc
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
-                workspaces = FeatureService.get_system_features().license.workspaces
+                workspaces = FeatureService.get_license().workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
-                if not FeatureService.get_system_features().is_allow_create_workspace:
+                if not FeatureService.is_workspace_creation_allowed():
                     raise NotAllowedCreateWorkspace()
                 else:
-                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
-                    TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
-                    account.current_tenant = new_tenant
-                    tenant_was_created.send(new_tenant)
+                    TenantService.create_owner_tenant(account, session=db.session())
 
         if account is None:
             try:
@@ -320,17 +410,23 @@ class EmailCodeLoginApi(Resource):
                     email=user_email,
                     name=user_email,
                     interface_language=get_valid_language(language),
-                    timezone=args.timezone,
+                    timezone=req_data.timezone,
+                    ip_address=ip_address,
                     session=db.session(),
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
-            except AccountRegisterError:
+            except SeatsLimitExceededError:
+                raise SeatsLimitExceeded()
+            except EmailDomainSuspendedRegistrationError as exc:
                 _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
-                raise AccountInFreezeError()
+                raise EmailDomainSuspendedError() from exc
+            except AccountRegisterError as exc:
+                _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
+                raise AccountInFreezeError() from exc
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
-        token_pair = AccountService.login(account, session=db.session(), ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account, session=db.session(), ip_address=ip_address)
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body
@@ -348,7 +444,8 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
-    def post(self):
+    @with_session(write=False)
+    def post(self, session: Session):
         # Get refresh token from cookie instead of request body
         refresh_token = extract_refresh_token(request)
 
@@ -358,7 +455,7 @@ class RefreshTokenApi(Resource):
             ), 401
 
         try:
-            new_token_pair = AccountService.refresh_token(refresh_token, session=db.session())
+            new_token_pair = AccountService.refresh_token(refresh_token, session=session)
         except Unauthorized as exc:
             return SimpleResultMessageResponse(result="fail", message=exc.description or "Unauthorized.").model_dump(
                 mode="json"

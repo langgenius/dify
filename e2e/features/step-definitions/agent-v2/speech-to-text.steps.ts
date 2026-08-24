@@ -21,13 +21,13 @@ const normalizeFixturePhrase = (value: string) =>
 Given(
   'an Agent v2 test agent with speech-to-text enabled has been created via API',
   async function (this: DifyWorld) {
-    if (!this.agentBuilder.preflight.speechToTextModel) {
+    if (!this.agentBuilder.fixtures.speechToTextModel) {
       throw new Error(
-        'Create a speech-to-text Agent v2 test agent after the default Speech-to-Text model preflight.',
+        'Create a speech-to-text Agent v2 test agent after the default Speech-to-Text model fixture setup.',
       )
     }
 
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithSpeechToText(normalAgentSoulConfig),
     })
     this.createdAgentIds.push(agent.id)
@@ -50,10 +50,9 @@ When(
     const page = this.getPage()
     const agentId = getCurrentAgentId(this)
 
-    await expect(page.getByTestId('voice-input-timer')).toHaveText(
-      voiceInputTestMaterial.recordingDuration,
-      { timeout: 15_000 },
-    )
+    await expect(page.getByRole('timer')).toHaveText(voiceInputTestMaterial.recordingDuration, {
+      timeout: 15_000,
+    })
 
     const responsePromise = page.waitForResponse(
       (response) =>

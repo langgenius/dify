@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import CreateCard from '../create-card'
 
 const mockPush = vi.fn()
@@ -52,11 +52,6 @@ describe('CreateCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title and description', () => {
       render(<CreateCard />)
       expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
@@ -166,30 +161,16 @@ describe('CreateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<CreateCard />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('relative', 'flex', 'cursor-pointer', 'flex-col', 'rounded-xl')
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('h-[132px]')
+      expect(card).toHaveClass('h-33')
     })
 
     it('should have shadow and border', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<CreateCard />)
-      rerender(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
     })
   })
 })

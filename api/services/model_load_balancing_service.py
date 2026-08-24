@@ -178,8 +178,8 @@ class ModelLoadBalancingService:
         # Get credential form schemas from model credential schema or provider credential schema
         credential_schemas = self._get_credential_schema(provider_configuration)
 
-        # Get decoding rsa key and cipher for decrypting credentials
-        decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
+        # Get decoding context for decrypting credentials
+        decoding_context = encrypter.get_decrypt_decoding(tenant_id)
 
         # fetch status and ttl for each config
         datas: list[LoadBalancingConfigSummaryDict] = []
@@ -213,8 +213,7 @@ class ModelLoadBalancingService:
                         if isinstance(token_value, str):
                             credentials[variable] = encrypter.decrypt_token_with_decoding(
                                 token_value,
-                                decoding_rsa_key,
-                                decoding_cipher_rsa,
+                                decoding_context,
                             )
                     except ValueError:
                         pass

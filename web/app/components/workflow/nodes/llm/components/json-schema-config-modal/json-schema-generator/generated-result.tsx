@@ -56,9 +56,9 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
   }, [schema, onApply])
 
   return (
-    <div className="flex w-[480px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
+    <div className="flex w-120 flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9">
       {isGenerating ? (
-        <div className="flex h-[600px] flex-col items-center justify-center gap-y-3">
+        <div className="flex h-150 flex-col items-center justify-center gap-y-3">
           <Loading type="area" />
           <div className="system-xs-regular text-text-tertiary">
             {t(($) => $['nodes.llm.jsonSchema.generating'], { ns: 'workflow' })}
@@ -97,16 +97,12 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
           </div>
           {/* Footer */}
           <div className="flex items-center justify-between p-4 pt-2">
-            <Button variant="secondary" className="flex items-center gap-x-0.5" onClick={onBack}>
+            <Button variant="secondary" className="flex items-center" onClick={onBack}>
               <RiArrowLeftLine className="size-4" />
               <span>{t(($) => $['nodes.llm.jsonSchema.back'], { ns: 'workflow' })}</span>
             </Button>
             <div className="flex items-center gap-x-2">
-              <Button
-                variant="secondary"
-                className="flex items-center gap-x-0.5"
-                onClick={onRegenerate}
-              >
+              <Button variant="secondary" className="flex items-center" onClick={onRegenerate}>
                 <RiSparklingLine className="size-4" />
                 <span>{t(($) => $['nodes.llm.jsonSchema.regenerate'], { ns: 'workflow' })}</span>
               </Button>

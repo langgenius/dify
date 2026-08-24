@@ -1,8 +1,7 @@
 import { render } from 'vitest-browser-react'
-import { Field, FieldControl, FieldLabel } from '../../field'
+import { Field, FieldLabel } from '../../field'
+import { Input } from '../../input'
 import { Form } from '../index'
-
-const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
 describe('Form primitive', () => {
   it('should render a native named form and merge custom class names', async () => {
@@ -10,7 +9,7 @@ describe('Form primitive', () => {
       <Form aria-label="profile form" className="custom-form">
         <Field name="name">
           <FieldLabel>Name</FieldLabel>
-          <FieldControl defaultValue="Ada" />
+          <Input defaultValue="Ada" />
         </Field>
       </Form>,
     )
@@ -26,13 +25,13 @@ describe('Form primitive', () => {
       <Form aria-label="api form" onFormSubmit={onFormSubmit}>
         <Field name="endpoint">
           <FieldLabel>Endpoint</FieldLabel>
-          <FieldControl defaultValue="https://api.example.com" />
+          <Input defaultValue="https://api.example.com" />
         </Field>
         <button type="submit">Save</button>
       </Form>,
     )
 
-    asHTMLElement(screen.getByRole('button', { name: 'Save' }).element()).click()
+    await screen.getByRole('button', { name: 'Save' }).click()
 
     expect(onFormSubmit).toHaveBeenCalledTimes(1)
     expect(onFormSubmit.mock.calls[0]?.[0]).toMatchObject({
@@ -45,7 +44,7 @@ describe('Form primitive', () => {
       <Form aria-label="server form" errors={{ token: 'Token has expired.' }}>
         <Field name="token">
           <FieldLabel>Token</FieldLabel>
-          <FieldControl defaultValue="expired" />
+          <Input defaultValue="expired" />
         </Field>
       </Form>,
     )

@@ -1,5 +1,5 @@
 'use client'
-import type { SuccessInvitationResult } from '.'
+import type { MemberInviteSuccessResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import s from './index.module.css'
 
 type IInvitationLinkProps = {
-  value: SuccessInvitationResult
+  value: MemberInviteSuccessResponse
 }
 
 const InvitationLink = ({ value }: IInvitationLinkProps) => {
@@ -62,7 +62,7 @@ const InvitationLink = ({ value }: IInvitationLinkProps) => {
                 <button
                   type="button"
                   aria-label={t(($) => $.copy, { ns: 'appApi' })}
-                  className={`box-border flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
+                  className={`box-border flex h-7.5 w-7.5 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent p-0 hover:bg-state-base-hover ${s.copyIcon} ${isCopied ? s.copied : ''}`}
                   onClick={copyHandle}
                 />
               </div>

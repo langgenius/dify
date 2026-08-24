@@ -1,8 +1,10 @@
 import type { CreateExternalAPIReq } from '../../declarations'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // Import mocked service
 import { createExternalAPI } from '@/service/datasets'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import AddExternalAPIModal from '../index'
 
 // Mock API service
@@ -43,11 +45,6 @@ describe('AddExternalAPIModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<AddExternalAPIModal {...defaultProps} />)
-      expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()
-    })
-
     it('should render create title when not in edit mode', () => {
       render(<AddExternalAPIModal {...defaultProps} isEditMode={false} />)
       expect(screen.getByText('dataset.createExternalAPI'))!.toBeInTheDocument()
@@ -78,9 +75,7 @@ describe('AddExternalAPIModal', () => {
 
     it('should render close button', () => {
       render(<AddExternalAPIModal {...defaultProps} />)
-      // Close button is rendered in a portal
-      const closeButton = document.body.querySelector('.action-btn')
-      expect(closeButton)!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.close' })).toBeInTheDocument()
     })
   })
 
@@ -174,6 +169,7 @@ describe('AddExternalAPIModal', () => {
       vi.mocked(createExternalAPI).mockResolvedValue(mockResponse)
       const onSave = vi.fn()
       const onCancel = vi.fn()
+      const user = userEvent.setup()
 
       render(<AddExternalAPIModal {...defaultProps} onSave={onSave} onCancel={onCancel} />)
 
@@ -185,8 +181,7 @@ describe('AddExternalAPIModal', () => {
       fireEvent.change(endpointInput, { target: { value: 'https://test.com' } })
       fireEvent.change(apiKeyInput, { target: { value: 'key12345' } })
 
-      const saveButton = screen.getByText('dataset.externalAPIForm.save').closest('button')!
-      fireEvent.click(saveButton)
+      await user.click(screen.getByRole('button', { name: 'dataset.externalAPIForm.save' }))
 
       await waitFor(() => {
         expect(createExternalAPI).toHaveBeenCalledWith({
@@ -392,9 +387,7 @@ describe('AddExternalAPIModal', () => {
       const onCancel = vi.fn()
       render(<AddExternalAPIModal {...defaultProps} onCancel={onCancel} />)
 
-      // Close button is rendered in a portal
-      const closeButton = document.body.querySelector('.action-btn')!
-      fireEvent.click(closeButton)
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onCancel).toHaveBeenCalledTimes(1)
     })

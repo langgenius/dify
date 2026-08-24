@@ -40,7 +40,7 @@ export type AppDetailWithSite = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
@@ -73,10 +73,15 @@ export type Import = {
   imported_dsl_version?: string
   permission_keys?: Array<string>
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
+}
+
+export type RecentAppListResponse = {
+  data: Array<RecentAppResponse>
 }
 
 export type WorkflowOnlineUsersPayload = {
@@ -253,73 +258,10 @@ export type AgentConfigSkillInspectResponse = {
   warnings?: Array<string>
 }
 
-export type AgentDriveListResponse = {
-  items?: Array<AgentDriveItemResponse>
-}
-
-export type AgentDriveDownloadResponse = {
-  url: string
-}
-
-export type AgentDrivePreviewResponse = {
-  binary: boolean
-  key: string
-  size?: number | null
-  text?: string | null
-  truncated: boolean
-}
-
-export type AgentDriveSkillListResponse = {
-  items?: Array<AgentDriveSkillItemResponse>
-}
-
-export type AgentDriveSkillInspectResponse = {
-  archive_key?: string | null
-  created_at?: number | null
-  description: string
-  file_tree?: Array<{
-    [key: string]: unknown
-  }>
-  files?: Array<AgentDriveSkillFileResponse>
-  hash?: string | null
-  mime_type?: string | null
-  name: string
-  path: string
-  size?: number | null
-  skill_md: AgentDriveSkillMarkdownResponse
-  skill_md_key: string
-  source: string
-  warnings?: Array<string>
-}
-
-export type AgentDriveDeleteResponse = {
-  removed_keys?: Array<string>
-  result: string
-}
-
-export type AgentDriveFilePayload = {
-  upload_file_id: string
-}
-
-export type AgentDriveFileCommitResponse = {
-  file: AgentDriveFileResponse
-}
-
 export type AgentLogResponse = {
   files?: Array<unknown>
   iterations: Array<AgentIterationLogResponse>
   meta: AgentLogMetaResponse
-}
-
-export type AgentSkillUploadResponse = {
-  manifest: SkillManifest
-  skill: AgentUploadedSkillResponse
-}
-
-export type SkillToolInferenceResult = {
-  cli_tools?: Array<CliToolSuggestion>
-  inferable: boolean
-  reason?: string | null
 }
 
 export type AnnotationReplyPayload = {
@@ -414,7 +356,6 @@ export type AppApiStatusPayload = {
 
 export type AppDetail = {
   access_mode?: string | null
-  app_model_config?: ModelConfig | null
   created_at?: number | null
   created_by?: string | null
   description?: string | null
@@ -424,7 +365,8 @@ export type AppDetail = {
   icon_background?: string | null
   id: string
   maintainer?: string | null
-  mode_compatible_with_agent: string
+  mode: string
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
@@ -545,6 +487,7 @@ export type AppImportResponse = {
   id: string
   imported_dsl_version?: string
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type AppExportResponse = {
@@ -859,21 +802,21 @@ export type SandboxListResponse = {
   truncated?: boolean
 }
 
+export type WorkflowAgentSandboxDownloadPayload = {
+  node_execution_id: string
+  path: string
+}
+
+export type SandboxDownloadResponse = {
+  url: string
+}
+
 export type SandboxReadResponse = {
   binary: boolean
   path: string
   size?: number | null
   text?: string | null
   truncated: boolean
-}
-
-export type WorkflowAgentSandboxUploadPayload = {
-  node_execution_id?: string | null
-  path: string
-}
-
-export type SandboxUploadResponse = {
-  url: string
 }
 
 export type WorkflowCommentBasicList = {
@@ -998,15 +941,15 @@ export type WorkflowResponse = {
   updated_at: number
   updated_by?: SimpleAccountResponse | null
   version: string
+  version_number?: number | null
 }
 
 export type SyncDraftWorkflowPayload = {
+  _is_collaborative?: boolean
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
-  environment_variables?: Array<{
-    [key: string]: unknown
-  }>
+  environment_variable_patch?: SyncEnvironmentVariablePatchPayload | null
   features: {
     [key: string]: unknown
   }
@@ -1017,9 +960,9 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  hash?: string
-  result?: string
-  updated_at?: string
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type WorkflowDraftVariableList = {
@@ -1035,7 +978,9 @@ export type EnvironmentVariableListResponse = {
 }
 
 export type EnvironmentVariableUpdatePayload = {
+  deleted_environment_variable_ids?: Array<string>
   environment_variables: Array<EnvironmentVariableItemPayload>
+  patch?: boolean
 }
 
 export type WorkflowFeaturesPayload = {
@@ -1142,6 +1087,7 @@ export type WorkflowRunNodeExecutionResponse = {
   predecessor_node_id?: string | null
   process_data?: unknown
   process_data_truncated?: boolean | null
+  retry_index?: number | null
   status?: string | null
   title?: string | null
 }
@@ -1318,13 +1264,31 @@ export type DeletedTool = {
   type: string
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type AppModelConfigResponse = {
+  agent_mode?: unknown | null
+  annotation_reply?: unknown | null
+  chat_prompt_config?: unknown | null
+  completion_prompt_config?: unknown | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: unknown | null
+  dataset_query_variable?: string | null
+  external_data_tools?: unknown | null
+  file_upload?: unknown | null
+  model?: unknown | null
+  more_like_this?: unknown | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: unknown | null
+  sensitive_word_avoidance?: unknown | null
+  speech_to_text?: unknown | null
+  suggested_questions?: unknown | null
+  suggested_questions_after_answer?: unknown | null
+  text_to_speech?: unknown | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: unknown | null
 }
 
 export type AppDetailSiteResponse = {
@@ -1371,10 +1335,33 @@ export type WorkflowPartial = {
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
 
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
+
 export type PluginDependency = {
   current_identifier?: string | null
   type: PluginDependencyType
   value: Github | Marketplace | Package
+}
+
+export type RecentAppResponse = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  readonly icon_url: string | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowOnlineUsersByApp = {
@@ -1419,6 +1406,7 @@ export type AgentConfigFileItemResponse = {
   file_id?: string | null
   hash?: string | null
   id: string
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -1437,6 +1425,7 @@ export type AgentConfigSkillItemResponse = {
   file_id?: string | null
   hash?: string | null
   id: string
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -1458,53 +1447,6 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
-export type AgentDriveItemResponse = {
-  created_at?: number | null
-  file_kind: string
-  hash?: string | null
-  is_skill?: boolean | null
-  key: string
-  mime_type?: string | null
-  size?: number | null
-  skill_metadata?: string | null
-}
-
-export type AgentDriveSkillItemResponse = {
-  archive_key?: string | null
-  created_at?: number | null
-  description: string
-  hash?: string | null
-  mime_type?: string | null
-  name: string
-  path: string
-  size?: number | null
-  skill_md_key: string
-}
-
-export type AgentDriveSkillFileResponse = {
-  available_in_drive: boolean
-  drive_key?: string | null
-  name: string
-  path: string
-  type: string
-}
-
-export type AgentDriveSkillMarkdownResponse = {
-  binary: boolean
-  key: string
-  size?: number | null
-  text?: string | null
-  truncated: boolean
-}
-
-export type AgentDriveFileResponse = {
-  drive_key: string
-  file_id: string
-  mime_type?: string | null
-  name: string
-  size?: number | null
-}
-
 export type AgentIterationLogResponse = {
   created_at: string
   files?: Array<unknown>
@@ -1524,32 +1466,6 @@ export type AgentLogMetaResponse = {
   start_time: string
   status: string
   total_tokens: number
-}
-
-export type SkillManifest = {
-  description: string
-  entry_path: string
-  files: Array<string>
-  hash: string
-  name: string
-  size: number
-}
-
-export type AgentUploadedSkillResponse = {
-  archive_key?: string | null
-  description: string
-  name: string
-  path: string
-  skill_md_key: string
-}
-
-export type CliToolSuggestion = {
-  command?: string
-  description?: string
-  env_suggestions?: Array<EnvSuggestion>
-  inferred_from?: string
-  install_commands?: Array<string>
-  name: string
 }
 
 export type AnnotationSettingEmbeddingModelResponse = {
@@ -1591,6 +1507,15 @@ export type ConversationWithSummary = {
 export type FeedbackStat = {
   dislike: number
   like: number
+}
+
+export type ModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: LlmMode
+  name: string
+  provider: string
 }
 
 export type Conversation = {
@@ -1917,6 +1842,13 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
+export type SyncEnvironmentVariablePatchPayload = {
+  deleted_environment_variable_ids?: Array<string>
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }>
+}
+
 export type ConversationVariableItemPayload = {
   description?: string | null
   id?: string | null
@@ -1996,7 +1928,6 @@ export type AgentSoulConfig = {
   config_note?: string
   config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
-  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -2028,14 +1959,14 @@ export type DeclaredOutputConfig = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2181,8 +2112,6 @@ export type ModelConfigPartial = {
   updated_by?: string | null
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2226,12 +2155,6 @@ export type AgentToolCallResponse = {
   }
 }
 
-export type EnvSuggestion = {
-  key: string
-  reason?: string
-  secret_likely?: boolean
-}
-
 export type SimpleModelConfig = {
   model?: JsonValue | null
   pre_prompt?: string | null
@@ -2243,6 +2166,8 @@ export type StatusCount = {
   paused: number
   success: number
 }
+
+export type LlmMode = 'chat' | 'completion'
 
 export type SimpleMessageDetail = {
   answer: string
@@ -2384,9 +2309,10 @@ export type AppVariableConfig = {
 }
 
 export type AgentConfigFileRefConfig = {
-  file_id: string
+  file_id?: string
   file_kind: 'tool_file' | 'upload_file'
   hash?: string | null
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -2394,9 +2320,10 @@ export type AgentConfigFileRefConfig = {
 
 export type AgentConfigSkillRefConfig = {
   description?: string
-  file_id: string
+  file_id?: string
   file_kind?: 'tool_file'
   hash?: string | null
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -2405,11 +2332,6 @@ export type AgentConfigSkillRefConfig = {
 export type AgentSoulEnvConfig = {
   secret_refs?: Array<AgentSecretRefConfig>
   variables?: Array<AgentEnvVariableConfig>
-}
-
-export type AgentSoulFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
 }
 
 export type AgentSoulHumanConfig = {
@@ -2460,14 +2382,14 @@ export type DeclaredArrayItem = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2709,35 +2631,6 @@ export type AgentEnvVariableConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
@@ -2777,6 +2670,7 @@ export type AgentSoulModelSettings = {
   stop?: Array<string> | null
   temperature?: number | null
   top_p?: number | null
+  [key: string]: unknown
 }
 
 export type AgentSandboxProviderConfig = {
@@ -2796,7 +2690,7 @@ export type AgentSoulDifyToolConfig = {
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
-  provider_type?: string
+  provider_type: ToolProviderType
   runtime_parameters?: {
     [key: string]:
       | string
@@ -2810,6 +2704,20 @@ export type AgentSoulDifyToolConfig = {
       | null
   }
   tool_name?: string | null
+}
+
+export type AgentFileRefConfig = {
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
 }
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
@@ -2947,6 +2855,15 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
 export type StringSource = {
   selector?: Array<string>
   type: ValueSourceType
@@ -3019,6 +2936,8 @@ export type AgentKnowledgeMetadataCondition = {
     | '≠'
     | '≤'
     | '≥'
+  id?: string | null
+  metadata_id?: string | null
   name: string
   value?: string | Array<string> | number | null
 }
@@ -3049,7 +2968,7 @@ export type AppDetailWithSiteWritable = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null
@@ -3059,6 +2978,10 @@ export type AppDetailWithSiteWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+}
+
+export type RecentAppListResponseWritable = {
+  data: Array<RecentAppResponseWritable>
 }
 
 export type GeneratedAppResponseWritable = JsonValue
@@ -3141,6 +3064,19 @@ export type AppDetailSiteResponseWritable = {
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
+}
+
+export type RecentAppResponseWritable = {
+  author_name?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: IconType | null
+  id: string
+  maintainer?: string | null
+  mode: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
+  name: string
+  permission_keys?: Array<string>
+  updated_at: number
 }
 
 export type WorkflowCommentBasicWritable = {
@@ -3302,6 +3238,21 @@ export type PostAppsImportsByImportIdConfirmResponses = {
 
 export type PostAppsImportsByImportIdConfirmResponse =
   PostAppsImportsByImportIdConfirmResponses[keyof PostAppsImportsByImportIdConfirmResponses]
+
+export type GetAppsRecentData = {
+  body?: never
+  path?: never
+  query?: {
+    limit?: number
+  }
+  url: '/apps/recent'
+}
+
+export type GetAppsRecentResponses = {
+  200: RecentAppListResponse
+}
+
+export type GetAppsRecentResponse = GetAppsRecentResponses[keyof GetAppsRecentResponses]
 
 export type GetAppsStarredData = {
   body?: never
@@ -3832,138 +3783,6 @@ export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
 export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponse =
   GetAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
-export type GetAppsByAppIdAgentDriveFilesData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: {
-    node_id?: string
-    prefix?: string
-  }
-  url: '/apps/{app_id}/agent/drive/files'
-}
-
-export type GetAppsByAppIdAgentDriveFilesResponses = {
-  200: AgentDriveListResponse
-}
-
-export type GetAppsByAppIdAgentDriveFilesResponse =
-  GetAppsByAppIdAgentDriveFilesResponses[keyof GetAppsByAppIdAgentDriveFilesResponses]
-
-export type GetAppsByAppIdAgentDriveFilesDownloadData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query: {
-    key: string
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/drive/files/download'
-}
-
-export type GetAppsByAppIdAgentDriveFilesDownloadResponses = {
-  200: AgentDriveDownloadResponse
-}
-
-export type GetAppsByAppIdAgentDriveFilesDownloadResponse =
-  GetAppsByAppIdAgentDriveFilesDownloadResponses[keyof GetAppsByAppIdAgentDriveFilesDownloadResponses]
-
-export type GetAppsByAppIdAgentDriveFilesPreviewData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query: {
-    key: string
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/drive/files/preview'
-}
-
-export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
-  200: AgentDrivePreviewResponse
-}
-
-export type GetAppsByAppIdAgentDriveFilesPreviewResponse =
-  GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
-
-export type GetAppsByAppIdAgentDriveSkillsData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: {
-    node_id?: string
-    prefix?: string
-  }
-  url: '/apps/{app_id}/agent/drive/skills'
-}
-
-export type GetAppsByAppIdAgentDriveSkillsResponses = {
-  200: AgentDriveSkillListResponse
-}
-
-export type GetAppsByAppIdAgentDriveSkillsResponse =
-  GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
-
-export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectData = {
-  body?: never
-  path: {
-    app_id: string
-    skill_path: string
-  }
-  query?: {
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/drive/skills/{skill_path}/inspect'
-}
-
-export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses = {
-  200: AgentDriveSkillInspectResponse
-}
-
-export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse =
-  GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
-
-export type DeleteAppsByAppIdAgentFilesData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query: {
-    key: string
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/files'
-}
-
-export type DeleteAppsByAppIdAgentFilesResponses = {
-  200: AgentDriveDeleteResponse
-}
-
-export type DeleteAppsByAppIdAgentFilesResponse =
-  DeleteAppsByAppIdAgentFilesResponses[keyof DeleteAppsByAppIdAgentFilesResponses]
-
-export type PostAppsByAppIdAgentFilesData = {
-  body: AgentDriveFilePayload
-  path: {
-    app_id: string
-  }
-  query?: {
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/files'
-}
-
-export type PostAppsByAppIdAgentFilesResponses = {
-  201: AgentDriveFileCommitResponse
-}
-
-export type PostAppsByAppIdAgentFilesResponse =
-  PostAppsByAppIdAgentFilesResponses[keyof PostAppsByAppIdAgentFilesResponses]
-
 export type GetAppsByAppIdAgentLogsData = {
   body?: never
   path: {
@@ -3986,68 +3805,6 @@ export type GetAppsByAppIdAgentLogsResponses = {
 
 export type GetAppsByAppIdAgentLogsResponse =
   GetAppsByAppIdAgentLogsResponses[keyof GetAppsByAppIdAgentLogsResponses]
-
-export type PostAppsByAppIdAgentSkillsUploadData = {
-  body: {
-    file: Blob | File
-  }
-  path: {
-    app_id: string
-  }
-  query?: {
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/skills/upload'
-}
-
-export type PostAppsByAppIdAgentSkillsUploadErrors = {
-  400: unknown
-}
-
-export type PostAppsByAppIdAgentSkillsUploadResponses = {
-  201: AgentSkillUploadResponse
-}
-
-export type PostAppsByAppIdAgentSkillsUploadResponse =
-  PostAppsByAppIdAgentSkillsUploadResponses[keyof PostAppsByAppIdAgentSkillsUploadResponses]
-
-export type DeleteAppsByAppIdAgentSkillsBySlugData = {
-  body?: never
-  path: {
-    app_id: string
-    slug: string
-  }
-  query?: {
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/skills/{slug}'
-}
-
-export type DeleteAppsByAppIdAgentSkillsBySlugResponses = {
-  200: AgentDriveDeleteResponse
-}
-
-export type DeleteAppsByAppIdAgentSkillsBySlugResponse =
-  DeleteAppsByAppIdAgentSkillsBySlugResponses[keyof DeleteAppsByAppIdAgentSkillsBySlugResponses]
-
-export type PostAppsByAppIdAgentSkillsBySlugInferToolsData = {
-  body?: never
-  path: {
-    app_id: string
-    slug: string
-  }
-  query?: {
-    node_id?: string
-  }
-  url: '/apps/{app_id}/agent/skills/{slug}/infer-tools'
-}
-
-export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponses = {
-  200: SkillToolInferenceResult
-}
-
-export type PostAppsByAppIdAgentSkillsBySlugInferToolsResponse =
-  PostAppsByAppIdAgentSkillsBySlugInferToolsResponses[keyof PostAppsByAppIdAgentSkillsBySlugInferToolsResponses]
 
 export type PostAppsByAppIdAnnotationReplyByActionData = {
   body: AnnotationReplyPayload
@@ -4907,6 +4664,27 @@ export type PutAppsByAppIdServerResponses = {
 export type PutAppsByAppIdServerResponse =
   PutAppsByAppIdServerResponses[keyof PutAppsByAppIdServerResponses]
 
+export type PostAppsByAppIdServerRefreshData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/server/refresh'
+}
+
+export type PostAppsByAppIdServerRefreshErrors = {
+  403: unknown
+  404: unknown
+}
+
+export type PostAppsByAppIdServerRefreshResponses = {
+  200: AppMcpServerResponse
+}
+
+export type PostAppsByAppIdServerRefreshResponse =
+  PostAppsByAppIdServerRefreshResponses[keyof PostAppsByAppIdServerRefreshResponses]
+
 export type PostAppsByAppIdSiteData = {
   body: AppSiteUpdatePayload
   path: {
@@ -5555,8 +5333,8 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     node_id: string
     workflow_run_id: string
   }
-  query?: {
-    node_execution_id?: string
+  query: {
+    node_execution_id: string
     path?: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
@@ -5569,6 +5347,25 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse =
   GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses]
 
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadData = {
+  body: WorkflowAgentSandboxDownloadPayload
+  path: {
+    app_id: string
+    node_id: string
+    workflow_run_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download'
+}
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses =
+  {
+    200: SandboxDownloadResponse
+  }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse =
+  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadData = {
   body?: never
   path: {
@@ -5577,7 +5374,7 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
     workflow_run_id: string
   }
   query: {
-    node_execution_id?: string
+    node_execution_id: string
     path: string
   }
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
@@ -5589,25 +5386,6 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
 
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse =
   GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses]
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadData = {
-  body: WorkflowAgentSandboxUploadPayload
-  path: {
-    app_id: string
-    node_id: string
-    workflow_run_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/upload'
-}
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses =
-  {
-    200: SandboxUploadResponse
-  }
-
-export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponse =
-  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesUploadResponses]
 
 export type GetAppsByAppIdWorkflowCommentsData = {
   body?: never
@@ -6898,24 +6676,3 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponse =
   DeleteAppsByResourceIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdResponses]
-
-export type GetAppsByServerIdServerRefreshData = {
-  body?: never
-  path: {
-    server_id: string
-  }
-  query?: never
-  url: '/apps/{server_id}/server/refresh'
-}
-
-export type GetAppsByServerIdServerRefreshErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type GetAppsByServerIdServerRefreshResponses = {
-  200: AppMcpServerResponse
-}
-
-export type GetAppsByServerIdServerRefreshResponse =
-  GetAppsByServerIdServerRefreshResponses[keyof GetAppsByServerIdServerRefreshResponses]

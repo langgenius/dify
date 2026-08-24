@@ -249,10 +249,10 @@ const ModelLoadBalancingModal = ({
           if (!open) onClose?.()
         }}
       >
-        <DialogContent className="w-[640px] max-w-none border-none px-8 pt-8 text-left align-middle">
+        <DialogContent className="w-160 max-w-none border-none px-8 pt-8 text-left align-middle">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             <div className="pb-3 font-semibold">
-              <div className="h-[30px]">
+              <div className="h-7.5">
                 {draftConfig?.enabled
                   ? t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })
                   : t(($) => $['modelProvider.auth.configModel'], { ns: 'common' })}
@@ -290,7 +290,7 @@ const ModelLoadBalancingModal = ({
                   )}
                   onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
                 >
-                  <div className="flex items-center gap-2 px-[15px] py-3 select-none">
+                  <div className="flex items-center gap-2 px-3.75 py-3 select-none">
                     <div className="flex size-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
                       {Boolean(model) && (
                         <ModelIcon

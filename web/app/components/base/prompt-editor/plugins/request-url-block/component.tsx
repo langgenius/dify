@@ -16,7 +16,7 @@ const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({ nodeKey }
   return (
     <div
       className={cn(
-        'group/wrap relative mx-0.5 flex h-[18px] items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 select-none hover:border-[#7839ee]',
+        'group/wrap relative mx-0.5 flex h-4.5 items-center rounded-[5px] border border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 select-none hover:border-[#7839ee]',
         isSelected && 'border-[#7839ee]! hover:border-[#7839ee]!',
       )}
       ref={ref}

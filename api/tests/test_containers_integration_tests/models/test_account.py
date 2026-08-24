@@ -214,7 +214,7 @@ class TestTenantGetAccounts(_DBTrackingTestBase):
         self._create_join(db_session_with_containers, tenant.id, account1.id, TenantAccountRole.OWNER, current=False)
         self._create_join(db_session_with_containers, tenant.id, account2.id, TenantAccountRole.NORMAL, current=False)
 
-        accounts = tenant.get_accounts()
+        accounts = tenant.get_accounts(session=db_session_with_containers)
 
         assert len(accounts) == 2
         account_ids = {a.id for a in accounts}

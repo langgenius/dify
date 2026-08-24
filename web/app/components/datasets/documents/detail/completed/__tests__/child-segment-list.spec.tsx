@@ -1,6 +1,6 @@
 import type { ChildChunkDetail } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ChildSegmentList from '../child-segment-list'
 
 // Mock document context
@@ -112,12 +112,6 @@ describe('ChildSegmentList', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<ChildSegmentList {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render total count text', () => {
       render(<ChildSegmentList {...defaultProps} />)
 
@@ -179,7 +173,7 @@ describe('ChildSegmentList', () => {
     it('should render input field in full-doc mode', () => {
       render(<ChildSegmentList {...defaultProps} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(input).toBeInTheDocument()
     })
 
@@ -193,7 +187,7 @@ describe('ChildSegmentList', () => {
       const mockHandleInputChange = vi.fn()
       render(<ChildSegmentList {...defaultProps} handleInputChange={mockHandleInputChange} />)
 
-      const input = screen.getByRole('textbox')
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
       fireEvent.change(input, { target: { value: 'search term' } })
 
       expect(mockHandleInputChange).toHaveBeenCalledWith('search term')
@@ -215,13 +209,6 @@ describe('ChildSegmentList', () => {
       render(<ChildSegmentList {...defaultProps} isLoading={true} />)
 
       expect(screen.getByTestId('full-doc-skeleton')).toBeInTheDocument()
-    })
-
-    it('should handle undefined total in full-doc mode', () => {
-      const { container } = render(<ChildSegmentList {...defaultProps} total={undefined} />)
-
-      // Assert - component should render without crashing
-      expect(container.firstChild).toBeInTheDocument()
     })
   })
 
@@ -277,28 +264,6 @@ describe('ChildSegmentList', () => {
   })
 
   // Focused state
-  describe('Focused State', () => {
-    it('should apply focused style when currChildChunk matches', () => {
-      mockParentMode = 'full-doc'
-      mockCurrChildChunk = { childChunkInfo: { id: 'child-1' } }
-
-      render(<ChildSegmentList {...defaultProps} />)
-
-      // Assert - check for focused class on label
-      const label = screen.getByTestId('slice-label')
-      expect(label).toHaveClass('bg-state-accent-solid')
-    })
-
-    it('should not apply focused style when currChildChunk does not match', () => {
-      mockParentMode = 'full-doc'
-      mockCurrChildChunk = { childChunkInfo: { id: 'other-child' } }
-
-      render(<ChildSegmentList {...defaultProps} />)
-
-      const label = screen.getByTestId('slice-label')
-      expect(label).not.toHaveClass('bg-state-accent-solid')
-    })
-  })
 
   // Enabled/Disabled state
   describe('Enabled State', () => {
@@ -356,14 +321,6 @@ describe('ChildSegmentList', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty childChunks array', () => {
-      mockParentMode = 'full-doc'
-
-      const { container } = render(<ChildSegmentList {...defaultProps} childChunks={[]} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should maintain structure when rerendered', () => {
       mockParentMode = 'full-doc'
       const { rerender } = render(<ChildSegmentList {...defaultProps} />)

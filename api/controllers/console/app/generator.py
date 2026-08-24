@@ -3,7 +3,7 @@ from collections.abc import Generator, Sequence
 from typing import Any, Literal
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,12 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import with_session
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
+from controllers.console.wraps import (
+    account_initialization_required,
+    model_validate,
+    setup_required,
+    with_current_tenant_id,
+)
 from core.app.app_config.entities import ModelConfig
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
@@ -26,9 +31,10 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from core.workflow.generator.types import WorkflowGenerateErrorCode
+from fields.base import ResponseModel
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
-from libs.helper import compact_generate_response
+from libs.helper import compact_generate_response, dump_response
 from libs.login import login_required
 from models import App
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -60,6 +66,48 @@ class InstructionTemplatePayload(BaseModel):
 _MAX_INSTRUCTION_LENGTH = 10_000
 
 
+class WorkflowGraphPosition(BaseModel):
+    x: float
+    y: float
+
+
+class WorkflowGraphViewport(WorkflowGraphPosition):
+    zoom: float
+
+
+class WorkflowGraphNode(BaseModel):
+    """React Flow node shape accepted and returned by the generator.
+
+    Node-specific configuration lives under ``data`` and wrapper metadata
+    differs for container children, so unknown wrapper fields must survive
+    request validation and response serialization.
+    """
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    id: str
+    type: str
+    position: WorkflowGraphPosition
+    data: dict[str, Any]
+
+
+class WorkflowGraphEdge(BaseModel):
+    """React Flow edge shape with extensible renderer metadata."""
+
+    model_config = ConfigDict(extra="allow", populate_by_name=True)
+
+    id: str
+    source: str
+    target: str
+    type: str
+
+
+class WorkflowGraph(BaseModel):
+    nodes: list[WorkflowGraphNode]
+    edges: list[WorkflowGraphEdge]
+    viewport: WorkflowGraphViewport
+
+
 class WorkflowGeneratePayload(BaseModel):
     """Payload for the cmd+k `/create` and `/refine` workflow generator endpoint.
 
@@ -79,7 +127,7 @@ class WorkflowGeneratePayload(BaseModel):
         alias="model_config",
         description="Model configuration",
     )
-    current_graph: dict | None = Field(
+    current_graph: WorkflowGraph | None = Field(
         default=None,
         description="Existing draft graph to refine (cmd+k `/refine`); omit for create-from-scratch",
     )
@@ -98,6 +146,59 @@ class WorkflowInstructionSuggestionsPayload(BaseModel):
     count: int = Field(default=4, ge=1, le=6, description="Number of suggestions to return (1-6)")
 
 
+class WorkflowGenerateErrorResponse(ResponseModel):
+    code: WorkflowGenerateErrorCode
+    detail: str
+    node_id: str | None = None
+
+
+class WorkflowGenerateResponse(ResponseModel):
+    graph: WorkflowGraph
+    message: str = ""
+    app_name: str = ""
+    icon: str = ""
+    error: str = ""
+    errors: list[WorkflowGenerateErrorResponse] = Field(default_factory=list)
+    mode: Literal["workflow", "advanced-chat"] | None = None
+
+
+class WorkflowPlanNodeResponse(ResponseModel):
+    label: str
+    node_type: str
+    purpose: str = ""
+
+
+class WorkflowPlanStartInputResponse(ResponseModel):
+    variable: str
+    label: str = ""
+    type: str = ""
+
+
+class WorkflowGeneratePlanEventResponse(ResponseModel):
+    event: Literal["plan"] = "plan"
+    title: str = ""
+    description: str = ""
+    app_name: str = ""
+    icon: str = ""
+    mode: Literal["workflow", "advanced-chat"]
+    nodes: list[WorkflowPlanNodeResponse]
+    start_inputs: list[WorkflowPlanStartInputResponse] = Field(default_factory=list)
+
+
+class WorkflowGenerateResultEventResponse(WorkflowGenerateResponse):
+    event: Literal["result"] = "result"
+
+
+class WorkflowGenerateStreamEventResponse(
+    RootModel[WorkflowGeneratePlanEventResponse | WorkflowGenerateResultEventResponse]
+):
+    """Schema for each JSON object carried by an SSE ``data:`` frame."""
+
+
+class WorkflowInstructionSuggestionsResponse(ResponseModel):
+    suggestions: list[str]
+
+
 class GeneratorResponse(RootModel[Any]):
     root: Any
 
@@ -114,7 +215,16 @@ register_schema_models(
     WorkflowInstructionSuggestionsPayload,
     ModelConfig,
 )
-register_response_schema_models(console_ns, GeneratorResponse, SimpleDataResponse)
+register_response_schema_models(
+    console_ns,
+    GeneratorResponse,
+    SimpleDataResponse,
+    WorkflowGenerateResponse,
+    WorkflowGeneratePlanEventResponse,
+    WorkflowGenerateResultEventResponse,
+    WorkflowGenerateStreamEventResponse,
+    WorkflowInstructionSuggestionsResponse,
+)
 
 
 @console_ns.route("/rule-generate")
@@ -133,11 +243,11 @@ class RuleGenerateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = RuleGeneratePayload.model_validate(console_ns.payload)
+    @model_validate(RuleGeneratePayload)
+    def post(self, req_data: RuleGeneratePayload, current_tenant_id: str):
 
         try:
-            rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=args)
+            rules = LLMGenerator.generate_rule_config(tenant_id=current_tenant_id, args=req_data)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -162,13 +272,13 @@ class RuleCodeGenerateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = RuleCodeGeneratePayload.model_validate(console_ns.payload)
+    @model_validate(RuleCodeGeneratePayload)
+    def post(self, req_data: RuleCodeGeneratePayload, current_tenant_id: str):
 
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
-                args=args,
+                args=req_data,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -194,13 +304,13 @@ class RuleStructuredOutputGenerateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = RuleStructuredOutputPayload.model_validate(console_ns.payload)
+    @model_validate(RuleStructuredOutputPayload)
+    def post(self, req_data: RuleStructuredOutputPayload, current_tenant_id: str):
 
         try:
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
-                args=args,
+                args=req_data,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -227,77 +337,80 @@ class InstructionGenerateApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @with_session(write=False)
-    def post(self, session: Session, current_tenant_id: str):
-        args = InstructionGeneratePayload.model_validate(console_ns.payload)
+    @model_validate(InstructionGeneratePayload)
+    def post(self, req_data: InstructionGeneratePayload, session: Session, current_tenant_id: str):
         providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
         code_provider: type[CodeNodeProvider] | None = next(
-            (p for p in providers if p.is_accept_language(args.language)), None
+            (p for p in providers if p.is_accept_language(req_data.language)), None
         )
         code_template = code_provider.get_default_code() if code_provider else ""
         try:
             # Generate from nothing for a workflow node
-            if (args.current in (code_template, "")) and args.node_id != "":
+            if (req_data.current in (code_template, "")) and req_data.node_id != "":
                 app = session.scalar(
-                    select(App).where(App.id == args.flow_id, App.tenant_id == current_tenant_id).limit(1)
+                    select(App).where(App.id == req_data.flow_id, App.tenant_id == current_tenant_id).limit(1)
                 )
                 if not app:
-                    return {"error": f"app {args.flow_id} not found"}, 400
+                    return {"error": f"app {req_data.flow_id} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app, session=session)
                 if not workflow:
-                    return {"error": f"workflow {args.flow_id} not found"}, 400
+                    return {"error": f"workflow {req_data.flow_id} not found"}, 400
                 nodes: Sequence = workflow.graph_dict["nodes"]
-                node = [node for node in nodes if node["id"] == args.node_id]
+                node = [node for node in nodes if node["id"] == req_data.node_id]
                 if len(node) == 0:
-                    return {"error": f"node {args.node_id} not found"}, 400
+                    return {"error": f"node {req_data.node_id} not found"}, 400
                 node_type = node[0]["data"]["type"]
                 match node_type:
                     case "llm":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
+                            app_id=req_data.flow_id,
                             args=RuleGeneratePayload(
-                                instruction=args.instruction,
-                                model_config=args.model_config_data,
+                                instruction=req_data.instruction,
+                                model_config=req_data.model_config_data,
                                 no_variable=True,
                             ),
                         )
                     case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
+                            app_id=req_data.flow_id,
                             args=RuleGeneratePayload(
-                                instruction=args.instruction,
-                                model_config=args.model_config_data,
+                                instruction=req_data.instruction,
+                                model_config=req_data.model_config_data,
                                 no_variable=True,
                             ),
                         )
                     case "code":
                         return LLMGenerator.generate_code(
                             tenant_id=current_tenant_id,
+                            app_id=req_data.flow_id,
                             args=RuleCodeGeneratePayload(
-                                instruction=args.instruction,
-                                model_config=args.model_config_data,
-                                code_language=args.language,
+                                instruction=req_data.instruction,
+                                model_config=req_data.model_config_data,
+                                code_language=req_data.language,
                             ),
                         )
                     case _:
                         return {"error": f"invalid node type: {node_type}"}
-            if args.node_id == "" and args.current != "":  # For legacy app without a workflow
+            if req_data.node_id == "" and req_data.current != "":  # For legacy app without a workflow
                 return LLMGenerator.instruction_modify_legacy(
                     tenant_id=current_tenant_id,
-                    flow_id=args.flow_id,
-                    current=args.current,
-                    instruction=args.instruction,
-                    model_config=args.model_config_data,
-                    ideal_output=args.ideal_output,
+                    flow_id=req_data.flow_id,
+                    current=req_data.current,
+                    instruction=req_data.instruction,
+                    model_config=req_data.model_config_data,
+                    ideal_output=req_data.ideal_output,
                 )
-            if args.node_id != "" and args.current != "":  # For workflow node
+            if req_data.node_id != "" and req_data.current != "":  # For workflow node
                 return LLMGenerator.instruction_modify_workflow(
                     tenant_id=current_tenant_id,
-                    flow_id=args.flow_id,
-                    node_id=args.node_id,
-                    current=args.current,
-                    instruction=args.instruction,
-                    model_config=args.model_config_data,
-                    ideal_output=args.ideal_output,
+                    flow_id=req_data.flow_id,
+                    node_id=req_data.node_id,
+                    current=req_data.current,
+                    instruction=req_data.instruction,
+                    model_config=req_data.model_config_data,
+                    ideal_output=req_data.ideal_output,
                     workflow_service=WorkflowService(),
                 )
             return {"error": "incompatible parameters"}, 400
@@ -321,9 +434,9 @@ class InstructionGenerationTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        args = InstructionTemplatePayload.model_validate(console_ns.payload)
-        match args.type:
+    @model_validate(InstructionTemplatePayload)
+    def post(self, req_data: InstructionTemplatePayload):
+        match req_data.type:
             case "prompt":
                 from core.llm_generator.prompts import INSTRUCTION_GENERATE_TEMPLATE_PROMPT
 
@@ -333,7 +446,7 @@ class InstructionGenerationTemplateApi(Resource):
 
                 return {"data": INSTRUCTION_GENERATE_TEMPLATE_CODE}
             case _:
-                raise ValueError(f"Invalid type: {args.type}")
+                raise ValueError(f"Invalid type: {req_data.type}")
 
 
 def _workflow_instruction_guard(args: WorkflowGeneratePayload) -> tuple[dict, int] | None:
@@ -376,30 +489,36 @@ class WorkflowGenerateApi(Resource):
     @console_ns.doc("generate_workflow_graph")
     @console_ns.doc(description="Generate a Dify workflow graph from natural language")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
-    @console_ns.response(200, "Workflow graph generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(
+        200,
+        "Workflow graph generated successfully",
+        console_ns.models[WorkflowGenerateResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = WorkflowGeneratePayload.model_validate(console_ns.payload)
+    @model_validate(WorkflowGeneratePayload)
+    def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
 
         # Reject empty / over-length instructions at the boundary (shared with
         # the streaming endpoint) before spending a planner+builder roundtrip.
-        guard = _workflow_instruction_guard(args)
+        guard = _workflow_instruction_guard(req_data)
         if guard is not None:
             return guard
 
         try:
             result = WorkflowGeneratorService.generate_workflow_graph(
                 tenant_id=current_tenant_id,
-                mode=args.mode,
-                instruction=args.instruction,
-                model_config=args.model_config_data,
-                ideal_output=args.ideal_output,
-                current_graph=args.current_graph,
+                mode=req_data.mode,
+                instruction=req_data.instruction,
+                model_config=req_data.model_config_data,
+                ideal_output=req_data.ideal_output,
+                current_graph=req_data.current_graph.model_dump(by_alias=True, exclude_none=True)
+                if req_data.current_graph
+                else None,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -410,7 +529,7 @@ class WorkflowGenerateApi(Resource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
 
-        return result
+        return dump_response(WorkflowGenerateResponse, result)
 
 
 @console_ns.route("/workflow-generate/suggestions")
@@ -426,21 +545,25 @@ class WorkflowInstructionSuggestionsApi(Resource):
     @console_ns.doc("generate_workflow_instruction_suggestions")
     @console_ns.doc(description="Suggest example workflow-generator instructions for the tenant")
     @console_ns.expect(console_ns.models[WorkflowInstructionSuggestionsPayload.__name__])
-    @console_ns.response(200, "Suggestions generated successfully", console_ns.models[GeneratorResponse.__name__])
+    @console_ns.response(
+        200,
+        "Suggestions generated successfully",
+        console_ns.models[WorkflowInstructionSuggestionsResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = WorkflowInstructionSuggestionsPayload.model_validate(console_ns.payload)
+    @model_validate(WorkflowInstructionSuggestionsPayload)
+    def post(self, req_data: WorkflowInstructionSuggestionsPayload, current_tenant_id: str):
         suggestions = LLMGenerator.generate_workflow_instruction_suggestions(
             tenant_id=current_tenant_id,
-            mode=args.mode,
-            language=args.language,
-            count=args.count,
+            mode=req_data.mode,
+            language=req_data.language,
+            count=req_data.count,
         )
-        return {"suggestions": suggestions}
+        return dump_response(WorkflowInstructionSuggestionsResponse, {"suggestions": suggestions})
 
 
 @console_ns.route("/workflow-generate/stream")
@@ -458,18 +581,22 @@ class WorkflowGenerateStreamApi(Resource):
     @console_ns.doc("generate_workflow_graph_stream")
     @console_ns.doc(description="Stream a Dify workflow graph (plan then result) via SSE")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])
-    @console_ns.response(200, "Server-Sent Events stream of plan/result events")
+    @console_ns.response(
+        200,
+        "Server-Sent Events stream; each data frame matches this plan/result event schema",
+        console_ns.models[WorkflowGenerateStreamEventResponse.__name__],
+    )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
-        args = WorkflowGeneratePayload.model_validate(console_ns.payload)
+    @model_validate(WorkflowGeneratePayload)
+    def post(self, req_data: WorkflowGeneratePayload, current_tenant_id: str):
 
         # Same boundary guards as the blocking endpoint — return a normal 400
         # JSON for these BEFORE opening the stream.
-        guard = _workflow_instruction_guard(args)
+        guard = _workflow_instruction_guard(req_data)
         if guard is not None:
             return guard
 
@@ -477,14 +604,23 @@ class WorkflowGenerateStreamApi(Resource):
             try:
                 for event_name, payload in WorkflowGeneratorService.generate_workflow_graph_stream(
                     tenant_id=current_tenant_id,
-                    mode=args.mode,
-                    instruction=args.instruction,
-                    model_config=args.model_config_data,
-                    ideal_output=args.ideal_output,
-                    current_graph=args.current_graph,
+                    mode=req_data.mode,
+                    instruction=req_data.instruction,
+                    model_config=req_data.model_config_data,
+                    ideal_output=req_data.ideal_output,
+                    current_graph=(
+                        req_data.current_graph.model_dump(by_alias=True, exclude_none=True)
+                        if req_data.current_graph
+                        else None
+                    ),
                 ):
                     body = {"event": event_name, **payload}
-                    yield f"data: {json.dumps(body)}\n\n"
+                    if event_name == "plan":
+                        plan_event = WorkflowGeneratePlanEventResponse.model_validate(body)
+                        yield f"data: {json.dumps(plan_event.model_dump(mode='json'))}\n\n"
+                    else:
+                        result_event = WorkflowGenerateResultEventResponse.model_validate(body)
+                        yield f"data: {json.dumps(result_event.model_dump(mode='json'))}\n\n"
             except (ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, InvokeError) as e:
                 # The model instance is resolved inside the service (lazily, on
                 # first iteration), so a provider / init error surfaces here.
@@ -498,6 +634,7 @@ class WorkflowGenerateStreamApi(Resource):
                     "error": detail,
                     "errors": [{"code": WorkflowGenerateErrorCode.MODEL_ERROR, "detail": detail}],
                 }
-                yield f"data: {json.dumps(error_body)}\n\n"
+                error_event = WorkflowGenerateResultEventResponse.model_validate(error_body)
+                yield f"data: {json.dumps(error_event.model_dump(mode='json'))}\n\n"
 
         return compact_generate_response(generate())

@@ -1,12 +1,12 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useDocLink } from '@/context/i18n'
 import {
@@ -49,7 +49,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
   const { mutate: createEndpoint } = useCreateEndpoint({
     onSuccess: async () => {
       await invalidateEndpointList(detail.plugin_id)
-      invalidateInstalledPluginList()
+      invalidateInstalledPluginList(detail.declaration.category)
       hideEndpointModal()
     },
     onError: () => {
@@ -88,7 +88,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             />
             <PopoverContent
               placement="right"
-              popupClassName="w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border"
+              className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
@@ -110,12 +110,12 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             </PopoverContent>
           </Popover>
         </div>
-        <ActionButton
+        <IconButton
           aria-label={t(($) => $['detailPanel.endpointModalTitle'], { ns: 'plugin' })}
           onClick={showEndpointModal}
         >
           <span aria-hidden className="i-ri-add-line size-4" />
-        </ActionButton>
+        </IconButton>
       </div>
       {data.endpoints.length === 0 && (
         <div className="mb-1 flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
@@ -129,7 +129,7 @@ const EndpointListContent = ({ declaration, detail }: EndpointListContentProps) 
             data={item}
             handleChange={() => {
               invalidateEndpointList(detail.plugin_id)
-              invalidateInstalledPluginList()
+              invalidateInstalledPluginList(detail.declaration.category)
             }}
             pluginDetail={detail}
           />

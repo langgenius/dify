@@ -7,7 +7,6 @@
 
 ### Keep business logic out of controllers
 - Category: maintainability
-- Severity: critical
 - Description: Controllers should parse input, call services, and return serialized responses. Business decisions inside controllers make behavior hard to reuse and test.
 - Suggested fix: Move domain/business logic into the service or core/domain layer. Keep controller handlers thin and orchestration-focused.
 - Example:
@@ -34,7 +33,6 @@
 
 ### Preserve layer dependency direction
 - Category: best practices
-- Severity: critical
 - Description: Controllers may depend on services, and services may depend on core/domain abstractions. Reversing this direction (for example, core importing controller/web modules) creates cycles and leaks transport concerns into domain code.
 - Suggested fix: Extract shared contracts into core/domain or service-level modules and make upper layers depend on lower, not the reverse.
 - Example:
@@ -58,7 +56,6 @@
 
 ### Keep libs business-agnostic
 - Category: maintainability
-- Severity: critical
 - Description: Modules under `api/libs/` should remain reusable, business-agnostic building blocks. They must not encode product/domain-specific rules, workflow orchestration, or business decisions.
 - Suggested fix:
   - If business logic appears in `api/libs/`, extract it into the appropriate `services/` or `core/` module and keep `libs` focused on generic, cross-cutting helpers.

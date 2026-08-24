@@ -29,8 +29,9 @@ from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasour
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
-from core.repositories.factory import DifyCoreRepositoryFactory, OrderConfig
+from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.llm_environment_variable import validate_llm_environment_model_references
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.system_variables import (
     SystemVariableKey,
@@ -49,6 +50,7 @@ from graphon.errors import WorkflowNodeRunFailedError
 from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable, VariableBase
@@ -73,15 +75,21 @@ from models.workflow import (
     WorkflowType,
 )
 from repositories.factory import DifyAPIRepositoryFactory
+from services.dataset_ref_service import DatasetRefService
 from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
+from services.workflow_node_execution_trace_service import (
+    WorkflowNodeExecutionTrace,
+    assemble_workflow_node_execution_traces,
+)
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
@@ -106,6 +114,12 @@ class RagPipelineService:
             session_maker
         )
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+    @staticmethod
+    def get_pipeline_by_id(pipeline_id: str, tenant_id: str, *, session: Session) -> Pipeline | None:
+        return session.scalar(
+            select(Pipeline).where(Pipeline.id == pipeline_id, Pipeline.tenant_id == tenant_id).limit(1)
+        )
 
     @classmethod
     def get_pipeline_templates(
@@ -132,7 +146,12 @@ class RagPipelineService:
 
     @classmethod
     def get_pipeline_template_detail(
-        cls, template_id: str, type: str = "built-in", *, session: Session
+        cls,
+        template_id: str,
+        current_tenant_id: str,
+        type: str = "built-in",
+        *,
+        session: Session,
     ) -> dict[str, Any] | None:
         """
         Get pipeline template detail.
@@ -145,7 +164,7 @@ class RagPipelineService:
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             built_in_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
-                template_id, session=session
+                template_id, current_tenant_id, session=session
             )
             if built_in_result is None:
                 logger.warning(
@@ -158,9 +177,21 @@ class RagPipelineService:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             customized_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
-                template_id, session=session
+                template_id, current_tenant_id, session=session
             )
             return customized_result
+
+    @staticmethod
+    def get_customized_pipeline_template_yaml(template_id: str, current_tenant_id: str, *, session: Session) -> str:
+        yaml_content = session.scalar(
+            select(PipelineCustomizedTemplate.yaml_content).where(
+                PipelineCustomizedTemplate.id == template_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
+            )
+        )
+        if yaml_content is None:
+            raise RagPipelineResourceNotFoundError("Customized pipeline template not found.")
+        return yaml_content
 
     @classmethod
     def update_customized_pipeline_template(
@@ -270,7 +301,11 @@ class RagPipelineService:
         return workflow
 
     def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
-        """Fetch a published workflow snapshot by ID for restore operations."""
+        """Fetch and lock a published Workflow snapshot for restoration.
+
+        The source lock is held until the service transaction ends, preventing
+        concurrent deletion while restore copies its Workflow snapshot fields.
+        """
         workflow = self._session.scalar(
             select(Workflow)
             .where(
@@ -279,6 +314,7 @@ class RagPipelineService:
                 Workflow.id == workflow_id,
             )
             .limit(1)
+            .with_for_update()
         )
         if workflow and workflow.version == Workflow.VERSION_DRAFT:
             raise IsDraftWorkflowError("source workflow must be published")
@@ -388,7 +424,8 @@ class RagPipelineService:
 
         Pipelines reuse the shared draft-restore field copy helper, but still own
         the pipeline-specific flush/link step that wires a newly created draft
-        back onto ``pipeline.workflow_id``.
+        back onto ``pipeline.workflow_id``. The source version remains locked
+        through snapshot-field copy and commit.
         """
         source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
         if not source_workflow:
@@ -428,6 +465,11 @@ class RagPipelineService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
 
         # create new workflow
         workflow = Workflow.new(
@@ -557,7 +599,12 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
-                variable_pool=_build_seeded_variable_pool(default_system_variables()),
+                variable_pool=_build_seeded_variable_pool(
+                    build_bootstrap_variables(
+                        system_variables=default_system_variables(),
+                        environment_variables=draft_workflow.environment_variables,
+                    )
+                ),
                 variable_loader=DraftVarLoader(
                     engine=db.engine,
                     app_id=pipeline.id,
@@ -575,6 +622,7 @@ class RagPipelineService:
 
         repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=account,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -589,6 +637,7 @@ class RagPipelineService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -897,7 +946,10 @@ class RagPipelineService:
 
     def _handle_node_run_result(
         self,
-        getter: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
+        getter: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
         start_at: float,
         tenant_id: str,
         node_id: str,
@@ -1003,23 +1055,24 @@ class RagPipelineService:
                     dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
                     pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
                     if document_id and dataset_id and pipeline_id:
-                        document = self._session.scalar(
-                            select(Document)
-                            .join(Dataset, Dataset.id == Document.dataset_id)
+                        dataset = self._session.scalar(
+                            select(Dataset)
                             .where(
-                                Document.id == document_id.value,
-                                Document.tenant_id == tenant_id,
-                                Document.dataset_id == dataset_id.value,
+                                Dataset.id == dataset_id.value,
                                 Dataset.tenant_id == tenant_id,
                                 Dataset.pipeline_id == pipeline_id.value,
                             )
                             .limit(1)
                         )
-                        if document:
-                            document.indexing_status = IndexingStatus.ERROR
-                            document.error = error
-                            self._session.add(document)
-                            self._session.commit()
+                        if dataset:
+                            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+                            document_ref = DatasetRefService.create_document_ref_from_id(dataset_ref, document_id.value)
+                            document = DatasetRefService.get_document_by_ref(document_ref, session=self._session)
+                            if document:
+                                document.indexing_status = IndexingStatus.ERROR
+                                document.error = error
+                                self._session.add(document)
+                                self._session.commit()
 
         return workflow_node_execution
 
@@ -1196,7 +1249,7 @@ class RagPipelineService:
         pipeline: Pipeline,
         run_id: str,
         user: Account | EndUser,
-    ) -> list[WorkflowNodeExecutionModel]:
+    ) -> list[WorkflowNodeExecutionTrace]:
         """
         Get workflow run node execution list
         """
@@ -1208,60 +1261,55 @@ class RagPipelineService:
         if not workflow_run:
             return []
 
-        # Use the repository to get the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, app_id=pipeline.id, user=user, triggered_from=None
-        )
-
-        # Use the repository to get the node executions with ordering
-        order_config = OrderConfig(order_by=["created_at"], order_direction="asc")
-        node_executions = repository.get_db_models_by_workflow_run(
+        node_executions = self._node_execution_service_repo.get_executions_by_workflow_run(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
             workflow_run_id=run_id,
-            order_config=order_config,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
         )
+        return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
 
-        return list(node_executions)
-
-    @classmethod
+    @staticmethod
     def publish_customized_pipeline_template(
-        cls,
-        pipeline_id: str,
+        pipeline: Pipeline,
+        dataset: Dataset,
         args: dict[str, Any],
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,
+        current_user: Account,
         *,
         session: Session,
-    ):
-        """
-        Publish customized pipeline template
-        """
-        current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
-        pipeline = session.get(Pipeline, pipeline_id)
-        if not pipeline:
-            raise ValueError("Pipeline not found")
+    ) -> None:
+        """Publish a customized template from a caller-validated pipeline and dataset."""
         if not pipeline.workflow_id:
-            raise ValueError("Pipeline workflow not found")
-        workflow = session.get(Workflow, pipeline.workflow_id)
+            raise RagPipelineResourceNotFoundError("Pipeline workflow not found")
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.id == pipeline.workflow_id,
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+            )
+        )
         if not workflow:
-            raise ValueError("Workflow not found")
-        dataset = pipeline.retrieve_dataset(session=session)
-        if not dataset:
-            raise ValueError("Dataset not found")
+            raise RagPipelineResourceNotFoundError("Workflow not found")
+        draft_workflow_id = session.scalar(
+            select(Workflow.id).where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+        )
+        if not draft_workflow_id:
+            raise RagPipelineResourceNotFoundError("Draft workflow not found")
 
         # check template name is exist
-        template_name = args.get("name")
-        if template_name:
-            template = session.scalar(
-                select(PipelineCustomizedTemplate)
-                .where(
-                    PipelineCustomizedTemplate.name == template_name,
-                    PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
-                )
-                .limit(1)
+        template = session.scalar(
+            select(PipelineCustomizedTemplate)
+            .where(
+                PipelineCustomizedTemplate.name == args["name"],
+                PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
             )
-            if template:
-                raise ValueError("Template name is already exists")
+            .limit(1)
+        )
+        if template:
+            raise ValueError("Template name is already exists")
 
         max_position = session.scalar(
             select(func.max(PipelineCustomizedTemplate.position)).where(
@@ -1273,16 +1321,10 @@ class RagPipelineService:
 
         rag_pipeline_dsl_service = RagPipelineDslService(session)
         dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
-        if args.get("icon_info") is None:
-            args["icon_info"] = {}
-        if args.get("description") is None:
-            raise ValueError("Description is required")
-        if args.get("name") is None:
-            raise ValueError("Name is required")
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name") or "",
-            description=args.get("description") or "",
-            icon=args.get("icon_info") or {},
+            name=args["name"],
+            description=args["description"],
+            icon=args["icon_info"],
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
             install_count=0,
@@ -1373,6 +1415,7 @@ class RagPipelineService:
         # Create repository and save the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
             user=current_user,
             app_id=pipeline.id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -1385,6 +1428,7 @@ class RagPipelineService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution_db_model.node_id,
                 node_type=workflow_node_execution_db_model.node_type,
@@ -1470,6 +1514,7 @@ class RagPipelineService:
         if not workflow:
             raise ValueError("Workflow not found")
         PipelineGenerator().generate(
+            session=self._session,
             pipeline=pipeline,
             workflow=workflow,
             user=user,

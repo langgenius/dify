@@ -9,10 +9,18 @@ const mockNavigationState = vi.hoisted(() => ({
   params: {} as { token?: string },
   pathname: '/chat',
 }))
+const mockFileUploadContext = vi.hoisted(() => ({
+  localUploadUrl: undefined as string | undefined,
+  remoteUploadUrl: undefined as string | undefined,
+}))
 
 vi.mock('@/next/navigation', () => ({
   useParams: () => mockNavigationState.params,
   usePathname: () => mockNavigationState.pathname,
+}))
+
+vi.mock('../upload-context', () => ({
+  useFileUploadContext: () => mockFileUploadContext,
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -71,6 +79,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
   })
 
@@ -80,6 +89,7 @@ describe('useFileSizeLimit', () => {
       file_size_limit: 30,
       audio_file_size_limit: 100,
       video_file_size_limit: 200,
+      skill_file_size_limit: 60,
       workflow_file_upload_limit: 20,
     } as FileUploadConfigResponse
 
@@ -89,6 +99,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(30 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(100 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(200 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(60 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(20)
   })
 
@@ -98,6 +109,7 @@ describe('useFileSizeLimit', () => {
       file_size_limit: 0,
       audio_file_size_limit: 0,
       video_file_size_limit: 0,
+      skill_file_size_limit: 0,
       workflow_file_upload_limit: 0,
     } as FileUploadConfigResponse
 
@@ -107,6 +119,7 @@ describe('useFileSizeLimit', () => {
     expect(result.current.docSizeLimit).toBe(15 * 1024 * 1024)
     expect(result.current.audioSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.videoSizeLimit).toBe(100 * 1024 * 1024)
+    expect(result.current.skillSizeLimit).toBe(50 * 1024 * 1024)
     expect(result.current.maxFileUploadLimit).toBe(10)
   })
 })
@@ -124,6 +137,8 @@ describe('useFile', () => {
     mockStoreFiles = []
     mockNavigationState.params = {}
     mockNavigationState.pathname = '/chat'
+    mockFileUploadContext.localUploadUrl = undefined
+    mockFileUploadContext.remoteUploadUrl = undefined
     mockIsAllowedFileExtension.mockReturnValue(true)
     mockGetSupportFileType.mockReturnValue('document')
   })
@@ -367,6 +382,21 @@ describe('useFile', () => {
 
       expect(mockSetFiles).toHaveBeenCalled()
       expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith('https://example.com/file.txt', false)
+    })
+
+    it('should upload a remote file through the configured resource-scoped endpoint', () => {
+      mockFileUploadContext.remoteUploadUrl = '/trial-apps/app-id/remote-files/upload'
+      mockUploadRemoteFileInfo.mockReturnValue(new Promise(() => {}))
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLoadFileFromLink('https://example.com/file.txt')
+
+      expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
+        'https://example.com/file.txt',
+        false,
+        undefined,
+        '/trial-apps/app-id/remote-files/upload',
+      )
     })
 
     it('should use human input form remote upload on form page', () => {
@@ -780,6 +810,20 @@ describe('useFile', () => {
       // Test success callback
       uploadCall.onSuccessCallback({ id: 'uploaded-1' })
       expect(mockSetFiles).toHaveBeenCalled()
+    })
+
+    it('should upload through the configured resource-scoped endpoint', () => {
+      const file = new File(['content'], 'test.txt', { type: 'text/plain' })
+      mockFileUploadContext.localUploadUrl = '/trial-apps/app-id/files/upload'
+
+      const { result } = renderHook(() => useFile(defaultFileConfig))
+      result.current.handleLocalFileUpload(file)
+
+      expect(mockFileUpload).toHaveBeenCalledWith(
+        expect.any(Object),
+        false,
+        '/trial-apps/app-id/files/upload',
+      )
     })
 
     it('should use human input form local upload on form page', () => {

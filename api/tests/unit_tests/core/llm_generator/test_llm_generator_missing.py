@@ -1,8 +1,57 @@
-import sys
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from core.app.app_config.entities import ModelConfig
+import pytest
+from sqlalchemy import event
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
+
+import core.llm_generator.llm_generator as generator_module
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
+from core.model_manager import ModelInstance, ModelManager
+from core.workflow.generator import tool_catalogue as tool_catalogue_module
+from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from models.dataset import Dataset
+from services.workflow_service import WorkflowService
+
+
+@pytest.fixture
+def dataset_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
+    """Bind the real SQLite session to the production database extension."""
+
+    monkeypatch.setattr(generator_module.db, "session", sqlite_session)
+    return sqlite_session
+
+
+def _llm_result(content: str) -> LLMResult:
+    """Build a real non-streaming LLM response around deterministic test content."""
+
+    return LLMResult(
+        model="test-model",
+        message=AssistantPromptMessage(content=content),
+        usage=LLMUsage.empty_usage(),
+    )
+
+
+def _model_manager() -> tuple[MagicMock, MagicMock]:
+    """Build spec-constrained mocks for the model-manager boundary and its default model."""
+
+    model_manager = MagicMock(spec=ModelManager)
+    model_instance = MagicMock(spec=ModelInstance)
+    model_manager.get_default_model_instance.return_value = model_instance
+    return model_manager, model_instance
+
+
+def _dataset(*, dataset_id: str, tenant_id: str, name: str, created_at: datetime) -> Dataset:
+    return Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name=name,
+        created_by="account-id",
+        created_at=created_at,
+    )
 
 
 class TestParseStringList:
@@ -35,126 +84,118 @@ class TestParseStringList:
 class TestGenerateWorkflowInstructionSuggestions:
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     def test_no_default_model(self, mock_for_tenant):
-        mock_for_tenant.return_value.get_default_model_instance.side_effect = Exception("No model")
+        model_manager, _ = _model_manager()
+        model_manager.get_default_model_instance.side_effect = RuntimeError("no default model")
+        mock_for_tenant.return_value = model_manager
+
         assert LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow") == []
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
     def test_llm_success(self, mock_build_context, mock_for_tenant):
         mock_build_context.return_value = "context"
-
-        mock_model = MagicMock()
-        mock_model.invoke_llm.return_value = MagicMock()
-        mock_model.invoke_llm.return_value.message.get_text_content.return_value = '["idea 1", "idea 2"]'
-
-        mock_for_tenant.return_value.get_default_model_instance.return_value = mock_model
+        model_manager, model_instance = _model_manager()
+        model_instance.invoke_llm.return_value = _llm_result('["idea 1", "idea 2"]')
+        mock_for_tenant.return_value = model_manager
 
         result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == ["idea 1", "idea 2"]
+        model_instance.invoke_llm.assert_called_once()
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
     def test_llm_error(self, mock_build_context, mock_for_tenant):
         mock_build_context.return_value = "context"
+        model_manager, model_instance = _model_manager()
+        model_instance.invoke_llm.side_effect = RuntimeError("API error")
+        mock_for_tenant.return_value = model_manager
 
-        mock_model = MagicMock()
-        mock_model.invoke_llm.side_effect = Exception("API error")
-
-        mock_for_tenant.return_value.get_default_model_instance.return_value = mock_model
-
-        assert LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow") == []
+        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
+        assert result == []
+        model_instance.invoke_llm.assert_called_once()
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
     def test_llm_bad_output(self, mock_build_context, mock_for_tenant):
         mock_build_context.return_value = "context"
+        model_manager, model_instance = _model_manager()
+        model_instance.invoke_llm.return_value = _llm_result("Not a list")
+        mock_for_tenant.return_value = model_manager
 
-        mock_model = MagicMock()
-        mock_model.invoke_llm.return_value = MagicMock()
-        mock_model.invoke_llm.return_value.message.get_text_content.return_value = "Not a list"
-
-        mock_for_tenant.return_value.get_default_model_instance.return_value = mock_model
-
-        assert LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow") == []
+        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
+        assert result == []
+        model_instance.invoke_llm.assert_called_once()
 
 
+@pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 class TestBuildSuggestionContext:
-    @patch("core.llm_generator.llm_generator.db.session.scalars")
-    def test_both_success(self, mock_scalars, monkeypatch):
-        mock_scalars.return_value.all.return_value = ["kb1", "kb2"]
+    def test_both_success(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+        now = datetime.now()
+        dataset_session.add_all(
+            (
+                _dataset(dataset_id="kb-1", tenant_id="tenant", name="kb1", created_at=now),
+                _dataset(
+                    dataset_id="kb-2",
+                    tenant_id="tenant",
+                    name="kb2",
+                    created_at=now - timedelta(seconds=1),
+                ),
+                _dataset(dataset_id="other-kb", tenant_id="other", name="private", created_at=now),
+            )
+        )
+        dataset_session.commit()
 
-        # ``_build_suggestion_context`` imports the tool catalogue lazily, so we
-        # stub the module in ``sys.modules``. Use ``monkeypatch.setitem`` so the
-        # ORIGINAL module is RESTORED on teardown — a bare ``del`` would evict it
-        # from sys.modules entirely, after which a sibling test that imported
-        # ``build_tool_catalogue`` at collection time (e.g. test_tool_catalogue)
-        # diverges from a freshly re-imported module and its @patch targets stop
-        # applying, silently breaking it under xdist.
-        mock_tool_catalogue = MagicMock()
-        mock_tool_catalogue.build_tool_catalogue.return_value = "catalog"
-        mock_tool_catalogue.format_tool_catalogue.return_value = "tool1\ntool2"
-        monkeypatch.setitem(sys.modules, "core.workflow.generator.tool_catalogue", mock_tool_catalogue)
+        def build_tool_catalogue(_tenant_id: str) -> list[ToolCatalogueEntry]:
+            return [
+                ToolCatalogueEntry(
+                    provider_name="provider",
+                    provider_type="builtin",
+                    plugin_id="",
+                    tool_name="tool1",
+                    tool_label="tool1",
+                    description="First tool",
+                ),
+                ToolCatalogueEntry(
+                    provider_name="provider",
+                    provider_type="builtin",
+                    plugin_id="",
+                    tool_name="tool2",
+                    tool_label="tool2",
+                    description="Second tool",
+                ),
+            ]
+
+        # Keep the real module and formatter; only isolate provider/plugin discovery.
+        monkeypatch.setattr(tool_catalogue_module, "build_tool_catalogue", build_tool_catalogue)
 
         result = LLMGenerator._build_suggestion_context("tenant")
         assert "Knowledge bases:\n- kb1\n- kb2" in result
-        assert "Installed tools:\ntool1\ntool2" in result
+        assert (
+            'Installed tools:\n- provider/tool1 [provider_id="provider"; tool_name="tool1"] — First tool\n'
+            '- provider/tool2 [provider_id="provider"; tool_name="tool2"] — Second tool'
+        ) in result
 
-    @patch("core.llm_generator.llm_generator.db.session.scalars")
-    def test_both_fail(self, mock_scalars, monkeypatch):
-        mock_scalars.side_effect = Exception("DB error")
+    def test_both_fail(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
+        def fail_query(_orm_execute_state: object) -> None:
+            raise SQLAlchemyError("DB error")
 
-        # See ``test_both_success``: restore the original module via monkeypatch
-        # rather than ``del``-ing it, so we don't evict it for sibling tests.
-        mock_tool_catalogue = MagicMock()
-        mock_tool_catalogue.build_tool_catalogue.side_effect = Exception("Tool error")
-        monkeypatch.setitem(sys.modules, "core.workflow.generator.tool_catalogue", mock_tool_catalogue)
+        def fail_tool_catalogue(_tenant_id: str) -> list[ToolCatalogueEntry]:
+            raise RuntimeError("Tool error")
 
-        assert LLMGenerator._build_suggestion_context("tenant") == ""
+        event.listen(dataset_session, "do_orm_execute", fail_query)
+        monkeypatch.setattr(tool_catalogue_module, "build_tool_catalogue", fail_tool_catalogue)
 
-
-class TestClassifyWorkflowMode:
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_model_error(self, mock_for_tenant):
-        mock_for_tenant.return_value.get_model_instance.side_effect = Exception("API error")
-
-        model_config = ModelConfig(provider="test", name="test", mode="chat")
-        assert LLMGenerator.classify_workflow_mode("tenant", "instruction", model_config) == "advanced-chat"
-
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_workflow_match(self, mock_for_tenant):
-        mock_model = MagicMock()
-        mock_model.invoke_llm.return_value = MagicMock()
-        mock_model.invoke_llm.return_value.message.get_text_content.return_value = "  workflow "
-
-        mock_for_tenant.return_value.get_model_instance.return_value = mock_model
-
-        model_config = ModelConfig(provider="test", name="test", mode="chat")
-        assert LLMGenerator.classify_workflow_mode("tenant", "instruction", model_config) == "workflow"
-
-    @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_other_match(self, mock_for_tenant):
-        mock_model = MagicMock()
-        mock_model.invoke_llm.return_value = MagicMock()
-        mock_model.invoke_llm.return_value.message.get_text_content.return_value = "chatflow"
-
-        mock_for_tenant.return_value.get_model_instance.return_value = mock_model
-
-        model_config = ModelConfig(provider="test", name="test", mode="chat")
-        assert LLMGenerator.classify_workflow_mode("tenant", "instruction", model_config) == "advanced-chat"
+        try:
+            assert LLMGenerator._build_suggestion_context("tenant") == ""
+        finally:
+            event.remove(dataset_session, "do_orm_execute", fail_query)
 
 
 class TestWorkflowServiceInterface:
-    def test_protocol_methods(self):
-        # Just to cover the 'pass' statements in the Protocol definition
+    def test_real_workflow_service_exposes_protocol_methods(self):
         from core.llm_generator.llm_generator import WorkflowServiceInterface
 
-        class MockService(WorkflowServiceInterface):
-            def get_draft_workflow(self, app_model, workflow_id=None, *, session):
-                return super().get_draft_workflow(app_model, workflow_id, session=session)
+        service: WorkflowServiceInterface = WorkflowService(sessionmaker())
 
-            def get_node_last_run(self, app_model, workflow, node_id):
-                return super().get_node_last_run(app_model, workflow, node_id)
-
-        service = MockService()
-        service.get_draft_workflow(None, session=None)
-        service.get_node_last_run(None, None, "node")
+        assert callable(service.get_draft_workflow)
+        assert callable(service.get_node_last_run)

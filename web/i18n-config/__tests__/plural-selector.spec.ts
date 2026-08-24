@@ -1,6 +1,6 @@
 import type { SelectorParam } from 'i18next'
 import { createInstance } from 'i18next'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { getInitOptions } from '../settings'
 
 describe('i18n selector configuration', () => {

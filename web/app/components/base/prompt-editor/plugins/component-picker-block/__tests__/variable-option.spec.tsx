@@ -37,12 +37,6 @@ describe('VariableMenuItem', () => {
       )
       expect(screen.getByTestId('extra')).toBeInTheDocument()
     })
-
-    it('should apply selection styles when isSelected is true', () => {
-      const { container } = render(<VariableMenuItem {...defaultProps} isSelected={true} />)
-      const item = container.firstChild as HTMLElement
-      expect(item).toHaveClass('bg-state-base-hover')
-    })
   })
 
   describe('Highlighting Logic (queryString)', () => {

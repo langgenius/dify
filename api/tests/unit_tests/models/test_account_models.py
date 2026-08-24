@@ -16,6 +16,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session
 
 from libs.password import compare_password, hash_password, valid_password
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
@@ -333,6 +334,70 @@ class TestTenantRelationshipIntegrity:
 
         # Assert
         assert tenant_id_none is None
+
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_set_current_tenant_with_session_uses_caller_session(self, sqlite_session: Session):
+        account = Account(name="Test User", email="test@example.com")
+        account.id = str(uuid4())
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = str(uuid4())
+        decoy_tenant = Tenant(name="Decoy Tenant")
+        decoy_tenant.id = str(uuid4())
+        sqlite_session.add_all(
+            [
+                account,
+                tenant,
+                decoy_tenant,
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+                TenantAccountJoin(
+                    tenant_id=decoy_tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
+        )
+        sqlite_session.flush()
+
+        account.set_current_tenant_with_session(tenant, session=sqlite_session)
+
+        assert account.current_tenant is tenant
+        assert account.role == TenantAccountRole.OWNER
+
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_set_tenant_id_with_session_uses_caller_session(self, sqlite_session: Session):
+        account = Account(name="Test User", email="test@example.com")
+        account.id = str(uuid4())
+        decoy_account = Account(name="Decoy User", email="decoy@example.com")
+        decoy_account.id = str(uuid4())
+        tenant = Tenant(name="Test Tenant")
+        tenant.id = str(uuid4())
+        sqlite_session.add_all(
+            [
+                account,
+                decoy_account,
+                tenant,
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.ADMIN,
+                ),
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=decoy_account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+        sqlite_session.flush()
+
+        account.set_tenant_id_with_session(tenant.id, session=sqlite_session)
+
+        assert account.current_tenant is tenant
+        assert account.role == TenantAccountRole.ADMIN
 
 
 class TestAccountRolePermissions:

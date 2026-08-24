@@ -1,5 +1,6 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import EmptyDatasetCreationModal from '../index'
@@ -66,15 +67,6 @@ describe('EmptyDatasetCreationModal', () => {
 
   // Rendering Tests - Verify component renders correctly
   describe('Rendering', () => {
-    it('should render without crashing when show is true', () => {
-      const props = createDefaultProps()
-
-      render(<EmptyDatasetCreationModal {...props} />)
-
-      // Assert - Check modal title is rendered
-      expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
-    })
-
     it('should render modal with correct elements', () => {
       const props = createDefaultProps()
 
@@ -82,9 +74,8 @@ describe('EmptyDatasetCreationModal', () => {
 
       expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.tip')).toBeInTheDocument()
-      expect(screen.getByText('datasetCreation.stepOne.modal.input')).toBeInTheDocument()
       expect(
-        screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder'),
+        screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' }),
       ).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.confirmButton')).toBeInTheDocument()
       expect(screen.getByText('datasetCreation.stepOne.modal.cancelButton')).toBeInTheDocument()
@@ -298,17 +289,46 @@ describe('EmptyDatasetCreationModal', () => {
 
   // API Calls - Test API interactions
   describe('API Calls', () => {
-    it('should call createEmptyDataset with correct parameters', async () => {
+    it('should submit from the dataset name input with Enter', async () => {
       const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
-      const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
-      const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
+      const user = userEvent.setup()
+      const input = screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' })
 
-      fireEvent.change(input, { target: { value: 'New Dataset' } })
-      fireEvent.click(confirmButton)
+      await user.type(input, 'New Dataset{Enter}')
 
       await waitFor(() => {
         expect(mockCreateEmptyDataset).toHaveBeenCalledWith({ name: 'New Dataset' })
+      })
+    })
+
+    it('should not submit again while dataset creation is pending', async () => {
+      let resolveRequest:
+        | ((value: Awaited<ReturnType<typeof createEmptyDataset>>) => void)
+        | undefined
+      mockCreateEmptyDataset.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveRequest = resolve
+        }),
+      )
+      const onHide = vi.fn()
+      render(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
+      const user = userEvent.setup()
+      const input = screen.getByRole('textbox', { name: 'datasetCreation.stepOne.modal.input' })
+
+      await user.type(input, 'New Dataset{Enter}')
+      await waitFor(() => {
+        expect(mockCreateEmptyDataset).toHaveBeenCalledTimes(1)
+      })
+      await user.keyboard('{Enter}')
+      expect(mockCreateEmptyDataset).toHaveBeenCalledTimes(1)
+
+      resolveRequest?.({
+        id: 'dataset-123',
+        name: 'New Dataset',
+      } as Awaited<ReturnType<typeof createEmptyDataset>>)
+      await waitFor(() => {
+        expect(onHide).toHaveBeenCalledTimes(1)
       })
     })
 

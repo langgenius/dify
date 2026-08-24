@@ -15,7 +15,8 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -30,6 +31,7 @@ import {
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import { CredentialSelector } from '../model-auth'
@@ -285,6 +287,8 @@ const ModelModal: FC<ModelModalProps> = ({
     if (getForm()) getForm()?.setFieldValue(field, value)
   }, [])
   const notAllowCustomCredential = provider.allow_custom_token === false
+  const isOfficialOpenAIProvider =
+    provider.provider === ModelProviderQuotaGetPaid.OPENAI || provider.provider === 'openai'
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -304,9 +308,19 @@ const ModelModal: FC<ModelModalProps> = ({
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className="flex w-[640px] max-w-[640px] flex-col overflow-hidden p-0"
+        className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
       >
-        <DialogCloseButton className="top-5 right-5 size-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-5 right-5"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="shrink-0 p-6 pb-3">
           {modalTitle}
           {modalDesc}
@@ -357,6 +371,13 @@ const ModelModal: FC<ModelModalProps> = ({
                     ...formSchema,
                     name: formSchema.variable,
                     showRadioUI: formSchema.type === FormTypeEnum.radio,
+                    ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
+                      ? {
+                          description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
+                            ns: 'common',
+                          }),
+                        }
+                      : {}),
                   }
                 }) as FormSchema[]
               }
@@ -379,7 +400,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 provider.help.url[language] ||
                 provider.help.title?.en_US ||
                 provider.help.url.en_US}
-              <LinkExternal02 className="mt-[-2px] ml-1 inline-block h-3 w-3" />
+              <LinkExternal02 className="-mt-0.5 ml-1 inline-block h-3 w-3" />
             </a>
           ) : (
             <div />

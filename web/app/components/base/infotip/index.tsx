@@ -55,6 +55,8 @@ type InfotipProps = {
   iconSize?: InfotipIconSize
   /** Extra classes on the popup body (width / padding / whitespace overrides). */
   popupClassName?: string
+  /** Distance between the trigger and popup. */
+  sideOffset?: number
 }
 
 export function Infotip({
@@ -64,6 +66,7 @@ export function Infotip({
   iconVariant = 'question',
   iconSize = 'medium',
   popupClassName,
+  sideOffset,
 }: InfotipProps) {
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation()
@@ -89,8 +92,9 @@ export function Infotip({
       </PopoverTrigger>
       <PopoverContent
         placement="top"
-        popupClassName={cn(
-          'max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
+        sideOffset={sideOffset}
+        className={cn(
+          'max-w-75 rounded-md px-3 py-2 system-xs-regular text-text-tertiary',
           popupClassName,
         )}
       >

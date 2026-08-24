@@ -18,7 +18,7 @@ from services.snippet_dsl_service import (
     [
         ("not-a-version", ImportStatus.FAILED),
         ("999.0.0", ImportStatus.PENDING),
-        ("0.1.0", ImportStatus.COMPLETED),
+        ("0.1.0", ImportStatus.COMPLETED_WITH_WARNINGS),
     ],
 )
 def test_check_version_compatibility_special_cases(version, expected):
@@ -202,7 +202,7 @@ def test_import_snippet_rejects_invalid_yaml_shapes(yaml_content, expected_error
 
 
 def test_import_snippet_returns_failed_for_invalid_version_type() -> None:
-    service = SnippetDslService(session=SimpleNamespace())
+    service = SnippetDslService(session=SimpleNamespace(rollback=Mock()))
 
     result = service.import_snippet(
         account=SimpleNamespace(current_tenant_id="tenant-1"),
@@ -253,7 +253,7 @@ workflow:
     assert result.error == "Snippet cannot contain the following node types: start"
 
 
-def test_import_snippet_stores_pending_data_for_newer_dsl(monkeypatch):
+def test_import_snippet_stores_pending_data_for_newer_dsl(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
     setex = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.setex", setex)
@@ -269,7 +269,7 @@ workflow:
 """
 
     result = service.import_snippet(
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
         import_mode=ImportMode.YAML_CONTENT.value,
         yaml_content=yaml_content,
         name="Override",
@@ -278,7 +278,10 @@ workflow:
 
     assert result.status == ImportStatus.PENDING
     setex.assert_called_once()
+    assert setex.call_args.args[0] == f"snippet_import_info:{result.id}"
     pending = SnippetPendingData.model_validate_json(setex.call_args.args[2])
+    assert pending.tenant_id == "tenant-1"
+    assert pending.account_id == "account-1"
     assert pending.name == "Override"
     assert pending.description == "Override description"
 
@@ -307,7 +310,7 @@ workflow:
     assert result.error == "Snippet not found"
 
 
-def test_import_snippet_passes_dependencies_to_create_or_update(monkeypatch):
+def test_import_snippet_passes_dependencies_to_create_or_update(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
     snippet = SimpleNamespace(id="snippet-1")
     create_or_update = Mock(return_value=snippet)
@@ -333,33 +336,53 @@ workflow:
         yaml_content=yaml_content,
     )
 
-    assert result.status == ImportStatus.COMPLETED
+    assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
     dependencies = create_or_update.call_args.kwargs["dependencies"]
     assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
 
 
-def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch):
+def test_import_snippet_rolls_back_when_create_or_update_raises(monkeypatch: pytest.MonkeyPatch):
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
+    monkeypatch.setattr(service, "_create_or_update_snippet", Mock(side_effect=RuntimeError("boom")))
+
+    result = service.import_snippet(
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
+        import_mode=ImportMode.YAML_CONTENT.value,
+        yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
+    )
+
+    assert result.status == ImportStatus.FAILED
+    assert result.error == "boom"
+    session.rollback.assert_called_once()
+
+
+def test_confirm_import_returns_failed_when_pending_data_missing(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=None))
 
-    result = service.confirm_import(import_id="missing", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="missing", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Import information expired or does not exist"
 
 
-def test_confirm_import_returns_failed_for_invalid_pending_payload(monkeypatch):
+def test_confirm_import_returns_failed_for_invalid_pending_payload(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=object()))
 
-    result = service.confirm_import(import_id="bad", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="bad", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Invalid import information"
 
 
-def test_confirm_import_creates_snippet_from_pending_data(monkeypatch):
+def test_confirm_import_is_scoped_to_its_owner(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
     account = SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
     snippet = SimpleNamespace(id="snippet-new")
@@ -375,6 +398,8 @@ workflow:
     edges: []
 """
     pending = SnippetPendingData(
+        tenant_id="tenant-1",
+        account_id="account-1",
         import_mode="yaml-content",
         yaml_content=yaml_content,
         name="Override name",
@@ -383,10 +408,21 @@ workflow:
     )
     create_or_update = Mock(return_value=snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
-    monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
+    redis_key = "snippet_import_info:import-1"
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.redis_client.get",
+        Mock(side_effect=lambda key: pending.model_dump_json() if key == redis_key else None),
+    )
     redis_delete = Mock()
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.delete", redis_delete)
 
+    for other_account in (
+        SimpleNamespace(id="account-1", current_tenant_id="tenant-2"),
+        SimpleNamespace(id="account-2", current_tenant_id="tenant-1"),
+    ):
+        assert service.confirm_import(import_id="import-1", account=other_account).status == ImportStatus.FAILED
+
+    create_or_update.assert_not_called()
     result = service.confirm_import(import_id="import-1", account=account)
 
     assert result.status == ImportStatus.COMPLETED
@@ -398,10 +434,10 @@ workflow:
     assert kwargs["account"] is account
     assert kwargs["name"] == "Override name"
     assert kwargs["description"] == "Override description"
-    redis_delete.assert_called_once_with("snippet_import_info:import-1")
+    redis_delete.assert_called_once_with(redis_key)
 
 
-def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
+def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     pending = SnippetPendingData(
         import_mode="yaml-content",
@@ -410,14 +446,17 @@ def test_confirm_import_returns_failed_for_non_mapping_yaml(monkeypatch):
     )
     monkeypatch.setattr("services.snippet_dsl_service.redis_client.get", Mock(return_value=pending.model_dump_json()))
 
-    result = service.confirm_import(import_id="import-1", account=SimpleNamespace(current_tenant_id="tenant-1"))
+    result = service.confirm_import(
+        import_id="import-1", account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1")
+    )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "Invalid YAML format: expected a dictionary"
 
 
-def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch):
-    service = SnippetDslService(session=SimpleNamespace(scalar=Mock(return_value=None)))
+def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch: pytest.MonkeyPatch):
+    session = SimpleNamespace(scalar=Mock(return_value=None), rollback=Mock())
+    service = SnippetDslService(session=session)
     pending = SnippetPendingData(
         import_mode="yaml-content",
         yaml_content="version: 0.1.0\nkind: snippet\nsnippet:\n  name: Bad\n",
@@ -428,14 +467,15 @@ def test_confirm_import_returns_failed_when_create_or_update_raises(monkeypatch)
 
     result = service.confirm_import(
         import_id="import-1",
-        account=SimpleNamespace(current_tenant_id="tenant-1"),
+        account=SimpleNamespace(id="account-1", current_tenant_id="tenant-1"),
     )
 
     assert result.status == ImportStatus.FAILED
     assert result.error == "boom"
+    session.rollback.assert_called_once()
 
 
-def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):
+def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     monkeypatch.setattr(
         "services.snippet_dsl_service.SnippetService",
@@ -447,7 +487,7 @@ def test_check_dependencies_returns_empty_without_draft_workflow(monkeypatch):
     assert result.leaked_dependencies == []
 
 
-def test_check_dependencies_returns_generated_dependencies(monkeypatch):
+def test_check_dependencies_returns_generated_dependencies(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     workflow = SimpleNamespace(graph_dict={"nodes": []})
     leaked_dependencies = [
@@ -471,9 +511,10 @@ def test_check_dependencies_returns_generated_dependencies(monkeypatch):
     assert result.leaked_dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
 
 
-def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(monkeypatch):
+def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(monkeypatch: pytest.MonkeyPatch):
     snippet = SimpleNamespace(
         id="snippet-1",
+        tenant_id="tenant-1",
         name="Old",
         description="Old",
         type="node",
@@ -490,6 +531,19 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
         sync_draft_workflow=Mock(),
     )
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value={"retired-agent"}),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
+    retire_unowned = Mock()
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentRetirementService.retire_unowned",
+        retire_unowned,
+    )
 
     result = service._create_or_update_snippet(
         snippet=snippet,
@@ -512,13 +566,26 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
     assert snippet.icon_info == {"icon": "x"}
     snippet_service.sync_draft_workflow.assert_called_once()
     session.commit.assert_called_once()
+    retire_unowned.assert_called_once_with(
+        tenant_id="tenant-1",
+        agent_ids={"retired-agent"},
+        account_id="account-1",
+    )
 
 
-def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch):
+def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch: pytest.MonkeyPatch):
     session = SimpleNamespace(add=Mock(), flush=Mock(), commit=Mock(), get_bind=Mock())
     service = SnippetDslService(session=session)
     snippet_service = SimpleNamespace(get_draft_workflow=Mock(return_value=None), sync_draft_workflow=Mock())
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
 
     result = service._create_or_update_snippet(
         snippet=None,
@@ -542,7 +609,7 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch):
     session.commit.assert_called_once()
 
 
-def test_export_snippet_dsl_raises_without_draft_workflow(monkeypatch):
+def test_export_snippet_dsl_raises_without_draft_workflow(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     monkeypatch.setattr(
         "services.snippet_dsl_service.SnippetService",
@@ -553,7 +620,7 @@ def test_export_snippet_dsl_raises_without_draft_workflow(monkeypatch):
         service.export_snippet_dsl(SimpleNamespace())
 
 
-def test_export_snippet_dsl_returns_yaml(monkeypatch):
+def test_export_snippet_dsl_returns_yaml(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
     workflow = SimpleNamespace(
         to_dict=Mock(return_value={"graph": {"nodes": []}}),
@@ -583,7 +650,41 @@ def test_export_snippet_dsl_returns_yaml(monkeypatch):
     assert "input_fields:" in result
 
 
-def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(monkeypatch):
+def test_export_snippet_dsl_uses_requested_published_workflow(monkeypatch: pytest.MonkeyPatch):
+    service = SnippetDslService(session=SimpleNamespace(get_bind=Mock()))
+    workflow = SimpleNamespace(
+        to_dict=Mock(return_value={"graph": {"nodes": []}}),
+        graph_dict={"nodes": []},
+    )
+    snippet = SimpleNamespace(
+        tenant_id="tenant-1",
+        name="Exported",
+        description=None,
+        type="node",
+        icon_info=None,
+        input_fields_list=[],
+    )
+    get_published_workflow_by_id = Mock(return_value=workflow)
+    get_draft_workflow = Mock()
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.SnippetService",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            get_draft_workflow=get_draft_workflow,
+            get_published_workflow_by_id=get_published_workflow_by_id,
+        ),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.DependenciesAnalysisService.generate_dependencies",
+        Mock(return_value=[]),
+    )
+
+    service.export_snippet_dsl(snippet, workflow_id="workflow-1")
+
+    get_published_workflow_by_id.assert_called_once_with(snippet=snippet, workflow_id="workflow-1")
+    get_draft_workflow.assert_not_called()
+
+
+def test_append_workflow_export_data_filters_credentials_and_extracts_dependencies(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     workflow_dict = {
         "graph": {
@@ -641,7 +742,7 @@ def test_append_workflow_export_data_filters_credentials_and_extracts_dependenci
     assert "credential_id" not in nodes[2]["data"]["agent_parameters"]["tools"]["value"][0]
 
 
-def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(monkeypatch):
+def test_append_workflow_export_data_rewrites_knowledge_dataset_ids(monkeypatch: pytest.MonkeyPatch):
     service = SnippetDslService(session=SimpleNamespace())
     workflow_dict = {
         "graph": {

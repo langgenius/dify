@@ -2,7 +2,8 @@
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -61,16 +62,22 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
       <DialogContent
         className={cn(
           'max-h-[calc(100dvh-2rem)] overflow-y-auto! border-none p-6 text-left align-middle',
-          isParentChildRetrieval
-            ? 'w-[1200px] max-w-none! min-w-[1200px]!'
-            : 'w-[800px] max-w-none! min-w-[800px]!',
+          isParentChildRetrieval ? 'w-300 max-w-none! min-w-300!' : 'w-200 max-w-none! min-w-200!',
         )}
       >
-        <DialogCloseButton
-          onClick={(e) => {
-            e.stopPropagation()
-            onHide()
-          }}
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+              onClick={(e) => {
+                e.stopPropagation()
+              }}
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
         />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
@@ -108,7 +115,7 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
               {answer && (
                 <div className="break-all">
                   <div className="flex gap-x-1">
-                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+                    <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">
                       Q
                     </div>
                     <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
@@ -116,7 +123,7 @@ const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
                     </div>
                   </div>
                   <div className="flex gap-x-1">
-                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+                    <div className="w-4 shrink-0 text-[13px] leading-5 font-medium text-text-tertiary">
                       A
                     </div>
                     <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>

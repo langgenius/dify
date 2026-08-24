@@ -1,5 +1,5 @@
 import type { SearchResult } from '../../types'
-import { render } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { slashAction } from '../slash'
 import { SlashCommandProvider } from '../slash-provider'
 
@@ -27,11 +27,16 @@ const {
   featureFlag: { enabled: false },
 }))
 
-vi.mock('@/config', () => ({
-  get ENABLE_FEATURE_PREVIEW() {
-    return featureFlag.enabled
-  },
-}))
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+
+  return {
+    ...actual,
+    get ENABLE_FEATURE_PREVIEW() {
+      return featureFlag.enabled
+    },
+  }
+})
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
@@ -91,6 +96,8 @@ describe('slashAction', () => {
       { id: 'theme', title: '/theme', type: 'command', data: { command: 'theme' } },
     ])
 
+    expect(slashAction.source).toBe('local')
+    if (slashAction.source !== 'local') throw new Error('Expected a local slash action')
     const results = await slashAction.search('/theme dark', 'dark')
 
     expect(mockSearch).toHaveBeenCalledWith('/theme dark', 'ja')
@@ -173,5 +180,16 @@ describe('SlashCommandProvider', () => {
       'create',
       'refine',
     ])
+  })
+
+  it('should register the enterprise documentation home URL', () => {
+    const { unmount } = render(<SlashCommandProvider />, {
+      systemFeatures: { deployment_edition: 'ENTERPRISE' },
+    })
+    const docsRegistration = mockRegister.mock.calls.find((call) => call[0].name === 'docs')
+
+    expect(docsRegistration?.[1].getDocsHomeUrl()).toBe('https://enterprise-docs.dify.ai/en/')
+
+    unmount()
   })
 })

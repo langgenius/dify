@@ -16,9 +16,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
@@ -110,7 +113,7 @@ const ConditionWrap: FC<Props> = ({
               className={cn(
                 'group relative rounded-[10px] bg-components-panel-bg',
                 willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
-                !isSubVariable && 'min-h-[40px] px-3 py-1',
+                !isSubVariable && 'min-h-10 px-3 py-1',
                 isSubVariable && 'px-1 py-2',
               )}
             >
@@ -130,7 +133,7 @@ const ConditionWrap: FC<Props> = ({
                   >
                     {index === 0 ? 'IF' : 'ELIF'}
                     {casesLength > 1 && (
-                      <div className="text-[10px] font-medium text-text-tertiary">
+                      <div className="text-2xs font-medium text-text-tertiary">
                         CASE
                         {index + 1}
                       </div>
@@ -168,10 +171,10 @@ const ConditionWrap: FC<Props> = ({
 
               <div
                 className={cn(
-                  'flex items-center justify-between pr-[30px]',
+                  'flex items-center justify-between pr-7.5',
                   !item.conditions.length && !isSubVariable && 'mt-1',
                   !item.conditions.length && isSubVariable && 'mt-2',
-                  !isSubVariable && 'pl-[60px]',
+                  !isSubVariable && 'pl-15',
                 )}
               >
                 {isSubVariable ? (
@@ -188,17 +191,23 @@ const ConditionWrap: FC<Props> = ({
                       className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                     >
                       <Button size="small" disabled={readOnly}>
-                        <RiAddLine className="mr-1 size-3.5" />
+                        <RiAddLine className="size-3.5" />
                         {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                       </Button>
                     </SelectTrigger>
-                    <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
-                      {subVarOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <SelectItemText>{option.name}</SelectItemText>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
+                    <SelectPortal>
+                      <SelectPositioner>
+                        <SelectPopup className="w-[165px]">
+                          <SelectList className="max-h-none p-1">
+                            {subVarOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                <SelectItemText>{option.name}</SelectItemText>
+                              </SelectItem>
+                            ))}
+                          </SelectList>
+                        </SelectPopup>
+                      </SelectPositioner>
+                    </SelectPortal>
                   </Select>
                 ) : (
                   <ConditionAdd
@@ -219,7 +228,7 @@ const ConditionWrap: FC<Props> = ({
                     onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                     onMouseLeave={() => setWillDeleteCaseId('')}
                   >
-                    <RiDeleteBinLine className="mr-1 size-3.5" />
+                    <RiDeleteBinLine className="size-3.5" />
                     {t(($) => $['operation.remove'], { ns: 'common' })}
                   </Button>
                 )}
@@ -235,7 +244,7 @@ const ConditionWrap: FC<Props> = ({
           disabled={readOnly}
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
-          <RiAddLine className="mr-1 size-3.5" />
+          <RiAddLine className="size-3.5" />
           {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
         </Button>
       )}

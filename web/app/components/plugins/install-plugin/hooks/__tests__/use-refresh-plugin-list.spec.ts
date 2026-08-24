@@ -1,9 +1,10 @@
 import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '../../../types'
 
 // Mock invalidation / refresh functions
 const mockInvalidateInstalledPluginList = vi.fn()
+const mockInvalidateCheckInstalled = vi.fn()
 const mockRefetchLLMModelList = vi.fn()
 const mockRefetchEmbeddingModelList = vi.fn()
 const mockRefetchRerankModelList = vi.fn()
@@ -20,6 +21,7 @@ const mockInvalidateAllTriggerPlugins = vi.fn()
 const mockInvalidateRAGRecommendedPlugins = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
+  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
@@ -80,12 +82,13 @@ describe('useRefreshPluginList', () => {
     vi.clearAllMocks()
   })
 
-  it('should always invalidate installed plugin list', () => {
+  it('should always invalidate installed plugin list and installation checks', () => {
     const { result } = renderHook(() => useRefreshPluginList())
 
     result.current.refreshPluginList()
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateCheckInstalled).toHaveBeenCalledTimes(1)
   })
 
   it('should refresh tool providers for tool category manifest', () => {
@@ -93,6 +96,7 @@ describe('useRefreshPluginList', () => {
 
     result.current.refreshPluginList({ category: PluginCategoryEnum.tool } as never)
 
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.tool)
     expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
     expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledTimes(1)
     expect(mockInvalidateRAGRecommendedPlugins).toHaveBeenCalledWith('tool')
@@ -103,6 +107,7 @@ describe('useRefreshPluginList', () => {
 
     result.current.refreshPluginList({ category: PluginCategoryEnum.model } as never)
 
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith(PluginCategoryEnum.model)
     expect(mockRefreshModelProviders).toHaveBeenCalledTimes(1)
     expect(mockRefetchLLMModelList).toHaveBeenCalledTimes(1)
     expect(mockRefetchEmbeddingModelList).toHaveBeenCalledTimes(1)
@@ -147,7 +152,7 @@ describe('useRefreshPluginList', () => {
 
     result.current.refreshPluginList(undefined, true)
 
-    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateInstalledPluginList).toHaveBeenCalledWith()
     expect(mockInvalidateAllToolProviders).toHaveBeenCalledTimes(1)
     expect(mockInvalidateAllBuiltInTools).toHaveBeenCalledTimes(1)
     expect(mockInvalidateRAGRecommendedPlugins).toHaveBeenCalledWith('tool')

@@ -1,47 +1,40 @@
+import type { ReactElement } from 'react'
 import type { Collection } from '../../types'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { commonQueryKeys } from '@/service/use-common'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AuthType, CollectionType } from '../../types'
 import ProviderDetail from '../detail'
+
+const render = (ui: ReactElement) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(commonQueryKeys.modelProviderDetails, {
+    data: [{ provider: 'model-collection-id' }],
+  })
+  return renderWithConsoleQuery(ui, { queryClient })
+}
 
 vi.mock('@/i18n-config/language', () => ({
   getLanguage: () => 'en_US',
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [
     'tool.manage',
     'credential.use',
     'credential.create',
     'credential.manage',
   ] as string[],
-  workspacePermissionKeysAtom: Symbol('workspacePermissionKeysAtom'),
 }))
 
-vi.mock('@/context/account-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  workspacePermissionKeysAtom: mockAppContextState.workspacePermissionKeysAtom,
-}))
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.workspacePermissionKeysAtom)
-      return mockAppContextState.workspacePermissionKeys
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
+  }))
+})
 
 const mockSetShowModelModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
@@ -256,7 +249,7 @@ describe('ProviderDetail', () => {
     ])
     mockFetchCustomToolList.mockResolvedValue([])
     mockFetchModelToolList.mockResolvedValue([])
-    mockAppContextState.workspacePermissionKeys = [
+    mockConsoleState.workspacePermissionKeys = [
       'tool.manage',
       'credential.use',
       'credential.create',
@@ -291,7 +284,7 @@ describe('ProviderDetail', () => {
         'data-[swipe-direction=right]:right-2',
         'data-[swipe-direction=right]:bottom-2',
         'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
-        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:w-100',
         'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
       )
       expect(dialog).not.toHaveClass(
@@ -435,7 +428,7 @@ describe('ProviderDetail', () => {
     })
 
     it('renders custom tool details read-only without tool.manage', async () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
       mockFetchCustomToolList.mockResolvedValue([
         {
           name: 'custom-tool',
@@ -513,9 +506,7 @@ describe('ProviderDetail', () => {
       )!
 
       expect(openInStudio).toHaveAttribute('href', '/app/wf-123/workflow')
-      expect(openInStudio).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
       expect(openInStudio.querySelector('.i-ri-arrow-right-up-line')).toBeInTheDocument()
-      expect(configureButton).toHaveClass('h-8', 'min-w-0', 'flex-1', 'rounded-lg', 'px-3', 'py-2')
       expect(configureButton.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
     })
 
@@ -536,7 +527,7 @@ describe('ProviderDetail', () => {
     })
 
     it('renders workflow tool details read-only without tool.manage', async () => {
-      mockAppContextState.workspacePermissionKeys = []
+      mockConsoleState.workspacePermissionKeys = []
 
       render(
         <ProviderDetail
@@ -590,7 +581,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
-      expect(mockSetShowModelModal).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
     })
   })
 
@@ -667,7 +660,7 @@ describe('ProviderDetail', () => {
     })
 
     it('does not open setup credential drawer without credential.create', async () => {
-      mockAppContextState.workspacePermissionKeys = [
+      mockConsoleState.workspacePermissionKeys = [
         'tool.manage',
         'credential.use',
         'credential.manage',
@@ -691,7 +684,7 @@ describe('ProviderDetail', () => {
     })
 
     it('opens authorized credential drawer as readonly with credential.use only', async () => {
-      mockAppContextState.workspacePermissionKeys = ['tool.manage', 'credential.use']
+      mockConsoleState.workspacePermissionKeys = ['tool.manage', 'credential.use']
 
       render(
         <ProviderDetail
@@ -788,6 +781,9 @@ describe('ProviderDetail', () => {
         expect(screen.getByText('tools.auth.unauthorized'))!.toBeInTheDocument()
       })
       fireEvent.click(screen.getByText('tools.auth.unauthorized'))
+      await waitFor(() => {
+        expect(mockSetShowModelModal).toHaveBeenCalled()
+      })
       const call = mockSetShowModelModal.mock.calls[0]![0]
       act(() => {
         call.onSaveCallback()

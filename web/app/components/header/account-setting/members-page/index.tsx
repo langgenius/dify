@@ -1,20 +1,21 @@
 'use client'
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Role } from '@/models/access-control'
-import type { InvitationResult, Member } from '@/models/common'
+import type { Member } from '@/models/common'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import { NUM_INFINITE } from '@/app/components/billing/config'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { userProfileEmailAtom } from '@/context/account-state'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n-config/language'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
@@ -22,7 +23,7 @@ import { useMembers } from '@/service/use-common'
 import { hasPermission } from '@/utils/permission'
 import EditWorkspaceModal from './edit-workspace-modal'
 import InviteButton from './invite-button'
-import InviteModal from './invite-modal'
+import { InviteModal } from './invite-modal'
 import InvitedModal from './invited-modal'
 import MemberDetailsModal from './member-details-modal'
 import MemberRow from './member-row'
@@ -33,19 +34,22 @@ const MembersPage = () => {
   const locale = useLocale()
   const language = getAccessControlTemplateLanguage(locale)
 
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data, refetch } = useMembers(language)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
-  const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
-  const [invitedModalVisible, setInvitedModalVisible] = useState(false)
+  const [invitationResults, setInvitationResults] = useState<
+    MemberInviteResponse['invitation_results'] | null
+  >(null)
   const accounts = data?.accounts || []
   const { plan, enableBilling, isAllowTransferWorkspace } = useProviderContext()
-  const isNotUnlimitedMemberPlan =
-    enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== 'team'
   const isMemberFull =
     enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
   const [editWorkspaceModalVisible, setEditWorkspaceModalVisible] = useState(false)
@@ -94,11 +98,7 @@ const MembersPage = () => {
     <>
       <div className="flex flex-col">
         <div className="mb-6 flex items-center gap-3 rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-subtle bg-linear-to-r from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 py-2 pr-5 pl-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-components-icon-bg-blue-solid text-[20px]">
-            <span className="bg-linear-to-r from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text font-semibold text-shadow-shadow-1 uppercase opacity-90">
-              {currentWorkspace?.name[0]?.toLocaleUpperCase()}
-            </span>
-          </div>
+          <WorkspaceAvatar name={currentWorkspace.name} size="2xl" />
           <div className="grow">
             <div className="flex items-center gap-1 system-md-semibold text-text-secondary">
               <span>{currentWorkspace?.name}</span>
@@ -158,7 +158,13 @@ const MembersPage = () => {
           {isMemberFull && <UpgradeBtn className="mr-2" loc="member-invite" />}
           <div className="shrink-0">
             {canManageMembers && (
-              <InviteButton disabled={isMemberFull} onClick={() => setInviteModalVisible(true)} />
+              <InviteModal
+                open={inviteModalVisible}
+                trigger={<InviteButton />}
+                isEmailSetup={systemFeatures.is_email_setup}
+                onOpenChange={setInviteModalVisible}
+                onSend={setInvitationResults}
+              />
             )}
           </div>
         </div>
@@ -191,21 +197,10 @@ const MembersPage = () => {
           </div>
         </div>
       </div>
-      {inviteModalVisible && (
-        <InviteModal
-          isEmailSetup={systemFeatures.is_email_setup}
-          onCancel={() => setInviteModalVisible(false)}
-          onSend={(invitationResults) => {
-            setInvitedModalVisible(true)
-            setInvitationResults(invitationResults)
-            refetch()
-          }}
-        />
-      )}
-      {invitedModalVisible && (
+      {invitationResults && (
         <InvitedModal
           invitationResults={invitationResults}
-          onCancel={() => setInvitedModalVisible(false)}
+          onCancel={() => setInvitationResults(null)}
         />
       )}
       {editWorkspaceModalVisible && (

@@ -1,7 +1,6 @@
 'use client'
 import type { BlockEnum } from '@/app/components/workflow/types'
-import type { WorkflowGenPlan } from '@/service/debug'
-import { RiLoader4Line } from '@remixicon/react'
+import type { WorkflowGenPlan } from '@/service/workflow-generator'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
@@ -26,7 +25,10 @@ const SKELETON_ROWS = ['s1', 's2', 's3', 's4'] as const
 const PlanningSkeleton = memo(() => {
   const { t } = useTranslation('workflow')
   return (
-    <div className="flex h-full w-0 grow flex-col bg-background-default-subtle p-6">
+    <div
+      aria-busy="true"
+      className="flex min-h-0 w-full grow flex-col bg-background-default-subtle p-6 md:w-0"
+    >
       <SkeletonRow className="mb-3">
         <SkeletonRectangle className="size-5 rounded-md" />
         <SkeletonRectangle className="h-3 w-40" />
@@ -44,8 +46,12 @@ const PlanningSkeleton = memo(() => {
           ))}
         </SkeletonContainer>
       </div>
-      <div className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary">
-        <RiLoader4Line className="size-4 animate-spin" />
+      <div
+        aria-live="polite"
+        className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary"
+        role="status"
+      >
+        <span aria-hidden="true" className="i-ri-loader-4-line size-4 animate-spin" />
         <span>{t(($) => $['workflowGenerator.phases.planning'])}</span>
       </div>
     </div>
@@ -68,10 +74,17 @@ const GenerationPlan = ({ plan }: Props) => {
   if (!plan) return <PlanningSkeleton />
 
   return (
-    <div className="flex h-full w-0 grow flex-col bg-background-default-subtle p-6">
+    <div
+      aria-busy="true"
+      className="flex min-h-0 w-full grow flex-col bg-background-default-subtle p-6 md:w-0"
+    >
       {(plan.icon || plan.app_name || plan.title) && (
         <div className="mb-3 flex items-center gap-2">
-          {plan.icon && <span className="text-xl leading-none">{plan.icon}</span>}
+          {plan.icon && (
+            <span aria-hidden="true" className="text-xl leading-none">
+              {plan.icon}
+            </span>
+          )}
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-text-primary">
               {plan.app_name || plan.title}
@@ -87,8 +100,11 @@ const GenerationPlan = ({ plan }: Props) => {
 
       <div className="grow overflow-y-auto rounded-2xl border border-divider-subtle bg-background-default p-4">
         <ol className="space-y-2.5">
-          {plan.nodes.map((node, index) => (
-            <li key={`${node.label}-${index}`} className="flex items-start gap-2.5">
+          {plan.nodes.map((node) => (
+            <li
+              key={`${node.node_type}-${node.label}-${node.purpose ?? ''}`}
+              className="flex items-start gap-2.5"
+            >
               <BlockIcon type={node.node_type as BlockEnum} size="md" className="mt-px shrink-0" />
               <div className="min-w-0">
                 <div className="system-sm-medium text-text-secondary">
@@ -106,8 +122,12 @@ const GenerationPlan = ({ plan }: Props) => {
         </ol>
       </div>
 
-      <div className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary">
-        <RiLoader4Line className="size-4 animate-spin" />
+      <div
+        aria-live="polite"
+        className="mt-3 flex items-center gap-1.5 text-[13px] text-text-tertiary"
+        role="status"
+      >
+        <span aria-hidden="true" className="i-ri-loader-4-line size-4 animate-spin" />
         <span>{t(($) => $['workflowGenerator.phases.building'])}</span>
       </div>
     </div>

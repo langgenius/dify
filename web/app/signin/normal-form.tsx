@@ -1,22 +1,24 @@
+import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CE_EDITION } from '@/config'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { invitationCheck } from '@/service/common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { basePath } from '@/utils/var'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
+import { isInvitationForAccount } from './utils/invitation-account'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
 type AuthType = 'code' | 'password'
@@ -25,6 +27,8 @@ function NormalForm() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
@@ -41,6 +45,9 @@ function NormalForm() {
   const message = decodeURIComponent(searchParams.get('message') || '')
   const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isNonCloudEdition =
+    systemFeatures.deployment_edition === 'COMMUNITY' ||
+    systemFeatures.deployment_edition === 'ENTERPRISE'
   const [selectedAuthType, setSelectedAuthType] = useState<AuthType | null>(null)
 
   const isInviteLink = Boolean(inviteToken && inviteToken !== 'null')
@@ -63,8 +70,13 @@ function NormalForm() {
   })
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
+  const isInvitationForCurrentAccount = isInvitationForAccount(
+    invitationCheckResp?.data?.email,
+    userResp?.profile.email,
+  )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
-  const hasSsoLogin = Boolean(systemFeatures.sso_enforced_for_signin)
+  const ssoProtocol = systemFeatures.sso_enforced_for_signin_protocol
+  const hasSsoLogin = systemFeatures.sso_enforced_for_signin && ssoProtocol !== null
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
   const hasEmailPasswordLogin = systemFeatures.enable_email_password_login
   const hasEmailLogin = hasEmailCodeLogin || hasEmailPasswordLogin
@@ -79,19 +91,21 @@ function NormalForm() {
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const isLoading = isCheckLoading || isLoggedIn || (isInviteLink && isInviteCheckLoading)
+  const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
+  const isLoading =
+    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
     if (!isLoggedIn) return
 
     if (isInviteLink) {
+      if (!isInvitationForCurrentAccount) return
       router.replace(`/signin/invite-settings?${searchParams.toString()}`)
       return
     }
 
-    const redirectUrl = resolvePostLoginRedirect(searchParams)
-    router.replace(redirectUrl || '/')
-  }, [isInviteLink, isLoggedIn, router, searchParams])
+    replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+  }, [isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
     if (message) toast.error(message)
@@ -100,17 +114,13 @@ function NormalForm() {
   if (isLoading) {
     return (
       <div
-        className={cn(
-          'flex w-full grow flex-col items-center justify-center',
-          'px-6',
-          'md:px-[108px]',
-        )}
+        className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-27')}
       >
         <Loading type="area" />
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.LOST) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.lost) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -130,7 +140,7 @@ function NormalForm() {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.expired) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -150,7 +160,7 @@ function NormalForm() {
       </div>
     )
   }
-  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
+  if (systemFeatures.license?.status === zLicenseStatus.enum.inactive) {
     return (
       <div className="mx-auto mt-8 w-full">
         <div className="relative">
@@ -176,10 +186,10 @@ function NormalForm() {
       <div className="mx-auto mt-8 w-full">
         {isInviteLink ? (
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.join, { ns: 'login' })}
               {workspaceName}
-            </h2>
+            </h1>
             {!systemFeatures.branding.enabled && (
               <p className="mt-2 body-md-regular text-text-tertiary">
                 {t(($) => $.joinTipStart, { ns: 'login' })}
@@ -190,11 +200,11 @@ function NormalForm() {
           </div>
         ) : (
           <div className="mx-auto w-full">
-            <h2 className="title-4xl-semi-bold text-text-primary">
+            <h1 className="title-4xl-semi-bold text-text-primary">
               {systemFeatures.branding.enabled
                 ? t(($) => $.pageTitleForE, { ns: 'login' })
                 : t(($) => $.pageTitle, { ns: 'login' })}
-            </h2>
+            </h1>
             <p className="mt-2 body-md-regular text-text-tertiary">
               {t(($) => $.welcome, { ns: 'login' })}
             </p>
@@ -205,7 +215,7 @@ function NormalForm() {
             {hasSocialLogin && <SocialAuth />}
             {hasSsoLogin && (
               <div className="w-full">
-                <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+                <SSOAuth protocol={ssoProtocol} />
               </div>
             )}
           </div>
@@ -269,7 +279,7 @@ function NormalForm() {
           {systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
-              <Link className="text-text-accent" href="/signup">
+              <Link className="text-text-accent" href={signupHref}>
                 {t(($) => $['signup.signUp'], { ns: 'login' })}
               </Link>
             </div>
@@ -317,8 +327,8 @@ function NormalForm() {
                   {t(($) => $.pp, { ns: 'login' })}
                 </Link>
               </div>
-              {IS_CE_EDITION && (
-                <div className="w-hull mt-2 block system-xs-regular text-text-tertiary">
+              {isNonCloudEdition && (
+                <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
                   {t(($) => $.goToInit, { ns: 'login' })}
                   &nbsp;
                   <Link

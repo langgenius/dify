@@ -1,7 +1,11 @@
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy import Engine, event
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity
@@ -28,7 +32,21 @@ from core.base.tts import AppGeneratorTTSPublisher
 from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
 from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
-from models.model import AppMode
+from models.enums import ConversationFromSource
+from models.model import AppMode, Conversation, Message
+
+
+@pytest.fixture
+def committed_sessions(sqlite_engine: Engine) -> Iterator[list[Session]]:
+    sessions: list[Session] = []
+
+    def record_commit(session: Session) -> None:
+        if session.get_bind() is sqlite_engine:
+            sessions.append(session)
+
+    event.listen(Session, "after_commit", record_commit)
+    yield sessions
+    event.remove(Session, "after_commit", record_commit)
 
 
 class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
@@ -76,21 +94,25 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         return manager
 
     @pytest.fixture
-    def mock_conversation(self):
-        """Create a mock conversation."""
-        conversation = Mock()
-        conversation.id = "test-conversation-id"
-        conversation.mode = "chat"
-        return conversation
+    def conversation(self):
+        """Create a transient mapped conversation."""
+        return Conversation(
+            id="test-conversation-id",
+            app_id="test-app-id",
+            mode=AppMode.CHAT,
+            name="Test Conversation",
+            status="normal",
+            from_source=ConversationFromSource.API,
+            inputs={},
+        )
 
     @pytest.fixture
-    def mock_message(self):
-        """Create a mock message."""
-        message = Mock()
-        message.id = "test-message-id"
-        message.created_at = Mock()
-        message.created_at.timestamp.return_value = 1234567890
-        return message
+    def message(self):
+        """Create a transient mapped message."""
+        return Message(
+            id="test-message-id",
+            created_at=datetime.fromtimestamp(1234567890, tz=UTC),
+        )
 
     @pytest.fixture
     def mock_task_state(self):
@@ -113,8 +135,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         self,
         mock_application_generate_entity,
         mock_queue_manager,
-        mock_conversation,
-        mock_message,
+        conversation,
+        message,
         mock_message_cycle_manager,
         mock_task_state,
     ):
@@ -125,8 +147,8 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             pipeline = EasyUIBasedGenerateTaskPipeline(
                 application_generate_entity=mock_application_generate_entity,
                 queue_manager=mock_queue_manager,
-                conversation=mock_conversation,
-                message=mock_message,
+                conversation=conversation,
+                message=message,
                 stream=True,
             )
             pipeline._message_cycle_manager = mock_message_cycle_manager
@@ -234,7 +256,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
             answer="Agent response", message_id="test-message-id"
         )
 
-    def test_message_end_event(self, pipeline, mock_message_cycle_manager, mock_task_state):
+    def test_message_end_event(self, pipeline, mock_message_cycle_manager, mock_task_state, committed_sessions):
         """Test handling of message end events."""
         # Setup
         llm_result = Mock(spec=RuntimeLLMResult)
@@ -251,20 +273,17 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._save_message = Mock()
         pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
 
-        # Patch db.engine used inside pipeline for session creation
-        with patch(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db", new=SimpleNamespace(engine=Mock())
-        ):
-            # Execute
-            responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
         assert mock_task_state.llm_result == llm_result
-        pipeline._save_message.assert_called_once()
+        session = pipeline._save_message.call_args.kwargs["session"]
+        assert isinstance(session, Session)
+        assert committed_sessions == [session]
         pipeline._message_end_to_stream_response.assert_called_once()
 
-    def test_error_event(self, pipeline):
+    def test_error_event(self, pipeline, committed_sessions):
         """Test handling of error events."""
         # Setup
         error_event = Mock(spec=QueueErrorEvent)
@@ -277,16 +296,14 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline.handle_error = Mock(return_value=Exception("Test error"))
         pipeline.error_to_stream_response = Mock(return_value=Mock(spec=ErrorStreamResponse))
 
-        # Patch db.engine used inside pipeline for session creation
-        with patch(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db", new=SimpleNamespace(engine=Mock())
-        ):
-            # Execute
-            responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
+        responses = list(pipeline._process_stream_response(publisher=None, trace_manager=None))
 
         # Assert
         assert len(responses) == 1
-        pipeline.handle_error.assert_called_once()
+        session = pipeline.handle_error.call_args.kwargs["session"]
+        assert isinstance(session, Session)
+        assert committed_sessions == [session]
+        pipeline.handle_error.assert_called_once_with(event=error_event, session=session, message_id="test-message-id")
         pipeline.error_to_stream_response.assert_called_once()
 
     def test_ping_event(self, pipeline):
@@ -349,7 +366,7 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         publisher.publish.assert_any_call(mock_queue_message)
         publisher.publish.assert_any_call(None)
 
-    def test_trace_manager_passed_to_save_message(self, pipeline):
+    def test_trace_manager_passed_to_save_message(self, pipeline, committed_sessions):
         """Test that trace manager is passed to _save_message."""
         # Setup
         trace_manager = Mock(spec=TraceQueueManager)
@@ -364,15 +381,13 @@ class TestEasyUIBasedGenerateTaskPipelineProcessStreamResponse:
         pipeline._save_message = Mock()
         pipeline._message_end_to_stream_response = Mock(return_value=Mock(spec=MessageEndStreamResponse))
 
-        # Patch db.engine used inside pipeline for session creation
-        with patch(
-            "core.app.task_pipeline.easy_ui_based_generate_task_pipeline.db", new=SimpleNamespace(engine=Mock())
-        ):
-            # Execute
-            list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
+        list(pipeline._process_stream_response(publisher=None, trace_manager=trace_manager))
 
         # Assert
-        pipeline._save_message.assert_called_once_with(session=ANY, trace_manager=trace_manager)
+        session = pipeline._save_message.call_args.kwargs["session"]
+        assert isinstance(session, Session)
+        assert committed_sessions == [session]
+        pipeline._save_message.assert_called_once_with(session=session, trace_manager=trace_manager)
 
     def test_multiple_events_sequence(self, pipeline, mock_message_cycle_manager, mock_task_state):
         """Test handling multiple events in sequence."""

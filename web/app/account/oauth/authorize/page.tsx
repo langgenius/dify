@@ -10,25 +10,18 @@ import {
   RiMailLine,
   RiTranslate2,
 } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { isLegacyBase401, userProfileQueryOptions } from '@/features/account-profile/client'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { useLogout } from '@/service/use-common'
-import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
-
-function buildReturnUrl(pathname: string, search: string) {
-  try {
-    const base = `${globalThis.location.origin}${pathname}${search}`
-    return base
-  } catch {
-    return pathname + search
-  }
-}
+import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
   const { t } = useTranslation()
@@ -64,6 +57,8 @@ export default function OAuthAuthorize() {
   const searchParams = useSearchParams()
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
+  const state = searchParams.get('state')
+  const hasOAuthParams = Boolean(client_id && redirect_uri)
   // Probe user profile. 401 stays as `error` (legitimate "not logged in" state),
   // other errors throw to the nearest error.tsx; jumpTo same-pathname guard in
   // service/base.ts prevents a redirect loop here.
@@ -81,10 +76,39 @@ export default function OAuthAuthorize() {
     data: authAppInfo,
     isLoading: isOAuthLoading,
     isError,
-  } = useOAuthAppInfo(client_id, redirect_uri)
-  const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
+  } = useQuery(
+    consoleQuery.oauth.provider.post.queryOptions({
+      input: hasOAuthParams ? { body: { client_id, redirect_uri } } : skipToken,
+      context: { silent: true },
+    }),
+  )
+  const { mutateAsync: authorize, isPending: authorizing } = useMutation(
+    consoleQuery.oauth.provider.authorize.post.mutationOptions(),
+  )
   const { mutateAsync: logout } = useLogout()
+  const { isAutoAuthorizing } = useSilentAuthorize({
+    authAppInfo,
+    authorize,
+    clientId: client_id,
+    hasOAuthParams,
+    isLoggedIn,
+    isProfileLoading,
+    redirectUri: redirect_uri,
+    searchParams,
+    state,
+  })
   const hasNotifiedRef = useRef(false)
+  const localizedAppLabel = authAppInfo?.app_label[language]
+  const englishAppLabel = authAppInfo?.app_label.en_US
+  const appLabel =
+    (typeof localizedAppLabel === 'string' && localizedAppLabel) ||
+    (typeof englishAppLabel === 'string' && englishAppLabel) ||
+    t(($) => $.unknownApp, { ns: 'oauth' })
+  useDocumentTitle(
+    authAppInfo
+      ? `${t(($) => $.connect, { ns: 'oauth' })} ${appLabel}`
+      : t(($) => $.connect, { ns: 'oauth' }),
+  )
 
   const isLoading = isOAuthLoading || isProfileLoading
   const onLoginSwitchClick = async () => {
@@ -100,12 +124,11 @@ export default function OAuthAuthorize() {
   const onAuthorize = async () => {
     if (!client_id || !redirect_uri) return
     try {
-      const { code } = await authorize({ client_id })
-      const url = new URL(redirect_uri)
-      url.searchParams.set('code', code)
-      globalThis.location.href = url.toString()
-    } catch (err: any) {
-      toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${err.message}`)
+      const { code } = await authorize({ body: { client_id } })
+      globalThis.location.href = buildOAuthCallbackUrl(redirect_uri, code, state)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      toast.error(`${t(($) => $['error.authorizeFailed'], { ns: 'oauth' })}: ${message}`)
     }
   }
 
@@ -122,7 +145,7 @@ export default function OAuthAuthorize() {
     }
   }, [client_id, redirect_uri, isError])
 
-  if (isLoading) {
+  if (isLoading || isAutoAuthorizing) {
     return (
       <div className="bg-background-default-subtle">
         <Loading type="app" />
@@ -143,11 +166,7 @@ export default function OAuthAuthorize() {
           {isLoggedIn && (
             <div className="text-text-primary">{t(($) => $.connect, { ns: 'oauth' })}</div>
           )}
-          <div className="text-saas-dify-blue-inverted">
-            {authAppInfo?.app_label[language] ||
-              authAppInfo?.app_label?.en_US ||
-              t(($) => $.unknownApp, { ns: 'oauth' })}
-          </div>
+          <div className="text-saas-dify-blue-inverted">{appLabel}</div>
           {!isLoggedIn && (
             <div className="text-text-primary">
               {t(($) => $['tips.notLoggedIn'], { ns: 'oauth' })}
@@ -156,7 +175,7 @@ export default function OAuthAuthorize() {
         </div>
         <div className="body-md-regular text-text-secondary">
           {isLoggedIn
-            ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t(($) => $.unknownApp, { ns: 'oauth' })} ${t(($) => $['tips.loggedIn'], { ns: 'oauth' })}`
+            ? `${appLabel} ${t(($) => $['tips.loggedIn'], { ns: 'oauth' })}`
             : t(($) => $['tips.needLogin'], { ns: 'oauth' })}
         </div>
       </div>
@@ -177,7 +196,7 @@ export default function OAuthAuthorize() {
       )}
 
       {isLoggedIn && Boolean(authAppInfo?.scope) && (
-        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-[22px] py-5 text-text-secondary">
+        <div className="mt-2 flex flex-col gap-2.5 rounded-xl bg-background-section-burn-inverted px-5.5 py-5 text-text-secondary">
           {authAppInfo!.scope
             .split(/\s+/)
             .filter(Boolean)
