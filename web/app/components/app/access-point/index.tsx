@@ -156,7 +156,7 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   })
-  const showEnvironmentTabs = appDetail?.mode === AppModeEnum.WORKFLOW && capabilities.canDeploy
+  const showEnvironmentTabs = (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) && capabilities.canDeploy
 
   return (
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>

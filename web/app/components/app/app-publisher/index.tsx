@@ -22,7 +22,7 @@ export function AppPublisher(props: AppPublisherProps) {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   }).canDeploy
-  const supportsMultiEnvironment = appDetail?.mode === AppModeEnum.WORKFLOW && canDeploy
+  const supportsMultiEnvironment = (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.ADVANCED_CHAT) && canDeploy
 
   return (
     <AppPublisherStateBoundary

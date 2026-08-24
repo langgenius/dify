@@ -141,7 +141,7 @@ export default function AppDeploy() {
     workspacePermissionKeys,
   }).canDeploy
 
-  if (appDetail.mode !== AppModeEnum.WORKFLOW || !canDeploy) return null
+  if ((appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) || !canDeploy) return null
 
   return (
     <AppDeployStateBoundary appId={appDetail.id}>

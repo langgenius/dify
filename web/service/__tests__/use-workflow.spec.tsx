@@ -138,7 +138,9 @@ describe('useUpdateWorkflow', () => {
     })
   })
 
-  it('should synchronize every cached app deployment reference to the updated workflow version', async () => {
+  it.each([AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT])(
+    'should synchronize every cached app deployment reference to the updated workflow version (%s)',
+    async (appMode) => {
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const oldVersion: WorkflowVersion = {
@@ -219,7 +221,7 @@ describe('useUpdateWorkflow', () => {
     await act(async () => {
       await result.current.mutateAsync({
         appId: 'app-1',
-        appMode: AppModeEnum.WORKFLOW,
+        appMode,
         url: '/apps/app-1/workflows/workflow-1',
         title: '',
         releaseNotes: '',
@@ -342,7 +344,7 @@ describe('useUpdateWorkflow', () => {
     await act(async () => {
       await result.current.mutateAsync({
         appId: 'app-1',
-        appMode: AppModeEnum.ADVANCED_CHAT,
+        appMode: AppModeEnum.CHAT,
         url: '/apps/app-1/workflows/workflow-1',
         title: 'New release',
         releaseNotes: 'New notes',
