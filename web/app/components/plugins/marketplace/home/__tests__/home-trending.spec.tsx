@@ -184,6 +184,7 @@ describe('HomeTrending', () => {
     const pauseButton = screen.getByRole('button', {
       name: 'plugin.marketplace.home.trendingPause',
     })
+    expect(pauseButton).toHaveClass('bg-state-base-active')
 
     pauseButton.focus()
     await user.keyboard('{Enter}')

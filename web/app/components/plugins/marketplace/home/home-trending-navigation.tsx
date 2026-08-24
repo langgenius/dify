@@ -253,7 +253,7 @@ function TrendingNavigation({
             ],
         )}
         onClick={toggleAutoplay}
-        className="flex size-4 shrink-0 items-center justify-center rounded-full bg-state-base-handle text-text-primary outline-hidden hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="flex size-4 shrink-0 items-center justify-center rounded-full bg-state-base-active text-text-primary outline-hidden hover:bg-state-base-handle-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       >
         {isExplicitlyPaused ? (
           <span aria-hidden className="i-ri-play-large-fill size-2 opacity-30" />
