@@ -14,7 +14,7 @@ class TestAppTaskService:
         ("app_mode", "should_call_graph_engine"),
         [
             (AppMode.CHAT, False),
-            (AppMode.COMPLETION, False),
+            (AppMode.COMPLETION, True),
             (AppMode.AGENT_CHAT, False),
             (AppMode.AGENT, False),
             (AppMode.CHANNEL, False),
