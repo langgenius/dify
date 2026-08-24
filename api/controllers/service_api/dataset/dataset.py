@@ -44,7 +44,6 @@ from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
-from services.enterprise.rbac_service import RBACResourceWhitelistScope, RBACService, ReplaceMemberBindings
 from services.entities.knowledge_entities.knowledge_entities import (
     ExternalRetrievalModel,
     KnowledgeProvider,
@@ -60,7 +59,6 @@ from services.tag_service import (
 from services.tag_service import (
     UpdateTagPayload as UpdateTagServicePayload,
 )
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 

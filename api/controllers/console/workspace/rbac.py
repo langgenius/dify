@@ -13,7 +13,6 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, model_validate, rbac_permission_required
 from core.db.session_factory import session_factory
-from core.rbac import RBACResourceWhitelistScope
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required

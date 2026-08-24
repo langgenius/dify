@@ -42,7 +42,6 @@ from controllers.console.wraps import (
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.rbac import RBACResourceWhitelistScope
 from core.trigger.constants import TRIGGER_NODE_TYPES
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -78,7 +77,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
-from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
