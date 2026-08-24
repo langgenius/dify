@@ -698,7 +698,7 @@ describe('HomeContent', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
-      expect(screen.getByText('explore.apps.title')).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {

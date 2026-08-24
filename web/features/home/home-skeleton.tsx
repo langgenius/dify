@@ -1,7 +1,9 @@
 'use client'
 
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { HomeIntroSkeleton } from './home-intro'
 
 function HomeTemplateCardSkeleton() {
@@ -39,7 +41,7 @@ function HomeRecommendationsSkeleton() {
           <SkeletonRectangle className="my-0 h-6 w-48 animate-pulse" />
         </div>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] gap-2.5 pt-2">
+      <div className={cn('gap-2.5 pt-2', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
         {Array.from({ length: 4 }, (_, index) => (
           <div
             key={index}
@@ -82,7 +84,7 @@ function HomeTemplatesHeaderSkeletonBody() {
 
 function HomeTemplatesSkeletonBody() {
   return (
-    <div className="grid shrink-0 grid-cols-[repeat(auto-fill,minmax(296px,1fr))] content-start gap-3 px-8">
+    <div className={cn('shrink-0 content-start gap-2.5 px-8', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
       {Array.from({ length: 8 }, (_, index) => (
         <HomeTemplateCardSkeleton key={index} />
       ))}

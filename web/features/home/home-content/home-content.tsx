@@ -11,6 +11,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import {
   getStepByStepTourPermissionVariant,
   trackStepByStepTourEvent,
@@ -40,7 +41,6 @@ import { HomeIntro } from '../home-intro'
 import { HomeShell } from '../home-shell'
 import { TemplateCard } from '../template-card'
 import { HomeRecommendations } from './recommendations'
-import s from './style.module.css'
 import { HomeTemplatesHeader } from './templates-header'
 
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
@@ -431,9 +431,9 @@ export function HomeContent() {
         />
 
         <div className={cn('relative flex flex-1 shrink-0 grow flex-col pb-6')}>
-          <nav
+          <section
             aria-labelledby="home-templates-title"
-            className={cn(s.templateGrid, 'grid shrink-0 content-start gap-3 px-8')}
+            className={cn('shrink-0 content-start gap-2.5 px-8', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}
           >
             {searchFilteredList.map((app) => (
               <TemplateCard
@@ -444,7 +444,7 @@ export function HomeContent() {
                 onTry={handleTryApp}
               />
             ))}
-          </nav>
+          </section>
         </div>
       </div>
       {isShowCreateModal && (
