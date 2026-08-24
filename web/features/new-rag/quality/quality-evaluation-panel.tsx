@@ -308,7 +308,11 @@ function EvaluationReport({
             )}
             <DialogClose
               render={
-                <IconButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}>
+                <IconButton
+                  aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+                  className="absolute inset-e-6 top-6 z-10"
+                  size="sm"
+                >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>
               }
@@ -564,7 +568,11 @@ export function QualityEvaluationPanel({
             </DialogDescription>
             <DialogClose
               render={
-                <IconButton aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}>
+                <IconButton
+                  aria-label={t(($) => $['newKnowledge.qualityPage.closeDialog'])}
+                  className="absolute inset-e-6 top-6 z-10"
+                  size="sm"
+                >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>
               }
