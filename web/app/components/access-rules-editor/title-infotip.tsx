@@ -7,6 +7,7 @@ export default function TitleInfotip({ content }: { content: string }) {
     <Infotip
       aria-label={content}
       popupClassName="max-w-64 text-left wrap-break-word text-text-secondary"
+      iconVariant="information"
     >
       {content}
     </Infotip>

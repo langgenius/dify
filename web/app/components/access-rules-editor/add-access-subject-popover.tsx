@@ -1,6 +1,5 @@
 'use client'
 
-import type { ResourceUserAccessSetting } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
@@ -14,13 +13,15 @@ import { useMembers } from '@/service/use-common'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 
 type AddAccessSubjectPopoverProps = {
-  userAccessSettings: ResourceUserAccessSetting[]
+  disabled?: boolean
+  existingAccountIds?: string[]
   updatingAccountId: string | null
   onAddAccessSubject: (accountId: string, accessPolicyIds: string[]) => void
 }
 
 function AddAccessSubjectPopover({
-  userAccessSettings,
+  disabled = false,
+  existingAccountIds,
   updatingAccountId,
   onAddAccessSubject,
 }: AddAccessSubjectPopoverProps) {
@@ -28,9 +29,10 @@ function AddAccessSubjectPopover({
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const { data: membersData, isLoading } = useMembers()
-  const existingAccountIds = useMemo(() => {
-    return new Set(userAccessSettings.map((setting) => setting.account.account_id))
-  }, [userAccessSettings])
+  const existingAccountIdSet = useMemo(
+    () => new Set(existingAccountIds ?? []),
+    [existingAccountIds],
+  )
   const availableMembers = useMemo(() => {
     const normalizedSearchValue = searchValue.trim().toLowerCase()
 
@@ -53,31 +55,39 @@ function AddAccessSubjectPopover({
     [onAddAccessSubject],
   )
 
-  const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (!nextOpen) setSearchValue('')
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (disabled && nextOpen) return
+      if (!nextOpen) setSearchValue('')
 
-    setOpen(nextOpen)
-  }, [])
+      setOpen(nextOpen)
+    },
+    [disabled],
+  )
 
-  const addExceptionLabel = t(($) => $['accessRule.addException'], { ns: 'permission' })
-  const addMembersTitle = t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })
   const addLabel = t(($) => $['operation.add'], { ns: 'common' })
+  const addMembersTitle = t(($) => $['accessRule.addMembersTitle'], { ns: 'permission' })
   const addedLabel = t(($) => $['operation.added'], { ns: 'common' })
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={disabled ? false : open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
-          <Button variant="primary" size="medium">
+          <Button
+            variant="primary"
+            size="medium"
+            disabled={disabled || existingAccountIds === undefined}
+            loading={!disabled && existingAccountIds === undefined}
+          >
             <span className="i-ri-add-line size-3.5" aria-hidden />
-            <span>{addExceptionLabel}</span>
+            <span>{addLabel}</span>
           </Button>
         }
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={8}
-        className="w-[344px] max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+        className="w-86 max-w-[calc(100vw-32px)] overflow-hidden bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
       >
         <PopoverTitle className="sr-only">{addMembersTitle}</PopoverTitle>
         <div className="p-2 pb-1">
@@ -111,7 +121,7 @@ function AddAccessSubjectPopover({
         ) : (
           <ul className="max-h-80 overflow-y-auto p-1">
             {availableMembers.map((member) => {
-              const isAdded = existingAccountIds.has(member.id)
+              const isAdded = existingAccountIdSet.has(member.id)
               const isUpdating = updatingAccountId === member.id
               const memberName = member.name || member.email
 
@@ -148,7 +158,7 @@ function AddAccessSubjectPopover({
                   ) : (
                     <button
                       type="button"
-                      disabled={isUpdating}
+                      disabled={updatingAccountId !== null}
                       aria-label={t(($) => $['accessRule.addMemberAria'], {
                         ns: 'permission',
                         name: memberName,

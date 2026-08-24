@@ -8,6 +8,7 @@ on:
       - 'build/**'
       - 'release/e-*'
       - 'hotfix/**'
+      - 'user_access_policy_pagnination'
     tags:
       - '*'
 

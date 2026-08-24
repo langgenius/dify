@@ -225,7 +225,7 @@ export type ResourceUserAccessSetting = {
 
 type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
-  scope: ResourceOpenScope
+  pagination: Pagination
 }
 
 export type GetMembersOfRoleResponse = {
@@ -256,5 +256,3 @@ export type RemoveAppAccessPolicyMemberBindingsRequest =
 
 export type RemoveDatasetAccessPolicyMemberBindingsRequest =
   RemoveResourceAccessPolicyMemberBindingsRequest
-
-export type ResourceOpenScope = 'all' | 'only_me' | 'specific'

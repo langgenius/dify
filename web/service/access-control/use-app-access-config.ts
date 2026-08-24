@@ -1,10 +1,9 @@
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
   RemoveAppAccessPolicyMemberBindingsRequest,
-  ResourceOpenScope,
   UpdateAppUserAccessSettingsRequest,
 } from '@/models/access-control'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { normalizeAppAccessMatrix, normalizeAppUserAccessPolicies } from './normalizers'
 
@@ -31,6 +30,8 @@ export const useAppAccessRules = (appId: string, language: AccessControlTemplate
 export const useAppUserAccessSettings = (
   appId: string,
   language: AccessControlTemplateLanguage,
+  page: number,
+  pageSize: number,
 ) => {
   return useQuery({
     ...appRbacContract.userAccessPolicies.get.queryOptions({
@@ -40,11 +41,39 @@ export const useAppUserAccessSettings = (
         },
         query: {
           language,
+          limit: pageSize,
+          page,
+          reverse: false,
         },
       },
     }),
+    placeholderData: keepPreviousData,
     select: normalizeAppUserAccessPolicies,
   })
+}
+
+export const useAppResourceWhitelist = (appId: string) => {
+  return useQuery(
+    appRbacContract.whitelist.get.queryOptions({
+      input: {
+        params: {
+          app_id: appId,
+        },
+      },
+    }),
+  )
+}
+
+export const useAppResourceWhitelistConfig = (appId: string) => {
+  return useQuery(
+    appRbacContract.whitelistConfig.get.queryOptions({
+      input: {
+        params: {
+          app_id: appId,
+        },
+      },
+    }),
+  )
 }
 
 export const useUpdateAppUserAccessSettings = (appId: string) => {
@@ -69,6 +98,9 @@ export const useUpdateAppUserAccessSettings = (appId: string) => {
         }),
         queryClient.invalidateQueries({
           queryKey: appRbacContract.accessPolicy.get.key({ type: 'query' }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: appRbacContract.whitelist.get.key({ type: 'query' }),
         }),
       ])
     },
@@ -98,29 +130,38 @@ export const useRemoveAppAccessPolicyMemberBindings = (appId: string) => {
         queryClient.invalidateQueries({
           queryKey: appRbacContract.accessPolicy.get.key({ type: 'query' }),
         }),
+        queryClient.invalidateQueries({
+          queryKey: appRbacContract.whitelist.get.key({ type: 'query' }),
+        }),
       ])
     },
   })
 }
 
-export const useUpdateAppOpenScope = (appId: string) => {
+export const useUpdateAppAutomaticIncludeWorkspaceMembers = (appId: string) => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationKey: [NAME_SPACE, 'update-app-open-scope', appId],
-    mutationFn: (openScope: ResourceOpenScope) =>
+    mutationKey: [NAME_SPACE, 'update-app-automatic-include-workspace-members', appId],
+    mutationFn: (automaticIncludeWorkspaceMembers: boolean) =>
       appRbacClient.whitelist.put({
         params: {
           app_id: appId,
         },
         body: {
-          scope: openScope,
+          automatic_include_workspace_members: automaticIncludeWorkspaceMembers,
         },
       }),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: appRbacContract.userAccessPolicies.get.key({ type: 'query' }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: appRbacContract.whitelist.get.key({ type: 'query' }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: appRbacContract.whitelistConfig.get.key({ type: 'query' }),
         }),
       ])
     },
