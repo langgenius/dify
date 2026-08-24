@@ -911,7 +911,7 @@ describe('List', () => {
 
       expect(placeholderGrid).toHaveClass(
         'grid',
-        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))]',
         'grid-rows-4',
       )
       expect(placeholderGrid).not.toHaveClass(
