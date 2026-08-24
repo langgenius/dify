@@ -1,7 +1,6 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { Placement } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { keepPreviousData, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -24,18 +23,11 @@ type AppSelectorProps = {
   value?: AppSelectorValue
   scope?: string
   disabled?: boolean
-  placement?: Placement
   offset?: number
   onSelect: (app: AppSelectorValue) => void
 }
 
-export function AppSelector({
-  value,
-  disabled,
-  placement = 'bottom',
-  offset = 4,
-  onSelect,
-}: AppSelectorProps) {
+export function AppSelector({ value, disabled, offset = 4, onSelect }: AppSelectorProps) {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
@@ -140,7 +132,6 @@ export function AppSelector({
         )}
       />
       <PopoverContent
-        placement={placement}
         sideOffset={offset}
         className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >

@@ -34,7 +34,7 @@ const OperationDropdown: FC<Props> = ({ inCard, onOpenChange, onEdit, onRemove }
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[160px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[160px]">
         <DropdownMenuItem onClick={onEdit}>
           <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
           <div className="ml-2 system-md-regular text-text-secondary">

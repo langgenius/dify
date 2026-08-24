@@ -7,10 +7,13 @@ import type { InputVar, UploadFileSetting } from '@/app/components/workflow/type
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -163,20 +166,26 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 placeholder={t(($) => $['variableConfig.selectDefaultValue'], { ns: 'appDebug' })}
               />
             </SelectTrigger>
-            <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-              <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
-                <SelectItemText>
-                  {t(($) => $['variableConfig.startChecked'], { ns: 'appDebug' })}
-                </SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-              <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
-                <SelectItemText>
-                  {t(($) => $['variableConfig.noDefaultSelected'], { ns: 'appDebug' })}
-                </SelectItemText>
-                <SelectItemIndicator />
-              </SelectItem>
-            </SelectContent>
+            <SelectPortal>
+              <SelectPositioner>
+                <SelectPopup>
+                  <SelectList className="max-h-[140px] overflow-y-auto">
+                    <SelectItem value={CHECKBOX_DEFAULT_TRUE_VALUE}>
+                      <SelectItemText>
+                        {t(($) => $['variableConfig.startChecked'], { ns: 'appDebug' })}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                    <SelectItem value={CHECKBOX_DEFAULT_FALSE_VALUE}>
+                      <SelectItemText>
+                        {t(($) => $['variableConfig.noDefaultSelected'], { ns: 'appDebug' })}
+                      </SelectItemText>
+                      <SelectItemIndicator />
+                    </SelectItem>
+                  </SelectList>
+                </SelectPopup>
+              </SelectPositioner>
+            </SelectPortal>
           </Select>
         </Field>
       )}
@@ -205,22 +214,28 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                     })}
                   />
                 </SelectTrigger>
-                <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-                  <SelectItem value={EMPTY_SELECT_VALUE}>
-                    <SelectItemText>
-                      {t(($) => $['variableConfig.noDefaultValue'], { ns: 'appDebug' })}
-                    </SelectItemText>
-                    <SelectItemIndicator />
-                  </SelectItem>
-                  {options
-                    .filter((option) => option.trim() !== '')
-                    .map((option) => (
-                      <SelectItem key={option} value={option}>
-                        <SelectItemText>{option}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                </SelectContent>
+                <SelectPortal>
+                  <SelectPositioner>
+                    <SelectPopup>
+                      <SelectList className="max-h-[140px] overflow-y-auto">
+                        <SelectItem value={EMPTY_SELECT_VALUE}>
+                          <SelectItemText>
+                            {t(($) => $['variableConfig.noDefaultValue'], { ns: 'appDebug' })}
+                          </SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                        {options
+                          .filter((option) => option.trim() !== '')
+                          .map((option) => (
+                            <SelectItem key={option} value={option}>
+                              <SelectItemText>{option}</SelectItemText>
+                              <SelectItemIndicator />
+                            </SelectItem>
+                          ))}
+                      </SelectList>
+                    </SelectPopup>
+                  </SelectPositioner>
+                </SelectPortal>
               </Select>
             </Field>
           )}

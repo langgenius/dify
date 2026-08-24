@@ -1,4 +1,4 @@
-import type { Placement, PopoverTriggerProps } from '@langgenius/dify-ui/popover'
+import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
 export enum ViewType {
@@ -77,7 +77,6 @@ export type TimePickerProps = {
   notClearable?: boolean
   triggerFullWidth?: boolean
   showTimezone?: boolean
-  placement?: Placement
 }
 
 export type TimePickerFooterProps = {

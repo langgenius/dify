@@ -618,6 +618,69 @@ def test_console_member_invite_documents_bad_request_response():
     }
 
 
+def test_console_billing_routes_document_error_responses(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    expected_responses = {
+        ("/billing/subscription", "get"): {
+            "422": "BillingUnprocessableEntityErrorResponse",
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
+        ("/billing/invoices", "get"): {
+            "502": "BillingOperationFailedErrorResponse",
+            "503": "BillingUnavailableErrorResponse",
+        },
+    }
+
+    for (path, method), responses in expected_responses.items():
+        operation = payload["paths"][path][method]
+        for status, model_name in responses.items():
+            schema = operation["responses"][status]["content"]["application/json"]["schema"]
+            assert schema["$ref"] == f"#/components/schemas/{model_name}"
+
+        forbidden_response = operation["responses"]["403"]
+        assert forbidden_response["description"] == "Forbidden"
+        assert "content" not in forbidden_response
+
+    expected_error_contracts = {
+        "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
+        "BillingOperationFailedErrorResponse": ("billing_operation_failed", 502),
+        "BillingUnavailableErrorResponse": ("billing_unavailable", 503),
+    }
+    schemas = payload["components"]["schemas"]
+    for model_name, (error_code, status) in expected_error_contracts.items():
+        properties = schemas[model_name]["properties"]
+        assert properties["code"]["const"] == error_code
+        assert properties["status"]["const"] == status
+
+
+def test_console_model_provider_checkout_route_is_deprecated(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/workspaces/current/model-providers/{provider}/checkout-url"]["get"]
+
+    assert operation["deprecated"] is True
+
+
 def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path: Path):
     from dev.generate_swagger_specs import generate_specs
 

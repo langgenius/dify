@@ -1,5 +1,5 @@
 'use client'
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { DropdownMenuContentProps } from '@langgenius/dify-ui/dropdown-menu'
 import type { FC } from 'react'
 import type { SiteInfo } from '@/models/share'
 import {
@@ -22,11 +22,12 @@ import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
 import InfoModal from './info-modal'
 
-type Props = Readonly<{
-  data?: SiteInfo
-  placement?: Placement
-  hideLogout?: boolean
-}>
+type Props = Readonly<
+  Pick<DropdownMenuContentProps, 'placement'> & {
+    data?: SiteInfo
+    hideLogout?: boolean
+  }
+>
 
 const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
   const webAppAccessMode = useWebAppStore((s) => s.webAppAccessMode)
@@ -63,7 +64,7 @@ const MenuDropdown: FC<Props> = ({ data, placement, hideLogout }) => {
         <DropdownMenuContent
           placement={placement || 'bottom-end'}
           sideOffset={4}
-          popupClassName="w-[224px]"
+          className="w-[224px]"
         >
           <div className="px-3 py-1.5 system-md-regular text-text-secondary">
             <div className="flex items-center gap-2">

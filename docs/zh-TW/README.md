@@ -88,7 +88,7 @@ docker compose up -d
 
 ### 尋求幫助
 
-如果您在設置 Dify 時遇到問題，請參考我們的 [常見問題](https://docs.dify.ai/getting-started/install-self-hosted/faqs)。如果仍有疑問，請聯絡 [社區和我們](#community--contact)。
+如果您在設置 Dify 時遇到問題，請參考我們的 [常見問題](https://docs.dify.ai/getting-started/install-self-hosted/faqs)。如果仍有疑問，請聯絡 [社區和我們](#社群與聯絡方式)。
 
 > 如果您想為 Dify 做出貢獻或進行額外開發，請參考我們的 [從原始碼部署指南](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
