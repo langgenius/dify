@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Minimalist Pure Dark Canvas -->
+  <rect width="512" height="512" rx="112" fill="#090a0f"/>
+
+  <!-- Anno Orbital Ring with 45-degree Lux Slit (Mathematical Pure Geometry) -->
+  <path d="M 256 64 A 192 192 0 1 1 391.76 120.24 L 340.85 171.15 A 120 120 0 1 0 256 136 A 120 120 0 0 0 171.15 340.85 L 120.24 391.76 A 192 192 0 0 1 256 64 Z" fill="#f8fafc"/>
+
+  <!-- 45-degree Lux Egress Photon Ray -->
+  <path d="M 368 84 L 436 152 L 400 188 L 332 120 Z" fill="#f59e0b"/>
+
+  <!-- Central Lux Singularity Photon -->
+  <circle cx="256" cy="256" r="44" fill="#f8fafc"/>
+</svg>
