@@ -119,6 +119,16 @@ class AgentRunValidationError(ValueError):
     """Raised when a run request is valid JSON but cannot execute."""
 
 
+_MODEL_INVOKE_ERROR_TYPE_BY_NAME: Mapping[str, RunFailureType] = {
+    "InvokeAuthorizationError": RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR,
+    "InvokeBadRequestError": RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
+    "CredentialsValidateFailedError": RunFailureType.MODEL_INVOKE_BAD_REQUEST_ERROR,
+    "InvokeConnectionError": RunFailureType.MODEL_INVOKE_CONNECTION_ERROR,
+    "InvokeRateLimitError": RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
+    "InvokeServerUnavailableError": RunFailureType.MODEL_INVOKE_SERVER_UNAVAILABLE_ERROR,
+}
+
+
 def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | None, str | None]:
     """Return the public failed-run error text, type, and structured reason."""
     message = str(exc) or type(exc).__name__
@@ -128,7 +138,7 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
         return message, RunFailureType.AGENT_RUN_LIMIT_EXCEEDED, None
 
     if isinstance(exc, BindingLostError):
-        return message, None, "binding_lost"
+        return message, RunFailureType.BINDING_LOST, None
 
     if isinstance(exc, ModelHTTPError):
         body = exc.body
@@ -143,6 +153,10 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, RunFailureType | Non
 
         if reason is None and exc.status_code == 429:
             reason = "InvokeRateLimitError"
+
+        mapped_error_type = _MODEL_INVOKE_ERROR_TYPE_BY_NAME.get(reason or "")
+        if mapped_error_type is not None:
+            return message, mapped_error_type, None
 
     if isinstance(exc, DifyKnowledgeBaseClientError):
         reason = exc.error_code or "DifyKnowledgeBaseClientError"
