@@ -15,7 +15,7 @@ import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-qu
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InfiniteScrollSentinel } from '@/app/components/base/infinite-scroll-sentinel'
-import { MAIN_NAV_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/card-grid'
+import { MAIN_NAV_APP_CARD_GRID_CLASS_NAME } from '@/app/components/main-nav/app-card-grid'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
@@ -218,7 +218,7 @@ function AppListCatalogContent({
                   preloadDistance={getPreloadDistance}
                   scrollContainerRef={scrollViewportRef}
                 />
-                <div className={cn('relative gap-2.5', MAIN_NAV_CARD_GRID_CLASS_NAME)}>
+                <div className={cn('relative gap-2.5', MAIN_NAV_APP_CARD_GRID_CLASS_NAME)}>
                   <AppCardSkeleton count={3} />
                   {isFetchNextPageError && (
                     <div
