@@ -14,6 +14,7 @@ from models import AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog
+from services.billing_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
     _delete_app_stars,
     _delete_app_workflow_archive_logs,
@@ -116,6 +117,122 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
     assert events == ["bindings", "workflows"]
     delete_bindings.assert_called_once_with("tenant-1", "app-1")
     delete_workflows.assert_called_once_with("tenant-1", "app-1")
+
+
+def test_cloud_app_cleanup_schedules_independent_binding_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_async = MagicMock()
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+        apply_async,
+    )
+
+    remove_app_task_module._schedule_app_network_access_group_binding_cleanup("tenant-1", "app-1")
+
+    apply_async.assert_called_once_with(
+        kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
+        countdown=10,
+    )
+
+
+def test_community_app_cleanup_does_not_schedule_binding_cleanup(monkeypatch: pytest.MonkeyPatch) -> None:
+    apply_async = MagicMock()
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+        apply_async,
+    )
+
+    remove_app_task_module._schedule_app_network_access_group_binding_cleanup("tenant-1", "app-1")
+
+    apply_async.assert_not_called()
+
+
+def test_independent_binding_cleanup_task_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    cleanup = MagicMock(return_value={"deleted": True})
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(
+        remove_app_task_module.BillingService,
+        "cleanup_app_network_access_group_binding",
+        cleanup,
+    )
+
+    remove_app_task_module.cleanup_app_network_access_group_binding_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    cleanup.assert_called_once_with("tenant-1", "app-1")
+    assert remove_app_task_module.cleanup_app_network_access_group_binding_task.max_retries == 24
+
+
+def test_independent_binding_cleanup_task_retries_with_exponential_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_APP_STILL_EXISTS")
+    retry_error = RuntimeError("retry scheduled")
+    retry = MagicMock(side_effect=retry_error)
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(
+        remove_app_task_module.BillingService,
+        "cleanup_app_network_access_group_binding",
+        MagicMock(side_effect=upstream_error),
+    )
+    monkeypatch.setattr(remove_app_task_module.cleanup_app_network_access_group_binding_task, "retry", retry)
+
+    with pytest.raises(RuntimeError, match="retry scheduled"):
+        remove_app_task_module.cleanup_app_network_access_group_binding_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    retry.assert_called_once_with(exc=upstream_error, countdown=15)
+    assert remove_app_task_module._network_access_binding_cleanup_retry_delay(5) == 480
+    assert remove_app_task_module._network_access_binding_cleanup_retry_delay(6) == 600
+    assert remove_app_task_module._network_access_binding_cleanup_retry_delay(24) == 600
+
+
+def test_parent_local_cleanup_failure_happens_after_binding_cleanup_is_scheduled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_error = RuntimeError("local cleanup failed")
+    retry_error = RuntimeError("parent retry scheduled")
+    apply_async = MagicMock()
+    retry = MagicMock(side_effect=retry_error)
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+        apply_async,
+    )
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_model_configs", MagicMock(side_effect=local_error))
+    monkeypatch.setattr(remove_app_task_module.remove_app_and_related_data_task, "retry", retry)
+
+    with pytest.raises(RuntimeError, match="parent retry scheduled"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    apply_async.assert_called_once_with(
+        kwargs={"tenant_id": "tenant-1", "app_id": "app-1"},
+        countdown=10,
+    )
+    retry.assert_called_once_with(exc=local_error, countdown=60)
+
+
+def test_parent_retries_before_local_cleanup_when_binding_schedule_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    broker_error = RuntimeError("broker unavailable")
+    retry_error = RuntimeError("parent retry scheduled")
+    retry = MagicMock(side_effect=retry_error)
+    first_local_cleanup = MagicMock()
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
+    monkeypatch.setattr(
+        remove_app_task_module.cleanup_app_network_access_group_binding_task,
+        "apply_async",
+        MagicMock(side_effect=broker_error),
+    )
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_model_configs", first_local_cleanup)
+    monkeypatch.setattr(remove_app_task_module.remove_app_and_related_data_task, "retry", retry)
+
+    with pytest.raises(RuntimeError, match="parent retry scheduled"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    retry.assert_called_once_with(exc=broker_error, countdown=60)
+    first_local_cleanup.assert_not_called()
 
 
 class TestDeleteDraftVariablesBatch:

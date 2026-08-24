@@ -2810,6 +2810,38 @@ Check if app name is available
 | ---- | ----------- | ------ |
 | 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
 
+### [GET] /apps/{app_id}/network-access-group
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App network access group binding retrieved successfully | **application/json**: [AppNetworkAccessGroupResponse](#appnetworkaccessgroupresponse)<br> |
+
+### [PUT] /apps/{app_id}/network-access-group
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AppNetworkAccessGroupUpdatePayload](#appnetworkaccessgroupupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App network access group binding updated successfully | **application/json**: [AppNetworkAccessGroupMutationResponse](#appnetworkaccessgroupmutationresponse)<br> |
+
 ### [POST] /apps/{app_id}/publish-to-creators-platform
 **Publish app to Creators Platform**
 
@@ -10708,6 +10740,72 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
 
+### [GET] /workspaces/current/network-access-groups
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access groups retrieved successfully | **application/json**: [NetworkAccessGroupListResponse](#networkaccessgrouplistresponse)<br> |
+
+### [POST] /workspaces/current/network-access-groups
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NetworkAccessGroupCreatePayload](#networkaccessgroupcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Workspace network access group created successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+
+### [DELETE] /workspaces/current/network-access-groups/{group_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_version | query | Current group version used for optimistic concurrency | Yes | integer |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access group deleted successfully | **application/json**: [NetworkAccessGroupDeleteResponse](#networkaccessgroupdeleteresponse)<br> |
+
+### [GET] /workspaces/current/network-access-groups/{group_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access group retrieved successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+
+### [PUT] /workspaces/current/network-access-groups/{group_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| group_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [NetworkAccessGroupUpdatePayload](#networkaccessgroupupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace network access group updated successfully | **application/json**: [NetworkAccessGroupMutationResponse](#networkaccessgroupmutationresponse)<br> |
+
 ### [GET] /workspaces/current/permission
 **Get workspace permission settings**
 
@@ -15227,6 +15325,41 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | name | string | Name to check | Yes |
 
+#### AppNetworkAccessGroupBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| group_id | string |  | No |
+| id | string |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| updated_by_account_id | string |  | No |
+| version | integer |  | Yes |
+
+#### AppNetworkAccessGroupMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
+
+#### AppNetworkAccessGroupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| binding | [AppNetworkAccessGroupBindingResponse](#appnetworkaccessgroupbindingresponse) |  | Yes |
+| entitled | boolean |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### AppNetworkAccessGroupUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_version | integer |  | Yes |
+| group_id | string |  | Yes |
+
 #### AppPagination
 
 | Name | Type | Description | Required |
@@ -19120,6 +19253,60 @@ Model with provider entity.
 | app | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
 | workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
+
+#### NetworkAccessGroupCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| description | string |  | No |
+| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
+| name | string |  | Yes |
+
+#### NetworkAccessGroupDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+
+#### NetworkAccessGroupListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| entitled | boolean |  | Yes |
+| groups | [ [NetworkAccessGroupResponse](#networkaccessgroupresponse) ] |  | Yes |
+| tenant_id | string |  | Yes |
+
+#### NetworkAccessGroupMutationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| group | [NetworkAccessGroupResponse](#networkaccessgroupresponse) |  | Yes |
+
+#### NetworkAccessGroupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | No |
+| created_at | dateTime |  | Yes |
+| description | string |  | No |
+| id | string |  | Yes |
+| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
+| name | string |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| updated_by_account_id | string |  | No |
+| version | integer |  | Yes |
+
+#### NetworkAccessGroupUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_cidrs | [ string ] |  | Yes |
+| description | string |  | No |
+| expected_version | integer |  | Yes |
+| mode | string, <br>**Available values:** "disabled", "enforce", "shadow" | *Enum:* `"disabled"`, `"enforce"`, `"shadow"` | Yes |
+| name | string |  | Yes |
 
 #### NewAppResponse
 
