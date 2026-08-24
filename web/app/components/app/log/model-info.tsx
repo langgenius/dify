@@ -1,4 +1,5 @@
 'use client'
+import type { ModelConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -19,35 +20,35 @@ const PARAM_MAP = {
 }
 
 type Props = Readonly<{
-  model: any
+  model: Pick<ModelConfig, 'completion_params' | 'name' | 'provider'>
 }>
 
 const ModelInfo: FC<Props> = ({ model }) => {
   const { t } = useTranslation()
   const modelName = model.name
-  const provideName = model.provider as any
+  const providerName = model.provider
   const { currentModel, currentProvider } = useTextGenerationCurrentProviderAndModelAndModelList({
-    provider: provideName,
+    provider: providerName,
     model: modelName,
   })
 
   const [open, setOpen] = React.useState(false)
 
-  const getParamValue = (param: string) => {
-    const value = model.completion_params?.[param] || '-'
+  const getParamValue = (param: keyof typeof PARAM_MAP) => {
+    const value = model.completion_params?.[param] ?? '-'
     if (param === 'stop') {
       if (Array.isArray(value)) return value.join(',')
       else return '-'
     }
 
-    return value
+    return typeof value === 'string' || typeof value === 'number' ? value : '-'
   }
 
   return (
     <div className={cn('flex items-center rounded-lg')}>
       <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pr-2 pl-1.5">
         <ModelIcon className="size-5!" provider={currentProvider} modelName={currentModel?.model} />
-        <ModelName modelItem={currentModel!} showMode />
+        <ModelName modelItem={currentModel} showMode />
       </div>
       <Popover open={open} onOpenChange={setOpen}>
         <div className="relative">
@@ -68,19 +69,19 @@ const ModelInfo: FC<Props> = ({ model }) => {
           <PopoverContent
             placement="bottom-end"
             sideOffset={4}
-            popupClassName="border-none bg-transparent shadow-none"
+            className="border-none bg-transparent shadow-none"
           >
             <div className="relative w-70 overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-2 shadow-xl">
               <div className="mb-1 h-6 system-sm-semibold-uppercase text-text-secondary">
                 {t(($) => $['detail.modelParams'], { ns: 'appLog' })}
               </div>
               <div className="py-1">
-                {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map(
-                  (param: string, index: number) => {
+                {(['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'] as const).map(
+                  (param) => {
                     return (
-                      <div className="flex justify-between py-1.5" key={index}>
+                      <div className="flex justify-between py-1.5" key={param}>
                         <span className="system-xs-medium-uppercase text-text-tertiary">
-                          {PARAM_MAP[param as keyof typeof PARAM_MAP]}
+                          {PARAM_MAP[param]}
                         </span>
                         <span className="system-xs-medium-uppercase text-text-secondary">
                           {getParamValue(param)}

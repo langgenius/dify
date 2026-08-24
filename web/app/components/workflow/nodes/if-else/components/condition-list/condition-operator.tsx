@@ -62,12 +62,12 @@ const ConditionOperator = ({
         {selectedOption
           ? selectedOption.label
           : t(($) => $[`${i18nPrefix}.select`], { ns: 'workflow' })}
-        <RiArrowDownSLine className="ml-1 size-3.5" />
+        <RiArrowDownSLine className="size-3.5" />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+        className="rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
       >
         <DropdownMenuRadioGroup value={selectedOption?.value} onValueChange={onSelect}>
           {options.map((option) => (

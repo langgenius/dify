@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from core.workflow.file_reference import build_file_reference
 from extensions.storage.storage_type import StorageType
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.variables.segments import ObjectSegment, StringSegment
+from graphon.variables.segments import StringSegment
 from graphon.variables.types import SegmentType
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -77,28 +77,45 @@ class TestDraftVarLoaderSimple:
     def test_load_offloaded_variable_object_type_unit(self, draft_var_loader):
         """Test _load_offloaded_variable with object type - isolated unit test."""
         # Create mock objects
-        upload_file = Mock(spec=UploadFile)
-        upload_file.key = "storage/key/test.json"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="storage/key/test.json",
+            name="test.txt",
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
 
-        variable_file = Mock(spec=WorkflowDraftVariableFile)
-        variable_file.value_type = SegmentType.OBJECT
+        variable_file = WorkflowDraftVariableFile(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            upload_file_id="upload-file-id",
+            size=0,
+            length=0,
+            value_type=SegmentType.OBJECT,
+        )
         variable_file.upload_file = upload_file
 
-        draft_var = Mock(spec=WorkflowDraftVariable)
-        draft_var.id = "draft-var-id"
-        draft_var.node_id = "test-node-id"
-        draft_var.name = "test_object"
-        draft_var.description = "test description"
-        draft_var.get_selector.return_value = ["test-node-id", "test_object"]
-        draft_var.variable_file = variable_file
+        draft_var = WorkflowDraftVariable(
+            id="draft-var-id",
+            node_id="test-node-id",
+            name="test_object",
+            description="test description",
+            selector=json.dumps(["test-node-id", "test_object"]),
+            variable_file=variable_file,
+        )
 
         test_object = {"key1": "value1", "key2": 42}
         test_json_content = json.dumps(test_object, ensure_ascii=False, separators=(",", ":"))
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
-            mock_segment = ObjectSegment(value=test_object)
-            draft_var.build_segment_from_serialized_value.return_value = mock_segment
 
             # Execute the method
             selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
@@ -112,23 +129,32 @@ class TestDraftVarLoaderSimple:
 
             # Verify method calls
             mock_storage.load.assert_called_once_with("storage/key/test.json")
-            draft_var.build_segment_from_serialized_value.assert_called_once_with(SegmentType.OBJECT, test_object)
 
     def test_load_offloaded_variable_missing_variable_file_unit(self, draft_var_loader):
         """Test that assertion error is raised when variable_file is None."""
-        draft_var = Mock(spec=WorkflowDraftVariable)
-        draft_var.variable_file = None
+        draft_var = WorkflowDraftVariable(
+            variable_file=None,
+        )
 
         with pytest.raises(AssertionError):
             draft_var_loader._load_offloaded_variable(draft_var)
 
     def test_load_offloaded_variable_missing_upload_file_unit(self, draft_var_loader):
         """Test that assertion error is raised when upload_file is None."""
-        variable_file = Mock(spec=WorkflowDraftVariableFile)
+        variable_file = WorkflowDraftVariableFile(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            upload_file_id="upload-file-id",
+            size=0,
+            length=0,
+            value_type="file",
+        )
         variable_file.upload_file = None
 
-        draft_var = Mock(spec=WorkflowDraftVariable)
-        draft_var.variable_file = variable_file
+        draft_var = WorkflowDraftVariable(
+            variable_file=variable_file,
+        )
 
         with pytest.raises(AssertionError):
             draft_var_loader._load_offloaded_variable(draft_var)
@@ -147,31 +173,45 @@ class TestDraftVarLoaderSimple:
     def test_load_offloaded_variable_array_type_unit(self, draft_var_loader):
         """Test _load_offloaded_variable with array type - isolated unit test."""
         # Create mock objects
-        upload_file = Mock(spec=UploadFile)
-        upload_file.key = "storage/key/test_array.json"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="storage/key/test_array.json",
+            name="test.txt",
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
 
-        variable_file = Mock(spec=WorkflowDraftVariableFile)
-        variable_file.value_type = SegmentType.ARRAY_ANY
+        variable_file = WorkflowDraftVariableFile(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            upload_file_id="upload-file-id",
+            size=0,
+            length=0,
+            value_type=SegmentType.ARRAY_ANY,
+        )
         variable_file.upload_file = upload_file
 
-        draft_var = Mock(spec=WorkflowDraftVariable)
-        draft_var.id = "draft-var-id"
-        draft_var.node_id = "test-node-id"
-        draft_var.name = "test_array"
-        draft_var.description = "test array description"
-        draft_var.get_selector.return_value = ["test-node-id", "test_array"]
-        draft_var.variable_file = variable_file
+        draft_var = WorkflowDraftVariable(
+            id="draft-var-id",
+            node_id="test-node-id",
+            name="test_array",
+            description="test array description",
+            selector=json.dumps(["test-node-id", "test_array"]),
+            variable_file=variable_file,
+        )
 
-        test_array = ["item1", "item2", "item3"]
+        test_array = ["item1", 2, True]
         test_json_content = json.dumps(test_array)
 
         with patch("services.workflow_draft_variable_service.storage") as mock_storage:
             mock_storage.load.return_value = test_json_content.encode()
-            from graphon.variables.segments import ArrayAnySegment
-
-            mock_segment = ArrayAnySegment(value=test_array)
-            draft_var.build_segment_from_serialized_value.return_value = mock_segment
-
             # Execute the method
             selector_tuple, variable = draft_var_loader._load_offloaded_variable(draft_var)
 
@@ -183,14 +223,31 @@ class TestDraftVarLoaderSimple:
 
             # Verify method calls
             mock_storage.load.assert_called_once_with("storage/key/test_array.json")
-            draft_var.build_segment_from_serialized_value.assert_called_once_with(SegmentType.ARRAY_ANY, test_array)
 
     def test_load_offloaded_variable_file_type_rebuilds_storage_backed_payload(self, draft_var_loader):
-        upload_file = Mock(spec=UploadFile)
-        upload_file.key = "storage/key/test_file.json"
+        upload_file = UploadFile(
+            tenant_id="tenant-id",
+            storage_type="opendal",
+            key="storage/key/test_file.json",
+            name="test.txt",
+            size=0,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role="account",
+            created_by="account-id",
+            created_at=datetime.now(),
+            used=False,
+        )
 
-        variable_file = Mock(spec=WorkflowDraftVariableFile)
-        variable_file.value_type = SegmentType.FILE
+        variable_file = WorkflowDraftVariableFile(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            upload_file_id="upload-file-id",
+            size=0,
+            length=0,
+            value_type=SegmentType.FILE,
+        )
         variable_file.upload_file = upload_file
 
         draft_var = WorkflowDraftVariable(

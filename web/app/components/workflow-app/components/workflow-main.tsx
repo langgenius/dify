@@ -4,6 +4,7 @@ import type { CollaborationUpdate } from '@/app/components/workflow/collaboratio
 import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-store/store'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,8 +19,8 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { useAvailableNodesMetaData } from '../hooks/use-available-nodes-meta-data'
@@ -39,6 +40,12 @@ type WorkflowDataUpdatePayload = Pick<
   FetchWorkflowDraftResponse,
   'features' | 'conversation_variables' | 'environment_variables'
 >
+type VarsUpdateSnapshot = {
+  generation: number
+  response: FetchWorkflowDraftResponse
+  syncRequest: number
+}
+const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
 
@@ -67,23 +74,10 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     }),
     [reactFlow],
   )
-  const {
-    startCursorTracking,
-    stopCursorTracking,
-    onlineUsers,
-    cursors,
-    isConnected,
-    isEnabled: isCollaborationEnabled,
-  } = useCollaboration(appId || '', reactFlowStore)
-  const myUserId = useMemo(
-    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
-    [isCollaborationEnabled, isConnected],
-  )
-
-  const filteredCursors = Object.fromEntries(
-    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
-  )
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const appACLCapabilities = useMemo(
     () =>
@@ -93,6 +87,22 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         workspacePermissionKeys,
       }),
     [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
+  const {
+    startCursorTracking,
+    stopCursorTracking,
+    onlineUsers,
+    cursors,
+    isConnected,
+    isEnabled: isCollaborationEnabled,
+  } = useCollaboration(appId || '', appACLCapabilities.canEdit, reactFlowStore)
+  const myUserId = useMemo(
+    () => (isCollaborationEnabled && isConnected ? 'current-user' : null),
+    [isCollaborationEnabled, isConnected],
+  )
+
+  const filteredCursors = Object.fromEntries(
+    Object.entries(cursors).filter(([userId]) => userId !== myUserId),
   )
 
   useEffect(() => {
@@ -164,8 +174,19 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
         setConversationVariables(conversation_variables)
       }
       if (environment_variables) {
-        const { setEnvironmentVariables } = workflowStore.getState()
-        setEnvironmentVariables(environment_variables)
+        const { envSecrets, setEnvironmentVariables, setEnvSecrets } = workflowStore.getState()
+        const nextEnvSecrets: Record<string, string> = {}
+        const normalizedEnvironmentVariables = environment_variables.map((environmentVariable) => {
+          if (environmentVariable.value_type !== 'secret') return environmentVariable
+
+          nextEnvSecrets[environmentVariable.id] =
+            environmentVariable.value === HIDDEN_SECRET_VALUE
+              ? envSecrets[environmentVariable.id] || HIDDEN_SECRET_VALUE
+              : String(environmentVariable.value)
+          return { ...environmentVariable, value: HIDDEN_SECRET_VALUE }
+        })
+        setEnvSecrets(nextEnvSecrets)
+        setEnvironmentVariables(normalizedEnvironmentVariables)
       }
     },
     [featuresStore, workflowStore],
@@ -174,6 +195,12 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { doSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraftByCanEdit(
     appACLCapabilities.canEdit,
   )
+  const varsUpdateGenerationRef = useRef(0)
+  const varsUpdateAppliedGenerationRef = useRef(0)
+  const varsUpdateFailedGenerationRef = useRef(0)
+  const varsUpdateLatestSuccessfulRef = useRef<VarsUpdateSnapshot | null>(null)
+  const varsUpdateSyncRequestRef = useRef(0)
+  const varsUpdateCompletedSyncRef = useRef(0)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
@@ -187,19 +214,102 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   useEffect(() => {
     if (!appId || !isCollaborationEnabled) return
 
+    const applySnapshot = async (snapshot: VarsUpdateSnapshot) => {
+      if (snapshot.generation <= varsUpdateAppliedGenerationRef.current) return
+
+      handleWorkflowDataUpdate(snapshot.response)
+      varsUpdateAppliedGenerationRef.current = snapshot.generation
+      if (
+        snapshot.syncRequest > varsUpdateCompletedSyncRef.current &&
+        collaborationManager.getIsLeader()
+      ) {
+        let syncSucceeded = false
+        await doSyncWorkflowDraft(false, {
+          onSuccess: () => {
+            syncSucceeded = true
+          },
+        })
+        if (syncSucceeded)
+          varsUpdateCompletedSyncRef.current = Math.max(
+            varsUpdateCompletedSyncRef.current,
+            snapshot.syncRequest,
+          )
+      }
+    }
+
+    const applyLatestSuccessfulSnapshot = async () => {
+      const latestSuccessful = varsUpdateLatestSuccessfulRef.current
+      if (latestSuccessful && latestSuccessful.generation > varsUpdateAppliedGenerationRef.current)
+        await applySnapshot(latestSuccessful)
+    }
+
     const unsubscribe = collaborationManager.onVarsAndFeaturesUpdate(
       async (_update: CollaborationUpdate) => {
+        if (_update.data?.syncWorkflowDraft) varsUpdateSyncRequestRef.current++
+        const updateGeneration = ++varsUpdateGenerationRef.current
+        const syncRequest = varsUpdateSyncRequestRef.current
         try {
           const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
-          handleWorkflowDataUpdate(response)
+          const snapshot = { generation: updateGeneration, response, syncRequest }
+          if (
+            !varsUpdateLatestSuccessfulRef.current ||
+            updateGeneration > varsUpdateLatestSuccessfulRef.current.generation
+          )
+            varsUpdateLatestSuccessfulRef.current = snapshot
+          if (varsUpdateGenerationRef.current !== updateGeneration) {
+            if (varsUpdateFailedGenerationRef.current === varsUpdateGenerationRef.current)
+              await applyLatestSuccessfulSnapshot()
+            return
+          }
+          await applySnapshot(snapshot)
         } catch (error) {
-          console.error('workflow vars and features update failed:', error)
+          if (varsUpdateGenerationRef.current !== updateGeneration) return
+
+          const latestSuccessful = varsUpdateLatestSuccessfulRef.current
+          if (
+            latestSuccessful &&
+            latestSuccessful.generation > varsUpdateAppliedGenerationRef.current
+          )
+            await applySnapshot(latestSuccessful)
+
+          const needsFreshSnapshot =
+            syncRequest > varsUpdateCompletedSyncRef.current &&
+            (!latestSuccessful || latestSuccessful.syncRequest < syncRequest)
+          if (varsUpdateGenerationRef.current !== updateGeneration) return
+          if (!needsFreshSnapshot) {
+            varsUpdateFailedGenerationRef.current = updateGeneration
+            await applyLatestSuccessfulSnapshot()
+            if (!latestSuccessful) console.error('workflow vars and features update failed:', error)
+            return
+          }
+
+          try {
+            const response = await fetchWorkflowDraft(`/apps/${appId}/workflows/draft`)
+            const snapshot = { generation: updateGeneration, response, syncRequest }
+            if (
+              !varsUpdateLatestSuccessfulRef.current ||
+              updateGeneration > varsUpdateLatestSuccessfulRef.current.generation
+            )
+              varsUpdateLatestSuccessfulRef.current = snapshot
+            if (varsUpdateGenerationRef.current !== updateGeneration) {
+              if (varsUpdateFailedGenerationRef.current === varsUpdateGenerationRef.current)
+                await applyLatestSuccessfulSnapshot()
+              return
+            }
+            await applySnapshot(snapshot)
+          } catch (retryError) {
+            if (varsUpdateGenerationRef.current === updateGeneration) {
+              varsUpdateFailedGenerationRef.current = updateGeneration
+              await applyLatestSuccessfulSnapshot()
+            }
+            console.error('workflow vars and features update failed:', retryError)
+          }
         }
       },
     )
 
     return unsubscribe
-  }, [appId, handleWorkflowDataUpdate, isCollaborationEnabled])
+  }, [appId, doSyncWorkflowDraft, handleWorkflowDataUpdate, isCollaborationEnabled])
 
   // Listen for workflow updates from other users
   useEffect(() => {

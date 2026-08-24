@@ -14,7 +14,7 @@ import { useLogout } from '@/service/use-common'
 import { MainNavMenuContent } from './main-nav-menu-content'
 
 type AccountDropdownProps = {
-  trigger: (props: { isOpen: boolean; ariaLabel: string }) => ReactElement
+  trigger: (props: { ariaLabel: string }) => ReactElement
 }
 
 const mainNavMenuPopupClassName =
@@ -50,7 +50,6 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
         <DropdownMenuTrigger
           disabled={isHydrating}
           render={trigger({
-            isOpen: isAccountMenuOpen,
             ariaLabel: t(($) => $['account.account'], { ns: 'common' }),
           })}
         />
@@ -58,7 +57,7 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
           placement="top-start"
           sideOffset={6}
           alignOffset={4}
-          popupClassName={mainNavMenuPopupClassName}
+          className={mainNavMenuPopupClassName}
         >
           <MainNavMenuContent onLogout={handleLogout} />
         </DropdownMenuContent>

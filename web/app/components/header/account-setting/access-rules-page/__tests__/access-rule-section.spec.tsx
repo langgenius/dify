@@ -93,7 +93,7 @@ describe('AccessRuleSection', () => {
 
     expect(screen.queryByText('Full Control')).not.toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { expanded: false }))
+    await userEvent.click(screen.getByRole('button', { name: /^App Access Rules/ }))
 
     expect(screen.getByText('Full Control')).toBeInTheDocument()
   })
@@ -202,7 +202,7 @@ describe('AccessRuleSection', () => {
     expect(onCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('should keep row actions when workspace role management is allowed', () => {
+  it('should keep row actions when workspace role management is allowed', async () => {
     mocks.workspacePermissionKeys = ['workspace.role.manage']
 
     renderWithQueryClient(
@@ -215,7 +215,12 @@ describe('AccessRuleSection', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'common.operation.moreActions' })).toBeInTheDocument()
+    const trigger = screen.getByRole('button', { name: 'common.operation.moreActions' })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+
+    await userEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute('data-popup-open', '')
   })
 
   it('should hide create action when workspace role management is missing', () => {

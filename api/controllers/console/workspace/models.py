@@ -1,7 +1,6 @@
 import logging
 from typing import Any, cast
 
-from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
@@ -18,6 +17,7 @@ from controllers.console.wraps import (
     RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -210,14 +210,16 @@ class DefaultModelApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str):
-        args = ParserGetDefault.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ParserGetDefault)
+    def get(self, req_data: ParserGetDefault, tenant_id: str):
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
-            tenant_id=tenant_id, model_type=args.model_type
+            tenant_id=tenant_id, model_type=req_data.model_type
         )
 
         return DefaultModelDataResponse(data=default_model_entity).model_dump(mode="json")
@@ -230,10 +232,10 @@ class DefaultModelApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str):
-        args = ParserPostDefault.model_validate(console_ns.payload)
+    @model_validate(ParserPostDefault)
+    def post(self, req_data: ParserPostDefault, tenant_id: str):
         model_provider_service = ModelProviderService()
-        model_settings = args.model_settings
+        model_settings = req_data.model_settings
         for model_setting in model_settings:
             if model_setting.provider is None:
                 continue
@@ -263,6 +265,8 @@ class ModelProviderModelApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, provider: str):
@@ -279,43 +283,43 @@ class ModelProviderModelApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
+    @model_validate(ParserPostModels)
+    def post(self, req_data: ParserPostModels, tenant_id: str, provider: str):
         # To save the model's load balance configs
-        args = ParserPostModels.model_validate(console_ns.payload)
 
-        if args.config_from == "custom-model":
-            if not args.credential_id:
+        if req_data.config_from == "custom-model":
+            if not req_data.credential_id:
                 raise ValueError("credential_id is required when configuring a custom-model")
             service = ModelProviderService()
             service.switch_active_custom_model_credential(
                 tenant_id=tenant_id,
                 provider=provider,
-                model_type=args.model_type,
-                model=args.model,
-                credential_id=args.credential_id,
+                model_type=req_data.model_type,
+                model=req_data.model,
+                credential_id=req_data.credential_id,
             )
 
         model_load_balancing_service = ModelLoadBalancingService()
 
-        if args.load_balancing and args.load_balancing.configs:
+        if req_data.load_balancing and req_data.load_balancing.configs:
             # save load balancing configs
             model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args.model,
-                model_type=args.model_type,
-                configs=args.load_balancing.configs,
-                config_from=args.config_from or "",
+                model=req_data.model,
+                model_type=req_data.model_type,
+                configs=req_data.load_balancing.configs,
+                config_from=req_data.config_from or "",
                 session=db.session(),
             )
 
-            if args.load_balancing.enabled:
+            if req_data.load_balancing.enabled:
                 model_load_balancing_service.enable_model_load_balancing(
-                    tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
+                    tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
                 )
             else:
                 model_load_balancing_service.disable_model_load_balancing(
-                    tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
+                    tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
                 )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), 200
@@ -328,12 +332,12 @@ class ModelProviderModelApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def delete(self, tenant_id: str, provider: str):
-        args = ParserDeleteModels.model_validate(console_ns.payload)
+    @model_validate(ParserDeleteModels)
+    def delete(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
-            tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
+            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
         )
 
         return "", 204
@@ -349,32 +353,34 @@ class ModelProviderModelCredentialApi(Resource):
     )
     @setup_required
     @login_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, user: Account, provider: str):
-        args = ParserGetCredentials.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ParserGetCredentials)
+    def get(self, req_data: ParserGetCredentials, tenant_id: str, user: Account, provider: str):
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
             tenant_id=tenant_id,
             provider=provider,
-            model_type=args.model_type,
-            model=args.model,
-            credential_id=args.credential_id,
+            model_type=req_data.model_type,
+            model=req_data.model,
+            credential_id=req_data.credential_id,
         )
 
         model_load_balancing_service = ModelLoadBalancingService()
         is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
             tenant_id=tenant_id,
             provider=provider,
-            model=args.model,
-            model_type=args.model_type,
+            model=req_data.model,
+            model_type=req_data.model_type,
             session=db.session(),
-            config_from=args.config_from or "",
+            config_from=req_data.config_from or "",
         )
 
-        if args.config_from == "predefined-model":
+        if req_data.config_from == "predefined-model":
             # Only the predefined-model branch needs visibility filtering by user.
             # The account is injected once by the handler and only passed into the
             # service branch that needs user-scoped credential visibility.
@@ -387,8 +393,8 @@ class ModelProviderModelCredentialApi(Resource):
             available_credentials = model_provider_service.get_provider_model_available_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model_type=args.model_type,
-                model=args.model,
+                model_type=req_data.model_type,
+                model=req_data.model,
             )
 
         credentials: dict[str, Any] = {}
@@ -414,8 +420,8 @@ class ModelProviderModelCredentialApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_CREATE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
-        args = ParserCreateCredential.model_validate(console_ns.payload)
+    @model_validate(ParserCreateCredential)
+    def post(self, req_data: ParserCreateCredential, tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
 
@@ -423,17 +429,17 @@ class ModelProviderModelCredentialApi(Resource):
             model_provider_service.create_model_credential(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args.model,
-                model_type=args.model_type,
-                credentials=args.credentials,
-                credential_name=args.name,
+                model=req_data.model,
+                model_type=req_data.model_type,
+                credentials=req_data.credentials,
+                credential_name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
             logger.exception(
                 "Failed to save model credentials, tenant_id: %s, model: %s, model_type: %s",
                 tenant_id,
-                args.model,
-                args.model_type,
+                req_data.model,
+                req_data.model_type,
             )
             raise ValueError(str(ex))
 
@@ -447,8 +453,8 @@ class ModelProviderModelCredentialApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def put(self, current_tenant_id: str, provider: str):
-        args = ParserUpdateCredential.model_validate(console_ns.payload)
+    @model_validate(ParserUpdateCredential)
+    def put(self, req_data: ParserUpdateCredential, current_tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
 
@@ -456,11 +462,11 @@ class ModelProviderModelCredentialApi(Resource):
             model_provider_service.update_model_credential(
                 tenant_id=current_tenant_id,
                 provider=provider,
-                model_type=args.model_type,
-                model=args.model,
-                credentials=args.credentials,
-                credential_id=args.credential_id,
-                credential_name=args.name,
+                model_type=req_data.model_type,
+                model=req_data.model,
+                credentials=req_data.credentials,
+                credential_id=req_data.credential_id,
+                credential_name=req_data.name,
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
@@ -475,16 +481,16 @@ class ModelProviderModelCredentialApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, provider: str):
-        args = ParserDeleteCredential.model_validate(console_ns.payload)
+    @model_validate(ParserDeleteCredential)
+    def delete(self, req_data: ParserDeleteCredential, current_tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model_credential(
             tenant_id=current_tenant_id,
             provider=provider,
-            model_type=args.model_type,
-            model=args.model,
-            credential_id=args.credential_id,
+            model_type=req_data.model_type,
+            model=req_data.model,
+            credential_id=req_data.credential_id,
         )
 
         return "", 204
@@ -500,16 +506,16 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_USE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, provider: str):
-        args = ParserSwitch.model_validate(console_ns.payload)
+    @model_validate(ParserSwitch)
+    def post(self, req_data: ParserSwitch, current_tenant_id: str, provider: str):
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
             tenant_id=current_tenant_id,
             provider=provider,
-            model_type=args.model_type,
-            model=args.model,
-            credential_id=args.credential_id,
+            model_type=req_data.model_type,
+            model=req_data.model,
+            credential_id=req_data.credential_id,
         )
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -525,12 +531,12 @@ class ModelProviderModelEnableApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
-    def patch(self, tenant_id: str, provider: str):
-        args = ParserDeleteModels.model_validate(console_ns.payload)
+    @model_validate(ParserDeleteModels)
+    def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
-            tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
+            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
@@ -547,12 +553,12 @@ class ModelProviderModelDisableApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.PLUGIN_PREFERENCES, resource_required=False)
-    def patch(self, tenant_id: str, provider: str):
-        args = ParserDeleteModels.model_validate(console_ns.payload)
+    @model_validate(ParserDeleteModels)
+    def patch(self, req_data: ParserDeleteModels, tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
-            tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
+            tenant_id=tenant_id, provider=provider, model=req_data.model, model_type=req_data.model_type
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
@@ -579,8 +585,8 @@ class ModelProviderModelValidateApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, tenant_id: str, provider: str):
-        args = ParserValidate.model_validate(console_ns.payload)
+    @model_validate(ParserValidate)
+    def post(self, req_data: ParserValidate, tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
 
@@ -591,9 +597,9 @@ class ModelProviderModelValidateApi(Resource):
             model_provider_service.validate_model_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args.model,
-                model_type=args.model_type,
-                credentials=args.credentials,
+                model=req_data.model,
+                model_type=req_data.model_type,
+                credentials=req_data.credentials,
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -617,12 +623,12 @@ class ModelProviderModelParameterRuleApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, provider: str):
-        args = ParserParameter.model_validate(request.args.to_dict(flat=True))
+    @model_validate(ParserParameter)
+    def get(self, req_data: ParserParameter, tenant_id: str, provider: str):
 
         model_provider_service = ModelProviderService()
         parameter_rules = model_provider_service.get_model_parameter_rules(
-            tenant_id=tenant_id, provider=provider, model=args.model
+            tenant_id=tenant_id, provider=provider, model=req_data.model
         )
 
         return ModelParameterRuleListResponse(data=parameter_rules).model_dump(mode="json")

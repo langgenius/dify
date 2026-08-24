@@ -8,22 +8,6 @@ export type TenantListResponse = {
   workspaces: Array<TenantListItemResponse>
 }
 
-export type TenantInfoResponse = {
-  created_at?: number | null
-  custom_config?: WorkspaceCustomConfigResponse | null
-  id: string
-  in_trial?: boolean | null
-  name?: string | null
-  next_credit_reset_date?: number | null
-  plan?: string | null
-  role?: string | null
-  status?: string | null
-  trial_credits?: number | null
-  trial_credits_exhausted_at?: number | null
-  trial_credits_used?: number | null
-  trial_end_reason?: string | null
-}
-
 export type AgentProviderResponse = {
   [key: string]: unknown
 }
@@ -227,6 +211,24 @@ export type ModelProviderListResponse = {
   data: Array<ProviderResponse>
 }
 
+export type ModelProviderCreditsResponse = {
+  exhausted_at: number | null
+  is_exhausted: boolean
+  is_unlimited: boolean
+  next_credit_reset_date: number | null
+  pool_type: 'paid' | 'trial' | null
+  quota_limit: number | null
+  quota_used: number | null
+  remaining_credits: number | null
+}
+
+export type ModelProviderSummaryListResponse = {
+  data: Array<ModelProviderSummaryResponse>
+  plugins: {
+    [key: string]: ModelProviderPluginSummaryResponse
+  }
+}
+
 export type ModelProviderPaymentCheckoutUrlResponse = {
   payment_link: string
 }
@@ -415,6 +417,10 @@ export type PluginInstallTaskStartResponse = {
 
 export type ParserPluginIdentifiers = {
   plugin_unique_identifiers: Array<string>
+}
+
+export type PluginInstalledIdsResponse = {
+  plugin_ids: Array<string>
 }
 
 export type PluginListResponse = {
@@ -634,6 +640,14 @@ export type AccessMatrixItem = {
 export type WorkspaceAccessMatrix = {
   items?: Array<AccessMatrixItem>
   pagination?: Pagination | null
+}
+
+export type CurrentWorkspaceSummaryResponse = {
+  credits: number | null
+  id: string
+  name: string
+  plan: CloudPlan | null
+  role: TenantAccountRole
 }
 
 export type ToolLabelListResponse = Array<ToolLabel>
@@ -1001,6 +1015,11 @@ export type TriggerOAuthAuthorizeResponse = {
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
 
+export type WorkspaceCustomConfigResponse = {
+  remove_webapp_brand?: boolean | null
+  replace_webapp_logo?: string | null
+}
+
 export type WorkspaceCustomConfigPayload = {
   remove_webapp_brand?: boolean | null
   replace_webapp_logo?: string | null
@@ -1034,13 +1053,8 @@ export type TenantListItemResponse = {
   id: string
   last_opened_at?: number | null
   name?: string | null
-  plan?: string | null
+  plan?: CloudPlan | null
   status?: string | null
-}
-
-export type WorkspaceCustomConfigResponse = {
-  remove_webapp_brand?: boolean | null
-  replace_webapp_logo?: string | null
 }
 
 export type SnippetListItemResponse = {
@@ -1190,6 +1204,30 @@ export type ProviderResponse = {
   supported_model_types: Array<ModelType>
   system_configuration: SystemConfigurationResponse
   tenant_id: string
+}
+
+export type ModelProviderSummaryResponse = {
+  configurate_methods: Array<ConfigurateMethod>
+  custom_configuration: ModelProviderCustomConfigurationSummaryResponse
+  description?: I18nObject | null
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  is_configured: boolean
+  label: I18nObject
+  plugin_id: string
+  preferred_provider_type: ProviderType
+  provider: string
+  supported_model_types: Array<ModelType>
+  system_configuration: ModelProviderSystemConfigurationSummaryResponse
+}
+
+export type ModelProviderPluginSummaryResponse = {
+  installation_id: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  runtime_type: string
+  source: PluginInstallationSource
+  version: string
 }
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
@@ -1503,6 +1541,10 @@ export type AccessPolicyRole = {
   role_tag?: string
 }
 
+export type CloudPlan = 'professional' | 'sandbox' | 'team'
+
+export type TenantAccountRole = 'admin' | 'dataset_operator' | 'editor' | 'normal' | 'owner'
+
 export type ToolLabel = {
   icon: string
   label: I18nObject
@@ -1662,6 +1704,22 @@ export type TriggerProviderSubscriptionApiEntity = {
   workflows_in_use: number
 }
 
+export type TenantInfoResponse = {
+  created_at?: number | null
+  custom_config?: WorkspaceCustomConfigResponse | null
+  id: string
+  in_trial?: boolean | null
+  name?: string | null
+  next_credit_reset_date?: number | null
+  plan?: CloudPlan | null
+  role?: string | null
+  status?: string | null
+  trial_credits?: number | null
+  trial_credits_exhausted_at?: number | null
+  trial_credits_used?: number | null
+  trial_end_reason?: string | null
+}
+
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -1729,6 +1787,21 @@ export type SystemConfigurationResponse = {
   enabled: boolean
   quota_configurations?: Array<QuotaConfiguration>
 }
+
+export type ModelProviderCustomConfigurationSummaryResponse = {
+  available_credentials: Array<CredentialConfiguration>
+  current_credential_id?: string | null
+  current_credential_name?: string | null
+  current_credential_usable: boolean
+  has_custom_models: boolean
+  status: CustomConfigurationStatus
+}
+
+export type ModelProviderSystemConfigurationSummaryResponse = {
+  enabled: boolean
+}
+
+export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
 
 export type ModelFeature =
   | 'agent-thought'
@@ -1899,8 +1972,6 @@ export type PluginInstallTaskPluginStatus = {
 }
 
 export type PluginInstallTaskStatus = 'failed' | 'pending' | 'running' | 'success'
-
-export type PluginInstallationSource = 'github' | 'marketplace' | 'package' | 'remote'
 
 export type PluginDeclarationResponse = {
   agent_strategy?: {
@@ -2263,6 +2334,8 @@ export type ToolParameterType =
   | 'array'
   | 'boolean'
   | 'checkbox'
+  | 'date'
+  | 'date-range'
   | 'dynamic-select'
   | 'file'
   | 'files'
@@ -2429,20 +2502,6 @@ export type GetWorkspacesResponses = {
 }
 
 export type GetWorkspacesResponse = GetWorkspacesResponses[keyof GetWorkspacesResponses]
-
-export type PostWorkspacesCurrentData = {
-  body?: never
-  path?: never
-  query?: never
-  url: '/workspaces/current'
-}
-
-export type PostWorkspacesCurrentResponses = {
-  200: TenantInfoResponse
-}
-
-export type PostWorkspacesCurrentResponse =
-  PostWorkspacesCurrentResponses[keyof PostWorkspacesCurrentResponses]
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
   body?: never
@@ -2640,6 +2699,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
   }
   query?: {
     include_secret?: string
+    workflow_id?: string
   }
   url: '/workspaces/current/customized-snippets/{snippet_id}/export'
 }
@@ -3028,6 +3088,34 @@ export type GetWorkspacesCurrentModelProvidersResponses = {
 
 export type GetWorkspacesCurrentModelProvidersResponse =
   GetWorkspacesCurrentModelProvidersResponses[keyof GetWorkspacesCurrentModelProvidersResponses]
+
+export type GetWorkspacesCurrentModelProvidersCreditsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/credits'
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponses = {
+  200: ModelProviderCreditsResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersCreditsResponse =
+  GetWorkspacesCurrentModelProvidersCreditsResponses[keyof GetWorkspacesCurrentModelProvidersCreditsResponses]
+
+export type GetWorkspacesCurrentModelProvidersSummaryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/model-providers/summary'
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponses = {
+  200: ModelProviderSummaryListResponse
+}
+
+export type GetWorkspacesCurrentModelProvidersSummaryResponse =
+  GetWorkspacesCurrentModelProvidersSummaryResponses[keyof GetWorkspacesCurrentModelProvidersSummaryResponses]
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
   body?: never
@@ -3575,6 +3663,22 @@ export type PostWorkspacesCurrentPluginInstallPkgResponses = {
 export type PostWorkspacesCurrentPluginInstallPkgResponse =
   PostWorkspacesCurrentPluginInstallPkgResponses[keyof PostWorkspacesCurrentPluginInstallPkgResponses]
 
+export type GetWorkspacesCurrentPluginInstalledIdsData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/installed-ids'
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponses = {
+  200: PluginInstalledIdsResponse
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponse =
+  GetWorkspacesCurrentPluginInstalledIdsResponses[keyof GetWorkspacesCurrentPluginInstalledIdsResponses]
+
 export type GetWorkspacesCurrentPluginListData = {
   body?: never
   path?: never
@@ -3888,8 +3992,11 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
     category: string
   }
   query?: {
+    language?: 'en_US' | 'ja_JP' | 'pt_BR' | 'zh_Hans'
     page?: number
     page_size?: number
+    query?: string
+    tags?: Array<string>
   }
   url: '/workspaces/current/plugin/{category}/list'
 }
@@ -4625,6 +4732,24 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses = {
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse =
   GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses[keyof GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponses]
+
+export type GetWorkspacesCurrentSummaryData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/summary'
+}
+
+export type GetWorkspacesCurrentSummaryErrors = {
+  409: unknown
+}
+
+export type GetWorkspacesCurrentSummaryResponses = {
+  200: CurrentWorkspaceSummaryResponse
+}
+
+export type GetWorkspacesCurrentSummaryResponse =
+  GetWorkspacesCurrentSummaryResponses[keyof GetWorkspacesCurrentSummaryResponses]
 
 export type GetWorkspacesCurrentToolLabelsData = {
   body?: never
@@ -5524,6 +5649,20 @@ export type GetWorkspacesCurrentTriggersResponses = {
 
 export type GetWorkspacesCurrentTriggersResponse =
   GetWorkspacesCurrentTriggersResponses[keyof GetWorkspacesCurrentTriggersResponses]
+
+export type GetWorkspacesCustomConfigData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/custom-config'
+}
+
+export type GetWorkspacesCustomConfigResponses = {
+  200: WorkspaceCustomConfigResponse
+}
+
+export type GetWorkspacesCustomConfigResponse =
+  GetWorkspacesCustomConfigResponses[keyof GetWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigData = {
   body: WorkspaceCustomConfigPayload

@@ -2,15 +2,16 @@ import logging
 
 import pytest
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, PluginInstallationScope, SystemFeatureModel
+from services.entities.feature_entities import PluginInstallationScope, SystemFeatureModel
+from services.feature_service import FeatureService
 
 
 def test_get_plugin_installation_permission_defaults_to_all_for_non_enterprise(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(feature_service_module.dify_config, "ENTERPRISE_ENABLED", False)
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
 
     permission = FeatureService.get_plugin_installation_permission()
 
@@ -21,7 +22,7 @@ def test_get_plugin_installation_permission_defaults_to_all_for_non_enterprise(
 def test_get_plugin_installation_permission_parses_enterprise_policy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(feature_service_module.dify_config, "ENTERPRISE_ENABLED", True)
+    monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.ENTERPRISE)
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",

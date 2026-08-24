@@ -4,10 +4,13 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiDeleteBinLine } from '@remixicon/react'
@@ -155,14 +158,20 @@ const renderSelectCell = (
       >
         {selectedOption?.name ?? column.placeholder}
       </SelectTrigger>
-      <SelectContent className="-translate-x-3" popupClassName="w-26 min-w-26">
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            <SelectItemText>{option.name}</SelectItemText>
-            <SelectItemIndicator />
-          </SelectItem>
-        ))}
-      </SelectContent>
+      <SelectPortal>
+        <SelectPositioner className="-translate-x-3">
+          <SelectPopup className="w-26 min-w-26">
+            <SelectList>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  <SelectItemText>{option.name}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectList>
+          </SelectPopup>
+        </SelectPositioner>
+      </SelectPortal>
     </Select>
   )
 }
@@ -325,7 +334,7 @@ const GenericTable: FC<GenericTableProps> = ({
                       className="p-1"
                       aria-label="Delete row"
                     >
-                      {/* oxlint-disable-next-line hyoban/prefer-tailwind-icons */}
+                      {/* oxlint-disable-next-line dify/prefer-tailwind-icons */}
                       <RiDeleteBinLine className="size-3.5 text-text-destructive" />
                     </button>
                   </div>

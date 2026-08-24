@@ -17,9 +17,12 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiAddLine } from '@remixicon/react'
@@ -141,17 +144,23 @@ const ConditionWrap: FC<Props> = ({
                   className="border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
                 >
                   <Button size="small" disabled={readOnly}>
-                    <RiAddLine className="mr-1 size-3.5" />
+                    <RiAddLine className="size-3.5" />
                     {t(($) => $['nodes.ifElse.addSubVariable'], { ns: 'workflow' })}
                   </Button>
                 </SelectTrigger>
-                <SelectContent popupClassName="w-[165px]" listClassName="max-h-none p-1">
-                  {subVarOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <SelectItemText>{option.name}</SelectItemText>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectPortal>
+                  <SelectPositioner>
+                    <SelectPopup className="w-[165px]">
+                      <SelectList className="max-h-none p-1">
+                        {subVarOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <SelectItemText>{option.name}</SelectItemText>
+                          </SelectItem>
+                        ))}
+                      </SelectList>
+                    </SelectPopup>
+                  </SelectPositioner>
+                </SelectPortal>
               </Select>
             ) : (
               <ConditionAdd

@@ -2,20 +2,21 @@ import type { FC, ReactElement } from 'react'
 import type { WorkflowTranslator } from './node-sections'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { cloneElement, memo, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
 import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/use-collaboration'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
 import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
-import { userProfileAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { useNodePluginInstallation } from '../../hooks/use-node-plugin-installation'
 import { useToolIcon } from '../../hooks/use-tool-icon'
@@ -57,9 +58,13 @@ const BaseNode: FC<BaseNodeProps> = ({ id, data, children }) => {
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const { handleNodeLoopChildSizeChange } = useNodeLoopInteractions()
   const toolIcon = useToolIcon(data)
-  const userProfile = useAtomValue(userProfileAtom)
+  const { data: userProfile } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile,
+  })
   const appId = useStore((s) => s.appId)
-  const { nodePanelPresence } = useCollaboration(appId as string)
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
+  const { nodePanelPresence } = useCollaboration(appId as string, canEdit)
   const controlMode = useStore((s) => s.controlMode)
   const isContextMenuTarget = useStore(
     (s) => s.contextMenuTarget?.type === 'node' && s.contextMenuTarget.nodeId === id,

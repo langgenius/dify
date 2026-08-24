@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   getStepByStepTourTargetSelector,
   STEP_BY_STEP_TOUR_TARGETS,
@@ -94,8 +94,14 @@ let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
 let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
 const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
+const mockUseAllCustomTools = vi.hoisted(() => vi.fn())
+const mockUseAllMCPTools = vi.hoisted(() => vi.fn())
+const mockUseAllWorkflowTools = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (enabled?: boolean) => mockUseAllToolProviders(enabled),
+  useAllCustomTools: (enabled?: boolean) => mockUseAllCustomTools(enabled),
+  useAllMCPTools: (enabled?: boolean) => mockUseAllMCPTools(enabled),
+  useAllWorkflowTools: (enabled?: boolean) => mockUseAllWorkflowTools(enabled),
 }))
 
 const mockConsoleState = vi.hoisted(() => ({
@@ -386,6 +392,23 @@ describe('ProviderList', () => {
       isLoading: enabled ? mockIsLoadingToolProviders : false,
       refetch: mockRefetch,
     }))
+    mockUseAllCustomTools.mockImplementation((enabled = true) => ({
+      data: enabled ? mockCollectionData.filter((collection) => collection.type === 'api') : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
+    mockUseAllMCPTools.mockImplementation((enabled = true) => ({
+      data: enabled ? mockCollectionData.filter((collection) => collection.type === 'mcp') : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
+    mockUseAllWorkflowTools.mockImplementation((enabled = true) => ({
+      data: enabled
+        ? mockCollectionData.filter((collection) => collection.type === 'workflow')
+        : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
     mockCheckedInstalledData = null
     mockCanSetPermissions.mockReturnValue(true)
     mockReferenceSetting.mockReturnValue({
@@ -447,7 +470,10 @@ describe('ProviderList', () => {
 
       renderProviderList({ category })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(mockUseAllCustomTools).toHaveBeenCalledWith(category === 'api')
+      expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(category === 'workflow')
+      expect(mockUseAllMCPTools).toHaveBeenCalledWith(false)
       expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
       expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
@@ -940,7 +966,10 @@ describe('ProviderList', () => {
 
       renderProviderList({ category: 'mcp' })
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(mockUseAllCustomTools).toHaveBeenCalledWith(false)
+      expect(mockUseAllWorkflowTools).toHaveBeenCalledWith(false)
+      expect(mockUseAllMCPTools).toHaveBeenCalledWith(true)
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
       expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
       expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()

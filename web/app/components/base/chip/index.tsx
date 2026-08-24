@@ -2,10 +2,13 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
@@ -50,7 +53,7 @@ function Chip<T extends ItemValue>({
     : t(($) => $['operation.clear'], { ns: 'common' })
 
   return (
-    <Select
+    <Select<T>
       value={selectedItem?.value ?? null}
       itemToStringLabel={(itemValue: T) =>
         items.find((item) => Object.is(item.value, itemValue))?.name ?? ''
@@ -117,22 +120,25 @@ function Chip<T extends ItemValue>({
             />
           </button>
         )}
-        <SelectContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName={cn(
-            'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
-            panelClassName,
-          )}
-          listClassName="max-h-72 p-1"
-        >
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              <SelectItemText title={item.name}>{item.name}</SelectItemText>
-              {showItemIndicator && <SelectItemIndicator />}
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner placement="bottom-start" sideOffset={4}>
+            <SelectPopup
+              className={cn(
+                'relative w-60 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden',
+                panelClassName,
+              )}
+            >
+              <SelectList className="max-h-72 p-1">
+                {items.map((item) => (
+                  <SelectItem<T> key={item.value} value={item.value}>
+                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
+                    {showItemIndicator && <SelectItemIndicator />}
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
     </Select>
   )

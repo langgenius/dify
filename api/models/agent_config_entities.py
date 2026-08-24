@@ -4,9 +4,19 @@ import re
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
-from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
+from core.rag.entities.metadata_entities import (
+    ConditionValue,
+    SupportedComparisonOperator,
+)
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
@@ -150,33 +160,6 @@ class AgentFileRefConfig(AgentFlexibleConfig):
     transfer_method: str | None = Field(default=None, max_length=64)
     url: str | None = None
     remote_url: str | None = None
-    # Drive key once the file is committed to the agent drive ("files/<name>",
-    # ENG-625). Files without it are plain upload references and stay invisible
-    # to the runtime drive manifest.
-    drive_key: str | None = Field(default=None, max_length=512)
-
-
-class AgentSkillRefConfig(AgentFlexibleConfig):
-    id: str | None = Field(default=None, max_length=255)
-    name: str | None = Field(default=None, max_length=255)
-    description: str | None = None
-    file_id: str | None = Field(default=None, max_length=255)
-    path: str | None = None
-    # Standardization outputs (ENG-594) — previously riding along via
-    # ``extra="allow"``, promoted to the explicit schema because the runtime
-    # drive manifest (ENG-623) keys off them.
-    skill_md_key: str | None = Field(default=None, max_length=512)
-    skill_md_file_id: str | None = Field(default=None, max_length=255)
-    full_archive_key: str | None = Field(default=None, max_length=512)
-    full_archive_file_id: str | None = Field(default=None, max_length=255)
-    # Zip member path listing from standardization (ENG-371): lets infer-tools
-    # show the model strong signals like ``scripts/*.sh`` without unpacking.
-    manifest_files: list[str] | None = None
-
-
-class AgentSoulFilesConfig(BaseModel):
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
 
 
 def validate_config_name(name: str) -> str:
@@ -420,8 +403,19 @@ class AgentKnowledgeRetrievalConfig(BaseModel):
 
 
 class AgentKnowledgeMetadataCondition(BaseModel):
+    """One manual metadata filter clause.
+
+    ``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+    every save (a stable row key and a reference to the selected metadata
+    field). They are persisted here for round-tripping the composer's draft
+    state but are stripped before building the Agent runtime request, whose
+    DTO only accepts ``name``/``comparison_operator``/``value``.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
+    id: str | None = None
+    metadata_id: str | None = None
     name: str = Field(min_length=1, max_length=255)
     comparison_operator: SupportedComparisonOperator
     value: ConditionValue = None
@@ -527,8 +521,14 @@ class AgentModelResponseFormatConfig(AgentFlexibleConfig):
     type: str | None = Field(default=None, max_length=64)
 
 
-class AgentSoulModelSettings(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+class AgentSoulModelSettings(AgentFlexibleConfig):
+    """Model parameters for the Agent Soul model.
+
+    Model plugins can declare arbitrary parameters via ``parameter_rules``
+    (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+    fields typed below, so extra keys must round-trip through persistence
+    rather than being dropped.
+    """
 
     temperature: float | None = None
     top_p: float | None = None
@@ -803,7 +803,6 @@ class AgentSoulConfig(BaseModel):
     config_skills: list[AgentConfigSkillRefConfig] = Field(default_factory=list)
     config_files: list[AgentConfigFileRefConfig] = Field(default_factory=list)
     config_note: str = ""
-    files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None
@@ -1061,45 +1060,26 @@ class DeclaredOutputConfig(BaseModel):
         )
 
 
-# PRD §OUTPUT 配置框 0522 共识: "Output 如果没有配置，则 text, files, json"
-# The runtime injects these when ``declared_outputs`` is empty (stage 4 §4.1, D-3).
-# Not persisted; mutating this constant changes UI defaults globally.
-DEFAULT_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
+# ``text`` is a system-owned workflow output. It is derived for consumers and
+# never persisted in ``WorkflowNodeJobConfig.declared_outputs``.
+SYSTEM_DECLARED_OUTPUTS: Final[tuple[DeclaredOutputConfig, ...]] = (
     DeclaredOutputConfig(
         name="text",
         type=DeclaredOutputType.STRING,
         required=False,
         description="Free-form text answer.",
     ),
-    DeclaredOutputConfig(
-        name="files",
-        type=DeclaredOutputType.ARRAY,
-        required=False,
-        description="Files produced by the agent.",
-        array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
-    ),
-    DeclaredOutputConfig(
-        name="json",
-        type=DeclaredOutputType.OBJECT,
-        required=False,
-        description="Free-form JSON object.",
-    ),
 )
+# ``switch`` and ``_session`` are reserved for future system output contracts.
+RESERVED_DECLARED_OUTPUT_NAMES: Final[frozenset[str]] = frozenset({"text", "switch", "_session"})
 
 
 def effective_declared_outputs(
     declared_outputs: list[DeclaredOutputConfig] | tuple[DeclaredOutputConfig, ...],
 ) -> tuple[DeclaredOutputConfig, ...]:
-    """Return the outputs the runtime actually presents.
+    """Project the system ``text`` output followed by custom declarations."""
 
-    Returns ``declared_outputs`` unchanged when non-empty, otherwise the PRD
-    defaults from ``DEFAULT_DECLARED_OUTPUTS``. Shared helper so Composer load
-    responses, runtime request builder, and the Node Output Inspector all use
-    the same fallback (stage 4 §4.1, decision D-3).
-    """
-    if declared_outputs:
-        return tuple(declared_outputs)
-    return DEFAULT_DECLARED_OUTPUTS
+    return SYSTEM_DECLARED_OUTPUTS + tuple(declared_outputs)
 
 
 class WorkflowNodeJobConfig(BaseModel):
@@ -1112,3 +1092,13 @@ class WorkflowNodeJobConfig(BaseModel):
     declared_outputs: list[DeclaredOutputConfig] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
     metadata: WorkflowNodeJobMetadata = Field(default_factory=WorkflowNodeJobMetadata)
+
+    @field_validator("declared_outputs")
+    @classmethod
+    def _reject_reserved_declared_output_names(
+        cls, declared_outputs: list[DeclaredOutputConfig]
+    ) -> list[DeclaredOutputConfig]:
+        for output in declared_outputs:
+            if output.name in RESERVED_DECLARED_OUTPUT_NAMES:
+                raise ValueError(f"declared output name {output.name!r} is reserved")
+        return declared_outputs

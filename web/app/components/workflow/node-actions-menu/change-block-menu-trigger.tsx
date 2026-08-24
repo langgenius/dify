@@ -60,21 +60,19 @@ export function ChangeBlockMenuTrigger({
     [handleNodeChange, nodeId, sourceHandle],
   )
 
-  const renderTrigger = useCallback(() => {
-    return (
-      <button
-        type="button"
-        className="mx-1 flex h-8 w-[calc(100%-8px)] cursor-pointer items-center rounded-lg border-0 bg-transparent px-2 text-left text-sm text-text-secondary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-      >
-        {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
-      </button>
-    )
-  }, [t])
+  const triggerElement = (
+    <button
+      type="button"
+      className="mx-1 flex h-8 w-[calc(100%-8px)] cursor-pointer items-center rounded-lg border-0 bg-transparent px-2 text-left text-sm text-text-secondary outline-hidden select-none hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+    >
+      {t(($) => $['panel.changeBlock'], { ns: 'workflow' })}
+    </button>
+  )
 
   return (
     <BlockSelector
       onSelect={handleSelect}
-      trigger={renderTrigger}
+      trigger={triggerElement}
       popupClassName="min-w-[240px]"
       availableBlocksTypes={availableNodes}
       showStartTab={showStartTab}

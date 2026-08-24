@@ -9,7 +9,6 @@ import {
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
-import { Plan } from '@/app/components/billing/type'
 import { PlanBadge } from '@/app/components/header/plan-badge'
 
 type WorkplaceSelectorContentProps = {
@@ -21,15 +20,9 @@ type WorkplaceSelectorItemProps = {
   workspace: TenantListItemResponse
 }
 
-const workspacePlans = new Set<string>(Object.values(Plan))
-
-function isWorkspacePlan(plan: string | null | undefined): plan is Plan {
-  return !!plan && workspacePlans.has(plan)
-}
-
 const WorkplaceSelectorItem = memo(({ workspace }: WorkplaceSelectorItemProps) => {
   const workspaceName = workspace.name || workspace.id
-  const workspacePlan = isWorkspacePlan(workspace.plan) ? workspace.plan : Plan.sandbox
+  const workspacePlan = workspace.plan ?? 'sandbox'
 
   return (
     <SelectItem value={workspace.id} className="gap-2 py-1 pr-2 pl-3">
@@ -49,7 +42,7 @@ export const WorkplaceSelectorContent = memo(
     const { t } = useTranslation()
 
     return (
-      <SelectContent popupClassName={popupClassName}>
+      <SelectContent className={popupClassName}>
         <SelectGroup>
           <SelectGroupLabel>
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}

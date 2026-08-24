@@ -36,10 +36,12 @@ vi.mock('@/app/components/app/app-publisher', () => ({
     mockAppPublisherProps.current = props
     return (
       <div>
-        <button onClick={() => props.onPublish?.({ id: 'model-1' })}>
+        <button type="button" onClick={() => props.onPublish?.({ id: 'model-1' })}>
           publish-through-wrapper
         </button>
-        <button onClick={() => props.onRestore?.()}>restore-through-wrapper</button>
+        <button type="button" onClick={() => props.onRestore?.()}>
+          restore-through-wrapper
+        </button>
       </div>
     )
   },
@@ -57,6 +59,7 @@ vi.mock('@/app/components/base/features/hooks', () => ({
 }))
 
 describe('FeaturesWrappedAppPublisher', () => {
+  const resetAppConfig = vi.fn()
   const publishedConfig = {
     modelConfig: {
       more_like_this: { enabled: true },
@@ -81,7 +84,6 @@ describe('FeaturesWrappedAppPublisher', () => {
         allowed_file_upload_methods: ['remote_url'],
         number_limits: 5,
       },
-      resetAppConfig: vi.fn(),
     },
   }
 
@@ -106,13 +108,18 @@ describe('FeaturesWrappedAppPublisher', () => {
   })
 
   it('should restore published features after confirmation', async () => {
-    render(<FeaturesWrappedAppPublisher publishedConfig={publishedConfig as any} />)
+    render(
+      <FeaturesWrappedAppPublisher
+        publishedConfig={publishedConfig as any}
+        resetAppConfig={resetAppConfig}
+      />,
+    )
 
     fireEvent.click(screen.getByText('restore-through-wrapper'))
     fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)operation\.confirm(?=$|:)/ }))
 
     await waitFor(() => {
-      expect(publishedConfig.modelConfig.resetAppConfig).toHaveBeenCalledTimes(1)
+      expect(resetAppConfig).toHaveBeenCalledTimes(1)
       expect(mockSetFeatures).toHaveBeenCalledWith(
         expect.objectContaining({
           moreLikeThis: { enabled: true },
@@ -133,7 +140,12 @@ describe('FeaturesWrappedAppPublisher', () => {
   })
 
   it('should close restore confirmation without restoring when cancelled', async () => {
-    render(<FeaturesWrappedAppPublisher publishedConfig={publishedConfig as any} />)
+    render(
+      <FeaturesWrappedAppPublisher
+        publishedConfig={publishedConfig as any}
+        resetAppConfig={resetAppConfig}
+      />,
+    )
 
     fireEvent.click(screen.getByText('restore-through-wrapper'))
     const dialog = screen.getByRole('alertdialog')
@@ -145,7 +157,7 @@ describe('FeaturesWrappedAppPublisher', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     })
-    expect(publishedConfig.modelConfig.resetAppConfig).not.toHaveBeenCalled()
+    expect(resetAppConfig).not.toHaveBeenCalled()
     expect(mockSetFeatures).not.toHaveBeenCalled()
   })
 })

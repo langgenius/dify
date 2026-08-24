@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from types import SimpleNamespace
 
@@ -50,12 +51,36 @@ from core.app.entities.task_entities import (
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, EndUserType
 from models.model import AppMode, EndUser
-from models.workflow import WorkflowAppLog
+from models.workflow import Workflow, WorkflowAppLog, WorkflowType
 from tests.workflow_test_utils import build_test_variable_pool
+
+
+def _workflow() -> Workflow:
+    return Workflow(
+        id="workflow-id",
+        tenant_id="tenant",
+        app_id="app",
+        type=WorkflowType.WORKFLOW,
+        version=Workflow.VERSION_DRAFT,
+        graph="{}",
+        features=json.dumps({}),
+        created_by="user",
+    )
+
+
+def _end_user(*, end_user_id: str = "user", session_id: str = "session") -> EndUser:
+    return EndUser(
+        id=end_user_id,
+        tenant_id="tenant",
+        app_id="app",
+        type=EndUserType.BROWSER,
+        session_id=session_id,
+    )
 
 
 def _make_pipeline():
@@ -80,8 +105,8 @@ def _make_pipeline():
         extras={},
         call_depth=0,
     )
-    workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
-    user = SimpleNamespace(id="user", session_id="session")
+    workflow = _workflow()
+    user = _end_user()
 
     pipeline = WorkflowAppGenerateTaskPipeline(
         application_generate_entity=application_generate_entity,
@@ -103,7 +128,7 @@ class TestWorkflowGenerateTaskPipeline:
                 variables=build_system_variables(workflow_execution_id="run-id"),
             ),
             start_at=0.0,
-            total_tokens=5,
+            llm_usage=LLMUsage.empty_usage().model_copy(update={"total_tokens": 5}),
             node_run_steps=2,
         )
 
@@ -504,10 +529,9 @@ class TestWorkflowGenerateTaskPipeline:
             extras={},
             call_depth=0,
         )
-        workflow = SimpleNamespace(id="workflow-id", tenant_id="tenant", features_dict={})
+        workflow = _workflow()
         queue_manager = SimpleNamespace(invoke_from=InvokeFrom.WEB_APP, graph_runtime_state=None)
-        end_user = EndUser(tenant_id="tenant", type="session", name="user", session_id="session-id")
-        end_user.id = "end-user-id"
+        end_user = _end_user(end_user_id="end-user-id", session_id="session-id")
 
         pipeline = WorkflowAppGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,

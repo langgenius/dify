@@ -1,5 +1,3 @@
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,6 +5,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -158,24 +157,19 @@ function MoreActions() {
         <TipPopup title={t(($) => $['common.moreActions'], { ns: 'workflow' })}>
           <DropdownMenuTrigger
             render={
-              <Button
-                variant="ghost"
-                size="small"
+              <IconButton
+                size="lg"
                 aria-label={t(($) => $['common.moreActions'], { ns: 'workflow' })}
                 disabled={isReadOnly}
                 focusableWhenDisabled
-                className={cn(
-                  'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                  isReadOnly &&
-                    'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-                )}
-              />
+                className="rounded-md"
+              >
+                <span aria-hidden className="i-ri-more-fill size-4" />
+              </IconButton>
             }
-          >
-            <span aria-hidden className="i-ri-more-fill size-4" />
-          </DropdownMenuTrigger>
+          />
         </TipPopup>
-        <DropdownMenuContent placement="right-end" popupClassName="min-w-[180px]">
+        <DropdownMenuContent placement="right-end" className="min-w-[180px]">
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
             <span aria-hidden className="i-ri-export-line size-3" />
             {t(($) => $['common.exportImage'], { ns: 'workflow' })}

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import type { Credential, PluginPayload } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
 import Authorized from '../index'
@@ -82,20 +83,11 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/popover', async () => await import('@/__mocks__/base-ui-popover'))
-
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'test-user', name: 'Test User', email: 'test@example.com', avatar_url: '' },
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: mockConsoleState.userProfile,
-    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -139,6 +131,7 @@ const createConsoleQueryClient = () =>
 
 const createWrapper = () => {
   const testQueryClient = createConsoleQueryClient()
+  seedAccountProfileQuery(testQueryClient, mockConsoleState.userProfile)
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
@@ -188,7 +181,7 @@ describe('Authorized Component', () => {
       expect(screen.getByRole('button'))!.toBeInTheDocument()
     })
 
-    it('should render with custom trigger when renderTrigger is provided', () => {
+    it('should render a custom trigger from the actual popover state', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential()]
 
@@ -203,8 +196,11 @@ describe('Authorized Component', () => {
         { wrapper: createWrapper() },
       )
 
-      expect(screen.getByTestId('custom-trigger'))!.toBeInTheDocument()
       expect(screen.getByText('Closed'))!.toBeInTheDocument()
+
+      fireEvent.click(screen.getByTestId('custom-trigger'))
+
+      expect(screen.getByText('Open')).toBeInTheDocument()
     })
 
     it('should show singular authorization text for 1 credential', () => {
@@ -1386,26 +1382,6 @@ describe('Authorized Component', () => {
 
   // ==================== Props Tests ====================
   describe('Props', () => {
-    it('should pass placement to Popover', () => {
-      const pluginPayload = createPluginPayload()
-      const credentials = [createCredential()]
-
-      // Default placement is bottom-start
-      render(
-        <Authorized
-          pluginPayload={pluginPayload}
-          credentials={credentials}
-          isOpen={true}
-          placement="top-end"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      // Component should render without error
-      // Component should render without error
-      expect(screen.getByText('API Keys'))!.toBeInTheDocument()
-    })
-
     it('should allow credential.use to set default when credential.manage is missing', () => {
       const pluginPayload = createPluginPayload()
       const credentials = [createCredential({ is_default: false })]

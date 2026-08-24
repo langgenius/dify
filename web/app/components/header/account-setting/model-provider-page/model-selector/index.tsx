@@ -1,15 +1,21 @@
-import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
-import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
-import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
+import type {
+  ModelSelectorModel,
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
-import { useCallback, useMemo, useState } from 'react'
+import { Popover, PopoverContent, PopoverTitle } from '@langgenius/dify-ui/popover'
+import { useQueryState } from 'nuqs'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModelStatusEnum } from '../declarations'
-import { useCurrentProviderAndModel } from '../hooks'
-import ModelSelectorTrigger from './model-selector-trigger'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { getCurrentProviderAndModel } from '../hooks'
+import { ModelSelectorTrigger } from './model-selector-trigger'
 import Popup from './popup'
-import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
@@ -19,16 +25,15 @@ const getModelProviderPluginId = (provider: string) => {
   return provider ? `langgenius/${provider}` : ''
 }
 
-type ModelSelectorProps = {
-  defaultModel?: DefaultModel
-  modelList: Model[]
-  triggerClassName?: string
+type ModelSelectorBaseProps = {
+  value?: ModelSelectorValue
+  models: ModelSelectorProvider[]
+  className?: string
   popupClassName?: string
-  onSelect?: (model: DefaultModel) => void
+  onValueChange?: (model: ModelSelectorValue) => void
   onHide?: () => void
-  readonly?: boolean
-  scopeFeatures?: ModelFeatureEnum[]
-  deprecatedClassName?: string
+  disabled?: boolean
+  scopeFeatures?: readonly string[]
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
@@ -37,16 +42,26 @@ type ModelSelectorProps = {
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
 }
-function ModelSelector({
-  defaultModel,
-  modelList,
-  triggerClassName,
+type ModelSelectorProps = ModelSelectorBaseProps & {
+  size?: 'small' | 'medium'
+  surface?: 'default' | 'workflow'
+}
+type SplitModelSelectorProps = ModelSelectorBaseProps & {
+  surface?: 'default' | 'workflow'
+}
+
+function ModelSelectorRoot({
+  value,
+  models,
+  className,
   popupClassName,
-  onSelect,
+  onValueChange,
   onHide,
-  readonly,
+  disabled,
+  size,
+  surface,
+  shape,
   scopeFeatures = [],
-  deprecatedClassName,
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
   onConfigureEmptyState,
@@ -54,66 +69,44 @@ function ModelSelector({
   showModelMeta,
   modelPredicate,
   modelSuggestionPredicate,
-}: ModelSelectorProps) {
+}: ModelSelectorBaseProps & {
+  size: 'small' | 'medium'
+  surface: 'default' | 'workflow'
+  shape: 'standalone' | 'split'
+}) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, defaultModel)
-  const currentValue = useMemo<ModelSelectorValue | null>(() => {
-    if (!currentProvider || !currentModel) return null
-
-    return {
-      provider: currentProvider.provider,
-      model: currentModel.model,
-    }
-  }, [currentModel, currentProvider])
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
+  const { currentProvider, currentModel } = getCurrentProviderAndModel(models, value)
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (readonly) return
+      if (disabled && newOpen) return
 
       setOpen(newOpen)
       if (!newOpen) setInputValue('')
     },
-    [readonly],
+    [disabled],
   )
 
   const handleSelect = useCallback(
-    (provider: string, model: ModelItem) => {
+    (provider: string, model: ModelSelectorModel) => {
       setOpen(false)
       setInputValue('')
 
-      if (onSelect) {
-        onSelect({
+      if (onValueChange) {
+        onValueChange({
           provider,
           model: model.model,
           plugin_id: getModelProviderPluginId(provider),
         })
       }
     },
-    [onSelect],
-  )
-
-  const handleValueChange = useCallback(
-    (value: ModelSelectorValue | null) => {
-      if (!value) return
-
-      const provider = modelList.find((model) => model.provider === value.provider)
-      const model = provider?.models.find((model) => model.model === value.model)
-
-      if (!provider || !model) return
-      if (model.status !== ModelStatusEnum.active) return
-
-      handleSelect(provider.provider, model)
-    },
-    [handleSelect, modelList],
-  )
-
-  const handleInputValueChange = useCallback(
-    (inputValue: string, details: ComboboxChangeEventDetails) => {
-      if (details.reason !== 'item-press') setInputValue(inputValue)
-    },
-    [],
+    [onValueChange],
   )
 
   const handleHide = useCallback(() => {
@@ -121,68 +114,84 @@ function ModelSelector({
     setInputValue('')
     onHide?.()
   }, [onHide])
+
+  const handleOpenSettings = useCallback(() => {
+    handleHide()
+    setSettingsDestination('provider')
+  }, [handleHide, setSettingsDestination])
+
   const handleConfigureEmptyState = useCallback(() => {
-    setOpen(false)
-    setInputValue('')
-    onConfigureEmptyState?.()
-  }, [onConfigureEmptyState])
+    if (onConfigureEmptyState) {
+      handleHide()
+      onConfigureEmptyState()
+      return
+    }
+    if (settingsDestination === 'provider') {
+      handleHide()
+      return
+    }
+
+    handleOpenSettings()
+  }, [handleHide, handleOpenSettings, onConfigureEmptyState, settingsDestination])
 
   return (
-    <Combobox<ModelSelectorValue>
-      filter={null}
-      inputValue={inputValue}
-      isItemEqualToValue={isSameModelSelectorValue}
-      itemToStringLabel={getModelSelectorValueLabel}
-      open={open}
-      value={currentValue}
-      onInputValueChange={handleInputValueChange}
-      onOpenChange={handleOpenChange}
-      onValueChange={handleValueChange}
-    >
-      <ComboboxTrigger
-        aria-label={t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
-        icon={false}
-        className="block h-auto w-full border-0 bg-transparent p-0 text-left hover:bg-transparent focus-visible:bg-transparent data-popup-open:bg-transparent"
-        disabled={readonly}
-      >
-        <ModelSelectorTrigger
-          currentProvider={currentProvider}
-          currentModel={currentModel}
-          defaultModel={defaultModel}
-          open={open}
-          readonly={readonly}
-          className={triggerClassName}
-          deprecatedClassName={deprecatedClassName}
-          showDeprecatedWarnIcon={showDeprecatedWarnIcon}
-          showModelMeta={showModelMeta}
-          isModelCompatible={
-            currentProvider && currentModel
-              ? modelPredicate?.(currentProvider, currentModel)
-              : undefined
-          }
-        />
-      </ComboboxTrigger>
-      <ComboboxContent
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <ModelSelectorTrigger
+        currentProvider={currentProvider}
+        currentModel={currentModel}
+        defaultModel={value}
+        disabled={disabled}
+        size={size}
+        surface={surface}
+        shape={shape}
+        className={className}
+        showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+        showModelMeta={showModelMeta}
+        isModelCompatible={
+          currentProvider && currentModel
+            ? modelPredicate?.(currentProvider, currentModel)
+            : undefined
+        }
+      />
+      <PopoverContent
         placement="bottom-start"
-        sideOffset={4}
-        popupClassName={cn('w-108 max-w-108 overflow-hidden rounded-xl', popupClassName)}
+        className={cn(
+          'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+          popupClassName,
+        )}
       >
+        <PopoverTitle className="sr-only">
+          {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+        </PopoverTitle>
         <Popup
-          defaultModel={defaultModel}
+          defaultModel={value}
           inputValue={inputValue}
-          modelList={modelList}
+          modelList={models}
           scopeFeatures={scopeFeatures}
-          hideProviderSettingsFooter={hideProviderSettingsFooter}
           modelPredicate={modelPredicate}
           modelSuggestionPredicate={modelSuggestionPredicate}
-          onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
+          onOpenProviderSettings={
+            !hideProviderSettingsFooter && settingsDestination !== 'provider'
+              ? handleOpenSettings
+              : undefined
+          }
+          onConfigureEmptyState={handleConfigureEmptyState}
           onOpenMarketplace={onOpenMarketplace}
           onInputValueChange={setInputValue}
+          onSelect={handleSelect}
           onHide={handleHide}
         />
-      </ComboboxContent>
-    </Combobox>
+      </PopoverContent>
+    </Popover>
   )
 }
 
-export default ModelSelector
+function ModelSelector({ size = 'medium', surface = 'default', ...props }: ModelSelectorProps) {
+  return <ModelSelectorRoot {...props} shape="standalone" size={size} surface={surface} />
+}
+
+function SplitModelSelector({ surface = 'default', ...props }: SplitModelSelectorProps) {
+  return <ModelSelectorRoot {...props} shape="split" size="medium" surface={surface} />
+}
+
+export { ModelSelector, SplitModelSelector }

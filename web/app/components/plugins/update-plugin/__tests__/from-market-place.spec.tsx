@@ -1,6 +1,6 @@
 import type { UpdateFromMarketPlacePayload } from '@/app/components/plugins/types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
 import { render } from '@/test/console/render'
 import UpdateFromMarketplace from '../from-market-place'
@@ -28,35 +28,12 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogCloseButton: () => <button>close dialog</button>,
-}))
-
 vi.mock('@/app/components/base/badge/index', () => ({
   __esModule: true,
   BadgeState: {
     Warning: 'warning',
   },
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-  }: {
-    children: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-  }) => (
-    <button disabled={disabled} onClick={onClick}>
-      {children}
-    </button>
-  ),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({

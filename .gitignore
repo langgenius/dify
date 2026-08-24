@@ -140,6 +140,9 @@ dmypy.json
 pyrightconfig.json
 !api/pyrightconfig.json
 
+# import-linter
+.import_linter_cache/
+
 # Pyre type checker
 .pyre/
 .idea/'
@@ -260,6 +263,7 @@ scripts/stress-test/reports/
 .qoder/*
 .context/
 # Vitest local reports
+web/.vitest-browser/
 web/.vitest-reports/
 
 # dify-agent-runtime

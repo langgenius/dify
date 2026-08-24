@@ -26,9 +26,16 @@ const AddCustomModel = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
+  open: controlledOpen,
+  onOpenChange,
 }: AddCustomModelProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (nextOpen: boolean) => {
+    setLocalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
   const canAddedModels = useCanAddedModels(provider)
   const noModels = !canAddedModels.length
   const { canUseCredential, canCreateCredential } = useCredentialPermissions()
@@ -66,7 +73,7 @@ const AddCustomModel = ({
             disabled && 'cursor-not-allowed opacity-50',
           )}
         >
-          <span className="mr-1 i-ri-add-circle-fill size-3.5" />
+          <span className="i-ri-add-circle-fill size-3.5" />
           {t(($) => $['modelProvider.addModel'], { ns: 'common' })}
         </Button>
       )
@@ -98,12 +105,16 @@ const AddCustomModel = ({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         nativeButton={false}
-        render={<div className="inline-block">{renderTrigger(open)}</div>}
+        render={(props, state) => (
+          <div {...props} className={cn('inline-block', props.className)}>
+            {renderTrigger(state.open)}
+          </div>
+        )}
       />
       <PopoverContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="max-h-76 overflow-y-auto p-1">

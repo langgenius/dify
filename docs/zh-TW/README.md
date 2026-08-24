@@ -188,6 +188,10 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 使用[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS) 將 Dify 一鍵部署到 AKS
 
+#### 使用 Sealos 部署
+
+透過 [Sealos App Store](https://sealos.io/products/app-store/dify/) 一鍵部署 Dify
+
 ## 貢獻
 
 對於想要貢獻程式碼的開發者，請參閱我們的[貢獻指南](./CONTRIBUTING.md)。

@@ -1,222 +1,92 @@
-import type { JSX } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiMoreLine } from '@remixicon/react'
-import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type Operation = {
   id: string
   title: string
-  icon: JSX.Element
+  icon: string
   onClick: () => void
   disabled?: boolean
   loading?: boolean
-  type?: 'divider'
+  variant?: 'default' | 'destructive'
 }
 
 type AppOperationsProps = {
-  gap: number
-  operations?: Operation[]
-  primaryOperations?: Operation[]
-  secondaryOperations?: Operation[]
+  appName: string
+  operationGroups: Operation[][]
 }
 
-const EMPTY_OPERATIONS: Operation[] = []
-
-const AppOperations = ({
-  operations,
-  primaryOperations,
-  secondaryOperations,
-  gap,
-}: AppOperationsProps) => {
+const AppOperations = ({ appName, operationGroups }: AppOperationsProps) => {
   const { t } = useTranslation()
-  const [visibleOpreations, setVisibleOperations] = useState<Operation[]>([])
-  const [moreOperations, setMoreOperations] = useState<Operation[]>([])
-  const [showMore, setShowMore] = useState(false)
-  const navRef = useRef<HTMLDivElement>(null)
+  const visibleGroups = operationGroups.filter((group) => group.length > 0)
 
-  const primaryOps = useMemo(() => {
-    if (operations) return operations
-    if (primaryOperations) return primaryOperations
-    return EMPTY_OPERATIONS
-  }, [operations, primaryOperations])
-
-  const secondaryOps = useMemo(() => {
-    if (operations) return EMPTY_OPERATIONS
-    if (secondaryOperations) return secondaryOperations
-    return EMPTY_OPERATIONS
-  }, [operations, secondaryOperations])
-  const inlineOperations = primaryOps.filter((operation) => operation.type !== 'divider')
-
-  useEffect(() => {
-    const applyState = (visible: Operation[], overflow: Operation[]) => {
-      const combinedMore = [...overflow, ...secondaryOps]
-      if (!overflow.length && combinedMore[0]?.type === 'divider') combinedMore.shift()
-      setVisibleOperations(visible)
-      setMoreOperations(combinedMore)
-    }
-
-    const inline = primaryOps.filter((operation) => operation.type !== 'divider')
-
-    if (!inline.length) {
-      applyState([], [])
-      return
-    }
-
-    const navElement = navRef.current
-    const moreElement = document.getElementById('more-measure')
-
-    if (!navElement || !moreElement) return
-
-    let width = 0
-    const containerWidth = navElement.clientWidth
-    const moreWidth = moreElement.clientWidth
-
-    if (containerWidth === 0 || moreWidth === 0) return
-
-    const updatedEntries: Record<string, boolean> = inline.reduce(
-      (pre, cur) => {
-        pre[cur.id] = false
-        return pre
-      },
-      {} as Record<string, boolean>,
-    )
-    const childrens = Array.from(navElement.children).slice(0, -1)
-    for (let i = 0; i < childrens.length; i++) {
-      const child = childrens[i] as HTMLElement
-      const id = child.dataset.targetid
-      if (!id) break
-      const childWidth = child.clientWidth
-
-      if (width + gap + childWidth + moreWidth <= containerWidth) {
-        updatedEntries[id] = true
-        width += gap + childWidth
-      } else {
-        if (i === childrens.length - 1 && width + childWidth <= containerWidth)
-          updatedEntries[id] = true
-        else updatedEntries[id] = false
-        break
-      }
-    }
-
-    const visible = inline.filter((item) => updatedEntries[item.id])
-    const overflow = inline.filter((item) => !updatedEntries[item.id])
-
-    applyState(visible, overflow)
-  }, [gap, primaryOps, secondaryOps])
-
-  const shouldShowMoreButton = moreOperations.length > 0
+  if (!visibleGroups.length) return null
 
   return (
-    <>
-      <div
-        aria-hidden="true"
-        ref={navRef}
-        className="pointer-events-none flex h-0 items-center self-stretch overflow-hidden"
-        style={{ gap }}
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        aria-label={t(($) => $['operation.moreActionsFor'], {
+          ns: 'common',
+          name: appName,
+        })}
+        className="flex size-5 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
       >
-        {inlineOperations.map((operation) => (
-          <Button
-            key={operation.id}
-            data-targetid={operation.id}
-            size="small"
-            variant="secondary"
-            className="gap-px focus-visible:ring-inset"
-            disabled={operation.disabled}
-            loading={operation.loading}
-            tabIndex={-1}
-          >
-            {cloneElement(operation.icon, {
-              className: 'h-3.5 w-3.5 text-components-button-secondary-text',
-            })}
-            <span className="system-xs-medium text-components-button-secondary-text">
-              {operation.title}
-            </span>
-          </Button>
-        ))}
-        <Button
-          id="more-measure"
-          size="small"
-          variant="secondary"
-          className="gap-px focus-visible:ring-inset"
-          tabIndex={-1}
-        >
-          <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
-          <span className="system-xs-medium text-components-button-secondary-text">
-            {t(($) => $['operation.more'], { ns: 'common' })}
-          </span>
-        </Button>
-      </div>
-      <div className="flex items-center self-stretch overflow-hidden" style={{ gap }}>
-        {visibleOpreations.map((operation) => (
-          <Button
-            key={operation.id}
-            data-targetid={operation.id}
-            size="small"
-            variant="secondary"
-            className="gap-px focus-visible:ring-inset"
-            disabled={operation.disabled}
-            loading={operation.loading}
-            onClick={operation.onClick}
-          >
-            {cloneElement(operation.icon, {
-              className: 'h-3.5 w-3.5 text-components-button-secondary-text',
-            })}
-            <span className="system-xs-medium text-components-button-secondary-text">
-              {operation.title}
-            </span>
-          </Button>
-        ))}
-        {shouldShowMoreButton && (
-          <DropdownMenu open={showMore} onOpenChange={setShowMore}>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  size="small"
-                  variant="secondary"
-                  className="gap-px focus-visible:ring-inset"
-                />
-              }
-            >
-              <>
-                <RiMoreLine className="size-3.5 text-components-button-secondary-text" />
-                <span className="system-xs-medium text-components-button-secondary-text">
-                  {t(($) => $['operation.more'], { ns: 'common' })}
-                </span>
-              </>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              placement="bottom-end"
-              sideOffset={4}
-              popupClassName="min-w-[264px]"
-            >
-              {moreOperations.map((item) =>
-                item.type === 'divider' ? (
-                  <DropdownMenuSeparator key={item.id} />
-                ) : (
-                  <DropdownMenuItem
-                    key={item.id}
-                    className="gap-x-1 px-1.5"
-                    disabled={item.disabled}
-                    onClick={item.onClick}
+        <span aria-hidden className="i-ri-more-fill size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
+        {visibleGroups.map((group, groupIndex) => (
+          <Fragment key={group.map((operation) => operation.id).join('-')}>
+            {groupIndex > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuGroup>
+              {group.map((operation) => (
+                <DropdownMenuItem
+                  key={operation.id}
+                  variant={operation.variant}
+                  className="gap-2 px-3"
+                  disabled={operation.disabled || operation.loading}
+                  onClick={operation.onClick}
+                >
+                  {operation.loading ? (
+                    <span
+                      aria-hidden
+                      className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        operation.icon,
+                        'size-4',
+                        operation.variant === 'destructive'
+                          ? 'text-text-destructive'
+                          : 'text-text-tertiary',
+                      )}
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      'system-sm-regular',
+                      operation.variant !== 'destructive' && 'text-text-secondary',
+                    )}
                   >
-                    {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
-                    <span className="system-md-regular text-text-secondary">{item.title}</span>
-                  </DropdownMenuItem>
-                ),
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    </>
+                    {operation.title}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </Fragment>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

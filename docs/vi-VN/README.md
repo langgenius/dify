@@ -178,6 +178,10 @@ Triển khai Dify lên Alibaba Cloud chỉ với một cú nhấp chuột bằng
 
 Triển khai Dify lên AKS chỉ với một cú nhấp chuột bằng [Azure Devops Pipeline Helm Chart bởi @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Triển khai với Sealos
+
+Triển khai Dify chỉ với một cú nhấp chuột từ [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
 ## Đóng góp
 
 Đối với những người muốn đóng góp mã, xem [Hướng dẫn Đóng góp](./CONTRIBUTING.md) của chúng tôi.

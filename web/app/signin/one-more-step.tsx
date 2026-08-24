@@ -122,9 +122,9 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">
+        <h1 className="title-4xl-semi-bold text-text-secondary">
           {t(($) => $.oneMoreStep, { ns: 'login' })}
-        </h2>
+        </h1>
         <p className="mt-1 body-md-regular text-text-tertiary">
           {t(($) => $.createSample, { ns: 'login' })}
         </p>
@@ -149,7 +149,7 @@ const OneMoreStep = () => {
                 />
                 <PopoverContent
                   placement="top"
-                  popupClassName="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
+                  className="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>
                     <div className="font-medium">{t(($) => $.sendUsMail, { ns: 'login' })}</div>

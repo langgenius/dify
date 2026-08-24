@@ -58,9 +58,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         disabled={disabled}
         className={cn(
           'group flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 data-popup-open:bg-state-base-hover-alt',
-          disabled
-            ? 'cursor-not-allowed bg-components-input-bg-disabled!'
-            : 'cursor-pointer hover:bg-state-base-hover-alt',
+          'cursor-pointer hover:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled! data-disabled:hover:bg-components-input-bg-disabled!',
           className,
         )}
       >
@@ -85,7 +83,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
       <DropdownMenuContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName={cn('w-35', popupClassName)}
+        className={cn('w-35', popupClassName)}
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel>

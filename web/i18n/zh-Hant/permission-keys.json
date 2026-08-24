@@ -4,6 +4,7 @@
   "app.access_config": "配置應用訪問權限",
   "app.acl.access_config": "配置應用訪問權限",
   "app.acl.delete": "刪除應用",
+  "app.acl.deploy": "部署應用",
   "app.acl.edit": "編輯與編排應用",
   "app.acl.import_export_dsl": "匯入 / 匯出 DSL",
   "app.acl.log_and_annotation": "訪問日誌與標註",

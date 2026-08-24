@@ -4,6 +4,7 @@
   "app.access_config": "پیکربندی مجوزهای دسترسی برنامه",
   "app.acl.access_config": "پیکربندی مجوزهای دسترسی برنامه",
   "app.acl.delete": "حذف برنامه",
+  "app.acl.deploy": "استقرار برنامه",
   "app.acl.edit": "ویرایش و هماهنگ‌سازی برنامه",
   "app.acl.import_export_dsl": "وارد کردن / صادر کردن DSL",
   "app.acl.log_and_annotation": "دسترسی به گزارش‌ها و حاشیه‌نویسی‌ها",

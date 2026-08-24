@@ -38,7 +38,7 @@ function AgentBuildChatEmptyState({
 
   return (
     <>
-      <div className="dify-blue-glass-surface relative flex h-12.5 w-12 items-center justify-center rounded-xl p-2">
+      <div className="dify-blue-glass-surface relative flex h-14 w-14.5 items-center justify-center rounded-xl p-2">
         <div className="absolute inset-x-px inset-y-0.5 grid grid-cols-[repeat(8,4px)] grid-rows-[repeat(8,4px)] gap-0.5 opacity-25">
           {buildIconGridCells.map((cell) => (
             <span
@@ -60,7 +60,7 @@ function AgentBuildChatEmptyState({
         <CommunityEditionTip
           tip={communityEditionBuildModeTip}
           placement="top"
-          popupClassName="max-w-[340px]"
+          className="max-w-[340px]"
         />
       </div>
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">

@@ -2,11 +2,10 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiDeleteBinLine, RiEditLine, RiWebhookLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { DeleteConfirm } from './delete-confirm'
 import { EditModal } from './edit'
 
@@ -33,23 +32,26 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
       >
         <div className="flex items-center justify-between">
           <div className="flex h-6 items-center gap-1">
-            <RiWebhookLine className="size-4 text-text-secondary" />
+            <span aria-hidden className="i-ri-webhook-line size-4 text-text-secondary" />
             <span className="system-md-semibold text-text-secondary">{data.name}</span>
           </div>
 
           <div className="hidden items-center gap-1 group-hover:flex">
-            <ActionButton
+            <IconButton
+              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
               onClick={showEditModal}
-              className="transition-colors hover:bg-state-base-hover"
+              className="transition-colors"
             >
-              <RiEditLine className="size-4" />
-            </ActionButton>
-            <ActionButton
+              <span aria-hidden="true" className="i-ri-edit-line size-4" />
+            </IconButton>
+            <IconButton
+              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+              tone="destructive"
               onClick={showDeleteModal}
-              className="subscription-delete-btn transition-colors hover:bg-state-destructive-hover hover:text-text-destructive"
+              className="subscription-delete-btn transition-colors"
             >
-              <RiDeleteBinLine className="size-4" />
-            </ActionButton>
+              <span aria-hidden="true" className="i-ri-delete-bin-line size-4" />
+            </IconButton>
           </div>
         </div>
 
@@ -65,7 +67,7 @@ const SubscriptionCard = ({ data, pluginDetail }: Props) => {
               </PopoverTrigger>
               <PopoverContent
                 placement="left"
-                popupClassName="max-w-[320px] break-all px-3 py-2 system-xs-regular text-text-tertiary"
+                className="max-w-[320px] px-3 py-2 system-xs-regular break-all text-text-tertiary"
               >
                 {data.endpoint}
               </PopoverContent>

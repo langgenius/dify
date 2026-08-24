@@ -1,4 +1,7 @@
-import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
+import type {
+  DatePickerProps,
+  TriggerProps,
+} from '@/app/components/base/date-and-time-picker/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
@@ -31,8 +34,8 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
     [onChange],
   )
 
-  const renderTrigger = useCallback(
-    ({ handleClickTrigger }: TriggerProps) => {
+  const renderTrigger = useCallback<NonNullable<DatePickerProps['renderTrigger']>>(
+    (props, _state, { handleClickTrigger }: TriggerProps) => {
       const hasValue = Boolean(value)
       const triggerText = value
         ? formatTimestamp(
@@ -44,9 +47,11 @@ const WrappedDatePicker = ({ className, label, value, onChange }: Props) => {
 
       return (
         <div
+          {...props}
           className={cn(
             'group flex items-center rounded-md bg-components-input-bg-normal',
             className,
+            props.className,
           )}
         >
           <button

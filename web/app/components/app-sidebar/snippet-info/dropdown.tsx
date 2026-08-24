@@ -10,7 +10,6 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -128,14 +128,16 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
-          className={cn(
-            'action-btn action-btn-m size-6 rounded-md text-text-tertiary',
-            open && 'bg-state-base-hover text-text-secondary',
-          )}
-        >
-          <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[180px] p-1">
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+              className="rounded-md data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </IconButton>
+          }
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-[180px] p-1">
           {canCreateAndModifySnippet && (
             <>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>

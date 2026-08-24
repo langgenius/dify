@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import type { OxlintConfig } from 'vite-plus/lint'
 import path from 'node:path'
 
@@ -19,6 +21,94 @@ const tailwindCanonicalClassesOverride = {
     ],
   },
 } satisfies NonNullable<OxlintConfig['overrides']>[number]
+
+export const webJsxA11yRules = {
+  'jsx-a11y/alt-text': 'error',
+  'jsx-a11y/anchor-ambiguous-text': 'off',
+  'jsx-a11y/anchor-has-content': 'error',
+  'jsx-a11y/anchor-is-valid': 'error',
+  'jsx-a11y/aria-activedescendant-has-tabindex': 'error',
+  'jsx-a11y/aria-props': 'error',
+  'jsx-a11y/aria-proptypes': 'error',
+  'jsx-a11y/aria-role': 'error',
+  'jsx-a11y/aria-unsupported-elements': 'error',
+  'jsx-a11y/autocomplete-valid': 'error',
+  'jsx-a11y/click-events-have-key-events': 'error',
+  'jsx-a11y/heading-has-content': 'error',
+  'jsx-a11y/html-has-lang': 'error',
+  'jsx-a11y/iframe-has-title': 'error',
+  'jsx-a11y/img-redundant-alt': 'error',
+  'jsx-a11y/interactive-supports-focus': [
+    'error',
+    {
+      tabbable: ['button', 'checkbox', 'link', 'searchbox', 'spinbutton', 'switch', 'textbox'],
+    },
+  ],
+  'jsx-a11y/label-has-associated-control': 'error',
+  'jsx-a11y/media-has-caption': 'error',
+  'jsx-a11y/mouse-events-have-key-events': 'error',
+  'jsx-a11y/no-access-key': 'error',
+  'jsx-a11y/no-autofocus': 'error',
+  'jsx-a11y/no-distracting-elements': 'error',
+  'jsx-a11y/no-interactive-element-to-noninteractive-role': [
+    'error',
+    {
+      tr: ['none', 'presentation'],
+      canvas: ['img'],
+    },
+  ],
+  'jsx-a11y/no-noninteractive-element-interactions': [
+    'error',
+    {
+      handlers: [
+        'onClick',
+        'onError',
+        'onLoad',
+        'onMouseDown',
+        'onMouseUp',
+        'onKeyPress',
+        'onKeyDown',
+        'onKeyUp',
+      ],
+      alert: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
+      body: ['onError', 'onLoad'],
+      dialog: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
+      iframe: ['onError', 'onLoad'],
+      img: ['onError', 'onLoad'],
+    },
+  ],
+  'jsx-a11y/no-noninteractive-element-to-interactive-role': [
+    'error',
+    {
+      ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
+      ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
+      li: ['menuitem', 'menuitemradio', 'menuitemcheckbox', 'option', 'row', 'tab', 'treeitem'],
+      table: ['grid'],
+      td: ['gridcell'],
+      fieldset: ['radiogroup', 'presentation'],
+    },
+  ],
+  'jsx-a11y/no-noninteractive-tabindex': [
+    'error',
+    {
+      tags: [],
+      roles: ['tabpanel'],
+      allowExpressionValues: true,
+    },
+  ],
+  'jsx-a11y/no-redundant-roles': 'error',
+  'jsx-a11y/no-static-element-interactions': [
+    'error',
+    {
+      allowExpressionValues: true,
+      handlers: ['onClick', 'onMouseDown', 'onMouseUp', 'onKeyPress', 'onKeyDown', 'onKeyUp'],
+    },
+  ],
+  'jsx-a11y/role-has-required-aria-props': 'error',
+  'jsx-a11y/role-supports-aria-props': 'error',
+  'jsx-a11y/scope': 'error',
+  'jsx-a11y/tabindex-no-positive': 'error',
+} satisfies NonNullable<OxlintConfig['rules']>
 
 /**
  * Oxlint equivalent of the ESLint configurations that were active before the migration.
@@ -48,7 +138,8 @@ export const lintConfig = {
     'dify-agent/**',
     'docker/**',
     'docs/**',
-    'scripts/**',
+    'scripts/**/*',
+    '!scripts/check-web-production-unused-after-knip-fix.mjs',
     'sdks/php-client/**',
     'sdks/python-client/**',
     '**/.next/**',
@@ -73,6 +164,10 @@ export const lintConfig = {
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
     'eslint-plugin-command',
+    {
+      name: 'dify',
+      specifier: './web/plugins/eslint/index.js',
+    },
     'eslint-plugin-erasable-syntax-only',
     {
       name: 'eslint-comments',
@@ -82,7 +177,6 @@ export const lintConfig = {
       name: 'eslint-react',
       specifier: '@eslint-react/eslint-plugin',
     },
-    'eslint-plugin-hyoban',
     {
       name: 'jsdoc-js',
       specifier: 'eslint-plugin-jsdoc',
@@ -687,116 +781,14 @@ export const lintConfig = {
           'error',
           {
             allowConstantExport: true,
-            allowExportNames: ['viewport'],
+            allowExportNames: ['generateMetadata', 'viewport'],
           },
         ],
       },
     },
     {
       files: ['web/**/*.tsx'],
-      rules: {
-        'jsx-a11y/alt-text': 'error',
-        'jsx-a11y/anchor-ambiguous-text': 'off',
-        'jsx-a11y/anchor-has-content': 'error',
-        'jsx-a11y/anchor-is-valid': 'error',
-        'jsx-a11y/aria-activedescendant-has-tabindex': 'error',
-        'jsx-a11y/aria-props': 'error',
-        'jsx-a11y/aria-proptypes': 'error',
-        'jsx-a11y/aria-role': 'error',
-        'jsx-a11y/aria-unsupported-elements': 'error',
-        'jsx-a11y/autocomplete-valid': 'error',
-        'jsx-a11y/click-events-have-key-events': 'error',
-        'jsx-a11y/heading-has-content': 'error',
-        'jsx-a11y/html-has-lang': 'error',
-        'jsx-a11y/iframe-has-title': 'error',
-        'jsx-a11y/img-redundant-alt': 'error',
-        'jsx-a11y/interactive-supports-focus': [
-          'error',
-          {
-            tabbable: [
-              'button',
-              'checkbox',
-              'link',
-              'searchbox',
-              'spinbutton',
-              'switch',
-              'textbox',
-            ],
-          },
-        ],
-        'jsx-a11y/label-has-associated-control': 'error',
-        'jsx-a11y/media-has-caption': 'error',
-        'jsx-a11y/mouse-events-have-key-events': 'error',
-        'jsx-a11y/no-access-key': 'error',
-        'jsx-a11y/no-autofocus': 'error',
-        'jsx-a11y/no-distracting-elements': 'error',
-        'jsx-a11y/no-interactive-element-to-noninteractive-role': [
-          'error',
-          {
-            tr: ['none', 'presentation'],
-            canvas: ['img'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-element-interactions': [
-          'error',
-          {
-            handlers: [
-              'onClick',
-              'onError',
-              'onLoad',
-              'onMouseDown',
-              'onMouseUp',
-              'onKeyPress',
-              'onKeyDown',
-              'onKeyUp',
-            ],
-            alert: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
-            body: ['onError', 'onLoad'],
-            dialog: ['onKeyUp', 'onKeyDown', 'onKeyPress'],
-            iframe: ['onError', 'onLoad'],
-            img: ['onError', 'onLoad'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-element-to-interactive-role': [
-          'error',
-          {
-            ul: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-            ol: ['listbox', 'menu', 'menubar', 'radiogroup', 'tablist', 'tree', 'treegrid'],
-            li: [
-              'menuitem',
-              'menuitemradio',
-              'menuitemcheckbox',
-              'option',
-              'row',
-              'tab',
-              'treeitem',
-            ],
-            table: ['grid'],
-            td: ['gridcell'],
-            fieldset: ['radiogroup', 'presentation'],
-          },
-        ],
-        'jsx-a11y/no-noninteractive-tabindex': [
-          'error',
-          {
-            tags: [],
-            roles: ['tabpanel'],
-            allowExpressionValues: true,
-          },
-        ],
-        'jsx-a11y/no-redundant-roles': 'error',
-        'jsx-a11y/no-static-element-interactions': [
-          'error',
-          {
-            allowExpressionValues: true,
-            handlers: ['onClick', 'onMouseDown', 'onMouseUp', 'onKeyPress', 'onKeyDown', 'onKeyUp'],
-          },
-        ],
-        'jsx-a11y/role-has-required-aria-props': 'error',
-        'jsx-a11y/role-supports-aria-props': 'error',
-        'jsx-a11y/scope': 'error',
-        'jsx-a11y/tabindex-no-positive': 'error',
-      },
+      rules: webJsxA11yRules,
     },
     {
       files: ['web/**/*.stories.{js,cjs,mjs,jsx,ts,tsx}', 'web/**/*.story.{js,cjs,mjs,jsx,ts,tsx}'],
@@ -824,7 +816,7 @@ export const lintConfig = {
     {
       files: ['web/**/*.tsx'],
       rules: {
-        'hyoban/prefer-tailwind-icons': [
+        'dify/prefer-tailwind-icons': [
           'warn',
           {
             prefix: 'i-',

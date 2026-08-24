@@ -8,7 +8,7 @@ declare global {
     ManagedMediaSource?: typeof MediaSource
   }
 }
-export default class AudioPlayer {
+export class AudioPlayer {
   mediaSource: MediaSource | null
   audio: HTMLAudioElement
   audioContext: AudioContext
@@ -162,7 +162,7 @@ export default class AudioPlayer {
         true,
       )
       this.audio.addEventListener(
-        'loaded',
+        'loadeddata',
         () => {
           callback('loaded')
         },
@@ -179,13 +179,6 @@ export default class AudioPlayer {
         'timeupdate',
         () => {
           callback('timeupdate')
-        },
-        true,
-      )
-      this.audio.addEventListener(
-        'loadeddate',
-        () => {
-          callback('loadeddate')
         },
         true,
       )

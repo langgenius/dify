@@ -50,21 +50,19 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   const canEditWorkflow = accessControl.canEdit && !workflowOperationReadOnly
   const shouldHideImportApp = flowType === FlowType.snippet || isSnippetCanvas()
 
-  const renderAddBlockTrigger = useCallback(() => {
-    return (
-      <ContextMenuItem
-        nativeButton
-        closeOnClick={false}
-        render={<button type="button" />}
-        className={cn(
-          'w-[calc(100%-8px)]',
-          'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
-        )}
-      >
-        {t(($) => $['common.addBlock'], { ns: 'workflow' })}
-      </ContextMenuItem>
-    )
-  }, [t])
+  const addBlockTrigger = (
+    <ContextMenuItem
+      nativeButton
+      closeOnClick={false}
+      render={<button type="button" />}
+      className={cn(
+        'w-[calc(100%-8px)]',
+        'justify-between gap-4 border-0 bg-transparent px-3 text-left text-text-secondary',
+      )}
+    >
+      {t(($) => $['common.addBlock'], { ns: 'workflow' })}
+    </ContextMenuItem>
+  )
 
   const handleRunAction = useCallback(() => {
     if (isChatMode) handleWorkflowStartRunInChatflow()
@@ -76,11 +74,11 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   if (!isPanelContextMenu) return null
 
   return (
-    <ContextMenuContent popupClassName="w-[200px] rounded-lg" sideOffset={4}>
+    <ContextMenuContent className="w-[200px] rounded-lg" sideOffset={4}>
       <ContextMenuGroup>
         {canEditWorkflow && (
           <AddBlock
-            renderTrigger={renderAddBlockTrigger}
+            renderTrigger={addBlockTrigger}
             onClose={onClose}
             isolateKeyboardEvents
             sideOffset={-36}

@@ -12,7 +12,7 @@ from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fix
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
@@ -21,8 +21,14 @@ logger = logging.getLogger(__name__)
 
 _http_client: httpx.Client = get_pooled_http_client(
     "billing:default",
-    lambda: httpx.Client(limits=httpx.Limits(max_keepalive_connections=50, max_connections=100)),
+    lambda: httpx.Client(
+        timeout=httpx.Timeout(30.0, connect=5.0),
+        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
+    ),
 )
+
+
+EmailFreezeType = Literal["freeze", "email_domain_suspended"]
 
 
 class SubscriptionPlan(TypedDict):
@@ -102,6 +108,7 @@ class _BillingQuota(TypedDict):
 class _VectorSpaceQuota(TypedDict):
     size: float
     limit: int
+    usage_unknown: NotRequired[bool]
 
 
 class _KnowledgeRateLimit(TypedDict):
@@ -203,6 +210,10 @@ class BillingService:
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
     _PLAN_CACHE_TTL = 600
+
+    @classmethod
+    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
 
     @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
@@ -471,13 +482,26 @@ class BillingService:
         return cls._send_request("DELETE", "/account", params=params)
 
     @classmethod
-    def is_email_in_freeze(cls, email: str) -> bool:
+    def get_email_freeze_type(cls, email: str) -> EmailFreezeType | None:
         params = {"email": email}
         try:
             response = cls._send_request("GET", "/account/in-freeze", params=params)
-            return bool(response.get("data", False))
+            if not response.get("data", False):
+                return None
+
+            freeze_type = response.get("freeze_type") or response.get("freezeType")
+            if freeze_type in ("freeze", "email_domain_suspended"):
+                return freeze_type
+
+            # Keep compatibility with older billing services that only return
+            # the boolean `data` field.
+            return "freeze"
         except Exception:
-            return False
+            return None
+
+    @classmethod
+    def is_email_in_freeze(cls, email: str) -> bool:
+        return cls.get_email_freeze_type(email) is not None
 
     @classmethod
     def update_account_deletion_feedback(cls, email: str, feedback: str):

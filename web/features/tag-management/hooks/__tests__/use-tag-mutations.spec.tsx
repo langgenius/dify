@@ -1,20 +1,25 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { useApplyTagBindingsMutation } from '../use-tag-mutations'
 
-const { bindTag, listKey, unbindTag } = vi.hoisted(() => ({
-  bindTag: vi.fn(),
-  listKey: vi.fn((options: { type: 'query'; input: { query: { type: string } } }) => [
-    'console',
-    'tags',
-    'get',
-    'query',
-    options.input.query.type,
-  ]),
-  unbindTag: vi.fn(),
-}))
+const { appListKey, bindTag, listKey, recentAppListKey, starredAppListKey, unbindTag } = vi.hoisted(
+  () => ({
+    appListKey: vi.fn(() => ['console', 'apps', 'get']),
+    bindTag: vi.fn(),
+    listKey: vi.fn((options: { type: 'query'; input: { query: { type: string } } }) => [
+      'console',
+      'tags',
+      'get',
+      'query',
+      options.input.query.type,
+    ]),
+    recentAppListKey: vi.fn(() => ['console', 'apps', 'recent', 'get']),
+    starredAppListKey: vi.fn(() => ['console', 'apps', 'starred', 'get']),
+    unbindTag: vi.fn(),
+  }),
+)
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
@@ -26,6 +31,11 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    apps: {
+      get: { key: appListKey },
+      recent: { get: { key: recentAppListKey } },
+      starred: { get: { key: starredAppListKey } },
+    },
     tags: {
       get: {
         key: listKey,
@@ -97,6 +107,15 @@ describe('useTagMutations', () => {
         expect(invalidateQueries).toHaveBeenCalledWith({
           queryKey: ['console', 'tags', 'get', 'query', 'app'],
         })
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: ['console', 'apps', 'get'],
+        })
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: ['console', 'apps', 'starred', 'get'],
+        })
+        expect(invalidateQueries).toHaveBeenCalledWith({
+          queryKey: ['console', 'apps', 'recent', 'get'],
+        })
       })
       expect(listKey).toHaveBeenCalledWith({
         type: 'query',
@@ -128,6 +147,9 @@ describe('useTagMutations', () => {
           queryKey: ['console', 'tags', 'get', 'query', 'knowledge'],
         })
       })
+      expect(appListKey).not.toHaveBeenCalled()
+      expect(starredAppListKey).not.toHaveBeenCalled()
+      expect(recentAppListKey).not.toHaveBeenCalled()
       expect(listKey).toHaveBeenCalledWith({
         type: 'query',
         input: {

@@ -9,7 +9,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
     ShellCommandResult,
     ShellCommandStatus,
-    ShellFileTransferProtocol,
+    ShellExecutionMode,
     ShellPromptObservation,
     ShellProviderError,
 )
@@ -28,7 +28,7 @@ __all__ = [
     "ShellCommandProtocol",
     "ShellCommandResult",
     "ShellCommandStatus",
-    "ShellFileTransferProtocol",
+    "ShellExecutionMode",
     "ShellPromptObservation",
     "ShellProviderError",
 ]

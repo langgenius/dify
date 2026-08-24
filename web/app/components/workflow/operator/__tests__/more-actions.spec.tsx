@@ -9,112 +9,12 @@ const mockToSvg = vi.fn()
 const mockDownloadUrl = vi.fn()
 const mockSetViewport = vi.fn()
 const mockGetNodesReadOnly = vi.fn()
-const { mockDropdownContentProps, mockWorkflowState } = vi.hoisted(() => ({
-  mockDropdownContentProps: vi.fn(),
+const { mockWorkflowState } = vi.hoisted(() => ({
   mockWorkflowState: {
     knowledgeName: '',
     appName: 'Demo App',
   },
 }))
-vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
-  const React = await import('react')
-  const DropdownMenuContext = React.createContext<{
-    open: boolean
-    setOpen: (open: boolean) => void
-  } | null>(null)
-
-  const useDropdownMenuContext = () => {
-    const context = React.use(DropdownMenuContext)
-    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
-    return context
-  }
-
-  return {
-    DropdownMenu: ({
-      children,
-      open,
-      onOpenChange,
-    }: {
-      children: React.ReactNode
-      open: boolean
-      onOpenChange?: (open: boolean) => void
-    }) => (
-      <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
-        <div>{children}</div>
-      </DropdownMenuContext>
-    ),
-    DropdownMenuTrigger: ({
-      children,
-      render,
-      className,
-    }: {
-      children: React.ReactNode
-      render?: React.ReactElement<{
-        className?: string
-        disabled?: boolean
-        onClick?: React.MouseEventHandler<HTMLButtonElement>
-      }>
-      className?: string
-    }) => {
-      const { open, setOpen } = useDropdownMenuContext()
-      if (render) {
-        return React.cloneElement(
-          render,
-          {
-            className,
-            onClick: () => setOpen(!open),
-          },
-          children,
-        )
-      }
-      return (
-        <button type="button" className={className} onClick={() => setOpen(!open)}>
-          {children}
-        </button>
-      )
-    },
-    DropdownMenuContent: ({
-      children,
-      ...positioningProps
-    }: {
-      children: React.ReactNode
-      placement?: string
-      sideOffset?: number
-      alignOffset?: number
-      popupClassName?: string
-    }) => {
-      mockDropdownContentProps(positioningProps)
-      const { open } = useDropdownMenuContext()
-      return open ? <div>{children}</div> : null
-    },
-    DropdownMenuItem: ({
-      children,
-      onClick,
-      className,
-    }: {
-      children: React.ReactNode
-      onClick?: React.MouseEventHandler<HTMLButtonElement>
-      className?: string
-    }) => {
-      const { setOpen } = useDropdownMenuContext()
-      return (
-        <button
-          type="button"
-          className={className}
-          onClick={(event) => {
-            onClick?.(event)
-            setOpen(false)
-          }}
-        >
-          {children}
-        </button>
-      )
-    },
-    DropdownMenuSeparator: ({ className }: { className?: string }) => (
-      <div className={className} data-testid="dropdown-separator" />
-    ),
-  }
-})
 
 vi.mock('html-to-image', () => ({
   toPng: (...args: unknown[]) => mockToPng(...args),
@@ -180,15 +80,6 @@ describe('MoreActions', () => {
     const viewport = document.createElement('div')
     viewport.className = 'react-flow__viewport'
     document.body.appendChild(viewport)
-  })
-
-  it('opens the menu to the right of the workflow control bar', () => {
-    render(<MoreActions />)
-
-    expect(mockDropdownContentProps).toHaveBeenCalledWith({
-      placement: 'right-end',
-      popupClassName: 'min-w-[180px]',
-    })
   })
 
   it('opens the menu and exports the current view as png', async () => {

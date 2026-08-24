@@ -106,16 +106,16 @@ export const SubscriptionSelectorEntry = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
-        render={
-          <div>
-            <SubscriptionTriggerButton selectedId={selectedId} isOpen={isOpen} />
+        render={(props, state) => (
+          <div {...props}>
+            <SubscriptionTriggerButton selectedId={selectedId} isOpen={state.open} />
           </div>
-        }
+        )}
       />
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
       >
         <div className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg">
           <SubscriptionList
