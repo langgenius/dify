@@ -203,6 +203,21 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 	}
 	multipartWriter := multipart.NewWriter(pipeWriter)
 	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
+	if fileInfo, statErr := os.Stat(filePath); statErr == nil && fileInfo.Mode().IsRegular() {
+		contentLength, lengthErr := multipartUploadContentLength(
+			multipartWriter.Boundary(),
+			filename,
+			mimetype,
+			fileInfo.Size(),
+		)
+		if lengthErr != nil {
+			_ = pipeReader.Close()
+			_ = pipeWriter.Close()
+			_ = file.Close()
+			return nil, fmt.Errorf("calculate multipart upload size: %w", lengthErr)
+		}
+		req.ContentLength = contentLength
+	}
 
 	writerDone := make(chan error, 1)
 	go func() {
@@ -258,6 +273,26 @@ func (c *HTTPClient) uploadFile(uploadURL string, filePath string, filename stri
 		return nil, fmt.Errorf("upload response exceeds %d bytes", maxUploadResponseBytes)
 	}
 	return respBody, nil
+}
+
+func multipartUploadContentLength(boundary, filename, mimetype string, fileSize int64) (int64, error) {
+	var envelope bytes.Buffer
+	writer := multipart.NewWriter(&envelope)
+	if err := writer.SetBoundary(boundary); err != nil {
+		return 0, err
+	}
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filename))
+	header.Set("Content-Type", mimetype)
+	if _, err := writer.CreatePart(header); err != nil {
+		return 0, err
+	}
+	prefixBytes := envelope.Len()
+	envelope.Reset()
+	if err := writer.Close(); err != nil {
+		return 0, err
+	}
+	return int64(prefixBytes) + fileSize + int64(envelope.Len()), nil
 }
 
 func isUploadWriterAbort(err error) bool {
