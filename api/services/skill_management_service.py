@@ -18,6 +18,7 @@ import logging
 import mimetypes
 import posixpath
 import re
+import xml.etree.ElementTree as ET
 import zipfile
 from base64 import b64encode
 from collections.abc import Generator
@@ -3254,6 +3255,16 @@ class SkillManagementService:
                 body = SkillManagementService._extract_pdf_text(payload, max_chars=available_content)
                 if not body:
                     body = "[PDF has no extractable text; image-only content is not processed.]"
+            elif SkillManagementService._is_office_text_payload(filename=attachment.name, mime_type=mime_type):
+                available_content = remaining - len(header)
+                body = SkillManagementService._extract_office_text(
+                    filename=attachment.name,
+                    mime_type=mime_type,
+                    payload=payload,
+                    max_chars=available_content,
+                )
+                if not body:
+                    body = "[Document has no extractable text.]"
             elif not SkillManagementService._is_text_payload(filename=attachment.name, mime_type=mime_type):
                 body = (
                     "[Image attachment is provided separately as multimodal content.]"
@@ -4417,6 +4428,16 @@ class SkillManagementService:
         return mime_type == "application/pdf" or filename.lower().endswith(".pdf")
 
     @staticmethod
+    def _is_office_text_payload(*, filename: str, mime_type: str) -> bool:
+        lower_name = filename.lower()
+        return mime_type in {
+            "application/rtf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        } or lower_name.endswith((".docx", ".xlsx", ".pptx", ".rtf"))
+
+    @staticmethod
     def _extract_pdf_text(payload: bytes, *, max_chars: int) -> str:
         if max_chars <= 0:
             return ""
@@ -4460,6 +4481,198 @@ class SkillManagementService:
         text = "".join(pages).strip()
         if truncated and text:
             text += "\n[TRUNCATED]"
+        return text
+
+    @staticmethod
+    def _extract_office_text(*, filename: str, mime_type: str, payload: bytes, max_chars: int) -> str:
+        if max_chars <= 0:
+            return ""
+
+        lower_name = filename.lower()
+        if mime_type == "application/rtf" or lower_name.endswith(".rtf"):
+            return SkillManagementService._extract_rtf_text(payload, max_chars=max_chars)
+        if (
+            mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            or lower_name.endswith(".docx")
+        ):
+            return SkillManagementService._extract_docx_text(payload, max_chars=max_chars)
+        if (
+            mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            or lower_name.endswith(".xlsx")
+        ):
+            return SkillManagementService._extract_xlsx_text(payload, max_chars=max_chars)
+        if (
+            mime_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            or lower_name.endswith(".pptx")
+        ):
+            return SkillManagementService._extract_pptx_text(payload, max_chars=max_chars)
+        return ""
+
+    @staticmethod
+    def _bounded_text(parts: list[str], *, max_chars: int) -> str:
+        text = "\n".join(part for part in parts if part).strip()
+        if len(text) > max_chars:
+            return f"{text[:max_chars]}\n[TRUNCATED]"
+        return text
+
+    @staticmethod
+    def _xml_text_content(xml_payload: bytes, *, text_tags: set[str]) -> list[str]:
+        root = ET.fromstring(xml_payload)
+        return [
+            (node.text or "")
+            for node in root.iter()
+            if node.text and node.tag.rsplit("}", 1)[-1] in text_tags
+        ]
+
+    @staticmethod
+    def _extract_docx_text(payload: bytes, *, max_chars: int) -> str:
+        parts: list[str] = []
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                for name in sorted(archive.namelist()):
+                    if not (
+                        name == "word/document.xml"
+                        or name.startswith("word/header")
+                        or name.startswith("word/footer")
+                    ):
+                        continue
+                    parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
+                    if sum(len(part) for part in parts) >= max_chars:
+                        break
+        except (ET.ParseError, OSError, zipfile.BadZipFile):
+            return ""
+        return SkillManagementService._bounded_text(parts, max_chars=max_chars)
+
+    @staticmethod
+    def _extract_pptx_text(payload: bytes, *, max_chars: int) -> str:
+        parts: list[str] = []
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                slide_names = sorted(
+                    name
+                    for name in archive.namelist()
+                    if name.startswith("ppt/slides/slide") and name.endswith(".xml")
+                )
+                for name in slide_names:
+                    parts.extend(SkillManagementService._xml_text_content(archive.read(name), text_tags={"t"}))
+                    if sum(len(part) for part in parts) >= max_chars:
+                        break
+        except (ET.ParseError, OSError, zipfile.BadZipFile):
+            return ""
+        return SkillManagementService._bounded_text(parts, max_chars=max_chars)
+
+    @staticmethod
+    def _extract_xlsx_text(payload: bytes, *, max_chars: int) -> str:
+        parts: list[str] = []
+        try:
+            with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+                shared_strings: list[str] = []
+                if "xl/sharedStrings.xml" in archive.namelist():
+                    shared_strings = SkillManagementService._xml_text_content(
+                        archive.read("xl/sharedStrings.xml"),
+                        text_tags={"t"},
+                    )
+                worksheet_names = sorted(
+                    name
+                    for name in archive.namelist()
+                    if name.startswith("xl/worksheets/sheet") and name.endswith(".xml")
+                )
+                for name in worksheet_names:
+                    root = ET.fromstring(archive.read(name))
+                    for cell in root.iter():
+                        if cell.tag.rsplit("}", 1)[-1] != "c":
+                            continue
+                        cell_type = cell.attrib.get("t")
+                        values = [
+                            child.text or ""
+                            for child in cell.iter()
+                            if child.text and child.tag.rsplit("}", 1)[-1] in {"t", "v"}
+                        ]
+                        if not values:
+                            continue
+                        if cell_type == "s":
+                            try:
+                                parts.append(shared_strings[int(values[0])])
+                            except (IndexError, ValueError):
+                                continue
+                        else:
+                            parts.append(" ".join(values))
+                        if sum(len(part) for part in parts) >= max_chars:
+                            break
+                    if sum(len(part) for part in parts) >= max_chars:
+                        break
+        except (ET.ParseError, OSError, zipfile.BadZipFile):
+            return ""
+        return SkillManagementService._bounded_text(parts, max_chars=max_chars)
+
+    @staticmethod
+    def _extract_rtf_text(payload: bytes, *, max_chars: int) -> str:
+        try:
+            source = payload.decode("utf-8")
+        except UnicodeDecodeError:
+            source = payload.decode("latin-1", errors="replace")
+
+        text_parts: list[str] = []
+        destination_skip_depth: int | None = None
+        depth = 0
+        index = 0
+        while index < len(source):
+            char = source[index]
+            if char == "{":
+                depth += 1
+                index += 1
+                if source[index : index + 1] == "\\" and source[index + 1 : index + 2] == "*":
+                    destination_skip_depth = depth
+                continue
+            if char == "}":
+                if destination_skip_depth is not None and depth <= destination_skip_depth:
+                    destination_skip_depth = None
+                depth = max(0, depth - 1)
+                index += 1
+                continue
+            if destination_skip_depth is not None:
+                index += 1
+                continue
+            if char != "\\":
+                text_parts.append("\n" if char in "\r\n" else char)
+                index += 1
+                continue
+
+            match = re.match(r"\\([a-zA-Z]+)(-?\d+)? ?", source[index:])
+            if match:
+                word = match.group(1)
+                value = match.group(2)
+                if word in {"par", "line"}:
+                    text_parts.append("\n")
+                elif word == "tab":
+                    text_parts.append("\t")
+                elif word == "u" and value is not None:
+                    codepoint = int(value)
+                    if codepoint < 0:
+                        codepoint += 65536
+                    text_parts.append(chr(codepoint))
+                index += len(match.group(0))
+                if word == "u" and source[index : index + 2].startswith("\\'"):
+                    index += 4
+                elif word == "u" and index < len(source):
+                    index += 1
+                continue
+
+            if source[index : index + 2] == "\\'":
+                try:
+                    text_parts.append(bytes.fromhex(source[index + 2 : index + 4]).decode("latin-1"))
+                except ValueError:
+                    pass
+                index += 4
+                continue
+            if index + 1 < len(source):
+                text_parts.append(source[index + 1])
+            index += 2
+
+        text = re.sub(r"[ \t]+\n", "\n", "".join(text_parts))
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        if len(text) > max_chars:
+            return f"{text[:max_chars]}\n[TRUNCATED]"
         return text
 
     @staticmethod

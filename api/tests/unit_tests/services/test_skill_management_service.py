@@ -2939,6 +2939,137 @@ def test_build_assistant_attachment_context_includes_extractable_pdf_text() -> N
     assert "Binary attachment available" not in context
 
 
+def _zip_payload(files: dict[str, str]) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for path, content in files.items():
+            archive.writestr(path, content)
+    return buffer.getvalue()
+
+
+def test_build_assistant_attachment_context_extracts_docx_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="docx-file-1",
+        name="guide.docx",
+        mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        size=123,
+    )
+    payload = _zip_payload(
+        {
+            "word/document.xml": (
+                '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                "<w:body><w:p><w:r><w:t>Escalate urgent tickets</w:t></w:r></w:p></w:body>"
+                "</w:document>"
+            )
+        }
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=payload,
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- guide.docx" in context
+    assert "Escalate urgent tickets" in context
+    assert "Binary attachment available" not in context
+
+
+def test_build_assistant_attachment_context_extracts_xlsx_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="xlsx-file-1",
+        name="forecast.xlsx",
+        mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        size=456,
+    )
+    payload = _zip_payload(
+        {
+            "xl/sharedStrings.xml": (
+                '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                "<si><t>Forecast Q1</t></si>"
+                "</sst>"
+            ),
+            "xl/worksheets/sheet1.xml": (
+                '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+                '<sheetData><row><c t="s"><v>0</v></c><c><v>42</v></c></row></sheetData>'
+                "</worksheet>"
+            ),
+        }
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=payload,
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- forecast.xlsx" in context
+    assert "Forecast Q1" in context
+    assert "42" in context
+    assert "Binary attachment available" not in context
+
+
+def test_build_assistant_attachment_context_extracts_pptx_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="pptx-file-1",
+        name="playbook.pptx",
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        size=789,
+    )
+    payload = _zip_payload(
+        {
+            "ppt/slides/slide1.xml": (
+                '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                "<p:cSld><p:spTree><p:sp><p:txBody><a:p><a:r><a:t>Quarterly enablement plan</a:t>"
+                "</a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>"
+            )
+        }
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=payload,
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- playbook.pptx" in context
+    assert "Quarterly enablement plan" in context
+    assert "Binary attachment available" not in context
+
+
+def test_build_assistant_attachment_context_extracts_rtf_text() -> None:
+    attachment = SkillAssistAttachmentPayload(
+        tool_file_id="rtf-file-1",
+        name="notes.rtf",
+        mime_type="application/rtf",
+        size=74,
+    )
+
+    with patch(
+        "services.skill_management_service.SkillManagementService._load_assistant_tool_file_bytes",
+        return_value=b"{\\rtf1\\ansi Skill Builder\\par reads RTF notes.}",
+    ):
+        context = SkillManagementService._build_assistant_attachment_context(
+            tenant_id=TENANT,
+            attachments=[attachment],
+        )
+
+    assert "--- notes.rtf" in context
+    assert "Skill Builder" in context
+    assert "reads RTF notes." in context
+    assert "Binary attachment available" not in context
+
+
 def test_build_assistant_image_contents_encodes_images_for_vision_models() -> None:
     attachments = [
         SkillAssistAttachmentPayload(
