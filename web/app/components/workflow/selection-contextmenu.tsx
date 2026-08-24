@@ -398,7 +398,7 @@ export function SelectionContextmenu({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
+      <ContextMenuContent className="w-[240px]" sideOffset={4}>
         {canCreateSnippet && (
           <>
             <ContextMenuGroup>

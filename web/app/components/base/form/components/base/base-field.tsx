@@ -3,7 +3,7 @@ import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -300,7 +300,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
+                <SelectContent className="max-h-[320px] bg-components-panel-bg-blur">
                   {memorizedOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <SelectItemText>{option.label}</SelectItemText>
@@ -330,7 +330,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="max-h-[320px] bg-components-panel-bg-blur">
+                <SelectContent className="max-h-[320px] bg-components-panel-bg-blur">
                   {memorizedOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       <SelectItemText>{option.label}</SelectItemText>
@@ -375,7 +375,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="bg-components-panel-bg-blur">
+                <SelectContent className="bg-components-panel-bg-blur">
                   {dynamicNoticeTitle && (
                     <div
                       className={cn(
@@ -415,7 +415,7 @@ const BaseField = ({
                     }
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent popupClassName="bg-components-panel-bg-blur">
+                <SelectContent className="bg-components-panel-bg-blur">
                   {dynamicNoticeTitle && (
                     <div
                       className={cn(

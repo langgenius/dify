@@ -1,7 +1,7 @@
 'use client'
 
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { Placement } from '@langgenius/dify-ui/combobox'
+import type { ComboboxPositionerProps } from '@langgenius/dify-ui/combobox'
 import type { ReactNode } from 'react'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import { Button } from '@langgenius/dify-ui/button'
@@ -32,11 +32,10 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
 
-type AppPickerProps = {
+type AppPickerProps = Pick<ComboboxPositionerProps, 'placement'> & {
   scope?: string
   disabled: boolean
   trigger: ReactNode
-  placement?: Placement
   offset?: number
   isShow: boolean
   onShowChange: (isShow: boolean) => void

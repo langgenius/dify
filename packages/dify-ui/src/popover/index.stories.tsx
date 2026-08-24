@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { Placement } from '.'
+import type { PopoverContentProps } from '.'
 import * as React from 'react'
 import {
   createPopoverHandle,
@@ -195,7 +195,9 @@ export const Infotip: Story = {
   ),
 }
 
-const PLACEMENTS: Placement[] = [
+type PopoverPlacement = NonNullable<PopoverContentProps['placement']>
+
+const PLACEMENTS: PopoverPlacement[] = [
   'top-start',
   'top',
   'top-end',
@@ -211,7 +213,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = React.useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<PopoverPlacement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">

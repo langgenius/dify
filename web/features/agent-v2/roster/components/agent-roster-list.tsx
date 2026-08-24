@@ -235,7 +235,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             </span>
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t(($) => $['roster.editInfo'])}</span>

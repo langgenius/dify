@@ -64,7 +64,7 @@ const ConditionNumberInput = ({
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={2}
-          popupClassName="w-[112px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+          className="w-[112px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
         >
           <DropdownMenuRadioGroup value={numberVarType} onValueChange={onNumberVarTypeChange}>
             {options.map((option) => (

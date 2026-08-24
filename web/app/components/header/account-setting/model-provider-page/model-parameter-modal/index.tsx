@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { ComponentPropsWithRef, FC, ReactElement } from 'react'
 import type { FormValue, ModelParameterRule } from '../declarations'
 import type {
@@ -25,11 +25,10 @@ import ParameterItem from './parameter-item'
 import PresetsParameter from './presets-parameter'
 import { getSupportedPresetConfig } from './presets-parameter-utils'
 
-export type ModelParameterModalProps = {
+export type ModelParameterModalProps = Pick<PopoverContentProps, 'placement'> & {
   trigger?: ReactElement<ComponentPropsWithRef<'button'>>
   popupClassName?: string
   modelSelectorPopupClassName?: string
-  placement?: Placement
   isAdvancedMode: boolean
   modelId: string
   provider: string

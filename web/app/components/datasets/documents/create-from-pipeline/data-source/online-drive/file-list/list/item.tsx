@@ -1,7 +1,7 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Radio } from '@langgenius/dify-ui/radio'
+import { Radio } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
