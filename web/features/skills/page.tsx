@@ -133,7 +133,7 @@ function SkillPlaceholderState({
       aria-labelledby="skill-placeholder-title"
       className="relative col-span-full min-h-[calc(100vh-142px)] overflow-hidden"
     >
-      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,345px))] grid-rows-4 content-start gap-6">
+      <div className="pointer-events-none absolute inset-0 grid grid-cols-[repeat(auto-fill,minmax(296px,1fr))] grid-rows-4 gap-3">
         {placeholderCardIds.map((id) => (
           <div key={id} className="rounded-xl bg-background-default-lighter opacity-75" />
         ))}
