@@ -92,7 +92,7 @@ Tất cả các dịch vụ của Dify đều đi kèm với các API tương �
   Chúng tôi lưu trữ dịch vụ [Dify Cloud](https://dify.ai) cho bất kỳ ai muốn thử mà không cần cài đặt. Nó cung cấp tất cả các khả năng của phiên bản tự triển khai và bao gồm 200 lượt gọi GPT-4 miễn phí trong gói sandbox.
 
 - **Tự triển khai Dify Community Edition</br>**
-  Nhanh chóng chạy Dify trong môi trường của bạn với [hướng dẫn bắt đầu](#quick-start) này.
+  Nhanh chóng chạy Dify trong môi trường của bạn với [hướng dẫn bắt đầu](#bắt-đầu-nhanh) này.
   Sử dụng [tài liệu](https://docs.dify.ai) của chúng tôi để tham khảo thêm và nhận hướng dẫn chi tiết hơn.
 
 - **Dify cho doanh nghiệp / tổ chức</br>**

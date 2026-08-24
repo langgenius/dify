@@ -96,7 +96,7 @@ Todas os recursos do Dify vêm com APIs correspondentes, permitindo que você in
   Oferecemos o serviço [Dify Cloud](https://dify.ai) para qualquer pessoa experimentar sem nenhuma configuração. Ele fornece todas as funcionalidades da versão auto-hospedada, incluindo 200 chamadas GPT-4 gratuitas no plano sandbox.
 
 - **Auto-hospedagem do Dify Community Edition</br>**
-  Configure rapidamente o Dify no seu ambiente com este [guia inicial](#quick-start).
+  Configure rapidamente o Dify no seu ambiente com este [guia inicial](#início-rápido).
   Use nossa [documentação](https://docs.dify.ai) para referências adicionais e instruções mais detalhadas.
 
 - **Dify para empresas/organizações</br>**
