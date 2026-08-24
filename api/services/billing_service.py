@@ -12,8 +12,6 @@ from werkzeug.exceptions import InternalServerError
 from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
-from libs.helper import RateLimiter
-from models import Account
 from services.billing_portal_service import BillingPortalLink
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
@@ -526,18 +524,8 @@ class BillingService:
         return cls._send_request("POST", "/account/delete-feedback", json=json)
 
     class EducationIdentity:
-        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", max_attempts=10, time_window=60)
-        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", max_attempts=10, time_window=60)
-
         @classmethod
-        def verify(cls, account_id: str, account_email: str):
-            if cls.verification_rate_limit.is_rate_limited(account_email):
-                from controllers.console.error import EducationVerifyLimitError
-
-                raise EducationVerifyLimitError()
-
-            cls.verification_rate_limit.increment_rate_limit(account_email)
-
+        def verify(cls, account_id: str):
             params = {"account_id": account_id}
             return BillingService._send_request("GET", "/education/verify", params=params)
 
@@ -547,14 +535,16 @@ class BillingService:
             return BillingService._send_request("GET", "/education/status", params=params)
 
         @classmethod
-        def activate(cls, account: Account, token: str, institution: str, role: str):
-            if cls.activation_rate_limit.is_rate_limited(account.email):
-                from controllers.console.error import EducationActivateLimitError
-
-                raise EducationActivateLimitError()
-
-            cls.activation_rate_limit.increment_rate_limit(account.email)
-            params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
+        def activate(
+            cls,
+            *,
+            account_id: str,
+            tenant_id: str,
+            token: str,
+            institution: str,
+            role: str,
+        ):
+            params = {"account_id": account_id, "curr_tenant_id": tenant_id}
             json = {
                 "institution": institution,
                 "token": token,
