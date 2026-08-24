@@ -8,6 +8,8 @@ here on and trusts the grant's signature.
 
 from __future__ import annotations
 
+import time
+
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
 
@@ -23,7 +25,10 @@ from libs.exception import BaseHTTPException
 from libs.file_grant import FileGrantScope, FileKind, issue_file_grant
 from services.file_grant_service import AppNotFoundError, FileGrantService, FileRef
 
-MAX_GRANT_TTL_SECONDS = 7200
+MAX_SESSION_GRANT_TTL_SECONDS = 7200
+MAX_WORKFLOW_EXECUTION_SECONDS = 24 * 60 * 60
+RUN_GRANT_EXPIRY_GRACE_SECONDS = 5 * 60
+MAX_RUN_GRANT_TTL_SECONDS = MAX_WORKFLOW_EXECUTION_SECONDS + RUN_GRANT_EXPIRY_GRACE_SECONDS
 
 
 class InvalidGrantRequestError(BaseHTTPException):
@@ -34,7 +39,7 @@ class InvalidGrantRequestError(BaseHTTPException):
 
 class GrantTtlTooLongError(BaseHTTPException):
     error_code = "grant_ttl_too_long"
-    description = f"A file grant may not live longer than {MAX_GRANT_TTL_SECONDS} seconds."
+    description = "The requested file grant lifetime exceeds its allowed window."
     code = 400
 
 
@@ -68,6 +73,27 @@ class FileGrantMintPayload(BaseModel):
     file_ids: list[FileGrantFileRef] = Field(default_factory=list)
     optional_file_ids: list[FileGrantFileRef] = Field(default_factory=list)
     run_deadline: int | None = None
+
+
+def _effective_grant_ttl_seconds(payload: FileGrantMintPayload, *, now: int) -> int:
+    ttl_seconds = payload.ttl_seconds
+    if payload.run_deadline is None:
+        if ttl_seconds > MAX_SESSION_GRANT_TTL_SECONDS:
+            raise GrantTtlTooLongError()
+        return ttl_seconds
+
+    if FileGrantScope.PRODUCE not in payload.scopes:
+        raise InvalidGrantRequestError("A run deadline requires the produce scope.")
+    if payload.run_deadline <= now:
+        raise InvalidGrantRequestError("The run deadline has expired.")
+    if payload.run_deadline > now + MAX_WORKFLOW_EXECUTION_SECONDS:
+        raise InvalidGrantRequestError("The run deadline exceeds the workflow execution limit.")
+    if ttl_seconds > MAX_RUN_GRANT_TTL_SECONDS:
+        raise GrantTtlTooLongError()
+    return min(
+        ttl_seconds,
+        payload.run_deadline - now + RUN_GRANT_EXPIRY_GRACE_SECONDS,
+    )
 
 
 class FileGrantLimits(ResponseModel):
@@ -125,8 +151,7 @@ class EnterpriseFileGrantApi(Resource):
         except ValidationError as exc:
             raise InvalidGrantRequestError(str(exc)) from exc
 
-        if payload.ttl_seconds > MAX_GRANT_TTL_SECONDS:
-            raise GrantTtlTooLongError()
+        ttl_seconds = _effective_grant_ttl_seconds(payload, now=int(time.time()))
         # A NUL reaches `external_user_id` verbatim, and PostgreSQL rejects it at
         # the driver, which would surface a malformed subject as a 500.
         if not payload.subject.strip() or "\x00" in payload.subject:
@@ -150,7 +175,7 @@ class EnterpriseFileGrantApi(Resource):
             tenant_id=payload.tenant_id,
             app_id=payload.app_id,
             scopes=payload.scopes,
-            ttl_seconds=payload.ttl_seconds,
+            ttl_seconds=ttl_seconds,
         )
 
         return FileGrantMintResponse(

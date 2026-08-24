@@ -17,7 +17,10 @@ from sqlalchemy.orm import Session
 
 from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api.app.file_grants import (
-    MAX_GRANT_TTL_SECONDS,
+    MAX_RUN_GRANT_TTL_SECONDS,
+    MAX_SESSION_GRANT_TTL_SECONDS,
+    MAX_WORKFLOW_EXECUTION_SECONDS,
+    RUN_GRANT_EXPIRY_GRACE_SECONDS,
     EnterpriseFileGrantApi,
     GrantAppNotFoundError,
     GrantTtlTooLongError,
@@ -187,20 +190,102 @@ def test_mint_returns_dify_upload_limits(app: Flask, config_overrides: Callable[
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
 def test_mint_rejects_ttl_over_the_cap_before_touching_identity(app: Flask, sqlite_session: Session) -> None:
     with pytest.raises(GrantTtlTooLongError):
-        _mint(app, _payload(ttl_seconds=MAX_GRANT_TTL_SECONDS + 1))
+        _mint(app, _payload(ttl_seconds=MAX_SESSION_GRANT_TTL_SECONDS + 1))
 
     assert sqlite_session.scalars(select(EndUser)).all() == []
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
-def test_mint_accepts_a_ttl_exactly_at_the_cap(app: Flask) -> None:
+def test_mint_accepts_a_session_ttl_exactly_at_the_cap(app: Flask) -> None:
     before = int(time.time())
 
-    response = _mint(app, _payload(ttl_seconds=MAX_GRANT_TTL_SECONDS))
+    response = _mint(app, _payload(ttl_seconds=MAX_SESSION_GRANT_TTL_SECONDS))
 
     expires_at = response["expires_at"]
     assert isinstance(expires_at, int)
-    assert MAX_GRANT_TTL_SECONDS <= expires_at - before <= MAX_GRANT_TTL_SECONDS + 5
+    assert MAX_SESSION_GRANT_TTL_SECONDS <= expires_at - before <= MAX_SESSION_GRANT_TTL_SECONDS + 5
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_accepts_a_run_ttl_until_deadline_plus_grace(app: Flask) -> None:
+    now = int(time.time())
+    run_duration = MAX_RUN_GRANT_TTL_SECONDS - RUN_GRANT_EXPIRY_GRACE_SECONDS
+
+    response = _mint(
+        app,
+        _payload(
+            scopes=["resolve", "produce"],
+            ttl_seconds=MAX_RUN_GRANT_TTL_SECONDS,
+            run_deadline=now + run_duration,
+        ),
+    )
+
+    expires_at = response["expires_at"]
+    assert isinstance(expires_at, int)
+    assert MAX_RUN_GRANT_TTL_SECONDS <= expires_at - now <= MAX_RUN_GRANT_TTL_SECONDS + 5
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_rejects_a_run_ttl_past_deadline_grace(app: Flask) -> None:
+    now = int(time.time())
+
+    with pytest.raises(GrantTtlTooLongError):
+        _mint(
+            app,
+            _payload(
+                scopes=["resolve", "produce"],
+                ttl_seconds=MAX_RUN_GRANT_TTL_SECONDS + 1,
+                run_deadline=now + MAX_WORKFLOW_EXECUTION_SECONDS,
+            ),
+        )
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_rejects_an_expired_run_deadline(app: Flask) -> None:
+    with pytest.raises(InvalidGrantRequestError):
+        _mint(
+            app,
+            _payload(scopes=["resolve", "produce"], ttl_seconds=1, run_deadline=int(time.time()) - 1),
+        )
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_rejects_a_run_deadline_without_produce_scope(app: Flask) -> None:
+    with pytest.raises(InvalidGrantRequestError):
+        _mint(app, _payload(run_deadline=int(time.time()) + 60))
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_rejects_a_run_deadline_beyond_the_workflow_limit(app: Flask) -> None:
+    with pytest.raises(InvalidGrantRequestError):
+        _mint(
+            app,
+            _payload(
+                scopes=["resolve", "produce"],
+                run_deadline=int(time.time()) + MAX_WORKFLOW_EXECUTION_SECONDS + 1,
+            ),
+        )
+
+
+@pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
+def test_mint_caps_a_run_grant_at_deadline_plus_grace(app: Flask) -> None:
+    now = int(time.time())
+    run_deadline = now + 60
+
+    response = _mint(
+        app,
+        _payload(
+            scopes=["resolve", "produce"],
+            ttl_seconds=1200,
+            run_deadline=run_deadline,
+        ),
+    )
+
+    expires_at = response["expires_at"]
+    assert isinstance(expires_at, int)
+    assert run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS <= expires_at <= (
+        run_deadline + RUN_GRANT_EXPIRY_GRACE_SECONDS + 1
+    )
 
 
 @pytest.mark.usefixtures("granted_config", "seeded_app", "sqlite_db")
