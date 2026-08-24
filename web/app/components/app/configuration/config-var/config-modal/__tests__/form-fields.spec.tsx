@@ -231,7 +231,9 @@ describe('ConfigModalFormFields', () => {
       'aria-disabled',
     )
     expect(screen.queryByText('variableConfig.defaultValue')).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox', { name: 'variableConfig.hidden' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('checkbox', { name: 'variableConfig.hidden' }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByText('config-select'))
     expect(multiSelectProps.payloadChangeHandlers.options).toHaveBeenCalledWith(['alpha', 'beta'])
