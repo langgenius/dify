@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from configs import dify_config
-from enums import DeploymentEdition, HostedTrialProvider
+from enums import DeploymentEdition
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
 
@@ -139,41 +139,6 @@ class SystemFeatureService:
     @staticmethod
     def is_trial_app_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
-
-    @staticmethod
-    def get_trial_models() -> list[str]:
-        """Return hosted trial provider ids without building the public snapshot."""
-        provider_enablement = {
-            HostedTrialProvider.OPENAI: (
-                dify_config.HOSTED_OPENAI_PAID_ENABLED,
-                dify_config.HOSTED_OPENAI_TRIAL_ENABLED,
-            ),
-            HostedTrialProvider.ANTHROPIC: (
-                dify_config.HOSTED_ANTHROPIC_PAID_ENABLED,
-                dify_config.HOSTED_ANTHROPIC_TRIAL_ENABLED,
-            ),
-            HostedTrialProvider.GEMINI: (
-                dify_config.HOSTED_GEMINI_PAID_ENABLED,
-                dify_config.HOSTED_GEMINI_TRIAL_ENABLED,
-            ),
-            HostedTrialProvider.X: (
-                dify_config.HOSTED_XAI_PAID_ENABLED,
-                dify_config.HOSTED_XAI_TRIAL_ENABLED,
-            ),
-            HostedTrialProvider.DEEPSEEK: (
-                dify_config.HOSTED_DEEPSEEK_PAID_ENABLED,
-                dify_config.HOSTED_DEEPSEEK_TRIAL_ENABLED,
-            ),
-            HostedTrialProvider.TONGYI: (
-                dify_config.HOSTED_TONGYI_PAID_ENABLED,
-                dify_config.HOSTED_TONGYI_TRIAL_ENABLED,
-            ),
-        }
-        return [
-            provider.value
-            for provider, (paid_enabled, trial_enabled) in provider_enablement.items()
-            if paid_enabled and trial_enabled
-        ]
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel) -> None:

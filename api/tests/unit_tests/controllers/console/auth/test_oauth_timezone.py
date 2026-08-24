@@ -6,6 +6,7 @@ from flask import Flask
 from controllers.console.auth.oauth import OAuthLogin, _generate_account
 from enums import DeploymentEdition
 from libs.oauth import OAuthUserInfo
+from models.account import Account
 from services.errors.account import AccountRegisterError
 
 
@@ -50,7 +51,7 @@ def test_generate_account_registers_with_browser_timezone(
     mock_link_account,
     app: Flask,
 ):
-    account = MagicMock()
+    account = Account(name="Test User", email="user@example.com")
     mock_register_service.register.return_value = account
     mock_feature_service.is_registration_allowed.return_value = True
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")
@@ -87,7 +88,7 @@ def test_generate_account_prefers_state_language_over_accept_language(
     mock_link_account,
     app: Flask,
 ):
-    account = MagicMock()
+    account = Account(name="Test User", email="user@example.com")
     mock_register_service.register.return_value = account
     mock_feature_service.is_registration_allowed.return_value = True
     user_info = OAuthUserInfo(id="github-123", name="Test User", email="User@Example.com")

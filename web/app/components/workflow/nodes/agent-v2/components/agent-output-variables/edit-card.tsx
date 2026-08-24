@@ -43,6 +43,7 @@ export function OutputEditCard({
   existingOutputs,
   editingIndex,
   allowDefaultValue = true,
+  reservedNames,
   state,
   onCancel,
   onConfirm,
@@ -50,6 +51,7 @@ export function OutputEditCard({
   existingOutputs: EditableOutputConfig[]
   editingIndex?: number
   allowDefaultValue?: boolean
+  reservedNames?: ReadonlySet<string>
   state: EditingState
   onCancel: () => void
   onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
@@ -63,9 +65,11 @@ export function OutputEditCard({
     (output, index) => output.name === trimmedName && index !== editingIndex,
   )
   const nameInvalid = !!trimmedName && !OUTPUT_NAME_PATTERN.test(trimmedName)
-  const hasNameError = duplicateName || nameInvalid
+  const reservedName = reservedNames?.has(trimmedName) ?? false
+  const hasNameError = duplicateName || nameInvalid || reservedName
   const defaultValueErrorKey = getDefaultValueErrorKey(draft)
-  const confirmDisabled = !trimmedName || nameInvalid || duplicateName || !!defaultValueErrorKey
+  const confirmDisabled =
+    !trimmedName || nameInvalid || duplicateName || reservedName || !!defaultValueErrorKey
   function updateDraft(next: Partial<OutputDraft>) {
     setDraft((prev) => ({ ...prev, ...next }))
   }

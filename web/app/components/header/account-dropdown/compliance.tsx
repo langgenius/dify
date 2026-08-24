@@ -183,7 +183,7 @@ export default function Compliance() {
           label={t(($) => $['userProfile.compliance'], { ns: 'common' })}
         />
       </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent popupClassName="w-[337px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
+      <DropdownMenuSubContent className="w-[337px] divide-y divide-divider-subtle bg-components-panel-bg-blur! py-0! backdrop-blur-xs">
         <DropdownMenuGroup className="py-1">
           <ComplianceDocRowItem
             icon={<Soc2 aria-hidden className="size-7 shrink-0" />}

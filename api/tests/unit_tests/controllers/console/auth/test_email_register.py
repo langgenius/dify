@@ -14,6 +14,7 @@ from controllers.console.auth.email_register import (
 )
 from controllers.console.error import AccountInFreezeError, EmailDomainSuspendedError
 from enums import DeploymentEdition
+from models.account import Account
 from services.entities.feature_entities import SystemFeatureModel
 from services.errors.account import (
     AccountRegisterError,
@@ -39,9 +40,9 @@ class TestEmailRegisterSendEmailApi:
         app: Flask,
     ):
         mock_send_mail.return_value = "token-123"
-        mock_is_freeze.return_value = None
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+        mock_is_freeze.return_value = False
+        account = Account(name="Invitee", email="invitee@example.com")
+        mock_get_account.return_value = account
 
         feature_flags = SystemFeatureModel(
             deployment_edition=DeploymentEdition.COMMUNITY,
@@ -65,7 +66,7 @@ class TestEmailRegisterSendEmailApi:
 
         assert response == {"result": "success", "data": "token-123"}
         mock_is_freeze.assert_called_once_with("invitee@example.com")
-        mock_send_mail.assert_called_once_with(email="invitee@example.com", account=mock_account, language="en-US")
+        mock_send_mail.assert_called_once_with(email="invitee@example.com", account=account, language="en-US")
         mock_extract_ip.assert_called_once()
         mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")
 
@@ -208,7 +209,7 @@ class TestEmailRegisterResetApi:
         app: Flask,
     ):
         mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
-        mock_create_account.return_value = MagicMock()
+        mock_create_account.return_value = Account(name="Invitee", email="invitee@example.com")
         token_pair = MagicMock()
         token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
         mock_login.return_value = token_pair
@@ -264,7 +265,7 @@ class TestEmailRegisterResetApi:
         app: Flask,
     ):
         mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
-        mock_create_account.return_value = MagicMock()
+        mock_create_account.return_value = Account(name="Invitee", email="invitee@example.com")
         token_pair = MagicMock()
         token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
         mock_login.return_value = token_pair
@@ -325,7 +326,7 @@ class TestEmailRegisterResetApi:
         app: Flask,
     ):
         mock_get_data.return_value = {"phase": "register", "email": "Invitee@Example.com"}
-        mock_create_account.return_value = MagicMock()
+        mock_create_account.return_value = Account(name="Invitee", email="invitee@example.com")
         token_pair = MagicMock()
         token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
         mock_login.return_value = token_pair

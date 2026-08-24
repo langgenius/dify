@@ -9,6 +9,7 @@ from core.helper.trace_id_helper import ParentTraceContext
 
 
 class BaseTraceInfo(BaseModel):
+    operation_id: str | None = None
     message_id: str | None = None
     message_data: Any | None = None
     inputs: Union[str, dict[str, Any], list[Any]] | None = None

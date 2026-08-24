@@ -1,9 +1,4 @@
 {
-  "cli/src/store/keychain-token-store.test.ts": {
-    "no-throw-literal": {
-      "count": 2
-    }
-  },
   "cli/test/e2e/suites/output/json-yaml-output.e2e.ts": {
     "prefer-const": {
       "count": 1
@@ -379,11 +374,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/dataset-config/params-config/__tests__/config-content.spec.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/dataset-config/params-config/config-content.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -473,11 +463,6 @@
       "count": 1
     },
     "react/only-export-components": {
-      "count": 1
-    }
-  },
-  "web/app/components/app/duplicate-modal/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -1820,11 +1805,6 @@
       "count": 2
     }
   },
-  "web/app/components/datasets/common/image-uploader/__tests__/store.spec.tsx": {
-    "eslint-react/error-boundaries": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/common/image-uploader/hooks/use-upload.ts": {
     "typescript/no-explicit-any": {
       "count": 3
@@ -1906,11 +1886,6 @@
   },
   "web/app/components/datasets/create-from-pipeline/list/template-card/details/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/create-from-pipeline/list/template-card/edit-pipeline-info.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2298,11 +2273,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/external-api/external-api-modal/Form.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/external-knowledge-base/create/ExternalApiSelect.tsx": {
     "eslint-react/set-state-in-effect": {
       "count": 1
@@ -2493,11 +2463,6 @@
   },
   "web/app/components/goto-anything/actions/commands/command-bus.ts": {
     "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "web/app/components/goto-anything/actions/recent-store.ts": {
-    "no-restricted-globals": {
       "count": 2
     }
   },
@@ -2850,9 +2815,6 @@
     }
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/__tests__/index.spec.tsx": {
-    "no-throw-literal": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 2
     }
@@ -2872,11 +2834,6 @@
   },
   "web/app/components/plugins/plugin-detail-panel/subscription-list/create/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-detail-panel/subscription-list/delete-confirm.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2952,14 +2909,6 @@
     },
     "typescript/no-explicit-any": {
       "count": 25
-    }
-  },
-  "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
@@ -3057,11 +3006,6 @@
   "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/publish-toast.tsx": {
@@ -3365,14 +3309,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/online-users.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/header/test-run-menu.tsx": {
     "erasable-syntax-only/enums": {
       "count": 1
@@ -3457,14 +3393,6 @@
   },
   "web/app/components/workflow/hooks/use-workflow-variables.ts": {
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/__tests__/node-handle.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -3802,9 +3730,6 @@
     "no-restricted-imports": {
       "count": 1
     },
-    "no-throw-literal": {
-      "count": 1
-    },
     "typescript/no-explicit-any": {
       "count": 22
     }
@@ -4059,11 +3984,6 @@
   },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/human-input/components/timeout.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },

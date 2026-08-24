@@ -6,11 +6,11 @@ from typing import Concatenate
 from flask import request
 from flask_restx import Resource
 from sqlalchemy import select
-from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_database import db
 from libs.passport import PassportService
@@ -54,7 +54,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_id = decoded.get("app_id")
-        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
+        with session_factory.create_session() as session:
             app_model = session.scalar(select(App).where(App.id == app_id))
             site = session.scalar(select(Site).where(Site.code == app_code))
             if not app_model:

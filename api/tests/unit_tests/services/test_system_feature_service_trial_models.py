@@ -1,9 +1,5 @@
-"""Tests for SystemFeatureService hosted trial models."""
+"""Tests for the public SystemFeatureService hosted-model contract."""
 
-import pytest
-
-from enums import HostedTrialProvider
-from services import system_feature_service as feature_service_module
 from services.system_feature_service import SystemFeatureService
 
 
@@ -11,30 +7,3 @@ def test_get_system_features_excludes_trial_models() -> None:
     result = SystemFeatureService.get_public_system_features().model_dump()
 
     assert "trial_models" not in result
-
-
-def test_get_trial_models_returns_providers_enabled_for_paid_and_trial(monkeypatch: pytest.MonkeyPatch) -> None:
-    for provider in HostedTrialProvider:
-        monkeypatch.setattr(
-            feature_service_module.dify_config,
-            f"HOSTED_{provider.config_key}_PAID_ENABLED",
-            False,
-            raising=False,
-        )
-        monkeypatch.setattr(
-            feature_service_module.dify_config,
-            f"HOSTED_{provider.config_key}_TRIAL_ENABLED",
-            False,
-            raising=False,
-        )
-
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_PAID_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_ANTHROPIC_PAID_ENABLED", True, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_ANTHROPIC_TRIAL_ENABLED", False, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_GEMINI_PAID_ENABLED", False, raising=False)
-    monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_GEMINI_TRIAL_ENABLED", True, raising=False)
-
-    result = SystemFeatureService.get_trial_models()
-
-    assert result == [HostedTrialProvider.OPENAI.value]

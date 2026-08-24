@@ -52,6 +52,7 @@ class RuntimeBackendSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
 
     e2b_api_key: str | None = None
     e2b_template: str = DEFAULT_E2B_TEMPLATE
@@ -127,12 +128,17 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
             endpoint = settings.enterprise_sandbox_gateway_endpoint or ""
             token = settings.enterprise_sandbox_gateway_auth_token or ""
             return RuntimeBackendProfile(
-                home_snapshots=EnterpriseHomeSnapshotBackend(),
+                home_snapshots=EnterpriseHomeSnapshotBackend(
+                    gateway_endpoint=endpoint,
+                    auth_token=token,
+                    snapshot_timeout=settings.enterprise_sandbox_snapshot_timeout,
+                ),
                 execution_bindings=EnterpriseExecutionBindingBackend(
                     gateway_endpoint=endpoint,
                     auth_token=token,
                     gateway_timeout=settings.enterprise_sandbox_gateway_timeout,
                     proxy_timeout=settings.enterprise_sandbox_proxy_timeout,
+                    snapshot_timeout=settings.enterprise_sandbox_snapshot_timeout,
                 ),
             )
         case "e2b":

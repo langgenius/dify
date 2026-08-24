@@ -17,6 +17,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.ops.ops_trace_manager as module
+from configs import dify_config
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
@@ -49,6 +50,15 @@ class DummyTraceInstance:
         return "https://project.fake"
 
 
+class DummyUnifiedTraceInstance(DummyTraceInstance):
+    pass
+
+
+class FailingUnifiedTraceInstance(DummyTraceInstance):
+    def __init__(self, config):
+        raise RuntimeError("unified constructor failed")
+
+
 class FakeProviderMap:
     def __init__(self, data):
         self._data = data
@@ -64,6 +74,11 @@ PROVIDER_ENTRY = {
     "secret_keys": ["secret_value"],
     "other_keys": ["other_value"],
     "trace_instance": DummyTraceInstance,
+}
+
+UNIFIED_PROVIDER_ENTRY = {
+    "config_class": DummyConfig,
+    "trace_instance": DummyUnifiedTraceInstance,
 }
 
 
@@ -120,9 +135,11 @@ class RecordingStorage:
 class RecordingDispatcher:
     def __init__(self) -> None:
         self.payloads: list[dict[str, str]] = []
+        self.options: list[dict[str, object]] = []
 
-    def delay(self, payload: dict[str, str]) -> None:
-        self.payloads.append(payload)
+    def apply_async(self, *, args: list[dict[str, str]], **kwargs: object) -> None:
+        self.payloads.append(args[0])
+        self.options.append(kwargs)
 
 
 @pytest.fixture
@@ -137,6 +154,8 @@ def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session
 @pytest.fixture
 def trace_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(module, "provider_config_map", FakeProviderMap({"dummy": PROVIDER_ENTRY}))
+    monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({}))
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
     monkeypatch.setattr(module.threading, "Timer", DummyTimer)
@@ -346,6 +365,84 @@ def test_ops_trace_instance_uses_persisted_enabled_state_and_cache(
     assert OpsTraceManager.get_ops_trace_instance("missing") is None
 
 
+@pytest.mark.parametrize(
+    ("enabled", "registered", "expected_type"),
+    [
+        (False, False, DummyTraceInstance),
+        (False, True, DummyTraceInstance),
+        (True, False, DummyTraceInstance),
+        (True, True, DummyUnifiedTraceInstance),
+    ],
+)
+def test_ops_trace_instance_routes_by_unified_switch(
+    enabled: bool,
+    registered: bool,
+    expected_type: type[DummyTraceInstance],
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    encryption_functions,
+    database: Session,
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
+    database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
+    database.commit()
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", enabled)
+    entries = {"dummy": UNIFIED_PROVIDER_ENTRY} if registered else {}
+    monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap(entries))
+
+    instance = OpsTraceManager.get_ops_trace_instance(app.id)
+
+    assert type(instance) is expected_type
+
+
+def test_registered_unified_provider_does_not_fallback_when_construction_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    encryption_functions,
+    database: Session,
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
+    database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
+    database.commit()
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    monkeypatch.setattr(
+        module,
+        "unified_provider_config_map",
+        FakeProviderMap(
+            {
+                "dummy": {
+                    "config_class": DummyConfig,
+                    "trace_instance": FailingUnifiedTraceInstance,
+                }
+            }
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="unified constructor failed"):
+        OpsTraceManager.get_ops_trace_instance(app.id)
+
+
+def test_unified_and_legacy_instances_have_separate_cache_entries(
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    encryption_functions,
+    database: Session,
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
+    database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
+    database.commit()
+    monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({"dummy": UNIFIED_PROVIDER_ENTRY}))
+
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    legacy = OpsTraceManager.get_ops_trace_instance(app.id)
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    unified = OpsTraceManager.get_ops_trace_instance(app.id)
+
+    assert type(legacy) is DummyTraceInstance
+    assert type(unified) is DummyUnifiedTraceInstance
+    assert legacy is not unified
+
+
 def test_message_config_lookup_uses_real_conversation_and_model_config(database: Session) -> None:
     app = _app(database)
     config = AppModelConfig(app_id=app.id, model='{"provider":"openai"}')
@@ -402,7 +499,10 @@ def test_message_trace_reads_real_conversation_app_and_message_file(
     database.add(file)
     database.commit()
     monkeypatch.setattr(module, "get_message_data", lambda _message_id: _message_data())
-    result = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id=message.id).message_trace(message.id)
+    result = TraceTask(
+        trace_type=TraceTaskName.MESSAGE_TRACE,
+        message_id=message.id,
+    ).preprocess()
     assert result.message_id == message.id
     assert result.conversation_mode == AppMode.CHAT
     assert result.file_list[0].endswith("path/to/file")
@@ -565,7 +665,7 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert OpsTraceManager.check_trace_config_is_effective({}, "dummy")
     assert OpsTraceManager.get_trace_config_project_key({}, "dummy") == "fake-key"
     assert OpsTraceManager.get_trace_config_project_url({}, "dummy") == "https://project.fake"
-    task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE)
+    task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="message-1")
     assert task.conversation_trace(foo="bar") == {"foo": "bar"}
     assert task._extract_streaming_metrics(_message_data(message_metadata="invalid")) == {}
     assert task.generate_name_trace("conversation", {"start": 1, "end": 2}, tenant_id=None) == {}
@@ -578,6 +678,7 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     )
     assert generated.outputs == "name"
     assert generated.tenant_id == "tenant-1"
+    assert generated.message_id == "message-1"
 
 
 def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
@@ -597,7 +698,7 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     recording_storage = RecordingStorage()
     dispatcher = RecordingDispatcher()
     monkeypatch.setattr(module.storage, "save", recording_storage.save)
-    monkeypatch.setattr(module.process_trace_tasks, "delay", dispatcher.delay)
+    monkeypatch.setattr(module.process_trace_tasks, "apply_async", dispatcher.apply_async)
     file_id = UUID("00000000-0000-0000-0000-000000000123")
     monkeypatch.setattr(module, "uuid4", lambda: file_id)
     manager.add_trace_task(task)
@@ -608,3 +709,55 @@ def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.Monkey
     assert path.endswith(f"app-id/{file_id.hex}.json")
     assert json.loads(data)["app_id"] == "app-id"
     assert dispatcher.payloads == [{"file_id": file_id.hex, "app_id": "app-id"}]
+
+
+def test_trace_queue_persists_with_caller_supplied_file_id(
+    monkeypatch: pytest.MonkeyPatch, trace_environment: None
+) -> None:
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
+    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+    task = TraceTask(
+        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+        conversation_id="conversation-1",
+        timer={"start": 1, "end": 2},
+        tenant_id="tenant-1",
+        generate_conversation_name="name",
+        inputs="query",
+    )
+    recording_storage = RecordingStorage()
+    monkeypatch.setattr(module.storage, "save", recording_storage.save)
+
+    file_info = manager.persist_trace_task(task, file_id="workflow-final-run-1")
+
+    assert file_info == {"file_id": "workflow-final-run-1", "app_id": "app-id"}
+    path, data = recording_storage.writes[0]
+    payload = json.loads(data)
+    assert path == "ops_trace/app-id/workflow-final-run-1.json"
+    assert UUID(payload["trace_info"]["operation_id"])
+
+
+def test_trace_queue_persistence_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
+    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+    task = TraceTask(trace_type=TraceTaskName.GENERATE_NAME_TRACE)
+
+    def fail_save(_path: str, _data: bytes) -> None:
+        raise OSError("storage unavailable")
+
+    monkeypatch.setattr(module.storage, "save", fail_save)
+
+    with pytest.raises(OSError, match="storage unavailable"):
+        manager.persist_trace_task(task, file_id="workflow-final-run-1")
+
+
+def test_trace_queue_enqueue_error_propagates(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:
+    monkeypatch.setattr(OpsTraceManager, "get_ops_trace_instance", classmethod(lambda cls, _app_id: True))
+    manager = TraceQueueManager(app_id="app-id", user_id="user-1")
+
+    def fail_enqueue(*_args: object, **_kwargs: object) -> None:
+        raise ConnectionError("broker unavailable")
+
+    monkeypatch.setattr(module.process_trace_tasks, "apply_async", fail_enqueue)
+
+    with pytest.raises(ConnectionError, match="broker unavailable"):
+        manager.enqueue_persisted_trace({"file_id": "workflow-final-run-1", "app_id": "app-id"})

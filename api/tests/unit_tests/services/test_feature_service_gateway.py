@@ -29,3 +29,13 @@ def test_workspace_features_exclude_independently_queried_vector_space(mocker: M
 
     assert result is features
     get_features.assert_called_once_with("workspace_123", exclude_vector_space=True)
+
+
+def test_trial_models_delegate_to_workspace_aware_feature_service(mocker: MockerFixture) -> None:
+    trial_models = ["langgenius/openai/openai"]
+    get_trial_models = mocker.patch.object(FeatureService, "get_trial_models", return_value=trial_models)
+
+    result = FeatureServiceGateway().get_trial_models("workspace_123")
+
+    assert result == trial_models
+    get_trial_models.assert_called_once_with("workspace_123")

@@ -497,7 +497,7 @@ class TestWebAppAuthService:
 
         # Verify token generation parameters
         token_call_args = mock_external_service_dependencies["token_manager"].generate_token.call_args
-        assert token_call_args[1]["account"] == account
+        assert token_call_args[1]["account_id"] == account.id
         assert token_call_args[1]["email"] == account.email
         assert token_call_args[1]["token_type"] == "email_code_login"
         assert "code" in token_call_args[1]["additional_data"]
@@ -537,7 +537,7 @@ class TestWebAppAuthService:
 
         # Verify token generation parameters
         token_call_args = mock_external_service_dependencies["token_manager"].generate_token.call_args
-        assert token_call_args[1]["account"] is None
+        assert token_call_args[1]["account_id"] is None
         assert token_call_args[1]["email"] == test_email
         assert token_call_args[1]["token_type"] == "email_code_login"
         assert "code" in token_call_args[1]["additional_data"]

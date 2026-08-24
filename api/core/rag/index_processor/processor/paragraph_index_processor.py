@@ -468,8 +468,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         file, image_detail_config=ImagePromptMessageContent.DETAIL.LOW
                     )
                     prompt_message_contents.append(file_content)
-                except Exception as e:
-                    logger.warning("Failed to convert image file to prompt message content: %s", str(e))
+                except Exception:
+                    logger.warning("Failed to convert image file to prompt message content", exc_info=True)
                     continue
 
             # Add text content
@@ -572,8 +572,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     access_controller=_file_access_controller,
                 )
                 file_objects.append(file_obj)
-            except Exception as e:
-                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+            except Exception:
+                logger.warning("Failed to create File object from UploadFile %s", upload_file.id, exc_info=True)
                 continue
 
         return file_objects
@@ -629,8 +629,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     storage_key=upload_file.key,
                 )
                 file_objects.append(file_obj)
-            except Exception as e:
-                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+            except Exception:
+                logger.warning("Failed to create File object from UploadFile %s", upload_file.id, exc_info=True)
                 continue
 
         return file_objects

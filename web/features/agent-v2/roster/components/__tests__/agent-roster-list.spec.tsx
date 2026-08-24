@@ -255,7 +255,7 @@ describe('AgentRosterList', () => {
       name: 'agentV2.roster.duplicateDialog.title',
     })
     const nameInput = within(dialog).getByRole('textbox', {
-      name: /agentV2\.roster\.createForm\.nameLabel.*common\.label\.optional/,
+      name: 'agentV2.roster.createForm.nameLabel',
     })
     const roleInput = within(dialog).getByRole('textbox', {
       name: /agentV2\.roster\.createForm\.roleLabel.*common\.label\.optional/,
@@ -263,8 +263,8 @@ describe('AgentRosterList', () => {
     const descriptionInput = within(dialog).getByRole('textbox', {
       name: /agentV2\.roster\.createForm\.descriptionLabel.*common\.label\.optional/,
     })
-    expect(nameInput).toHaveValue('')
-    expect(nameInput).toHaveAttribute('placeholder', 'Research Agent copy')
+    expect(nameInput).toHaveValue('Research Agent copy')
+    expect(nameInput).toBeRequired()
     expect(roleInput).toHaveValue('Research Assistant')
     expect(roleInput).not.toBeRequired()
     expect(descriptionInput).toHaveValue('Find and summarize market materials.')
@@ -321,10 +321,7 @@ describe('AgentRosterList', () => {
     })
     expect(
       within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ }),
-    ).toHaveValue('')
-    expect(
-      within(dialog).getByRole('textbox', { name: /agentV2\.roster\.createForm\.nameLabel/ }),
-    ).toHaveAttribute('placeholder', 'Research Agent copy')
+    ).toHaveValue('Research Agent copy')
     expect(
       within(dialog).getByRole('textbox', {
         name: /agentV2\.roster\.createForm\.descriptionLabel/,
@@ -335,7 +332,7 @@ describe('AgentRosterList', () => {
     ).toHaveValue('Market Researcher')
   })
 
-  it('duplicates an agent with backend-generated naming when the dialog name is empty', async () => {
+  it('duplicates an agent with the generated copy name by default', async () => {
     const user = userEvent.setup()
     renderList([createAgent()])
 
@@ -353,6 +350,7 @@ describe('AgentRosterList', () => {
           agent_id: 'agent-1',
         },
         body: {
+          name: 'Research Agent copy',
           description: 'Find and summarize market materials.',
           role: 'Research Assistant',
           icon: '🧸',
@@ -364,7 +362,6 @@ describe('AgentRosterList', () => {
         client: expect.any(QueryClient),
       }),
     )
-    expect(duplicateAgentMutationFn.mock.calls[0]?.[0].body).not.toHaveProperty('name')
     await waitFor(() => {
       expect(toast.success).toHaveBeenCalledWith('agentV2.roster.duplicateSuccess')
     })
@@ -441,6 +438,7 @@ describe('AgentRosterList', () => {
           agent_id: 'agent-1',
         },
         body: {
+          name: 'Research Agent copy',
           description: 'Find and summarize market materials.',
           role: '',
           icon: '🧸',
