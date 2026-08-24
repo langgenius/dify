@@ -197,6 +197,7 @@
   "license.expiring_plural": "许可证还有 {{count}} 天到期",
   "license.unlimited": "无限制",
   "loading": "加载中",
+  "mainNav.help.creatorCenter": "创作者中心",
   "mainNav.help.docs": "文档",
   "mainNav.help.learnDify": "了解 Dify",
   "mainNav.help.openMenu": "打开帮助菜单",

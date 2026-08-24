@@ -197,6 +197,7 @@
   "license.expiring_plural": "有効期限 {{count}} 日",
   "license.unlimited": "無制限",
   "loading": "読み込み中",
+  "mainNav.help.creatorCenter": "クリエイターセンター",
   "mainNav.help.docs": "ドキュメント",
   "mainNav.help.learnDify": "Difyを学ぶ",
   "mainNav.help.openMenu": "ヘルプメニューを開く",

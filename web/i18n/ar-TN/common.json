@@ -197,6 +197,7 @@
   "license.expiring_plural": "تنتهي في {{count}} أيام",
   "license.unlimited": "غير محدود",
   "loading": "جارٍ التحميل",
+  "mainNav.help.creatorCenter": "مركز المبدعين",
   "mainNav.help.docs": "الوثائق",
   "mainNav.help.learnDify": "تعلّم Dify",
   "mainNav.help.openMenu": "فتح قائمة المساعدة",

@@ -1143,6 +1143,7 @@ describe('MainNav', () => {
       'common.userProfile.compliance',
       'common.userProfile.forum',
       'common.userProfile.community',
+      'common.mainNav.help.creatorCenter',
       'common.userProfile.github',
       'common.userProfile.about',
     ]
@@ -1151,6 +1152,23 @@ describe('MainNav', () => {
     nodes.slice(1).forEach((node, index) => {
       expect(nodes[index]!.compareDocumentPosition(node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
+  })
+
+  it('opens Creator Center from the help menu above GitHub', async () => {
+    renderMainNav()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+
+    const creatorCenter = await screen.findByRole('menuitem', {
+      name: 'common.mainNav.help.creatorCenter',
+    })
+    const github = screen.getByRole('menuitem', { name: /common\.userProfile\.github/ })
+
+    expect(creatorCenter).toHaveAttribute('href', 'https://creators.dify.ai/')
+    expect(creatorCenter).toHaveAttribute('target', '_blank')
+    expect(creatorCenter).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(creatorCenter.compareDocumentPosition(github)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(creatorCenter.querySelector('.i-ri-user-star-line')).toBeTruthy()
   })
 
   it('opens About from its real Help menu owner and restores focus when closed', async () => {

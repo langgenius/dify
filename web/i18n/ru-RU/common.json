@@ -197,6 +197,7 @@
   "license.expiring_plural": "Срок действия истекает через {{count}} дней",
   "license.unlimited": "Неограниченный",
   "loading": "Загрузка",
+  "mainNav.help.creatorCenter": "Центр авторов",
   "mainNav.help.docs": "Документация",
   "mainNav.help.learnDify": "Изучить Dify",
   "mainNav.help.openMenu": "Открыть меню помощи",

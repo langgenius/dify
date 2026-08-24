@@ -197,6 +197,7 @@
   "license.expiring_plural": "Термін дії закінчується за {{count}} днів",
   "license.unlimited": "Безмежний",
   "loading": "Завантаження",
+  "mainNav.help.creatorCenter": "Центр авторів",
   "mainNav.help.docs": "Документація",
   "mainNav.help.learnDify": "Вивчити Dify",
   "mainNav.help.openMenu": "Відкрити меню довідки",

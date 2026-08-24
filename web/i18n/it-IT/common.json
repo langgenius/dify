@@ -197,6 +197,7 @@
   "license.expiring_plural": "Scadenza tra {{count}} giorni",
   "license.unlimited": "Illimitato",
   "loading": "Caricamento",
+  "mainNav.help.creatorCenter": "Centro creatori",
   "mainNav.help.docs": "Documentazione",
   "mainNav.help.learnDify": "Impara Dify",
   "mainNav.help.openMenu": "Apri menu di aiuto",

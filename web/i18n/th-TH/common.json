@@ -197,6 +197,7 @@
   "license.expiring_plural": "หมดอายุใน {{count}} วัน",
   "license.unlimited": "ไม่มีขีดจำกัด",
   "loading": "กำลังโหลด",
+  "mainNav.help.creatorCenter": "ศูนย์ครีเอเตอร์",
   "mainNav.help.docs": "เอกสาร",
   "mainNav.help.learnDify": "เรียนรู้ Dify",
   "mainNav.help.openMenu": "เปิดเมนูช่วยเหลือ",
