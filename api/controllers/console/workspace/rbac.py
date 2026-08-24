@@ -538,7 +538,7 @@ class RBACAccessPolicyBindingUnlockApi(Resource):
 
 
 class _ResourceAccessScopeRequest(BaseModel):
-    scope: RBACResourceWhitelistScope
+    automatic_include_workspace_members: bool
 
 
 class _ReplaceBindingsRequest(BaseModel):
@@ -630,9 +630,9 @@ class RBACAppWhitelistApi(Resource):
             tenant_id,
             account_id,
             str(app_id),
-            svc.ReplaceMemberBindings(scope=request.scope.value),
+            svc.ReplaceMemberBindings(automatic_include_workspace_members=request.automatic_include_workspace_members),
         )
-        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
+        if request.automatic_include_workspace_members:
             initialize_created_app_rbac_access_task.delay(tenant_id, account_id, str(app_id))
         return _dump(result)
 
@@ -737,11 +737,11 @@ class RBACDatasetWhitelistApi(Resource):
             tenant_id,
             account_id,
             str(dataset_id),
-            svc.ReplaceMemberBindings(scope=request.scope.value),
+            svc.ReplaceMemberBindings(automatic_include_workspace_members=request.automatic_include_workspace_members),
         )
         # Widening the scope only records it: the members still need the default access policy
         # before they can reach the dataset, same as the app whitelist route above.
-        if dify_config.RBAC_ENABLED and request.scope is RBACResourceWhitelistScope.ALL:
+        if request.automatic_include_workspace_members:
             initialize_created_app_rbac_access_task.delay(tenant_id, account_id, dataset_id=str(dataset_id))
         return _dump(result)
 

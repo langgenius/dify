@@ -644,18 +644,7 @@ class ReplaceRoleBindings(_RBACModel):
 
 
 class ReplaceMemberBindings(_RBACModel):
-    scope: RBACResourceWhitelistScope = RBACResourceWhitelistScope.SPECIFIC
-
-    @field_validator("scope")
-    @classmethod
-    def _normalize_scope(cls, value: Any) -> RBACResourceWhitelistScope:
-        scope = str(value or "").strip().lower()
-        if scope == "":
-            return RBACResourceWhitelistScope.SPECIFIC
-        try:
-            return RBACResourceWhitelistScope(scope)
-        except ValueError as exc:
-            raise ValueError(f"invalid scope: {value}") from exc
+    automatic_include_workspace_members: bool = Field(default=False)
 
 
 class DeleteMemberBindings(_RBACModel):

@@ -711,14 +711,6 @@ class AppListApi(Resource):
 
         app_service = AppService()
         app = app_service.create_app(current_tenant_id, params, current_user, session=session)
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.AppAccess.replace_whitelist(
-                tenant_id=str(current_tenant_id),
-                account_id=current_user.id,
-                app_id=str(app.id),
-                payload=enterprise_rbac_service.ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, app_id=app.id)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,

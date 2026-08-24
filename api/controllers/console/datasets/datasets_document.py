@@ -688,15 +688,6 @@ class DatasetInitApi(Resource):
             dataset.permission = DatasetPermissionEnum.ONLY_ME
         session.flush()
 
-        if dify_config.RBAC_ENABLED:
-            enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
-                current_tenant_id,
-                current_user.id,
-                dataset.id,
-                ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
-            )
-            initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
-
         return dump_response(
             DatasetAndDocumentResponse,
             {"dataset": dataset, "documents": document_responses(documents, session=session), "batch": batch},
