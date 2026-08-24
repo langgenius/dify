@@ -2929,14 +2929,6 @@
       "count": 25
     }
   },
-  "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/rag-pipeline/components/panel/input-field/editor/form/__tests__/hidden-fields.spec.tsx": {
     "eslint-react/static-components": {
       "count": 4
@@ -3032,11 +3024,6 @@
   "web/app/components/rag-pipeline/components/panel/test-run/result/result-preview/utils.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/components/publish-as-knowledge-pipeline-modal.tsx": {
-    "no-restricted-imports": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/components/publish-toast.tsx": {
