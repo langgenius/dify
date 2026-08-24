@@ -216,6 +216,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
       const issuesByNodeId: Record<
         string,
         {
+          hasMissingModel: boolean
           hasMissingFiles: boolean
           hasMissingSkills: boolean
           toolIssues: AgentToolPublishIssue[]
@@ -227,15 +228,19 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         const agentSoul = result.data?.agent_soul
         if (!nodeId || !agentSoul) return
 
+        const agentSoulFormState = agentSoulConfigToFormState(agentSoul)
+        const hasMissingModel = !agentSoulFormState.model
         const hasMissingFiles = agentSoul.config_files?.some((file) => file.is_missing === true)
         const hasMissingSkills = agentSoul.config_skills?.some((skill) => skill.is_missing === true)
         const toolIssues = getAgentToolPublishIssues(
-          agentSoulConfigToFormState(agentSoul).tools,
+          agentSoulFormState.tools,
           inlineAgentToolProviderCatalog,
         )
-        if (!hasMissingFiles && !hasMissingSkills && toolIssues.length === 0) return
+        if (!hasMissingModel && !hasMissingFiles && !hasMissingSkills && toolIssues.length === 0)
+          return
 
         issuesByNodeId[nodeId] = {
+          hasMissingModel,
           hasMissingFiles: !!hasMissingFiles,
           hasMissingSkills: !!hasMissingSkills,
           toolIssues,
@@ -429,6 +434,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
             if (validationError) errorMessages.push(validationError)
           }
 
+          if (inlineAgentIssues?.hasMissingModel)
+            errorMessages.push(t(($) => $['nodes.agent.modelNotSelected'], { ns: 'workflow' }))
           if (inlineAgentIssues?.hasMissingFiles)
             errorMessages.push(
               t(($) => $['agentDetail.configure.files.missing'], { ns: 'agentV2' }),
