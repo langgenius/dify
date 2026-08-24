@@ -316,56 +316,105 @@ class TestAppAnnotationServiceUpsert:
         task.delay.assert_called_once_with(result.id, "q1", TENANT_ID, app.id, setting.collection_binding_id)
 
 
+class _FakeRedis:
+    """Redis stand-in covering the SET NX / GET / DELETE surface the annotation
+    job reservations rely on."""
+
+    def __init__(self) -> None:
+        self.store: dict[str, bytes] = {}
+        self.ttls: dict[str, int] = {}
+
+    def set(self, key, value, nx: bool = False, ex: int | None = None):
+        if nx and key in self.store:
+            return None
+        self.store[key] = str(value).encode()
+        if ex is not None:
+            self.ttls[key] = ex
+        return True
+
+    def get(self, key):
+        return self.store.get(key)
+
+    def delete(self, key):
+        self.store.pop(key, None)
+        self.ttls.pop(key, None)
+        return 1
+
+
 class TestAppAnnotationServiceEnableDisable:
-    def test_enable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
-        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = "job-1"
-            result = AppAnnotationService.enable_app_annotation(args, "app-1")
+    ENABLE_ARGS = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
 
-        assert result == {"job_id": "job-1", "job_status": "processing"}
-        task.delay.assert_not_called()
+    @pytest.fixture
+    def redis(self, monkeypatch: pytest.MonkeyPatch) -> _FakeRedis:
+        fake = _FakeRedis()
+        monkeypatch.setattr(annotation_service_module, "redis_client", fake)
+        return fake
 
-    def test_enable_enqueues_on_cache_miss(self, current_user: Account) -> None:
-        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-1"),
-            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = None
-            result = AppAnnotationService.enable_app_annotation(args, "app-1")
+    def test_enable_enqueues_and_reserves_the_app(
+        self, redis: _FakeRedis, current_user: Account, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        task = MagicMock()
+        monkeypatch.setattr(annotation_service_module, "enable_annotation_reply_task", task)
+        monkeypatch.setattr(annotation_service_module.uuid, "uuid4", lambda: "uuid-1")
+
+        result = AppAnnotationService.enable_app_annotation(cast(Any, self.ENABLE_ARGS), "app-1")
 
         assert result == {"job_id": "uuid-1", "job_status": "waiting"}
-        redis.setnx.assert_called_once_with("enable_app_annotation_job_uuid-1", "waiting")
         task.delay.assert_called_once_with("uuid-1", "app-1", current_user.id, TENANT_ID, 0.5, "p", "m")
+        # The reservation is what makes the guard above effective; it was never
+        # written before, so every request enqueued another rebuild of the index.
+        assert redis.get("enable_app_annotation_app-1") == b"uuid-1"
+        assert redis.ttls["enable_app_annotation_app-1"] == annotation_service_module.ANNOTATION_JOB_TTL
+        assert redis.ttls["enable_app_annotation_job_uuid-1"] == annotation_service_module.ANNOTATION_JOB_TTL
 
-    def test_disable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module, "disable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = "job-2"
-            result = AppAnnotationService.disable_app_annotation("app-1")
+    def test_enable_reuses_the_in_flight_job(
+        self, redis: _FakeRedis, current_user: Account, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        task = MagicMock()
+        monkeypatch.setattr(annotation_service_module, "enable_annotation_reply_task", task)
 
-        assert result == {"job_id": "job-2", "job_status": "processing"}
-        task.delay.assert_not_called()
+        first = AppAnnotationService.enable_app_annotation(cast(Any, self.ENABLE_ARGS), "app-1")
+        second = AppAnnotationService.enable_app_annotation(cast(Any, self.ENABLE_ARGS), "app-1")
 
-    def test_disable_enqueues_on_cache_miss(self, current_user: Account) -> None:
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module.uuid, "uuid4", return_value="uuid-2"),
-            patch.object(annotation_service_module, "disable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = None
-            result = AppAnnotationService.disable_app_annotation("app-1")
+        assert second == {"job_id": first["job_id"], "job_status": "processing"}
+        assert task.delay.call_count == 1
+
+    def test_enable_releases_the_reservation_when_enqueue_fails(
+        self, redis: _FakeRedis, current_user: Account, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        task = MagicMock()
+        task.delay.side_effect = RuntimeError("broker down")
+        monkeypatch.setattr(annotation_service_module, "enable_annotation_reply_task", task)
+
+        with pytest.raises(RuntimeError):
+            AppAnnotationService.enable_app_annotation(cast(Any, self.ENABLE_ARGS), "app-1")
+
+        assert redis.get("enable_app_annotation_app-1") is None
+
+    def test_disable_enqueues_and_reserves_the_app(
+        self, redis: _FakeRedis, current_user: Account, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        task = MagicMock()
+        monkeypatch.setattr(annotation_service_module, "disable_annotation_reply_task", task)
+        monkeypatch.setattr(annotation_service_module.uuid, "uuid4", lambda: "uuid-2")
+
+        result = AppAnnotationService.disable_app_annotation("app-1")
 
         assert result == {"job_id": "uuid-2", "job_status": "waiting"}
-        redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
         task.delay.assert_called_once_with("uuid-2", "app-1", TENANT_ID)
+        assert redis.get("disable_app_annotation_app-1") == b"uuid-2"
+
+    def test_disable_reuses_the_in_flight_job(
+        self, redis: _FakeRedis, current_user: Account, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        task = MagicMock()
+        monkeypatch.setattr(annotation_service_module, "disable_annotation_reply_task", task)
+
+        first = AppAnnotationService.disable_app_annotation("app-1")
+        second = AppAnnotationService.disable_app_annotation("app-1")
+
+        assert second == {"job_id": first["job_id"], "job_status": "processing"}
+        assert task.delay.call_count == 1
 
 
 class TestAppAnnotationServiceListAndExport:

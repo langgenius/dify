@@ -40,13 +40,19 @@ def enable_annotation_reply_task(
             select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
         )
 
+        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
+        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
+
         if not app:
             logger.info(click.style(f"App not found: {app_id}", fg="red"))
+            # Leave a terminal status behind: the caller polls this key and would
+            # otherwise see "waiting" forever.
+            redis_client.setex(enable_app_annotation_job_key, 600, "error")
+            redis_client.setex(f"enable_app_annotation_error_{str(job_id)}", 600, f"App not found: {app_id}")
+            redis_client.delete(enable_app_annotation_key)
             return
 
         annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
-        enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
-        enable_app_annotation_job_key = f"enable_app_annotation_job_{str(job_id)}"
 
         try:
             documents = []

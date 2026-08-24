@@ -28,8 +28,18 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
         )
         annotations_exists = session.scalar(select(exists().where(MessageAnnotation.app_id == app_id)))
+        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
+        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
+
+        def _finish_early(message: str) -> None:
+            """Record a terminal status so the caller stops polling "waiting"."""
+            logger.info(click.style(message, fg="red"))
+            redis_client.setex(disable_app_annotation_job_key, 600, "error")
+            redis_client.setex(f"disable_app_annotation_error_{str(job_id)}", 600, message)
+            redis_client.delete(disable_app_annotation_key)
+
         if not app:
-            logger.info(click.style(f"App not found: {app_id}", fg="red"))
+            _finish_early(f"App not found: {app_id}")
             return
 
         app_annotation_setting = session.scalar(
@@ -37,11 +47,8 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
         )
 
         if not app_annotation_setting:
-            logger.info(click.style(f"App annotation setting not found: {app_id}", fg="red"))
+            _finish_early(f"App annotation setting not found: {app_id}")
             return
-
-        disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
-        disable_app_annotation_job_key = f"disable_app_annotation_job_{str(job_id)}"
 
         try:
             dataset = Dataset(

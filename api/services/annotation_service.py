@@ -89,6 +89,20 @@ class UpdateAnnotationSettingArgs(TypedDict):
     score_threshold: float
 
 
+# Annotation reply jobs reserve their app for this long. It matches the TTL the
+# workers use for terminal job statuses, so a reservation cannot outlive the job
+# it guards even if a worker dies before releasing it.
+ANNOTATION_JOB_TTL = 600
+
+
+def _running_job_id(reservation_key: str) -> str:
+    """Job id currently holding *reservation_key*, or "" if it just expired."""
+    reserved = redis_client.get(reservation_key)
+    if reserved is None:
+        return ""
+    return reserved.decode() if isinstance(reserved, bytes) else str(reserved)
+
+
 class AppAnnotationService:
     @staticmethod
     def _get_annotation_by_ref(annotation_ref: AnnotationRef, session: Session) -> MessageAnnotation | None:
@@ -177,41 +191,51 @@ class AppAnnotationService:
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
         enable_app_annotation_key = f"enable_app_annotation_{app_id}"
-        cache_result = redis_client.get(enable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
+        job_id = str(uuid.uuid4())
+        # Reserve the app before enqueueing so a second request reuses the in-flight
+        # job instead of starting a task that rebuilds the same annotation index.
+        if not redis_client.set(enable_app_annotation_key, job_id, nx=True, ex=ANNOTATION_JOB_TTL):
+            return {"job_id": _running_job_id(enable_app_annotation_key), "job_status": "processing"}
 
         # async job
-        job_id = str(uuid.uuid4())
         enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
         # send batch add segments task
-        redis_client.setnx(enable_app_annotation_job_key, "waiting")
+        redis_client.set(enable_app_annotation_job_key, "waiting", ex=ANNOTATION_JOB_TTL)
         current_user, current_tenant_id = current_account_with_tenant()
-        enable_annotation_reply_task.delay(
-            job_id,
-            app_id,
-            current_user.id,
-            current_tenant_id,
-            args["score_threshold"],
-            args["embedding_provider_name"],
-            args["embedding_model_name"],
-        )
+        try:
+            enable_annotation_reply_task.delay(
+                job_id,
+                app_id,
+                current_user.id,
+                current_tenant_id,
+                args["score_threshold"],
+                args["embedding_provider_name"],
+                args["embedding_model_name"],
+            )
+        except Exception:
+            redis_client.delete(enable_app_annotation_key)
+            redis_client.delete(enable_app_annotation_job_key)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
         _, current_tenant_id = current_account_with_tenant()
         disable_app_annotation_key = f"disable_app_annotation_{app_id}"
-        cache_result = redis_client.get(disable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
+        job_id = str(uuid.uuid4())
+        if not redis_client.set(disable_app_annotation_key, job_id, nx=True, ex=ANNOTATION_JOB_TTL):
+            return {"job_id": _running_job_id(disable_app_annotation_key), "job_status": "processing"}
 
         # async job
-        job_id = str(uuid.uuid4())
         disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
         # send batch add segments task
-        redis_client.setnx(disable_app_annotation_job_key, "waiting")
-        disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
+        redis_client.set(disable_app_annotation_job_key, "waiting", ex=ANNOTATION_JOB_TTL)
+        try:
+            disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
+        except Exception:
+            redis_client.delete(disable_app_annotation_key)
+            redis_client.delete(disable_app_annotation_job_key)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
