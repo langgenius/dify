@@ -3352,6 +3352,11 @@ async function requireDatabaseDocumentCompilationNodeProjectionClosure(
           )} IS NULL`,
         )
       : undefined;
+    const nodeText = `completeness_node.${quoteDatabaseIdentifier(database, "text")}`;
+    // FTS builders deliberately omit projections when normalization removes every letter and
+    // number (for example, a Markdown-only "**" chunk). Those nodes remain generation evidence,
+    // but they cannot participate in lexical retrieval and therefore do not require FTS closure.
+    const hasSearchableFtsText = `${nodeText} ${database.dialect === "tidb" ? "REGEXP" : "~"} '[[:alnum:]]'`;
     const result = await transaction.execute({
       maxRows: maximumDocumentCompilationGraphSourceNodes + 1,
       operation: "select",
@@ -3359,10 +3364,7 @@ async function requireDatabaseDocumentCompilationNodeProjectionClosure(
       sql: `SELECT completeness_node.${quoteDatabaseIdentifier(
         database,
         "id",
-      )}, CASE WHEN EXISTS (${hasFts}) THEN 1 ELSE 0 END AS ${quoteDatabaseIdentifier(
-        database,
-        "candidate_has_fts",
-      )}, ${
+      )}, CASE WHEN NOT (${hasSearchableFtsText}) OR EXISTS (${hasFts}) THEN 1 ELSE 0 END AS ${quoteDatabaseIdentifier(database, "candidate_has_fts")}, ${
         hasDense ? `CASE WHEN EXISTS (${hasDense}) THEN 1 ELSE 0 END` : "1"
       } AS ${quoteDatabaseIdentifier(database, "candidate_has_dense")} FROM ${quoteDatabaseIdentifier(
         database,

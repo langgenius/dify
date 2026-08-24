@@ -1211,9 +1211,15 @@ describe.each(["postgres", "tidb"] as const)(
         expect(closureCall?.input.sql).toContain("node_id");
         expect(closureCall?.input.sql).toContain("FOR UPDATE");
         if (dialect === "tidb") {
+          expect(closureCall?.input.sql).toContain(
+            "NOT (completeness_node.`text` REGEXP '[[:alnum:]]')",
+          );
           expect(closureCall?.input.sql).toContain("index_projection_fts_postings");
           expect(closureCall?.input.sql).toContain("mixed-nfkc-v1");
         } else {
+          expect(closureCall?.input.sql).toContain(
+            `NOT (completeness_node."text" ~ '[[:alnum:]]')`,
+          );
           expect(closureCall?.input.sql).not.toContain("index_projection_fts_postings");
         }
         if (closureCall) {
