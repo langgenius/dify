@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "설명에서 chatflow (№ 급 채팅) 앱 생성",
   "gotoAnything.actions.createWorkflow": "작업 흐름",
   "gotoAnything.actions.createWorkflowDesc": "설명에서 워크플로 앱 생성",
-  "gotoAnything.actions.discordDesc": "오픈 디스코드 커뮤니티",
+  "gotoAnything.actions.discordDesc": "Discord 커뮤니티 열기",
   "gotoAnything.actions.docDesc": "도움 문서 열기",
   "gotoAnything.actions.languageChangeDesc": "UI 언어 변경",
   "gotoAnything.actions.refineCategoryDesc": "현재 워크플로우 또는 챗플로우 그래프를 구체화합니다.",

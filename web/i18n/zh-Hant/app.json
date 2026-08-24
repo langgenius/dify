@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "根据描述生成聊天流（高级聊天）应用程序",
   "gotoAnything.actions.createWorkflow": "工作流程",
   "gotoAnything.actions.createWorkflowDesc": "根据描述生成工作流应用程序",
-  "gotoAnything.actions.discordDesc": "開放的 Discord 社區",
+  "gotoAnything.actions.discordDesc": "開啟 Discord 社群",
   "gotoAnything.actions.docDesc": "開啟幫助文件",
   "gotoAnything.actions.languageChangeDesc": "更改 UI 語言",
   "gotoAnything.actions.refineCategoryDesc": "優化目前工作流程或聊天流程圖",

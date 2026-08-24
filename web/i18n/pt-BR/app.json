@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "Gere um aplicativo chatflow (chat avançado) a partir de uma descrição",
   "gotoAnything.actions.createWorkflow": "Fluxo de trabalho",
   "gotoAnything.actions.createWorkflowDesc": "Gere um aplicativo de fluxo de trabalho a partir de uma descrição",
-  "gotoAnything.actions.discordDesc": "Comunidade do Discord aberta",
+  "gotoAnything.actions.discordDesc": "Abra a comunidade do Discord",
   "gotoAnything.actions.docDesc": "Abra a documentação de ajuda",
   "gotoAnything.actions.languageChangeDesc": "Mudar o idioma da interface",
   "gotoAnything.actions.refineCategoryDesc": "Refinar o fluxo de trabalho atual ou gráfico de fluxo de chat",

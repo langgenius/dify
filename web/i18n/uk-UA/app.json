@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "Створіть програму chatflow (розширений чат) з опису",
   "gotoAnything.actions.createWorkflow": "робочий процес",
   "gotoAnything.actions.createWorkflowDesc": "Створіть програму робочого процесу з опису",
-  "gotoAnything.actions.discordDesc": "Відкрита Discord-спільнота",
+  "gotoAnything.actions.discordDesc": "Відкрийте спільноту Discord",
   "gotoAnything.actions.docDesc": "Відкрийте документацію допомоги",
   "gotoAnything.actions.languageChangeDesc": "Змінити мову інтерфейсу",
   "gotoAnything.actions.refineCategoryDesc": "Уточніть поточний робочий процес або графік чату",

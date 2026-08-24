@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "Создайте приложение чата (расширенный чат) из описания.",
   "gotoAnything.actions.createWorkflow": "? абочий процесс",
   "gotoAnything.actions.createWorkflowDesc": "Создание приложения рабочего процесса из описания",
-  "gotoAnything.actions.discordDesc": "Открытое сообщество Discord",
+  "gotoAnything.actions.discordDesc": "Откройте сообщество Discord",
   "gotoAnything.actions.docDesc": "Откройте справочную документацию",
   "gotoAnything.actions.languageChangeDesc": "Измените язык интерфейса",
   "gotoAnything.actions.refineCategoryDesc": "Уточните текущий рабочий процесс или график потока чата",

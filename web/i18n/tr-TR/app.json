@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "Açıklamadan bir sohbet akışı (gelişmiş sohbet) uygulaması oluşturun",
   "gotoAnything.actions.createWorkflow": "İş akışı",
   "gotoAnything.actions.createWorkflowDesc": "Açıklamadan iş akışı uygulaması oluşturma",
-  "gotoAnything.actions.discordDesc": "Açık Discord topluluğu",
+  "gotoAnything.actions.discordDesc": "Discord topluluğunu aç",
   "gotoAnything.actions.docDesc": "Yardım belgelerini aç",
   "gotoAnything.actions.languageChangeDesc": "UI dilini değiştir",
   "gotoAnything.actions.refineCategoryDesc": "Mevcut iş akışını veya sohbet akışı grafiğini hassaslaştırın",

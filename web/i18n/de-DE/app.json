@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "Generieren Sie eine Chatflow-App (erweiterter Chat) aus einer Beschreibung",
   "gotoAnything.actions.createWorkflow": "Arbeitsablauf",
   "gotoAnything.actions.createWorkflowDesc": "Generieren Sie eine Workflow-App aus einer Beschreibung",
-  "gotoAnything.actions.discordDesc": "Offene Discord-Community",
+  "gotoAnything.actions.discordDesc": "Öffnen Sie die Discord-Community",
   "gotoAnything.actions.docDesc": "Öffnen Sie die Hilfedokumentation",
   "gotoAnything.actions.languageChangeDesc": "UI-Sprache ändern",
   "gotoAnything.actions.refineCategoryDesc": "Verfeinern Sie den aktuellen Workflow oder das Chatflow-Diagramm",

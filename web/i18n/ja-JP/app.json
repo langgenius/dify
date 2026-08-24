@@ -62,7 +62,7 @@
   "gotoAnything.actions.createChatflowDesc": "説明からチャットフロー (高度なチャット) アプリを生成する",
   "gotoAnything.actions.createWorkflow": "ワークフロー",
   "gotoAnything.actions.createWorkflowDesc": "説明からワークフロー アプリを生成する",
-  "gotoAnything.actions.discordDesc": "オープンDiscordコミュニティ",
+  "gotoAnything.actions.discordDesc": "Discordコミュニティを開く",
   "gotoAnything.actions.docDesc": "ヘルプドキュメントを開く",
   "gotoAnything.actions.languageChangeDesc": "UI言語を変更する",
   "gotoAnything.actions.refineCategoryDesc": "現在のワークフローまたはチャットフローグラフを改良する",
