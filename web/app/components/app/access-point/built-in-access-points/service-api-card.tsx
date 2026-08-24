@@ -1,8 +1,8 @@
 'use client'
 
-import type { AccessPointAvailability } from '../shared/access-point-status'
 import type { AccessPointAppInfo } from '../shared/utils'
-import { getAccessPointStatus } from '../shared/access-point-status'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
+import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
 import { getBuiltInAccessUrls } from '../shared/utils'
 

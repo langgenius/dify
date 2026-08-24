@@ -124,14 +124,6 @@ export const EnvironmentBackend = {
 
 export type EnvironmentBackend = (typeof EnvironmentBackend)[keyof typeof EnvironmentBackend]
 
-export const EnvironmentManagedBy = {
-  ENVIRONMENT_MANAGED_BY_UNSPECIFIED: 'ENVIRONMENT_MANAGED_BY_UNSPECIFIED',
-  ENVIRONMENT_MANAGED_BY_SYSTEM: 'ENVIRONMENT_MANAGED_BY_SYSTEM',
-  ENVIRONMENT_MANAGED_BY_USER: 'ENVIRONMENT_MANAGED_BY_USER',
-} as const
-
-export type EnvironmentManagedBy = (typeof EnvironmentManagedBy)[keyof typeof EnvironmentManagedBy]
-
 export const EnvironmentDeployedAppStatus = {
   ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_UNSPECIFIED',
   ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED: 'ENVIRONMENT_DEPLOYED_APP_STATUS_DEPLOYED',
@@ -262,7 +254,7 @@ export type CreateEnvironmentRequest = {
   displayName: string
   description?: string
   mode: EnvironmentMode
-  cpuPool: number
+  cpuPoolMillicores: number
   namespace?: string
   maxMemoryMib?: string
 }
@@ -292,12 +284,6 @@ export type CredentialSlot = {
   last_deployed_credential_id?: string
   icon?: string
   icon_dark?: string
-}
-
-export type DashboardApp = {
-  id: string
-  workspaceId: string
-  displayName: string
 }
 
 export type DeleteEnvironmentApiKeyResponse = {
@@ -358,8 +344,7 @@ export type Environment = {
   statusMessage: string
   lastError?: Error
   namespace?: string
-  managedBy?: EnvironmentManagedBy
-  cpuPool: number
+  cpuPoolMillicores: number
   createdAt: string
   updatedAt: string
   memory?: RunnerMemory
@@ -412,13 +397,6 @@ export type EnvironmentDeployedAppAttempt = {
   finalizedAt?: string
 }
 
-export type EnvironmentDeployedAppSummary = {
-  total: number
-  deployed: number
-  deploying: number
-  failed: number
-}
-
 export type EnvironmentDeployment = {
   environment: DeploymentEnvironment
   deployment?: EnvironmentDeploymentState
@@ -449,17 +427,17 @@ export type EnvironmentMcpServer = {
 
 export type EnvironmentPoolComposition = {
   topApps?: Array<EnvironmentPoolShare>
-  otherCpu?: number
+  otherCpuMillicores?: number
   otherAppCount?: number
 }
 
 export type EnvironmentPoolShare = {
   app: NamedRef
-  isolatedCpu: number
+  isolatedCpuMillicores: number
 }
 
 export type EnvironmentPoolUsage = {
-  occupiedCpu: number
+  occupiedCpuMillicores: number
   appCount: number
 }
 
@@ -691,11 +669,6 @@ export type ListApplicationInteractionsResponse = {
   pagination: Pagination
 }
 
-export type ListAppsResponse = {
-  data: Array<DashboardApp>
-  pagination: Pagination
-}
-
 export type ListDeploymentOperationsResponse = {
   data: Array<DeploymentOperation>
   pagination: Pagination
@@ -707,7 +680,6 @@ export type ListEnvironmentApiKeysResponse = {
 
 export type ListEnvironmentDeployedAppsResponse = {
   data: Array<EnvironmentDeployedApp>
-  summary: EnvironmentDeployedAppSummary
   pagination: Pagination
 }
 
@@ -724,9 +696,20 @@ export type ListEnvironmentsResponse = {
   pagination: Pagination
 }
 
+export type ListOperationAppsResponse = {
+  data: Array<OperationApp>
+  pagination: Pagination
+}
+
 export type NamedRef = {
   id: string
   displayName: string
+}
+
+export type OperationApp = {
+  id?: string
+  workspaceId?: string
+  displayName?: string
 }
 
 export type Operator = {
@@ -787,8 +770,8 @@ export type ResolveWebAppRouteResponse = {
   targetKind?: RouteTargetKind
   directUpstream?: string
   deploymentGeneration?: string
-  endUserId?: string
-  authType?: string
+  userId?: string
+  userFrom?: string
 }
 
 export type RetryEnvironmentBootstrapRequest = {
@@ -806,7 +789,7 @@ export type RunnerMemory = {
 }
 
 export type RunnerSizing = {
-  isolatedCpu: number
+  isolatedCpuMillicores: number
   memory: RunnerMemory
 }
 
@@ -855,15 +838,15 @@ export type UnsupportedNodeProvider = {
 export type UpdateEnvironmentDeployedAppResourcesRequest = {
   environmentId: string
   deploymentId: string
-  isolatedCpu: number
+  isolatedCpuMillicores: number
   maxMemoryMib?: string
 }
 
 export type UpdateEnvironmentDeployedAppResourcesResponse = {
   deploymentId: string
-  isolatedCpu: number
-  allocatedCpuCount: number
-  poolCpuCount: number
+  isolatedCpuMillicores: number
+  allocatedCpuMillicores: number
+  poolCpuMillicores: number
   memory: RunnerMemory
 }
 
@@ -871,7 +854,7 @@ export type UpdateEnvironmentRequest = {
   environmentId?: string
   displayName?: string
   description?: string
-  cpuPool?: number
+  cpuPoolMillicores?: number
   maxMemoryMib?: string
 }
 
@@ -898,7 +881,6 @@ export type WorkflowVersion = {
   created_at?: number
   created_by?: SimpleAccount
   dsl_hash?: string
-  deleted?: boolean
 }
 
 export type Pagination = {
@@ -930,8 +912,7 @@ export type EnvironmentWritable = {
   statusMessage: string
   lastError?: Error
   namespace?: string
-  managedBy?: EnvironmentManagedBy
-  cpuPool: number
+  cpuPoolMillicores: number
   createdAt: string
   updatedAt: string
   memory?: RunnerMemoryWritable
@@ -966,7 +947,6 @@ export type GetEnvironmentResponseWritable = {
 
 export type ListEnvironmentDeployedAppsResponseWritable = {
   data: Array<EnvironmentDeployedAppWritable>
-  summary: EnvironmentDeployedAppSummary
   pagination: Pagination
 }
 
@@ -984,15 +964,15 @@ export type RunnerMemoryWritable = {
 }
 
 export type RunnerSizingWritable = {
-  isolatedCpu: number
+  isolatedCpuMillicores: number
   memory: RunnerMemoryWritable
 }
 
 export type UpdateEnvironmentDeployedAppResourcesResponseWritable = {
   deploymentId: string
-  isolatedCpu: number
-  allocatedCpuCount: number
-  poolCpuCount: number
+  isolatedCpuMillicores: number
+  allocatedCpuMillicores: number
+  poolCpuMillicores: number
   memory: RunnerMemoryWritable
 }
 

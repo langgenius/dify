@@ -7,7 +7,7 @@ import type {
   WorkflowVersion,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { ReactElement } from 'react'
+import type { ComponentProps, ReactElement } from 'react'
 import {
   DeploymentOperationStatus,
   DeploymentOperationType,
@@ -465,10 +465,16 @@ const ACTION_MATRIX_CASES: Array<{
     }),
   },
   {
-    actions: [
-      { disabled: false, kind: 'redeploy' },
-      { disabled: false, kind: 'undeploy' },
-    ],
+    actions: [{ disabled: false, kind: 'changeVersion' }],
+    name: 'invalid without a current version',
+    row: environmentDeployment({
+      id: 'invalid-without-version',
+      name: 'Invalid without version',
+      status: DeploymentStatus.DEPLOYMENT_STATUS_INVALID,
+    }),
+  },
+  {
+    actions: [],
     name: 'unknown',
     row: environmentDeployment({
       currentVersion: VERSIONS.qa,
@@ -611,10 +617,14 @@ function render(
     appEnvironments = APP_ENVIRONMENTS,
     environmentDeployments = APP_ENVIRONMENT_DEPLOYMENTS,
     publishedWorkflowVersions = PUBLISHED_WORKFLOW_VERSIONS,
+    seedAppEnvironments = true,
+    seedLatestPublishedWorkflow = true,
   }: {
     appEnvironments?: AppEnvironment[]
     environmentDeployments?: EnvironmentDeployment[]
     publishedWorkflowVersions?: WorkflowResponse[]
+    seedAppEnvironments?: boolean
+    seedLatestPublishedWorkflow?: boolean
   } = {},
 ) {
   const queryClient = createConsoleQueryClient()
@@ -624,16 +634,20 @@ function render(
   queryClient.setQueryDefaults(appEnvironmentDeploymentsQueryOptions.queryKey, {
     staleTime: Infinity,
   })
-  queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
-    data: appEnvironments,
-  })
+  if (seedAppEnvironments) {
+    queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
+      data: appEnvironments,
+    })
+  }
   queryClient.setQueryData(appEnvironmentDeploymentsQueryOptions.queryKey, {
     environment_deployments: environmentDeployments,
   })
-  queryClient.setQueryData(
-    latestPublishedWorkflowQuery.queryKey,
-    mockBuiltInEnvironment.publishedWorkflow,
-  )
+  if (seedLatestPublishedWorkflow) {
+    queryClient.setQueryData(
+      latestPublishedWorkflowQuery.queryKey,
+      mockBuiltInEnvironment.publishedWorkflow,
+    )
+  }
   queryClient.setQueryData(appWorkflowVersionsQuery.queryKey, {
     pageParams: [1],
     pages: [
@@ -650,12 +664,31 @@ function render(
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
+function environmentTableProps(
+  overrides: Partial<ComponentProps<typeof EnvironmentTable>> = {},
+): ComponentProps<typeof EnvironmentTable> {
+  return {
+    appId: APP_ID,
+    onChangeVersion: vi.fn(),
+    onDeployLatest: vi.fn(),
+    onDeployToEnvironment: vi.fn(),
+    onRedeploy: vi.fn(),
+    onUndeploy: vi.fn(),
+    ...overrides,
+  }
+}
+
 let appPermissionKeys: string[] = [AppACLPermission.Deploy]
 let appDetailAvailable = true
 const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: [] as string[],
 }))
-const mockDocLink = vi.hoisted(() => vi.fn((path: string) => `https://docs.example.com${path}`))
+const mockGetEnterpriseDocUrl = vi.hoisted(() =>
+  vi.fn(
+    (path: string, docLanguage: string) =>
+      `https://enterprise-docs.example.com/${docLanguage}${path}`,
+  ),
+)
 
 vi.mock('react-i18next', async () => {
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
@@ -732,7 +765,8 @@ vi.mock('@/context/permission-state', async () => {
 })
 
 vi.mock('@/context/i18n', () => ({
-  useDocLink: () => mockDocLink,
+  getEnterpriseDocUrl: mockGetEnterpriseDocUrl,
+  useLocale: () => 'en-US',
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -784,7 +818,7 @@ describe('AppDeploy', () => {
 
     expect(screen.getByRole('link', { name: 'common.operation.learnMore' })).toHaveAttribute(
       'href',
-      'https://docs.example.com/use/deploy/overview',
+      'https://enterprise-docs.example.com/en/use/deploy/overview',
     )
   })
 
@@ -794,6 +828,53 @@ describe('AppDeploy', () => {
       expect(getEnvironmentDeploymentActions(row)).toEqual(actions)
     },
   )
+
+  it('disables Deploy latest and retries after the latest workflow request fails', async () => {
+    const user = userEvent.setup()
+    let requestCount = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!new URL(request.url).pathname.endsWith('/apps/app-1/workflows/publish'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+      requestCount += 1
+      if (requestCount === 1) {
+        return new Response(JSON.stringify({ message: 'Failed to load the latest workflow' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 500,
+        })
+      }
+
+      return new Response(JSON.stringify(mockBuiltInEnvironment.publishedWorkflow), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      })
+    })
+
+    render(<AppDeploy />, { seedLatestPublishedWorkflow: false })
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('deployments.studio.latestVersionLoadFailed')
+
+    const deployLatestButtons = screen.getAllByRole('button', {
+      name: 'deployments.studio.deployLatest',
+    })
+    expect(deployLatestButtons.length).toBeGreaterThan(0)
+    for (const button of deployLatestButtons) expect(button).toBeDisabled()
+
+    await user.click(within(alert).getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+    await waitFor(() => {
+      for (const button of screen.getAllByRole('button', {
+        name: 'deployments.studio.deployLatest',
+      }))
+        expect(button).toBeEnabled()
+    })
+    expect(requestCount).toBe(2)
+  })
 
   it('renders version, status, activity, and access from the deployment contract', () => {
     render(<AppDeploy />)
@@ -945,6 +1026,42 @@ describe('AppDeploy', () => {
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
   })
 
+  it('shows a retry entry when the environment list fails to load', async () => {
+    const user = userEvent.setup()
+    let requestCount = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!new URL(request.url).pathname.endsWith('/enterprise/app-deploy/apps/app-1/environments'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+      requestCount += 1
+      if (requestCount === 1) {
+        return new Response(JSON.stringify({ message: 'Failed to load environments' }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 500,
+        })
+      }
+
+      return new Response(JSON.stringify({ data: APP_ENVIRONMENTS }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      })
+    })
+
+    render(<AppDeploy />, { seedAppEnvironments: false })
+    await waitFor(() => expect(requestCount).toBe(1))
+
+    expect(screen.queryByText(/environments in use/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getByRole('alert')).toHaveTextContent('deployments.common.loadFailed')
+    await user.click(within(menu).getByRole('button', { name: 'common.operation.retry' }))
+
+    expect(await screen.findByText('8 of 12 environments in use')).toBeInTheDocument()
+    expect(requestCount).toBe(2)
+  })
+
   it('opens the selected environment version picker from the deploy menu', async () => {
     const user = userEvent.setup()
     render(<AppDeploy />)
@@ -955,6 +1072,7 @@ describe('AppDeploy', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'deployments.versions.deployTo:{"name":"Dev"}',
     })
+    expect(dialog).toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(dialog).getByText('deployments.studio.chooseVersionToDeploy')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /Release 7/ })).toBeEnabled()
     expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeEnabled()
@@ -997,6 +1115,7 @@ describe('AppDeploy', () => {
     const configurationDialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.deployConfiguration',
     })
+    expect(configurationDialog).not.toHaveClass('h-[min(44rem,calc(100dvh-32px))]')
     expect(within(configurationDialog).getByText('Release 6')).toBeInTheDocument()
     expect(within(configurationDialog).getByText('Dev')).toBeInTheDocument()
     expect(
@@ -1057,6 +1176,79 @@ describe('AppDeploy', () => {
         name: 'deployments.versions.deployTo:{"name":"Dev"}',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('reconciles an environment variable source removed by refreshed deployment options', async () => {
+    const user = userEvent.setup()
+    const deploymentRequests: Request[] = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (!request.url.includes('/deployment:deploy'))
+        throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+
+      deploymentRequests.push(request.clone())
+      return new Response(JSON.stringify({ message: 'Stop after capturing the request' }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 502,
+      })
+    })
+    const view = render(<AppDeploy />)
+
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.deploy' }))
+    await user.click(screen.getByRole('menuitem', { name: /Dev/ }))
+    const versionDialog = await screen.findByRole('dialog', {
+      name: 'deployments.versions.deployTo:{"name":"Dev"}',
+    })
+    await user.click(within(versionDialog).getByRole('button', { name: /Release 6/ }))
+
+    const configurationDialog = await screen.findByRole('dialog', {
+      name: 'deployments.studio.deployConfiguration',
+    })
+    await user.click(within(configurationDialog).getByRole('combobox', { name: /PORT/ }))
+    await user.click(
+      await screen.findByRole('option', {
+        name: 'deployments.deployDrawer.envVarSource.lastDeployment',
+      }),
+    )
+
+    const deploymentOptionsQuery = workflowDeploymentOptionsQueryOptions(
+      'workflow-version-6',
+      'dev',
+    )
+    act(() => {
+      view.queryClient.setQueryData(deploymentOptionsQuery.queryKey, {
+        ...WORKFLOW_DEPLOYMENT_OPTIONS,
+        environment_variable_slots: WORKFLOW_DEPLOYMENT_OPTIONS.environment_variable_slots.map(
+          (slot) =>
+            slot.key === 'PORT'
+              ? {
+                  ...slot,
+                  has_configured_value: false,
+                  has_last_deployed_value: false,
+                }
+              : slot,
+        ),
+      })
+    })
+
+    await waitFor(() => {
+      expect(within(configurationDialog).getByRole('combobox', { name: /PORT/ })).toHaveTextContent(
+        'deployments.deployDrawer.envVarSource.literal',
+      )
+    })
+    expect(within(configurationDialog).getByRole('spinbutton', { name: 'PORT' })).toBeEnabled()
+
+    await user.click(
+      within(configurationDialog).getByRole('button', { name: 'common.appMenus.deploy' }),
+    )
+    await waitFor(() => expect(deploymentRequests).toHaveLength(1))
+
+    const body = await deploymentRequests[0]!.json()
+    expect(body.environment_variables).toContainEqual({
+      key: 'PORT',
+      value: '',
+      value_source: EnvVarValueSource.ENV_VAR_VALUE_SOURCE_CUSTOM,
+    })
   })
 
   it('deploys the selected workflow configuration and refreshes the deployment list', async () => {
@@ -1553,7 +1745,10 @@ describe('AppDeploy', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'deployments.studio.changeVersion · Canary',
     })
-    expect(within(dialog).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
+    const versionList = within(dialog).getByRole('region', {
+      name: 'deployments.studio.changeVersion · Canary',
+    })
+    expect(within(versionList).getByRole('button', { name: /Sprint-42/ })).toBeDisabled()
     expect(within(dialog).getByText('deployments.studio.current')).toBeInTheDocument()
   })
 
@@ -1561,7 +1756,7 @@ describe('AppDeploy', () => {
     const user = userEvent.setup()
     render(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable appId={APP_ID} />
+        <EnvironmentTable {...environmentTableProps()} />
       </AppDeployStateBoundary>,
       {
         appEnvironments: APP_ENVIRONMENTS.map((environment) => ({
@@ -1622,10 +1817,14 @@ describe('AppDeploy', () => {
     queryClient.setQueryData(appEnvironmentsQueryOptions.queryKey, {
       data: APP_ENVIRONMENTS,
     })
+    queryClient.setQueryData(
+      latestPublishedWorkflowQuery.queryKey,
+      mockBuiltInEnvironment.publishedWorkflow,
+    )
 
     renderWithConsoleQuery(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable appId={APP_ID} />
+        <EnvironmentTable {...environmentTableProps()} />
       </AppDeployStateBoundary>,
       { queryClient },
     )
@@ -1747,7 +1946,7 @@ describe('AppDeploy', () => {
     const onUndeploy = vi.fn()
     render(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable appId={APP_ID} onUndeploy={onUndeploy} />
+        <EnvironmentTable {...environmentTableProps({ onUndeploy })} />
       </AppDeployStateBoundary>,
     )
 
@@ -1784,7 +1983,7 @@ describe('AppDeploy', () => {
     const onUndeploy = vi.fn()
     render(
       <AppDeployStateBoundary appId={APP_ID}>
-        <EnvironmentTable appId={APP_ID} onUndeploy={onUndeploy} />
+        <EnvironmentTable {...environmentTableProps({ onUndeploy })} />
       </AppDeployStateBoundary>,
     )
 

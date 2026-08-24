@@ -16,12 +16,16 @@ from core.schemas.schema_manager import SchemaManager
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.tag_repository import TagRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
+from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
@@ -32,6 +36,11 @@ from services.account_activation_adapters import (
     RegisterServiceInvitationTokenStore,
 )
 from services.account_activation_service import AccountActivationService
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
+from services.account_avatar_service import AccountAvatarService
+from services.account_integration_service import AccountIntegrationService
+from services.account_password_hasher import LegacyAccountPasswordHasher
+from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
 from services.auth.data_source_api_key_auth_gateways import (
@@ -47,12 +56,17 @@ from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.file_service import FileService
 from services.init_validation_service import InitValidationService
-from services.recommended_app_query_compat import LegacyRecommendedAppCatalogGateway
+from services.recommended_app_catalog_gateway import (
+    BuiltinRecommendedAppCatalogGateway,
+    RecommendedAppCatalogRouter,
+    RemoteRecommendedAppCatalogGateway,
+)
 from services.recommended_app_query_service import RecommendedAppQueryService
-from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.tag_application_service import TagApplicationService
+from services.trial_app_usage import TrialAppUsageRecorder
 from services.web_app_runtime_query_service import WebAppRuntimeQueryService
 from services.webapp_access_query_service import (
     WebAppAccessQueryService,
@@ -86,6 +100,9 @@ def _is_user_allowed_to_access_webapp(user_id: str, app_id: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class AccountServices:
+    avatar: AccountAvatarService
+    integrations: AccountIntegrationService
+    password: AccountPasswordService
     profile: AccountProfileService
 
 
@@ -103,8 +120,10 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
     recommended_app_queries: RecommendedAppQueryService
+    trial_app_usage: TrialAppUsageRecorder
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
+    tags: TagApplicationService
 
 
 def build_application_services(
@@ -118,9 +137,28 @@ def build_application_services(
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
+    accounts = SQLAlchemyAccountRepository(session_factory=database_client)
+    integrations = SQLAlchemyAccountIntegrationRepository(session_factory=database_client)
+    trial_app_enabled = FeatureService.is_trial_app_enabled()
+    database_catalog = DatabaseRecommendedAppCatalogRepository(session_factory=database_client, redis=redis)
+    builtin_catalog = BuiltinRecommendedAppCatalogGateway()
+    remote_catalog = RemoteRecommendedAppCatalogGateway()
+    recommended_app_catalog = RecommendedAppCatalogRouter(
+        remote=remote_catalog,
+        database=database_catalog,
+        builtin=builtin_catalog,
+    )
     return ApplicationServices(
         accounts=AccountServices(
-            profile=AccountProfileService(accounts=SQLAlchemyAccountRepository(database_client)),
+            avatar=AccountAvatarService(
+                files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
+            ),
+            integrations=AccountIntegrationService(integrations=integrations),
+            password=AccountPasswordService(
+                accounts=accounts,
+                passwords=LegacyAccountPasswordHasher(),
+            ),
+            profile=AccountProfileService(accounts=accounts),
         ),
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
@@ -178,10 +216,11 @@ def build_application_services(
             expected_password=initialization_password,
         ),
         recommended_app_queries=RecommendedAppQueryService(
-            catalog=LegacyRecommendedAppCatalogGateway(session_factory=database_client),
+            catalog=recommended_app_catalog,
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
-            is_trial_enabled=RecommendedAppService.is_trial_app_enabled,
+            trial_enabled=trial_app_enabled,
         ),
+        trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
                 client=database_client,
@@ -193,6 +232,9 @@ def build_application_services(
                 session_factory=database_client,
             ),
             roles=DeploymentWorkspaceMemberRoleResolver(),
+        ),
+        tags=TagApplicationService(
+            tags=TagRepository(session_factory=database_client),
         ),
     )
 

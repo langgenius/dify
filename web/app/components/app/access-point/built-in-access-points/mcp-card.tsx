@@ -13,6 +13,8 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
@@ -22,8 +24,7 @@ import {
   useUpdateMCPServer,
 } from '@/service/use-tools'
 import { AppModeEnum } from '@/types/app'
-import { AccessPointCard } from '../shared/access-point-card'
-import { AccessPointUrl } from '../shared/access-point-url'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
 type MCPAccessPointCardProps = {
@@ -134,6 +135,7 @@ export function MCPAccessPointCard({
       : activated
         ? 'inService'
         : 'disabled'
+  const statusLabel = useAccessPointStatusLabel(status)
 
   return (
     <>
@@ -144,6 +146,7 @@ export function MCPAccessPointCard({
         })}
         icon="i-custom-vender-integrations-mcp"
         status={status}
+        statusLabel={statusLabel}
         highlighted={highlighted}
         busy={statusUpdating}
         switchDisabled={!canEdit}

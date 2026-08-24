@@ -1,7 +1,7 @@
-import type { AccessPointStatus } from '../shared/access-point-status'
+import type { AccessPointStatus } from '@/app/components/base/access-point/status'
 import { screen } from '@testing-library/react'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
 import { render } from '@/test/console/render'
-import { AccessPointCard } from '../shared/access-point-card'
 
 describe('AccessPointCard', () => {
   it('marks the card when it is the highlighted access point', () => {
@@ -11,6 +11,7 @@ describe('AccessPointCard', () => {
         description="Web application access"
         icon="i-ri-robot-2-line"
         status="inService"
+        statusLabel="In service"
         highlighted
       >
         Access URL
@@ -34,6 +35,7 @@ describe('AccessPointCard', () => {
         description="Web application access"
         icon="i-ri-robot-2-line"
         status={status}
+        statusLabel={label}
         onEnabledChange={vi.fn()}
       >
         Access URL

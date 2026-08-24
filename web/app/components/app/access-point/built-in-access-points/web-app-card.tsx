@@ -1,9 +1,9 @@
 'use client'
 
 import type { SelectorParam } from 'i18next'
-import type { AccessPointAvailability } from '../shared/access-point-status'
 import type { AccessPointAppInfo, PublishedWorkflow } from '../shared/utils'
 import type { ConfigParams } from '@/app/components/app/overview/settings'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -21,15 +21,19 @@ import CustomizeModal from '@/app/components/app/overview/customize'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import SettingsModal from '@/app/components/app/overview/settings'
 import { WorkflowLaunchDialog } from '@/app/components/app/overview/workflow-launch-dialog'
+import { AccessPointCard } from '@/app/components/base/access-point/card'
+import { getAccessPointStatus } from '@/app/components/base/access-point/status'
+import { AccessPointUrl } from '@/app/components/base/access-point/url'
 import AppIcon from '@/app/components/base/app-icon'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
 import { AppModeEnum } from '@/types/app'
-import { AccessPointCard } from '../shared/access-point-card'
-import { getAccessPointStatus } from '../shared/access-point-status'
-import { AccessPointUrl } from '../shared/access-point-url'
+import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getBuiltInAccessUrls, getHiddenStartInputs } from '../shared/utils'
-import { WebAppAccessControlEntry } from '../shared/web-app-access-control'
+import {
+  WebAppAccessControlEntry,
+  WebAppAccessControlEntrySkeleton,
+} from '../shared/web-app-access-control'
 
 const ACCESS_MODE_ICON_MAP: Record<AccessMode, string> = {
   [AccessMode.ORGANIZATION]: 'i-ri-building-line',
@@ -108,6 +112,7 @@ export function WebAppAccessPointCard({
   }
 
   const status = getAccessPointStatus(availability, running)
+  const statusLabel = useAccessPointStatusLabel(status)
 
   return (
     <>
@@ -126,6 +131,7 @@ export function WebAppAccessPointCard({
           />
         }
         status={status}
+        statusLabel={statusLabel}
         highlighted={highlighted}
         switchDisabled={!canEdit}
         switchLabel={t(($) => $['overview.appInfo.title'], { ns: 'appOverview' })}
@@ -198,16 +204,18 @@ export function WebAppAccessPointCard({
           regenerating={regenerating}
           onRegenerate={() => setShowRegenerate(true)}
         />
-        {showAccessControl && (
-          <WebAppAccessControlEntry
-            accessConfigured={accessConfigured}
-            accessIcon={accessIcon}
-            accessLabel={t(accessLabel, { ns: 'app' })}
-            available={availability === 'available'}
-            disabled={!canManageAccess}
-            onClick={() => setShowAccess(true)}
-          />
-        )}
+        {showAccessControl &&
+          (availability === 'available' ? (
+            <WebAppAccessControlEntry
+              accessConfigured={accessConfigured}
+              accessIcon={accessIcon}
+              accessLabel={t(accessLabel, { ns: 'app' })}
+              disabled={!canManageAccess}
+              onClick={() => setShowAccess(true)}
+            />
+          ) : (
+            <WebAppAccessControlEntrySkeleton loading={availability === 'loading'} />
+          ))}
       </AccessPointCard>
 
       <SettingsModal

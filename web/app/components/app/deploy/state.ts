@@ -36,6 +36,34 @@ export type EnvironmentDeploymentAction = {
 const appDeployAppIdAtom = atom<string | null>(null)
 const defaultWorkflowVersionNameAtom = atom('')
 
+type DeploymentVersionSource = Parameters<typeof toDeploymentVersion>[0]
+type DeploymentVersionCacheEntry = {
+  defaultName: string
+  latestWorkflowId?: string
+  version: ReturnType<typeof toDeploymentVersion>
+}
+
+const deploymentVersionCache = new WeakMap<DeploymentVersionSource, DeploymentVersionCacheEntry>()
+
+function toStableDeploymentVersion(
+  source: DeploymentVersionSource,
+  defaultName: string,
+  latestWorkflowId?: string,
+) {
+  const cached = deploymentVersionCache.get(source)
+  if (cached?.defaultName === defaultName && cached.latestWorkflowId === latestWorkflowId)
+    return cached.version
+
+  const version = toDeploymentVersion(source, defaultName, latestWorkflowId)
+  deploymentVersionCache.set(source, {
+    defaultName,
+    latestWorkflowId,
+    version,
+  })
+
+  return version
+}
+
 export function AppDeployStateBoundary({
   appId,
   children,
@@ -71,8 +99,23 @@ export const latestAppWorkflowVersionAtom = atom((get) => {
   const workflow = get(latestPublishedWorkflowAtom)
   if (!workflow) return
 
-  return toDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
+  return toStableDeploymentVersion(workflow, get(defaultWorkflowVersionNameAtom), workflow.id)
 })
+
+export const latestAppWorkflowVersionIsErrorAtom = selectAtom(
+  latestPublishedWorkflowQueryAtom,
+  (query) => query.isError,
+)
+
+export const latestAppWorkflowVersionIsRetryingAtom = selectAtom(
+  latestPublishedWorkflowQueryAtom,
+  (query) => query.isError && query.isFetching,
+)
+
+export const latestAppWorkflowVersionRefetchAtom = selectAtom(
+  latestPublishedWorkflowQueryAtom,
+  (query) => query.refetch,
+)
 
 const appWorkflowVersionsQueryAtom = atomWithInfiniteQuery((get) => {
   return appWorkflowVersionsInfiniteQueryOptions(get(appDeployAppIdAtom))
@@ -88,7 +131,7 @@ export const appWorkflowVersionsAtom = atom((get) => {
   return pages.flatMap((page) =>
     page.items
       .filter((workflow) => workflow.version !== 'draft')
-      .map((workflow) => toDeploymentVersion(workflow, defaultName, latestWorkflowId)),
+      .map((workflow) => toStableDeploymentVersion(workflow, defaultName, latestWorkflowId)),
   )
 })
 
@@ -138,6 +181,26 @@ const appEnvironmentsQueryAtom = atomWithQuery((get) => {
 
 const appEnvironmentsAtom = selectAtom(appEnvironmentsQueryAtom, (query) => query.data?.data)
 
+export const appEnvironmentsIsErrorAtom = selectAtom(
+  appEnvironmentsQueryAtom,
+  (query) => query.isError,
+)
+
+export const appEnvironmentsIsLoadingAtom = selectAtom(
+  appEnvironmentsQueryAtom,
+  (query) => query.isLoading,
+)
+
+export const appEnvironmentsIsRetryingAtom = selectAtom(
+  appEnvironmentsQueryAtom,
+  (query) => query.isError && query.isFetching,
+)
+
+export const appEnvironmentsRefetchAtom = selectAtom(
+  appEnvironmentsQueryAtom,
+  (query) => query.refetch,
+)
+
 export const appEnvironmentUsageAtom = atom((get) => {
   const environments = get(appEnvironmentsAtom)
   if (!environments) return
@@ -148,8 +211,8 @@ export const appEnvironmentUsageAtom = atom((get) => {
   }
 })
 
-export const undeployedAppEnvironmentsAtom = atom(
-  (get) => get(appEnvironmentsAtom)?.filter((environment) => environment.in_use === false) ?? [],
+export const undeployedAppEnvironmentsAtom = atom((get) =>
+  get(appEnvironmentsAtom)?.filter((environment) => environment.in_use === false),
 )
 
 export function isEnvironmentDeploymentInProgress(deployment?: EnvironmentDeployment) {
@@ -202,9 +265,10 @@ export const appEnvironmentDeploymentsIsErrorAtom = selectAtom(
   (query) => query.isError,
 )
 
-export const appEnvironmentDeploymentsIsFetchingAtom = selectAtom(
+export const appEnvironmentDeploymentsIsRetryingAtom = selectAtom(
   appEnvironmentDeploymentsQueryAtom,
-  (query) => query.isFetching,
+  (query) =>
+    query.isError && (query.data?.environment_deployments.length ?? 0) === 0 && query.isFetching,
 )
 
 export const appEnvironmentDeploymentsRefetchAtom = selectAtom(
@@ -215,8 +279,12 @@ export const appEnvironmentDeploymentsRefetchAtom = selectAtom(
 function deploymentActions(
   kinds: EnvironmentDeploymentActionKind[],
   disabled = false,
+  deployLatestDisabled = false,
 ): EnvironmentDeploymentAction[] {
-  return kinds.map((kind) => ({ disabled, kind }))
+  return kinds.map((kind) => ({
+    disabled: disabled || (kind === 'deployLatest' && deployLatestDisabled),
+    kind,
+  }))
 }
 
 function isLatestDeployOperationFailed(row: EnvironmentDeployment) {
@@ -230,11 +298,14 @@ function isLatestDeployOperationFailed(row: EnvironmentDeployment) {
 
 export function getEnvironmentDeploymentActions(
   row: EnvironmentDeployment,
+  { deployLatestDisabled = false }: { deployLatestDisabled?: boolean } = {},
 ): EnvironmentDeploymentAction[] {
   const deployment = row.deployment
-  // Currently, this case may not be possible, but we still handle it to avoid potential errors in the future.
+  const actions = (kinds: EnvironmentDeploymentActionKind[], disabled = false) =>
+    deploymentActions(kinds, disabled, deployLatestDisabled)
+
   if (!deployment || deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYED) {
-    return deploymentActions(['deployLatest', 'changeVersion'])
+    return actions(['deployLatest', 'changeVersion'])
   }
 
   const hasCurrentVersion = Boolean(deployment.current_version)
@@ -244,7 +315,12 @@ export function getEnvironmentDeploymentActions(
       isLatestDeployOperationFailed(row))
 
   if (hasFailedDeploy) {
-    return deploymentActions(
+    const hasRetryVersion = Boolean(
+      deployment.latest_operation?.target_version ?? deployment.current_version,
+    )
+    if (!hasRetryVersion) return actions(['changeVersion'])
+
+    return actions(
       hasCurrentVersion ? ['retry', 'changeVersion', 'undeploy'] : ['retry', 'changeVersion'],
     )
   }
@@ -253,16 +329,20 @@ export function getEnvironmentDeploymentActions(
     deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_DEPLOYING ||
     deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_UNDEPLOYING
   ) {
-    return deploymentActions(['changeVersion', 'redeploy', 'undeploy'], true)
+    return actions(['changeVersion', 'redeploy', 'undeploy'], true)
   }
 
   if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_RUNNING) {
     if ((deployment.versions_behind ?? 0) > 0) {
-      return deploymentActions(['deployLatest', 'changeVersion', 'redeploy', 'undeploy'])
+      return actions(['deployLatest', 'changeVersion', 'redeploy', 'undeploy'])
     }
 
-    return deploymentActions(['changeVersion', 'redeploy', 'undeploy'])
+    return actions(['changeVersion', 'redeploy', 'undeploy'])
   }
 
-  return deploymentActions(['redeploy', 'undeploy'])
+  if (deployment.status === DeploymentStatus.DEPLOYMENT_STATUS_INVALID) {
+    return hasCurrentVersion ? actions(['redeploy', 'undeploy']) : actions(['changeVersion'])
+  }
+
+  return []
 }

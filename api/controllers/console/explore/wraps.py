@@ -2,19 +2,23 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Concatenate
 
-from flask import abort
 from flask_restx import Resource
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from controllers.console.explore.error import AppAccessDeniedError, TrialAppLimitExceeded, TrialAppNotAllowed
+from controllers.console.explore.error import (
+    AppAccessDeniedError,
+    TrialAppFeatureDisabledError,
+    TrialAppLimitExceeded,
+    TrialAppNotAllowed,
+)
 from controllers.console.wraps import account_initialization_required
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import AccountTrialAppRecord, App, InstalledApp, TrialApp
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
-from services.recommended_app_service import RecommendedAppService
 
 
 def installed_app_required[**P, R](view: Callable[Concatenate[InstalledApp, P], R] | None = None):
@@ -107,8 +111,8 @@ def trial_app_required[**P, R](view: Callable[Concatenate[App, P], R] | None = N
 def trial_feature_enable[**P, R](view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        if not RecommendedAppService.is_trial_app_enabled():
-            abort(403, "Trial app feature is not enabled.")
+        if not application_services().recommended_app_queries.is_trial_enabled():
+            raise TrialAppFeatureDisabledError()
         return view(*args, **kwargs)
 
     return decorated

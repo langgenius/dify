@@ -53,7 +53,7 @@ Then(
 
     await expect(webAppCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
     await expect(webAppCard.getByLabel('Toggle Web app access')).toBeDisabled()
-    await expect(webAppCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
+    await expect(webAppCard.getByRole('button', { name: 'Open' })).toBeDisabled()
     await expect(serviceApiCard.getByText('Out of service')).toBeVisible()
     await expect(serviceApiCard.getByLabel('Toggle Backend service API access')).toBeDisabled()
     await expect(serviceApiCard.getByRole('button', { name: /^API Key\b/ })).toBeDisabled()
@@ -66,9 +66,9 @@ When(
     const accessSurfaceCard = getAccessSurfaceCard(this, surface)
 
     if (surface === 'Web app') {
-      const launchLink = accessSurfaceCard.getByRole('link', { name: 'Launch' })
-      const href = await launchLink.getAttribute('href')
-      if (!href) throw new Error('Agent v2 Web app Launch link does not expose an href.')
+      const openLink = accessSurfaceCard.getByRole('link', { name: 'Open' })
+      const href = await openLink.getAttribute('href')
+      if (!href) throw new Error('Agent v2 Web app Open link does not expose an href.')
 
       this.agentBuilder.accessPoint.webAppURL = href
     }
@@ -91,7 +91,7 @@ Then(
 
     await expect(accessSurfaceCard.getByText('Out of service')).toBeVisible({ timeout: 30_000 })
     if (surface === 'Web app')
-      await expect(accessSurfaceCard.getByRole('button', { name: 'Launch' })).toBeDisabled()
+      await expect(accessSurfaceCard.getByRole('button', { name: 'Open' })).toBeDisabled()
   },
 )
 
@@ -102,6 +102,6 @@ Then(
 
     await expect(accessSurfaceCard.getByText('In service')).toBeVisible({ timeout: 30_000 })
     if (surface === 'Web app')
-      await expect(accessSurfaceCard.getByRole('link', { name: 'Launch' })).toBeVisible()
+      await expect(accessSurfaceCard.getByRole('link', { name: 'Open' })).toBeVisible()
   },
 )

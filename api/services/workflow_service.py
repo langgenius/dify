@@ -338,15 +338,17 @@ class WorkflowService:
 
         return workflow
 
-    def get_accessible_app_ids(self, app_ids: Sequence[str], tenant_id: str, *, session: Session) -> set[str]:
-        """
-        Return app IDs that belong to the given tenant.
-        """
+    def get_tenant_app_maintainers(
+        self, app_ids: Sequence[str], tenant_id: str, *, session: Session
+    ) -> dict[str, str | None]:
+        """Return requested normal apps and their maintainers within a tenant."""
         if not app_ids:
-            return set()
+            return {}
 
-        stmt = select(App.id).where(App.id.in_(app_ids), App.tenant_id == tenant_id)
-        return {str(app_id) for app_id in session.scalars(stmt).all()}
+        stmt = select(App.id, App.maintainer).where(
+            App.id.in_(app_ids), App.tenant_id == tenant_id, App.status == "normal"
+        )
+        return {str(app_id): maintainer for app_id, maintainer in session.execute(stmt)}
 
     def get_all_published_workflow(
         self,

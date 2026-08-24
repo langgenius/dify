@@ -23,18 +23,13 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@/context/i18n', () => ({
-  defaultDocBaseUrl: 'https://docs.dify.ai',
-  getDocHomePath: () => '/home',
-}))
-
-vi.mock('@/i18n-config/language', () => ({
-  getDocLanguage: (locale: string) => (locale === 'en' ? 'en' : locale),
-}))
-
 describe('docsCommand', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    docsCommand.unregister?.()
   })
 
   it('has correct metadata', () => {
@@ -45,11 +40,28 @@ describe('docsCommand', () => {
 
   it('execute opens documentation in new tab', () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    docsCommand.register?.({ getDocsHomeUrl: () => 'https://docs.dify.ai/en/home' })
 
     docsCommand.execute?.()
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://docs.dify.ai/en/home',
+      '_blank',
+      'noopener,noreferrer',
+    )
+    openSpy.mockRestore()
+  })
+
+  it('execute uses the documentation URL registered by the provider', () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    docsCommand.register?.({
+      getDocsHomeUrl: () => 'https://enterprise-docs.dify.ai/en/',
+    })
+
+    docsCommand.execute?.()
+
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://enterprise-docs.dify.ai/en/',
       '_blank',
       'noopener,noreferrer',
     )
@@ -77,18 +89,20 @@ describe('docsCommand', () => {
   })
 
   it('registers navigation.doc command', () => {
-    docsCommand.register?.({} as Record<string, never>)
+    docsCommand.register?.({ getDocsHomeUrl: () => 'https://docs.dify.ai/en/home' })
     expect(registerCommands).toHaveBeenCalledWith({ 'navigation.doc': expect.any(Function) })
   })
 
   it('registered handler opens doc URL with correct locale', async () => {
-    docsCommand.register?.({} as Record<string, never>)
+    docsCommand.register?.({
+      getDocsHomeUrl: () => 'https://enterprise-docs.dify.ai/en/',
+    })
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
     await handlers['navigation.doc']!()
 
     expect(openSpy).toHaveBeenCalledWith(
-      'https://docs.dify.ai/en/home',
+      'https://enterprise-docs.dify.ai/en/',
       '_blank',
       'noopener,noreferrer',
     )

@@ -1,11 +1,9 @@
 """Application service for querying the recommended app catalog."""
 
-from collections.abc import Callable, Sequence, Set
+from collections.abc import Sequence, Set
 from typing import NamedTuple, Protocol
 
 from constants.languages import languages
-
-_BUILTIN_FALLBACK_LANGUAGE = "en-US"
 
 
 class RecommendedAppInfoRecord(NamedTuple):
@@ -43,14 +41,16 @@ class RecommendedAppDetailRecord(NamedTuple):
     export_data: str
 
 
-class RecommendedAppCatalogGateway(Protocol):
-    def list_recommended(self, language: str) -> RecommendedAppCatalogPage: ...
+class RecommendedAppCatalogQuery(Protocol):
+    """Read from the recommended-app catalog."""
 
-    def list_builtin(self, language: str) -> RecommendedAppCatalogPage: ...
+    def list_recommended(self, language: str) -> RecommendedAppCatalogPage: ...
 
     def list_learn_dify(self, language: str) -> RecommendedAppCatalogPage: ...
 
     def get_detail(self, app_id: str) -> RecommendedAppDetailRecord | None: ...
+
+    def contains(self, app_id: str) -> bool: ...
 
 
 class TrialAppQuery(Protocol):
@@ -97,13 +97,21 @@ class RecommendedAppQueryService:
     def __init__(
         self,
         *,
-        catalog: RecommendedAppCatalogGateway,
+        catalog: RecommendedAppCatalogQuery,
         trial_apps: TrialAppQuery,
-        is_trial_enabled: Callable[[], bool],
+        trial_enabled: bool,
     ) -> None:
         self._catalog = catalog
         self._trial_apps = trial_apps
-        self._is_trial_enabled = is_trial_enabled
+        self._trial_enabled = trial_enabled
+
+    def is_trial_enabled(self) -> bool:
+        return self._trial_enabled
+
+    def is_previewable(self, app_id: str) -> bool:
+        if app_id in self._trial_apps.existing_ids((app_id,)):
+            return True
+        return self._catalog.contains(app_id)
 
     def list_recommended(
         self,
@@ -113,8 +121,6 @@ class RecommendedAppQueryService:
     ) -> RecommendedAppListResult:
         language = self._resolve_language(requested_language, interface_language)
         page = self._catalog.list_recommended(language)
-        if not page.recommended_apps:
-            page = self._catalog.list_builtin(_BUILTIN_FALLBACK_LANGUAGE)
 
         return RecommendedAppListResult(
             recommended_apps=self._with_trial_status(page.recommended_apps),
@@ -137,7 +143,7 @@ class RecommendedAppQueryService:
             raise RecommendedAppNotFoundError
 
         can_trial = False
-        if self._is_trial_enabled():
+        if self._trial_enabled:
             can_trial = detail.id in self._trial_apps.existing_ids((detail.id,))
 
         return RecommendedAppDetailSummary(
@@ -152,7 +158,7 @@ class RecommendedAppQueryService:
 
     def _with_trial_status(self, apps: Sequence[RecommendedAppRecord]) -> tuple[RecommendedAppSummary, ...]:
         trial_app_ids: Set[str] = set()
-        if self._is_trial_enabled():
+        if self._trial_enabled:
             trial_app_ids = self._trial_apps.existing_ids([app.app_id for app in apps])
 
         return tuple(

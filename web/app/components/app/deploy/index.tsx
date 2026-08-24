@@ -2,36 +2,34 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { DeploymentDialogRequest } from './deployment-dialog/types'
-import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { useDocLink } from '@/context/i18n'
+import { getEnterpriseDocUrl, useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { getDocLanguage } from '@/i18n-config/language'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { BuiltInEnvironmentCard } from './built-in-environment-card'
 import { DeploymentDialog } from './deployment-dialog'
 import { EnvironmentTable } from './environment-table'
-import { AppDeployStateBoundary, latestAppWorkflowVersionAtom } from './state'
-import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './use-refresh-app-environments-after-deployment-polling'
-import { useUndeployWorkflow } from './use-undeploy-workflow'
+import { useRefreshAppEnvironmentsAfterDeploymentPolling } from './hooks/use-refresh-app-environments-after-deployment-polling'
+import { useUndeployWorkflow } from './hooks/use-undeploy-workflow'
+import { AppDeployStateBoundary } from './state'
 import { toDeploymentVersion } from './version'
 
 function AppDeployContent({ appId }: { appId: string }) {
   const { t } = useTranslation('deployments')
   const { t: tCommon } = useTranslation('common')
   const { t: tWorkflow } = useTranslation('workflow')
-  const docLink = useDocLink()
-  // TODO: Replace useDocLink with the EE-specific generator for the versioned
-  // `en/3.13.x/use/deploy/overview.mdx` URL once it is available.
-  const deployOverviewDocUrl = docLink('/use/deploy/overview' as DocPathWithoutLang)
+  const locale = useLocale()
+  const docLanguage = getDocLanguage(locale)
+  const deployOverviewDocUrl = getEnterpriseDocUrl('/use/deploy/overview', docLanguage)
   const [deploymentRequest, setDeploymentRequest] = useState<DeploymentDialogRequest>()
-  const latestVersion = useAtomValue(latestAppWorkflowVersionAtom)
   useRefreshAppEnvironmentsAfterDeploymentPolling(appId)
   const undeployWorkflow = useUndeployWorkflow(appId)
 
@@ -104,9 +102,7 @@ function AppDeployContent({ appId }: { appId: string }) {
                 kind: 'changeVersion',
               })
             }
-            onDeployLatest={(deployment) => {
-              if (!latestVersion) return
-
+            onDeployLatest={(deployment, latestVersion) => {
               setDeploymentRequest({
                 currentVersionId: deployment.deployment?.current_version?.id,
                 environment: deployment.environment.display_name,
