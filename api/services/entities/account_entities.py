@@ -176,3 +176,23 @@ type AccountChangeEmailTokenData = (
     | AccountChangeEmailNewEmailToken
     | AccountChangeEmailNewEmailVerifiedToken
 )
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEducationVerification:
+    token: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEducationStatus:
+    result: bool | None
+    is_student: bool | None
+    expire_at: datetime | None
+    allow_refresh: bool | None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountEducationAutocomplete:
+    data: tuple[str, ...]
+    curr_page: int | None
+    has_next: bool | None

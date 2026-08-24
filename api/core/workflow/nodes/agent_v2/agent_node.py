@@ -225,13 +225,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             agent_config_snapshot_id=bundle.snapshot.id,
         )
 
-        # Stage 4 §4.1 (D-3): use effective outputs so defaults flow through both
-        # the backend request and the post-run type check.
         node_job = WorkflowNodeJobConfig.model_validate(bundle.binding.node_job_config_dict)
-        effective_outputs = list(
-            WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs))
-        )
-        outputs_by_name = {o.name: o for o in effective_outputs}
+        custom_outputs = list(node_job.declared_outputs)
+        outputs_by_name = {output.name: output for output in custom_outputs}
 
         # ──── ENG-638: resume after a submitted/timed-out ask_human form ────
         # graphon re-executes this _run when the outer workflow resumes. If a
@@ -445,68 +441,60 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 metadata=metadata,
             )
 
-            # ──── Stage 4: per-output type check ────
-            type_check = self._type_checker.check(
-                declared_outputs=effective_outputs,
-                raw_output=terminal_event.output,
-                tenant_id=dify_ctx.tenant_id,
-            )
-            self._record_type_check_metadata(metadata, type_check)
-
-            if not type_check.has_failures:
-                yield StreamCompletedEvent(
-                    node_run_result=self._output_adapter.build_success_result(
-                        event=terminal_event,
-                        inputs=inputs,
-                        process_data=process_data,
-                        metadata=metadata,
-                        declared_outputs=effective_outputs,
-                    )
+            success_event = terminal_event
+            if custom_outputs:
+                # ──── Stage 4: per-output type check ────
+                type_check = self._type_checker.check(
+                    declared_outputs=custom_outputs,
+                    raw_output=terminal_event.output,
+                    tenant_id=dify_ctx.tenant_id,
                 )
-                return
+                self._record_type_check_metadata(metadata, type_check)
 
-            # ──── Stage 4: orchestrate retry / default / fail ────
-            failures = [
-                FailedOutput(
-                    declared=outputs_by_name[result.name],
-                    failure_kind=OutputFailureKind.TYPE_CHECK,
-                    reason=result.reason,
+                if type_check.has_failures:
+                    # ──── Stage 4: orchestrate retry / default / fail ────
+                    failures = [
+                        FailedOutput(
+                            declared=outputs_by_name[result.name],
+                            failure_kind=OutputFailureKind.TYPE_CHECK,
+                            reason=result.reason,
+                        )
+                        for result in type_check.failures
+                        if result.name in outputs_by_name
+                    ]
+                    outcome = self._failure_orchestrator.decide(failures=failures, current_attempt=attempt)
+                    metadata["output_failure_decision"] = outcome.decision.value
+                    metadata["output_failure_reason"] = outcome.primary_reason
+
+                    if outcome.decision == OutputFailureDecision.RETRY:
+                        attempt = outcome.next_attempt
+                        continue
+
+                    if outcome.decision == OutputFailureDecision.USE_DEFAULT:
+                        success_event = self._patch_event_with_defaults(terminal_event, outcome.per_output_actions)
+                    else:
+                        error_type = (
+                            "output_type_check_failed_fail_branch"
+                            if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
+                            else "output_type_check_failed"
+                        )
+                        yield self._failure_event(
+                            inputs=inputs,
+                            process_data=process_data,
+                            metadata=metadata,
+                            error=outcome.primary_reason,
+                            error_type=error_type,
+                        )
+                        return
+
+            yield StreamCompletedEvent(
+                node_run_result=self._output_adapter.build_success_result(
+                    event=success_event,
+                    inputs=inputs,
+                    process_data=process_data,
+                    metadata=metadata,
+                    declared_outputs=custom_outputs,
                 )
-                for result in type_check.failures
-                if result.name in outputs_by_name
-            ]
-            outcome = self._failure_orchestrator.decide(failures=failures, current_attempt=attempt)
-            metadata["output_failure_decision"] = outcome.decision.value
-            metadata["output_failure_reason"] = outcome.primary_reason
-
-            if outcome.decision == OutputFailureDecision.RETRY:
-                attempt = outcome.next_attempt
-                continue
-
-            if outcome.decision == OutputFailureDecision.USE_DEFAULT:
-                patched_event = self._patch_event_with_defaults(terminal_event, outcome.per_output_actions)
-                yield StreamCompletedEvent(
-                    node_run_result=self._output_adapter.build_success_result(
-                        event=patched_event,
-                        inputs=inputs,
-                        process_data=process_data,
-                        metadata=metadata,
-                        declared_outputs=effective_outputs,
-                    )
-                )
-                return
-
-            error_type = (
-                "output_type_check_failed_fail_branch"
-                if outcome.decision == OutputFailureDecision.TAKE_FAIL_BRANCH
-                else "output_type_check_failed"
-            )
-            yield self._failure_event(
-                inputs=inputs,
-                process_data=process_data,
-                metadata=metadata,
-                error=outcome.primary_reason,
-                error_type=error_type,
             )
             return
 

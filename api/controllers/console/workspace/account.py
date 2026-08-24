@@ -4,7 +4,6 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal
 
-import pytz
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -45,23 +44,14 @@ from controllers.console.workspace.error import (
     MissingInvitationCodeRequestError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import (
-    account_initialization_required,
-    enable_change_email,
-    model_validate,
-    only_edition_cloud,
-    setup_required,
-    with_current_user,
-)
+from controllers.console.wraps import model_validate, setup_required
+from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountResponse
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
-from libs.login import login_required
 from machinery.context import RequestContext
-from models import Account
 from services import account_errors
-from services.billing_service import BillingService
 from services.entities.account_entities import AccountProfileChanges
 
 
@@ -526,23 +516,21 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         payload = console_ns.payload or {}
         args = AccountDeletionFeedbackPayload.model_validate(payload)
 
-        BillingService.update_account_deletion_feedback(args.email, args.feedback)
+        application_services().accounts.deletion_feedback.submit(email=args.email, feedback=args.feedback)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/account/education/verify")
 class EducationVerifyApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
-    @with_current_user
-    def get(self, account: Account):
-        return dump_response(
-            EducationVerifyResponse, BillingService.EducationIdentity.verify(account.id, account.email) or {}
-        )
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext):
+        try:
+            verification = application_services().accounts.education.verify(request_context)
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
+        return dump_response(EducationVerifyResponse, verification)
 
 
 @console_ns.route("/account/education")
@@ -550,47 +538,43 @@ class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     # response-contract:ignore billing-service activation payload; TODO: model education activation result.
     @console_ns.response(HTTPStatus.OK, "Success")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
-    @with_current_user
-    def post(self, account: Account):
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = EducationActivatePayload.model_validate(payload)
+        try:
+            return application_services().accounts.education.activate(
+                request_context,
+                token=args.token,
+                institution=args.institution,
+                role=args.role,
+            )
+        except account_errors.AccountNotFoundError:
+            raise AccountNotFound() from None
 
-        result = BillingService.EducationIdentity.activate(account, args.token, args.institution, args.role)
-        return result
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
-    @with_current_user
-    def get(self, account: Account):
-        res = BillingService.EducationIdentity.status(account.id) or {}
-        # convert expire_at to UTC timestamp from isoformat
-        if res and "expire_at" in res:
-            res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
-        return dump_response(EducationStatusResponse, res)
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext):
+        return dump_response(EducationStatusResponse, application_services().accounts.education.status(request_context))
 
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
     @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @only_edition_cloud
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
-    def get(self):
+    @console_account_admission(editions=frozenset({DeploymentEdition.CLOUD}))
+    def get(self, request_context: RequestContext):
         payload = request.args.to_dict(flat=True)
         args = EducationAutocompleteQuery.model_validate(payload)
 
         return dump_response(
             EducationAutocompleteResponse,
-            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {},
+            application_services().accounts.education.autocomplete(
+                request_context,
+                keywords=args.keywords,
+                page=args.page,
+                limit=args.limit,
+            ),
         )
 
 
@@ -598,8 +582,7 @@ class EducationAutoCompleteApi(Resource):
 class ChangeEmailSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
-    @enable_change_email
-    @console_account_admission()
+    @console_account_admission(require_change_email_enabled=True)
     def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = ChangeEmailSendPayload.model_validate(payload)
@@ -632,8 +615,7 @@ class ChangeEmailSendEmailApi(Resource):
 class ChangeEmailCheckApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
-    @enable_change_email
-    @console_account_admission()
+    @console_account_admission(require_change_email_enabled=True)
     def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = ChangeEmailValidityPayload.model_validate(payload)
@@ -661,9 +643,8 @@ class ChangeEmailCheckApi(Resource):
 @console_ns.route("/account/change-email/reset")
 class ChangeEmailResetApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailResetPayload.__name__])
-    @enable_change_email
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
-    @console_account_admission()
+    @console_account_admission(require_change_email_enabled=True)
     def post(self, request_context: RequestContext):
         payload = console_ns.payload or {}
         args = ChangeEmailResetPayload.model_validate(payload)

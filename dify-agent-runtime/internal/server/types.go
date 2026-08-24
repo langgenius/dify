@@ -101,3 +101,9 @@ type ErrorDetail struct {
 type ErrorResponse struct {
 	Error ErrorDetail `json:"error"`
 }
+
+// RestoreResponse reports a completed Home restore.
+type RestoreResponse struct {
+	Entries      int   `json:"entries"`
+	BytesWritten int64 `json:"bytes_written"`
+}

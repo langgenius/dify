@@ -88,7 +88,7 @@ docker compose up -d
 
 #### सहायता प्राप्त करना
 
-यदि आपको Dify सेटअप करते समय कोई समस्या आती है, तो कृपया हमारे [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) को देखें। यदि फिर भी समस्या बनी रहती है, तो [the community and us](#community--contact) से संपर्क करें।
+यदि आपको Dify सेटअप करते समय कोई समस्या आती है, तो कृपया हमारे [FAQ](https://docs.dify.ai/getting-started/install-self-hosted/faqs) को देखें। यदि फिर भी समस्या बनी रहती है, तो [the community and us](#समुदाय-और-संपर्क-community--contact) से संपर्क करें।
 
 > यदि आप Dify में योगदान देना चाहते हैं या अतिरिक्त विकास करना चाहते हैं, तो हमारे [guide to deploying from source code](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code) को देखें।
 
@@ -123,7 +123,7 @@ Dify की सभी सेवाएँ संबंधित APIs के स�
   हम [Dify Cloud](https://dify.ai) सेवा प्रदान करते हैं, जिसे कोई भी बिना किसी सेटअप के आज़मा सकता है। यह स्व-परिनियोजित संस्करण की सभी क्षमताएँ प्रदान करता है और सैंडबॉक्स प्लान में 200 निःशुल्क GPT-4 कॉल्स शामिल करता है।
 
 - **Dify कम्युनिटी संस्करण की स्व-होस्टिंग<br/>**\
-  अपने वातावरण में Dify को जल्दी चलाएँ इस [starter guide](#quick-start) की मदद से।\
+  अपने वातावरण में Dify को जल्दी चलाएँ इस [starter guide](#त्वरित-प्रारंभ) की मदद से।\
   आगे के संदर्भों और विस्तृत निर्देशों के लिए हमारी [documentation](https://docs.dify.ai) देखें।
 
 - **उद्यमों / संगठनों के लिए Dify<br/>**\

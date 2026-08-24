@@ -130,7 +130,11 @@ class TestCurrentContextInjection:
     """Test request context injection decorators."""
 
     def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
-        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+        handler = next(
+            handler
+            for error_type, handler in console_api.error_handlers.items()
+            if error_type is ActiveWorkspaceRequiredError
+        )
 
         with Flask(__name__).app_context():
             body, status = handler(ActiveWorkspaceRequiredError())
@@ -264,6 +268,7 @@ class TestCurrentContextInjection:
             with Flask(__name__).test_request_context(headers={"X-Trace-Id": "trace-1"}):
                 result = Handler().post()
 
+        assert isinstance(result, RequestContext)
         assert result.active_workspace_id == "tenant-123"
         assert result.trace_id == "trace-1"
         enforce_rbac_access.assert_called_once_with(
@@ -303,8 +308,27 @@ class TestCurrentContextInjection:
             with Flask(__name__).test_request_context():
                 result = Handler().post()
 
+        assert isinstance(result, RequestContext)
         assert result.account_id == current_user.id
         account_initialization_required.assert_not_called()
+
+    def test_console_account_admission_declares_optional_change_email_gate(self):
+        with (
+            patch("controllers.console.flask_admission.setup_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.login_required", side_effect=lambda view: view),
+            patch("controllers.console.flask_admission.account_initialization_required", side_effect=lambda view: view),
+            patch(
+                "controllers.console.flask_admission.enable_change_email",
+                side_effect=lambda view: view,
+            ) as change_email_enabled,
+        ):
+
+            class Handler:
+                @flask_admission.console_account_admission(require_change_email_enabled=True)
+                def get(self, request_context: RequestContext):
+                    return request_context
+
+        change_email_enabled.assert_called_once()
 
     def test_with_current_tenant_id_injects_tenant_id(self):
         class Handler:

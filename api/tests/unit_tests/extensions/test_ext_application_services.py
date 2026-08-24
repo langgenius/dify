@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from enums import DeploymentEdition, WebAppAccessMode
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
+from machinery.context import RequestContext
+from models.account import Account
 from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -28,9 +30,12 @@ from services.account_activation_adapters import (
 )
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.auth.data_source_api_key_auth_service import DataSourceApiKeyAuthService
+from services.billing_portal_service import BillingPortalService
+from services.billing_service import BillingService
 from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.init_validation_service import InvalidInitializationPasswordError
+from services.partner_tenant_binding_service import PartnerTenantBindingService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
@@ -171,6 +176,63 @@ def test_build_application_services_wires_tag_boundary(
     assert isinstance(services.tags, TagApplicationService)
 
 
+def test_build_application_services_wires_billing_service(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = Account(name="Billing Owner", email="owner@example.com")
+    account.id = "account-1"
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    with (
+        patch.object(
+            BillingService,
+            "get_subscription",
+            return_value={"url": "https://billing.example.com/checkout"},
+        ) as get_subscription,
+        patch.object(
+            BillingService,
+            "get_invoices",
+            return_value={"url": "https://billing.example.com/portal"},
+        ) as get_invoices,
+        patch.object(
+            BillingService,
+            "sync_partner_tenants_bindings",
+            return_value={"result": "success"},
+        ) as sync_partner_tenants_bindings,
+    ):
+        services = ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=MagicMock(spec=RedisClientWrapper),
+        )
+
+    request_context = RequestContext(
+        request_id="request-1",
+        trace_id="trace-1",
+        account_id="account-1",
+        active_workspace_id="workspace-1",
+    )
+    assert isinstance(services.billing_portal, BillingPortalService)
+    assert services.billing_portal.get_subscription(
+        request_context,
+        plan="professional",
+        interval="month",
+    ) == {"url": "https://billing.example.com/checkout"}
+    assert services.billing_portal.get_invoices(request_context) == {"url": "https://billing.example.com/portal"}
+    assert isinstance(services.partner_tenant_bindings, PartnerTenantBindingService)
+    assert services.partner_tenant_bindings.sync(
+        account_id="account-1",
+        partner_key="partner-key",
+        click_id="click-1",
+    ) == {"result": "success"}
+    get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
+    get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
+    sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
+
+
 def test_build_application_services_wires_account_profile_repository(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -188,6 +250,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.initialization._accounts is accounts
     assert not services.accounts.initialization._invitation_required
     assert services.accounts.change_email._accounts is accounts
+    assert services.accounts.education._accounts is accounts
     assert services.accounts.deletion._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
