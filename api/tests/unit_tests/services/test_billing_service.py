@@ -697,7 +697,7 @@ class TestBillingServiceUsageCalculation:
     """Unit tests for usage calculation and credit management.
 
     Tests cover:
-    - Feature plan usage information retrieval
+    - Quota information retrieval
     - Credit addition (positive delta)
     - Credit consumption (negative delta)
     - Usage refunds
@@ -709,20 +709,6 @@ class TestBillingServiceUsageCalculation:
         """Mock _send_request method."""
         with patch.object(BillingService, "_send_request") as mock:
             yield mock
-
-    def test_get_tenant_feature_plan_usage_info(self, mock_send_request):
-        """Test retrieval of tenant feature plan usage information (legacy endpoint)."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {"features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
 
     def test_get_quota_info(self):
         """Test retrieval of quota info from new endpoint."""
@@ -1163,7 +1149,12 @@ class TestBillingServiceEducationIdentity:
         """Test checking education verification status."""
         # Arrange
         account_id = "account-123"
-        expected_response = {"verified": True, "institution": "MIT", "role": "student"}
+        expected_response = {
+            "result": True,
+            "is_student": True,
+            "expire_at": "2027-01-01T00:00:00Z",
+            "allow_refresh": False,
+        }
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1180,10 +1171,9 @@ class TestBillingServiceEducationIdentity:
         page = 0
         limit = 20
         expected_response = {
-            "institutions": [
-                {"name": "Massachusetts Institute of Technology", "domain": "mit.edu"},
-                {"name": "University of Massachusetts", "domain": "umass.edu"},
-            ]
+            "data": ["Massachusetts Institute of Technology", "University of Massachusetts"],
+            "curr_page": 0,
+            "has_next": False,
         }
         mock_send_request.return_value = expected_response
 
@@ -1200,7 +1190,7 @@ class TestBillingServiceEducationIdentity:
         """Test education institution autocomplete with default parameters."""
         # Arrange
         keywords = "Stanford"
-        expected_response = {"institutions": [{"name": "Stanford University", "domain": "stanford.edu"}]}
+        expected_response = {"data": ["Stanford University"], "curr_page": 0, "has_next": False}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1234,7 +1224,7 @@ class TestBillingServiceAccountManagement:
         """Test account deletion."""
         # Arrange
         account_id = "account-123"
-        expected_response = {"result": "success", "deleted": True}
+        expected_response = {"message": "Account deleted successfully."}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1296,7 +1286,7 @@ class TestBillingServiceAccountManagement:
         # Arrange
         email = "user@example.com"
         feedback = "Service was too expensive"
-        expected_response = {"result": "success"}
+        expected_response = {"message": "Reason added successfully."}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1356,7 +1346,7 @@ class TestBillingServicePartnerIntegration:
         account_id = "account-123"
         partner_key = "partner-xyz"
         click_id = "click-789"
-        expected_response = {"result": "success", "synced": True}
+        expected_response = {"message": "Successfully synced partner tenants"}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1851,6 +1841,7 @@ class TestBillingServiceIntegrationScenarios:
             # Assert - All 3 requests succeeded
             assert mock_is_limited.call_count == 3
             assert mock_increment.call_count == 3
+
 
 class TestBillingServiceSubscriptionInfoDataType:
     """Unit tests for data type coercion in BillingService.get_info
