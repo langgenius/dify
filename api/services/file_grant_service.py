@@ -35,8 +35,6 @@ from models.tools import ToolFile
 from services.errors.file import FileTooLargeError
 from services.file_service import FileService
 
-SESSION_ID_PREFIX = "adp2:"
-
 
 class AppNotFoundError(Exception):
     """The app named by a mint request does not exist in the given tenant."""
@@ -78,7 +76,7 @@ class FileGrantService:
         """Fold an opaque subject into the 255-char ``end_users.session_id`` column."""
 
         digest = hashlib.sha256(subject.encode()).digest()
-        return SESSION_ID_PREFIX + base64.urlsafe_b64encode(digest).decode().rstrip("=")
+        return base64.urlsafe_b64encode(digest).decode().rstrip("=")
 
     @classmethod
     def get_or_create_end_user(

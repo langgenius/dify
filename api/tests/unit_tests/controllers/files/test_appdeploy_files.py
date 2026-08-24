@@ -113,7 +113,7 @@ def end_user(sqlite_session: Session) -> EndUser:
         app_id=APP_ID,
         type=EndUserType.APP_DEPLOY,
         is_anonymous=True,
-        session_id="adp2:seeded",
+        session_id="seeded",
         external_user_id="adp1.seeded",
     )
     sqlite_session.add(record)
