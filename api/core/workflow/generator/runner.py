@@ -277,7 +277,7 @@ def _resolve_generation_mode(
     """
     if requested != "auto":
         return requested
-    planner_mode = plan.get("mode") or "".strip().lower()
+    planner_mode = (plan.get("mode") or "").strip().lower()
     if planner_mode in ("workflow", "advanced-chat"):
         return cast(WorkflowGenerationMode, planner_mode)
     node_types = {node.get("node_type") or "" for node in plan.get("nodes") or [] if isinstance(node, dict)}
@@ -304,8 +304,8 @@ def _build_plan_event(
     return {
         "title": plan.get("title") or "",
         "description": plan.get("description") or "",
-        "app_name": plan.get("app_name") or "".strip(),
-        "icon": plan.get("icon") or "".strip(),
+        "app_name": (plan.get("app_name") or "").strip(),
+        "icon": (plan.get("icon") or "").strip(),
         "mode": mode,
         "nodes": [
             {
@@ -630,8 +630,8 @@ class WorkflowGenerator:
         result: WorkflowGenerateResultDict = {
             "graph": graph,
             "message": plan.get("description", ""),
-            "app_name": plan.get("app_name") or "".strip(),
-            "icon": plan.get("icon") or "".strip(),
+            "app_name": (plan.get("app_name") or "").strip(),
+            "icon": (plan.get("icon") or "").strip(),
             "error": "",
             "errors": [],
         }
