@@ -8,32 +8,19 @@ from typing import Any, NotRequired, TypedDict, cast
 import httpx
 from flask_login import current_user
 
-from core.helper import encrypter
-from core.helper.http_client_pooling import get_pooled_http_client
+from core.helper import encrypter, ssrf_proxy
 from core.rag.extractor.firecrawl.firecrawl_app import CrawlStatusResponse, FirecrawlApp, FirecrawlDocumentData
 from core.rag.extractor.watercrawl.provider import WaterCrawlProvider
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from services.datasource_provider_service import DatasourceProviderService
 
-# Reuse pooled HTTP clients to avoid creating new connections per request and ease testing.
-# Both clients carry a bounded read/connect timeout so a stalled Jina or
-# adaptive-crawl endpoint fails fast instead of pinning a worker. The values
-# match the floor used in the WaterCrawl PR (#37512). See #39859.
-_jina_http_client: httpx.Client = get_pooled_http_client(
-    "website:jinareader",
-    lambda: httpx.Client(
-        timeout=httpx.Timeout(30.0, connect=5.0),
-        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
-    ),
-)
-_adaptive_http_client: httpx.Client = get_pooled_http_client(
-    "website:adaptivecrawl",
-    lambda: httpx.Client(
-        timeout=httpx.Timeout(30.0, connect=5.0),
-        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
-    ),
-)
+# SSRF-protected HTTP client for jinareader and adaptivecrawl providers.
+# Uses the centralized SSRF proxy which enforces proxy policies and blocks
+# private/internal network access (RFC1918, loopback, link-local, CGN, IPv6 ULA).
+# See core.helper.ssrf_proxy for configuration via SSRF_PROXY_* environment variables.
+_jina_ssrf_proxy = ssrf_proxy.SSRFProxy()
+_adaptive_ssrf_proxy = ssrf_proxy.SSRFProxy()
 
 
 @dataclass
@@ -254,15 +241,16 @@ class WebsiteService:
     @classmethod
     def _crawl_with_jinareader(cls, request: CrawlRequest, api_key: str) -> dict[str, Any]:
         if not request.options.crawl_sub_pages:
-            response = _jina_http_client.get(
+            response = _jina_ssrf_proxy.get(
                 f"https://r.jina.ai/{request.url}",
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
+                timeout=httpx.Timeout(30.0, connect=5.0),
             )
             if response.json().get("code") != 200:
                 raise ValueError("Failed to crawl:")
             return {"status": "active", "data": response.json().get("data")}
         else:
-            response = _adaptive_http_client.post(
+            response = _adaptive_ssrf_proxy.post(
                 "https://adaptivecrawl-kir3wx7b3a-uc.a.run.app",
                 json={
                     "url": request.url,
@@ -273,6 +261,7 @@ class WebsiteService:
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {api_key}",
                 },
+                timeout=httpx.Timeout(30.0, connect=5.0),
             )
             if response.json().get("code") != 200:
                 raise ValueError("Failed to crawl")
@@ -325,10 +314,11 @@ class WebsiteService:
 
     @classmethod
     def _get_jinareader_status(cls, job_id: str, api_key: str) -> CrawlStatusDict:
-        response = _adaptive_http_client.post(
+        response = _adaptive_ssrf_proxy.post(
             "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
             json={"taskId": job_id},
+            timeout=httpx.Timeout(30.0, connect=5.0),
         )
         data = response.json().get("data", {})
         crawl_status_data: CrawlStatusDict = {
@@ -341,10 +331,11 @@ class WebsiteService:
         }
 
         if crawl_status_data["status"] == "completed":
-            response = _adaptive_http_client.post(
+            response = _adaptive_ssrf_proxy.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id, "urls": list(data.get("processed", {}).keys())},
+                timeout=httpx.Timeout(30.0, connect=5.0),
             )
             data = response.json().get("data", {})
             formatted_data = [
@@ -405,29 +396,32 @@ class WebsiteService:
     @classmethod
     def _get_jinareader_url_data(cls, job_id: str, url: str, api_key: str) -> dict[str, Any] | None:
         if not job_id:
-            response = _jina_http_client.get(
+            response = _jina_ssrf_proxy.get(
                 f"https://r.jina.ai/{url}",
                 headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
+                timeout=httpx.Timeout(30.0, connect=5.0),
             )
             if response.json().get("code") != 200:
                 raise ValueError("Failed to crawl")
             return dict(response.json().get("data", {}))
         else:
             # Get crawl status first
-            status_response = _adaptive_http_client.post(
+            status_response = _adaptive_ssrf_proxy.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id},
+                timeout=httpx.Timeout(30.0, connect=5.0),
             )
             status_data = status_response.json().get("data", {})
             if status_data.get("status") != "completed":
                 raise ValueError("Crawl job is not completed")
 
             # Get processed data
-            data_response = _adaptive_http_client.post(
+            data_response = _adaptive_ssrf_proxy.post(
                 "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                 json={"taskId": job_id, "urls": list(status_data.get("processed", {}).keys())},
+                timeout=httpx.Timeout(30.0, connect=5.0),
             )
             processed_data = data_response.json().get("data", {})
             for item in processed_data.get("processed", {}).values():
