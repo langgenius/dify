@@ -29,8 +29,17 @@ from core.dify_builder.contract import (
     Trace,
     TraceStep,
 )
-from core.dify_builder.handlers_fix import action_string, append_card, perform_revert
-from core.dify_builder.models import ChangeSet, Checkpoint, DifyBuilderContext, Session, Snapshot, Turn
+from core.dify_builder.handlers_fix import (
+    action_kind,
+    action_string,
+    append_card,
+    build_change_set,
+    emit_canvas,
+    merge_known_keys,
+    mint_checkpoint,
+    perform_revert,
+)
+from core.dify_builder.models import DifyBuilderContext, Session, Turn
 from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
@@ -44,13 +53,6 @@ __all__ = [
     "handle_review",
     "handle_test_affected_paths",
 ]
-
-
-def _emit_canvas(env: Env, event: str, **extra) -> None:
-    """Fire a granular canvas event iff the caller wired ``env.emit_canvas``
-    (opt-in; None is a no-op, mirroring how apply_repair treats on_canvas)."""
-    if env.emit_canvas is not None:
-        env.emit_canvas({"event": event, **extra})
 
 
 _EDIT_RULE_FIELDS = [
@@ -69,7 +71,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     nodes (highlighting them), and transition to edit.impact_analysis emitting
     its form + challenge + change_set(preview). The canvas is read only here,
     after the goal is sent (mock 02-edit.txt:3,9)."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "send_edit_goal":
         return StepResult(next=PcState.EDIT_CAPABILITY_CHECK, context=fc)
 
@@ -86,7 +88,7 @@ def handle_capability_check(env: Env, turn: Turn, s: Session, fc: DifyBuilderCon
     fc.edit_target_node_ids = list(impact.get("target_node_ids", []))
 
     for node_id in fc.edit_target_node_ids:
-        _emit_canvas(env, "highlight_edit_target", node_id=node_id)
+        emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     summary_items = append_card(
         fc,
@@ -139,33 +141,25 @@ def handle_impact_analysis(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     change plan, self-mint the pre-edit checkpoint (so the CheckpointCard at
     plan_approval carries a real id -- mirrors Build's handle_resource_
     recommendation), and transition to edit.plan_approval."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "submit_edit_rules":
         return StepResult(next=PcState.EDIT_IMPACT_ANALYSIS, context=fc)
 
     fc.checkpoint_seq = fc.next_seq
 
     if turn.action is not None and isinstance(turn.action.payload, dict):
-        merged = dict(fc.edit_rules)
-        for key in _EDIT_RULE_KEYS:
-            if key in turn.action.payload:
-                merged[key] = turn.action.payload[key]
-        fc.edit_rules = merged
+        fc.edit_rules = merge_known_keys(fc.edit_rules, turn.action.payload, _EDIT_RULE_KEYS)
 
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.plan_version_tag = "v1"
 
-    checkpoint = Checkpoint(id=str(uuid.uuid4()), session_id=s.id, state=PcState.EDIT_PLAN_APPROVAL)
-    env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
-    fc.checkpoint_id = checkpoint.id
-    fc.last_snapshot_hash = graph_hash
-    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
+    checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
 
     decision_items = append_card(fc, DecisionItem(text="Submitted edit rules"))
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
-        fc, CheckpointCard(checkpoint_id=checkpoint.id, label="Pre-edit checkpoint", created_at="")
+        fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
     turn_items = append_card(
         fc,
@@ -213,26 +207,24 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     Naturally idempotent on loop-back re-approve: re-applying the same
     set_node_config value overwrites the node's data (no ValueError, unlike
     Build's create_node); a re-approve simply yields an empty diff."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "approve_repair":
         return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc)
 
-    _emit_canvas(env, "create_checkpoint")
+    emit_canvas(env, "create_checkpoint")
     graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
     intents = env.agent.build_edit_intents(dict(fc.edit_rules), graph)
     fc.staged_repair = list(intents)
 
     for node_id in fc.edit_target_node_ids:
-        _emit_canvas(env, "highlight_edit_target", node_id=node_id)
+        emit_canvas(env, "highlight_edit_target", node_id=node_id)
 
     result = env.dify.apply_repair(s.app_id, turn.actor, intents, on_canvas=None)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
-    _emit_canvas(env, "apply_edit_plan")
+    emit_canvas(env, "apply_edit_plan")
 
-    changes = list(result.changes) if result.changes else list(result.changed_nodes)
-    scope = result.scope or "configuration"
-    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "no changes")
+    changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="no changes")
 
     change_set_items = append_card(
         fc, ChangeSetCard(count=len(changes), changes=changes, scope=scope, full_diff_open=False)
@@ -263,13 +255,13 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     affected_paths; ``revert`` (resolved to ``undo``) -> edit.reverted: restores
     the pre-edit draft from the checkpoint and invalidates the approvals made
     since it (via perform_revert)."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "undo":
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))
         return StepResult(next=PcState.EDIT_REVERTED, context=fc, items=items)
     if kind == "run_affected_tests":
-        _emit_canvas(env, "start_test_run")
+        emit_canvas(env, "start_test_run")
         items = append_card(
             fc,
             AssistantTurnItem(
@@ -288,7 +280,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     """(working, auto) Canned affected-path test: emit a success test_result +
     the review summary + change_set, transition to edit.review. No live
     run_draft (spec: canned)."""
-    _emit_canvas(env, "mark_test_success")
+    emit_canvas(env, "mark_test_success")
     test_result_items = append_card(
         fc,
         TestResultCard(
@@ -309,7 +301,7 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
             full_diff_open=False,
         ),
     )
-    _emit_canvas(env, "mark_review_ready")
+    emit_canvas(env, "mark_review_ready")
     summary_items = append_card(
         fc,
         SummaryCard(
@@ -349,10 +341,10 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     continue_adjusting (resolved re_fix) -> edit.impact_analysis (re-analyze);
     revert (undo) -> edit.reverted: restores the pre-edit draft from the
     checkpoint and invalidates the approvals made since it (via perform_revert)."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "publish_workflow":
         env.dify.publish(s.app_id, turn.actor)
-        _emit_canvas(env, "publish_workflow")
+        emit_canvas(env, "publish_workflow")
         decision_items = append_card(fc, DecisionItem(text="Chose to publish"))
         publish_items = append_card(fc, PublishCard(version="2.1", badge="live"))
         summary_items = append_card(
@@ -362,16 +354,16 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             next=PcState.EDIT_PUBLISH, context=fc, items=[*decision_items, *publish_items, *summary_items]
         )
     if kind == "keep_draft":
-        _emit_canvas(env, "cancel_publish")
+        emit_canvas(env, "cancel_publish")
         decision_items = append_card(fc, DecisionItem(text="Kept the draft"))
         summary_items = append_card(
             fc, SummaryCard(variant="completion", title="Draft kept", rows=_completion_rows(fc, "Draft kept"))
         )
         return StepResult(next=PcState.EDIT_PUBLISH, context=fc, items=[*decision_items, *summary_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
-        _emit_canvas(env, "cancel_publish")
+        emit_canvas(env, "cancel_publish")
         for node_id in fc.edit_target_node_ids:
-            _emit_canvas(env, "highlight_edit_target", node_id=node_id)
+            emit_canvas(env, "highlight_edit_target", node_id=node_id)
         decision_items = append_card(fc, DecisionItem(text="Continue adjusting"))
         form_items = append_card(
             fc, FormCard(variant="edit_rules", fields=list(_EDIT_RULE_FIELDS), values=dict(fc.edit_rules), frozen=False)
@@ -419,7 +411,7 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     """(waiting) After a revert. ``retry_after_revert`` (resolved to re_fix)
     re-proposes the change plan, self-mints a fresh pre-edit checkpoint, and
     returns to edit.plan_approval (spec §7.2)."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind != "re_fix":
         return StepResult(next=PcState.EDIT_REVERTED, context=fc)
 
@@ -427,14 +419,10 @@ def handle_reverted(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
     graph, graph_hash = env.dify.read_graph(s.app_id, turn.actor)
     fc.plan_items = env.agent.propose_edit_plan(dict(fc.edit_rules), graph)
     fc.plan_version_tag = "v1"
-    checkpoint = Checkpoint(id=str(uuid.uuid4()), session_id=s.id, state=PcState.EDIT_PLAN_APPROVAL)
-    env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
-    fc.checkpoint_id = checkpoint.id
-    fc.last_snapshot_hash = graph_hash
-    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
+    checkpoint_id = mint_checkpoint(env, s, fc, graph, graph_hash, PcState.EDIT_PLAN_APPROVAL)
     plan_items = append_card(fc, PlanCard(title="Change plan", version_tag="v1", items=list(fc.plan_items)))
     checkpoint_items = append_card(
-        fc, CheckpointCard(checkpoint_id=checkpoint.id, label="Pre-edit checkpoint", created_at="")
+        fc, CheckpointCard(checkpoint_id=checkpoint_id, label="Pre-edit checkpoint", created_at="")
     )
     turn_items = append_card(
         fc,

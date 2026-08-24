@@ -38,10 +38,13 @@ from core.dify_builder.contract import (
     Trace,
 )
 from core.dify_builder.models import (
+    ApplyResult,
     ChangeSet,
     ChecklistError,
+    Checkpoint,
     ConversationItem,
     DifyBuilderContext,
+    Graph,
     NodeOutput,
     Run,
     Session,
@@ -53,10 +56,13 @@ from core.dify_builder.runner import Env, Handler, StepResult
 from core.dify_builder.state import PcState
 
 __all__ = [
+    "action_kind",
     "action_string",
     "append_card",
     "append_item",
+    "build_change_set",
     "decode_checklist_errors",
+    "emit_canvas",
     "first_failed_node",
     "fix_registry",
     "handle_apply",
@@ -70,6 +76,8 @@ __all__ = [
     "handle_propose",
     "handle_publish",
     "handle_verify",
+    "merge_known_keys",
+    "mint_checkpoint",
     "perform_revert",
 ]
 
@@ -108,6 +116,56 @@ def action_string(turn: Turn, key: str) -> tuple[str, bool]:
     if isinstance(value, str):
         return value, True
     return "", False
+
+
+def action_kind(turn: Turn) -> str:
+    """The current turn's action kind, or ``""`` if no action was sent."""
+    return turn.action.kind if turn.action is not None else ""
+
+
+def emit_canvas(env: Env, event: str, **extra) -> None:
+    """Fire a granular canvas event iff the caller wired ``env.emit_canvas``
+    (opt-in; None is a no-op, mirroring how apply_repair treats on_canvas)."""
+    if env.emit_canvas is not None:
+        env.emit_canvas({"event": event, **extra})
+
+
+def build_change_set(
+    result: ApplyResult, *, default_scope: str, fallback_diff: str
+) -> tuple[list[str], str, ChangeSet]:
+    """Derive ``(changes, scope, ChangeSet)`` from an ``apply_repair`` result.
+
+    Adapters that don't compute a real diff (e.g. FakeDifyPort in tests) leave
+    ``changes``/``scope`` empty -- fall back to the old changed_nodes/
+    ``default_scope`` behavior so those callers stay green. ``fallback_diff``
+    is used when the joined changes string is empty.
+    """
+    changes = list(result.changes) if result.changes else list(result.changed_nodes)
+    scope = result.scope or default_scope
+    change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or fallback_diff)
+    return changes, scope, change_set
+
+
+def mint_checkpoint(env: Env, s: Session, fc: DifyBuilderContext, graph: Graph, graph_hash: str, state: PcState) -> str:
+    """Mint + persist a checkpoint from an already-read ``graph``/``graph_hash``,
+    and stamp ``fc``'s restore-point id / last snapshot hash / structure
+    fingerprint. Returns the new checkpoint id."""
+    checkpoint = Checkpoint(id=str(uuid.uuid4()), session_id=s.id, state=state)
+    env.repo.create_checkpoint(checkpoint, Snapshot(session_id=s.id, hash=graph_hash, graph=graph))
+    fc.checkpoint_id = checkpoint.id
+    fc.last_snapshot_hash = graph_hash
+    fc.last_structure_fingerprint = env.dify.structural_fingerprint(graph)
+    return checkpoint.id
+
+
+def merge_known_keys(existing: dict, payload: dict, keys) -> dict:
+    """Return a copy of ``existing`` with any of ``keys`` present in
+    ``payload`` overlaid on top."""
+    merged = dict(existing)
+    for key in keys:
+        if key in payload:
+            merged[key] = payload[key]
+    return merged
 
 
 def perform_revert(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> None:
@@ -205,7 +263,7 @@ def handle_await_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderConte
     """(waiting) High-risk gate. Only an explicit ``approve_repair`` advances
     to ``fix.apply``; any other/absent action kind is a no-op that stays at
     the gate. Port of ``handlers_fix.go:123``."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "approve_repair":
         return StepResult(next=PcState.FIX_APPLY, context=fc)
     if kind == "reject_repair":
@@ -223,12 +281,7 @@ def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> St
     result = env.dify.apply_repair(s.app_id, turn.actor, fc.staged_repair, on_canvas=env.emit_canvas)
     fc.last_snapshot_hash = result.new_hash
     fc.last_structure_fingerprint = result.structure_fingerprint
-    # Adapters that don't compute a real diff (e.g. FakeDifyPort in tests)
-    # leave changes/scope empty -- fall back to the old changed_nodes/
-    # "configuration" behavior so those callers stay green.
-    changes = list(result.changes) if result.changes else list(result.changed_nodes)
-    scope = result.scope or "configuration"
-    fc.change_set = ChangeSet(changed_nodes=result.changed_nodes, diff="; ".join(changes) or "config edit")
+    changes, scope, fc.change_set = build_change_set(result, default_scope="configuration", fallback_diff="config edit")
     items = append_card(
         fc,
         ChangeSetCard(
@@ -330,7 +383,7 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
 
 def handle_await_decision(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """(waiting) Terminal choice. Port of ``handlers_fix.go:239``."""
-    kind = turn.action.kind if turn.action is not None else ""
+    kind = action_kind(turn)
     if kind == "publish":
         return StepResult(next=PcState.FIX_PUBLISH, context=fc)
     if kind == "re_fix":

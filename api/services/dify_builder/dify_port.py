@@ -55,6 +55,7 @@ from core.dify_builder.models import (
 from extensions.ext_database import db
 from graphon.enums import BuiltinNodeTypes
 from libs.datetime_utils import naive_utc_now
+from models.account import Account
 from models.model import App
 from models.workflow import Workflow
 from repositories.factory import DifyAPIRepositoryFactory
@@ -133,6 +134,39 @@ def _load_draft_workflow_or_raise(app: App, *, session: Session) -> Workflow:
     return workflow
 
 
+def _sync_graph_only(
+    app: App,
+    graph: Graph,
+    workflow: Workflow,
+    unique_hash: str,
+    account: Account,
+    session: Session,
+    app_id: str,
+) -> Workflow:
+    """Write ``graph`` back to the draft via the graph-only sync both
+    ``apply_repair`` and ``restore_graph`` use (no server-side patch
+    primitive -- see the module docstring). Remaps
+    ``WorkflowHashNotEqualError`` (the draft changed since it was read) to
+    the domain ``HashMismatchError``."""
+    try:
+        return WorkflowService().sync_draft_workflow(
+            app_model=app,
+            graph=graph,
+            features=dict(workflow.features_dict),
+            unique_hash=unique_hash,
+            account=account,
+            environment_variables=[],
+            conversation_variables=workflow.conversation_variables,
+            session=session,
+            graph_only=True,
+            sync_agent_bindings=False,
+            commit=True,
+            preserve_environment_variables=True,
+        )
+    except WorkflowHashNotEqualError as exc:
+        raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
+
+
 class WorkflowServiceDifyPort:
     """``DifyPort`` implementation backed directly by Dify's own services."""
 
@@ -200,23 +234,7 @@ class WorkflowServiceDifyPort:
 
             changes, scope = graph_ops.diff_graphs(before_graph, graph)
 
-            try:
-                updated = WorkflowService().sync_draft_workflow(
-                    app_model=app,
-                    graph=graph,
-                    features=dict(workflow.features_dict),
-                    unique_hash=unique_hash,
-                    account=account,
-                    environment_variables=[],
-                    conversation_variables=workflow.conversation_variables,
-                    session=session,
-                    graph_only=True,
-                    sync_agent_bindings=False,
-                    commit=True,
-                    preserve_environment_variables=True,
-                )
-            except WorkflowHashNotEqualError as exc:
-                raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
+            updated = _sync_graph_only(app, graph, workflow, unique_hash, account, session, app_id)
 
             return ApplyResult(
                 changed_nodes=changed_nodes,
@@ -241,23 +259,7 @@ class WorkflowServiceDifyPort:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
             workflow = _load_draft_workflow_or_raise(app, session=session)
-            try:
-                updated = WorkflowService().sync_draft_workflow(
-                    app_model=app,
-                    graph=graph,
-                    features=dict(workflow.features_dict),
-                    unique_hash=workflow.unique_hash,
-                    account=account,
-                    environment_variables=[],
-                    conversation_variables=workflow.conversation_variables,
-                    session=session,
-                    graph_only=True,
-                    sync_agent_bindings=False,
-                    commit=True,
-                    preserve_environment_variables=True,
-                )
-            except WorkflowHashNotEqualError as exc:
-                raise HashMismatchError(f"draft workflow changed since read: {app_id}") from exc
+            updated = _sync_graph_only(app, graph, workflow, workflow.unique_hash, account, session, app_id)
             return updated.unique_hash
 
     def run_draft(self, app_id: str, actor: Actor, inputs: Inputs, on_event: Callable[[NodeEvent], None]) -> Run:

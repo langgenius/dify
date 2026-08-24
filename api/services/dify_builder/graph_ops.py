@@ -58,6 +58,18 @@ def apply_set_node_config(graph: Graph, node_id: str, path: str, value: Any) -> 
     raise ValueError(f"node not found: {node_id}")
 
 
+def _next_unique_id(base: str, existing_ids: set) -> str:
+    """Return ``base`` if unused, else ``base_2``, ``base_3``, ... on
+    collision with ``existing_ids``. Shared bump sequence for node ids
+    (``_next_node_id``) and edge ids (``_make_edge``)."""
+    candidate = base
+    suffix = 1
+    while candidate in existing_ids:
+        suffix += 1
+        candidate = f"{base}_{suffix}"
+    return candidate
+
+
 def _next_node_id(prefix: str, existing_ids: set) -> str:
     """Return a short, human-readable node id not present in ``existing_ids``.
 
@@ -66,12 +78,7 @@ def _next_node_id(prefix: str, existing_ids: set) -> str:
     locally so this module stays free of any dependency on the generator
     subsystem.
     """
-    candidate = prefix
-    suffix = 1
-    while candidate in existing_ids:
-        suffix += 1
-        candidate = f"{prefix}_{suffix}"
-    return candidate
+    return _next_unique_id(prefix, existing_ids)
 
 
 def _default_position(graph: Graph) -> dict[str, float]:
@@ -163,15 +170,21 @@ def apply_delete_node(graph: Graph, node_id: str) -> tuple[Graph, list[str]]:
     return new_graph, [node_id]
 
 
-def _next_edge_id(source: str, target: str, existing_ids: set) -> str:
-    """Return a short edge id (``source-target``, then ``source-target_2``,
-    ... on collision) not present in ``existing_ids``."""
-    candidate = f"{source}-{target}"
-    suffix = 1
-    while candidate in existing_ids:
-        suffix += 1
-        candidate = f"{source}-{target}_{suffix}"
-    return candidate
+def _make_edge(
+    source: str, target: str, source_handle: str | None, target_handle: str | None, existing_edge_ids: set
+) -> dict:
+    """Build one ``GraphEdgeDict``-shaped edge dict with a fresh
+    collision-free id (``source-target``, then ``source-target_2``, ... on
+    collision with ``existing_edge_ids``). Handles default to
+    "source"/"target" (mirrors the generator's ``_fill_edge_defaults``)."""
+    return {
+        "id": _next_unique_id(f"{source}-{target}", existing_edge_ids),
+        "source": source,
+        "target": target,
+        "type": "custom",
+        "sourceHandle": source_handle or "source",
+        "targetHandle": target_handle or "target",
+    }
 
 
 def apply_connect(
@@ -197,14 +210,7 @@ def apply_connect(
         raise ValueError(f"node not found: {to_node}")
 
     existing_edge_ids = {e.get("id") for e in new_graph.get("edges", [])}
-    edge = {
-        "id": _next_edge_id(from_node, to_node, existing_edge_ids),
-        "source": from_node,
-        "target": to_node,
-        "type": "custom",
-        "sourceHandle": source_handle or "source",
-        "targetHandle": target_handle or "target",
-    }
+    edge = _make_edge(from_node, to_node, source_handle, target_handle, existing_edge_ids)
     new_graph.setdefault("edges", []).append(edge)
     return new_graph, [from_node, to_node]
 
@@ -241,23 +247,9 @@ def apply_insert_between(
 
     remaining_edges = [e for e in edges if e is not matched]
     existing_edge_ids = {e.get("id") for e in remaining_edges}
-    incoming = {
-        "id": _next_edge_id(old_source, new_id, existing_edge_ids),
-        "source": old_source,
-        "target": new_id,
-        "type": "custom",
-        "sourceHandle": matched.get("sourceHandle") or "source",
-        "targetHandle": "target",
-    }
+    incoming = _make_edge(old_source, new_id, matched.get("sourceHandle"), "target", existing_edge_ids)
     existing_edge_ids.add(incoming["id"])
-    outgoing = {
-        "id": _next_edge_id(new_id, old_target, existing_edge_ids),
-        "source": new_id,
-        "target": old_target,
-        "type": "custom",
-        "sourceHandle": "source",
-        "targetHandle": matched.get("targetHandle") or "target",
-    }
+    outgoing = _make_edge(new_id, old_target, "source", matched.get("targetHandle"), existing_edge_ids)
     new_graph["edges"] = [*remaining_edges, incoming, outgoing]
     return new_graph, [new_id]
 
