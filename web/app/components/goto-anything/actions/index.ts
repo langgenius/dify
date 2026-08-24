@@ -1,10 +1,12 @@
 import type { ActionItem } from './types'
+import { agentAction } from './agent'
 import { appAction } from './app'
 import { slashCommandRegistry } from './commands/registry'
 import { slashAction } from './commands/slash'
 import { knowledgeAction } from './knowledge'
 import { pluginAction } from './plugin'
 import { ragPipelineNodesAction } from './rag-pipeline-nodes'
+import { skillAction } from './skill'
 import { workflowNodesAction } from './workflow-nodes'
 
 const defaultActions = {
@@ -14,10 +16,30 @@ const defaultActions = {
   plugin: pluginAction,
 } satisfies Record<string, ActionItem>
 
-export function createActions(isWorkflowPage: boolean, isRagPipelinePage: boolean) {
-  if (isRagPipelinePage) return { ...defaultActions, node: ragPipelineNodesAction }
-  if (isWorkflowPage) return { ...defaultActions, node: workflowNodesAction }
-  return defaultActions
+type ActionAvailability = {
+  agents: boolean
+  skills: boolean
+}
+
+const defaultAvailability: ActionAvailability = {
+  agents: false,
+  skills: true,
+}
+
+export function createActions(
+  isWorkflowPage: boolean,
+  isRagPipelinePage: boolean,
+  availability: ActionAvailability = defaultAvailability,
+) {
+  const availableActions = {
+    ...defaultActions,
+    ...(availability.skills ? { skill: skillAction } : {}),
+    ...(availability.agents ? { agent: agentAction } : {}),
+  }
+
+  if (isRagPipelinePage) return { ...availableActions, node: ragPipelineNodesAction }
+  if (isWorkflowPage) return { ...availableActions, node: workflowNodesAction }
+  return availableActions
 }
 
 export function getActionSearchTerm(query: string, action: ActionItem) {

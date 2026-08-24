@@ -32,6 +32,26 @@ vi.mock('../plugin', () => ({
   } satisfies ActionItem,
 }))
 
+vi.mock('../skill', () => ({
+  skillAction: {
+    key: '@skill',
+    shortcut: '@skill',
+    title: 'Skills',
+    description: 'Search skills',
+    source: 'remote',
+  } satisfies ActionItem,
+}))
+
+vi.mock('../agent', () => ({
+  agentAction: {
+    key: '@agents',
+    shortcut: '@agents',
+    title: 'Agents',
+    description: 'Search agents',
+    source: 'remote',
+  } satisfies ActionItem,
+}))
+
 vi.mock('../commands/slash', () => ({
   slashAction: {
     key: '/',
@@ -73,6 +93,15 @@ describe('createActions', () => {
       expect.objectContaining({ slash: expect.any(Object), app: expect.any(Object) }),
     )
     expect(createActions(false, false)).not.toHaveProperty('node')
+    expect(createActions(false, false)).toHaveProperty('skill')
+    expect(createActions(false, false)).not.toHaveProperty('agent')
+  })
+
+  it('applies workspace availability to skill and agent scopes', () => {
+    const actions = createActions(false, false, { agents: true, skills: false })
+
+    expect(actions).toHaveProperty('agent')
+    expect(actions).not.toHaveProperty('skill')
   })
 
   it('uses the workflow-owned node action on workflow pages', () => {
@@ -98,7 +127,7 @@ describe('getActionSearchTerm', () => {
 })
 
 describe('matchAction', () => {
-  const actions = createActions(false, false)
+  const actions = createActions(false, false, { agents: true, skills: true })
 
   beforeEach(() => {
     vi.mocked(slashCommandRegistry.getAllCommands).mockReturnValue([])
@@ -108,6 +137,8 @@ describe('matchAction', () => {
     ['@app query', '@app'],
     ['@kb query', '@knowledge'],
     ['@plugin query', '@plugin'],
+    ['@skill query', '@skill'],
+    ['@agents query', '@agents'],
   ])('matches %s', (query, key) => {
     expect(matchAction(query, actions)?.key).toBe(key)
   })

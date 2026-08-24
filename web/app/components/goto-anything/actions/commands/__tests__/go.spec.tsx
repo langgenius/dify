@@ -24,16 +24,39 @@ describe('goCommand', () => {
 
   describe('search', () => {
     it('returns all navigation items when query is empty', async () => {
+      goCommand.register?.({ agentsAvailable: true, skillsAvailable: true })
       const results = await goCommand.search('', 'en')
 
       expect(results.map((r) => r.id)).toEqual([
         'go-apps',
         'go-datasets',
+        'go-agents',
+        'go-skills',
         'go-plugins',
         'go-tools',
         'go-explore',
         'go-account',
       ])
+    })
+
+    it('hides agent and skill destinations when their navigation is unavailable', async () => {
+      goCommand.register?.({ agentsAvailable: false, skillsAvailable: false })
+
+      const results = await goCommand.search('', 'en')
+
+      expect(results.map((result) => result.id)).not.toEqual(
+        expect.arrayContaining(['go-agents', 'go-skills']),
+      )
+    })
+
+    it('routes Explore to the consolidated home page', async () => {
+      const results = await goCommand.search('explore', 'en')
+
+      expect(results[0]).toMatchObject({
+        title: 'Explore',
+        description: '/',
+        data: { command: 'navigation.go', args: { path: '/' } },
+      })
     })
 
     it('filters by id match', async () => {
@@ -71,7 +94,7 @@ describe('goCommand', () => {
 
   describe('register / unregister', () => {
     it('registers navigation.go command', () => {
-      goCommand.register?.({} as Record<string, never>)
+      goCommand.register?.({ agentsAvailable: false, skillsAvailable: true })
 
       expect(registerCommands).toHaveBeenCalledWith({ 'navigation.go': expect.any(Function) })
     })
@@ -84,7 +107,7 @@ describe('goCommand', () => {
 
     it('registered handler navigates to the provided path', async () => {
       Object.defineProperty(window, 'location', { value: { href: '' }, writable: true })
-      goCommand.register?.({} as Record<string, never>)
+      goCommand.register?.({ agentsAvailable: false, skillsAvailable: true })
       const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
 
       await handlers['navigation.go']!({ path: '/datasets' })
@@ -94,7 +117,7 @@ describe('goCommand', () => {
 
     it('registered handler does nothing when path is missing', async () => {
       Object.defineProperty(window, 'location', { value: { href: '/current' }, writable: true })
-      goCommand.register?.({} as Record<string, never>)
+      goCommand.register?.({ agentsAvailable: false, skillsAvailable: true })
       const handlers = vi.mocked(registerCommands).mock.calls[0]![0]
 
       await handlers['navigation.go']!()

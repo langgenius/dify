@@ -2,7 +2,7 @@ import type { DefaultModelResponse } from '../../declarations'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
-import { render } from '@/test/console/render'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { ModelTypeEnum } from '../../declarations'
 import SystemModel from '../index'
 
@@ -146,6 +146,26 @@ describe('SystemModel', () => {
     await waitFor(() => {
       expect(screen.getByText(/system reasoning model/i)).toBeInTheDocument()
     })
+  })
+
+  it('opens the dialog from URL state', async () => {
+    render(<SystemModel {...defaultProps} />, { searchParams: '?dialog=system-models' })
+
+    expect(await screen.findByRole('button', { name: /save/i })).toBeInTheDocument()
+    expect(mockUseModelList).toHaveBeenCalledWith(ModelTypeEnum.textEmbedding, { enabled: true })
+  })
+
+  it('clears only the dialog URL state when closed', async () => {
+    const user = userEvent.setup()
+    const { onUrlUpdate } = render(<SystemModel {...defaultProps} />, {
+      searchParams: '?dialog=system-models&source=goto-anything',
+    })
+
+    await user.click(await screen.findByRole('button', { name: /cancel/i }))
+
+    expect(onUrlUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ queryString: '?source=goto-anything' }),
+    )
   })
 
   it('loads non-text model lists only after the dialog opens', async () => {
