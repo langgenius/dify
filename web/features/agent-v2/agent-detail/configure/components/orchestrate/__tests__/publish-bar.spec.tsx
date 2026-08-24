@@ -429,7 +429,9 @@ describe('AgentConfigurePublishBar', () => {
     const savedTime = screen.getByText(/agentV2\.agentDetail\.configure\.publishBar\.savedAt/)
     await user.hover(savedTime)
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(savedTime.textContent ?? '')
+    await waitFor(() => {
+      expect(screen.getAllByText(savedTime.textContent ?? '')).toHaveLength(2)
+    })
   })
 
   it('should render published state from the active snapshot and disable publish logic', () => {
