@@ -146,9 +146,9 @@ Deprecated. Use PATCH /account/profile instead.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -17680,6 +17680,12 @@ Portable DSL reference that could not be restored in the target workspace.
 | institution | string |  | Yes |
 | role | string |  | Yes |
 | token | string |  | Yes |
+
+#### EducationActivateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | Yes |
 
 #### EducationAutocompleteQuery
 
