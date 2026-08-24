@@ -310,6 +310,7 @@ describe('SkillsPage', () => {
     renderSkillsPage()
 
     const skillLink = await screen.findByRole('link', { name: /Refund approval/ })
+    expect(screen.getByRole('article', { name: 'Refund approval' })).toBeInTheDocument()
     expect(skillLink).toHaveAttribute('href', '/skills/skill-1')
     expect(screen.getByText('refund-approval')).toBeInTheDocument()
     expect(screen.getByText('Handle refund requests.')).toBeInTheDocument()
