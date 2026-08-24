@@ -37,7 +37,7 @@ describe('webAppLoginStatus', () => {
   })
 
   it('does not send an environment code to Dify login status', async () => {
-    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
 
     await webAppLoginStatus('workflow-app', AccessMode.PUBLIC, 'user-1')
 
@@ -45,7 +45,7 @@ describe('webAppLoginStatus', () => {
   })
 
   it('treats a public environment as logged in before its first passport', async () => {
-    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     getPublicMock.mockResolvedValue({ logged_in: false, app_logged_in: false })
 
     await expect(webAppLoginStatus('workflow-app', AccessMode.PUBLIC)).resolves.toEqual({
@@ -55,7 +55,7 @@ describe('webAppLoginStatus', () => {
   })
 
   it('trusts the remote login state for an sso verified environment', async () => {
-    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: false })
 
     await expect(webAppLoginStatus('workflow-app', AccessMode.EXTERNAL_MEMBERS)).resolves.toEqual({
@@ -65,7 +65,7 @@ describe('webAppLoginStatus', () => {
   })
 
   it('requires a Dify login for a private environment', async () => {
-    window.history.replaceState({}, '', '/env/workflow/workflow-app')
+    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     getPublicMock.mockResolvedValue({ logged_in: false, app_logged_in: false })
 
     await expect(

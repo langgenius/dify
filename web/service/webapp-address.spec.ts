@@ -11,30 +11,30 @@ describe('WebAppAddress', () => {
       kind: 'default',
       code: 'env-prefix-is-still-ordinary',
     })
-    expect(parseWebAppAddress('/env/workflow/workflow-app')).toEqual({
+    expect(parseWebAppAddress('/environment/workflow/workflow-app')).toEqual({
       kind: 'environment',
       code: 'workflow-app',
     })
   })
 
   it('does not reinterpret an unsupported environment path as an ordinary webapp', () => {
-    expect(parseWebAppAddress('/env/workflow')).toBeNull()
-    expect(parseWebAppAddress('/env/not-a-mode/workflow-app')).toBeNull()
+    expect(parseWebAppAddress('/environment/workflow')).toBeNull()
+    expect(parseWebAppAddress('/environment/not-a-mode/workflow-app')).toBeNull()
   })
 
   it('accepts every webapp mode under the environment prefix', () => {
-    expect(parseWebAppAddress('/env/chat/chat-app')).toEqual({
+    expect(parseWebAppAddress('/environment/chat/chat-app')).toEqual({
       kind: 'environment',
       code: 'chat-app',
     })
   })
 
   it('builds the environment upload and workflow URLs', () => {
-    const address = parseWebAppAddress('/env/workflow/workflow-app')
-    expect(getWebAppApiPath(address, '/files/upload')).toBe('/env/workflow-app/files/upload')
-    expect(getWebAppApiPath(address, '/workflows/run')).toBe('/env/workflow-app/workflows/run')
+    const address = parseWebAppAddress('/environment/workflow/workflow-app')
+    expect(getWebAppApiPath(address, '/files/upload')).toBe('/environment/workflow-app/files/upload')
+    expect(getWebAppApiPath(address, '/workflows/run')).toBe('/environment/workflow-app/workflows/run')
     expect(getWebAppApiPath(address, '/workflows/tasks/task-1/stop')).toBe(
-      '/env/workflow-app/workflows/tasks/task-1/stop',
+      '/environment/workflow-app/workflows/tasks/task-1/stop',
     )
   })
 
