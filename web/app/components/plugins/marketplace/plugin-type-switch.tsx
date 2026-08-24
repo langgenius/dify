@@ -2,7 +2,6 @@
 import type { ActivePluginType } from './constants'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  RiArchive2Line,
   RiBrain2Line,
   RiDatabase2Line,
   RiHammerLine,
@@ -79,11 +78,6 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t(($) => $['category.extensions'], { ns: 'plugin' }),
       icon: <RiPuzzle2Line className={iconClassName} />,
-    },
-    {
-      value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t(($) => $['category.bundles'], { ns: 'plugin' }),
-      icon: <RiArchive2Line className={iconClassName} />,
     },
   ]
 
