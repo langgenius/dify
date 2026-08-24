@@ -51,10 +51,12 @@ class DummyToolFile:
 class TestPluginUploadFileApi:
     @patch.object(module, "verify_plugin_file_signature", return_value=True)
     @patch.object(module, "get_user", return_value=DummyUser())
+    @patch.object(module, "sign_tool_file", return_value="signed-url")
     @patch.object(module, "ToolFileManager")
     def test_success_upload(
         self,
         mock_tool_file_manager,
+        mock_sign_tool_file,
         mock_get_user,
         mock_verify_signature,
     ):
@@ -74,8 +76,6 @@ class TestPluginUploadFileApi:
         tool_file_manager_instance = mock_tool_file_manager.return_value
         tool_file_manager_instance.create_file_by_raw.return_value = DummyToolFile()
 
-        mock_tool_file_manager.sign_file.return_value = "signed-url"
-
         api = module.PluginUploadFileApi()
         post_fn = unwrap(api.post)
 
@@ -84,6 +84,11 @@ class TestPluginUploadFileApi:
         assert status_code == 201
         assert result["id"] == "file-id"
         assert result["preview_url"] == "signed-url"
+        mock_sign_tool_file.assert_called_once_with(
+            tool_file_id="file-id",
+            extension=".txt",
+            for_external=True,
+        )
 
     def test_missing_file(self):
         module.request = fake_request(
