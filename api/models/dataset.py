@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import io
 import json
 import logging
 import os
@@ -1328,6 +1329,40 @@ class DatasetKeywordTable(TypeBase):
                 return None
 
 
+def _restricted_pickle_loads(data: bytes) -> Any:
+    class RestrictedUnpickler(pickle.Unpickler):
+        _ALLOWED: frozenset[tuple[str, str]] = frozenset(
+            {
+                ("builtins", "list"),
+                ("builtins", "tuple"),
+                ("builtins", "set"),
+                ("builtins", "dict"),
+                ("builtins", "float"),
+                ("builtins", "int"),
+                ("builtins", "bool"),
+                ("builtins", "str"),
+                ("builtins", "bytes"),
+                ("builtins", "complex"),
+                ("__builtin__", "list"),
+                ("__builtin__", "tuple"),
+                ("__builtin__", "float"),
+                ("__builtin__", "int"),
+            }
+        )
+
+        def find_class(self, module: str, name: str):  # type: ignore[override]
+            if (module, name) in self._ALLOWED:
+                return super().find_class(module, name)
+            raise pickle.UnpicklingError(f"pickle disallowed class {module}.{name}")
+
+        def find_global(self, module: str, name: str):  # type: ignore[override]
+            if (module, name) in self._ALLOWED:
+                return super().find_global(module, name)
+            raise pickle.UnpicklingError(f"pickle disallowed global {module}.{name}")
+
+    return RestrictedUnpickler(io.BytesIO(data)).load()
+
+
 class Embedding(TypeBase):
     __tablename__ = "embeddings"
     __table_args__ = (
@@ -1354,10 +1389,20 @@ class Embedding(TypeBase):
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("''"))
 
     def set_embedding(self, embedding_data: list[float]):
-        self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
+        self.embedding = json.dumps(embedding_data, separators=(",", ":")).encode()
 
     def get_embedding(self) -> list[float]:
-        return cast(list[float], pickle.loads(self.embedding))  # noqa: S301
+        raw = self.embedding
+        if isinstance(raw, memoryview):
+            raw = raw.tobytes()
+        if isinstance(raw, str):
+            raw = raw.encode()
+        try:
+            text = raw.decode() if isinstance(raw, (bytes, bytearray)) else str(raw)
+            return cast(list[float], json.loads(text))
+        except (UnicodeDecodeError, JSONDecodeError, ValueError):
+            pass
+        return cast(list[float], _restricted_pickle_loads(cast(bytes, raw)))
 
 
 class DatasetCollectionBinding(TypeBase):

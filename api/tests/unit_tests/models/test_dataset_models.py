@@ -1260,7 +1260,7 @@ class TestEmbeddingStorage:
         assert retrieved_data[4] == 0.5
 
     def test_embedding_pickle_serialization(self):
-        """Test embedding data is properly pickled."""
+        """Test embedding data is stored as JSON (not pickle) after fix."""
         # Arrange
         embedding_data = [0.1, 0.2, 0.3]
         embedding = Embedding(
@@ -1274,11 +1274,40 @@ class TestEmbeddingStorage:
         embedding.set_embedding(embedding_data)
 
         # Assert
-        # Verify the embedding is stored as pickled binary data
         assert isinstance(embedding.embedding, bytes)
-        # Verify we can unpickle it
-        unpickled_data = pickle.loads(embedding.embedding)  # noqa: S301
-        assert unpickled_data == embedding_data
+        assert json.loads(embedding.embedding.decode()) == embedding_data
+        assert embedding.get_embedding() == embedding_data
+
+    def test_embedding_legacy_pickle_backward_compat(self):
+        """Legacy pickle-encoded rows remain readable via restricted unpickler."""
+        embedding_data = [0.4, 0.5, 0.6]
+        embedding = Embedding(
+            model_name="text-embedding-ada-002",
+            hash="legacy_hash",
+            provider_name="openai",
+            embedding=pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL),
+        )
+
+        assert embedding.get_embedding() == embedding_data
+
+    def test_embedding_malicious_pickle_is_rejected(self):
+        """A pickle that tries to execute code must be rejected."""
+
+        class Exploit:
+            def __reduce__(self):
+                import os
+
+                return (os.system, ("echo pwned",))
+
+        embedding = Embedding(
+            model_name="text-embedding-ada-002",
+            hash="malicious_hash",
+            provider_name="openai",
+            embedding=pickle.dumps(Exploit(), protocol=pickle.HIGHEST_PROTOCOL),
+        )
+
+        with pytest.raises(pickle.UnpicklingError):
+            embedding.get_embedding()
 
     def test_embedding_with_large_vector(self):
         """Test embedding with large dimension vector."""
