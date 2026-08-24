@@ -3,7 +3,7 @@
 ExploreBanner is the legacy contract name shared by the API, feature flag, and database model.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, NamedTuple, Protocol
 
@@ -28,13 +28,13 @@ class ExploreBannerQueryService:
         self,
         *,
         banners: ExploreBannerQuery,
-        is_enabled: Callable[[], bool],
+        enabled: bool,
     ) -> None:
         self._banners = banners
-        self._is_enabled = is_enabled
+        self._enabled = enabled
 
     def list_for_language(self, language: str) -> tuple[ExploreBannerRecord, ...]:
-        if not self._is_enabled():
+        if not self._enabled:
             return ()
 
         banners = tuple(self._banners.list_enabled(language))

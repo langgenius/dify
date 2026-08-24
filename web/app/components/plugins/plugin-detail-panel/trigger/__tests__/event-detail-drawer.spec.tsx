@@ -2,7 +2,7 @@ import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { EventDetailDrawer } from '../event-detail-drawer'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({

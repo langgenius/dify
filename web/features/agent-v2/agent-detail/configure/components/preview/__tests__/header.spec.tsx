@@ -150,12 +150,12 @@ describe('AgentPreviewHeader', () => {
       onModeChange,
     })
 
-    const modeControl = screen.getByRole('group', {
+    const modeControl = screen.getByRole('radiogroup', {
       name: 'agentV2.agentDetail.configure.rightPanel.modeLabel',
     })
 
     await user.click(
-      within(modeControl).getByRole('button', {
+      within(modeControl).getByRole('radio', {
         name: 'agentV2.agentDetail.configure.rightPanel.preview',
       }),
     )

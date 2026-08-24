@@ -3,7 +3,7 @@
 from typing import Protocol
 
 from machinery.context import RequestContext
-from services.account_query import AccountQuery
+from services.account_ports import AccountRepository
 from services.entities.notification_entities import (
     AccountNotification,
     AccountNotificationBatch,
@@ -22,7 +22,7 @@ class NotificationGateway(Protocol):
 
 
 class NotificationService:
-    def __init__(self, *, accounts: AccountQuery, notifications: NotificationGateway) -> None:
+    def __init__(self, *, accounts: AccountRepository, notifications: NotificationGateway) -> None:
         self._accounts = accounts
         self._notifications = notifications
 
@@ -31,7 +31,7 @@ class NotificationService:
         if not batch.should_show:
             return NotificationResult(should_show=False, notifications=())
 
-        account = self._accounts.get_profile(context.account_id)
+        account = self._accounts.get(context.account_id)
         if account is None:
             raise RuntimeError("Console account admission resolved an unknown account")
         language = account.interface_language or _FALLBACK_LANGUAGE

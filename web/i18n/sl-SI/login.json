@@ -49,6 +49,7 @@
   "join": "Pridruži se",
   "joinTipEnd": "ekipi na Dify",
   "joinTipStart": "Vabimo vas, da se pridružite",
+  "joinWorkspace": "Pridruži se {{workspaceName}}",
   "license.link": "Licenco odprte kode",
   "license.tip": "Preden začnete z Dify Community Edition, preberite GitHub",
   "licenseExpired": "Licenca je potekla",

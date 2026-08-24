@@ -1,9 +1,11 @@
 from datetime import datetime
+from unittest.mock import Mock
 
 import pytest
 
 from machinery.context import RequestContext
-from services.entities.account_entities import AccountProfile
+from services.account_ports import AccountRepository
+from services.entities.account_entities import AccountSnapshot
 from services.entities.notification_entities import (
     AccountNotification,
     AccountNotificationBatch,
@@ -23,16 +25,6 @@ def _context() -> RequestContext:
     )
 
 
-class AccountQueryStub:
-    def __init__(self, profile: AccountProfile | None) -> None:
-        self.profile = profile
-        self.account_ids: list[str] = []
-
-    def get_profile(self, account_id: str) -> AccountProfile | None:
-        self.account_ids.append(account_id)
-        return self.profile
-
-
 class NotificationGatewayStub:
     def __init__(self, batch: AccountNotificationBatch) -> None:
         self.batch = batch
@@ -47,13 +39,28 @@ class NotificationGatewayStub:
         self.dismissals.append((notification_id, account_id))
 
 
-def _profile(language: str | None = "zh-Hans") -> AccountProfile:
-    return AccountProfile(
+def _account(language: str | None = "zh-Hans") -> AccountSnapshot:
+    return AccountSnapshot(
         id="account-1",
+        name="Account",
+        email="account@example.com",
+        avatar=None,
+        is_password_set=False,
         interface_language=language,
+        interface_theme="light",
+        timezone="UTC",
+        last_login_at=None,
+        last_login_ip=None,
+        status="active",
         initialized_at=None,
         created_at=datetime(2026, 1, 1),
     )
+
+
+def _accounts(account: AccountSnapshot | None) -> Mock:
+    accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = account
+    return accounts
 
 
 def _notification(contents: dict[str, NotificationContent]) -> AccountNotification:
@@ -70,7 +77,7 @@ def test_get_active_localizes_notification_for_account_language() -> None:
     gateway = NotificationGatewayStub(
         AccountNotificationBatch(True, (_notification({"zh-Hans": chinese, "en-US": english}),))
     )
-    service = NotificationService(accounts=AccountQueryStub(_profile()), notifications=gateway)
+    service = NotificationService(accounts=_accounts(_account()), notifications=gateway)
 
     result = service.get_active(_context())
 
@@ -84,7 +91,7 @@ def test_get_active_localizes_notification_for_account_language() -> None:
 def test_get_active_falls_back_to_english() -> None:
     english = NotificationContent("en-US", "Title", "Subtitle", "Body", "en.png")
     gateway = NotificationGatewayStub(AccountNotificationBatch(True, (_notification({"en-US": english}),)))
-    service = NotificationService(accounts=AccountQueryStub(_profile("fr-FR")), notifications=gateway)
+    service = NotificationService(accounts=_accounts(_account("fr-FR")), notifications=gateway)
 
     result = service.get_active(_context())
 
@@ -93,7 +100,7 @@ def test_get_active_falls_back_to_english() -> None:
 
 
 def test_get_active_skips_account_query_when_gateway_says_not_to_show() -> None:
-    accounts = AccountQueryStub(None)
+    accounts = _accounts(None)
     service = NotificationService(
         accounts=accounts,
         notifications=NotificationGatewayStub(AccountNotificationBatch(False, ())),
@@ -102,12 +109,12 @@ def test_get_active_skips_account_query_when_gateway_says_not_to_show() -> None:
     result = service.get_active(_context())
 
     assert result == NotificationResult(False, ())
-    assert accounts.account_ids == []
+    accounts.get.assert_not_called()
 
 
 def test_get_active_uses_empty_content_when_notification_has_no_translations() -> None:
     gateway = NotificationGatewayStub(AccountNotificationBatch(True, (_notification({}),)))
-    service = NotificationService(accounts=AccountQueryStub(_profile(None)), notifications=gateway)
+    service = NotificationService(accounts=_accounts(_account(None)), notifications=gateway)
 
     result = service.get_active(_context())
 
@@ -116,7 +123,7 @@ def test_get_active_uses_empty_content_when_notification_has_no_translations() -
 
 def test_get_active_rejects_unknown_admitted_account() -> None:
     gateway = NotificationGatewayStub(AccountNotificationBatch(True, (_notification({}),)))
-    service = NotificationService(accounts=AccountQueryStub(None), notifications=gateway)
+    service = NotificationService(accounts=_accounts(None), notifications=gateway)
 
     with pytest.raises(RuntimeError, match="unknown account"):
         service.get_active(_context())
@@ -124,7 +131,7 @@ def test_get_active_rejects_unknown_admitted_account() -> None:
 
 def test_dismiss_delegates_identifiers_to_gateway() -> None:
     gateway = NotificationGatewayStub(AccountNotificationBatch(False, ()))
-    service = NotificationService(accounts=AccountQueryStub(_profile()), notifications=gateway)
+    service = NotificationService(accounts=_accounts(_account()), notifications=gateway)
 
     service.dismiss(_context(), "notification-1")
 

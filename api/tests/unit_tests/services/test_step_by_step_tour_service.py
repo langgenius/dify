@@ -3,11 +3,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
+from unittest.mock import Mock
 
 import pytest
 
 from machinery.context import RequestContext
-from services.entities.account_entities import AccountProfile
+from services.account_ports import AccountRepository
+from services.entities.account_entities import AccountSnapshot
 from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult, StepByStepTourState
 from services.step_by_step_tour_service import StepByStepTourService
 
@@ -19,16 +21,6 @@ def _context(*, workspace_id: str | None = "workspace-1") -> RequestContext:
         account_id="account-1",
         active_workspace_id=workspace_id,
     )
-
-
-class AccountQueryStub:
-    def __init__(self, profile: AccountProfile | None) -> None:
-        self.profile = profile
-        self.account_ids: list[str] = []
-
-    def get_profile(self, account_id: str) -> AccountProfile | None:
-        self.account_ids.append(account_id)
-        return self.profile
 
 
 class StateRepositoryStub:
@@ -62,24 +54,39 @@ class StateRepositoryStub:
         return self.state
 
 
-def _account(*, started_at: datetime = datetime(2026, 6, 28)) -> AccountProfile:
-    return AccountProfile(
+def _account(*, started_at: datetime = datetime(2026, 6, 28)) -> AccountSnapshot:
+    return AccountSnapshot(
         id="account-1",
+        name="Account",
+        email="account@example.com",
+        avatar=None,
+        is_password_set=False,
         interface_language="en-US",
+        interface_theme="light",
+        timezone="UTC",
+        last_login_at=None,
+        last_login_ip=None,
+        status="active",
         initialized_at=started_at,
         created_at=started_at,
     )
 
 
+def _accounts(account: AccountSnapshot | None) -> Mock:
+    accounts = Mock(spec=AccountRepository)
+    accounts.get.return_value = account
+    return accounts
+
+
 def _service(
     *,
     states: StateRepositoryStub,
-    account: AccountProfile | None = None,
+    account: AccountSnapshot | None = None,
     enabled: bool = True,
     rollout_started_at: datetime | None = datetime(2026, 6, 1),
 ) -> StepByStepTourService:
     return StepByStepTourService(
-        accounts=AccountQueryStub(account or _account()),
+        accounts=_accounts(account or _account()),
         states=states,
         enabled=enabled,
         rollout_started_at=rollout_started_at,
@@ -191,7 +198,7 @@ def test_rejects_missing_workspace_before_using_state_repository() -> None:
 def test_get_state_rejects_unknown_admitted_account() -> None:
     states = StateRepositoryStub()
     service = StepByStepTourService(
-        accounts=AccountQueryStub(None),
+        accounts=_accounts(None),
         states=states,
         enabled=True,
         rollout_started_at=datetime(2026, 6, 1),

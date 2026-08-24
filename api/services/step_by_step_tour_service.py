@@ -7,7 +7,7 @@ from typing import Protocol
 
 from libs.datetime_utils import ensure_naive_utc
 from machinery.context import RequestContext
-from services.account_query import AccountQuery
+from services.account_ports import AccountRepository
 from services.entities.onboarding_entities import (
     StepByStepTourPatch,
     StepByStepTourResult,
@@ -33,7 +33,7 @@ class StepByStepTourService:
     def __init__(
         self,
         *,
-        accounts: AccountQuery,
+        accounts: AccountRepository,
         states: StepByStepTourStateRepository,
         enabled: bool,
         rollout_started_at: datetime | None,
@@ -45,7 +45,7 @@ class StepByStepTourService:
 
     def get_state(self, context: RequestContext) -> StepByStepTourResult:
         workspace_id = self._require_workspace(context)
-        account = self._accounts.get_profile(context.account_id)
+        account = self._accounts.get(context.account_id)
         if account is None:
             raise RuntimeError("Console account admission resolved an unknown account")
 

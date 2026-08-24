@@ -1,28 +1,26 @@
 'use client'
 
-import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { AccessControlSubjects } from '../specific-groups-or-members'
 import type {
-  AccessControlAccount,
   AccessControlGroup,
   Subject,
   SubjectAccount,
   SubjectGroup,
 } from '@/models/access-control'
+import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxInputGroup,
-  ComboboxList,
-  ComboboxStatus,
-  ComboboxTrigger,
-} from '@langgenius/dify-ui/combobox'
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { SearchInput } from '@/app/components/base/search-input'
 import { SubjectType } from '@/models/access-control'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import { SelectedGroupsBreadcrumb } from './breadcrumb'
@@ -45,23 +43,23 @@ export default function AddMemberOrGroupDialog({
   >([])
   const scrollRootRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const { groups: specificGroups, members: specificMembers } = selectedAccessSubjects
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
-
   const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
   const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates(
     { keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 },
     open,
   )
   const pages = data?.pages ?? []
-  const subjects = pages.flatMap((page) => page.subjects ?? [])
-  const selectedSubjects = [
-    ...specificGroups.map(groupToSubject),
-    ...specificMembers.map(memberToSubject),
-  ]
-  const hasResults = pages.length > 0 && subjects.length > 0
+  const candidates = pages.flatMap((page) => page.subjects ?? [])
+  const hasResults = pages.length > 0 && candidates.length > 0
   const shouldShowBreadcrumb = hasResults || selectedGroupsForBreadcrumb.length > 0
   const hasMore = pages[pages.length - 1]?.hasMore ?? false
+  const searchLabel = t(($) => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'], {
+    ns: 'app',
+  })
+  const noResultLabel = t(($) => $['accessControlDialog.operateGroupAndMember.noResult'], {
+    ns: 'app',
+  })
 
   useEffect(() => {
     let observer: IntersectionObserver | undefined
@@ -78,85 +76,86 @@ export default function AddMemberOrGroupDialog({
   }, [isLoading, fetchNextPage, hasMore])
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen) setKeyword('')
-
+    if (!nextOpen) {
+      setKeyword('')
+      setSelectedGroupsForBreadcrumb([])
+    }
     setOpen(nextOpen)
   }
 
-  const handleInputValueChange = (inputValue: string, details: ComboboxChangeEventDetails) => {
-    if (details.reason !== 'item-press') setKeyword(inputValue)
-  }
+  const handleSubjectToggle = (subject: Subject) => {
+    const { groups, members } = selectedAccessSubjects
 
-  const handleValueChange = (nextSubjects: Subject[]) => {
-    const nextGroups: AccessControlGroup[] = []
-    const nextMembers: AccessControlAccount[] = []
-
-    for (const subject of nextSubjects) {
-      if (subject.subjectType === SubjectType.GROUP)
-        nextGroups.push((subject as SubjectGroup).groupData)
-      else nextMembers.push((subject as SubjectAccount).accountData)
+    if (subject.subjectType === SubjectType.GROUP) {
+      const group = (subject as SubjectGroup).groupData
+      const selected = groups.some((candidate) => candidate.id === group.id)
+      onChange({
+        groups: selected
+          ? groups.filter((candidate) => candidate.id !== group.id)
+          : [...groups, group],
+        members,
+      })
+      return
     }
 
-    onChange({ groups: nextGroups, members: nextMembers })
+    const member = (subject as SubjectAccount).accountData
+    const selected = members.some((candidate) => candidate.id === member.id)
+    onChange({
+      groups,
+      members: selected
+        ? members.filter((candidate) => candidate.id !== member.id)
+        : [...members, member],
+    })
   }
 
+  const isSubjectSelected = (subject: Subject) =>
+    subject.subjectType === SubjectType.GROUP
+      ? selectedAccessSubjects.groups.some((group) => group.id === subject.subjectId)
+      : selectedAccessSubjects.members.some((member) => member.id === subject.subjectId)
+
+  const statusText = isLoading
+    ? t(($) => $.loading, { ns: 'common' })
+    : hasResults
+      ? null
+      : noResultLabel
+
   return (
-    <Combobox<Subject, true>
-      multiple
-      open={open}
-      value={selectedSubjects}
-      inputValue={keyword}
-      items={subjects}
-      itemToStringLabel={getSubjectLabel}
-      itemToStringValue={getSubjectValue}
-      isItemEqualToValue={isSameSubject}
-      filter={null}
-      onOpenChange={handleOpenChange}
-      onInputValueChange={handleInputValueChange}
-      onValueChange={handleValueChange}
-    >
-      <ComboboxTrigger
-        aria-label={t(($) => $['operation.add'], { ns: 'common' })}
-        icon={false}
-        size="small"
-        className="h-6 w-auto min-w-13 shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover data-popup-open:bg-state-accent-hover"
-      >
-        <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
-          <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
-          <span className="shrink-0">{t(($) => $['operation.add'], { ns: 'common' })}</span>
-        </span>
-      </ComboboxTrigger>
-      <ComboboxContent
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost-accent"
+            size="small"
+            aria-label={t(($) => $['operation.add'], { ns: 'common' })}
+            className="min-w-13 shrink-0 gap-x-0.5 px-2 data-popup-open:bg-state-accent-hover"
+          >
+            <span className="i-ri-add-circle-fill size-4 shrink-0" aria-hidden="true" />
+            <span className="shrink-0">{t(($) => $['operation.add'], { ns: 'common' })}</span>
+          </Button>
+        }
+      />
+      <PopoverContent
         placement="bottom-end"
         alignOffset={300}
-        popupClassName="relative flex max-h-[400px] w-[400px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-0 shadow-lg backdrop-blur-[5px]"
+        className="relative flex max-h-[400px] w-[400px] flex-col overflow-hidden bg-components-panel-bg-blur p-0 backdrop-blur-[5px]"
       >
-        <div ref={scrollRootRef} className="min-h-0 overflow-y-auto">
-          <div className="sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]">
-            <ComboboxInputGroup className="h-8 min-h-8 px-2">
-              <span
-                className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-                aria-hidden="true"
-              />
-              <ComboboxInput
-                aria-label={t(
-                  ($) => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'],
-                  { ns: 'app' },
-                )}
-                placeholder={t(
-                  ($) => $['accessControlDialog.operateGroupAndMember.searchPlaceholder'],
-                  { ns: 'app' },
-                )}
-                className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-              />
-            </ComboboxInputGroup>
-          </div>
-          {isLoading ? (
-            <ComboboxStatus className="p-1">
-              <Loading />
-            </ComboboxStatus>
-          ) : (
-            <>
+        <PopoverTitle className="sr-only">{searchLabel}</PopoverTitle>
+        <ScrollArea className="relative min-h-0 flex-1 overflow-hidden">
+          <ScrollAreaViewport
+            ref={scrollRootRef}
+            role="region"
+            aria-label={searchLabel}
+            style={{ overflowX: 'hidden' }}
+          >
+            <ScrollAreaContent style={{ minWidth: 0 }}>
+              <div className="sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]">
+                <SearchInput
+                  aria-label={searchLabel}
+                  placeholder={searchLabel}
+                  value={keyword}
+                  onValueChange={setKeyword}
+                />
+              </div>
               {shouldShowBreadcrumb && (
                 <div className="flex h-7 items-center px-2 py-0.5">
                   <SelectedGroupsBreadcrumb
@@ -165,62 +164,49 @@ export default function AddMemberOrGroupDialog({
                   />
                 </div>
               )}
-              {hasResults ? (
-                <>
-                  <ComboboxList<Subject> className="max-h-none p-1">
-                    {(subject) => (
-                      <SubjectItem
-                        key={getSubjectValue(subject)}
-                        subject={subject}
-                        selectedGroups={specificGroups}
-                        onExpandGroup={(group) =>
-                          setSelectedGroupsForBreadcrumb((groups) => [...groups, group])
-                        }
-                      />
-                    )}
-                  </ComboboxList>
-                  {isFetchingNextPage && <Loading />}
-                  <div ref={anchorRef} className="h-0" />
-                </>
-              ) : (
-                <ComboboxEmpty className="flex h-7 items-center justify-center px-2 py-0.5">
-                  {t(($) => $['accessControlDialog.operateGroupAndMember.noResult'], { ns: 'app' })}
-                </ComboboxEmpty>
+              {hasResults && (
+                <ul className="p-1">
+                  {candidates.map((subject) => (
+                    <SubjectItem
+                      key={`${subject.subjectType}:${subject.subjectId}`}
+                      subject={subject}
+                      selected={isSubjectSelected(subject)}
+                      onToggle={() => handleSubjectToggle(subject)}
+                      onExpandGroup={(group) =>
+                        setSelectedGroupsForBreadcrumb((groups) => [...groups, group])
+                      }
+                    />
+                  ))}
+                </ul>
               )}
-            </>
-          )}
-        </div>
-      </ComboboxContent>
-    </Combobox>
+              <div
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                className={
+                  statusText ? 'flex min-h-7 items-center justify-center px-2 py-0.5' : 'h-0'
+                }
+              >
+                {isLoading ? (
+                  <>
+                    <span className="sr-only">{statusText}</span>
+                    <div className="w-full" aria-hidden="true">
+                      <Loading />
+                    </div>
+                  </>
+                ) : (
+                  statusText
+                )}
+              </div>
+              {isFetchingNextPage && <Loading />}
+              <div ref={anchorRef} className="h-0" />
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   )
-}
-
-function groupToSubject(group: AccessControlGroup): SubjectGroup {
-  return {
-    subjectId: group.id,
-    subjectType: SubjectType.GROUP,
-    groupData: group,
-  }
-}
-
-function memberToSubject(member: AccessControlAccount): SubjectAccount {
-  return {
-    subjectId: member.id,
-    subjectType: SubjectType.ACCOUNT,
-    accountData: member,
-  }
-}
-
-function getSubjectLabel(subject: Subject) {
-  if (subject.subjectType === SubjectType.GROUP) return (subject as SubjectGroup).groupData.name
-
-  return (subject as SubjectAccount).accountData.name
-}
-
-function getSubjectValue(subject: Subject) {
-  return `${subject.subjectType}:${subject.subjectId}`
-}
-
-function isSameSubject(item: Subject, value: Subject) {
-  return item.subjectId === value.subjectId && item.subjectType === value.subjectType
 }

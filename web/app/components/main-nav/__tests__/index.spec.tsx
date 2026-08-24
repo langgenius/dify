@@ -9,7 +9,7 @@ import type {
   TenantListItemResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
@@ -24,7 +24,10 @@ import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/stor
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+import {
+  stepByStepTourSessionAtom,
+  stepByStepTourSkipRecoveryVisibleAtom,
+} from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -216,6 +219,10 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.minimize': 'Minimize tour',
       'common.stepByStepTour.restore': 'Open step-by-step tour',
       'common.stepByStepTour.learnMore': 'Learn more',
+      'common.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
+      'common.stepByStepTour.skipRecovery.message':
+        'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
+      'common.stepByStepTour.skipRecovery.dismiss': 'Got it',
       'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
       'common.stepByStepTour.tasks.home.description':
         'Open a hands-on lesson from Learn Dify to see Dify in action.',
@@ -532,6 +539,7 @@ const renderMainNav = (
     store?: ReturnType<typeof createStore>
     extra?: ReactNode
     educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+    skipRecoveryVisible?: boolean
   } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
@@ -566,6 +574,8 @@ const renderMainNav = (
   seedRegisteredConsoleStateFixture(store)
   store.set(queryClientAtom, queryClient)
   store.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
+  if (options.skipRecoveryVisible !== undefined)
+    store.set(stepByStepTourSkipRecoveryVisibleAtom, options.skipRecoveryVisible)
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,
     ...systemFeatures,
@@ -977,6 +987,26 @@ describe('MainNav', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
+  it('keeps focus in the help menu when it dismisses the recovery prompt', async () => {
+    const user = userEvent.setup()
+    mockStepByStepTour.setState({ skipped: true })
+    renderMainNav(undefined, { skipRecoveryVisible: true })
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    ).toBeInTheDocument()
+
+    const helpTrigger = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    await user.click(helpTrigger)
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toHaveFocus()
+    })
+  })
+
   it('shows Step-by-step Tour switch in help menu and stores the current workspace disable override', async () => {
     const user = userEvent.setup()
     renderMainNav({ enable_learn_app: true })
@@ -1181,10 +1211,13 @@ describe('MainNav', () => {
   })
 
   it('hides the help menu when branding is enabled', () => {
-    renderMainNav({ branding: { enabled: true } })
+    renderMainNav({ branding: { enabled: true } }, { skipRecoveryVisible: true })
 
     expect(
       screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).not.toBeInTheDocument()
   })
 
@@ -1313,7 +1346,12 @@ describe('MainNav', () => {
       const top = typeof optionsOrX === 'object' ? optionsOrX.top : y
       scrollViewport.scrollTop = Number(top ?? 0)
     }
-    await user.click(await screen.findByRole('button', { name: 'common.operation.search' }))
+    const searchButton = await screen.findByRole('button', { name: 'common.operation.search' })
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(searchButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+
     const searchInput = screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')
     await user.type(searchInput, 'beta')
 
@@ -1326,6 +1364,19 @@ describe('MainNav', () => {
     expect(
       screen.getByRole('link', { name: 'common.mainNav.webApps.openApp:{"name":"Beta Tool"}' }),
     ).toHaveAttribute('href', '/installed/installed-2')
+
+    const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      screen.queryByPlaceholderText('common.mainNav.webApps.searchPlaceholder'),
+    ).not.toBeInTheDocument()
+
+    await user.click(webAppsButton)
+    expect(searchButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByPlaceholderText('common.mainNav.webApps.searchPlaceholder')).toHaveValue(
+      'beta',
+    )
   })
 
   it('hides the installed web apps section while installed apps are loading', () => {

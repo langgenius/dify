@@ -72,7 +72,7 @@ const MCPToolItem = ({ tool }: Props) => {
       />
       <PopoverContent
         placement="left"
-        popupClassName="w-[360px]! rounded-xl! border-[0.5px]! border-components-panel-border! px-4! py-3.5! shadow-lg!"
+        className="w-[360px]! rounded-xl! border-[0.5px]! border-components-panel-border! px-4! py-3.5! shadow-lg!"
       >
         <div>
           <div className="mb-1 title-xs-semi-bold text-text-primary">{tool.label[language]}</div>

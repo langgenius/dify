@@ -1,5 +1,4 @@
 'use client'
-
 import type {
   AgentAppCopyPayload,
   AgentAppPartial,
@@ -8,13 +7,15 @@ import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -134,7 +135,17 @@ export function DuplicateAgentDialog({
     <>
       <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['roster.duplicateDialog.title'])}
@@ -176,7 +187,7 @@ export function DuplicateAgentDialog({
                         {tCommon(($) => $['label.optional'])}
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       // oxlint-disable-next-line jsx-a11y/no-autofocus -- The duplicate dialog opens from an explicit command, and naming the copy is the primary editable action.
                       autoFocus
@@ -193,7 +204,7 @@ export function DuplicateAgentDialog({
                         {tCommon(($) => $['label.optional'])}
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       maxLength={255}
                       onValueChange={setRole}

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 import core.rag.datasource.keyword.jieba.jieba as jieba_module
 from core.rag.datasource.keyword.jieba.jieba import Jieba, dumps_with_sets, set_orjson_default
 from core.rag.models.document import Document
-from models.dataset import DatasetKeywordTable, DocumentSegment
+from models.dataset import Dataset, DatasetKeywordTable, DocumentSegment
 
 
 class _DummyLock:
@@ -21,21 +21,26 @@ class _DummyLock:
         return False
 
 
-def _dataset_keyword_table(data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None):
-    return SimpleNamespace(
+def _dataset_keyword_table(
+    data_source_type: str = "database", keyword_table_dict: dict[str, Any] | None = None
+) -> DatasetKeywordTable:
+    keyword_table = DatasetKeywordTable(
+        dataset_id="dataset-1",
         data_source_type=data_source_type,
-        get_keyword_table_dict=MagicMock(return_value=keyword_table_dict),
         keyword_table="",
     )
+    keyword_table.get_keyword_table_dict = MagicMock(return_value=keyword_table_dict)
+    return keyword_table
 
 
-def _dataset(dataset_keyword_table=None, keyword_number=None):
-    return SimpleNamespace(
+def _dataset(dataset_keyword_table: DatasetKeywordTable | None = None, keyword_number: int | None = None) -> Dataset:
+    dataset = Dataset(
         id="dataset-1",
         tenant_id="tenant-1",
         keyword_number=keyword_number,
-        get_dataset_keyword_table=MagicMock(return_value=dataset_keyword_table),
     )
+    dataset.get_dataset_keyword_table = MagicMock(return_value=dataset_keyword_table)
+    return dataset
 
 
 @pytest.fixture
@@ -368,8 +373,12 @@ def test_multi_create_segment_keywords_uses_provided_and_extracted_keywords(
     monkeypatch.setattr(keyword, "_get_dataset_keyword_table", MagicMock(return_value={}))
     monkeypatch.setattr(keyword, "_save_dataset_keyword_table", MagicMock())
 
-    first_segment = SimpleNamespace(index_node_id="node-1", content="first content", keywords=None)
-    second_segment = SimpleNamespace(index_node_id="node-2", content="second content", keywords=None)
+    first_segment = _segment(index_node_id="node-1")
+    first_segment.content = "first content"
+    first_segment.keywords = None
+    second_segment = _segment(index_node_id="node-2")
+    second_segment.content = "second content"
+    second_segment.keywords = None
 
     keyword.multi_create_segment_keywords(
         [

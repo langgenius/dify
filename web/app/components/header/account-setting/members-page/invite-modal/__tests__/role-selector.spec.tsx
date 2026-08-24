@@ -1,7 +1,7 @@
 import type { Role, RoleListResponse } from '@/models/access-control'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
 import { RoleSelector } from '../role-selector'
 
@@ -62,7 +62,7 @@ const mockUseWorkspaceRoleList = ({
 const RoleSelectorWrapper = () => <RoleSelector />
 
 const getTrigger = () => screen.getByRole('combobox', { name: /members\.role/i })
-const getListbox = () => screen.getByRole('listbox', { name: /members\.role/i })
+const getListbox = () => screen.getByRole('listbox')
 
 describe('RoleSelector', () => {
   beforeEach(() => {

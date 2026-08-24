@@ -5,7 +5,6 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type Props = Readonly<{
@@ -20,14 +19,12 @@ const MobileOperationDropdown = ({
   hideViewChatSettings = false,
 }: Props) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const handleMenuAction = useCallback((callback: () => void) => {
-    setOpen(false)
+  const handleMenuAction = (callback: () => void) => {
     queueMicrotask(callback)
-  }, [])
+  }
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <IconButton
@@ -39,7 +36,7 @@ const MobileOperationDropdown = ({
           </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[160px]">
         <DropdownMenuItem
           className="system-md-regular"
           onClick={() => handleMenuAction(handleResetChat)}

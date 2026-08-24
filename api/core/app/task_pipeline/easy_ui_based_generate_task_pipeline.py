@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
@@ -124,7 +125,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
             self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
-                conversation_id=self._conversation_id, query=self._application_generate_entity.query
+                conversation_id=self._conversation_id,
+                query=self._application_generate_entity.query,
+                message_id=self._message_id,
             )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
@@ -272,6 +275,17 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     with session_factory.create_session() as session:
                         err = self.handle_error(event=event, session=session, message_id=self._message_id)
                         session.commit()
+
+                    if trace_manager:
+                        trace_manager.add_trace_task(
+                            TraceTask(
+                                TraceTaskName.MESSAGE_TRACE,
+                                conversation_id=self._conversation_id,
+                                message_id=self._message_id,
+                                trace_session_id=self._application_generate_entity.extras.get("trace_session_id"),
+                            )
+                        )
+
                     yield self.error_to_stream_response(err)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
@@ -292,8 +306,16 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                         )
 
                     with session_factory.create_session() as session:
-                        # Save message
-                        self._save_message(session=session, trace_manager=trace_manager)
+                        # A stopped Agent run may persist provider-reported usage after
+                        # cancellation completes. Do not replace it with local token estimates.
+                        if isinstance(event, QueueStopEvent):
+                            self._save_message(
+                                session=session,
+                                trace_manager=trace_manager,
+                                preserve_existing_usage=True,
+                            )
+                        else:
+                            self._save_message(session=session, trace_manager=trace_manager)
                         session.commit()
                     message_end_resp = self._message_end_to_stream_response()
                     yield message_end_resp
@@ -389,7 +411,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     continue
         return delta_text
 
-    def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
+    def _save_message(
+        self,
+        *,
+        session: Session,
+        trace_manager: TraceQueueManager | None = None,
+        preserve_existing_usage: bool = False,
+    ):
         """
         Save message.
         :return:
@@ -410,24 +438,39 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
             self._model_config.mode, self._task_state.llm_result.prompt_messages
         )
         object.__setattr__(message, "message", saved_prompt)
-        message.message_tokens = usage.prompt_tokens
-        message.message_unit_price = usage.prompt_unit_price
-        message.message_price_unit = usage.prompt_price_unit
+        try:
+            existing_metadata = json.loads(message.message_metadata) if message.message_metadata else {}
+        except (json.JSONDecodeError, TypeError):
+            existing_metadata = {}
+        if not isinstance(existing_metadata, dict):
+            existing_metadata = {}
+        has_persisted_usage = preserve_existing_usage and (
+            int(message.message_tokens or 0) + int(message.answer_tokens or 0) > 0 or bool(message.total_price)
+        )
+        if not has_persisted_usage:
+            message.message_tokens = usage.prompt_tokens
+            message.message_unit_price = usage.prompt_unit_price
+            message.message_price_unit = usage.prompt_price_unit
         message.answer = (
             PromptTemplateParser.remove_template_variables(llm_result.message.get_text_content().strip())
             if llm_result.message.content
             else ""
         )
         message.updated_at = naive_utc_now()
-        message.answer_tokens = usage.completion_tokens
-        message.answer_unit_price = usage.completion_unit_price
-        message.answer_price_unit = usage.completion_price_unit
-        message.provider_response_latency = time.perf_counter() - self.start_at
-        message.total_price = usage.total_price
-        message.currency = usage.currency
-        self._task_state.llm_result.usage.latency = message.provider_response_latency
-        self._task_state.metadata.usage = self._task_state.llm_result.usage
-        message.message_metadata = self._task_state.metadata.model_dump_json()
+        if not has_persisted_usage:
+            message.answer_tokens = usage.completion_tokens
+            message.answer_unit_price = usage.completion_unit_price
+            message.answer_price_unit = usage.completion_price_unit
+            message.provider_response_latency = time.perf_counter() - self.start_at
+            message.total_price = usage.total_price
+            message.currency = usage.currency
+            self._task_state.llm_result.usage.latency = message.provider_response_latency
+            self._task_state.metadata.usage = self._task_state.llm_result.usage
+
+        metadata = self._task_state.metadata.model_dump(mode="json")
+        if has_persisted_usage and "usage" in existing_metadata:
+            metadata["usage"] = existing_metadata["usage"]
+        message.message_metadata = json.dumps(metadata, ensure_ascii=False)
 
         if trace_manager:
             trace_manager.add_trace_task(

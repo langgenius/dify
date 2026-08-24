@@ -26,14 +26,13 @@ const mockWorkflowAppDslExport = vi.hoisted(() => ({
   isExporting: false,
 }))
 const mockCopyApp = vi.hoisted(() =>
-  vi.fn(
-    (_variables: unknown): Promise<unknown> =>
-      Promise.resolve({
-        id: 'new-app-id',
-        mode: 'chat',
-        maintainer: 'user-1',
-        permission_keys: [],
-      }),
+  vi.fn((_variables: unknown): Promise<unknown> =>
+    Promise.resolve({
+      id: 'new-app-id',
+      mode: 'chat',
+      maintainer: 'user-1',
+      permission_keys: [],
+    }),
   ),
 )
 const mockUpdateAppMutation = vi.hoisted(() =>
@@ -682,9 +681,13 @@ describe('AppCard', () => {
     })
 
     it('should star the app from the card action without navigating', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.starApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'false')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockStarAppMutation).toHaveBeenCalledWith({
@@ -695,10 +698,14 @@ describe('AppCard', () => {
     })
 
     it('should unstar the app from the filled star action', async () => {
+      const user = userEvent.setup()
       const starredApp = createMockApp({ is_starred: true })
       render(<AppCard app={starredApp} />)
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.studio.unstarApp' }))
+      const starToggle = screen.getByRole('button', { name: 'app.studio.starApp' })
+      expect(starToggle).toHaveAttribute('aria-pressed', 'true')
+
+      await user.click(starToggle)
 
       await waitFor(() => {
         expect(mockUnstarAppMutation).toHaveBeenCalledWith({
@@ -724,13 +731,15 @@ describe('AppCard', () => {
     })
 
     it('should show edit option when dropdown menu is opened', async () => {
+      const user = userEvent.setup()
       render(<AppCard app={mockApp} />)
 
-      fireEvent.click(getOperationsTrigger())
+      await user.click(getOperationsTrigger())
 
       await waitFor(() => {
         expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
+      expect(mockPush).not.toHaveBeenCalled()
     })
 
     it('should show duplicate option when dropdown menu is opened', async () => {

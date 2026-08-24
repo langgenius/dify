@@ -18,7 +18,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from redis.asyncio import Redis
 
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory
@@ -60,7 +60,6 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_token_factory = issue_agent_stub_token
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
-    agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
     runtime_backend_profile = resolved_settings.build_runtime_backend_profile()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
@@ -77,6 +76,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             execution_bindings=runtime_backend_profile.execution_bindings,
             agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
+            download_command_timeout_seconds=resolved_settings.binding_file_download_command_timeout_seconds,
         )
         if runtime_backend_profile is not None
         else None
@@ -111,6 +111,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             plugin_daemon_http_client=plugin_daemon_http_client,
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
+            run_timeout_seconds=resolved_settings.run_timeout_seconds,
             layer_providers=layer_providers,
         )
         state["store"] = store
@@ -132,22 +133,19 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     def get_scheduler() -> RunScheduler:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
-    app.include_router(
-        create_runs_router(
-            get_store,
-            get_scheduler,
-            auth_dependency=create_bearer_token_dependency(resolved_settings.api_token),
-        )
+    control_plane_router = APIRouter(
+        dependencies=[create_bearer_token_dependency(resolved_settings.api_token)],
     )
-    app.include_router(create_execution_bindings_router(lambda: execution_binding_service))
-    app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
-    app.include_router(create_binding_files_router(lambda: binding_file_service))
+    control_plane_router.include_router(create_runs_router(get_store, get_scheduler))
+    control_plane_router.include_router(create_execution_bindings_router(lambda: execution_binding_service))
+    control_plane_router.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
+    control_plane_router.include_router(create_binding_files_router(lambda: binding_file_service))
+    app.include_router(control_plane_router)
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,
             file_request_handler=agent_stub_file_request_handler,
             config_request_handler=agent_stub_config_request_handler,
-            drive_request_handler=agent_stub_drive_request_handler,
         )
     )
     return app

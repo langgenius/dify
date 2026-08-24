@@ -198,7 +198,7 @@ const DocumentRow = memo(
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
               <DropdownMenuItem
                 className="gap-2 px-3"
                 onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}

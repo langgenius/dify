@@ -1,6 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
-import { Field, FieldControl, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -81,7 +82,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         <FieldLabel className="my-2 py-0 system-md-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
         </FieldLabel>
-        <FieldControl
+        <Input
           type="email"
           autoComplete="email"
           spellCheck={false}
@@ -93,6 +94,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         {shouldRenderTurnstile && (
           <Turnstile
             key={turnstileGeneration}
+            action="signin_code"
             siteKey={turnstileSiteKey}
             onVerify={setTurnstileToken}
             onInvalidate={() => {

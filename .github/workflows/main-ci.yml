@@ -15,8 +15,10 @@ permissions:
   statuses: write
 
 concurrency:
-  group: main-ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.run_id }}
-  cancel-in-progress: true
+  # Pull request deduplication is owned by skip-duplicate-actions so pre_job can
+  # publish should_skip before required status finalizers run.
+  group: main-ci-${{ github.event.merge_group.head_sha || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
   pre_job:

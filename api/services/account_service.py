@@ -13,7 +13,7 @@ import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, NotRequired, TypedDict
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import Row, delete, func, select, update
@@ -48,6 +48,10 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.billing_service import BillingService
+from services.email_code_login_challenge import (
+    EmailCodeLoginChallengeResult,
+    EmailCodeLoginChallengeStore,
+)
 from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
@@ -62,7 +66,7 @@ from services.errors.account import (
     AccountPasswordError,
     AccountRegisterError,
     CannotOperateSelfError,
-    CurrentPasswordIncorrectError,
+    EmailDomainSuspendedError,
     InvalidActionError,
     LinkAccountIntegrateError,
     MemberNotInTenantError,
@@ -71,14 +75,11 @@ from services.errors.account import (
     RefreshTokenNotFoundError,
     RoleAlreadyAssignedError,
     SeatsLimitExceededError,
-    TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.telemetry_service import CommunityTelemetryService
-from tasks.delete_account_task import delete_account_task
-from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
     send_change_mail_completed_notification_task,
     send_change_mail_task,
@@ -143,17 +144,12 @@ ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
 
 class AccountService:
     CHANGE_EMAIL_PHASE_OLD = ChangeEmailPhase.OLD_EMAIL
-    CHANGE_EMAIL_PHASE_OLD_VERIFIED = ChangeEmailPhase.OLD_EMAIL_VERIFIED
     CHANGE_EMAIL_PHASE_NEW = ChangeEmailPhase.NEW_EMAIL
-    CHANGE_EMAIL_PHASE_NEW_VERIFIED = ChangeEmailPhase.NEW_EMAIL_VERIFIED
 
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_register_rate_limiter = RateLimiter(prefix="email_register_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=3, time_window=300 * 1
-    )
-    email_code_account_deletion_rate_limiter = RateLimiter(
-        prefix="email_code_account_deletion_rate_limit", max_attempts=1, time_window=60 * 1
     )
     change_email_rate_limiter = RateLimiter(prefix="change_email_rate_limit", max_attempts=1, time_window=60 * 1)
     owner_transfer_rate_limiter = RateLimiter(prefix="owner_transfer_rate_limit", max_attempts=1, time_window=60 * 1)
@@ -418,28 +414,6 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_password(account: Account, password: str, new_password: str, *, session: Session):
-        """update account password"""
-        if account.password and not compare_password(password, account.password, account.password_salt):
-            raise CurrentPasswordIncorrectError("Current password is incorrect.")
-
-        # may be raised
-        valid_password(new_password)
-
-        # generate password salt
-        salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
-
-        # encrypt password with salt
-        password_hashed = hash_password(new_password, salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        session.add(account)
-        session.commit()
-        return account
-
-    @staticmethod
     def create_account(
         email: str,
         name: str,
@@ -448,6 +422,7 @@ class AccountService:
         interface_theme: str = "light",
         is_setup: bool | None = False,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -465,6 +440,9 @@ class AccountService:
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
+            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -500,6 +478,7 @@ class AccountService:
             interface_language=interface_language,
             interface_theme=interface_theme,
             timezone=resolved_timezone,
+            last_login_ip=ip_address,
         )
 
         session.add(account)
@@ -513,6 +492,7 @@ class AccountService:
         interface_language: str,
         password: str | None = None,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -523,6 +503,7 @@ class AccountService:
             interface_language=interface_language,
             password=password,
             timezone=timezone,
+            ip_address=ip_address,
             session=session,
         )
 
@@ -536,55 +517,6 @@ class AccountService:
         _try_join_enterprise_default_workspace(str(account.id))
 
         return account
-
-    @staticmethod
-    def generate_account_deletion_verification_code(account: Account) -> tuple[str, str]:
-        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        token = TokenManager.generate_token(
-            account=account, token_type="account_deletion", additional_data={"code": code}
-        )
-        return token, code
-
-    @classmethod
-    def send_account_deletion_verification_email(cls, account: Account, code: str):
-        email = account.email
-        if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
-
-            raise EmailCodeAccountDeletionRateLimitExceededError(
-                int(cls.email_code_account_deletion_rate_limiter.time_window / 60)
-            )
-
-        send_account_deletion_verification_code.delay(to=email, code=code)
-
-        cls.email_code_account_deletion_rate_limiter.increment_rate_limit(email)
-
-    @staticmethod
-    def verify_account_deletion_code(token: str, code: str) -> bool:
-        token_data = TokenManager.get_token_data(token, "account_deletion")
-        if token_data is None:
-            return False
-
-        if token_data["code"] != code:
-            return False
-
-        return True
-
-    @staticmethod
-    def delete_account(account: Account, *, session: Session):
-        """Delete account. This method only adds a task to the queue for deletion."""
-        # Queue account deletion sync tasks for all workspaces BEFORE account deletion (enterprise only)
-        from services.enterprise.account_deletion_sync import sync_account_deletion
-
-        sync_success = sync_account_deletion(account_id=account.id, source="account_deleted", session=session)
-        if not sync_success:
-            logger.warning(
-                "Enterprise account deletion sync failed for account %s; proceeding with local deletion.",
-                account.id,
-            )
-
-        # Now proceed with async account deletion
-        delete_account_task.delay(account.id)
 
     @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account, *, session: Session):
@@ -614,25 +546,6 @@ class AccountService:
         except Exception as e:
             logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
             raise LinkAccountIntegrateError("Failed to link account.") from e
-
-    @staticmethod
-    def close_account(account: Account, *, session: Session):
-        """Close account"""
-        account.status = AccountStatus.CLOSED
-        session.commit()
-
-    @staticmethod
-    def update_account(account: Account, *, session: Session, **kwargs):
-        """Update account fields"""
-        account = session.merge(account)
-        for field, value in kwargs.items():
-            if hasattr(account, field):
-                setattr(account, field, value)
-            else:
-                raise AttributeError(f"Invalid field: {field}")
-
-        session.commit()
-        return account
 
     @staticmethod
     def update_account_email(account: Account, email: str, session: Session) -> Account:
@@ -917,7 +830,10 @@ class AccountService:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="reset_password", additional_data=additional_data
+            account_id=account.id if account else None,
+            email=email,
+            token_type="reset_password",
+            additional_data=additional_data,
         )
         return code, token
 
@@ -941,7 +857,7 @@ class AccountService:
         account: Account,
     ) -> str:
         token = TokenManager.generate_token(
-            account=account,
+            account_id=account.id,
             email=token_data.email,
             token_type="change_email",
             additional_data=token_data.to_token_manager_payload(),
@@ -960,7 +876,10 @@ class AccountService:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="owner_transfer", additional_data=additional_data
+            account_id=account.id if account else None,
+            email=email,
+            token_type="owner_transfer",
+            additional_data=additional_data,
         )
         return code, token
 
@@ -1013,14 +932,17 @@ class AccountService:
         email = account.email if account else email
         if email is None:
             raise ValueError("Email must be provided.")
+        email = email.lower()
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError(int(cls.email_code_login_rate_limiter.time_window / 60))
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
-        token = TokenManager.generate_token(
-            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+        token = EmailCodeLoginChallengeStore.create(
+            account_id=str(account.id) if account else None,
+            email=email,
+            code=code,
         )
         send_email_code_login_mail_task.delay(
             language=language,
@@ -1045,16 +967,15 @@ class AccountService:
         return session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
 
     @classmethod
-    def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:
-        return TokenManager.get_token_data(token, "email_code_login")
-
-    @classmethod
-    def revoke_email_code_login_token(cls, token: str):
-        TokenManager.revoke_token(token, "email_code_login")
+    def verify_email_code_login_challenge(cls, *, email: str, code: str, token: str) -> EmailCodeLoginChallengeResult:
+        return EmailCodeLoginChallengeStore.verify(email=email, code=code, token=token)
 
     @classmethod
     def get_user_through_email(cls, email: str, *, session: Session):
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
+            freeze_type = BillingService.get_email_freeze_type(email) or "freeze"
+            if freeze_type == "email_domain_suspended":
+                raise EmailDomainSuspendedError()
             raise AccountRegisterError(
                 description=(
                     "This email account has been deleted within the past "
@@ -1072,10 +993,10 @@ class AccountService:
         return account
 
     @classmethod
-    def is_account_in_freeze(cls, email: str) -> bool:
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and BillingService.is_email_in_freeze(email):
-            return True
-        return False
+    def get_account_freeze_type(cls, email: str):
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return None
+        return BillingService.get_email_freeze_type(email)
 
     @staticmethod
     @redis_fallback(default_return=None)
@@ -1545,24 +1466,6 @@ class TenantService:
         ).first()
 
     @staticmethod
-    def get_current_tenant_by_account(account: Account, *, session: Session):
-        """Get tenant by account and add the role"""
-        tenant = account.current_tenant
-        if not tenant:
-            raise TenantNotFoundError("Tenant not found.")
-
-        ta = session.scalar(
-            select(TenantAccountJoin)
-            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
-            .limit(1)
-        )
-        if ta:
-            object.__setattr__(tenant, "role", ta.role)
-        else:
-            raise TenantNotFoundError("Tenant not found for the account.")
-        return tenant
-
-    @staticmethod
     def switch_tenant(account: Account, tenant_id: str | None = None, *, session: Session):
         """Switch the current workspace for the account"""
 
@@ -1679,11 +1582,6 @@ class TenantService:
             .limit(1)
         )
         return TenantAccountRole(join.role) if join else None
-
-    @staticmethod
-    def get_tenant_count(*, session: Session) -> int:
-        """Get tenant count"""
-        return cast(int, session.scalar(select(func.count(Tenant.id))))
 
     @staticmethod
     def check_member_permission(
@@ -1961,10 +1859,10 @@ class RegisterService:
                 interface_language=get_valid_language(language),
                 password=password,
                 is_setup=True,
+                ip_address=ip_address,
                 session=session,
             )
 
-            account.last_login_ip = ip_address
             account.initialized_at = naive_utc_now()
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True, session=session)
@@ -2000,6 +1898,7 @@ class RegisterService:
         is_setup: bool | None = False,
         create_workspace_required: bool | None = True,
         timezone: str | None = None,
+        ip_address: str | None = None,
         *,
         session: Session,
     ) -> Account:
@@ -2014,6 +1913,7 @@ class RegisterService:
                 password=password,
                 is_setup=is_setup,
                 timezone=timezone,
+                ip_address=ip_address,
                 session=session,
             )
             account.status = status or AccountStatus.ACTIVE

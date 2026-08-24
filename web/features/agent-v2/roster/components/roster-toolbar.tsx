@@ -28,7 +28,7 @@ type RosterFilterItemProps = {
 
 function RosterFilterItem({ count, label, value }: RosterFilterItemProps) {
   return (
-    <SegmentedControlItem value={value} className="gap-1 data-pressed:text-text-secondary">
+    <SegmentedControlItem value={value} className="gap-1 data-checked:text-text-secondary">
       <span>{label}</span>
       {count !== undefined && (
         <span className="flex min-w-4 shrink-0 items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary tabular-nums">
@@ -47,12 +47,8 @@ function RosterStatusFilter({ draftAgents, publishedAgents }: RosterToolbarProps
     <SegmentedControl
       aria-label={t(($) => $['roster.filters.label'])}
       className="shrink-0"
-      value={[filter]}
-      onValueChange={(value) => {
-        const nextFilter = value[0]
-
-        if (nextFilter) void setFilter(nextFilter)
-      }}
+      value={filter}
+      onValueChange={(value) => void setFilter(value)}
     >
       <RosterFilterItem value="all" label={t(($) => $['roster.filters.all'])} />
       <RosterFilterItem

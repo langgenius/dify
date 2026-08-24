@@ -1,8 +1,11 @@
-import type { DefaultModel, Model } from '../declarations'
 import type { ModelSelectorPreviewPayload } from './popup-item'
-import type { ModelSelectorModelPredicate, ModelSelectorProvider } from './types'
+import type {
+  ModelSelectorModel,
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from './types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
-import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -10,19 +13,15 @@ import {
 } from '@langgenius/dify-ui/preview-card'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
-import { useQueryState } from 'nuqs'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  settingsQueryParamName,
-  settingsQueryParser,
-} from '@/app/components/header/account-setting/query-params'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { renderI18nObject } from '@/i18n-config'
 import { consoleQuery } from '@/service/client'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
 import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
@@ -47,22 +46,22 @@ import PopupItem from './popup-item'
 import {
   CompatibleModelsNotice,
   ModelProviderSettingsFooter,
-  ModelSelectorPopupFrame,
   ModelSelectorScrollBody,
   ModelSelectorSearchHeader,
   ShowIncompatibleModelsButton,
 } from './popup-layout'
 
 export type PopupProps = {
-  defaultModel?: DefaultModel
+  defaultModel?: ModelSelectorValue
   inputValue: string
-  modelList: Model[]
-  scopeFeatures?: ModelFeatureEnum[]
-  hideProviderSettingsFooter?: boolean
+  modelList: ModelSelectorProvider[]
+  scopeFeatures?: readonly string[]
+  onOpenProviderSettings?: () => void
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
+  onSelect: (provider: string, model: ModelSelectorModel) => void
   onOpenMarketplace?: () => void
   onHide: () => void
 }
@@ -71,19 +70,16 @@ function Popup({
   inputValue,
   modelList,
   scopeFeatures = [],
-  hideProviderSettingsFooter,
+  onOpenProviderSettings,
   modelPredicate,
   modelSuggestionPredicate,
   onConfigureEmptyState,
   onInputValueChange,
+  onSelect,
   onOpenMarketplace,
   onHide,
 }: PopupProps) {
   const { t } = useTranslation()
-  const [settingsDestination, setSettingsDestination] = useQueryState(
-    settingsQueryParamName,
-    settingsQueryParser,
-  )
   const { theme } = useTheme()
   const language = useLanguage()
   const previewCardHandle = useMemo(
@@ -245,25 +241,25 @@ function Popup({
     )
   }, [enableMarketplace, modelProviderPlugins])
 
-  const handleOpenSettings = useCallback(() => {
-    onHide()
-    setSettingsDestination('provider')
-  }, [onHide, setSettingsDestination])
+  const searchStatus =
+    !filteredModelList.length && installedModelList.length > 0
+      ? t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
+          ns: 'common',
+          query: inputValue,
+        })
+      : null
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
-  const isProviderSettingsCurrentPage = settingsDestination === 'provider'
-  const handleConfigureEmptyState =
-    onConfigureEmptyState ?? (isProviderSettingsCurrentPage ? onHide : handleOpenSettings)
 
   return (
-    <ModelSelectorPopupFrame>
+    <>
       <ModelSelectorSearchHeader inputValue={inputValue} onInputValueChange={onInputValueChange} />
-      <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
-        {showCreditsExhaustedAlert && (
-          <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
-        )}
-        <ComboboxList className="max-h-none overflow-visible p-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <ModelSelectorScrollBody label={t(($) => $['modelProvider.models'], { ns: 'common' })}>
+          {showCreditsExhaustedAlert && (
+            <CreditsExhaustedAlert hasApiKeyFallback={hasApiKeyFallback} />
+          )}
           <div className="pb-1">
             {filteredModelList.map((model) => (
               <PopupItem
@@ -274,44 +270,52 @@ function Popup({
                 modelSuggestionPredicate={modelSuggestionPredicate}
                 previewCardHandle={previewCardHandle}
                 onPreviewCardClose={handleClosePreviewCard}
+                onSelect={onSelect}
                 onHide={onHide}
               />
             ))}
           </div>
-        </ComboboxList>
-        <div className="pb-1">
-          {!filteredModelList.length && !installedModelList.length && (
-            <ModelSelectorEmptyState onConfigure={handleConfigureEmptyState} />
-          )}
-          {!filteredModelList.length && installedModelList.length > 0 && (
-            <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
-              {t(($) => $['modelProvider.selector.noModelFoundForSearch'], {
-                ns: 'common',
-                query: inputValue,
-              })}
+          <div className="pb-1">
+            {!filteredModelList.length && !installedModelList.length && (
+              <ModelSelectorEmptyState onConfigure={onConfigureEmptyState ?? onHide} />
+            )}
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className={
+                searchStatus
+                  ? 'px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary'
+                  : 'h-0'
+              }
+            >
+              {searchStatus}
             </div>
-          )}
-          {scopeFeatures.length > 0 && <CompatibleModelsNotice />}
-          {shouldShowModelPredicateReveal && (
-            <ShowIncompatibleModelsButton
-              showIncompatibleModels={showIncompatibleModels}
-              onClick={() => setShowIncompatibleModels((value) => !value)}
-            />
-          )}
-          {enableMarketplace && (
-            <MarketplaceSection
-              marketplaceProviders={marketplaceProviders}
-              marketplaceCollapsed={marketplaceCollapsed}
-              installingProvider={installingProvider}
-              canInstallPlugin={canInstallPlugin}
-              theme={theme}
-              onMarketplaceCollapsedChange={setMarketplaceCollapsed}
-              onInstallPlugin={handleInstallPlugin}
-              onOpenMarketplace={onOpenMarketplace}
-            />
-          )}
-        </div>
-      </ModelSelectorScrollBody>
+            {scopeFeatures.length > 0 && <CompatibleModelsNotice />}
+            {shouldShowModelPredicateReveal && (
+              <ShowIncompatibleModelsButton
+                showIncompatibleModels={showIncompatibleModels}
+                onClick={() => setShowIncompatibleModels((value) => !value)}
+              />
+            )}
+            {enableMarketplace && (
+              <MarketplaceSection
+                marketplaceProviders={marketplaceProviders}
+                marketplaceCollapsed={marketplaceCollapsed}
+                installingProvider={installingProvider}
+                canInstallPlugin={canInstallPlugin}
+                theme={theme}
+                onMarketplaceCollapsedChange={setMarketplaceCollapsed}
+                onInstallPlugin={handleInstallPlugin}
+                onOpenMarketplace={onOpenMarketplace}
+              />
+            )}
+          </div>
+        </ModelSelectorScrollBody>
+        {onOpenProviderSettings && (
+          <ModelProviderSettingsFooter onOpenSettings={onOpenProviderSettings} />
+        )}
+      </div>
       <PreviewCard handle={previewCardHandle}>
         {({ payload }) => (
           <ModelSelectorPreviewCard
@@ -321,10 +325,7 @@ function Popup({
           />
         )}
       </PreviewCard>
-      {!hideProviderSettingsFooter && !isProviderSettingsCurrentPage && (
-        <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
-      )}
-    </ModelSelectorPopupFrame>
+    </>
   )
 }
 
@@ -346,13 +347,13 @@ function ModelSelectorPreviewCard({
   return (
     <PreviewCardContent
       placement="right"
-      popupClassName="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
+      className="w-[206px] bg-components-panel-bg-blur p-3 shadow-none backdrop-blur-xs"
     >
       <div className="flex flex-col gap-1">
         <div className="flex flex-col items-start gap-2">
           <ModelIcon className="size-5 shrink-0" provider={provider} modelName={modelItem.model} />
           <div className="system-md-medium text-wrap wrap-break-word text-text-primary">
-            {modelItem.label[language] || modelItem.label.en_US}
+            {renderI18nObject(modelItem.label, language)}
           </div>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -377,7 +378,7 @@ function ModelSelectorPreviewCard({
               ModelFeatureEnum.audio,
               ModelFeatureEnum.video,
               ModelFeatureEnum.document,
-            ].includes(feature),
+            ].some((supportedFeature) => supportedFeature === feature),
           ) && (
             <div className="pt-2">
               <div className="mb-1 system-2xs-medium-uppercase text-text-tertiary">

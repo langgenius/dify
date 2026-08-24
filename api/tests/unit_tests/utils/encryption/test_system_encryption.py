@@ -27,13 +27,12 @@ class TestSystemEncrypter:
         expected_key = hashlib.sha256(secret_key.encode()).digest()
         assert encrypter.key == expected_key
 
-    def test_init_with_none_secret_key(self):
+    def test_init_with_none_secret_key(self, config_overrides):
         """Test initialization with None secret key falls back to config"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "config_secret"
-            encrypter = SystemEncrypter(secret_key=None)
-            expected_key = hashlib.sha256(b"config_secret").digest()
-            assert encrypter.key == expected_key
+        config_overrides(SECRET_KEY="config_secret")
+        encrypter = SystemEncrypter(secret_key=None)
+        expected_key = hashlib.sha256(b"config_secret").digest()
+        assert encrypter.key == expected_key
 
     def test_init_with_empty_secret_key(self):
         """Test initialization with empty secret key"""
@@ -41,13 +40,12 @@ class TestSystemEncrypter:
         expected_key = hashlib.sha256(b"").digest()
         assert encrypter.key == expected_key
 
-    def test_init_without_secret_key_uses_config(self):
+    def test_init_without_secret_key_uses_config(self, config_overrides):
         """Test initialization without secret key uses config"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "default_secret"
-            encrypter = SystemEncrypter()
-            expected_key = hashlib.sha256(b"default_secret").digest()
-            assert encrypter.key == expected_key
+        config_overrides(SECRET_KEY="default_secret")
+        encrypter = SystemEncrypter()
+        expected_key = hashlib.sha256(b"default_secret").digest()
+        assert encrypter.key == expected_key
 
     def test_encrypt_params_basic(self):
         """Test basic parameters encryption"""
@@ -368,25 +366,23 @@ class TestFactoryFunctions:
         expected_key = hashlib.sha256(secret_key.encode()).digest()
         assert encrypter.key == expected_key
 
-    def test_create_system_encrypter_without_secret(self):
+    def test_create_system_encrypter_without_secret(self, config_overrides):
         """Test factory function without secret key"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "config_secret"
-            encrypter = create_system_encrypter()
+        config_overrides(SECRET_KEY="config_secret")
+        encrypter = create_system_encrypter()
 
-            assert isinstance(encrypter, SystemEncrypter)
-            expected_key = hashlib.sha256(b"config_secret").digest()
-            assert encrypter.key == expected_key
+        assert isinstance(encrypter, SystemEncrypter)
+        expected_key = hashlib.sha256(b"config_secret").digest()
+        assert encrypter.key == expected_key
 
-    def test_create_system_encrypter_with_none_secret(self):
+    def test_create_system_encrypter_with_none_secret(self, config_overrides):
         """Test factory function with None secret key"""
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "config_secret"
-            encrypter = create_system_encrypter(None)
+        config_overrides(SECRET_KEY="config_secret")
+        encrypter = create_system_encrypter(None)
 
-            assert isinstance(encrypter, SystemEncrypter)
-            expected_key = hashlib.sha256(b"config_secret").digest()
-            assert encrypter.key == expected_key
+        assert isinstance(encrypter, SystemEncrypter)
+        expected_key = hashlib.sha256(b"config_secret").digest()
+        assert encrypter.key == expected_key
 
 
 class TestGlobalEncrypterInstance:
@@ -405,19 +401,18 @@ class TestGlobalEncrypterInstance:
         assert encrypter1 is encrypter2
         assert isinstance(encrypter1, SystemEncrypter)
 
-    def test_get_system_encrypter_uses_config(self):
+    def test_get_system_encrypter_uses_config(self, config_overrides):
         """Test that global encrypter uses config"""
         # Clear the global instance first
         import core.tools.utils.system_encryption
 
         core.tools.utils.system_encryption._encrypter = None
 
-        with patch("core.tools.utils.system_encryption.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "global_secret"
-            encrypter = get_system_encrypter()
+        config_overrides(SECRET_KEY="global_secret")
+        encrypter = get_system_encrypter()
 
-            expected_key = hashlib.sha256(b"global_secret").digest()
-            assert encrypter.key == expected_key
+        expected_key = hashlib.sha256(b"global_secret").digest()
+        assert encrypter.key == expected_key
 
 
 class TestConvenienceFunctions:

@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
 from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, Union, cast, overload, override
+from uuid import UUID
 
 from configs import dify_config
 from core.entities import PluginCredentialType
@@ -443,23 +444,50 @@ class ModelInstance:
 
 
 class QuotaManagedModelInstance(ModelInstance):
-    """A system-hosted LLM instance that owns quota settlement per invocation."""
+    """A system-hosted model instance that owns quota settlement per invocation."""
 
-    def reserve_quota(self):
-        from core.app.llm.quota import reserve_llm_quota_for_model
+    def reserve_quota(self, *, request_id: str | None = None):
+        from core.app.llm.quota import reserve_model_quota_for_model
 
-        return reserve_llm_quota_for_model(
+        return reserve_model_quota_for_model(
             tenant_id=self.provider_model_bundle.configuration.tenant_id,
             provider=self.provider,
+            model_type=self.model_type_instance.model_type,
             model=self.model_name,
+            request_id=request_id,
         )
+
+    @staticmethod
+    def _get_reservation_request_id(request_metadata: Mapping[str, object] | None) -> str | None:
+        request_id = request_metadata.get("invocation_id") if request_metadata else None
+        if not isinstance(request_id, str) or not request_id:
+            return None
+        try:
+            return str(UUID(request_id))
+        except ValueError:
+            return None
+
+    def _reserve_quota_for_request(self, request_metadata: Mapping[str, object] | None):
+        request_id = self._get_reservation_request_id(request_metadata)
+        if request_id is None:
+            return self.reserve_quota()
+        return self.reserve_quota(request_id=request_id)
 
     @staticmethod
     def release_quota_safely(reservation) -> None:
         try:
             reservation.release()
         except Exception:
-            logger.exception("Failed to release LLM quota reservation")
+            logger.exception("Failed to release model quota reservation")
+
+    def _invoke_with_quota(self, function: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+        reservation = self.reserve_quota()
+        try:
+            response = function(*args, **kwargs)
+            reservation.commit()
+            return response
+        finally:
+            self.release_quota_safely(reservation)
 
     @overload
     def invoke_llm(
@@ -520,7 +548,7 @@ class QuotaManagedModelInstance(ModelInstance):
                 request_metadata=request_metadata,
             )
 
-        reservation = self.reserve_quota()
+        reservation = self._reserve_quota_for_request(request_metadata)
         try:
             response = super().invoke_llm(
                 prompt_messages=normalized_prompt_messages,
@@ -548,7 +576,7 @@ class QuotaManagedModelInstance(ModelInstance):
         callbacks: list[Callback] | None,
         request_metadata: Mapping[str, object] | None,
     ) -> Generator:
-        reservation = self.reserve_quota()
+        reservation = self._reserve_quota_for_request(request_metadata)
         usage: LLMUsage | None = None
         try:
             response = super().invoke_llm(
@@ -581,6 +609,78 @@ class QuotaManagedModelInstance(ModelInstance):
 
             reservation.commit(usage)
             yield from buffered_chunks
+        finally:
+            self.release_quota_safely(reservation)
+
+    @override
+    def invoke_text_embedding(
+        self, texts: list[str], input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+    ) -> EmbeddingResult:
+        return self._invoke_with_quota(super().invoke_text_embedding, texts=texts, input_type=input_type)
+
+    @override
+    def invoke_multimodal_embedding(
+        self,
+        multimodel_documents: list[dict],
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
+    ) -> EmbeddingResult:
+        return self._invoke_with_quota(
+            super().invoke_multimodal_embedding,
+            multimodel_documents=multimodel_documents,
+            input_type=input_type,
+        )
+
+    @override
+    def invoke_rerank(
+        self,
+        query: str,
+        docs: list[str],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+    ) -> RerankResult:
+        return self._invoke_with_quota(
+            super().invoke_rerank,
+            query=query,
+            docs=docs,
+            score_threshold=score_threshold,
+            top_n=top_n,
+        )
+
+    @override
+    def invoke_multimodal_rerank(
+        self,
+        query: MultimodalRerankInput,
+        docs: list[MultimodalRerankInput],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+    ) -> RerankResult:
+        return self._invoke_with_quota(
+            super().invoke_multimodal_rerank,
+            query=query,
+            docs=docs,
+            score_threshold=score_threshold,
+            top_n=top_n,
+        )
+
+    @override
+    def invoke_moderation(self, text: str) -> bool:
+        return self._invoke_with_quota(super().invoke_moderation, text=text)
+
+    @override
+    def invoke_speech2text(self, file: IO[bytes]) -> str:
+        return self._invoke_with_quota(super().invoke_speech2text, file=file)
+
+    @override
+    def invoke_tts(self, content_text: str, voice: str = "") -> Iterable[bytes]:
+        return self._invoke_tts_stream(content_text=content_text, voice=voice)
+
+    def _invoke_tts_stream(self, *, content_text: str, voice: str) -> Generator[bytes, None, None]:
+        reservation = self.reserve_quota()
+        try:
+            response = super().invoke_tts(content_text=content_text, voice=voice)
+            for chunk in response:
+                reservation.commit()
+                yield chunk
         finally:
             self.release_quota_safely(reservation)
 
@@ -645,10 +745,7 @@ class ModelManager:
 
     @staticmethod
     def _model_instance_class(provider_model_bundle: ProviderModelBundle, model_type: ModelType) -> type[ModelInstance]:
-        if (
-            model_type == ModelType.LLM
-            and provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM
-        ):
+        if provider_model_bundle.configuration.using_provider_type == ProviderType.SYSTEM:
             return QuotaManagedModelInstance
         return ModelInstance
 
@@ -826,8 +923,8 @@ class LBModelManager:
                         provider=self._provider,
                         credential_type=PluginCredentialType.MODEL,
                     )
-            except Exception as e:
-                logger.warning("Load balancing config %s failed policy compliance check: %s", config.id, str(e))
+            except Exception:
+                logger.warning("Load balancing config %s failed policy compliance check", config.id, exc_info=True)
                 cooldown_load_balancing_configs.append(config)
                 if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
                     # all configs are in cooldown or failed policy compliance

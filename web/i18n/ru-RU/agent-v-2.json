@@ -156,6 +156,7 @@
   "agentDetail.configure.preview.empty.description": "Запустите агента как готовый чат, именно так, как его увидят пользователи после публикации.",
   "agentDetail.configure.preview.empty.title": "Предпросмотр {{name}}",
   "agentDetail.configure.preview.endUserAuth": "Аутентификация конечного пользователя",
+  "agentDetail.configure.preview.errors.agentModelRequestLimitExceeded": "Этот запуск агента был остановлен после достижения максимального количества запросов к модели. Повторите попытку или разбейте задачу на более мелкие шаги.",
   "agentDetail.configure.preview.errors.agentRunLimitExceeded": "Этот запуск агента был остановлен из-за достижения лимита времени. Повторите попытку или разбейте задачу на более мелкие шаги.",
   "agentDetail.configure.preview.inputPlaceholder": "Написать {{name}}",
   "agentDetail.configure.preview.restart": "Начать заново",
@@ -382,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "напр. Помощник по исследованиям",
   "roster.createSuccess": "Агент создан.",
   "roster.dateTimeFormat": "DD.MM.YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Этот Agent будет удалён из списка Agent.",
+  "roster.deleteDialog.description": "Это навсегда удалит {{name}}. Веб-приложение и доступ к API этого Agent, а также использующие его рабочие процессы немедленно перестанут работать.",
   "roster.deleteDialog.title": "Удалить {{name}}?",
   "roster.deleteFailed": "Не удалось удалить агента.",
   "roster.deleteSuccess": "Агент удалён.",
@@ -425,6 +426,7 @@
   "roster.sort.lastModified": "Последнее изменение",
   "roster.sort.optionsLabel": "Параметры сортировки",
   "roster.sort.recentlyCreated": "Недавно созданные",
+  "roster.title": "Агенты",
   "roster.updateSuccess": "Агент обновлён.",
   "roster.usageStatus.draft": "Черновик"
 }

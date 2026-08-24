@@ -92,9 +92,15 @@ class AccountInFreezeError(BaseHTTPException):
     error_code = "account_in_freeze"
     code = 400
     description = (
-        "This email account has been deleted within the past 30 days"
+        "This email account has been deleted within the past 30 days "
         "and is temporarily unavailable for new account registration."
     )
+
+
+class EmailDomainSuspendedError(BaseHTTPException):
+    error_code = "email_domain_suspended"
+    code = 400
+    description = "This email domain has been suspended."
 
 
 class EducationVerifyLimitError(BaseHTTPException):
@@ -107,12 +113,6 @@ class EducationActivateLimitError(BaseHTTPException):
     error_code = "education_activate_limit"
     description = "Rate limit exceeded"
     code = 429
-
-
-class EducationDiscountTemporarilyPausedError(BaseHTTPException):
-    error_code = "education_discount_temporarily_paused"
-    description = "Education discount temporarily paused, while we upgrade our security measures."
-    code = 503
 
 
 class ComplianceRateLimitError(BaseHTTPException):
