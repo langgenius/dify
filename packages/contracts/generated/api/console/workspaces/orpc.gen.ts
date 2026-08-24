@@ -1201,7 +1201,7 @@ export const summary = {
 /**
  * @deprecated
  */
-export const get14 = oc
+export const get15 = oc
   .route({
     deprecated: true,
     inputStructure: 'detailed',
