@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   },
   { id: 'plugins', label: 'Plugins', path: '/plugins', iconClassName: 'i-ri-plug-line' },
   { id: 'tools', label: 'Tools', path: '/tools', iconClassName: 'i-ri-tools-line' },
-  { id: 'explore', label: 'Explore', path: '/', iconClassName: 'i-ri-compass-line' },
+  { id: 'home', label: 'Home', path: '/', iconClassName: 'i-ri-compass-line' },
   { id: 'account', label: 'Account', path: '/account', iconClassName: 'i-ri-user-line' },
 ] as const
 

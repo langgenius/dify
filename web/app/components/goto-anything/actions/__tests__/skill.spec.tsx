@@ -9,6 +9,14 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'skillManagement.title': 'Skills',
+    'skillManagement.searchLabel': 'Search skills',
+  })
+})
+
 function skill(overrides: Partial<SkillResponse> = {}): SkillResponse {
   return {
     id: 'skill-1',
@@ -27,7 +35,13 @@ describe('skill search query', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('exposes the @skill scope', () => {
-    expect(skillAction).toMatchObject({ key: '@skill', shortcut: '@skill', source: 'remote' })
+    expect(skillAction).toMatchObject({
+      key: '@skill',
+      shortcut: '@skill',
+      title: 'Skills',
+      description: 'Search skills',
+      source: 'remote',
+    })
   })
 
   it('queries the generated skill endpoint by keyword', () => {

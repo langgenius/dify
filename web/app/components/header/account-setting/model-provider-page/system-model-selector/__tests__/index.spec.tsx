@@ -294,18 +294,21 @@ describe('SystemModel', () => {
     expect(mockModelSelectorProps.every((props) => props.showModelMeta === false)).toBe(true)
   })
 
-  it('should close the dialog from the empty selector configure action', async () => {
+  it('should close the dialog from every empty selector configure action', async () => {
+    const user = userEvent.setup()
     render(<SystemModel {...defaultProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: /system model settings/i }))
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument()
-    })
+    for (let index = 0; index < 5; index++) {
+      await user.click(screen.getByRole('button', { name: /system model settings/i }))
+      const configureActions = await screen.findAllByRole('button', {
+        name: 'Mock Configure Empty State',
+      })
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Mock Configure Empty State' })[0]!)
+      await user.click(configureActions[index]!)
 
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+      })
+    }
   })
 })

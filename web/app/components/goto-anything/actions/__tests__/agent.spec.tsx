@@ -7,6 +7,14 @@ vi.mock('@/service/client', () => ({
   consoleQuery: { agent: { get: { queryOptions: serviceMocks.queryOptions } } },
 }))
 
+vi.mock('react-i18next', async () => {
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return createReactI18nextMock({
+    'roster.title': 'Agents',
+    'roster.searchLabel': 'Search agents',
+  })
+})
+
 vi.mock('../../../base/app-icon', () => ({ default: () => null }))
 
 function agent(overrides: Partial<AgentAppPartial> = {}): AgentAppPartial {
@@ -24,7 +32,13 @@ describe('agent search query', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('exposes the @agents scope', () => {
-    expect(agentAction).toMatchObject({ key: '@agents', shortcut: '@agents', source: 'remote' })
+    expect(agentAction).toMatchObject({
+      key: '@agents',
+      shortcut: '@agents',
+      title: 'Agents',
+      description: 'Search agents',
+      source: 'remote',
+    })
   })
 
   it('queries the generated agent endpoint by name', () => {

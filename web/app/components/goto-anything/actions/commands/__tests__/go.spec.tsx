@@ -34,7 +34,7 @@ describe('goCommand', () => {
         'go-skills',
         'go-plugins',
         'go-tools',
-        'go-explore',
+        'go-home',
         'go-account',
       ])
     })
@@ -49,11 +49,12 @@ describe('goCommand', () => {
       )
     })
 
-    it('routes Explore to the consolidated home page', async () => {
-      const results = await goCommand.search('explore', 'en')
+    it('routes Home to the consolidated home page', async () => {
+      const results = await goCommand.search('home', 'en')
 
       expect(results[0]).toMatchObject({
-        title: 'Explore',
+        id: 'go-home',
+        title: 'Home',
         description: '/',
         data: { command: 'navigation.go', args: { path: '/' } },
       })
