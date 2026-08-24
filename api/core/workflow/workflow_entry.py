@@ -118,7 +118,7 @@ class WorkflowEntry:
         :param workflow_id: workflow id
         :param workflow_type: workflow type
         :param graph_config: workflow graph config
-        :param graph: graph
+        :param graph: workflow graph
         :param user_id: user id
         :param user_from: user from
         :param invoke_from: invoke from
