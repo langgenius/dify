@@ -1,11 +1,13 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
 import { Button } from '@langgenius/dify-ui/button'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -17,7 +19,7 @@ import { useSendMail } from '@/service/use-common'
 type Props = {
   onSuccess: (email: string, payload: string) => void
 }
-export default function Form({ onSuccess }: Props) {
+export default function SignupEmailForm({ onSuccess }: Props) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const locale = useLocale()
@@ -45,36 +47,27 @@ export default function Form({ onSuccess }: Props) {
   }, [email, locale, submitMail, t, isPending, onSuccess])
 
   return (
-    <form
+    <Form
       onSubmit={(e) => {
         e.preventDefault()
         handleSubmit()
       }}
     >
-      <div className="mb-3">
-        <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
+      <Field name="email" className="mb-3">
+        <FieldLabel className="py-0 text-[14px] leading-5 font-semibold text-text-secondary">
           {t(($) => $.email, { ns: 'login' })}
-        </label>
-        <div className="mt-1">
-          <Input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
-            tabIndex={1}
-          />
-        </div>
-      </div>
+        </FieldLabel>
+        <Input
+          value={email}
+          onValueChange={setEmail}
+          type="email"
+          autoComplete="email"
+          spellCheck={false}
+          placeholder={t(($) => $.emailPlaceholder, { ns: 'login' }) || ''}
+        />
+      </Field>
       <div className="mb-2">
-        <Button
-          tabIndex={2}
-          variant="primary"
-          type="submit"
-          disabled={isPending || !email}
-          className="w-full"
-        >
+        <Button variant="primary" type="submit" disabled={isPending || !email} className="w-full">
           {t(($) => $['signup.verifyMail'], { ns: 'login' })}
         </Button>
       </div>
@@ -112,6 +105,6 @@ export default function Form({ onSuccess }: Props) {
           </div>
         </>
       )}
-    </form>
+    </Form>
   )
 }

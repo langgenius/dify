@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
-import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
@@ -146,10 +145,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
           <button
             type="button"
             onClick={handleTrigger}
-            className={cn(
-              'flex size-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover',
-              open && 'bg-state-accent-active',
-            )}
+            className="flex size-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover data-popup-open:bg-state-accent-active data-popup-open:hover:bg-state-accent-hover"
           >
             <SchemaGenerator />
           </button>
@@ -159,7 +155,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({ onApply, crossAxisO
         placement="bottom-end"
         sideOffset={4}
         alignOffset={crossAxisOffset ?? 0}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         {view === GENERATOR_VIEWS.promptEditor && (
           <PromptEditor

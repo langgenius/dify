@@ -12,7 +12,7 @@ This test suite covers:
 import base64
 import secrets
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -335,36 +335,67 @@ class TestTenantRelationshipIntegrity:
         # Assert
         assert tenant_id_none is None
 
-    def test_set_current_tenant_with_session_uses_caller_session(self):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_set_current_tenant_with_session_uses_caller_session(self, sqlite_session: Session):
         account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid4())
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
-        join = MagicMock(role=TenantAccountRole.OWNER)
-        session = MagicMock(spec=Session)
-        session.scalar.return_value = join
-        session.scalars.return_value.one.return_value = tenant
+        decoy_tenant = Tenant(name="Decoy Tenant")
+        decoy_tenant.id = str(uuid4())
+        sqlite_session.add_all(
+            [
+                account,
+                tenant,
+                decoy_tenant,
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+                TenantAccountJoin(
+                    tenant_id=decoy_tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.NORMAL,
+                ),
+            ]
+        )
+        sqlite_session.flush()
 
-        with patch("models.account.Session") as session_class:
-            account.set_current_tenant_with_session(tenant, session=session)
+        account.set_current_tenant_with_session(tenant, session=sqlite_session)
 
-        session_class.assert_not_called()
         assert account.current_tenant is tenant
         assert account.role == TenantAccountRole.OWNER
 
-    def test_set_tenant_id_with_session_uses_caller_session(self):
+    @pytest.mark.parametrize("sqlite_session", [(Account, Tenant, TenantAccountJoin)], indirect=True)
+    def test_set_tenant_id_with_session_uses_caller_session(self, sqlite_session: Session):
         account = Account(name="Test User", email="test@example.com")
         account.id = str(uuid4())
+        decoy_account = Account(name="Decoy User", email="decoy@example.com")
+        decoy_account.id = str(uuid4())
         tenant = Tenant(name="Test Tenant")
         tenant.id = str(uuid4())
-        join = MagicMock(role=TenantAccountRole.ADMIN)
-        session = MagicMock(spec=Session)
-        session.execute.return_value.first.return_value = (tenant, join)
+        sqlite_session.add_all(
+            [
+                account,
+                decoy_account,
+                tenant,
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=account.id,
+                    role=TenantAccountRole.ADMIN,
+                ),
+                TenantAccountJoin(
+                    tenant_id=tenant.id,
+                    account_id=decoy_account.id,
+                    role=TenantAccountRole.OWNER,
+                ),
+            ]
+        )
+        sqlite_session.flush()
 
-        with patch("models.account.Session") as session_class:
-            account.set_tenant_id_with_session(tenant.id, session=session)
+        account.set_tenant_id_with_session(tenant.id, session=sqlite_session)
 
-        session_class.assert_not_called()
         assert account.current_tenant is tenant
         assert account.role == TenantAccountRole.ADMIN
 

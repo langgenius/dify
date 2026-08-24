@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
-import controllers.web.site as site_module
 from controllers.web.error import WebFormRateLimitExceededError
 from core.workflow.nodes.human_input.entities import ParagraphInputConfig, SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
@@ -22,7 +21,7 @@ from models import Tenant
 from models.enums import CustomizeTokenStrategy
 from models.human_input import RecipientType
 from models.model import App, AppMode, IconType, Site
-from services.feature_service import FeatureModel
+from services.entities.feature_entities import FeatureModel
 from services.human_input_service import FormExpiredError
 
 HumanInputFormApi = human_input_module.HumanInputFormApi
@@ -139,7 +138,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask, dat
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     monkeypatch.setattr(
-        site_module.FeatureService,
+        human_input_module.FeatureService,
         "get_features",
         lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
     )
@@ -259,7 +258,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     def mock_get_features(tenant_id: str, exclude_vector_space: bool = False):
         return FeatureModel(can_replace_logo=True)
 
-    monkeypatch.setattr(site_module.FeatureService, "get_features", mock_get_features)
+    monkeypatch.setattr(human_input_module.FeatureService, "get_features", mock_get_features)
 
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
@@ -360,7 +359,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     monkeypatch.setattr(
-        site_module.FeatureService,
+        human_input_module.FeatureService,
         "get_features",
         lambda tenant_id, **_kwargs: FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True),
     )

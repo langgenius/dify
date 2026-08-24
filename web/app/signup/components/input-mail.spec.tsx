@@ -1,11 +1,12 @@
-import type { MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vite-plus/test'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useLocale } from '@/context/i18n'
 import { useSearchParams } from '@/next/navigation'
 import { useSendMail } from '@/service/use-common'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import Form from './input-mail'
+import SignupEmailForm from './input-mail'
 
 const mockSubmitMail = vi.fn()
 const mockOnSuccess = vi.fn()
@@ -60,7 +61,7 @@ const renderForm = ({
     mutateAsync: mockSubmitMail,
     isPending,
   } as unknown as UseSendMailResult)
-  return renderWithConsoleQuery(<Form onSuccess={mockOnSuccess} />, {
+  return renderWithConsoleQuery(<SignupEmailForm onSuccess={mockOnSuccess} />, {
     systemFeatures: { branding: { enabled: brandingEnabled } },
   })
 }
@@ -79,8 +80,16 @@ describe('InputMail Form', () => {
     it('should render email input and submit button', () => {
       renderForm()
 
-      expect(screen.getByLabelText('login.email')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'login.signup.verifyMail' })).toBeInTheDocument()
+      const emailInput = screen.getByRole('textbox', { name: 'login.email' })
+      const submitButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+
+      expect(emailInput).toHaveAttribute('name', 'email')
+      expect(emailInput).toHaveAttribute('type', 'email')
+      expect(emailInput).toHaveAttribute('autocomplete', 'email')
+      expect(emailInput).toHaveAttribute('spellcheck', 'false')
+      expect(emailInput).toHaveProperty('tabIndex', 0)
+      expect(submitButton).toHaveAttribute('type', 'submit')
+      expect(submitButton).toHaveProperty('tabIndex', 0)
       expect(screen.getByRole('link', { name: 'login.signup.signIn' })).toBeInTheDocument()
     })
   })
@@ -105,17 +114,17 @@ describe('InputMail Form', () => {
   // Submission flow and mutation integration.
   describe('User Interactions', () => {
     it('should submit email and call onSuccess when mutation succeeds', async () => {
+      const user = userEvent.setup()
       renderForm()
-      const input = screen.getByLabelText('login.email')
-      const button = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+      const input = screen.getByRole('textbox', { name: 'login.email' })
 
-      fireEvent.change(input, { target: { value: 'test@example.com' } })
-      fireEvent.click(button)
+      await user.type(input, 'test@example.com{Enter}')
 
       expect(mockSubmitMail).toHaveBeenCalledWith({
         email: 'test@example.com',
         language: 'en-US',
       })
+      expect(mockSubmitMail).toHaveBeenCalledTimes(1)
 
       await waitFor(() => {
         expect(mockOnSuccess).toHaveBeenCalledWith('test@example.com', 'token')

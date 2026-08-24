@@ -17,10 +17,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import {
   useCopyAccessRule,
   useDeleteAccessRule,
@@ -76,16 +76,16 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
-            <ActionButton
-              size="l"
-              className={open ? 'bg-state-base-hover' : ''}
+            <IconButton
+              size="lg"
               aria-label={t(($) => $['operation.moreActions'], { ns: 'common' })}
-            />
+              className="data-popup-open:bg-state-base-hover"
+            >
+              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[140px]">
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[140px]">
           {isBuiltIn ? (
             <DropdownMenuItem
               className="system-sm-semibold text-text-secondary"

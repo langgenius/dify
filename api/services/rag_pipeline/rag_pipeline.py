@@ -31,6 +31,7 @@ from core.helper import marketplace
 from core.rag.entities import DatasourceCompletedEvent, DatasourceErrorEvent, DatasourceProcessingEvent
 from core.repositories.factory import DifyCoreRepositoryFactory
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.llm_environment_variable import validate_llm_environment_model_references
 from core.workflow.node_factory import LATEST_VERSION, get_node_type_classes_mapping
 from core.workflow.system_variables import (
     SystemVariableKey,
@@ -49,6 +50,7 @@ from graphon.errors import WorkflowNodeRunFailedError
 from graphon.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
+from graphon.nodes.container_effects import ContainerAwaitRequest
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from graphon.runtime import VariablePool
 from graphon.variables.variables import Variable, VariableBase
@@ -80,6 +82,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     PipelineTemplateInfoEntity,
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
@@ -143,7 +146,12 @@ class RagPipelineService:
 
     @classmethod
     def get_pipeline_template_detail(
-        cls, template_id: str, type: str = "built-in", *, session: Session
+        cls,
+        template_id: str,
+        current_tenant_id: str,
+        type: str = "built-in",
+        *,
+        session: Session,
     ) -> dict[str, Any] | None:
         """
         Get pipeline template detail.
@@ -156,7 +164,7 @@ class RagPipelineService:
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             built_in_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
-                template_id, session=session
+                template_id, current_tenant_id, session=session
             )
             if built_in_result is None:
                 logger.warning(
@@ -169,9 +177,21 @@ class RagPipelineService:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             customized_result: dict[str, Any] | None = retrieval_instance.get_pipeline_template_detail(
-                template_id, session=session
+                template_id, current_tenant_id, session=session
             )
             return customized_result
+
+    @staticmethod
+    def get_customized_pipeline_template_yaml(template_id: str, current_tenant_id: str, *, session: Session) -> str:
+        yaml_content = session.scalar(
+            select(PipelineCustomizedTemplate.yaml_content).where(
+                PipelineCustomizedTemplate.id == template_id,
+                PipelineCustomizedTemplate.tenant_id == current_tenant_id,
+            )
+        )
+        if yaml_content is None:
+            raise RagPipelineResourceNotFoundError("Customized pipeline template not found.")
+        return yaml_content
 
     @classmethod
     def update_customized_pipeline_template(
@@ -281,7 +301,11 @@ class RagPipelineService:
         return workflow
 
     def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
-        """Fetch a published workflow snapshot by ID for restore operations."""
+        """Fetch and lock a published Workflow snapshot for restoration.
+
+        The source lock is held until the service transaction ends, preventing
+        concurrent deletion while restore copies its Workflow snapshot fields.
+        """
         workflow = self._session.scalar(
             select(Workflow)
             .where(
@@ -290,6 +314,7 @@ class RagPipelineService:
                 Workflow.id == workflow_id,
             )
             .limit(1)
+            .with_for_update()
         )
         if workflow and workflow.version == Workflow.VERSION_DRAFT:
             raise IsDraftWorkflowError("source workflow must be published")
@@ -399,7 +424,8 @@ class RagPipelineService:
 
         Pipelines reuse the shared draft-restore field copy helper, but still own
         the pipeline-specific flush/link step that wires a newly created draft
-        back onto ``pipeline.workflow_id``.
+        back onto ``pipeline.workflow_id``. The source version remains locked
+        through snapshot-field copy and commit.
         """
         source_workflow = self.get_published_workflow_by_id(pipeline=pipeline, workflow_id=workflow_id)
         if not source_workflow:
@@ -439,6 +465,11 @@ class RagPipelineService:
         draft_workflow = session.scalar(draft_workflow_stmt)
         if not draft_workflow:
             raise ValueError("No valid workflow found.")
+
+        validate_llm_environment_model_references(
+            graph=draft_workflow.graph_dict,
+            environment_variables=draft_workflow.environment_variables,
+        )
 
         # create new workflow
         workflow = Workflow.new(
@@ -568,7 +599,12 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
-                variable_pool=_build_seeded_variable_pool(default_system_variables()),
+                variable_pool=_build_seeded_variable_pool(
+                    build_bootstrap_variables(
+                        system_variables=default_system_variables(),
+                        environment_variables=draft_workflow.environment_variables,
+                    )
+                ),
                 variable_loader=DraftVarLoader(
                     engine=db.engine,
                     app_id=pipeline.id,
@@ -910,7 +946,10 @@ class RagPipelineService:
 
     def _handle_node_run_result(
         self,
-        getter: Callable[[], tuple[Node, Generator[GraphNodeEventBase, None, None]]],
+        getter: Callable[
+            [],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+        ],
         start_at: float,
         tenant_id: str,
         node_id: str,
@@ -1229,45 +1268,48 @@ class RagPipelineService:
         )
         return assemble_workflow_node_execution_traces(node_executions, self._node_execution_service_repo)
 
-    @classmethod
+    @staticmethod
     def publish_customized_pipeline_template(
-        cls,
-        pipeline_id: str,
+        pipeline: Pipeline,
+        dataset: Dataset,
         args: dict[str, Any],
-        current_user: Account | None = None,
-        current_tenant_id: str | None = None,
+        current_user: Account,
         *,
         session: Session,
-    ):
-        """
-        Publish customized pipeline template
-        """
-        current_user, _ = resolve_account_fallback(current_user, current_tenant_id)
-        pipeline = session.get(Pipeline, pipeline_id)
-        if not pipeline:
-            raise ValueError("Pipeline not found")
+    ) -> None:
+        """Publish a customized template from a caller-validated pipeline and dataset."""
         if not pipeline.workflow_id:
-            raise ValueError("Pipeline workflow not found")
-        workflow = session.get(Workflow, pipeline.workflow_id)
+            raise RagPipelineResourceNotFoundError("Pipeline workflow not found")
+        workflow = session.scalar(
+            select(Workflow).where(
+                Workflow.id == pipeline.workflow_id,
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+            )
+        )
         if not workflow:
-            raise ValueError("Workflow not found")
-        dataset = pipeline.retrieve_dataset(session=session)
-        if not dataset:
-            raise ValueError("Dataset not found")
+            raise RagPipelineResourceNotFoundError("Workflow not found")
+        draft_workflow_id = session.scalar(
+            select(Workflow.id).where(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.version == Workflow.VERSION_DRAFT,
+            )
+        )
+        if not draft_workflow_id:
+            raise RagPipelineResourceNotFoundError("Draft workflow not found")
 
         # check template name is exist
-        template_name = args.get("name")
-        if template_name:
-            template = session.scalar(
-                select(PipelineCustomizedTemplate)
-                .where(
-                    PipelineCustomizedTemplate.name == template_name,
-                    PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
-                )
-                .limit(1)
+        template = session.scalar(
+            select(PipelineCustomizedTemplate)
+            .where(
+                PipelineCustomizedTemplate.name == args["name"],
+                PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id,
             )
-            if template:
-                raise ValueError("Template name is already exists")
+            .limit(1)
+        )
+        if template:
+            raise ValueError("Template name is already exists")
 
         max_position = session.scalar(
             select(func.max(PipelineCustomizedTemplate.position)).where(
@@ -1279,16 +1321,10 @@ class RagPipelineService:
 
         rag_pipeline_dsl_service = RagPipelineDslService(session)
         dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
-        if args.get("icon_info") is None:
-            args["icon_info"] = {}
-        if args.get("description") is None:
-            raise ValueError("Description is required")
-        if args.get("name") is None:
-            raise ValueError("Name is required")
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name") or "",
-            description=args.get("description") or "",
-            icon=args.get("icon_info") or {},
+            name=args["name"],
+            description=args["description"],
+            icon=args["icon_info"],
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
             install_count=0,

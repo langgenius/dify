@@ -19,9 +19,9 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
+import VectorSpaceAdmissionAlert from '@/app/components/datasets/common/vector-space-admission-alert'
 import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { DatasourceType } from '@/models/pipeline'
@@ -112,6 +112,14 @@ const EmbeddingProcess = ({
       ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''),
     )
   }, [indexingStatusBatchDetail])
+  const vectorSpaceAdmissionError = useMemo(
+    () =>
+      indexingStatusBatchDetail.find(
+        (detail) => detail.error_code === 'vector_space_estimate_exceeded',
+      ),
+    [indexingStatusBatchDetail],
+  )
+  const showUpgrade = enableBilling && (plan.type === 'sandbox' || plan.type === 'professional')
 
   const getSourceName = (id: string) => {
     const doc = documents.find((document) => document.id === id)
@@ -155,7 +163,15 @@ const EmbeddingProcess = ({
           )}
           {isEmbeddingCompleted && t(($) => $['embedding.completed'], { ns: 'datasetDocuments' })}
         </div>
-        {enableBilling && plan.type !== Plan.team && (
+        {vectorSpaceAdmissionError?.estimated_vector_space_mb != null &&
+          vectorSpaceAdmissionError.vector_space_limit_mb != null && (
+            <VectorSpaceAdmissionAlert
+              showUpgrade={showUpgrade}
+              estimatedMb={vectorSpaceAdmissionError.estimated_vector_space_mb}
+              planLimitMb={vectorSpaceAdmissionError.vector_space_limit_mb}
+            />
+          )}
+        {enableBilling && plan.type !== 'team' && (
           <div className="flex h-13 items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
             <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
               <RiAedFill className="size-4 text-text-primary-on-surface" />
@@ -219,7 +235,7 @@ const EmbeddingProcess = ({
                     >
                       <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
                     </PopoverTrigger>
-                    <PopoverContent popupClassName="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary">
+                    <PopoverContent className="max-w-60 rounded-xl border-[0.5px] border-components-panel-border px-4 py-[14px] body-xs-regular text-text-secondary">
                       {indexingStatusDetail.error}
                     </PopoverContent>
                   </Popover>
@@ -240,15 +256,13 @@ const EmbeddingProcess = ({
       </div>
       <div className="mt-6 flex items-center gap-x-2 py-2">
         <Link href={apiReferenceUrl} target="_blank" rel="noopener noreferrer">
-          <Button className="w-fit gap-x-0.5 px-3">
+          <Button className="w-fit">
             <RiTerminalBoxLine className="size-4" />
-            <span className="px-0.5">Access the API</span>
+            <span>Access the API</span>
           </Button>
         </Link>
-        <Button className="w-fit gap-x-0.5 px-3" variant="primary" onClick={navToDocumentList}>
-          <span className="px-0.5">
-            {t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}
-          </span>
+        <Button className="w-fit" variant="primary" onClick={navToDocumentList}>
+          <span>{t(($) => $['stepThree.navTo'], { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4 stroke-current stroke-1" />
         </Button>
       </div>

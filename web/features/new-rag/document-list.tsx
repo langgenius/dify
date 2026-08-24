@@ -198,7 +198,7 @@ const DocumentRow = memo(
             >
               <span aria-hidden className="i-ri-more-fill size-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-44">
               <DropdownMenuItem
                 className="gap-2 px-3"
                 onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
@@ -468,7 +468,7 @@ export function DocumentsList({
         ref={resultsContainerRef}
         aria-labelledby="new-knowledge-documents-title"
         aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
-        className="mt-4 overflow-x-auto rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        className="mt-4 overflow-x-auto rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         role="region"
         tabIndex={-1}
       >

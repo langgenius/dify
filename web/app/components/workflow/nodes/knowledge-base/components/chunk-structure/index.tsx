@@ -55,7 +55,7 @@ const ChunkStructure = ({
             readonly={readonly}
             trigger={
               <Button className="w-full" variant="secondary-accent">
-                <span className="mr-1 i-ri-add-line size-4" />
+                <span className="i-ri-add-line size-4" />
                 {t(($) => $['nodes.knowledgeBase.chooseChunkStructure'], { ns: 'workflow' })}
               </Button>
             }

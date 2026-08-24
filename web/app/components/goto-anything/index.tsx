@@ -17,7 +17,7 @@ import {
 import {
   Dialog,
   DialogBackdrop,
-  DialogCloseButton,
+  DialogClose,
   DialogPopup,
   DialogPortal,
   DialogTitle,
@@ -79,7 +79,7 @@ const slashCommandDescriptionKeys = {
 const actionDescriptionKeys = {
   '@app': 'gotoAnything.actions.searchApplicationsDesc',
   '@plugin': 'gotoAnything.actions.searchPluginsDesc',
-  '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+  '@kb': 'gotoAnything.actions.searchKnowledgeBasesDesc',
   '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
 } as const
 
@@ -587,10 +587,9 @@ function GotoAnythingDialog() {
                 hasQuery={!!searchQuery.trim()}
               />
             </Autocomplete>
-            <DialogCloseButton
-              className="sr-only"
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-            />
+            <DialogClose className="sr-only">
+              {t(($) => $['operation.close'], { ns: 'common' })}
+            </DialogClose>
           </DialogPopup>
         </DialogPortal>
       </Dialog>

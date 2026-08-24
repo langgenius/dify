@@ -1,8 +1,7 @@
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { updateWorkspaceInfo } from '@/service/common'
 import { render } from '@/test/console/render'
 import EditWorkspaceModal from '../index'
@@ -43,7 +42,7 @@ describe('EditWorkspaceModal', () => {
     vi.clearAllMocks()
 
     const consoleState = {
-      currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace' },
       isCurrentWorkspaceOwner: true,
     } as unknown as ConsoleStateFixture
     mockConsoleState.current = consoleState
@@ -93,7 +92,10 @@ describe('EditWorkspaceModal', () => {
       assign: mockAssign,
       origin: 'http://localhost',
     })
-    vi.mocked(updateWorkspaceInfo).mockResolvedValue({} as ICurrentWorkspace)
+    vi.mocked(updateWorkspaceInfo).mockResolvedValue({
+      result: 'success',
+      tenant: { id: 'workspace-id' },
+    })
 
     renderModal()
 
@@ -170,7 +172,7 @@ describe('EditWorkspaceModal', () => {
 
   it('should disable confirm button for non-owners', async () => {
     mockConsoleStateReader.mockReturnValue({
-      currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace' },
       isCurrentWorkspaceOwner: false,
     } as unknown as ConsoleStateFixture)
 

@@ -2,7 +2,7 @@ import type { FormTypeEnum } from '../base/form/types'
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
-import type { Collection, ToolCredential } from '@/app/components/tools/types'
+import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n-config'
 
 export enum PluginCategoryEnum {
@@ -310,7 +310,7 @@ export type UpdatePluginPayload = {
 
 export type UpdatePluginModalType = UpdatePluginPayload & {
   onCancel: () => void
-  onSave: () => void
+  onSave: () => void | Promise<void>
 }
 
 export enum InstallStepFromGitHub {
@@ -439,17 +439,6 @@ export type MetaData = {
   repo: string
   version: string
   package: string
-}
-
-export type InstalledPluginListWithTotalResponse = {
-  plugins: PluginDetail[]
-  total: number
-}
-
-export type InstalledPluginCategoryListResponse = {
-  plugins: PluginDetail[]
-  builtin_tools: Collection[]
-  has_more: boolean
 }
 
 export type GitHubItemAndMarketPlaceDependency = {

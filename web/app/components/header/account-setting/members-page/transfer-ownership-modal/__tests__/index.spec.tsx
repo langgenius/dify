@@ -1,10 +1,10 @@
-import type { ICurrentWorkspace } from '@/models/common'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { vi } from 'vite-plus/test'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
 import { useMembers } from '@/service/use-common'
+import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import TransferOwnershipModal from '../index'
 
@@ -16,10 +16,6 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current)
@@ -53,7 +49,7 @@ describe('TransferOwnershipModal', () => {
     vi.clearAllMocks()
 
     const consoleState = {
-      currentWorkspace: { name: 'Test Workspace' } as ICurrentWorkspace,
+      currentWorkspace: { name: 'Test Workspace' },
       userProfile: { email: 'owner@example.com', id: 'owner-id' },
     } as unknown as ConsoleStateFixture
     mockConsoleState.current = consoleState
@@ -84,6 +80,9 @@ describe('TransferOwnershipModal', () => {
       <>
         <TransferOwnershipModal show onClose={mockOnClose} />
       </>,
+      {
+        wrapper: createAccountProfileQueryWrapper(mockConsoleState.current.userProfile ?? {}),
+      },
     )
 
   const mockEmailVerification = ({

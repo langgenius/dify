@@ -16,28 +16,6 @@ export const zRecommendedAppDetailResponse = z.object({
 })
 
 /**
- * RecommendedAppDetailNullableResponse
- */
-export const zRecommendedAppDetailNullableResponse = zRecommendedAppDetailResponse.nullable()
-
-/**
- * BannerResponse
- */
-export const zBannerResponse = z.object({
-  content: z.unknown(),
-  created_at: z.string().nullish(),
-  id: z.string(),
-  link: z.string().nullish(),
-  sort: z.int(),
-  status: z.string(),
-})
-
-/**
- * BannerListResponse
- */
-export const zBannerListResponse = z.array(zBannerResponse)
-
-/**
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponse = z.object({
@@ -80,6 +58,40 @@ export const zRecommendedAppListResponse = z.object({
 export const zLearnDifyAppListResponse = z.object({
   recommended_apps: z.array(zRecommendedAppResponse),
 })
+
+/**
+ * BannerContentResponse
+ */
+export const zBannerContentResponse = z.object({
+  category: z.string(),
+  description: z.string(),
+  'img-src': z.string().min(1),
+  title: z.string().min(1),
+})
+
+/**
+ * BannerStatus
+ *
+ * ExporleBanner status
+ */
+export const zBannerStatus = z.enum(['disabled', 'enabled'])
+
+/**
+ * BannerResponse
+ */
+export const zBannerResponse = z.object({
+  content: zBannerContentResponse,
+  created_at: z.string(),
+  id: z.string(),
+  link: z.string(),
+  sort: z.int(),
+  status: zBannerStatus,
+})
+
+/**
+ * BannerListResponse
+ */
+export const zBannerListResponse = z.array(zBannerResponse)
 
 /**
  * RecommendedAppInfoResponse
@@ -149,7 +161,7 @@ export const zGetExploreAppsByAppIdPath = z.object({
 /**
  * Success
  */
-export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailNullableResponse
+export const zGetExploreAppsByAppIdResponse = zRecommendedAppDetailResponse
 
 export const zGetExploreBannersQuery = z.object({
   language: z.string().optional().default('en-US'),

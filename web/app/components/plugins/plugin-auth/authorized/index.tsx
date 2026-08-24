@@ -1,5 +1,5 @@
 import type { OffsetOptions } from '@floating-ui/react'
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
 import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
@@ -27,7 +27,7 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = {
+type AuthorizedProps = Pick<PopoverContentProps, 'placement'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
@@ -36,7 +36,6 @@ type AuthorizedProps = {
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   offset?: number | OffsetOptions
-  placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
   disableSetDefault?: boolean
@@ -199,29 +198,23 @@ const Authorized = ({
     typeof offset === 'number'
       ? 0
       : (resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0)
-  const popupProps = triggerPopupSameWidth
-    ? { style: { width: 'var(--anchor-width, auto)' } }
-    : undefined
 
   return (
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          render={
-            <div className={triggerPopupSameWidth ? 'w-full' : 'inline-block'}>
+          render={(props, state) => (
+            <div
+              {...props}
+              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
+            >
               {renderTrigger ? (
-                renderTrigger(mergedIsOpen)
+                renderTrigger(state.open)
               ) : (
                 <Button
-                  className={cn(
-                    'w-full',
-                    mergedIsOpen && 'bg-components-button-secondary-bg-hover',
-                  )}
+                  className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
                 >
-                  <StatusDot
-                    className="mr-2"
-                    status={unavailableCredential ? 'disabled' : 'success'}
-                  />
+                  <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
                   {credentials.length}
                   &nbsp;
                   {credentials.length > 1
@@ -229,18 +222,20 @@ const Authorized = ({
                     : t(($) => $['auth.authorization'], { ns: 'plugin' })}
                   {!!unavailableCredentials.length &&
                     ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
-                  <span className="ml-0.5 i-ri-arrow-down-s-line size-4" />
+                  <span className="i-ri-arrow-down-s-line size-4" />
                 </Button>
               )}
             </div>
-          }
+          )}
         />
         <PopoverContent
           placement={placement}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
-          popupProps={popupProps}
-          popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+          className={cn(
+            'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
+            triggerPopupSameWidth && 'w-(--anchor-width)',
+          )}
         >
           <div
             className={cn(

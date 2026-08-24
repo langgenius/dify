@@ -1,6 +1,6 @@
 import type { WorkflowHistoryState } from '../store/workflow/history-slice'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,32 +156,24 @@ const ViewWorkflowHistory = () => {
             )
           }
           render={
-            <Button
-              variant="ghost"
-              size="small"
+            <IconButton
+              size="lg"
               disabled={nodesReadOnly}
               focusableWhenDisabled
               aria-label={t(($) => $['changeHistory.title'], { ns: 'workflow' })}
-              className={cn(
-                'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                nodesReadOnly &&
-                  'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-              )}
+              className="rounded-md"
               onClick={() => {
                 if (nodesReadOnly) return
                 setCurrentLogItem()
                 setShowMessageLogModal(false)
               }}
-            />
+            >
+              <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-history-line size-4 shrink-0" />
-        </PopoverTrigger>
+        />
       </TipPopup>
-      <PopoverContent
-        placement="bottom-end"
-        popupClassName="border-none bg-transparent shadow-none"
-      >
+      <PopoverContent placement="bottom-end" className="border-none bg-transparent shadow-none">
         <div className="flex max-w-90 min-w-60 flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
             <div className="system-mg-regular grow text-text-secondary">
@@ -189,14 +181,14 @@ const ViewWorkflowHistory = () => {
             </div>
             <PopoverClose
               render={
-                <Button
+                <IconButton
                   variant="ghost"
-                  size="small"
+                  size="md"
                   aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                  className="size-6 shrink-0 p-0 text-text-secondary hover:bg-state-base-hover"
+                  className="shrink-0 text-text-secondary hover:bg-state-base-hover"
                 >
                   <span aria-hidden className="i-ri-close-line size-4 text-text-secondary" />
-                </Button>
+                </IconButton>
               }
               onClick={() => {
                 setCurrentLogItem()

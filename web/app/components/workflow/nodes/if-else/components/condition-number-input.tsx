@@ -59,12 +59,12 @@ const ConditionNumberInput = ({
       <DropdownMenu open={numberVarTypeVisible} onOpenChange={setNumberVarTypeVisible}>
         <DropdownMenuTrigger render={<Button className="shrink-0" variant="ghost" size="small" />}>
           {capitalize(numberVarType)}
-          <RiArrowDownSLine className="ml-px size-3.5" />
+          <RiArrowDownSLine className="size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent
           placement="bottom-start"
           sideOffset={2}
-          popupClassName="w-[112px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
+          className="w-[112px] rounded-xl border-[0.5px] bg-components-panel-bg-blur p-1"
         >
           <DropdownMenuRadioGroup value={numberVarType} onValueChange={onNumberVarTypeChange}>
             {options.map((option) => (
@@ -108,7 +108,7 @@ const ConditionNumberInput = ({
             <PopoverContent
               placement="bottom-start"
               sideOffset={2}
-              popupClassName="border-none bg-transparent shadow-none"
+              className="border-none bg-transparent shadow-none"
             >
               <div
                 className={cn(

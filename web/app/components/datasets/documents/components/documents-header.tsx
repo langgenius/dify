@@ -9,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Chip from '@/app/components/base/chip'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import Sort from '@/app/components/base/sort'
 import AutoDisabledDocument from '@/app/components/datasets/common/document-status-with-action/auto-disabled-document'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
@@ -162,14 +162,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
             onSelect={(item) => onStatusFilterChange(item?.value ? String(item.value) : '')}
             onClear={onStatusFilterClear}
           />
-          <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName="w-[200px]!"
-            value={inputValue}
-            onChange={(e) => onInputChange(e.target.value)}
-            onClear={() => onInputChange('')}
-          />
+          <SearchInput className="w-50!" value={inputValue} onValueChange={onInputChange} />
           <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
             order={sortValue.startsWith('-') ? '-' : ''}
@@ -191,7 +184,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && canManageMetadata && (
             <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
-              <span className="mr-1 i-ri-draft-line size-4" />
+              <span className="i-ri-draft-line size-4" />
               {t(($) => $['metadata.metadata'], { ns: 'dataset' })}
             </Button>
           )}
@@ -209,7 +202,7 @@ const DocumentsHeader: FC<DocumentsHeaderProps> = ({
           )}
           {embeddingAvailable && canAddDocument && (
             <Button variant="primary" onClick={onAddDocument} className="shrink-0">
-              <span className="mr-2 i-heroicons-plus-solid size-4 stroke-current" />
+              <span className="i-heroicons-plus-solid size-4 stroke-current" />
               {addButtonText}
             </Button>
           )}

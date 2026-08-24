@@ -3,10 +3,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileEmailAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { useDeleteAccountFeedback } from '../state'
@@ -18,7 +18,10 @@ type DeleteAccountProps = {
 
 export default function FeedBack(props: DeleteAccountProps) {
   const { t } = useTranslation()
-  const userProfileEmail = useAtomValue(userProfileEmailAtom)
+  const { data: userProfileEmail } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.email,
+  })
   const router = useRouter()
   const [userFeedback, setUserFeedback] = useState('')
   const { isPending, mutateAsync: sendFeedback } = useDeleteAccountFeedback()
@@ -58,7 +61,7 @@ export default function FeedBack(props: DeleteAccountProps) {
     >
       <DialogContent
         className="max-w-120 overflow-hidden!"
-        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
           {t(($) => $['account.feedbackTitle'], { ns: 'common' })}

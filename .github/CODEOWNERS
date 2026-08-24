@@ -245,7 +245,7 @@
 
 # Frontend - Billing and Education
 /web/app/components/billing/ @iamjoel @zxhlyh
-/web/app/education-apply/ @iamjoel @zxhlyh
+/web/app/education/ @iamjoel @zxhlyh
 
 # Frontend - Workspace
 /web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh
@@ -266,6 +266,10 @@
 /web/proxy.ts @iamjoel @lyzno1
 /web/app/auth/refresh/route.ts @iamjoel @lyzno1
 /web/service/server.ts @iamjoel @lyzno1
+
+# Frontend - Browser Mode Tests
+/web/app/**/*.browser.spec.ts @lyzno1
+/web/app/**/*.browser.spec.tsx @lyzno1
 
 # Docker
 /docker/* @laipz8200

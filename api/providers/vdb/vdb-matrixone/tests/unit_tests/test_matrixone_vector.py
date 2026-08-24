@@ -206,19 +206,25 @@ def test_delete_and_metadata_methods(matrixone_module):
     assert vector.client.delete.call_count == 3
 
 
-def test_search_by_vector_builds_documents(matrixone_module):
+def test_search_by_vector_applies_score_threshold(matrixone_module):
     vector = matrixone_module.MatrixoneVector("collection_1", _valid_config(matrixone_module))
     vector.client = MagicMock()
     vector.client.query.return_value = [
-        SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}),
-        SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}),
+        SimpleNamespace(document="doc-a", metadata={"doc_id": "1"}, distance=0.25),
+        SimpleNamespace(document="doc-b", metadata={"doc_id": "2"}, distance=2.0),
     ]
 
-    docs = vector.search_by_vector([0.1, 0.2], top_k=2, document_ids_filter=["d-1"])
+    docs = vector.search_by_vector(
+        [0.1, 0.2],
+        top_k=2,
+        score_threshold=0.5,
+        document_ids_filter=["d-1"],
+    )
 
-    assert len(docs) == 2
+    assert len(docs) == 1
     assert docs[0].page_content == "doc-a"
-    assert docs[1].metadata["doc_id"] == "2"
+    assert docs[0].metadata["doc_id"] == "1"
+    assert docs[0].metadata["score"] == pytest.approx(0.8)
     assert vector.client.query.call_args.kwargs["filter"] == {"document_id": {"$in": ["d-1"]}}
 
 

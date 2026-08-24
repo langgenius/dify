@@ -1,23 +1,25 @@
 from inspect import unwrap
-from types import SimpleNamespace
-from typing import cast
 from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
 from pydantic_core import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console.workspace.model_providers import (
     ModelProviderCredentialApi,
     ModelProviderCredentialSwitchApi,
+    ModelProviderCreditsApi,
     ModelProviderIconApi,
     ModelProviderListApi,
     ModelProviderPaymentCheckoutUrlApi,
+    ModelProviderSummaryListApi,
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
+from core.entities.provider_entities import CredentialConfiguration
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -27,16 +29,23 @@ from models.provider import ProviderType
 from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
+    ModelProviderCustomConfigurationSummaryResponse,
+    ModelProviderPluginSummaryResponse,
+    ModelProviderSummaryResponse,
+    ModelProviderSystemConfigurationSummaryResponse,
     ProviderResponse,
     SystemConfigurationResponse,
 )
+from services.workspace_service import EffectiveCreditPool
 
 VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
 
 
 def make_account() -> Account:
-    return cast(Account, SimpleNamespace(id="account-1", email="owner@example.com"))
+    account = Account(name="Provider Owner", email="owner@example.com")
+    account.id = "account-1"
+    return account
 
 
 def make_provider_response() -> ProviderResponse:
@@ -138,6 +147,136 @@ class TestModelProviderListApi:
 
         get_provider_list.assert_called_once_with(tenant_id="tenant1", model_type=None)
         assert result == {"data": []}
+
+
+class TestModelProviderSummaryListApi:
+    def test_get_success(self, app: Flask):
+        api = ModelProviderSummaryListApi()
+        method = unwrap(api.get)
+        provider = ModelProviderSummaryResponse(
+            tenant_id="tenant1",
+            provider="langgenius/openai/openai",
+            plugin_id="langgenius/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=I18nObject(en_US="OpenAI models"),
+            icon_small=I18nObject(en_US="icon.svg"),
+            icon_small_dark=None,
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            preferred_provider_type=ProviderType.CUSTOM,
+            is_configured=True,
+            custom_configuration=ModelProviderCustomConfigurationSummaryResponse(
+                status=CustomConfigurationStatus.ACTIVE,
+                has_custom_models=True,
+                available_credentials=[
+                    CredentialConfiguration(
+                        credential_id=VALID_UUID,
+                        credential_name="production",
+                    ),
+                    CredentialConfiguration(
+                        credential_id="223e4567-e89b-12d3-a456-426614174000",
+                        credential_name="backup",
+                    ),
+                ],
+                current_credential_id=VALID_UUID,
+                current_credential_name="production",
+                current_credential_usable=True,
+            ),
+            system_configuration=ModelProviderSystemConfigurationSummaryResponse(enabled=False),
+        )
+        plugin = ModelProviderPluginSummaryResponse(
+            installation_id="installation-1",
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+            runtime_type="local",
+            source="marketplace",
+            version="1.0.0",
+        )
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.workspace.model_providers.ModelProviderService.get_provider_summary_list",
+                return_value=([provider], {"langgenius/openai": plugin}),
+            ) as get_provider_summary_list,
+        ):
+            result = method(api, "tenant1")
+
+        get_provider_summary_list.assert_called_once_with(tenant_id="tenant1")
+        assert result["data"][0]["provider"] == "langgenius/openai/openai"
+        assert "tenant_id" not in result["data"][0]
+        assert result["data"][0]["custom_configuration"] == {
+            "status": "active",
+            "has_custom_models": True,
+            "available_credentials": [
+                {
+                    "credential_id": VALID_UUID,
+                    "credential_name": "production",
+                },
+                {
+                    "credential_id": "223e4567-e89b-12d3-a456-426614174000",
+                    "credential_name": "backup",
+                },
+            ],
+            "current_credential_id": VALID_UUID,
+            "current_credential_name": "production",
+            "current_credential_usable": True,
+        }
+        assert result["plugins"]["langgenius/openai"]["installation_id"] == "installation-1"
+
+
+class TestModelProviderCreditsApi:
+    def test_get_success(self, unbound_session: Session):
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        session = unbound_session
+        credit_pool = EffectiveCreditPool(
+            plan="team",
+            pool_type="paid",
+            quota_limit=-1,
+            quota_used=999,
+            next_credit_reset_date=1775001600,
+        )
+
+        with patch(
+            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
+            return_value=credit_pool,
+        ) as get_effective_credit_pool:
+            result = method(api, session, "tenant1")
+
+        get_effective_credit_pool.assert_called_once_with("tenant1", session=session)
+        assert result == {
+            "pool_type": "paid",
+            "quota_limit": -1,
+            "quota_used": 999,
+            "remaining_credits": -1,
+            "is_unlimited": True,
+            "is_exhausted": False,
+            "exhausted_at": None,
+            "next_credit_reset_date": 1775001600,
+        }
+
+    def test_get_without_effective_pool(self, unbound_session: Session):
+        api = ModelProviderCreditsApi()
+        method = unwrap(api.get)
+        session = unbound_session
+
+        with patch(
+            "controllers.console.workspace.model_providers.WorkspaceService.get_effective_credit_pool",
+            return_value=EffectiveCreditPool(),
+        ):
+            result = method(api, session, "tenant1")
+
+        assert result == {
+            "pool_type": None,
+            "quota_limit": None,
+            "quota_used": None,
+            "remaining_credits": None,
+            "is_unlimited": False,
+            "is_exhausted": True,
+            "exhausted_at": None,
+            "next_credit_reset_date": None,
+        }
 
 
 class TestModelProviderCredentialApi:

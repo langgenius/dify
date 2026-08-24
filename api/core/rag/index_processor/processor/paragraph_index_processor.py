@@ -9,12 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from core.app.llm import deduct_llm_quota
 from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import PreviewDetail
 from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
-from core.model_manager import ModelInstance
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.model_manager import ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -388,7 +386,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         session: Session,
     ) -> tuple[str, LLMUsage]:
         """
-        Generate summary for the given text using ModelInstance.invoke_llm and the default or custom summary prompt,
+        Generate summary for the given text using the configured LLM and the default or custom summary prompt,
         and supports vision models by including images from the segment attachments or text content.
 
         Args:
@@ -431,11 +429,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 # If default prompt doesn't have {language} placeholder, use it as-is
                 pass
 
-        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id)
-        provider_model_bundle = provider_manager.get_provider_model_bundle(
-            tenant_id, model_provider_name, ModelType.LLM
+        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            provider=model_provider_name,
+            model_type=ModelType.LLM,
+            model=model_name,
         )
-        model_instance = ModelInstance(provider_model_bundle, model_name)
 
         # Get model schema to check if vision is supported
         model_schema = model_instance.model_type_instance.get_model_schema(model_name, model_instance.credentials)
@@ -468,8 +468,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         file, image_detail_config=ImagePromptMessageContent.DETAIL.LOW
                     )
                     prompt_message_contents.append(file_content)
-                except Exception as e:
-                    logger.warning("Failed to convert image file to prompt message content: %s", str(e))
+                except Exception:
+                    logger.warning("Failed to convert image file to prompt message content", exc_info=True)
                     continue
 
             # Add text content
@@ -495,13 +495,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         summary_content = result.message.get_text_content()
         usage = result.usage
-
-        # Deduct quota for summary generation (same as workflow nodes)
-        try:
-            deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
-        except Exception as e:
-            # Log but don't fail summary generation if quota deduction fails
-            logger.warning("Failed to deduct quota for summary generation: %s", str(e))
 
         return summary_content, usage
 
@@ -579,8 +572,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     access_controller=_file_access_controller,
                 )
                 file_objects.append(file_obj)
-            except Exception as e:
-                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+            except Exception:
+                logger.warning("Failed to create File object from UploadFile %s", upload_file.id, exc_info=True)
                 continue
 
         return file_objects
@@ -636,8 +629,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     storage_key=upload_file.key,
                 )
                 file_objects.append(file_obj)
-            except Exception as e:
-                logger.warning("Failed to create File object from UploadFile %s: %s", upload_file.id, str(e))
+            except Exception:
+                logger.warning("Failed to create File object from UploadFile %s", upload_file.id, exc_info=True)
                 continue
 
         return file_objects

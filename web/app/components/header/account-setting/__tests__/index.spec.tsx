@@ -1,6 +1,7 @@
 import type { AccountSettingTab } from '../constants'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -20,10 +21,6 @@ vi.mock('@/context/provider-context', async (importOriginal) => {
   }
 })
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
@@ -32,11 +29,6 @@ vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async () => {
-  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
-})
-
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(() => ({
     push: vi.fn(),
@@ -122,6 +114,11 @@ vi.mock('@/app/components/billing/billing-page', () => ({
   default: () => <div data-testid="billing-page" />,
 }))
 
+vi.mock('@/app/components/custom/custom-page', () => ({
+  __esModule: true,
+  default: () => <div>custom.custom</div>,
+}))
+
 vi.mock('@/app/components/header/account-setting/data-source-page-new', () => ({
   __esModule: true,
   default: () => <div data-testid="data-source-page" />,
@@ -146,33 +143,17 @@ const baseConsoleState: ConsoleStateFixture = {
     avatar_url: '',
     is_password_set: false,
   },
-  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
-    plan: '',
-    status: '',
-    created_at: 0,
+    plan: null,
     role: 'owner',
-    providers: [],
-    trial_credits: 0,
-    trial_credits_used: 0,
-    next_credit_reset_date: 0,
   },
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
   refreshCurrentWorkspace: vi.fn(),
-  langGeniusVersionInfo: {
-    current_env: 'testing',
-    current_version: '0.1.0',
-    latest_version: '0.1.0',
-    release_date: '',
-    release_notes: '',
-    version: '0.1.0',
-    can_auto_update: false,
-  },
   isLoadingCurrentWorkspace: false,
   workspacePermissionKeys: [
     'workspace.member.manage',
@@ -217,6 +198,7 @@ describe('AccountSetting', () => {
     }
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
+      accountProfile: (mockConsoleState.current as ConsoleStateFixture).userProfile,
       systemFeatures: {
         deployment_edition: deploymentEdition,
         webapp_auth: { enabled: true },
@@ -245,7 +227,7 @@ describe('AccountSetting', () => {
       renderAccountSetting()
 
       // Assert
-      expect(screen.getByText('common.settings.settings'))!.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'common.settings.settings' })).toBeInTheDocument()
       expect(screen.getAllByText('common.settings.workspace').length).toBeGreaterThan(0)
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
@@ -645,15 +627,13 @@ describe('AccountSetting', () => {
   })
 
   describe('Interactions', () => {
-    it('should call onCancel when clicking close button', () => {
-      // Act
+    it('should call onCancel when clicking close button', async () => {
+      const user = userEvent.setup()
       renderAccountSetting()
-      const closeIcon = document.querySelector('.i-ri-close-line')
-      const closeButton = closeIcon?.closest('button')
-      expect(closeButton).not.toBeNull()
-      fireEvent.click(closeButton!)
+      const dialog = screen.getByRole('dialog', { name: 'common.settings.settings' })
 
-      // Assert
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+
       expect(mockOnCancel).toHaveBeenCalled()
     })
 

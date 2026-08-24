@@ -1,40 +1,55 @@
-import type { PreviewCardHandle } from '@langgenius/dify-ui/preview-card'
-import type { DefaultModel, Model, ModelItem } from '../declarations'
-import type { ModelSelectorModelPredicate } from './types'
+import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ComponentProps } from 'react'
+import type {
+  ModelSelectorModel,
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from './types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ComboboxGroup, ComboboxItem, ComboboxItemIndicator } from '@langgenius/dify-ui/combobox'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import { renderI18nObject } from '@/i18n-config'
 import { ConfigurationMethodEnum, ModelStatusEnum } from '../declarations'
-import { useLanguage, useUpdateModelList, useUpdateModelProviders } from '../hooks'
+import {
+  useLanguage,
+  useLazyModelProviderDetail,
+  useUpdateModelList,
+  useUpdateModelProviders,
+} from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import DropdownContent from '../provider-added-card/model-auth-dropdown/dropdown-content'
 import { useChangeProviderPriority } from '../provider-added-card/use-change-provider-priority'
-import { useCredentialPanelState } from '../provider-added-card/use-credential-panel-state'
+import { useCredentialPanelState as useCredentialPanelInfo } from '../provider-added-card/use-credential-panel-state'
 
 export type ModelSelectorPreviewPayload = {
-  provider: Model
-  modelItem: ModelItem
+  provider: ModelSelectorProvider
+  modelItem: ModelSelectorModel
 }
 
+type PreviewCardHandle = NonNullable<ComponentProps<typeof PreviewCardTrigger>['handle']>
+
 type PopupItemProps = {
-  defaultModel?: DefaultModel
-  model: Model
+  defaultModel?: ModelSelectorValue
+  model: ModelSelectorProvider
   modelPredicate?: ModelSelectorModelPredicate
   modelSuggestionPredicate?: ModelSelectorModelPredicate
-  previewCardHandle: PreviewCardHandle<ModelSelectorPreviewPayload>
+  previewCardHandle: PreviewCardHandle
   onPreviewCardClose: () => void
+  onSelect: (provider: string, model: ModelSelectorModel) => void
   onHide: () => void
 }
+
 function PopupItem({
   defaultModel,
   model,
@@ -42,99 +57,112 @@ function PopupItem({
   modelSuggestionPredicate,
   previewCardHandle,
   onPreviewCardClose,
+  onSelect,
   onHide,
 }: PopupItemProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [modelsOpen, setModelsOpen] = useState(true)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const providerHeadingId = useId()
   const { t } = useTranslation()
   const language = useLanguage()
+  const providerLabel = renderI18nObject(model.label, language)
   const suggestionTip = t(($) => $['modelProvider.selector.suggestionTip'], { ns: 'common' })
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const currentProvider = modelProviders.find((provider) => provider.provider === model.provider)
+  const { providerDetail, loadProviderDetail } = useLazyModelProviderDetail(model.provider)
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const canOpenCredentialDropdown = canUseCredential || canCreateCredential || canManageCredential
-  const handleOpenModelModal = () => {
-    if (!canCreateCredential) return
+  const state = useCredentialPanelInfo(currentProvider)
+  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(currentProvider)
+  const isUsingCredits = state.priority === 'credits'
+  const hasCredits = !state.isCreditsExhausted
+  const isApiKeyActive = state.variant === 'api-active' || state.variant === 'api-fallback'
+  const { credentialName } = state
 
-    if (!currentProvider) return
+  const handleOpenModelModal = async () => {
+    if (!canCreateCredential || !currentProvider) return
+
+    const detail = await loadProviderDetail()
+    if (!detail) return
     setShowModelModal({
       payload: {
-        currentProvider,
+        currentProvider: detail,
         currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
       },
       onSaveCallback: () => {
         updateModelProviders()
 
         const modelType = model.models[0]!.model_type
-
-        if (modelType) updateModelList(modelType)
+        if (modelType) updateModelList(modelType as ModelType)
       },
     })
   }
-
-  const state = useCredentialPanelState(currentProvider)
-  const { isChangingPriority, handleChangePriority } = useChangeProviderPriority(currentProvider)
-  const groupItems = useMemo(
-    () =>
-      model.models
-        .filter((modelItem) => modelItem.status !== ModelStatusEnum.noConfigure)
-        .map((modelItem) => ({
-          provider: model.provider,
-          model: modelItem.model,
-        })),
-    [model.models, model.provider],
-  )
-
-  const isUsingCredits = state.priority === 'credits'
-  const hasCredits = !state.isCreditsExhausted
-  const isApiKeyActive = state.variant === 'api-active' || state.variant === 'api-fallback'
-  const { credentialName } = state
 
   const handleCloseDropdown = useCallback(() => {
     setDropdownOpen(false)
     onHide()
   }, [onHide])
 
+  const handleDropdownOpenChange = async (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setDropdownOpen(false)
+      return
+    }
+    const detail = await loadProviderDetail()
+    if (detail) setDropdownOpen(true)
+  }
+
   if (!currentProvider) return null
 
   return (
-    <ComboboxGroup className="mb-1" items={groupItems}>
-      <div className="sticky top-0 z-1 flex h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
-        <button
-          type="button"
-          className="flex min-w-0 cursor-pointer items-center border-0 bg-transparent p-0 text-left"
-          onClick={() => setCollapsed((prev) => !prev)}
+    <Collapsible
+      open={modelsOpen}
+      onOpenChange={setModelsOpen}
+      className="mb-1"
+      render={<section aria-labelledby={providerHeadingId} />}
+    >
+      <div className="sticky top-0 z-1 flex min-h-5.5 min-w-0 items-center justify-between gap-2 bg-components-panel-bg px-3 text-xs font-medium text-text-tertiary">
+        <CollapsibleTrigger
+          id={providerHeadingId}
+          className="group/provider min-h-0 w-auto min-w-0 justify-start gap-0 rounded-none p-0 text-xs font-medium text-text-tertiary hover:not-data-disabled:bg-transparent hover:not-data-disabled:text-text-tertiary data-panel-open:text-text-tertiary"
         >
-          <span className="truncate">{model.label[language] || model.label.en_US}</span>
+          <span className="truncate">{providerLabel}</span>
           <span
+            aria-hidden="true"
             className={cn(
-              'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary',
-              collapsed && '-rotate-90',
+              'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 -rotate-90 text-text-quaternary transition-transform group-data-panel-open/provider:rotate-0 motion-reduce:transition-none',
             )}
           />
-        </button>
-        <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+        </CollapsibleTrigger>
+        <Popover open={dropdownOpen} onOpenChange={handleDropdownOpenChange}>
           <PopoverTrigger
             disabled={!canOpenCredentialDropdown}
             render={
-              <button
-                type="button"
-                className="flex max-w-[50%] min-w-0 shrink-0 cursor-pointer items-center rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary hover:bg-components-button-ghost-bg-hover"
+              <Button
+                variant="ghost"
+                size="small"
+                className="max-w-[50%] min-w-0 shrink-0 gap-0 px-1.5 py-1 system-xs-medium text-text-tertiary"
               >
                 {isUsingCredits ? (
                   hasCredits ? (
                     <>
-                      <CreditsCoin className="size-3" />
+                      <span
+                        aria-hidden="true"
+                        className="i-custom-vender-line-financeandecommerce-credits-coin size-3"
+                      />
                       <span className="ml-1 truncate">
                         {t(($) => $['modelProvider.selector.aiCredits'], { ns: 'common' })}
                       </span>
                     </>
                   ) : (
                     <>
-                      <span className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary" />
+                      <span
+                        aria-hidden="true"
+                        className="i-ri-alert-fill size-3 shrink-0 text-text-warning-secondary"
+                      />
                       <span className="ml-1 truncate text-text-warning">
                         {t(($) => $['modelProvider.selector.creditsExhausted'], { ns: 'common' })}
                       </span>
@@ -154,115 +182,127 @@ function PopupItem({
                   </>
                 )}
                 {canOpenCredentialDropdown && (
-                  <span className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary" />
+                  <span
+                    aria-hidden="true"
+                    className="i-ri-arrow-down-s-line size-3.5! shrink-0 translate-y-px text-text-tertiary"
+                  />
                 )}
-              </button>
+              </Button>
             }
           />
           <PopoverContent placement="bottom-end">
-            <DropdownContent
-              provider={currentProvider}
-              state={state}
-              isChangingPriority={isChangingPriority}
-              onChangePriority={handleChangePriority}
-              onClose={handleCloseDropdown}
-            />
+            <PopoverTitle className="sr-only">{providerLabel}</PopoverTitle>
+            {providerDetail && (
+              <DropdownContent
+                provider={providerDetail}
+                state={state}
+                isChangingPriority={isChangingPriority}
+                onChangePriority={handleChangePriority}
+                onClose={handleCloseDropdown}
+              />
+            )}
           </PopoverContent>
         </Popover>
       </div>
-      {!collapsed &&
-        model.models.map((modelItem) => {
-          const isModelCompatible = modelPredicate?.(model, modelItem) ?? true
-          const isModelSuggested = modelSuggestionPredicate?.(model, modelItem) ?? false
-          const rowClassName = cn(
-            'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
-            modelItem.status === ModelStatusEnum.active
-              ? 'cursor-pointer hover:bg-state-base-hover'
-              : 'cursor-not-allowed hover:bg-state-base-hover-alt',
-          )
-          const rowContent = (
-            <>
-              <div className="flex min-w-0 items-center gap-2">
-                <ModelIcon
-                  className={cn('size-5 shrink-0')}
-                  provider={model}
-                  modelName={modelItem.model}
-                />
-                <ModelName
-                  className={cn(
-                    'system-sm-medium text-text-secondary',
-                    !isModelCompatible && 'text-text-quaternary',
-                    modelItem.status !== ModelStatusEnum.active && 'opacity-60',
-                  )}
-                  modelItem={modelItem}
-                  nameClassName={modelItem.deprecated ? 'line-through' : undefined}
-                >
-                  {isModelSuggested && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={
-                          <span
-                            aria-label={suggestionTip}
-                            className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary"
-                          />
-                        }
-                      />
-                      <TooltipContent placement="top">{suggestionTip}</TooltipContent>
-                    </Tooltip>
-                  )}
-                </ModelName>
-              </div>
-              {defaultModel?.model === modelItem.model &&
-                defaultModel.provider === currentProvider.provider && (
-                  <ComboboxItemIndicator className="shrink-0 text-text-accent">
-                    <span
-                      className="i-custom-vender-line-general-check size-4"
-                      aria-hidden="true"
-                    />
-                  </ComboboxItemIndicator>
+      <CollapsiblePanel>
+        <ul className="pb-1">
+          {model.models.map((modelItem) => {
+            const isModelCompatible = modelPredicate?.(model, modelItem) ?? true
+            const isModelSuggested = modelSuggestionPredicate?.(model, modelItem) ?? false
+            const isSelected =
+              defaultModel?.model === modelItem.model &&
+              defaultModel.provider === currentProvider.provider
+            const needsConfiguration = modelItem.status === ModelStatusEnum.noConfigure
+            const isSelectable = modelItem.status === ModelStatusEnum.active
+            const rowClassName = cn(
+              'group relative mx-1 flex h-8 min-w-0 items-center gap-1 rounded-lg px-3 py-1.5 text-left',
+              isSelectable
+                ? 'cursor-pointer hover:bg-state-base-hover'
+                : 'cursor-not-allowed hover:bg-state-base-hover-alt',
+            )
+            const rowContent = (
+              <>
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <ModelIcon
+                    className="size-5 shrink-0"
+                    provider={model}
+                    modelName={modelItem.model}
+                  />
+                  <ModelName
+                    className={cn(
+                      'system-sm-medium text-text-secondary',
+                      !isModelCompatible && 'text-text-quaternary',
+                      !isSelectable && 'opacity-60',
+                    )}
+                    modelItem={modelItem}
+                    nameClassName={modelItem.deprecated ? 'line-through' : undefined}
+                  >
+                    {isModelSuggested && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <span
+                              aria-label={suggestionTip}
+                              className="i-ri-shield-star-line size-3.5 shrink-0 text-text-accent-secondary"
+                            />
+                          }
+                        />
+                        <TooltipContent placement="top">{suggestionTip}</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </ModelName>
+                </div>
+                {isSelected && (
+                  <span
+                    aria-hidden="true"
+                    className="i-custom-vender-line-general-check size-4 shrink-0 text-text-accent"
+                  />
                 )}
-            </>
-          )
-          const itemRender =
-            modelItem.status === ModelStatusEnum.noConfigure ? (
-              <div className={rowClassName} aria-disabled="true" onPointerDown={onPreviewCardClose}>
+              </>
+            )
+            const row = needsConfiguration ? (
+              <div className={rowClassName} onPointerDown={onPreviewCardClose}>
                 {rowContent}
                 {canCreateCredential && (
-                  <button
-                    type="button"
-                    className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
-                    onClick={handleOpenModelModal}
+                  <Button
+                    variant="ghost-accent"
+                    size="small"
+                    className="h-auto shrink-0 p-0 text-xs opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-transparent focus-visible:opacity-100"
+                    onClick={() => void handleOpenModelModal()}
                   >
                     {t(($) => $['operation.add'], { ns: 'common' }).toLocaleUpperCase()}
-                  </button>
+                  </Button>
                 )}
               </div>
             ) : (
-              <ComboboxItem
-                value={{
-                  provider: model.provider,
-                  model: modelItem.model,
-                }}
-                disabled={modelItem.status !== ModelStatusEnum.active}
-                className={rowClassName}
+              <Button
+                variant="ghost"
+                size="medium"
+                aria-current={isSelected ? 'true' : undefined}
+                disabled={!isSelectable}
+                className={cn(rowClassName, 'w-[calc(100%-0.5rem)] justify-start')}
                 onPointerDown={onPreviewCardClose}
+                onClick={() => onSelect(model.provider, modelItem)}
               >
                 {rowContent}
-              </ComboboxItem>
+              </Button>
             )
 
-          return (
-            <PreviewCardTrigger
-              key={modelItem.model}
-              delay={150}
-              closeDelay={150}
-              handle={previewCardHandle}
-              payload={{ provider: model, modelItem }}
-              render={itemRender}
-            />
-          )
-        })}
-    </ComboboxGroup>
+            return (
+              <li key={modelItem.model}>
+                <PreviewCardTrigger
+                  delay={150}
+                  closeDelay={150}
+                  handle={previewCardHandle}
+                  payload={{ provider: model, modelItem }}
+                  render={row}
+                />
+              </li>
+            )
+          })}
+        </ul>
+      </CollapsiblePanel>
+    </Collapsible>
   )
 }
 

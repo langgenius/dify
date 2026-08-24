@@ -235,7 +235,7 @@ services:
       AGENT_BACKEND_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
       AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
       AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
-      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: ${AGENT_BACKEND_RUN_TIMEOUT_SECONDS:-1200}
+      AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: ${AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS:-45}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -314,7 +314,7 @@ services:
       AGENT_BACKEND_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
       AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: ${AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS:-30}
       AGENT_BACKEND_STREAM_MAX_RECONNECTS: ${AGENT_BACKEND_STREAM_MAX_RECONNECTS:-3}
-      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: ${AGENT_BACKEND_RUN_TIMEOUT_SECONDS:-1200}
+      AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS: ${AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS:-45}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -398,14 +398,13 @@ services:
       SERVER_CONSOLE_API_URL: ${SERVER_CONSOLE_API_URL:-http://api:5001}
       APP_API_URL: ${APP_API_URL:-}
       AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
-      COOKIEYES_SITE_KEY: ${COOKIEYES_SITE_KEY:-}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-ws://localhost}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       EXPERIMENTAL_ENABLE_VINEXT: ${EXPERIMENTAL_ENABLE_VINEXT:-false}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
-      WORKFLOW_GENERATION_TIMEOUT_MS: ${WORKFLOW_GENERATION_TIMEOUT_MS:-180000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       ALLOW_EMBED: ${ALLOW_EMBED:-false}
       ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
@@ -569,7 +568,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.3-local
+    image: langgenius/dify-plugin-daemon:0.6.10-local
     restart: always
     env_file:
       - path: ./envs/core-services/shared.env
@@ -678,11 +677,11 @@ services:
       DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
       DIFY_AGENT_E2B_API_KEY: ${DIFY_AGENT_E2B_API_KEY:-${E2B_API_KEY:-${E2B_API_TOKEN:-}}}
       DIFY_AGENT_E2B_TEMPLATE: ${DIFY_AGENT_E2B_TEMPLATE:-difys-default-team/dify-agent-local-sandbox}
+      # RuntimeLease active limit; its default matches the independently configurable Agent run deadline.
       DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS: ${DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS:-3600}
-      DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN: ${DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN:-}
       DIFY_AGENT_E2B_SHELLCTL_PORT: ${DIFY_AGENT_E2B_SHELLCTL_PORT:-5004}
-      DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES: ${PLUGIN_MAX_FILE_SIZE:-52428800}
       DIFY_AGENT_STUB_API_BASE_URL: ${DIFY_AGENT_STUB_API_BASE_URL:-http://agent_backend:5050/agent-stub}
+      DIFY_AGENT_SANDBOX_FILES_BASE_URL: ${DIFY_AGENT_SANDBOX_FILES_BASE_URL:-http://api:5001}
       # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
       # Replace this development default in production.
       # Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
@@ -690,6 +689,8 @@ services:
       DIFY_AGENT_API_TOKEN: ${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
       DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: ${DIFY_AGENT_SHUTDOWN_GRACE_SECONDS:-30}
       DIFY_AGENT_RUN_RETENTION_SECONDS: ${DIFY_AGENT_RUN_RETENTION_SECONDS:-259200}
+      # Pydantic AI run deadline; its default matches the independently configurable E2B active timeout.
+      DIFY_AGENT_RUN_TIMEOUT_SECONDS: ${DIFY_AGENT_RUN_TIMEOUT_SECONDS:-3600}
     depends_on:
       redis:
         condition: service_started

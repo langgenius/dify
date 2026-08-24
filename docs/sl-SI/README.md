@@ -184,6 +184,10 @@ Z enim klikom namestite Dify na Alibaba Cloud z [Alibaba Cloud Data Management](
 
 Z enim klikom namestite Dify v AKS z uporabo [Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)
 
+#### Namestitev s Sealos
+
+Z enim klikom namestite Dify prek [Sealos App Store](https://sealos.io/products/app-store/dify/)
+
 ## Prispevam
 
 Za tiste, ki bi radi prispevali kodo, si oglejte naš [vodnik za prispevke](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). Hkrati vas prosimo, da podprete Dify tako, da ga delite na družbenih medijih ter na dogodkih in konferencah.

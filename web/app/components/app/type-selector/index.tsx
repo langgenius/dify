@@ -63,7 +63,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+          className="w-[240px] rounded-xl border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
         >
           <ul className="relative w-full p-1">
             {allTypes.map((mode) => (

@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
@@ -10,46 +10,6 @@ const render = (ui: React.ReactElement) => {
   })
   return renderWithConsoleState(ui, { wrapper })
 }
-
-vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
-  AlertDialog: ({
-    children,
-    open,
-    onOpenChange,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-    onOpenChange?: (open: boolean) => void
-  }) =>
-    open ? (
-      <div role="alertdialog">
-        {children}
-        <button data-testid="alert-dialog-close" onClick={() => onOpenChange?.(false)}>
-          Close
-        </button>
-      </div>
-    ) : null,
-  AlertDialogActions: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancelButton: ({ children }: { children?: React.ReactNode }) => (
-    <button>{children}</button>
-  ),
-  AlertDialogConfirmButton: ({
-    children,
-    onClick,
-    disabled,
-  }: {
-    children?: React.ReactNode
-    onClick?: () => void
-    disabled?: boolean
-  }) => (
-    <button onClick={onClick} disabled={disabled}>
-      {children}
-    </button>
-  ),
-  AlertDialogContent: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-}))
 
 const mockPublishWorkflow = vi.fn().mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
 const mockPublishAsCustomizedPipeline = vi.fn().mockResolvedValue({})
@@ -137,19 +97,6 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, disabled, variant, className }: Record<string, unknown>) => (
-    <button
-      onClick={onClick as () => void}
-      disabled={disabled as boolean}
-      data-variant={variant as string}
-      className={className as string}
-    >
-      {children as React.ReactNode}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/base/divider', () => ({
   default: () => <hr />,
 }))
@@ -190,16 +137,6 @@ vi.mock('@/context/dataset-detail', () => ({
     }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => ({
-    userProfile: {
-      id: mockCurrentUserId,
-    },
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => ({
@@ -459,7 +396,7 @@ describe('Popup', () => {
 
       render(<Popup />)
 
-      fireEvent.click(screen.getByTestId('alert-dialog-close'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       expect(hideConfirm).toHaveBeenCalledTimes(1)
     })

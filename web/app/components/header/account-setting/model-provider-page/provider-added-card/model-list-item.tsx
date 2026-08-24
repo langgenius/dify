@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelItem, ModelProvider } from '../declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -9,7 +10,6 @@ import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Plan } from '@/app/components/billing/type'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
@@ -23,8 +23,10 @@ import ModelName from '../model-name'
 
 type ModelListItemProps = {
   model: ModelItem
-  provider: ModelProvider
+  provider: ModelProvider | ModelProviderSummaryResponse
   isConfigurable: boolean
+  isLoadingLoadBalancing?: boolean
+  isLoadBalancingDisabled?: boolean
   onChange?: (provider: string) => void
   onModifyLoadBalancing?: (model: ModelItem) => void
 }
@@ -33,6 +35,8 @@ const ModelListItem = ({
   model,
   provider,
   isConfigurable,
+  isLoadingLoadBalancing,
+  isLoadBalancingDisabled,
   onChange,
   onModifyLoadBalancing,
 }: ModelListItemProps) => {
@@ -127,11 +131,13 @@ const ModelListItem = ({
             </Badge>
           )}
         {canConfigureModels &&
-          (modelLoadBalancingEnabled || plan.type === Plan.sandbox) &&
+          (modelLoadBalancingEnabled || plan.type === 'sandbox') &&
           !model.deprecated &&
           [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
             <ConfigModel
               onClick={() => onModifyLoadBalancing?.(model)}
+              loading={isLoadingLoadBalancing}
+              disabled={isLoadBalancingDisabled}
               loadBalancingEnabled={model.load_balancing_enabled}
               loadBalancingInvalid={model.has_invalid_load_balancing_configs}
               credentialRemoved={model.status === ModelStatusEnum.credentialRemoved}
@@ -148,7 +154,7 @@ const ModelListItem = ({
                 </span>
               }
             />
-            <PopoverContent popupClassName="px-3 py-2 font-semibold system-xs-regular text-text-tertiary">
+            <PopoverContent className="px-3 py-2 system-xs-regular font-semibold text-text-tertiary">
               {t(($) => $['modelProvider.modelHasBeenDeprecated'], { ns: 'common' })}
             </PopoverContent>
           </Popover>

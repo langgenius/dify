@@ -13,7 +13,7 @@ from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 
 
 @pytest.fixture(autouse=True)
-def _patch_snippet_service_factory(monkeypatch):
+def _patch_snippet_service_factory(monkeypatch: pytest.MonkeyPatch):
     def factory():
         return snippets_module.SnippetService.__new__(snippets_module.SnippetService)
 
@@ -154,19 +154,14 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
     snippet = _snippet()
     create_snippet = Mock(return_value=snippet)
     monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
-    monkeypatch.setattr(
-        snippets_module.CreateSnippetPayload,
-        "model_validate",
-        Mock(
-            return_value=SimpleNamespace(
-                name="Snippet",
-                type="unknown",
-                description="Description",
-                graph=None,
-                icon_info=None,
-                input_fields=[],
-            )
-        ),
+
+    req_data = SimpleNamespace(
+        name="Snippet",
+        type="unknown",
+        description="Description",
+        graph=None,
+        icon_info=None,
+        input_fields=[],
     )
 
     api = snippets_module.CustomizedSnippetsApi()
@@ -177,7 +172,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
         method="POST",
         json={"name": "Snippet", "type": "node", "description": "Description"},
     ):
-        response, status_code = handler(api, "tenant-1", user)
+        response, status_code = handler(api, req_data, "tenant-1", user)
 
     assert status_code == 201
     assert response["id"] == "snippet-1"
@@ -189,6 +184,17 @@ def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.
     user = _account("account-1")
     create_snippet = Mock()
     monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
+
+    req_data = snippets_module.CreateSnippetPayload(
+        name="snippet with invalid node",
+        type="node",
+        graph={
+            "nodes": [
+                {"id": "knowledge-1", "data": {"type": "knowledge-retrieval"}},
+            ],
+            "edges": [],
+        },
+    )
 
     api = snippets_module.CustomizedSnippetsApi()
     handler = unwrap(api.post)
@@ -207,7 +213,7 @@ def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.
             },
         },
     ):
-        response, status_code = handler(api, "tenant-1", user)
+        response, status_code = handler(api, req_data, "tenant-1", user)
 
     assert status_code == 400
     assert "knowledge-retrieval" in response["message"]
@@ -245,6 +251,8 @@ def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: py
     user = _account("user-1")
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
 
+    req_data = snippets_module.UpdateSnippetPayload()
+
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.patch)
 
@@ -253,7 +261,7 @@ def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: py
         method="PATCH",
         json={},
     ):
-        response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = handler(api, req_data, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 400
     assert response == {"message": "No valid fields to update"}
@@ -275,6 +283,8 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
     monkeypatch.setattr(snippets_module, "Session", SessionContext)
     monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
 
+    req_data = snippets_module.UpdateSnippetPayload(name="New", icon_info={"icon": "star"})
+
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.patch)
 
@@ -283,7 +293,7 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
         method="PATCH",
         json={"name": "New", "icon_info": {"icon": "star"}},
     ):
-        response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
+        response, status_code = handler(api, req_data, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 200
     assert response["id"] == "snippet-1"
@@ -344,14 +354,40 @@ def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.
     api = snippets_module.CustomizedSnippetExportApi()
     handler = unwrap(api.get)
 
-    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?include_secret=true"):
+    with app.test_request_context(
+        "/workspaces/current/customized-snippets/snippet-1/export?include_secret=true&workflow_id=workflow-1"
+    ):
         response = handler(api, "tenant-1", snippet_id="snippet-1")
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == "version: 0.1.0\nkind: snippet\n"
     assert response.headers["Content-Type"] == "application/x-yaml"
     assert "Snippet%20One.snippet" in response.headers["Content-Disposition"]
-    export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True)
+    export_snippet_dsl.assert_called_once_with(snippet=snippet, include_secret=True, workflow_id="workflow-1")
+
+
+def test_export_snippet_raises_not_found_for_missing_workflow(app: Flask, monkeypatch: pytest.MonkeyPatch):
+    snippet = _snippet(name="Snippet One")
+
+    monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+    monkeypatch.setattr(
+        snippets_module,
+        "SnippetDslService",
+        Mock(
+            return_value=SimpleNamespace(
+                export_snippet_dsl=Mock(side_effect=ValueError("Missing published workflow workflow-1"))
+            )
+        ),
+    )
+    monkeypatch.setattr(snippets_module, "Session", _SessionContext)
+    monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
+
+    api = snippets_module.CustomizedSnippetExportApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/workspaces/current/customized-snippets/snippet-1/export?workflow_id=workflow-1"):
+        with pytest.raises(NotFound, match="Missing published workflow workflow-1"):
+            handler(api, "tenant-1", snippet_id="snippet-1")
 
 
 def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -378,6 +414,8 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
         Mock(return_value=SimpleNamespace(import_snippet=import_snippet)),
     )
 
+    req_data = snippets_module.SnippetImportPayload(mode="yaml-content", yaml_content="kind: snippet")
+
     api = snippets_module.CustomizedSnippetImportApi()
     handler = unwrap(api.post)
 
@@ -386,7 +424,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(app: Flask, monkeyp
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, session, user)
+        response, status_code = handler(api, req_data, session, user)
 
     assert status_code == 202
     assert response["status"] == ImportStatus.PENDING.value
@@ -413,6 +451,8 @@ def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: p
         Mock(return_value=SimpleNamespace(import_snippet=import_snippet)),
     )
 
+    req_data = snippets_module.SnippetImportPayload(mode="yaml-content", yaml_content="kind: snippet")
+
     api = snippets_module.CustomizedSnippetImportApi()
     handler = unwrap(api.post)
 
@@ -421,7 +461,7 @@ def test_import_snippet_returns_400_for_failed_import(app: Flask, monkeypatch: p
         method="POST",
         json={"mode": "yaml-content", "yaml_content": "kind: snippet"},
     ):
-        response, status_code = handler(api, session, user)
+        response, status_code = handler(api, req_data, session, user)
 
     assert status_code == 400
     assert response["error"] == "Invalid DSL"

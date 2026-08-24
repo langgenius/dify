@@ -6,7 +6,7 @@ from flask import Flask
 
 from controllers.console.auth.oauth import OAuthCallback, OAuthLogin
 from libs.oauth import OAuthUserInfo, encode_oauth_state
-from models.account import AccountStatus
+from models.account import Account, AccountStatus, Tenant
 
 REDIRECT_URL = "/apps?category=workflow"
 CONSOLE_WEB_URL = "https://console.example.com"
@@ -65,8 +65,7 @@ def test_oauth_callback_validates_redirect_url_and_appends_new_user_flag(
         name="Test User",
         email="test@example.com",
     )
-    account = MagicMock()
-    account.status = AccountStatus.ACTIVE
+    account = Account(name="Test User", email="test@example.com", status=AccountStatus.ACTIVE)
     token_pair = MagicMock()
     token_pair.access_token = "dify-access-token"
     token_pair.refresh_token = "dify-refresh-token"
@@ -101,8 +100,7 @@ def test_oauth_callback_with_invitation_establishes_console_session(app: Flask) 
         name="Test User",
         email="Invitee@Example.com",
     )
-    account = MagicMock()
-    account.status = AccountStatus.ACTIVE
+    account = Account(name="Test User", email="invitee@example.com", status=AccountStatus.ACTIVE)
     token_pair = MagicMock()
     token_pair.access_token = "dify-access-token"
     token_pair.refresh_token = "dify-refresh-token"
@@ -129,7 +127,7 @@ def test_oauth_callback_with_invitation_establishes_console_session(app: Flask) 
                 "email": "invitee@example.com",
                 "workspace_id": "workspace-id",
             },
-            "tenant": MagicMock(),
+            "tenant": Tenant(name="Invited Workspace"),
         }
 
         response = OAuthCallback().get("google")
@@ -152,8 +150,7 @@ def test_oauth_callback_with_invitation_rejects_another_account(app: Flask) -> N
         name="Test User",
         email="another@example.com",
     )
-    account = MagicMock()
-    account.status = AccountStatus.ACTIVE
+    account = Account(name="Test User", email="another@example.com", status=AccountStatus.ACTIVE)
     state = encode_oauth_state(invite_token="invite-token")
 
     with (
@@ -175,7 +172,7 @@ def test_oauth_callback_with_invitation_rejects_another_account(app: Flask) -> N
                 "email": "invitee@example.com",
                 "workspace_id": "workspace-id",
             },
-            "tenant": MagicMock(),
+            "tenant": Tenant(name="Invited Workspace"),
         }
 
         response = OAuthCallback().get("google")

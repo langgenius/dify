@@ -21,7 +21,7 @@ import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
 type PluginCategoryPayload = {
-  category: PluginCategoryEnum | string
+  category: PluginCategoryEnum
 }
 
 const SYSTEM_MODEL_TYPES = [
@@ -60,7 +60,8 @@ const useRefreshPluginList = () => {
       refreshAllType?: boolean,
     ) => {
       // installed list
-      invalidateInstalledPluginList()
+      if (refreshAllType || !manifest) invalidateInstalledPluginList()
+      else invalidateInstalledPluginList(manifest.category)
       invalidateCheckInstalled()
 
       // tool page, tool select

@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { waitFor } from '@testing-library/react'
 import { AppSourceType } from '@/service/share'
-import AudioPlayer from '../audio'
+import { AudioPlayer } from '../audio'
 
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
 
@@ -16,10 +16,9 @@ vi.mock('@/service/share', () => ({
 type AudioEventName =
   | 'ended'
   | 'pause'
-  | 'loaded'
+  | 'loadeddata'
   | 'play'
   | 'timeupdate'
-  | 'loadeddate'
   | 'canplay'
   | 'error'
   | 'sourceopen'
@@ -350,9 +349,8 @@ describe('AudioPlayer', () => {
       audio!.emit('ended')
       audio!.emit('error')
       audio!.emit('pause')
-      audio!.emit('loaded')
+      audio!.emit('loadeddata')
       audio!.emit('timeupdate')
-      audio!.emit('loadeddate')
       audio!.emit('canplay')
 
       expect(player.callback).toBe(callback)
@@ -362,7 +360,6 @@ describe('AudioPlayer', () => {
       expect(callback).toHaveBeenCalledWith('paused')
       expect(callback).toHaveBeenCalledWith('loaded')
       expect(callback).toHaveBeenCalledWith('timeupdate')
-      expect(callback).toHaveBeenCalledWith('loadeddate')
       expect(callback).toHaveBeenCalledWith('canplay')
     })
 

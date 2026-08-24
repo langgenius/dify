@@ -19,10 +19,10 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
-          python-version: "3.12"
+          python-version: '3.12'
           cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
@@ -40,7 +40,7 @@ jobs:
           cp envs/middleware.env.example middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@ee6af68587292d72db67743171809c19787df4c9 # v3.1.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -69,10 +69,10 @@ jobs:
           persist-credentials: false
 
       - name: Setup UV and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
           enable-cache: true
-          python-version: "3.12"
+          python-version: '3.12'
           cache-dependency-glob: api/uv.lock
 
       - name: Install dependencies
@@ -94,7 +94,7 @@ jobs:
           sed -i 's/DB_USERNAME=postgres/DB_USERNAME=mysql/' middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@11beaa1c2dae4e8ed7b1665aa074723b6cecb0e4 # v3.0.0
+        uses: hoverkraft-tech/compose-action@ee6af68587292d72db67743171809c19787df4c9 # v3.1.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml

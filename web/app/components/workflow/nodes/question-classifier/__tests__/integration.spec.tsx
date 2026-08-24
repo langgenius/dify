@@ -64,17 +64,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ defaultModel }: any) => (
+  ModelSelector: ({ value }: any) => (
     <div>
-      {defaultModel.provider}:{defaultModel.model}
+      {value.provider}:{value.model}
     </div>
   ),
-}))
-
-vi.mock('@langgenius/dify-ui/tooltip', () => ({
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: any) => <>{children}</>,
-  TooltipContent: ({ children }: any) => <div>{children}</div>,
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/readonly-input-with-select-var', () => ({

@@ -23,7 +23,7 @@ import pytest
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
 from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from services.billing_service import BillingService
 
@@ -219,6 +219,30 @@ class TestBillingServiceSendRequest:
         assert result == expected_response
         call_args = mock_httpx_request.call_args
         assert call_args[0][0] == method
+
+    def test_new_agent_beta_ensure_uses_secret_authenticated_v1_base(self, mock_httpx_request, mock_billing_config):
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.return_value = {"status": "issued"}
+        mock_httpx_request.return_value = mock_response
+
+        BillingService.ensure_new_agent_beta_revision("revision-1")
+
+        call_args = mock_httpx_request.call_args
+        assert call_args.args == (
+            "POST",
+            "https://billing-api.example.com/new-agent-beta/revisions/revision-1/ensure",
+        )
+        assert call_args.kwargs["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
+
+    def test_new_agent_beta_ensure_requires_json_response(self, mock_httpx_request, mock_billing_config):
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
+        mock_httpx_request.return_value = mock_response
+
+        with pytest.raises(json.JSONDecodeError):
+            BillingService.ensure_new_agent_beta_revision("revision-1")
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -461,6 +485,37 @@ class TestBillingServiceSubscriptionInfo:
             "/subscription/vector-space",
             params={"tenant_id": tenant_id},
         )
+
+    def test_get_vector_space_preserves_unknown_usage(self, mock_send_request):
+        tenant_id = "tenant-123"
+        expected_response = {"size": 0.0, "limit": 50, "usage_unknown": True}
+        mock_send_request.return_value = expected_response
+
+        result = BillingService.get_vector_space(tenant_id)
+
+        assert result == expected_response
+
+    def test_get_info_preserves_unknown_vector_space_usage(self, mock_send_request):
+        tenant_id = "tenant-123"
+        expected_response = {
+            "enabled": True,
+            "subscription": {"plan": "sandbox", "interval": "", "education": False},
+            "members": {"size": 1, "limit": 1},
+            "apps": {"size": 1, "limit": 10},
+            "vector_space": {"size": 0.0, "limit": 50, "usage_unknown": True},
+            "knowledge_rate_limit": {"limit": 10},
+            "documents_upload_quota": {"size": 1, "limit": 50},
+            "annotation_quota_limit": {"size": 0, "limit": 10},
+            "docs_processing": "standard",
+            "can_replace_logo": False,
+            "model_load_balancing_enabled": False,
+            "knowledge_pipeline_publish_enabled": False,
+        }
+        mock_send_request.return_value = expected_response
+
+        result = BillingService.get_info(tenant_id)
+
+        assert result["vector_space"]["usage_unknown"] is True
 
     def test_get_vector_space_bypasses_cache(self, mock_send_request):
         tenant_id = "tenant-123"
@@ -1242,6 +1297,15 @@ class TestBillingServiceAccountManagement:
         assert result is True
         mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
 
+    def test_get_email_freeze_type_for_suspended_domain(self, mock_send_request):
+        email = "user@suspended.example"
+        mock_send_request.return_value = {"data": True, "freezeType": "email_domain_suspended"}
+
+        result = BillingService.get_email_freeze_type(email)
+
+        assert result == "email_domain_suspended"
+        mock_send_request.assert_called_once_with("GET", "/account/in-freeze", params={"email": email})
+
     def test_is_email_in_freeze_false(self, mock_send_request):
         """Test checking if email is frozen (returns False)."""
         # Arrange
@@ -1989,6 +2053,8 @@ class TestBillingServiceSubscriptionInfoDataType:
         if "vector_space" in result:
             assert isinstance(result["vector_space"]["size"], float)
             assert isinstance(result["vector_space"]["limit"], int)
+            if "usage_unknown" in result["vector_space"]:
+                assert isinstance(result["vector_space"]["usage_unknown"], bool)
 
         assert isinstance(result["knowledge_rate_limit"]["limit"], int)
 
@@ -2055,3 +2121,17 @@ class TestBillingServiceSubscriptionInfoDataType:
 
         with pytest.raises(ValidationError):
             BillingService.get_info("tenant-type-test")
+
+
+def test_pooled_billing_client_carries_bounded_timeout() -> None:
+    """Regression for #39874: the pooled billing client must carry a
+    read/connect timeout so a stalled Stripe / cloud-billing proxy
+    fails fast instead of pinning a worker. Same shape as the
+    JinaReader / WaterCrawl hardening that landed in PR #39860 and #39824.
+    """
+    import services.billing_service as billing_service_module
+
+    client = billing_service_module._http_client
+    assert client.timeout is not None
+    assert client.timeout.read == 30.0
+    assert client.timeout.connect == 5.0

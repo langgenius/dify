@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { SavedMessage } from '@/models/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiClipboardLine, RiDeleteBinLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import NoData from './no-data'
@@ -48,21 +48,23 @@ const SavedItems: FC<ISavedItemsProps> = ({
               <div className="absolute right-2 bottom-1">
                 <div className="ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-xs">
                   {isShowTextToSpeech && <NewAudioButton value={answer} />}
-                  <ActionButton
+                  <IconButton
+                    aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
                     onClick={() => {
                       copy(answer)
                       toast.success(t(($) => $['actionMsg.copySuccessfully'], { ns: 'common' }))
                     }}
                   >
-                    <RiClipboardLine className="size-4" />
-                  </ActionButton>
-                  <ActionButton
+                    <RiClipboardLine aria-hidden="true" className="size-4" />
+                  </IconButton>
+                  <IconButton
+                    aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
                     onClick={() => {
                       onRemove(id)
                     }}
                   >
-                    <RiDeleteBinLine className="size-4" />
-                  </ActionButton>
+                    <RiDeleteBinLine aria-hidden="true" className="size-4" />
+                  </IconButton>
                 </div>
               </div>
             </div>

@@ -6,8 +6,8 @@ Dify API inner calls. Layers and Agenton providers do not own those clients, so
 these settings are process resource limits rather than per-run lifecycle knobs.
 Endpoint URLs and API keys stay service-specific. The Agent Stub also uses this
 settings model directly: the public Agent Stub API base URL, server secret,
-optional gRPC bind override, and optional Dify inner API bridge settings all
-live here under the ``DIFY_AGENT_...`` environment-variable namespace.
+and optional Dify inner API bridge settings live here under the
+``DIFY_AGENT_...`` environment-variable namespace.
 """
 
 import httpx
@@ -17,12 +17,11 @@ from typing import ClassVar, Literal, cast
 from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url, parse_agent_stub_endpoint
+from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
-from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
-from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bind_address
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
+from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
 from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.profile import (
@@ -43,6 +42,7 @@ class ServerSettings(BaseSettings):
     redis_prefix: str = "dify-agent"
     shutdown_grace_seconds: float = 30
     run_retention_seconds: int = Field(default=DEFAULT_RUN_RETENTION_SECONDS, ge=1)
+    run_timeout_seconds: float = Field(default=DEFAULT_AGENT_RUN_TIMEOUT_SECONDS, gt=0)
     plugin_daemon_url: str = "http://localhost:5002"
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
@@ -63,6 +63,7 @@ class ServerSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
     e2b_api_key: str | None = None
     e2b_template: str = "difys-default-team/dify-agent-local-sandbox"
     e2b_active_timeout_seconds: int = Field(
@@ -70,11 +71,19 @@ class ServerSettings(BaseSettings):
         ge=1,
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
-    e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
-    sandbox_file_upload_max_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
-    agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
+    sandbox_files_base_url: str | None = Field(
+        default=None,
+        validation_alias="DIFY_AGENT_SANDBOX_FILES_BASE_URL",
+    )
+    stub_upload_file_size_limit: int = Field(
+        default=50,
+        ge=0,
+        description="Maximum Agent Stub upload size in MiB",
+        validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
+    )
+    binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -107,16 +116,21 @@ class ServerSettings(BaseSettings):
             return normalize_agent_stub_api_base_url(validated)
         return normalize_agent_stub_api_base_url(stripped)
 
-    @field_validator("agent_stub_grpc_bind_address")
+    @field_validator("sandbox_files_base_url")
     @classmethod
-    def normalize_agent_stub_grpc_bind_address_value(cls, value: str | None) -> str | None:
-        """Normalize the optional explicit Agent Stub gRPC bind override."""
+    def normalize_sandbox_files_base_url_value(cls, value: str | None) -> str | None:
+        """Normalize the Dify API base URL reachable from the Sandbox."""
+
         if value is None:
             return None
         stripped = value.strip()
         if not stripped:
             return None
-        return normalize_agent_stub_grpc_bind_address(stripped)
+        validated = str(TypeAdapter(AnyHttpUrl).validate_python(stripped))
+        parsed = validated.rstrip("/")
+        if "?" in parsed or "#" in parsed:
+            raise ValueError("DIFY_AGENT_SANDBOX_FILES_BASE_URL must not include a query string or fragment")
+        return parsed
 
     @field_validator("server_secret_key")
     @classmethod
@@ -143,14 +157,13 @@ class ServerSettings(BaseSettings):
             raise ValueError("DIFY_AGENT_INNER_API_URL must not include a query string or fragment")
         return parsed
 
-    @field_validator("inner_api_key")
+    @field_validator("inner_api_key", "api_token")
     @classmethod
-    def normalize_inner_api_key(cls, value: str | None) -> str | None:
-        """Normalize the optional trusted Dify inner API key."""
+    def normalize_optional_api_token(cls, value: str | None) -> str | None:
+        """Normalize optional API authentication tokens."""
         if value is None:
             return None
-        stripped = value.strip()
-        return stripped or None
+        return value.strip() or None
 
     def get_shell_redact_patterns(self) -> list[str]:
         """Parse the JSON array from shell_redact_patterns; empty/blank → empty list."""
@@ -169,13 +182,14 @@ class ServerSettings(BaseSettings):
         """Require Agent Stub settings while allowing deployments without inner API calls."""
         if self.agent_stub_api_base_url is not None and self.server_secret_key is None:
             raise ValueError("DIFY_AGENT_SERVER_SECRET_KEY is required when DIFY_AGENT_STUB_API_BASE_URL is set.")
-        if self.agent_stub_grpc_bind_address is not None:
-            if self.agent_stub_api_base_url is None:
-                raise ValueError(
-                    "DIFY_AGENT_STUB_API_BASE_URL is required when DIFY_AGENT_STUB_GRPC_BIND_ADDRESS is set."
-                )
-            if not parse_agent_stub_endpoint(self.agent_stub_api_base_url).is_grpc:
-                raise ValueError("DIFY_AGENT_STUB_GRPC_BIND_ADDRESS requires a grpc:// DIFY_AGENT_STUB_API_BASE_URL.")
+        if (
+            self.agent_stub_api_base_url is not None
+            and self.inner_api_key is not None
+            and self.sandbox_files_base_url is None
+        ):
+            raise ValueError(
+                "DIFY_AGENT_SANDBOX_FILES_BASE_URL is required for Agent Stub file transfers and Config downloads."
+            )
         return self
 
     def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:
@@ -194,10 +208,10 @@ class ServerSettings(BaseSettings):
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
                 enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
+                enterprise_sandbox_snapshot_timeout=self.enterprise_sandbox_snapshot_timeout,
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
-                e2b_shellctl_auth_token=self.e2b_shellctl_auth_token,
                 e2b_shellctl_port=self.e2b_shellctl_port,
             )
         )
@@ -209,35 +223,25 @@ class ServerSettings(BaseSettings):
         return AgentStubTokenCodec.from_server_secret(self.server_secret_key)
 
     def create_agent_stub_file_request_handler(self) -> DifyApiAgentStubFileRequestHandler | None:
-        """Return the Dify API file bridge when both Dify API settings are configured."""
-        if self.inner_api_key is None:
+        """Return the file bridge when inner API and Sandbox data-plane settings are configured."""
+        if self.inner_api_key is None or self.sandbox_files_base_url is None:
             return None
         return DifyApiAgentStubFileRequestHandler(
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
+            sandbox_files_base_url=self.sandbox_files_base_url,
+            max_upload_size_bytes=self.stub_upload_file_size_limit * 1024 * 1024,
+            timeout=self.create_outbound_http_timeout(),
         )
 
     def create_agent_stub_config_request_handler(self) -> DifyApiAgentStubConfigRequestHandler | None:
-        """Return the Dify API config bridge when both Dify API settings are configured."""
-        if self.inner_api_key is None:
+        """Return the Config bridge when inner API and Sandbox data-plane settings are configured."""
+        if self.inner_api_key is None or self.sandbox_files_base_url is None:
             return None
         return DifyApiAgentStubConfigRequestHandler(
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
-            timeout=self.create_outbound_http_timeout(),
-        )
-
-    def create_agent_stub_drive_request_handler(self) -> DifyApiAgentStubDriveRequestHandler | None:
-        """Return the Dify API drive bridge when both Dify API settings are configured.
-
-        Drive manifest and commit requests should honor the same outbound timeout
-        settings as the server's other trusted Dify API HTTP calls.
-        """
-        if self.inner_api_key is None:
-            return None
-        return DifyApiAgentStubDriveRequestHandler(
-            inner_api_url=self.inner_api_url,
-            inner_api_key=self.inner_api_key,
+            sandbox_files_base_url=self.sandbox_files_base_url,
             timeout=self.create_outbound_http_timeout(),
         )
 

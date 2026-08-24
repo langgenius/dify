@@ -19,10 +19,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Divider from '@/app/components/base/divider'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import {
+  MultimodalRetrievalGuidance,
+  MultimodalRetrievalGuidanceLearnMore,
+} from '@/app/components/datasets/common/multimodal-retrieval-guidance'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { ModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useDocLink } from '@/context/i18n'
 import { ChunkingMode } from '@/models/datasets'
 import Link from '@/next/link'
@@ -167,7 +170,7 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
         <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
           <div className="absolute inset-0 bg-dataset-warning-message-bg opacity-40"></div>
           <div className="p-1">
-            <AlertTriangle className="size-4 text-text-warning-secondary" />
+            <span className="i-custom-vender-solid-alertsandfeedback-alert-triangle size-4 text-text-warning-secondary" />
           </div>
           <span className="system-xs-medium text-text-primary">
             {t(($) => $['stepTwo.highQualityTip'], { ns: 'datasetCreation' })}
@@ -196,12 +199,18 @@ export const IndexingModeSection: FC<IndexingModeSectionProps> = ({
           >
             {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
           </div>
+          <MultimodalRetrievalGuidanceLearnMore className="mb-2" />
+          <MultimodalRetrievalGuidance
+            variant="create"
+            embeddingModel={embeddingModel}
+            embeddingModelList={embeddingModelList}
+            className="mb-2"
+          />
           <ModelSelector
-            readonly={isModelAndRetrievalConfigDisabled}
-            triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
-            defaultModel={embeddingModel}
-            modelList={embeddingModelList ?? []}
-            onSelect={onEmbeddingModelChange}
+            disabled={isModelAndRetrievalConfigDisabled}
+            value={embeddingModel}
+            models={embeddingModelList ?? []}
+            onValueChange={onEmbeddingModelChange}
           />
           {isModelAndRetrievalConfigDisabled && (
             <div className="mt-2 system-xs-medium text-text-tertiary">

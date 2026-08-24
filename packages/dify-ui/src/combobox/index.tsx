@@ -1,12 +1,12 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
-import { formLabelClassName, textControlCompoundFocusClassName } from '../form-control-shared'
+import { formLabelClassName, textControlCompoundInputFocusClassName } from '../form-control-shared'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
@@ -79,12 +79,11 @@ const comboboxListClassName = [
 ]
 
 const comboboxItemClassName = [
-  'grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden transition-colors',
+  'grid min-h-8 cursor-pointer select-none grid-cols-[1fr_auto] items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'hover:bg-state-base-hover-alt hover:text-text-primary',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-selected:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
-  'motion-reduce:transition-none',
 ]
 
 const comboboxTriggerVariants = cva(
@@ -146,7 +145,7 @@ const comboboxInputGroupVariants = cva(
   [
     'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color,box-shadow]',
     'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundFocusClassName,
+    textControlCompoundInputFocusClassName,
     'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
     'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
     'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
@@ -207,13 +206,11 @@ type ComboboxInputProps = Omit<BaseCombobox.Input.Props, 'className' | 'size'> &
 function ComboboxInput({
   className,
   size = 'medium',
-  type = 'text',
   autoComplete = 'off',
   ...props
 }: ComboboxInputProps) {
   return (
     <BaseCombobox.Input
-      type={type}
       autoComplete={autoComplete}
       className={cn(comboboxInputVariants({ size }), className)}
       {...props}
@@ -310,52 +307,46 @@ function ComboboxIcon({ className, children, ...props }: ComboboxIconProps) {
   )
 }
 
-type ComboboxContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+const ComboboxPortal = BaseCombobox.Portal
+type ComboboxPortalProps = BaseCombobox.Portal.Props
+
+type ComboboxPositionerProps = Omit<
+  BaseCombobox.Positioner.Props,
+  'className' | 'side' | 'align'
+> & {
   className?: string
-  popupClassName?: string
-  portalProps?: Omit<BaseCombobox.Portal.Props, 'children'>
-  positionerProps?: Omit<
-    BaseCombobox.Positioner.Props,
-    'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
-  >
-  popupProps?: Omit<BaseCombobox.Popup.Props, 'children' | 'className'>
+  placement?: Placement
 }
 
-function ComboboxContent({
-  children,
+function ComboboxPositioner({
+  className,
   placement = 'bottom-start',
   sideOffset = 4,
-  alignOffset = 0,
-  className,
-  popupClassName,
-  portalProps,
-  positionerProps,
-  popupProps,
-}: ComboboxContentProps) {
+  ...props
+}: ComboboxPositionerProps) {
   const { side, align } = parsePlacement(placement)
 
   return (
-    <BaseCombobox.Portal {...portalProps}>
-      <BaseCombobox.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
-      >
-        <BaseCombobox.Popup
-          className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, popupClassName)}
-          {...popupProps}
-        >
-          {children}
-        </BaseCombobox.Popup>
-      </BaseCombobox.Positioner>
-    </BaseCombobox.Portal>
+    <BaseCombobox.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn('z-50 outline-hidden', className)}
+      {...props}
+    />
+  )
+}
+
+type ComboboxPopupProps = Omit<BaseCombobox.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
+  return (
+    <BaseCombobox.Popup
+      className={cn(comboboxPopupClassName, floatingPopupAnimationClassName, className)}
+      {...props}
+    />
   )
 }
 
@@ -456,7 +447,7 @@ type ComboboxStatusProps = Omit<BaseCombobox.Status.Props, 'className'> & {
 function ComboboxStatus({ className, ...props }: ComboboxStatusProps) {
   return (
     <BaseCombobox.Status
-      className={cn('px-3 py-2 system-sm-regular text-text-tertiary', className)}
+      className={cn('px-3 py-2 system-sm-regular text-text-tertiary empty:p-0', className)}
       {...props}
     />
   )
@@ -525,7 +516,6 @@ export {
   ComboboxChips,
   ComboboxClear,
   ComboboxCollection,
-  ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
   ComboboxGroupLabel,
@@ -538,6 +528,9 @@ export {
   ComboboxItemText,
   ComboboxLabel,
   ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
   ComboboxRow,
   ComboboxSeparator,
   ComboboxStatus,
@@ -554,7 +547,6 @@ export type {
   ComboboxChipsProps,
   ComboboxClearProps,
   ComboboxCollectionProps,
-  ComboboxContentProps,
   ComboboxEmptyProps,
   ComboboxGroupLabelProps,
   ComboboxGroupProps,
@@ -567,11 +559,13 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxPopupProps,
+  ComboboxPortalProps,
+  ComboboxPositionerProps,
   ComboboxProps,
   ComboboxRowProps,
   ComboboxSeparatorProps,
   ComboboxStatusProps,
   ComboboxTriggerProps,
   ComboboxValueProps,
-  Placement,
 }

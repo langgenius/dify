@@ -59,12 +59,13 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
   return (
     <Popover open={open} onOpenChange={(newOpen) => !disabled && setOpen(newOpen)}>
       <PopoverTrigger
+        disabled={disabled}
         render={
           <button
             type="button"
             className={cn(
               'group relative ml-0.5 flex size-7 items-center justify-center rounded-md border-none bg-transparent p-0',
-              disabled && 'cursor-not-allowed opacity-50',
+              'data-disabled:cursor-not-allowed data-disabled:opacity-50',
             )}
             disabled={disabled || undefined}
             aria-label={checklistLabel}
@@ -87,7 +88,7 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
         placement="bottom-start"
         sideOffset={12}
         alignOffset={-30}
-        popupClassName="w-[420px] rounded-2xl bg-background-default-subtle"
+        className="w-[420px] rounded-2xl bg-background-default-subtle"
       >
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(2 / 3 * 100vh)' }}>
           <div className="flex flex-col gap-0.5 px-3 pt-3.5 pb-1">

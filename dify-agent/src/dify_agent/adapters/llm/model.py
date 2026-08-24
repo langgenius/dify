@@ -1,9 +1,8 @@
-"""Bridge Dify plugin-daemon LLM invocations into Pydantic AI's model interface.
+"""Bridge Dify API LLM invocations into Pydantic AI's model interface.
 
-The API and agent layers are clients of the plugin daemon, not direct hosts of provider SDK
-implementations. This adapter therefore targets the plugin-daemon dispatch protocol and maps
-Pydantic AI messages into the daemon's Graphon-compatible request and stream response schema.
-Pydantic AI keeps token counts only, so the adapter separately accumulates the daemon's complete
+The agent calls Dify API's trusted LLM gateway rather than hosting provider SDK implementations.
+This adapter maps Pydantic AI messages into the gateway's Graphon-compatible request and stream
+response schema. Pydantic AI keeps token counts only, so the adapter separately accumulates Dify's complete
 Graphon usage for the lifetime of one model instance. The Agent runner creates one adapter per run
 and reads that accumulated usage after all model/tool rounds finish.
 """
@@ -52,11 +51,13 @@ from pydantic_ai.messages import (
     ModelResponseStreamEvent,
     MultiModalContent,
     RetryPromptPart,
+    SpeechPart,
     SystemPromptPart,
     TextContent,
     TextPart,
     ThinkingPart,
     ToolCallPart,
+    ToolAvailabilityDeltaPart,
     ToolReturnPart,
     UploadedFile,
     UserContent,
@@ -65,10 +66,11 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models import Model, ModelRequestParameters, StreamedResponse
 from pydantic_ai.profiles import ModelProfileSpec
+from pydantic_ai.providers import Provider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 
-from .provider import DifyPluginDaemonLLMClient, DifyPluginDaemonProvider
+from .provider import DifyLLMClient
 
 _THINK_START = "<think>\n"
 _THINK_END = "\n</think>"
@@ -80,7 +82,6 @@ _DETAIL_HIGH = "high"
 
 @dataclass(slots=True)
 class _DifyRequestInput:
-    credentials: dict[str, object]
     prompt_messages: list[PromptMessage]
     model_parameters: dict[str, object]
     tools: list[PromptMessageTool] | None
@@ -88,8 +89,8 @@ class _DifyRequestInput:
 
 
 @dataclass(slots=True)
-class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
-    """Use a Dify plugin-daemon transport and retain complete usage for one Agent run.
+class DifyLLMAdapterModel(Model[DifyLLMClient]):
+    """Use Dify API's LLM transport and retain complete usage for one Agent run.
 
     A model instance belongs to one runner invocation. Pydantic AI may call it repeatedly while
     resolving tools or retrying structured output; those sequential requests are accumulated so
@@ -97,10 +98,9 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     """
 
     model: str
-    daemon_provider: DifyPluginDaemonProvider
+    dify_provider: Provider[DifyLLMClient]
     _: KW_ONLY
     model_provider: str
-    credentials: dict[str, object] = field(default_factory=dict, repr=False)
     model_profile: InitVar[ModelProfileSpec | None] = None
     model_settings: InitVar[ModelSettings | None] = None
     _accumulated_usage: LLMUsage | None = field(default=None, init=False, repr=False)
@@ -113,13 +113,13 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         Model.__init__(
             self,
             settings=model_settings,
-            profile=model_profile or self.daemon_provider.model_profile(self.model),
+            profile=model_profile or self.dify_provider.model_profile(self.model),
         )
 
     @property
     @override
-    def provider(self) -> DifyPluginDaemonProvider:
-        return self.daemon_provider
+    def provider(self) -> Provider[DifyLLMClient]:
+        return self.dify_provider
 
     @property
     @override
@@ -129,11 +129,11 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
     @property
     @override
     def system(self) -> str:
-        return self.daemon_provider.name
+        return self.dify_provider.name
 
     @property
     def accumulated_usage(self) -> LLMUsage | None:
-        """Return complete daemon usage accumulated across successful model requests."""
+        """Return complete Dify usage accumulated across successful model requests."""
         return self._accumulated_usage
 
     @override
@@ -148,10 +148,9 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.daemon_provider.client.iter_llm_result_chunks(
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
@@ -182,10 +181,9 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
         response = DifyStreamedResponse(
             model_request_parameters=prepared_params,
-            chunks=self.daemon_provider.client.iter_llm_result_chunks(
+            chunks=self.dify_provider.client.iter_llm_result_chunks(
                 provider=self.model_provider,
                 model=self.model_name,
-                credentials=request_input.credentials,
                 prompt_messages=request_input.prompt_messages,
                 model_parameters=request_input.model_parameters,
                 tools=request_input.tools,
@@ -199,7 +197,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         self._record_usage(response.dify_usage)
 
     def _record_usage(self, usage: LLMUsage | None) -> None:
-        """Add one completed daemon request to this run's usage total."""
+        """Add one completed Dify request to this run's usage total."""
         if usage is None:
             return
         if self._accumulated_usage is None:
@@ -214,7 +212,6 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
         model_request_parameters: ModelRequestParameters,
     ) -> _DifyRequestInput:
         return _DifyRequestInput(
-            credentials=dict(self.credentials),
             prompt_messages=_map_messages_to_prompt_messages(messages, model_request_parameters),
             model_parameters=_map_model_settings_to_parameters(model_settings),
             tools=_map_tool_definitions_to_prompt_tools(model_request_parameters),
@@ -224,7 +221,7 @@ class DifyLLMAdapterModel(Model[DifyPluginDaemonLLMClient]):
 
 @dataclass
 class DifyStreamedResponse(StreamedResponse):
-    """Map one daemon response while retaining its latest complete usage payload.
+    """Map one Dify response while retaining its latest complete usage payload.
 
     Some providers may repeat cumulative usage on more than one stream chunk. Keeping the latest
     payload lets the owning model count each request exactly once instead of summing stream chunks.
@@ -262,7 +259,7 @@ class DifyStreamedResponse(StreamedResponse):
 
     @property
     def dify_usage(self) -> LLMUsage | None:
-        """Return the daemon's complete usage for this model request."""
+        """Return Dify's complete usage for this model request."""
         return self._dify_usage
 
     @property
@@ -307,14 +304,38 @@ def _map_messages_to_prompt_messages(
         for part in (Model._get_instruction_parts(messages, model_request_parameters) or [])
         if part.content.strip()
     ]
-    if instruction_messages:
-        insert_at = next(
-            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
-            len(prompt_messages),
-        )
-        prompt_messages[insert_at:insert_at] = instruction_messages
+    prompt_messages = _order_system_messages_first(prompt_messages, instruction_messages)
 
     return prompt_messages
+
+
+def _order_system_messages_first(
+    prompt_messages: Sequence[PromptMessage],
+    instruction_messages: Sequence[SystemPromptMessage],
+) -> list[PromptMessage]:
+    """Merge all system content into a single leading system message.
+
+    Some providers (e.g. vLLM serving Qwen3.5/3.6 chat templates) reject any
+    system message that is not exactly the first message, so sorting alone is
+    not enough: multiple system messages must be merged into one.
+    """
+    system_contents: list[str] = []
+    non_system_messages: list[PromptMessage] = []
+    for message in prompt_messages:
+        if isinstance(message, SystemPromptMessage):
+            text = message.get_text_content()
+            if text.strip():
+                system_contents.append(text)
+        else:
+            non_system_messages.append(message)
+    for instruction in instruction_messages:
+        text = instruction.get_text_content()
+        if text.strip():
+            system_contents.append(text)
+
+    if not system_contents:
+        return non_system_messages
+    return [SystemPromptMessage(content="\n\n".join(system_contents)), *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
@@ -338,6 +359,8 @@ def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptM
                         name=part.tool_name,
                     )
                 )
+        elif isinstance(part, SpeechPart | ToolAvailabilityDeltaPart):
+            raise UnexpectedModelBehavior(f"Unsupported request part for daemon adapter: {type(part).__name__}")
         else:
             assert_never(part)
 

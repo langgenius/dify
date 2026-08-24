@@ -2,9 +2,9 @@ name: Main CI Pipeline
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   merge_group:
-    branches: ["main"]
+    branches: ['main']
     types: [checks_requested]
 
 permissions:
@@ -15,8 +15,10 @@ permissions:
   statuses: write
 
 concurrency:
-  group: main-ci-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  # Pull request deduplication is owned by skip-duplicate-actions so pre_job can
+  # publish should_skip before required status finalizers run.
+  group: main-ci-${{ github.event.merge_group.head_sha || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'merge_group' }}
 
 jobs:
   pre_job:
@@ -48,7 +50,7 @@ jobs:
       sandbox-runtime-changed: ${{ steps.changes.outputs.sandbox-runtime }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: changes
         with:
           filters: |
@@ -89,6 +91,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - '.nvmrc'
+              - '.github/workflows/main-ci.yml'
               - '.github/workflows/web-tests.yml'
               - '.github/actions/setup-web/**'
             e2e:
@@ -393,10 +396,10 @@ jobs:
   style-check:
     name: Style Check
     needs: pre_job
-    if: needs.pre_job.outputs.should_skip != 'true'
     uses: ./.github/workflows/style.yml
     with:
       base-rev: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+      skip-checks: ${{ needs.pre_job.outputs.should_skip == 'true' }}
 
   vdb-tests-run:
     name: Run VDB Tests

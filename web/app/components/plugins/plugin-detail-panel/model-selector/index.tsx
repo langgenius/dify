@@ -1,12 +1,11 @@
-import type { FC, ReactNode } from 'react'
+import type { FC } from 'react'
 import type {
-  DefaultModel,
   FormValue,
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/types'
+import type { ModelSelectorValue } from '@/app/components/header/account-setting/model-provider-page/model-selector/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,9 +14,8 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useProviderContext } from '@/context/provider-context'
+import { ModelSettingsTrigger } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/model-settings-trigger'
+import { SplitModelSelector } from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
@@ -25,13 +23,21 @@ import TTSParamsPanel from './tts-params-panel'
 type ModelParameterModalProps = {
   popupClassName?: string
   isAdvancedMode: boolean
-  value: any
-  setModel: (model: any) => void
-  renderTrigger?: (v: TriggerProps) => ReactNode
+  value?: PluginModelValue | null
+  setModel: (model: PluginModelValue) => void
   readonly?: boolean
   isInWorkflow?: boolean
-  isAgentStrategy?: boolean
   scope?: string
+}
+
+type PluginModelValue = Record<string, unknown> & {
+  completion_params?: FormValue
+  completionParams?: FormValue
+  language?: string
+  model?: string
+  model_type?: string
+  provider?: string
+  voice?: string
 }
 
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
@@ -39,14 +45,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isAdvancedMode,
   value,
   setModel,
-  renderTrigger,
   readonly,
   isInWorkflow,
-  isAgentStrategy,
   scope = ModelTypeEnum.textGeneration,
 }) => {
   const { t } = useTranslation()
-  const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
   const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
@@ -74,7 +77,6 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { data: ttsList } = useModelList(ModelTypeEnum.tts)
 
   const scopedModelList = useMemo(() => {
-    const resultList: any[] = []
     if (scopeArray.includes('all')) {
       return [
         ...textGenerationList,
@@ -91,7 +93,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     if (scopeArray.includes(ModelTypeEnum.moderation)) return moderationList
     if (scopeArray.includes(ModelTypeEnum.speech2text)) return sttList
     if (scopeArray.includes(ModelTypeEnum.tts)) return ttsList
-    return resultList
+    return []
   }, [
     scopeArray,
     textGenerationList,
@@ -114,9 +116,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }, [scopedModelList, value?.provider, value?.model])
 
   const hasDeprecated = !currentProvider || !currentModel
-  const disabled = !isAPIKeySet || hasDeprecated || currentModel?.status !== ModelStatusEnum.active
+  const modelSettingsDisabled = hasDeprecated || currentModel?.status !== ModelStatusEnum.active
 
-  const handleChangeModel = async ({ provider, model }: DefaultModel) => {
+  const handleChangeModel = async ({ provider, model }: ModelSelectorValue) => {
     const targetProvider = scopedModelList.find((modelItem) => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find(
       (modelItem: { model: string }) => modelItem.model === model,
@@ -178,120 +180,52 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
-  const hasSelectedModel = !!value?.provider && !!value?.model
-  const isSplitTrigger = !renderTrigger && !isAgentStrategy
-
+  const selectedModel =
+    value?.provider && value.model ? { provider: value.provider, model: value.model } : undefined
+  const hasSelectedModel = !!selectedModel
   return (
     <Popover
       open={open}
       onOpenChange={(newOpen) => {
-        if (readonly) return
+        if (readonly && newOpen) return
         setOpen(newOpen)
       }}
     >
       <div className="relative">
-        {isSplitTrigger ? (
-          <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">
-            <div className="min-w-0 flex-1">
-              <ModelSelector
-                defaultModel={
-                  value?.provider || value?.model
-                    ? { provider: value?.provider, model: value?.model }
-                    : undefined
-                }
-                modelList={scopedModelList}
-                readonly={readonly}
-                scopeFeatures={scopeFeatures}
-                triggerClassName={cn(
-                  'h-8! w-full rounded-r-none!',
-                  isInWorkflow &&
-                    'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
-                )}
-                onSelect={handleChangeModel}
-              />
-            </div>
-            <PopoverTrigger
-              aria-label={t(($) => $['modelProvider.modelSettings'], { ns: 'common' })}
-              disabled={readonly || !hasSelectedModel}
-              className={cn(
-                'flex size-8 shrink-0 items-center justify-center rounded-l-none rounded-r-lg border-0 bg-components-button-tertiary-bg p-0 text-text-tertiary outline-hidden hover:bg-components-button-tertiary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
-                isInWorkflow &&
-                  'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
-              )}
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-            </PopoverTrigger>
-          </div>
-        ) : (
-          <PopoverTrigger
-            render={
-              <button
-                type="button"
-                className="block w-full border-none bg-transparent p-0 text-left text-inherit [font:inherit]"
-              >
-                {renderTrigger ? (
-                  renderTrigger({
-                    open,
-                    currentProvider,
-                    currentModel,
-                    providerName: value?.provider,
-                    modelId: value?.model,
-                  })
-                ) : (
-                  <AgentModelTrigger
-                    disabled={disabled}
-                    hasDeprecated={hasDeprecated}
-                    currentProvider={currentProvider}
-                    currentModel={currentModel}
-                    providerName={value?.provider}
-                    modelId={value?.model}
-                    scope={scope}
-                  />
-                )}
-              </button>
-            }
+        <div className="isolate flex h-8 min-w-74 items-center gap-px rounded-lg">
+          <SplitModelSelector
+            value={selectedModel}
+            models={scopedModelList}
+            disabled={readonly}
+            scopeFeatures={scopeFeatures}
+            surface={isInWorkflow ? 'workflow' : 'default'}
+            onValueChange={handleChangeModel}
           />
-        )}
+          <ModelSettingsTrigger
+            disabled={readonly || !hasSelectedModel || modelSettingsDisabled}
+            surface={isInWorkflow ? 'workflow' : 'default'}
+          />
+        </div>
         <PopoverContent
           placement={isInWorkflow ? 'left' : 'bottom-end'}
           sideOffset={4}
-          popupClassName={cn(popupClassName, 'w-97.25 rounded-2xl')}
+          className={cn(popupClassName, 'w-97.25 rounded-2xl')}
         >
           <div className="max-h-105 overflow-y-auto p-4 pt-3">
-            {!isSplitTrigger && (
-              <div className="relative">
-                <div className="mb-1 flex h-6 items-center system-sm-semibold text-text-secondary">
-                  {t(($) => $['modelProvider.model'], { ns: 'common' }).toLocaleUpperCase()}
-                </div>
-                <ModelSelector
-                  defaultModel={
-                    hasSelectedModel ? { provider: value.provider, model: value.model } : undefined
-                  }
-                  modelList={scopedModelList}
-                  scopeFeatures={scopeFeatures}
-                  onSelect={handleChangeModel}
-                />
-              </div>
-            )}
-            {!isSplitTrigger &&
-              (currentModel?.model_type === ModelTypeEnum.textGeneration ||
-                currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className="my-3 h-px bg-divider-subtle" />
-              )}
-            {currentModel?.model_type === ModelTypeEnum.textGeneration && (
+            {currentModel?.model_type === ModelTypeEnum.textGeneration && selectedModel && (
               <LLMParamsPanel
-                provider={value?.provider}
-                modelId={value?.model}
+                provider={selectedModel.provider}
+                modelId={selectedModel.model}
                 completionParams={value?.completion_params || {}}
                 onCompletionParamsChange={handleLLMParamsChange}
                 isAdvancedMode={isAdvancedMode}
               />
             )}
-            {currentModel?.model_type === ModelTypeEnum.tts && (
+            {currentModel?.model_type === ModelTypeEnum.tts && selectedModel && (
               <TTSParamsPanel
                 currentModel={currentModel}
-                language={value?.language}
-                voice={value?.voice}
+                language={value?.language ?? ''}
+                voice={value?.voice ?? ''}
                 onChange={handleTTSParamsChange}
               />
             )}
