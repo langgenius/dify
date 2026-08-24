@@ -168,7 +168,7 @@ def build_application_services(
     initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
-    installation_state = InstallationStateRepository(client=database_client)
+    installation_state = InstallationStateRepository(session_factory=database_client)
     data_source_api_key_auth_bindings = SQLAlchemyDataSourceApiKeyAuthBindingRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     feature_gateway = FeatureServiceGateway()
@@ -183,7 +183,7 @@ def build_application_services(
         database=database_catalog,
         builtin=builtin_catalog,
     )
-    workspace_query_repository = WorkspaceQueryRepository(client=database_client)
+    workspace_query_repository = WorkspaceQueryRepository(session_factory=database_client)
     return ApplicationServices(
         accounts=AccountServices(
             avatar=AccountAvatarService(
@@ -248,7 +248,7 @@ def build_application_services(
         ),
         account_activation=AccountActivationService(
             tokens=RegisterServiceInvitationTokenStore(),
-            accounts=SQLAlchemyAccountActivationRepository(database_client),
+            accounts=SQLAlchemyAccountActivationRepository(session_factory=database_client),
             workspace_policy=DeploymentWorkspaceInvitePolicy(),
             eligibility=BillingAccountActivationEligibility(
                 enabled=deployment_edition == DeploymentEdition.CLOUD,
@@ -281,18 +281,18 @@ def build_application_services(
         ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=app_definition_repository,
-            file_service=FileService(database_client),
+            file_service=FileService(session_factory=database_client),
             workspace_features=feature_gateway.get_workspace_features,
             files_url=dify_config.FILES_URL,
         ),
         explore_banner_queries=ExploreBannerQueryService(
-            banners=ExploreBannerQueryRepository(client=database_client),
+            banners=ExploreBannerQueryRepository(session_factory=database_client),
             enabled=FeatureService.is_explore_banner_enabled(),
         ),
         schema_definitions=SchemaDefinitionService(source_factory=SchemaManager),
         setup=SetupService(
             state=installation_state,
-            accounts=RegisterServiceAccountProvisioner(client=database_client),
+            accounts=RegisterServiceAccountProvisioner(session_factory=database_client),
             lock=RedisSetupLock(client=redis),
             setup_required=deployment_edition != DeploymentEdition.CLOUD,
         ),
