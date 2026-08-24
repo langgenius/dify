@@ -11,7 +11,6 @@ from typing import Any, Union
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -70,7 +69,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
-from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.base.tts import AppGeneratorTTSPublisher
 from core.db.session_factory import session_factory
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -349,9 +348,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if not publisher:
             return None
         audio_msg = publisher.check_and_get_audio()
-        if audio_msg and isinstance(audio_msg, AudioTrunk) and audio_msg.status != "finish":
-            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
-        return None
+        if audio_msg is None:
+            return None
+        if audio_msg.status == "responding":
+            return MessageAudioStreamResponse(audio=audio_msg.audio, audio_type=audio_msg.audio_type, task_id=task_id)
+        if audio_msg.status in {"finish", "error"}:
+            return None
+        raise RuntimeError(f"TTS publisher returned an unknown status: {audio_msg.status}")
 
     def _wrapper_process_stream_response(
         self, trace_manager: TraceQueueManager | None = None
@@ -362,7 +365,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         features_dict = self._workflow_features_dict
 
         if (
-            features_dict.get("text_to_speech")
+            self._base_task_pipeline.stream
+            and features_dict.get("text_to_speech")
             and features_dict["text_to_speech"].get("enabled")
             and features_dict["text_to_speech"].get("autoPlay") == "enabled"
         ):
@@ -370,34 +374,41 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
             )
 
-        for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
-            while True:
-                audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
-                if audio_response:
+        try:
+            for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
+                while audio_response := self._listen_audio_msg(publisher=tts_publisher, task_id=task_id):
                     yield audio_response
-                else:
-                    break
-            yield response
+                if tts_publisher and isinstance(response, ErrorStreamResponse):
+                    tts_publisher.cancel()
+                    yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                    yield response
+                    return
+                yield response
 
-        start_listener_time = time.time()
-        while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
-            try:
-                if not tts_publisher:
-                    break
-                audio_trunk = tts_publisher.check_and_get_audio()
-                if audio_trunk is None:
-                    time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
+            if tts_publisher is None:
+                return
+
+            tts_publisher.publish(None)
+            while True:
+                audio_trunk = tts_publisher.check_and_get_audio(block=True)
+                assert audio_trunk is not None
+                if audio_trunk.status == "responding":
+                    yield MessageAudioStreamResponse(
+                        audio=audio_trunk.audio, audio_type=audio_trunk.audio_type, task_id=task_id
+                    )
                     continue
-                if audio_trunk.status == "finish":
-                    break
-                else:
-                    start_listener_time = time.time()
-                    yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
-            except Exception:
-                logger.exception("Failed to listen audio message, task_id: %s", task_id)
-                break
-        if tts_publisher:
-            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                if audio_trunk.status not in {"finish", "error"}:
+                    raise RuntimeError(f"TTS publisher returned an unknown status: {audio_trunk.status}")
+
+                yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+                if audio_trunk.status == "error":
+                    if audio_trunk.error is None:
+                        raise RuntimeError("TTS publisher returned an error terminal without an exception")
+                    yield ErrorStreamResponse(err=audio_trunk.error, task_id=task_id)
+                return
+        finally:
+            if tts_publisher:
+                tts_publisher.cancel()
 
     @contextmanager
     def _database_session(self):
@@ -1041,9 +1052,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         )
                     ):
                         yield from responses
-
-        if tts_publisher:
-            tts_publisher.publish(None)
 
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
