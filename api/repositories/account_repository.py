@@ -1,5 +1,6 @@
 """SQLAlchemy implementation of the account persistence port."""
 
+from datetime import datetime
 from typing import override
 
 from sqlalchemy import delete, select
@@ -29,6 +30,23 @@ class SQLAlchemyAccountRepository(AccountRepository):
         with self._session_factory() as session:
             account = session.get(Account, account_id)
             return self._to_snapshot(account) if account is not None else None
+
+    @override
+    def find_by_email(self, email: str) -> AccountSnapshot | None:
+        with self._session_factory() as session:
+            account = session.execute(select(Account).where(Account.email == email)).scalar_one_or_none()
+            if account is None and email != email.lower():
+                account = session.execute(select(Account).where(Account.email == email.lower())).scalar_one_or_none()
+            return self._to_snapshot(account) if account is not None else None
+
+    @override
+    def activate_pending(self, account_id: str, *, initialized_at: datetime) -> None:
+        with self._session_factory.begin() as session:
+            account = session.get(Account, account_id)
+            if account is None or account.status != AccountStatus.PENDING:
+                return
+            account.status = AccountStatus.ACTIVE
+            account.initialized_at = initialized_at
 
     @override
     def get_credentials(self, account_id: str) -> AccountCredentials | None:

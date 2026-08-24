@@ -50,3 +50,17 @@ class WorkspaceQueryRepository(WorkspaceQuery, AccountWorkspaceMembershipQuery):
         stmt = select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account_id)
         with self._session_factory() as session:
             return tuple(session.scalars(stmt).all())
+
+    @override
+    def has_active_membership(self, account_id: str) -> bool:
+        stmt = (
+            select(TenantAccountJoin.id)
+            .join(Tenant, Tenant.id == TenantAccountJoin.tenant_id)
+            .where(
+                TenantAccountJoin.account_id == account_id,
+                Tenant.status == TenantStatus.NORMAL,
+            )
+            .limit(1)
+        )
+        with self._session_factory() as session:
+            return session.scalar(stmt) is not None

@@ -97,6 +97,52 @@ def test_account_repository_updates_password(
     assert persisted.password_salt == "new-salt"
 
 
+def test_account_repositories_resolve_oauth_identity_and_email_fallback(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    sqlite_session.add(
+        AccountIntegrate(
+            account_id="account-1",
+            provider="github",
+            open_id="github-user",
+            encrypted_token="",
+        )
+    )
+    sqlite_session.commit()
+    account_repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+    integration_repository = SQLAlchemyAccountIntegrationRepository(sqlite_session_factory)
+
+    oauth_account_id = integration_repository.find_account_id(provider="github", open_id="github-user")
+    oauth_account = account_repository.get(oauth_account_id) if oauth_account_id is not None else None
+    email_account = account_repository.find_by_email("ACCOUNT@Example.com")
+
+    assert oauth_account is not None
+    assert oauth_account.id == "account-1"
+    assert email_account is not None
+    assert email_account.id == "account-1"
+
+
+def test_account_repository_activates_only_pending_account(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    account = _persist_account(sqlite_session)
+    account.status = AccountStatus.PENDING
+    sqlite_session.commit()
+    initialized_at = datetime(2026, 8, 24, 12, 0)
+    repository = SQLAlchemyAccountRepository(sqlite_session_factory)
+
+    repository.activate_pending("account-1", initialized_at=initialized_at)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get(Account, "account-1")
+    assert persisted is not None
+    assert persisted.status == AccountStatus.ACTIVE
+    assert persisted.initialized_at == initialized_at
+
+
 def test_account_integration_repository_lists_integrations(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
@@ -117,6 +163,24 @@ def test_account_integration_repository_lists_integrations(
 
     assert len(integrations) == 1
     assert integrations[0].provider == "github"
+
+
+def test_account_integration_repository_upserts_provider_binding(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    _persist_account(sqlite_session)
+    repository = SQLAlchemyAccountIntegrationRepository(sqlite_session_factory)
+
+    repository.link("account-1", provider="github", open_id="first-user")
+    repository.link("account-1", provider="github", open_id="second-user")
+
+    sqlite_session.expire_all()
+    integrations = list(sqlite_session.query(AccountIntegrate).all())
+    assert len(integrations) == 1
+    assert integrations[0].account_id == "account-1"
+    assert integrations[0].provider == "github"
+    assert integrations[0].open_id == "second-user"
 
 
 def test_account_repository_initializes_account_and_consumes_invitation_atomically(

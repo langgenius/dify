@@ -34,10 +34,6 @@ class AccountNotLinkTenantError(BaseServiceError):
     pass
 
 
-class LinkAccountIntegrateError(BaseServiceError):
-    pass
-
-
 class TenantNotFoundError(BaseServiceError):
     pass
 

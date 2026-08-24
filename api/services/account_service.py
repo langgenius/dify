@@ -68,7 +68,6 @@ from services.errors.account import (
     CannotOperateSelfError,
     EmailDomainSuspendedError,
     InvalidActionError,
-    LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
     RefreshTokenAccountNotFoundError,
@@ -517,35 +516,6 @@ class AccountService:
         _try_join_enterprise_default_workspace(str(account.id))
 
         return account
-
-    @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account, *, session: Session):
-        """Link account integrate"""
-        try:
-            # Query whether there is an existing binding record for the same provider
-            account_integrate: AccountIntegrate | None = session.scalar(
-                select(AccountIntegrate)
-                .where(AccountIntegrate.account_id == account.id, AccountIntegrate.provider == provider)
-                .limit(1)
-            )
-
-            if account_integrate:
-                # If it exists, update the record
-                account_integrate.open_id = open_id
-                account_integrate.encrypted_token = ""  # todo
-                account_integrate.updated_at = naive_utc_now()
-            else:
-                # If it does not exist, create a new record
-                account_integrate = AccountIntegrate(
-                    account_id=account.id, provider=provider, open_id=open_id, encrypted_token=""
-                )
-                session.add(account_integrate)
-
-            session.commit()
-            logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
-        except Exception as e:
-            logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
-            raise LinkAccountIntegrateError("Failed to link account.") from e
 
     @staticmethod
     def update_account_email(account: Account, email: str, session: Session) -> Account:
@@ -1891,8 +1861,6 @@ class RegisterService:
         email: str,
         name: str,
         password: str | None = None,
-        open_id: str | None = None,
-        provider: str | None = None,
         language: str | None = None,
         status: AccountStatus | None = None,
         is_setup: bool | None = False,
@@ -1918,9 +1886,6 @@ class RegisterService:
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
-
-            if open_id is not None and provider is not None:
-                AccountService.link_account_integrate(provider, open_id, account, session=session)
 
             if (
                 FeatureService.is_workspace_creation_allowed()
@@ -2060,11 +2025,6 @@ class RegisterService:
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token
-
-    @classmethod
-    def is_valid_invite_token(cls, token: str) -> bool:
-        data = redis_client.get(cls._get_invitation_token_key(token))
-        return data is not None
 
     @classmethod
     def revoke_token(cls, workspace_id: str | None, email: str | None, token: str):

@@ -87,3 +87,59 @@ class AccountEmailAlreadyInUseError(AccountApplicationError):
 
 class EducationDiscountPausedError(AccountApplicationError):
     """Education discount activation is temporarily paused."""
+
+
+class InvalidOAuthProviderError(AccountApplicationError):
+    """The requested Console OAuth provider is unavailable."""
+
+
+class OAuthProviderRequestError(AccountApplicationError):
+    """The remote OAuth provider could not complete the request."""
+
+
+class OAuthProviderAuthorizationError(AccountApplicationError):
+    """The remote OAuth provider rejected the authorization exchange."""
+
+    def __init__(self, description: str) -> None:
+        super().__init__(description)
+        self.description = description
+
+
+class OAuthIdentityLockUnavailableError(AccountApplicationError):
+    """The OAuth account claim could not be acquired or its lease was lost."""
+
+
+class InvalidOAuthInvitationError(AccountApplicationError):
+    """The OAuth callback references an invitation that can no longer be resolved."""
+
+
+class OAuthInvitationAccountMismatchError(AccountApplicationError):
+    """The OAuth identity does not own the account referenced by the invitation."""
+
+    def __init__(self, invite_token: str) -> None:
+        super().__init__(invite_token)
+        self.invite_token = invite_token
+
+
+class OAuthAccountBannedError(AccountApplicationError):
+    """The OAuth identity resolves to a banned Console account."""
+
+
+class OAuthAccountNotFoundError(AccountApplicationError):
+    """An account disappeared while the OAuth use case was running."""
+
+
+class OAuthWorkspaceCreationNotAllowedError(AccountApplicationError):
+    """Workspace policy prevents provisioning a workspace for the OAuth account."""
+
+
+class OAuthSeatsLimitExceededError(AccountApplicationError):
+    """Account registration would exceed the licensed seat limit."""
+
+
+class OAuthRegistrationError(AccountApplicationError):
+    """The OAuth account could not be registered."""
+
+    def __init__(self, description: str) -> None:
+        super().__init__(description)
+        self.description = description
