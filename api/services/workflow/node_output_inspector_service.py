@@ -26,8 +26,8 @@ Design constraints baked into this version:
    Cross-tenant / cross-app rows still 404 via the standard tenant/app scope.
 3. **Declared outputs by node kind**:
    * Agent v2 nodes resolve their declared list via
-     :class:`WorkflowAgentBindingResolver` (the binding owns the canonical
-     ``DeclaredOutputConfig`` list and falls back to PRD defaults when empty).
+     :class:`WorkflowAgentBindingResolver` (the binding owns custom declarations;
+     the system ``text`` output is derived for display).
    * Other node kinds don't have a declared-output schema yet; we surface the
      keys present in the execution payload as a best-effort list typed
      ``unknown`` so the panel can still render them.
@@ -59,18 +59,12 @@ from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
     WorkflowAgentBindingResolver,
 )
-from core.workflow.nodes.agent_v2.runtime_request_builder import (
-    WorkflowAgentRuntimeRequestBuilder,
-)
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from factories.file_factory.builders import build_from_mapping
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers
 from models import App
-from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
+from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, effective_declared_outputs
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 
 logger = logging.getLogger(__name__)
@@ -182,18 +176,12 @@ class _ResolvedDeclaration:
 
 
 def _is_agent_v2_node(node: Mapping[str, Any]) -> bool:
-    """A graph node is Agent v2 iff its ``data.type`` is the AGENT builtin
-    AND its ``data.version`` is ``"2"``.
+    """Return whether a graph node explicitly identifies the new Dify Agent node."""
 
-    ``BuiltinNodeTypes.AGENT`` is a ``ClassVar[NodeType]`` (plain string), not
-    a StrEnum, so we compare against it directly without ``.value``.
-    """
     data = node.get("data") or {}
     if not isinstance(data, Mapping):
         return False
-    if data.get("type") != BuiltinNodeTypes.AGENT:
-        return False
-    return str(data.get("version", "")) == "2"
+    return is_dify_agent_node_data(data)
 
 
 def _graph_nodes(workflow_run: WorkflowRun) -> list[Mapping[str, Any]]:
@@ -792,7 +780,7 @@ class NodeOutputInspectorService:
                 "NodeOutputInspector: malformed node_job_config for binding %s", bundle.binding.id, exc_info=True
             )
             return None
-        return list(WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs)))
+        return list(effective_declared_outputs(node_job.declared_outputs))
 
     @staticmethod
     def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:

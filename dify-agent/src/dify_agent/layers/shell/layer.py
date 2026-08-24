@@ -108,9 +108,10 @@ Installed CLI:
 
 Filesystem spaces:
 
-- `$HOME` is the system space.
-- The current working directory (`cwd`) is the temporary working space. Relative paths resolve from here.
-- Store temporary files under `<cwd>/.tmp` (normally `./.tmp`). Do not use `/tmp`.
+- `$HOME` is the system space for reusable tools and state.
+- The current working directory (`cwd`) is the active Workspace and temporary working space.
+- Relative paths and the standard temp environment variables (`TMPDIR`, `TMP`, and `TEMP`) resolve directly to `cwd`.
+- Do not use `/tmp`.
 
 shell_run script rules:
 
@@ -219,6 +220,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    _job_agent_stub_tokens: dict[str, str] = field(default_factory=dict, init=False, repr=False)
 
     @classmethod
     @override
@@ -300,10 +302,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
+            env = self._build_shell_command_env(include_agent_stub_env=True)
+            agent_stub_token = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
             result = await self._require_resource().commands.run(
                 _wrap_user_script(script, self.config),
                 cwd=self._require_workspace_cwd(),
-                env=self._build_shell_command_env(include_agent_stub_env=True),
+                env=env,
                 timeout=timeout,
             )
             observation = await render_prompt_observation_from_result(
@@ -313,6 +317,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
+            if agent_stub_token is not None and not result.done:
+                self._job_agent_stub_tokens[result.job_id] = agent_stub_token
+            else:
+                self._job_agent_stub_tokens.pop(result.job_id, None)
             return _tagged_shell_observation(
                 _metadata_dict(
                     job_id=result.job_id,
@@ -321,7 +329,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                self._redact_output(observation.text),
+                self._redact_output(observation.text, sensitive_values=(agent_stub_token,)),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc)
@@ -339,6 +347,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
+            redacted_output = self._redact_output(
+                observation.text,
+                sensitive_values=(self._job_agent_stub_tokens.get(job_id),),
+            )
+            if result.done:
+                self._job_agent_stub_tokens.pop(job_id, None)
             return _tagged_shell_observation(
                 _metadata_dict(
                     job_id=result.job_id,
@@ -347,7 +361,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                self._redact_output(observation.text),
+                redacted_output,
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
@@ -365,6 +379,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             )
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, observation.offset)
+            redacted_output = self._redact_output(
+                observation.text,
+                sensitive_values=(self._job_agent_stub_tokens.get(job_id),),
+            )
+            if result.done:
+                self._job_agent_stub_tokens.pop(job_id, None)
             return _tagged_shell_observation(
                 _metadata_dict(
                     job_id=result.job_id,
@@ -373,7 +393,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                self._redact_output(observation.text),
+                redacted_output,
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
@@ -390,6 +410,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             result = await self._require_resource().commands.interrupt(job_id, grace_seconds=grace_seconds)
             self._remember_job_id(result.job_id)
             self._remember_job_offset(result.job_id, result.offset)
+            self._job_agent_stub_tokens.pop(result.job_id, None)
             output_path: str | None = None
             try:
                 # Once the interrupt itself succeeds, resolving the output path is
@@ -440,6 +461,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             ),
             timeout=timeout,
             max_output_bytes=max_output_bytes,
+            mode="stdio",
         )
 
     async def run_remote_script(
@@ -468,6 +490,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             env=self._build_shell_command_env(include_agent_stub_env=False),
             timeout=DEFAULT_TIMEOUT_SECONDS,
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
+            mode="stdio",
         )
 
     def _require_resource(self) -> RuntimeLease:
@@ -509,6 +532,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     def _clear_tracked_jobs(self) -> None:
         self.runtime_state.job_offsets = {}
         self.runtime_state.job_ids = []
+        self._job_agent_stub_tokens.clear()
 
     def _build_shell_command_env(
         self,
@@ -524,7 +548,6 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
         agent_stub_env = build_shell_agent_stub_env(
             agent_stub_api_base_url=self.agent_stub_api_base_url,
-            agent_stub_drive_ref=self.config.agent_stub_drive_ref,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
             session_id=None,
@@ -536,7 +559,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         env.update(agent_stub_env)
         return env
 
-    def _redact_output(self, text: str) -> str:
+    def _redact_output(self, text: str, *, sensitive_values: Sequence[str | None] = ()) -> str:
         """Redact sensitive content from shell output before the model sees it.
 
         Two layers of redaction are applied:
@@ -550,11 +573,11 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         """
         if not text:
             return text
-        # Built-in: always redact the JWE token value.
-        env = self._build_shell_command_env(include_agent_stub_env=True)
-        jwe_value = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
-        if jwe_value and len(jwe_value) > 8:
-            text = text.replace(jwe_value, "***")
+        # Built-in: always redact actual sensitive values supplied by the
+        # command owner. Redaction must never mint replacement credentials.
+        for value in sensitive_values:
+            if value and len(value) > 8:
+                text = text.replace(value, "***")
         # Server-level + per-agent regex patterns.
         for pattern in (*self.shell_redact_patterns, *self.config.redact_patterns):
             text = re.sub(pattern, "***", text)

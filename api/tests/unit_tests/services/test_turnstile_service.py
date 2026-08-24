@@ -5,6 +5,7 @@ import pytest
 from pydantic import SecretStr
 
 from services.turnstile_service import (
+    EMAIL_CODE_VERIFY_ACTION,
     TurnstileChallengeRejectedError,
     TurnstileService,
     TurnstileUpstreamError,
@@ -43,6 +44,19 @@ def test_verify_accepts_subdomain_and_forwards_remote_ip(monkeypatch: pytest.Mon
             "response": "verified-token",
             "remoteip": "203.0.113.8",
         },
+    )
+
+
+def test_verify_accepts_caller_scoped_action(monkeypatch: pytest.MonkeyPatch) -> None:
+    mock_response(
+        monkeypatch,
+        payload={"success": True, "action": EMAIL_CODE_VERIFY_ACTION, "hostname": "agent.dify.dev"},
+    )
+
+    TurnstileService.verify(
+        token="verified-token",
+        remote_ip=None,
+        expected_action=EMAIL_CODE_VERIFY_ACTION,
     )
 
 

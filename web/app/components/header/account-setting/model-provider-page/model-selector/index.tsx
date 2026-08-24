@@ -1,4 +1,3 @@
-import type { ComboboxChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type {
   ModelSelectorModel,
   ModelSelectorModelPredicate,
@@ -6,18 +5,17 @@ import type {
   ModelSelectorValue,
 } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Combobox, ComboboxContent } from '@langgenius/dify-ui/combobox'
+import { Popover, PopoverContent, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useQueryState } from 'nuqs'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { ModelStatusEnum } from '../declarations'
 import { getCurrentProviderAndModel } from '../hooks'
 import { ModelSelectorTrigger } from './model-selector-trigger'
 import Popup from './popup'
-import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
@@ -76,6 +74,7 @@ function ModelSelectorRoot({
   surface: 'default' | 'workflow'
   shape: 'standalone' | 'split'
 }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const [settingsDestination, setSettingsDestination] = useQueryState(
@@ -83,14 +82,6 @@ function ModelSelectorRoot({
     settingsQueryParser,
   )
   const { currentProvider, currentModel } = getCurrentProviderAndModel(models, value)
-  const currentValue = useMemo<ModelSelectorValue | null>(() => {
-    if (!currentProvider || !currentModel) return null
-
-    return {
-      provider: currentProvider.provider,
-      model: currentModel.model,
-    }
-  }, [currentModel, currentProvider])
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
@@ -129,28 +120,6 @@ function ModelSelectorRoot({
     setSettingsDestination('provider')
   }, [handleHide, setSettingsDestination])
 
-  const handleValueChange = useCallback(
-    (value: ModelSelectorValue | null) => {
-      if (!value) return
-
-      const provider = models.find((model) => model.provider === value.provider)
-      const model = provider?.models.find((model) => model.model === value.model)
-
-      if (!provider || !model) return
-      if (model.status !== ModelStatusEnum.active) return
-
-      handleSelect(provider.provider, model)
-    },
-    [handleSelect, models],
-  )
-
-  const handleInputValueChange = useCallback(
-    (inputValue: string, details: ComboboxChangeEventDetails) => {
-      if (details.reason !== 'item-press') setInputValue(inputValue)
-    },
-    [],
-  )
-
   const handleConfigureEmptyState = useCallback(() => {
     if (onConfigureEmptyState) {
       handleHide()
@@ -166,18 +135,7 @@ function ModelSelectorRoot({
   }, [handleHide, handleOpenSettings, onConfigureEmptyState, settingsDestination])
 
   return (
-    <Combobox<ModelSelectorValue>
-      disabled={disabled}
-      filter={null}
-      inputValue={inputValue}
-      isItemEqualToValue={isSameModelSelectorValue}
-      itemToStringLabel={getModelSelectorValueLabel}
-      open={open}
-      value={currentValue}
-      onInputValueChange={handleInputValueChange}
-      onOpenChange={handleOpenChange}
-      onValueChange={handleValueChange}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <ModelSelectorTrigger
         currentProvider={currentProvider}
         currentModel={currentModel}
@@ -195,12 +153,16 @@ function ModelSelectorRoot({
             : undefined
         }
       />
-      <ComboboxContent
-        popupClassName={cn(
-          'flex max-h-[min(624px,var(--available-height,624px))] flex-col',
+      <PopoverContent
+        placement="bottom-start"
+        className={cn(
+          'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
           popupClassName,
         )}
       >
+        <PopoverTitle className="sr-only">
+          {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+        </PopoverTitle>
         <Popup
           defaultModel={value}
           inputValue={inputValue}
@@ -216,10 +178,11 @@ function ModelSelectorRoot({
           onConfigureEmptyState={handleConfigureEmptyState}
           onOpenMarketplace={onOpenMarketplace}
           onInputValueChange={setInputValue}
+          onSelect={handleSelect}
           onHide={handleHide}
         />
-      </ComboboxContent>
-    </Combobox>
+      </PopoverContent>
+    </Popover>
   )
 }
 

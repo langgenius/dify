@@ -13,15 +13,10 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import {
-  Field,
-  FieldControl,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from '@langgenius/dify-ui/field'
+import { Field, FieldDescription, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { Input } from '@langgenius/dify-ui/input'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -392,7 +387,7 @@ export function CreateKnowledgePage() {
                         *
                       </span>
                     </FieldLabel>
-                    <FieldControl
+                    <Input
                       autoComplete="off"
                       disabled={submissionLocked}
                       maxLength={NAME_MAX_LENGTH}

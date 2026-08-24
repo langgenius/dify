@@ -1,80 +1,92 @@
-import os
+from typing import override
 
 import pytest
 from flask import Flask
 from packaging.version import Version
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from yarl import URL
 
 from configs.app_config import DifyConfig
+from configs.feature import OpsTraceConfig
 from enums import DeploymentEdition
 
 
-def _clear_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in tuple(os.environ):
-        monkeypatch.delenv(name)
+def test_ops_trace_config_rejects_parent_context_ttl_shorter_than_retry_window() -> None:
+    with pytest.raises(ValidationError, match="must cover the retry window"):
+        OpsTraceConfig(
+            OPS_TRACE_UNIFIED_ENABLED=True,
+            OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+            OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+            OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+        )
 
 
-def _set_basic_config_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    _clear_environment(monkeypatch)
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
+def test_ops_trace_config_skips_parent_context_validation_when_unified_tracing_is_disabled() -> None:
+    OpsTraceConfig(
+        OPS_TRACE_UNIFIED_ENABLED=False,
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=19,
+    )
 
 
-def test_dify_config_keeps_secret_key_empty_when_missing(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path,
-) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.delenv("SECRET_KEY", raising=False)
-    monkeypatch.setenv("OPENDAL_FS_ROOT", str(tmp_path))
+def test_ops_trace_config_accepts_parent_context_ttl_covering_retry_window() -> None:
+    OpsTraceConfig(
+        OPS_TRACE_UNIFIED_ENABLED=True,
+        OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES=4,
+        OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS=5,
+        OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS=20,
+    )
 
-    config = DifyConfig(_env_file=None)
+
+class _IsolatedDifyConfig(DifyConfig):
+    """Load explicit test values and packaging metadata without consulting process state."""
+
+    @classmethod
+    @override
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        production_sources = super().settings_customise_sources(
+            settings_cls,
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
+        return init_settings, production_sources[-1]
+
+
+def _make_config(**values: object) -> DifyConfig:
+    return _IsolatedDifyConfig(**values)
+
+
+def test_dify_config_keeps_secret_key_empty_when_missing(tmp_path) -> None:
+    config = _make_config(OPENDAL_FS_ROOT=str(tmp_path))
 
     assert config.SECRET_KEY == ""
     assert not hasattr(config, "OPENDAL_FS_ROOT")
     assert not (tmp_path / ".dify_secret_key").exists()
 
 
-def test_dify_config_preserves_explicit_secret_key(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path,
-) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv("SECRET_KEY", "explicit")
-    monkeypatch.setenv("OPENDAL_FS_ROOT", str(tmp_path))
-
-    config = DifyConfig(_env_file=None)
+def test_dify_config_preserves_explicit_secret_key(tmp_path) -> None:
+    config = _make_config(SECRET_KEY="explicit", OPENDAL_FS_ROOT=str(tmp_path))
 
     assert config.SECRET_KEY == "explicit"
     assert not (tmp_path / ".dify_secret_key").exists()
 
 
-def test_dify_config(monkeypatch: pytest.MonkeyPatch):
-    # clear system environment variables
-    _clear_environment(monkeypatch)
-
-    # Set environment variables using monkeypatch
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("HTTP_REQUEST_MAX_WRITE_TIMEOUT", "30")  # Custom value for testing
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "300")  # Custom value for testing
-
-    # load dotenv file with pydantic-settings
-    # Disable `.env` loading to ensure test stability across environments
-    config = DifyConfig(_env_file=None)
+def test_dify_config():
+    config = _make_config(
+        HTTP_REQUEST_MAX_WRITE_TIMEOUT="30",
+        HTTP_REQUEST_MAX_READ_TIMEOUT="300",
+    )
 
     # constant values
     assert config.COMMIT_SHA == ""
@@ -106,43 +118,27 @@ def test_dify_config(monkeypatch: pytest.MonkeyPatch):
         pytest.param("pässwörd-🔐", "pässwörd-🔐", id="unicode"),
     ],
 )
-def test_init_password_defaults_to_empty_and_preserves_environment_value(
-    monkeypatch: pytest.MonkeyPatch,
+def test_init_password_defaults_to_empty_and_preserves_explicit_value(
     environment_value: str | None,
     expected: str,
 ) -> None:
-    _set_basic_config_env(monkeypatch)
-    if environment_value is None:
-        monkeypatch.delenv("INIT_PASSWORD", raising=False)
-    else:
-        monkeypatch.setenv("INIT_PASSWORD", environment_value)
-
-    config = DifyConfig(_env_file=None)
+    values = {} if environment_value is None else {"INIT_PASSWORD": environment_value}
+    config = _make_config(**values)
 
     assert expected == config.INIT_PASSWORD
 
 
 @pytest.mark.parametrize("edition", list(DeploymentEdition))
-def test_deployment_edition_is_loaded_from_environment(
-    monkeypatch: pytest.MonkeyPatch,
-    edition: DeploymentEdition,
-) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv("DEPLOYMENT_EDITION", edition.value)
-
-    config = DifyConfig(_env_file=None)
+def test_deployment_edition_accepts_every_supported_value(edition: DeploymentEdition) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition.value)
 
     assert config.DEPLOYMENT_EDITION is edition
 
 
-def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv(
-        "NEW_USER_DEFAULT_PLUGIN_IDS",
-        "langgenius/openai, langgenius/gemini",
+def test_new_user_default_plugin_ids_are_parsed() -> None:
+    config = _make_config(
+        NEW_USER_DEFAULT_PLUGIN_IDS="langgenius/openai, langgenius/gemini",
     )
-
-    config = DifyConfig(_env_file=None)
 
     assert config.NEW_USER_DEFAULT_PLUGIN_ID_LIST == [
         "langgenius/openai",
@@ -150,48 +146,45 @@ def test_new_user_default_plugin_ids_are_parsed_from_env(monkeypatch: pytest.Mon
     ]
 
 
-def test_turnstile_config_is_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv("TURNSTILE_SECRET_KEY", " test-secret ")
-    monkeypatch.setenv("TURNSTILE_ALLOWED_HOSTNAMES", "dify.dev, Login.Example.COM. ")
-
-    config = DifyConfig(_env_file=None)
+def test_turnstile_config_is_parsed() -> None:
+    config = _make_config(
+        TURNSTILE_SECRET_KEY=" test-secret ",
+        TURNSTILE_ALLOWED_HOSTNAMES="dify.dev, Login.Example.COM. ",
+        TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED="true",
+    )
 
     assert isinstance(config.TURNSTILE_SECRET_KEY, SecretStr)
     assert config.TURNSTILE_SECRET_KEY.get_secret_value() == "test-secret"
     assert frozenset({"dify.dev", "login.example.com"}) == config.TURNSTILE_ALLOWED_HOSTNAME_SET
+    assert config.TURNSTILE_EMAIL_CODE_VERIFY_REQUIRED is True
 
 
-def test_plugin_remote_install_port_rejects_host_port_spec(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_email_code_login_attempt_budget_is_parsed() -> None:
+    config = _make_config(EMAIL_CODE_LOGIN_MAX_ATTEMPTS="7")
+
+    assert config.EMAIL_CODE_LOGIN_MAX_ATTEMPTS == 7
+
+
+def test_plugin_remote_install_port_rejects_host_port_spec() -> None:
     """A 'host:port' compose publish spec must produce an actionable error, not an opaque int_parsing traceback."""
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv("PLUGIN_REMOTE_INSTALL_PORT", "127.0.0.1:5003")
-
     with pytest.raises(ValueError, match="must be a bare port number"):
-        DifyConfig(_env_file=None)
+        _make_config(PLUGIN_REMOTE_INSTALL_PORT="127.0.0.1:5003")
 
 
-def test_plugin_remote_install_port_accepts_bare_port(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv("PLUGIN_REMOTE_INSTALL_PORT", "5003")
-
-    config = DifyConfig(_env_file=None)
+def test_plugin_remote_install_port_accepts_bare_port() -> None:
+    config = _make_config(PLUGIN_REMOTE_INSTALL_PORT="5003")
 
     assert config.PLUGIN_REMOTE_INSTALL_PORT == 5003
 
 
-def test_new_user_default_models_are_parsed_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv(
-        "NEW_USER_DEFAULT_MODELS",
-        (
+def test_new_user_default_models_are_parsed() -> None:
+    config = _make_config(
+        NEW_USER_DEFAULT_MODELS=(
             "llm:langgenius/openai/openai:gpt-4o-mini, "
             "text-embedding:langgenius/openai/openai:text-embedding-3-small, "
             "rerank:langgenius/ollama/ollama:reranker:latest"
         ),
     )
-
-    config = DifyConfig(_env_file=None)
 
     assert config.NEW_USER_DEFAULT_MODEL_LIST == [
         ("llm", "langgenius/openai/openai", "gpt-4o-mini"),
@@ -200,34 +193,20 @@ def test_new_user_default_models_are_parsed_from_env(monkeypatch: pytest.MonkeyP
     ]
 
 
-def test_new_user_default_models_reject_duplicate_model_types(monkeypatch: pytest.MonkeyPatch) -> None:
-    _set_basic_config_env(monkeypatch)
-    monkeypatch.setenv(
-        "NEW_USER_DEFAULT_MODELS",
-        "llm:langgenius/openai/openai:gpt-4o-mini,llm:langgenius/anthropic/anthropic:claude-sonnet-4",
+def test_new_user_default_models_reject_duplicate_model_types() -> None:
+    config = _make_config(
+        NEW_USER_DEFAULT_MODELS=(
+            "llm:langgenius/openai/openai:gpt-4o-mini,llm:langgenius/anthropic/anthropic:claude-sonnet-4"
+        ),
     )
-
-    config = DifyConfig(_env_file=None)
 
     with pytest.raises(ValueError, match="duplicate model type: llm"):
         _ = config.NEW_USER_DEFAULT_MODEL_LIST
 
 
-def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
+def test_http_timeout_defaults():
     """Test that HTTP timeout defaults are correctly set"""
-    # clear system environment variables
-    _clear_environment(monkeypatch)
-
-    # Set minimal required env vars
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-
-    # Disable `.env` loading to ensure test stability across environments
-    config = DifyConfig(_env_file=None)
+    config = _make_config()
 
     # Verify default timeout values
     assert config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT == 10
@@ -235,56 +214,43 @@ def test_http_timeout_defaults(monkeypatch: pytest.MonkeyPatch):
     assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 600
 
 
-def test_internal_files_url_falls_back_to_server_console_api_url(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-    monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
-
-    config = DifyConfig(_env_file=None)
+def test_internal_files_url_falls_back_to_server_console_api_url():
+    config = _make_config(SERVER_CONSOLE_API_URL="http://api:5001")
 
     assert config.INTERNAL_FILES_URL == "http://api:5001"
 
 
-def test_internal_files_url_prefers_explicit_value(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-    monkeypatch.setenv("INTERNAL_FILES_URL", "http://files-internal:5001")
-    monkeypatch.setenv("SERVER_CONSOLE_API_URL", "http://api:5001")
-
-    config = DifyConfig(_env_file=None)
+def test_internal_files_url_prefers_explicit_value():
+    config = _make_config(
+        INTERNAL_FILES_URL="http://files-internal:5001",
+        SERVER_CONSOLE_API_URL="http://api:5001",
+    )
 
     assert config.INTERNAL_FILES_URL == "http://files-internal:5001"
 
 
-def test_empty_files_url_overrides_console_api_url_for_relative_browser_uris(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-    monkeypatch.setenv("FILES_URL", "")
-    monkeypatch.setenv("CONSOLE_API_URL", "http://api:5001")
-
-    config = DifyConfig(_env_file=None)
+def test_empty_files_url_overrides_console_api_url_for_relative_browser_uris():
+    config = _make_config(FILES_URL="", CONSOLE_API_URL="http://api:5001")
 
     assert config.FILES_URL == ""
 
 
-# NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
-# This is due to `pymilvus` loading all the variables from the `.env` file into `os.environ`.
-def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
+def test_flask_configs():
     flask_app = Flask("app")
-    # clear system environment variables
-    _clear_environment(monkeypatch)
-
-    # Set environment variables using monkeypatch
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
-    monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
-
-    # Disable `.env` loading to ensure test stability across environments
-    flask_app.config.from_mapping(DifyConfig(_env_file=None).model_dump())
+    flask_app.config.from_mapping(
+        _make_config(
+            CONSOLE_API_URL="https://example.com",
+            CONSOLE_WEB_URL="https://example.com",
+            DB_TYPE="postgresql",
+            DB_USERNAME="postgres",
+            DB_PASSWORD="postgres",
+            DB_HOST="localhost",
+            DB_PORT="5432",
+            DB_DATABASE="dify",
+            WEB_API_CORS_ALLOW_ORIGINS="http://127.0.0.1:3000,*",
+            CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194/",
+        ).model_dump()
+    )
     config = flask_app.config
 
     # configs read from pydantic-settings
@@ -321,147 +287,67 @@ def test_flask_configs(monkeypatch: pytest.MonkeyPatch):
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://127.0.0.1:8194/v1"
 
 
-def test_inner_api_config_exist(monkeypatch: pytest.MonkeyPatch):
-    # Set environment variables using monkeypatch
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("INNER_API_KEY", "test-inner-api-key")
-
-    config = DifyConfig()
+def test_inner_api_config_exist():
+    config = _make_config(INNER_API_KEY="test-inner-api-key")
     assert config.INNER_API is False
     assert isinstance(config.INNER_API_KEY, str)
     assert len(config.INNER_API_KEY) > 0
 
 
-def test_db_extras_options_merging(monkeypatch: pytest.MonkeyPatch):
+def test_db_extras_options_merging():
     """Test that DB_EXTRAS options are merged with the default timezone startup option."""
-    # Set environment variables
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("DB_EXTRAS", "options=-c search_path=myschema")
-
-    # Create config
-    config = DifyConfig()
+    config = _make_config(DB_EXTRAS="options=-c search_path=myschema")
 
     options = config.SQLALCHEMY_ENGINE_OPTIONS["connect_args"]["options"]
     assert "search_path=myschema" in options
     assert "timezone=UTC" in options
 
 
-def test_db_session_timezone_override_can_disable_app_level_timezone_injection(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("DB_EXTRAS", "options=-c search_path=myschema")
-    monkeypatch.setenv("DB_SESSION_TIMEZONE_OVERRIDE", "")
-
-    config = DifyConfig()
+def test_db_session_timezone_override_can_disable_app_level_timezone_injection():
+    config = _make_config(
+        DB_EXTRAS="options=-c search_path=myschema",
+        DB_SESSION_TIMEZONE_OVERRIDE="",
+    )
 
     assert config.SQLALCHEMY_ENGINE_OPTIONS["connect_args"] == {
         "options": "-c search_path=myschema",
     }
 
 
-def test_pubsub_redis_url_default(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("REDIS_HOST", "redis.example.com")
-    monkeypatch.setenv("REDIS_PORT", "6380")
-    monkeypatch.setenv("REDIS_USERNAME", "user")
-    monkeypatch.setenv("REDIS_PASSWORD", "pass@word")
-    monkeypatch.setenv("REDIS_DB", "2")
-    monkeypatch.setenv("REDIS_USE_SSL", "true")
-
-    config = DifyConfig()
+def test_pubsub_redis_url_default():
+    config = _make_config(
+        REDIS_HOST="redis.example.com",
+        REDIS_PORT="6380",
+        REDIS_USERNAME="user",
+        REDIS_PASSWORD="pass@word",
+        REDIS_DB="2",
+        REDIS_USE_SSL="true",
+    )
 
     assert config.normalized_pubsub_redis_url == "rediss://user:pass%40word@redis.example.com:6380/2"
     assert config.PUBSUB_REDIS_CHANNEL_TYPE == "pubsub"
 
 
-def test_pubsub_redis_url_override(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("PUBSUB_REDIS_URL", "redis://pubsub-host:6381/5")
-
-    config = DifyConfig()
+def test_pubsub_redis_url_override():
+    config = _make_config(PUBSUB_REDIS_URL="redis://pubsub-host:6381/5")
 
     assert config.normalized_pubsub_redis_url == "redis://pubsub-host:6381/5"
 
 
-def test_pubsub_redis_url_required_when_default_unavailable(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("REDIS_HOST", "")
-
+def test_pubsub_redis_url_required_when_default_unavailable():
+    config = _make_config(REDIS_HOST="")
     with pytest.raises(ValueError, match="PUBSUB_REDIS_URL must be set"):
-        _ = DifyConfig().normalized_pubsub_redis_url
+        _ = config.normalized_pubsub_redis_url
 
 
-def test_dify_config_exposes_redis_key_prefix_default(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-
-    config = DifyConfig(_env_file=None)
+def test_dify_config_exposes_redis_key_prefix_default():
+    config = _make_config()
 
     assert config.REDIS_KEY_PREFIX == ""
 
 
-def test_dify_config_reads_redis_key_prefix_from_env(monkeypatch: pytest.MonkeyPatch):
-    _clear_environment(monkeypatch)
-
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-    monkeypatch.setenv("REDIS_KEY_PREFIX", "enterprise-a")
-
-    config = DifyConfig(_env_file=None)
+def test_dify_config_accepts_redis_key_prefix():
+    config = _make_config(REDIS_KEY_PREFIX="enterprise-a")
 
     assert config.REDIS_KEY_PREFIX == "enterprise-a"
 
@@ -489,7 +375,6 @@ def test_dify_config_reads_redis_key_prefix_from_env(monkeypatch: pytest.MonkeyP
     ],
 )
 def test_celery_broker_url_with_special_chars_password(
-    monkeypatch: pytest.MonkeyPatch,
     broker_url,
     expected_host,
     expected_port,
@@ -500,24 +385,7 @@ def test_celery_broker_url_with_special_chars_password(
     """Test that CELERY_BROKER_URL with various formats are handled correctly."""
     from kombu.utils.url import parse_url
 
-    # clear system environment variables
-    _clear_environment(monkeypatch)
-
-    # Set up basic required environment variables (following existing pattern)
-    monkeypatch.setenv("CONSOLE_API_URL", "https://example.com")
-    monkeypatch.setenv("CONSOLE_WEB_URL", "https://example.com")
-    monkeypatch.setenv("DB_TYPE", "postgresql")
-    monkeypatch.setenv("DB_USERNAME", "postgres")
-    monkeypatch.setenv("DB_PASSWORD", "postgres")
-    monkeypatch.setenv("DB_HOST", "localhost")
-    monkeypatch.setenv("DB_PORT", "5432")
-    monkeypatch.setenv("DB_DATABASE", "dify")
-
-    # Set the CELERY_BROKER_URL to test
-    monkeypatch.setenv("CELERY_BROKER_URL", broker_url)
-
-    # Create config and verify the URL is stored correctly
-    config = DifyConfig()
+    config = _make_config(CELERY_BROKER_URL=broker_url)
     assert broker_url == config.CELERY_BROKER_URL
 
     # Test actual parsing behavior using kombu's parse_url (same as production)

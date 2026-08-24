@@ -30,6 +30,7 @@ from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
+from models.enums import PermissionEnum
 from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
@@ -74,6 +75,13 @@ class DatasourceUpdateNamePayload(BaseModel):
 
 class DatasourceOAuthAuthorizationQuery(BaseModel):
     credential_id: str | None = Field(default=None, description="Credential ID to reauthorize")
+    visibility: str | None = Field(
+        default=None,
+        description=(
+            "Visibility for the credential to be created. Accepts 'only_me' or 'all_team_members'; "
+            "any other value falls back to 'only_me'. Ignored on reauthorization (credential_id set)."
+        ),
+    )
 
 
 class DatasourceOAuthCallbackQuery(BaseModel):
@@ -175,12 +183,27 @@ class DatasourcePluginOAuthAuthorizationUrl(Resource):
         if not oauth_config:
             raise ValueError(f"No OAuth Client Config for {provider_id}")
 
+        # Visibility is chosen by the user in the frontend before the redirect,
+        # then read back in the callback below when the credential is created.
+        # Only ONLY_ME / ALL_TEAM are accepted; anything else falls back to
+        # ONLY_ME (OAuth tokens are personal by nature).
+        # For reauthorization (credential_id set), visibility is ignored — we
+        # keep whatever the credential was created with.
+        raw_visibility = request.args.get("visibility")
+        try:
+            requested_visibility = PermissionEnum(raw_visibility) if raw_visibility else PermissionEnum.ONLY_ME
+        except ValueError:
+            requested_visibility = PermissionEnum.ONLY_ME
+        if requested_visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
+            requested_visibility = PermissionEnum.ONLY_ME
+
         context_id = OAuthProxyService.create_proxy_context(
             user_id=current_user.id,
             tenant_id=tenant_id,
             plugin_id=plugin_id,
             provider=provider_name,
             credential_id=credential_id,
+            extra_data={"visibility": requested_visibility.value},
         )
         oauth_handler = OAuthHandler()
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/datasource/callback"
@@ -253,6 +276,17 @@ class DatasourceOAuthCallback(Resource):
                 credential_id=credential_id,
             )
         else:
+            # Visibility was chosen by the user before the redirect and stashed
+            # in the proxy context. Fall back to ONLY_ME for older cookies (or
+            # anything that somehow wrote an unexpected value) — OAuth tokens
+            # are personal by default.
+            stored_visibility = context.get("visibility")
+            try:
+                visibility = PermissionEnum(stored_visibility) if stored_visibility else PermissionEnum.ONLY_ME
+            except ValueError:
+                visibility = PermissionEnum.ONLY_ME
+            if visibility not in (PermissionEnum.ONLY_ME, PermissionEnum.ALL_TEAM):
+                visibility = PermissionEnum.ONLY_ME
             datasource_provider_service.add_datasource_oauth_provider(
                 tenant_id=tenant_id,
                 provider_id=datasource_provider_id,
@@ -260,6 +294,8 @@ class DatasourceOAuthCallback(Resource):
                 name=oauth_response.metadata.get("name") or None,
                 expire_at=oauth_response.expires_at,
                 credentials=dict(oauth_response.credentials),
+                user_id=user_id,
+                visibility=visibility,
             )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
@@ -300,6 +336,8 @@ class DatasourceAuth(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, user: Account, provider_id: str):
@@ -381,11 +419,12 @@ class DatasourceAuthListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, current_tenant_id: str, user: Account):
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_all_datasource_credentials(
-            tenant_id=current_tenant_id, session=db.session()
+            tenant_id=current_tenant_id, session=db.session(), user=user
         )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 
@@ -400,11 +439,12 @@ class DatasourceHardCodeAuthListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    def get(self, current_tenant_id: str, user: Account):
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_hard_code_datasource_credentials(
-            tenant_id=current_tenant_id, session=db.session()
+            tenant_id=current_tenant_id, session=db.session(), user=user
         )
         return dump_response(DatasourceProviderAuthListResponse, {"result": datasources}), 200
 

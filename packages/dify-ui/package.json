@@ -85,6 +85,10 @@
       "types": "./src/input/index.tsx",
       "import": "./src/input/index.tsx"
     },
+    "./input-group": {
+      "types": "./src/input-group/index.tsx",
+      "import": "./src/input-group/index.tsx"
+    },
     "./kbd": {
       "types": "./src/kbd/index.tsx",
       "import": "./src/kbd/index.tsx"
@@ -105,9 +109,9 @@
       "types": "./src/pagination/index.tsx",
       "import": "./src/pagination/index.tsx"
     },
-    "./radio": {
-      "types": "./src/radio/index.tsx",
-      "import": "./src/radio/index.tsx"
+    "./radio-group": {
+      "types": "./src/radio-group/index.tsx",
+      "import": "./src/radio-group/index.tsx"
     },
     "./popover": {
       "types": "./src/popover/index.tsx",

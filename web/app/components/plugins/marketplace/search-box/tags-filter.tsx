@@ -2,7 +2,7 @@
 
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { Input } from '@langgenius/dify-ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
@@ -47,26 +47,29 @@ function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
         placement="bottom-start"
         sideOffset={4}
         alignOffset={-6}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div className="w-60 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <div className="relative">
-              <span
-                aria-hidden
-                className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
-              />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 type="search"
                 name="tag-query"
                 autoComplete="off"
+                enterKeyHint="search"
                 aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
-                className="pl-6.5"
+                className="[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
                 value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
+                onValueChange={setSearchText}
                 placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
               />
-            </div>
+              <InputGroupAddon className="ps-1.75 pe-0.75">
+                <span
+                  aria-hidden
+                  className="i-ri-search-line size-4 text-components-input-text-placeholder"
+                />
+              </InputGroupAddon>
+            </InputGroup>
           </div>
           <CheckboxGroup
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}

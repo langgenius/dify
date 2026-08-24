@@ -25,6 +25,7 @@ from controllers.console.error import AccountBannedError
 from controllers.console.wraps import (
     decrypt_code_field,
     decrypt_password_field,
+    model_validate,
     only_edition_enterprise,
     setup_required,
 )
@@ -100,9 +101,9 @@ class LoginApi(Resource):
     )
     @web_ns.response(200, "Authentication successful", web_ns.models[AccessTokenResultResponse.__name__])
     @decrypt_password_field
-    def post(self):
+    @model_validate(LoginPayload)
+    def post(self, payload: LoginPayload):
         """Authenticate user and login."""
-        payload = LoginPayload.model_validate(web_ns.payload or {})
         normalized_email = payload.email.lower()
 
         try:
@@ -139,8 +140,8 @@ class LoginStatusApi(Resource):
         }
     )
     @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
-    def get(self):
-        query = LoginStatusQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(LoginStatusQuery)
+    def get(self, query: LoginStatusQuery):
         app_code = query.app_code
         user_id = query.user_id
         token = extract_webapp_access_token(request)
@@ -206,9 +207,8 @@ class EmailCodeLoginSendEmailApi(Resource):
         }
     )
     @web_ns.response(200, "Email code sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
-    def post(self):
-        payload = EmailCodeLoginSendPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(EmailCodeLoginSendPayload)
+    def post(self, payload: EmailCodeLoginSendPayload):
         if payload.language == "zh-Hans":
             language = "zh-Hans"
         else:
@@ -242,9 +242,8 @@ class EmailCodeLoginApi(Resource):
         web_ns.models[AccessTokenResultResponse.__name__],
     )
     @decrypt_code_field
-    def post(self):
-        payload = EmailCodeLoginVerifyPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(EmailCodeLoginVerifyPayload)
+    def post(self, payload: EmailCodeLoginVerifyPayload):
         user_email = payload.email.lower()
 
         token_data = WebAppAuthService.get_email_code_login_data(payload.token)

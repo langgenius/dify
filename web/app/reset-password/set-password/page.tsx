@@ -1,12 +1,15 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldDescription, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -109,68 +112,75 @@ const ChangePasswordForm = () => {
           </div>
 
           <div className="mx-auto mt-6 w-full">
-            <div>
-              {/* Password */}
-              <div className="mb-5">
-                <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
+            <Form onFormSubmit={() => void handleChangePassword()}>
+              <Field name="password" className="mb-5">
+                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
                   {t(($) => $['account.newPassword'], { ns: 'common' })}
-                </label>
-                <div className="relative mt-1">
-                  <Input
-                    id="password"
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    spellCheck={false}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onValueChange={setPassword}
                     placeholder={t(($) => $.passwordPlaceholder, { ns: 'login' }) || ''}
                   />
-
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
+                  <InputGroupAddon align="inline-end">
+                    <IconButton
+                      aria-label={t(($) => $[showPassword ? 'hidePassword' : 'showPassword'], {
+                        ns: 'login',
+                      })}
                       onClick={() => setShowPassword(!showPassword)}
                     >
-                      {showPassword ? '👀' : '😝'}
-                    </Button>
-                  </div>
-                </div>
-                <div className="mt-1 body-xs-regular text-text-secondary">
+                      <span
+                        className={
+                          showPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                        }
+                        aria-hidden="true"
+                      />
+                    </IconButton>
+                  </InputGroupAddon>
+                </InputGroup>
+                <FieldDescription className="py-0 body-xs-regular text-text-secondary">
                   {t(($) => $['error.passwordInvalid'], { ns: 'login' })}
-                </div>
-              </div>
-              {/* Confirm Password */}
-              <div className="mb-5">
-                <label
-                  htmlFor="confirmPassword"
-                  className="my-2 system-md-semibold text-text-secondary"
-                >
+                </FieldDescription>
+              </Field>
+              <Field name="confirmPassword" className="mb-5">
+                <FieldLabel className="py-0 system-md-semibold text-text-secondary">
                   {t(($) => $['account.confirmPassword'], { ns: 'common' })}
-                </label>
-                <div className="relative mt-1">
-                  <Input
-                    id="confirmPassword"
+                </FieldLabel>
+                <InputGroup>
+                  <InputGroupInput
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    spellCheck={false}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onValueChange={setConfirmPassword}
                     placeholder={t(($) => $.confirmPasswordPlaceholder, { ns: 'login' }) || ''}
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <Button
-                      type="button"
-                      variant="ghost"
+                  <InputGroupAddon align="inline-end">
+                    <IconButton
+                      aria-label={t(
+                        ($) => $[showConfirmPassword ? 'hidePassword' : 'showPassword'],
+                        { ns: 'login' },
+                      )}
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
-                      {showConfirmPassword ? '👀' : '😝'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <Button variant="primary" className="w-full" onClick={handleChangePassword}>
-                  {t(($) => $.changePasswordBtn, { ns: 'login' })}
-                </Button>
-              </div>
-            </div>
+                      <span
+                        className={
+                          showConfirmPassword ? 'i-ri-eye-off-line size-4' : 'i-ri-eye-line size-4'
+                        }
+                        aria-hidden="true"
+                      />
+                    </IconButton>
+                  </InputGroupAddon>
+                </InputGroup>
+              </Field>
+              <Button type="submit" variant="primary" className="w-full">
+                {t(($) => $.changePasswordBtn, { ns: 'login' })}
+              </Button>
+            </Form>
           </div>
         </div>
       )}
@@ -178,7 +188,7 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-100">
           <div className="mx-auto w-full">
             <div className="mb-3 flex size-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className="size-6 text-text-success" />
+              <RiCheckboxCircleFill aria-hidden="true" className="size-6 text-text-success" />
             </div>
             <h1 className="title-4xl-semi-bold text-text-primary">
               {t(($) => $.passwordChangedTip, { ns: 'login' })}

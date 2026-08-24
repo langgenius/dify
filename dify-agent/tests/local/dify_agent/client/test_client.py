@@ -34,6 +34,7 @@ from dify_agent.protocol import (
     DestroyExecutionBindingRequest,
     RUN_EVENT_ADAPTER,
     RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunEventsResponse,
     RunFailedEvent,
@@ -97,9 +98,9 @@ def _binding_file_download_request(path: str = "report.txt") -> BindingFileDownl
     )
 
 
-def _assert_binding_download_timeout(request: httpx.Request) -> None:
+def _assert_binding_download_timeout(request: httpx.Request, expected: float = 240.0) -> None:
     timeout = cast(dict[str, float], request.extensions["timeout"])
-    assert timeout == {"connect": 90.0, "read": 90.0, "write": 90.0, "pool": 90.0}
+    assert timeout == {"connect": expected, "read": expected, "write": expected, "pool": expected}
 
 
 def _function_tool_result_payload(key: str) -> dict[str, object]:
@@ -155,7 +156,7 @@ def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest
     assert event is not None
     assert event.type == "pydantic_ai_event"
     assert event.data.event_kind == "function_tool_result"
-    assert event.data.result.tool_name == "shell_run"
+    assert event.data.part.tool_name == "shell_run"
 
 
 def test_function_tool_result_payload_normalization_supports_old_part_schema(
@@ -245,6 +246,109 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
     asyncio.run(scenario())
 
 
+def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
+    snapshot = CompositorSessionSnapshot(layers=[])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(
+                200,
+                json={
+                    "run_id": "run-1",
+                    "status": "running",
+                    "created_at": "2026-08-17T00:00:00Z",
+                    "updated_at": "2026-08-17T00:00:00Z",
+                },
+            )
+        assert request.url.params["after"] == "3-0"
+        event = RunCancelledEvent(
+            id="4-0",
+            run_id="run-1",
+            data=RunCancelledEventData(reason="stopped", session_snapshot=snapshot),
+        )
+        return httpx.Response(200, content=_event_frame(event))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    event = client.cancel_run_and_wait_sync(
+        "run-1",
+        CancelRunRequest(reason="stopped"),
+        after="3-0",
+    )
+
+    assert event.data.session_snapshot == snapshot
+
+
+def test_cancel_run_and_wait_sync_replays_when_cursor_already_points_to_cancelled_event() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(
+                200,
+                json={
+                    "run_id": "run-1",
+                    "status": "cancelled",
+                    "created_at": "2026-08-17T00:00:00Z",
+                    "updated_at": "2026-08-17T00:00:01Z",
+                },
+            )
+        assert request.url.params["after"] == "0-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="4-0", run_id="run-1")))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    event = client.cancel_run_and_wait_sync("run-1", after="4-0")
+
+    assert event.id == "4-0"
+
+
+def test_cancel_run_and_wait_async_returns_cancelled_terminal() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(200, json=_run_status_json("running"))
+        assert request.url.params["after"] == "1-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+        event = await client.cancel_run_and_wait("run-1", after="1-0")
+        assert event.type == "run_cancelled"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_and_wait_async_replays_when_cursor_already_points_to_cancelled_event() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
+        if request.url.path == "/runs/run-1":
+            return httpx.Response(200, json=_run_status_json("cancelled"))
+        assert request.url.params["after"] == "0-0"
+        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="4-0", run_id="run-1")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+        event = await client.cancel_run_and_wait("run-1", after="4-0")
+        assert event.id == "4-0"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
 def test_sync_binding_file_methods_post_dtos_and_parse_responses() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/execution-bindings/files/list":
@@ -294,13 +398,17 @@ def test_async_binding_file_methods_post_dtos_and_parse_responses() -> None:
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
         if request.url.path == "/execution-bindings/files/download":
-            _assert_binding_download_timeout(request)
+            _assert_binding_download_timeout(request, expected=123.5)
             return httpx.Response(200, json={"reference": "dify-file-ref:file-1"})
         raise AssertionError(f"unexpected request: {request.method} {request.url}")
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-        client = Client(base_url="http://testserver", async_http_client=http_client)
+        client = Client(
+            base_url="http://testserver",
+            binding_file_download_timeout=123.5,
+            async_http_client=http_client,
+        )
 
         listing = await client.list_binding_files("binding-ref", ".")
         preview = await client.read_binding_file("binding-ref", "note.txt")

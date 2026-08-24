@@ -383,7 +383,7 @@
   "roster.createForm.rolePlaceholder": "ad es. Assistente di ricerca",
   "roster.createSuccess": "Agente creato.",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
-  "roster.deleteDialog.description": "Questo Agent sarà rimosso dall’elenco Agent.",
+  "roster.deleteDialog.description": "Questa azione elimina definitivamente {{name}}. La sua app web, l’accesso API e i workflow che lo utilizzano smetteranno immediatamente di funzionare.",
   "roster.deleteDialog.title": "Eliminare {{name}}?",
   "roster.deleteFailed": "Impossibile eliminare l’agente.",
   "roster.deleteSuccess": "Agente eliminato.",

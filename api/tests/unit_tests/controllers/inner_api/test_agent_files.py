@@ -1,8 +1,7 @@
 import inspect
 from collections.abc import Callable
-from types import SimpleNamespace
 from typing import cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from flask import Flask
@@ -11,11 +10,19 @@ from sqlalchemy.orm import Session
 from controllers.inner_api.agent.files import (
     AgentFileDownloadRequestApi,
     AgentFileUploadRequestApi,
+    AgentFileUploadRequestPayload,
 )
 from core.workflow.file_reference import build_file_reference
+from models.account import Account, Tenant
 from services.file_request_service import DownloadFileRequestResult
 
 MODULE = "controllers.inner_api.agent.files"
+
+
+def _tenant() -> Tenant:
+    tenant = Tenant(name="Test Workspace")
+    tenant.id = "tenant-1"
+    return tenant
 
 
 def _raw[R](method: Callable[..., R]) -> Callable[..., R]:
@@ -29,9 +36,11 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         "filename": "report.pdf",
         "mimetype": "application/pdf",
         "conversation_id": "conversation-1",
+        "max_size": 64 * 1024 * 1024,
     }
-    tenant = SimpleNamespace(id="tenant-1")
-    user = SimpleNamespace(id="canonical-end-user-1")
+    tenant = _tenant()
+    user = Account(name="Canonical user", email="canonical@example.com")
+    user.id = "canonical-end-user-1"
     session = unbound_session
     with app.test_request_context("/", method="POST", json=payload):
         with (
@@ -51,7 +60,24 @@ def test_upload_request_returns_origin_free_uri(app: Flask, unbound_session: Ses
         user_id="canonical-end-user-1",
         conversation_id="conversation-1",
         user_from=None,
+        max_size=64 * 1024 * 1024,
     )
+
+
+def test_upload_request_payload_requires_non_negative_max_size() -> None:
+    payload = {
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "filename": "report.pdf",
+        "mimetype": "application/pdf",
+    }
+
+    with pytest.raises(ValueError):
+        AgentFileUploadRequestPayload.model_validate(payload)
+    with pytest.raises(ValueError):
+        AgentFileUploadRequestPayload.model_validate({**payload, "max_size": -1})
+
+    assert AgentFileUploadRequestPayload.model_validate({**payload, "max_size": 0}).max_size == 0
 
 
 def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unbound_session: Session) -> None:
@@ -70,7 +96,7 @@ def test_download_request_returns_origin_free_uri_for_sandbox(app: Flask, unboun
             patch(f"{MODULE}.TenantService") as tenant_service,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = MagicMock()
+            tenant_service.get_tenant_by_id.return_value = _tenant()
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",
@@ -113,7 +139,7 @@ def test_download_request_binds_frontend_url(
             patch(f"{MODULE}.TenantService") as tenant_service,
             patch(f"{MODULE}.FileRequestService") as service,
         ):
-            tenant_service.get_tenant_by_id.return_value = MagicMock()
+            tenant_service.get_tenant_by_id.return_value = _tenant()
             service.return_value.request_download.return_value = DownloadFileRequestResult(
                 filename="report.pdf",
                 mime_type="application/pdf",

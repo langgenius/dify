@@ -19,7 +19,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
-from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
 from dify_agent.runtime.runner import DEFAULT_AGENT_RUN_TIMEOUT_SECONDS
@@ -64,6 +63,7 @@ class ServerSettings(BaseSettings):
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    enterprise_sandbox_snapshot_timeout: float = Field(default=35.0, gt=0)
     e2b_api_key: str | None = None
     e2b_template: str = "difys-default-team/dify-agent-local-sandbox"
     e2b_active_timeout_seconds: int = Field(
@@ -71,13 +71,19 @@ class ServerSettings(BaseSettings):
         ge=1,
         le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
     )
-    e2b_shellctl_auth_token: str = ""
     e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     sandbox_files_base_url: str | None = Field(
         default=None,
         validation_alias="DIFY_AGENT_SANDBOX_FILES_BASE_URL",
     )
+    stub_upload_file_size_limit: int = Field(
+        default=50,
+        ge=0,
+        description="Maximum Agent Stub upload size in MiB",
+        validation_alias="DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT",
+    )
+    binding_file_download_command_timeout_seconds: float = Field(default=210.0, gt=0)
     server_secret_key: str | None = None
     api_token: str | None = None
     shell_redact_patterns: str = ""
@@ -202,10 +208,10 @@ class ServerSettings(BaseSettings):
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
                 enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
+                enterprise_sandbox_snapshot_timeout=self.enterprise_sandbox_snapshot_timeout,
                 e2b_api_key=self.e2b_api_key,
                 e2b_template=self.e2b_template,
                 e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
-                e2b_shellctl_auth_token=self.e2b_shellctl_auth_token,
                 e2b_shellctl_port=self.e2b_shellctl_port,
             )
         )
@@ -224,6 +230,7 @@ class ServerSettings(BaseSettings):
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
             sandbox_files_base_url=self.sandbox_files_base_url,
+            max_upload_size_bytes=self.stub_upload_file_size_limit * 1024 * 1024,
             timeout=self.create_outbound_http_timeout(),
         )
 
@@ -235,20 +242,6 @@ class ServerSettings(BaseSettings):
             inner_api_url=self.inner_api_url,
             inner_api_key=self.inner_api_key,
             sandbox_files_base_url=self.sandbox_files_base_url,
-            timeout=self.create_outbound_http_timeout(),
-        )
-
-    def create_agent_stub_drive_request_handler(self) -> DifyApiAgentStubDriveRequestHandler | None:
-        """Return the Dify API drive bridge when both Dify API settings are configured.
-
-        Drive manifest and commit requests should honor the same outbound timeout
-        settings as the server's other trusted Dify API HTTP calls.
-        """
-        if self.inner_api_key is None:
-            return None
-        return DifyApiAgentStubDriveRequestHandler(
-            inner_api_url=self.inner_api_url,
-            inner_api_key=self.inner_api_key,
             timeout=self.create_outbound_http_timeout(),
         )
 

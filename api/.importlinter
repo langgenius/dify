@@ -93,6 +93,33 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:account-application-boundary]
+name = Account application services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.account_avatar_service
+    services.account_change_email_ports
+    services.account_change_email_service
+    services.account_deletion_service
+    services.account_deletion_feedback_service
+    services.account_education_service
+    services.account_errors
+    services.account_initialization_service
+    services.account_integration_service
+    services.account_password_service
+    services.account_ports
+    services.account_profile_service
+    services.entities.account_entities
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
 [importlinter:contract:app-definition-query-service-boundary]
 name = App definition query application service is framework and persistence neutral
 type = forbidden
@@ -106,6 +133,41 @@ forbidden_modules =
     repositories
     sqlalchemy
     werkzeug
+
+[importlinter:contract:webapp-access-query-service-boundary]
+name = Web app access query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.webapp_access_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.enterprise
+    services.feature_service
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:web-app-runtime-query-service-boundary]
+name = Web app runtime query application service does not directly depend on configuration, feature implementation, transport, or ORM modules
+type = forbidden
+source_modules =
+    services.web_app_runtime_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.feature_service
+    services.feature_service_gateway
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
 
 [importlinter:contract:feature-query-service-boundary]
 name = Feature query application service is framework and persistence neutral
@@ -167,3 +229,59 @@ forbidden_modules =
     repositories
     sqlalchemy
     werkzeug
+
+[importlinter:contract:account-activation-service-boundary]
+name = Account activation application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.account_activation_service
+    services.entities.account_activation_entities
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:tag-application-service-boundary]
+name = Tag application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.tag_application_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:recommended-app-query-service-boundary]
+name = Recommended app query application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.recommended_app_query_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    services.feature_service
+    services.recommended_app_catalog_gateway
+    sqlalchemy
+    werkzeug
+
+[importlinter:contract:recommended-app-catalog-gateway-boundary]
+name = Recommended app catalog gateway does not depend on Flask
+type = forbidden
+source_modules =
+    services.recommended_app_catalog_gateway
+forbidden_modules =
+    flask

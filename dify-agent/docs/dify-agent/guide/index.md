@@ -36,6 +36,7 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
 | `DIFY_AGENT_RUN_RETENTION_SECONDS` | `259200` | Seconds to retain Redis run records and per-run event streams; defaults to 3 days. |
 | `DIFY_AGENT_RUN_TIMEOUT_SECONDS` | `3600` | Wall-clock deadline in seconds for the Pydantic AI `agent.run(...)` model/tool loop. Deadline failures use `agent_run_limit_exceeded`. Its default intentionally matches `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS`, but the settings are independently configurable. |
+| `DIFY_AGENT_BINDING_FILE_DOWNLOAD_COMMAND_TIMEOUT_SECONDS` | `210` | Shell command deadline for running the sandbox `dify-agent file upload --no-download-link` conversion. Keep it above the CLI's 180-second upload deadline. |
 | `DIFY_AGENT_API_TOKEN` | empty | Optional Bearer token required by private run, Execution Binding, Home Snapshot, and Binding file control-plane routes. Must match Dify API `AGENT_BACKEND_API_TOKEN`. |
 | `DIFY_AGENT_PLUGIN_DAEMON_URL` | `http://localhost:5002` | Base URL for the Dify plugin daemon. |
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
@@ -44,9 +45,9 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
 | `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
-| `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify/.dify-agent-materialized-homes` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
-| `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/home/dify/.dify-agent-workspaces` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
-| `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.dify-agent-home-snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
+| `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
+| `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
+| `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT` | empty | Enterprise Gateway endpoint required by configuration. Default-Home Bindings are supported; immutable Home Snapshot operations remain unsupported. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_AUTH_TOKEN` | empty | Optional `X-Inner-Api-Key` sent to the Enterprise Gateway. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT` | `30` | Enterprise control-plane timeout in seconds. |
@@ -54,11 +55,11 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_E2B_API_KEY` | empty | E2B API key; required for E2B. |
 | `DIFY_AGENT_E2B_TEMPLATE` | `difys-default-team/dify-agent-local-sandbox` | Prepared E2B template containing shellctl and the deployment-default Home environment. |
 | `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time for the RuntimeLease spanning one complete Agent run. Its default intentionally matches `DIFY_AGENT_RUN_TIMEOUT_SECONDS`, but the settings are independently configurable. Binding resources pause on timeout; this setting does not own the run terminal state and is not a retention TTL. |
-| `DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token expected by shellctl inside the E2B template. |
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
 | `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
+| `DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` | `50` | Agent service-owned maximum Agent Stub upload size in MiB. The file-request handler factory converts it to bytes and sends it to Dify API as the required `max_size` used to sign a size-limited upload URL. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
 | `DIFY_AGENT_OUTBOUND_HTTP_CONNECT_TIMEOUT` | `10` | Shared outbound HTTP connect timeout in seconds. |
 | `DIFY_AGENT_OUTBOUND_HTTP_READ_TIMEOUT` | `600` | Shared outbound HTTP read timeout in seconds. |
@@ -90,6 +91,7 @@ DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT=/tmp/dify-agent/workspaces
 DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT=/tmp/dify-agent/home-snapshots
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
 DIFY_AGENT_SANDBOX_FILES_BASE_URL=https://dify.example.com
+DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT=50
 # This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
 # Replace this development default in production.
 # Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
@@ -111,10 +113,11 @@ Removing Agent Stub gRPC is a breaking transport migration: replace every
 
 For a remote Sandbox, expose only `/agent-stub/*` from Agent Backend and the
 existing `/files/*` Dify API data plane. The `/files/*` ingress must preserve
-the complete signed query string, allow the configured upload body size, and
-use response streaming and timeouts suitable for large downloads. Do not expose
-Agent Backend `/runs`, Workspace, or Binding management routes through the
-Sandbox ingress.
+the complete signed query string and set its request-body limit above the
+configured file-size limit to leave room for multipart framing and headers; the
+two limits need not be numerically equal. Use response streaming and timeouts
+suitable for large downloads. Do not expose Agent Backend `/runs`, Workspace,
+or Binding management routes through the Sandbox ingress.
 
 Browser presentation URLs are independent. Configure Dify API `FILES_URL` to a
 browser-reachable public origin, or leave it empty so responses use same-origin
@@ -280,26 +283,29 @@ run as failed with `error_type: "agent_run_limit_exceeded"`.
 
 During FastAPI shutdown the scheduler rejects new runs, waits up to
 `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` for active tasks, then cancels remaining tasks
-and attempts to finalize them as failed. Success, failure, cancellation, and this
-shutdown path all use one atomic Redis transition: only the first transition from
-`running` appends a terminal event and updates the run record. A later terminal
-attempt leaves both the record and event stream unchanged. A hard process crash
-can still leave active runs stuck as `running`; there is no in-service recovery
-or worker handoff.
+and attempts to finalize them as failed. Success and failure use an atomic Redis
+transition. Cancellation first atomically records a private intent; after the
+owner exits the runner, a second atomic transition appends `run_cancelled`,
+updates the run record, and deletes the intent. The first accepted success,
+failure, or cancellation intent wins. A hard process crash can still leave
+active runs, including runs with accepted cancellation intent, stuck as
+`running`; there is no in-service recovery or worker handoff.
 
 Horizontal scaling is possible by running multiple API processes against the same
 Redis prefix, but each process executes only the runs it accepted. Redis provides
 shared status/event visibility, not load balancing or queued-job recovery. The
 cancel endpoint can atomically accept a running run on any process. The process
-that owns the runner observes the shared `run_cancelled` event, then cancels and
-cleans up its local task. The HTTP response confirms that logical cancellation is
-durable; local runner cleanup may still be in progress. Retrying a cancellation
-after the run is already `cancelled` is idempotent.
+that owns the runner observes the private cancellation-intent stream, cancels
+and cleans up its local task, and only then emits `run_cancelled`. The HTTP
+response confirms that cancellation intent is durable; `GET /runs/{run_id}` may
+still report `running` until cleanup finishes. Retrying an accepted or completed
+cancellation is idempotent.
 
 Atomic terminal finalization currently assumes the configured Redis URL targets
-one Redis deployment that can execute both run keys in a Lua script. The existing
-record and event key names are unchanged and do not contain a shared Redis
-Cluster hash tag, so Redis Cluster is not supported for this transition. During
+one Redis deployment that can execute all run-coordination keys in a Lua script.
+The record and event key names are unchanged, and cancellation adds a private
+cancel-intent key. These keys do not contain a shared Redis Cluster hash tag, so
+Redis Cluster is not supported for this transition. During
 a rolling upgrade, older processes can still use the former split event/status
 writes; treat the single-terminal invariant as active only after those processes
 have exited. Deploy atomic terminal finalization everywhere first, then ensure
@@ -336,9 +342,12 @@ whose Agenton layers provide user input. With the MVP provider set, use
 effective prompts are rejected during create-run validation before the run is
 persisted or scheduled.
 
-There is no Pydantic AI history layer. To resume Agenton layer state, pass the
-`session_snapshot` from a previous `run_succeeded.data` payload together with a
-composition that has the same layer names and order.
+The optional Pydantic AI history layer uses the reserved name `history` and
+persists captured messages in session snapshots for later resume. Resume from a
+terminal event's `session_snapshot` using the same layer composition, names, and
+order. Success always contains a snapshot. Failure and cancellation contain one
+only when compositor entry succeeded and layer exit completed; otherwise callers
+should retain their previous snapshot.
 
 ## Observing runs
 
@@ -350,8 +359,11 @@ progress:
   Failed records can also expose a stable machine-readable `error_type` alongside
   the diagnostic `error` text.
 - `POST /runs/{run_id}/cancel` atomically accepts cancellation on any API process
-  and emits `run_cancelled`; it returns `409` only when a success/failure terminal
-  already won. Runner cleanup continues asynchronously on the owner process.
+  and returns immediately. `CancelRunResponse.status == "cancelled"` acknowledges
+  a durably accepted cancellation intent, not completed runner cleanup. Callers
+  that require cleanup-complete state or its session snapshot must await the
+  public `run_cancelled` event or use `cancel_run_and_wait`. The endpoint returns
+  `409` only when a success/failure terminal already won.
 - `GET /runs/{run_id}/events` polls the Redis Stream event log with `after` and
   `next_cursor` cursors.
 - `GET /runs/{run_id}/events/sse` replays and streams events over SSE. The SSE
@@ -367,12 +379,15 @@ end with `run_cancelled`. Each run can append at most one of these terminal
 events. Event envelopes retain `id`, `run_id`, `type`, `data`, and `created_at`;
 `data` is typed per event type,
 including Pydantic AI's `AgentStreamEvent` payload for `pydantic_ai_event` and a
-terminal `run_succeeded.data` object containing a `CompositorSessionSnapshot` for
-resumption. A successful run has exactly one active result branch: JSON-safe
+terminal event may contain a `CompositorSessionSnapshot` for resumption.
+`run_succeeded` always contains it; `run_failed` and `run_cancelled` contain it
+only when compositor entry succeeded, layer exit completed, and a post-exit
+snapshot was actually produced. A successful run has exactly one active result branch: JSON-safe
 `output` for final answers, or `deferred_tool_call` when a layer such as
 `dify.ask_human` ends the current agent run with an external deferred tool call.
 Failed event payloads contain the diagnostic `error`, optional source-specific
-`reason`, and optional stable `error_type`. Pydantic AI request/step budget
+`reason`, optional stable `error_type`, and optional `session_snapshot`.
+Cancelled payloads likewise may contain `session_snapshot`. Pydantic AI request/step budget
 exhaustion enforced by Dify Agent is reported as
 `error_type: "agent_run_limit_exceeded"`; consumers should branch on that value
 rather than parsing the error text. The Dify Agent-owned wall-clock run deadline

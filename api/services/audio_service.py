@@ -30,6 +30,9 @@ from services.workflow_service import WorkflowService
 
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
+_ASR_MIME_TYPE_ALIASES = {
+    "audio/x-m4a": "audio/m4a",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -130,8 +133,8 @@ class AudioService:
         if file is None:
             raise NoAudioUploadedServiceError()
 
-        extension = file.mimetype
-        if extension not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
+        mimetype = _ASR_MIME_TYPE_ALIASES.get(file.mimetype, file.mimetype)
+        if mimetype not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
             raise UnsupportedAudioTypeServiceError()
 
         file_content = file.stream.read()

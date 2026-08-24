@@ -23,8 +23,6 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
-    AgentWorkingResourceStatus,
-    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
@@ -42,7 +40,6 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
 )
-from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
@@ -1260,41 +1257,6 @@ class AgentRosterService:
             self._session.rollback()
             raise AgentNameConflictError() from exc
         return self.get_roster_agent_detail(tenant_id=tenant_id, agent_id=agent_id)
-
-    def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
-        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        retired_binding_ids: list[str] = []
-        if agent.status != AgentStatus.ARCHIVED:
-            agent.status = AgentStatus.ARCHIVED
-            agent.archived_by = account_id
-            agent.archived_at = naive_utc_now()
-            agent.updated_by = account_id
-        bindings = self._session.scalars(
-            select(AgentWorkspaceBinding).where(
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.agent_id == agent_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        ).all()
-        for binding in bindings:
-            retired_id = AgentWorkspaceService.retire_binding(
-                session=self._session,
-                tenant_id=tenant_id,
-                binding_id=binding.id,
-            )
-            if retired_id is not None:
-                retired_binding_ids.append(retired_id)
-        retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
-            session=self._session,
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-        )
-        self._session.commit()
-        enqueue_agent_resource_collection(
-            tenant_id=tenant_id,
-            binding_ids=retired_binding_ids,
-            home_snapshot_ids=retired_snapshot_ids,
-        )
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
