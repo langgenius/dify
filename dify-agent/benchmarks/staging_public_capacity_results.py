@@ -1,4 +1,4 @@
-"""Aggregate and render Schema v6 directional public Staging scaling runs."""
+"""Aggregate and render Schema v7 directional public Staging scaling runs."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from benchmarks.staging_public_schemas import StagingPublicEnvironment, StagingP
 from benchmarks.staging_public_deployment import StagingBackendDeploymentEvidence
 from benchmarks.staging_public_capacity_schemas import (
     STAGING_PUBLIC_CAPACITY_REPLICAS,
+    STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS,
     STAGING_PUBLIC_CAPACITY_SCALING_MATRIX,
     STAGING_PUBLIC_CAPACITY_SCENARIOS,
     StagingPublicCapacityBoundaryCandidate,
@@ -333,9 +334,16 @@ def _validate_cleanup_evidence(
     if physical.target_conversations != concurrency or physical.target_sandboxes != concurrency:
         invalid = True
         errors.append("physical cleanup targets did not cover every benchmark Conversation/Sandbox")
+    if execution.scenario_id == "file":
+        if physical.target_tool_files <= 0:
+            invalid = True
+            errors.append("File cleanup did not capture any conversation-owned ToolFile")
+    elif physical.target_tool_files != 0:
+        invalid = True
+        errors.append("non-File cleanup unexpectedly captured a ToolFile")
     if not _physical_cleanup_complete(physical):
         invalid = True
-        errors.append("physical Workspace/Binding/Sandbox cleanup evidence was incomplete")
+        errors.append("physical Workspace/Binding/ToolFile/storage/Sandbox cleanup evidence was incomplete")
     errors.extend(f"physical cleanup: {error}" for error in physical.errors)
     return invalid
 
@@ -418,7 +426,7 @@ def _finalize_e2b_inventory_limited_point(
         errors.append("physical cleanup targets did not cover every allocated Conversation/Sandbox")
     if not _physical_cleanup_complete(physical):
         invalid = True
-        errors.append("physical Workspace/Binding/Sandbox cleanup evidence was incomplete")
+        errors.append("physical Workspace/Binding/ToolFile/storage/Sandbox cleanup evidence was incomplete")
     errors.extend(f"physical cleanup: {error}" for error in physical.errors)
     return StagingPublicCapacityPoint(
         scenario_id=execution.scenario_id,
@@ -602,6 +610,7 @@ def finalize_staging_public_capacity_stage(
     errors: list[str] = []
     deployment_invalid = False
     environment_invalid = False
+    file_cleanup_required = any(block.scenario_id == "file" for block in blocks)
     if environment.config_expected_sha256 is None:
         environment_invalid = True
         errors.append("replica-stage Config fixture SHA256 evidence was missing")
@@ -630,6 +639,12 @@ def finalize_staging_public_capacity_stage(
         ):
             deployment_invalid = True
             errors.append("replica-stage deployment evidence did not match the requested replica count")
+        if file_cleanup_required and not (
+            before_evidence.collector_preflight.file_cleanup_valid
+            and after_evidence.collector_preflight.file_cleanup_valid
+        ):
+            deployment_invalid = True
+            errors.append("replica-stage File cleanup capability preflight did not pass")
         if _stable_stage_deployment_payload(before_evidence) != _stable_stage_deployment_payload(after_evidence):
             deployment_invalid = True
             errors.append("Agent Deployment, Pod, image, worker, or topology evidence changed during the stage")
@@ -750,6 +765,7 @@ def render_staging_public_capacity_stage_markdown(result: StagingPublicCapacityS
     ]
     skipped_basic_points = [item for item in basic_points if item.status == "skipped"]
     lines.extend(_render_basic_capacity_table(measured_basic_blocks))
+    lines.extend(_render_runtime_checks(result.blocks))
     lines.extend(["", "## Block details", ""])
     for point, block in measured_basic_blocks:
         lines.extend(_render_basic_block_details(point, block))
@@ -828,8 +844,9 @@ def _render_basic_block_details(
         f"{_percentile_triple(block.metrics.response_headers)}; "
         f"{_percentile_triple(block.metrics.first_sse)}; "
         f"{_percentile_triple(block.metrics.first_answer)} ms.",
-        "- Physical cleanup remaining Workspaces/Bindings/Vendor Sandboxes: "
+        "- Physical cleanup remaining Workspaces/Bindings/ToolFiles/storage objects/Vendor Sandboxes: "
         f"{physical.db_workspaces_remaining}/{physical.db_bindings_remaining}/"
+        f"{physical.db_tool_files_remaining}/{physical.storage_objects_remaining}/"
         f"{physical.vendor_sandboxes_remaining}; zero checks={physical.consecutive_zero_checks}, "
         f"interval={physical.interval_seconds:.2f}s.",
         "",
@@ -848,6 +865,43 @@ def _render_basic_block_details(
         lines.extend(["", "#### Diagnostics", ""])
         lines.extend(f"- {error}" for error in block.errors)
     lines.append("")
+    return lines
+
+
+def _render_runtime_checks(blocks: Sequence[StagingPublicCapacityPoint]) -> list[str]:
+    runtime_blocks = [
+        block
+        for block in blocks
+        if block.scenario_id in STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS and block.status != "skipped"
+    ]
+    lines = [
+        "",
+        "## Runtime correctness checks",
+        "",
+        "> Runtime transaction rates are diagnostics only and do not feed the Basic scaling conclusion.",
+        "",
+        "| Scenario | Concurrency | Result | Success | E2B signal | ToolFiles captured | ToolFiles/storage remaining |",
+        "|---|---:|---|---:|---|---:|---:|",
+    ]
+    if not runtime_blocks:
+        lines.append("| N/A | N/A | `not_run` | N/A | N/A | N/A | N/A |")
+        return lines
+    for block in runtime_blocks:
+        attempted = block.metrics.attempted
+        successful = block.metrics.successful
+        success = f"{successful / attempted:.2%} ({successful}/{attempted})" if attempted else "N/A"
+        signal = (
+            "e2b_limited"
+            if block.e2b_observation is not None
+            and (block.e2b_observation.limit_reached or block.e2b_observation.vendor_throttle_observed)
+            else "none"
+        )
+        physical = block.physical_cleanup
+        lines.append(
+            f"| `{block.scenario_id}` | c{block.requested_concurrency} | `{_display_result(block.status)}` | "
+            f"{success} | `{signal}` | {physical.target_tool_files} | "
+            f"{physical.db_tool_files_remaining}/{physical.storage_objects_remaining} |"
+        )
     return lines
 
 
@@ -962,7 +1016,7 @@ def render_staging_public_capacity_markdown(result: StagingPublicCapacityResult)
             "",
             "## Transaction diagnostics",
             "",
-            "> Shell and Config timings below are correctness diagnostics only; they are not capacity bounds or scaling inputs.",
+            "> Shell, Config, and File timings below are correctness diagnostics only; they are not capacity bounds or scaling inputs.",
             "",
         ]
     )
@@ -996,8 +1050,9 @@ def render_staging_public_capacity_markdown(result: StagingPublicCapacityResult)
         )
         physical = block.physical_cleanup
         lines.append(
-            "- Physical cleanup remaining Workspaces/Bindings/Vendor Sandboxes: "
+            "- Physical cleanup remaining Workspaces/Bindings/ToolFiles/storage objects/Vendor Sandboxes: "
             f"{physical.db_workspaces_remaining}/{physical.db_bindings_remaining}/"
+            f"{physical.db_tool_files_remaining}/{physical.storage_objects_remaining}/"
             f"{physical.vendor_sandboxes_remaining}; zero checks={physical.consecutive_zero_checks}, "
             f"interval={physical.interval_seconds:.2f}s."
         )
@@ -1136,7 +1191,7 @@ def _assess_scenarios(
             (item for item in aggregates if item.backend_replicas == replicas and item.scenario_id == scenario_id),
             key=lambda item: item.requested_concurrency,
         )
-        runtime_scenario = scenario_id in {"shell", "config"}
+        runtime_scenario = scenario_id in STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS
         candidate = None if runtime_scenario else candidates.get((replicas, scenario_id))
         valid_before_boundary = [
             item
@@ -1282,6 +1337,8 @@ def _physical_cleanup_complete(value: StagingPublicCapacityPhysicalCleanupEviden
         and value.complete
         and value.db_workspaces_remaining == 0
         and value.db_bindings_remaining == 0
+        and value.db_tool_files_remaining == 0
+        and value.storage_objects_remaining == 0
         and value.vendor_sandboxes_remaining == 0
         and value.consecutive_zero_checks >= 2
         and value.interval_seconds >= 10

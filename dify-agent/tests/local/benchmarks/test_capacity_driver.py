@@ -24,6 +24,7 @@ from benchmarks.capacity_driver import (
     _invalid_reasons,
     _load_phase_integrity_errors,
     _prepare_e2b_config_stubs,
+    _prepare_e2b_file_cli,
     _managed_binding_pool,
     _record_skipped_load_phase,
     _read_active_run_checkpoint,
@@ -412,7 +413,7 @@ def test_e2b_config_stub_is_started_and_paused_in_every_worker_sandbox(
         sandboxes[binding_ref] = sandbox
         return sandbox
 
-    monkeypatch.setattr("benchmarks.capacity_driver._connect_e2b_config_sandbox", connect)
+    monkeypatch.setattr("benchmarks.capacity_driver._connect_e2b_sandbox", connect)
 
     asyncio.run(
         _prepare_e2b_config_stubs(
@@ -434,6 +435,75 @@ def test_e2b_config_stub_is_started_and_paused_in_every_worker_sandbox(
         assert start_background is True
         assert "/health" in health_command
         assert health_background is None
+        assert sandbox.pause_calls == 1
+
+
+def test_current_agent_cli_is_installed_and_paused_in_every_file_worker_sandbox(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    sandboxes: dict[str, object] = {}
+    binary_path = tmp_path / "dify-agent"
+    binary_path.write_bytes(b"current-agent-cli")
+
+    class Files:
+        def __init__(self) -> None:
+            self.writes: list[tuple[str, str | bytes]] = []
+
+        async def write(self, path: str, data: str | bytes) -> object:
+            self.writes.append((path, data))
+            return object()
+
+    class Commands:
+        def __init__(self) -> None:
+            self.commands: list[str] = []
+
+        async def run(
+            self,
+            command: str,
+            *,
+            background: bool | None = None,
+            timeout: float,
+        ) -> object:
+            assert background is None
+            assert timeout == 30
+            self.commands.append(command)
+            return SimpleNamespace(exit_code=0, stdout="", stderr="")
+
+    class Sandbox:
+        def __init__(self) -> None:
+            self.files = Files()
+            self.commands = Commands()
+            self.pause_calls = 0
+
+        async def pause(self, *, keep_memory: bool = True) -> bool:
+            assert keep_memory
+            self.pause_calls += 1
+            return True
+
+    async def connect(binding_ref: str, *, api_key: str) -> object:
+        assert api_key == "secret"
+        sandbox = Sandbox()
+        sandboxes[binding_ref] = sandbox
+        return sandbox
+
+    monkeypatch.setattr("benchmarks.capacity_driver._connect_e2b_sandbox", connect)
+
+    asyncio.run(
+        _prepare_e2b_file_cli(
+            binding_refs=["sandbox-a", "sandbox-b"],
+            api_key="secret",
+            source_path=binary_path,
+        )
+    )
+
+    assert set(sandboxes) == {"sandbox-a", "sandbox-b"}
+    for sandbox_object in sandboxes.values():
+        sandbox = cast(Sandbox, sandbox_object)
+        assert sandbox.files.writes == [("/usr/local/bin/dify-agent", b"current-agent-cli")]
+        assert len(sandbox.commands.commands) == 1
+        assert "chmod 0755 /usr/local/bin/dify-agent" in sandbox.commands.commands[0]
+        assert "/usr/local/bin/dify-agent file --help" in sandbox.commands.commands[0]
         assert sandbox.pause_calls == 1
 
 

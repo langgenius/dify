@@ -21,6 +21,7 @@ from benchmarks.e2b_config_stub import (
     fixed_payload,
 )
 from benchmarks.fake_deps import _fixed_payload
+from benchmarks.scenario import config_skill_name
 
 
 @contextmanager
@@ -130,6 +131,21 @@ def test_current_skill_download_is_a_deterministic_zip_containing_skill_markdown
     with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
         assert archive.namelist() == ["SKILL.md"]
         assert archive.read("SKILL.md") == b"# Benchmark skill\n\n" + fixed_payload(f"skill:{name}", 89)
+
+
+def test_long_run_skill_name_is_accepted_by_the_fixed_scenario_contract() -> None:
+    run_id = "20260820082543946049-config-c20-123-" + "a" * 32
+    name = config_skill_name(run_id, 0)
+
+    with _running_server(item_bytes=16) as base_url:
+        status, content_type, body = _post_json(
+            f"{base_url}/agent-stub/files/download-request",
+            {"config": {"kind": "skill", "name": name}, "for_frontend": False},
+        )
+
+    assert status == 200
+    assert content_type == "application/json"
+    assert json.loads(body)["filename"] == f"{name}.zip"
 
 
 @pytest.mark.parametrize(

@@ -29,6 +29,7 @@ from benchmarks.staging_public_capacity_schemas import (
     StagingPublicCapacityPoint,
     StagingPublicCapacityReplicaCount,
     StagingPublicCapacityStageResult,
+    staging_public_capacity_stage_execution_order,
 )
 from benchmarks.staging_public_deployment import StagingBackendDeploymentEvidence
 from benchmarks.staging_public_artifact_safety import (
@@ -153,7 +154,7 @@ def _load_stage(
         _fail(
             code="invalid_stage_result",
             source=source,
-            message=f"{source} was not a valid Schema v6 scaling-stage result",
+            message=f"{source} was not a valid Schema v7 scaling-stage result",
         )
     if stage.backend_replicas != expected_replicas:
         _fail(
@@ -278,23 +279,7 @@ def _validate_canonical_skipped_block(
 def _stage_schedule(
     backend_replicas: StagingPublicCapacityReplicaCount,
 ) -> tuple[tuple[StagingPublicScenarioId, int], ...]:
-    if backend_replicas == 1:
-        return (
-            ("basic", 1),
-            ("shell", 1),
-            ("config", 1),
-            *(("basic", value) for value in (10, 20, 30, 40, 60, 80, 120, 160)),
-            ("shell", 10),
-            ("shell", 20),
-            ("config", 10),
-            ("config", 20),
-        )
-    return (
-        ("basic", 1),
-        ("shell", 10),
-        ("config", 10),
-        *(("basic", value) for value in (10, 20, 30, 40, 60, 80, 120, 160)),
-    )
+    return staging_public_capacity_stage_execution_order(backend_replicas)
 
 
 def _execution_from_point(block: StagingPublicCapacityPoint):
@@ -330,6 +315,14 @@ def _validate_stage_deployment(
                 code="invalid_deployment_evidence",
                 source=source,
                 message=f"{source} deployment {phase} evidence did not pass the replica-stage gate",
+            )
+        if any(block.scenario_id == "file" for block in stage.blocks) and not (
+            evidence.collector_preflight.file_cleanup_valid
+        ):
+            _fail(
+                code="invalid_deployment_evidence",
+                source=source,
+                message=f"{source} deployment {phase} File cleanup capability did not pass",
             )
     if _stable_deployment_fingerprint(before) != _stable_deployment_fingerprint(after):
         _fail(

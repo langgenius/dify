@@ -1,10 +1,13 @@
 # pyright: reportImplicitRelativeImport=false
 from __future__ import annotations
 
+import base64
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
 import subprocess
+import threading
 from typing import cast
 
 import pytest
@@ -17,6 +20,8 @@ from benchmarks.staging_plugin.models.llm.contract import (
     CONFIG_ITEM_COUNT,
     CONFIG_SKILL_COUNT,
     CONFIG_TOTAL_BYTES,
+    FILE_EXPECTED_SHA256,
+    FILE_PAYLOAD_BYTES,
     MODEL_DELAY_SECONDS,
     MODEL_NAME,
     BenchmarkIdentity,
@@ -92,7 +97,7 @@ def test_real_sdk_contract_is_deterministic_and_makes_no_network_call() -> None:
     assert "explicitly enabled" in cast(str, result["disabled_error"])
 
 
-@pytest.mark.parametrize("scenario_id", ["shell", "config"])
+@pytest.mark.parametrize("scenario_id", ["shell", "config", "file"])
 def test_runtime_first_round_contract_contains_standard_shell_tool_call(scenario_id: str) -> None:
     identity = _identity(scenario_id)
     plan = build_response_plan(identity=identity, tool_result_count=0)
@@ -135,6 +140,84 @@ def test_config_plan_uses_fixed_fixture_paths_and_reports_integrity_metadata() -
     assert f"total_bytes != {CONFIG_TOTAL_BYTES}" in script
     assert CONFIG_EXPECTED_SHA256 in script
     assert f"|items={CONFIG_ITEM_COUNT}|bytes={CONFIG_TOTAL_BYTES}|sha256=" in script
+
+
+def test_file_plan_uploads_and_verifies_one_deterministic_16mib_tool_file() -> None:
+    plan = build_response_plan(identity=_identity("file"), tool_result_count=0)
+    assert plan.tool_arguments is not None
+    script = cast(dict[str, str], json.loads(plan.tool_arguments))["script"]
+
+    assert f"size = {FILE_PAYLOAD_BYTES}" in script
+    assert "pattern = bytes(range(256))" in script
+    assert "dify-agent file upload dify-bench-file/payload.bin" in script
+    assert "upload['transfer_method'] != 'tool_file'" in script
+    assert "reference.startswith('dify-file-ref:')" in script
+    assert "upload['public_download_url']" in script
+    assert "Request(public_url, headers={'User-Agent': 'dify-agent-benchmark/1.0'})" in script
+    assert "urlopen(download_request, timeout=180)" in script
+    assert "downloaded != expected" in script
+    assert FILE_EXPECTED_SHA256 in script
+    assert "DIFY_BENCHMARK_FILE_SHA256|" in script
+    assert "print(reference)" not in script
+    assert "print(public_url)" not in script
+
+
+def test_file_plan_executes_full_upload_download_integrity_contract(tmp_path: Path) -> None:
+    payload = bytes(range(256)) * (FILE_PAYLOAD_BYTES // 256)
+    user_agents: list[str | None] = []
+
+    class FileHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802
+            user_agents.append(self.headers.get("User-Agent"))
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def log_message(self, format: str, *args: object) -> None:
+            _ = format, args
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), FileHandler)
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    reference = "dify-file-ref:" + base64.urlsafe_b64encode(b'{"record_id":"tool-file-1"}').decode()
+    public_url = f"http://127.0.0.1:{server.server_port}/payload.bin?sign=private"
+    fake_cli = tmp_path / "dify-agent"
+    fake_cli.write_text(
+        "#!/bin/sh\n"
+        'test "$1 $2" = "file upload"\n'
+        f"printf '%s\\n' {json.dumps(json.dumps({'transfer_method': 'tool_file', 'reference': reference, 'public_download_url': public_url}))}\n"
+    )
+    fake_cli.chmod(0o700)
+    plan = build_response_plan(identity=_identity("file"), tool_result_count=0)
+    assert plan.tool_arguments is not None
+    script = cast(dict[str, str], json.loads(plan.tool_arguments))["script"]
+    environment = dict(os.environ)
+    environment["PATH"] = f"{tmp_path}:{environment['PATH']}"
+
+    try:
+        completed = subprocess.run(
+            ["/bin/sh", "-c", script],
+            cwd=tmp_path,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=5)
+
+    assert completed.stdout.strip() == (
+        "DIFY_BENCHMARK_FILE_SHA256|"
+        + _identity("file").marker(round_number=1, kind="tool_call")
+        + f"|bytes={FILE_PAYLOAD_BYTES}|sha256={FILE_EXPECTED_SHA256}"
+    )
+    assert reference not in completed.stdout
+    assert public_url not in completed.stdout
+    assert user_agents == ["dify-agent-benchmark/1.0"]
 
 
 def test_invalid_identity_is_rejected_before_building_a_response() -> None:
@@ -203,7 +286,7 @@ def test_plugin_manifest_and_provider_expose_only_the_deterministic_llm() -> Non
     project = (PLUGIN_ROOT / "pyproject.toml").read_text()
 
     assert manifest["name"] == "dify_agent_benchmark_model"
-    assert manifest["version"] == "0.1.2"
+    assert manifest["version"] == "0.1.4"
     assert manifest["meta"]["version"] == "0.0.1"
     assert manifest["plugins"]["models"] == ["provider/dify_agent_benchmark.yaml"]
     assert manifest["resource"]["permission"]["tool"]["enabled"] is False
@@ -228,6 +311,6 @@ def test_plugin_manifest_and_provider_expose_only_the_deterministic_llm() -> Non
     assert model["model"] == MODEL_NAME
     assert set(model["features"]) == {"tool-call", "stream-tool-call"}
     assert "dify-plugin==0.9.0" in project
-    assert 'version = "0.1.2"' in project
+    assert 'version = "0.1.4"' in project
     assert "requests" not in project
     assert "httpx" not in project

@@ -32,7 +32,7 @@ DEFAULT_STAGING_PUBLIC_BASE_URL = "https://api-staging.dify.dev/v1/"
 DEFAULT_CONFIG_EXPECTED_SHA256 = "318fdd5b5ef72c47b2df2890d724cf8fbb4764dee352911f9de8535af4748dc3"
 STAGING_PUBLIC_CONFIRMATION = "RUN_STAGING_BENCHMARK"
 TARGET_COMMIT = "f5e1f1590f3e179b3ab28c1df5984667691fd86a"
-DETERMINISTIC_PLUGIN_VERSION = "0.1.2"
+DETERMINISTIC_PLUGIN_VERSION = "0.1.4"
 _RUN_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,120}$")
 
 
@@ -120,7 +120,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--plugin-package",
         type=Path,
-        default=Path(__file__).with_name("build") / "staging" / "dify-agent-benchmark-model-0.1.2.difypkg",
+        default=Path(__file__).with_name("build") / "staging" / "dify-agent-benchmark-model-0.1.4.difypkg",
     )
     parser.add_argument("--results-root", type=Path, default=Path(__file__).with_name("results"))
     return parser.parse_args()

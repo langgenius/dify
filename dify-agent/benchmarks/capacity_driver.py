@@ -57,7 +57,7 @@ class _E2BConfigCommandResult(Protocol):
 
 
 class _E2BConfigFilesystem(Protocol):
-    async def write(self, path: str, data: str) -> object: ...
+    async def write(self, path: str, data: str | bytes) -> object: ...
 
 
 class _E2BConfigCommands(Protocol):
@@ -85,6 +85,10 @@ class _E2BExecutionWindow:
     active_seconds: float
     vcpu_count: float | None
     memory_mib: float | None
+
+
+_E2B_FILE_CLI_SOURCE_PATH = Path(__file__).with_name("bin") / "dify-agent"
+_E2B_FILE_CLI_REMOTE_PATH = "/usr/local/bin/dify-agent"
 
 
 @dataclass(slots=True, frozen=True)
@@ -177,6 +181,12 @@ async def run_block(settings: CapacityDriverSettings) -> BlockResult:
                     binding_refs=[binding_ref for binding_ref in binding_refs if binding_ref is not None],
                     api_key=settings.e2b_api_key,
                     item_bytes=scenario.item_bytes,
+                )
+            if external_runtime and scenario.is_file_workload:
+                assert settings.e2b_api_key is not None
+                await _prepare_e2b_file_cli(
+                    binding_refs=[binding_ref for binding_ref in binding_refs if binding_ref is not None],
+                    api_key=settings.e2b_api_key,
                 )
             contexts = [
                 WorkerContext(worker_index=index, binding_ref=binding_ref)
@@ -382,7 +392,7 @@ async def _delete_all_runtime_jobs(runtime_client: httpx.AsyncClient) -> bool:
         return False
 
 
-async def _connect_e2b_config_sandbox(binding_ref: str, *, api_key: str) -> _E2BConfigSandbox:
+async def _connect_e2b_sandbox(binding_ref: str, *, api_key: str) -> _E2BConfigSandbox:
     from e2b import AsyncSandbox
 
     return cast(
@@ -401,7 +411,7 @@ async def _prepare_e2b_config_stubs(
     source = E2B_CONFIG_STUB_SOURCE_PATH.read_text()
 
     async def prepare(binding_ref: str) -> None:
-        sandbox = await _connect_e2b_config_sandbox(binding_ref, api_key=api_key)
+        sandbox = await _connect_e2b_sandbox(binding_ref, api_key=api_key)
         try:
             await sandbox.files.write(E2B_CONFIG_STUB_REMOTE_PATH, source)
             start_command = (
@@ -430,6 +440,36 @@ async def _prepare_e2b_config_stubs(
                 raise RuntimeError(
                     f"E2B Config stub failed to start in {binding_ref}: exit={result.exit_code} {detail}"
                 )
+        finally:
+            _ = await sandbox.pause(keep_memory=True)
+
+    await asyncio.gather(*(prepare(binding_ref) for binding_ref in binding_refs))
+
+
+async def _prepare_e2b_file_cli(
+    *,
+    binding_refs: Sequence[str],
+    api_key: str,
+    source_path: Path | None = None,
+) -> None:
+    """Install the current run-scoped Agent CLI in every E2B File worker."""
+    resolved_source = source_path or _E2B_FILE_CLI_SOURCE_PATH
+    binary = resolved_source.read_bytes()
+    if not binary:
+        raise RuntimeError("benchmark Agent CLI binary is empty")
+
+    async def prepare(binding_ref: str) -> None:
+        sandbox = await _connect_e2b_sandbox(binding_ref, api_key=api_key)
+        try:
+            await sandbox.files.write(_E2B_FILE_CLI_REMOTE_PATH, binary)
+            command = (
+                f"chmod 0755 {shlex.quote(_E2B_FILE_CLI_REMOTE_PATH)} && "
+                f"{shlex.quote(_E2B_FILE_CLI_REMOTE_PATH)} file --help >/dev/null"
+            )
+            result = cast(_E2BConfigCommandResult, await sandbox.commands.run(command, timeout=30))
+            if result.exit_code != 0:
+                detail = (result.stderr or result.stdout).strip()[-512:]
+                raise RuntimeError(f"E2B benchmark Agent CLI validation failed: exit={result.exit_code} {detail}")
         finally:
             _ = await sandbox.pause(keep_memory=True)
 

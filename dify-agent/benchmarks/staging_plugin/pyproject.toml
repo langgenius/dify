@@ -1,6 +1,6 @@
 [project]
 name = "dify-agent-benchmark-model"
-version = "0.1.2"
+version = "0.1.4"
 description = "Benchmark-only deterministic Dify model plugin"
 requires-python = ">=3.12,<3.13"
 dependencies = [

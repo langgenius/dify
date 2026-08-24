@@ -1,4 +1,4 @@
-"""Schema v6 for directional public Staging scaling observations.
+"""Schema v7 for directional public Staging scaling observations.
 
 The schema deliberately keeps one load block per replica/scenario/concurrency
 point.  It records only count-level E2B evidence; secrets and private resource
@@ -40,20 +40,35 @@ StagingPublicCapacityConclusion = Literal[
     "load_ceiling_insufficient",
     "invalid",
 ]
-STAGING_PUBLIC_CAPACITY_SCENARIOS: tuple[StagingPublicScenarioId, ...] = ("basic", "shell", "config")
+STAGING_PUBLIC_CAPACITY_SCENARIOS: tuple[StagingPublicScenarioId, ...] = (
+    "basic",
+    "shell",
+    "config",
+    "file",
+)
 STAGING_PUBLIC_CAPACITY_CONCURRENCY: tuple[int, ...] = (1, 10, 20, 30, 40, 60, 80, 120, 160)
 STAGING_PUBLIC_CAPACITY_RUNTIME_CONCURRENCY: tuple[int, ...] = (1, 10, 20)
 STAGING_PUBLIC_CAPACITY_REPLICAS: tuple[StagingPublicCapacityReplicaCount, ...] = (1, 2, 4)
 STAGING_PUBLIC_CAPACITY_SCALE_OUT_REPLICAS: tuple[StagingPublicCapacityReplicaCount, ...] = (2, 4)
 _BASIC: StagingPublicScenarioId = "basic"
-_RUNTIME_SCENARIOS: tuple[StagingPublicScenarioId, ...] = ("shell", "config")
+STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS: tuple[StagingPublicScenarioId, ...] = (
+    "shell",
+    "config",
+    "file",
+)
+_REPLICA_ONE_RUNTIME_SCENARIOS: tuple[StagingPublicScenarioId, ...] = (
+    "shell",
+    "config",
+    "file",
+)
+_SCALE_OUT_RUNTIME_SCENARIOS: tuple[StagingPublicScenarioId, ...] = ("shell", "config")
 STAGING_PUBLIC_CAPACITY_MATRIX = cast(
     tuple[tuple[StagingPublicScenarioId, int], ...],
     (
         tuple((_BASIC, concurrency) for concurrency in STAGING_PUBLIC_CAPACITY_CONCURRENCY)
         + tuple(
             (scenario_id, concurrency)
-            for scenario_id in _RUNTIME_SCENARIOS
+            for scenario_id in _REPLICA_ONE_RUNTIME_SCENARIOS
             for concurrency in STAGING_PUBLIC_CAPACITY_RUNTIME_CONCURRENCY
         )
     ),
@@ -70,10 +85,49 @@ STAGING_PUBLIC_CAPACITY_SCALING_MATRIX = cast(
         + tuple(
             (backend_replicas, scenario_id, 10)
             for backend_replicas in STAGING_PUBLIC_CAPACITY_SCALE_OUT_REPLICAS
-            for scenario_id in _RUNTIME_SCENARIOS
+            for scenario_id in _SCALE_OUT_RUNTIME_SCENARIOS
         )
     ),
 )
+
+
+def staging_public_capacity_setup_sequence(
+    scenario_id: StagingPublicScenarioId,
+) -> tuple[StagingPublicScenarioId, ...]:
+    """Return the non-measurement turns needed for one warm Conversation."""
+
+    if scenario_id in {"basic", "shell"}:
+        return ("basic",)
+    if scenario_id in {"config", "file"}:
+        return ("basic", "shell")
+    raise ValueError(f"unsupported public scaling scenario: {scenario_id}")
+
+
+def staging_public_capacity_stage_execution_order(
+    backend_replicas: StagingPublicCapacityReplicaCount,
+) -> tuple[tuple[StagingPublicScenarioId, int], ...]:
+    """Return the canonical gate-aware order for one replica stage."""
+
+    if backend_replicas == 1:
+        return (
+            ("basic", 1),
+            ("shell", 1),
+            ("config", 1),
+            ("file", 1),
+            *(("basic", value) for value in STAGING_PUBLIC_CAPACITY_CONCURRENCY if value != 1),
+            ("shell", 10),
+            ("shell", 20),
+            ("config", 10),
+            ("config", 20),
+            ("file", 10),
+            ("file", 20),
+        )
+    return (
+        ("basic", 1),
+        ("shell", 10),
+        ("config", 10),
+        *(("basic", value) for value in STAGING_PUBLIC_CAPACITY_CONCURRENCY if value != 1),
+    )
 
 
 class StagingPublicCapacityPointRequest(BaseModel):
@@ -163,8 +217,11 @@ class StagingPublicCapacityPhysicalCleanupEvidence(BaseModel):
     checked: bool = False
     target_conversations: int = Field(default=0, ge=0)
     target_sandboxes: int = Field(default=0, ge=0)
+    target_tool_files: int = Field(default=0, ge=0)
     db_workspaces_remaining: int = Field(default=0, ge=0)
     db_bindings_remaining: int = Field(default=0, ge=0)
+    db_tool_files_remaining: int = Field(default=0, ge=0)
+    storage_objects_remaining: int = Field(default=0, ge=0)
     vendor_sandboxes_remaining: int = Field(default=0, ge=0)
     consecutive_zero_checks: int = Field(default=0, ge=0)
     interval_seconds: float = Field(default=0, ge=0)
@@ -404,7 +461,7 @@ class StagingPublicCapacityScenarioAssessment(BaseModel):
 
     @model_validator(mode="after")
     def _runtime_scenarios_do_not_claim_capacity(self) -> StagingPublicCapacityScenarioAssessment:
-        if self.scenario_id in {"shell", "config"}:
+        if self.scenario_id in STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS:
             if any(
                 value is not None
                 for value in (
@@ -448,8 +505,8 @@ class StagingPublicCapacityScalingAssessment(BaseModel):
 
 
 class StagingPublicCapacityResult(BaseModel):
-    schema_version: Literal[6] = 6
-    harness_version: Literal[6] = 6
+    schema_version: Literal[7] = 7
+    harness_version: Literal[7] = 7
     mode: Literal["staging-public-e2e-scaling"] = "staging-public-e2e-scaling"
     confidence: Literal["single_block_shared_traffic"] = "single_block_shared_traffic"
     matrix_complete: bool
@@ -468,8 +525,8 @@ class StagingPublicCapacityResult(BaseModel):
 class StagingPublicCapacityStageResult(BaseModel):
     """One independently executed 1-, 2-, or 4-replica stage."""
 
-    schema_version: Literal[6] = 6
-    harness_version: Literal[6] = 6
+    schema_version: Literal[7] = 7
+    harness_version: Literal[7] = 7
     mode: Literal["staging-public-e2e-scaling-stage"] = "staging-public-e2e-scaling-stage"
     confidence: Literal["single_block_shared_traffic"] = "single_block_shared_traffic"
     backend_replicas: StagingPublicCapacityReplicaCount
@@ -515,4 +572,7 @@ class StagingPublicCapacityStageResult(BaseModel):
 
 __all__ = [
     name for name in globals() if name.startswith("StagingPublicCapacity") or name.startswith("STAGING_PUBLIC_CAPACITY")
+] + [
+    "staging_public_capacity_setup_sequence",
+    "staging_public_capacity_stage_execution_order",
 ]

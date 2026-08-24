@@ -10,8 +10,11 @@ from pydantic import SecretStr
 
 from benchmarks.staging_public_physical_cleanup import (
     _CAPTURE_TARGETS_SCRIPT,
+    _COUNT_TARGETS_SCRIPT,
+    _is_explicit_s3_not_found,
     _parse_private_probe_json_object,
     _RECOVER_ALLOCATIONS_SCRIPT,
+    _REPLAY_CONVERSATION_CLEANUP_SCRIPT,
     _run_command,
     StagingVendorRemainingSample,
     recover_unjournaled_staging_public_allocations,
@@ -84,7 +87,26 @@ def _journal_indices(path: Path, indices) -> None:
     path.chmod(0o600)
 
 
-def _runner(calls, *, shared_workspace: bool = False):
+def _counts(
+    remaining: int = 0,
+    *,
+    tool_files: int | None = None,
+    storage_objects: int | None = None,
+    storage_probe_errors: int = 0,
+) -> str:
+    return json.dumps(
+        {
+            "conversations": remaining,
+            "workspaces": remaining,
+            "bindings": remaining,
+            "tool_files": remaining if tool_files is None else tool_files,
+            "storage_objects": remaining if storage_objects is None else storage_objects,
+            "storage_probe_errors": storage_probe_errors,
+        }
+    )
+
+
+def _runner(calls, *, shared_workspace: bool = False, tool_files_per_conversation: int = 0):
     def run(argv, stdin):
         calls.append((list(argv), stdin))
         if "get" in argv and "pods" in argv:
@@ -111,13 +133,22 @@ def _runner(calls, *, shared_workspace: bool = False):
                             "binding_id": f"binding-{index}",
                             "backend_workspace_ref": f"sandbox-{index}",
                             "backend_binding_ref": f"sandbox-{index}",
+                            "tool_files": [
+                                {
+                                    "tool_file_id": f"tool-file-{index}-{file_index}",
+                                    "conversation_id": conversation_id,
+                                    "file_key": f"tool-files/{index}/{file_index}.bin",
+                                    "size": 16 * 1024 * 1024,
+                                }
+                                for file_index in range(tool_files_per_conversation)
+                            ],
                         }
                         for index, conversation_id in enumerate(payload["conversation_ids"])
                     ]
                 }
             )
         assert "count-targets" in script
-        return json.dumps({"conversations": 0, "workspaces": 0, "bindings": 0})
+        return _counts()
 
     return run
 
@@ -137,7 +168,7 @@ def test_parent_captures_private_targets_before_delete_and_waits_for_two_zero_ch
         requested_concurrency=2,
         service_api_base_url="https://api-staging.dify.dev/v1/",
         service_api_key=SecretStr("never-serialize-this-key"),
-        runner=_runner(calls),
+        runner=_runner(calls, tool_files_per_conversation=1),
         conversation_deleter=lambda conversation_id, end_user: deletes.append((conversation_id, end_user)) or 204,
         vendor_remaining_probe=_vendor_probe(clock),
         monotonic=clock.monotonic,
@@ -148,6 +179,12 @@ def test_parent_captures_private_targets_before_delete_and_waits_for_two_zero_ch
     assert result.joint.vendor_sandboxes_remaining == 0
     assert result.database.consecutive_zero_checks == 2
     assert result.database.interval_seconds == 10
+    assert result.database.target_tool_files == 2
+    assert result.database.target_storage_objects == 2
+    assert result.database.tool_files_remaining == 0
+    assert result.database.storage_objects_remaining == 0
+    assert result.joint.tool_files_remaining == 0
+    assert result.joint.storage_objects_remaining == 0
     assert len(result.cleanup) == 2
     assert all(item.http_status_code == 204 for item in result.cleanup)
     assert len(deletes) == 2
@@ -155,8 +192,45 @@ def test_parent_captures_private_targets_before_delete_and_waits_for_two_zero_ch
     private = manifest.read_text()
     assert "conversation-0" in private
     assert "sandbox-1" in private
+    assert "tool-file-0-0" in private
+    assert "tool-files/1/0.bin" in private
+    assert '"size":16777216' in private
     assert all("conversation-0" not in " ".join(argv) for argv, _stdin in calls)
-    assert "never-serialize-this-key" not in result.database.model_dump_json()
+    public_evidence = result.database.model_dump_json() + result.joint.model_dump_json()
+    for private_value in (
+        "never-serialize-this-key",
+        "conversation-0",
+        "workspace-0",
+        "binding-0",
+        "tool-file-0-0",
+        "tool-files/0/0.bin",
+    ):
+        assert private_value not in public_evidence
+
+
+def test_non_file_cleanup_has_zero_tool_file_and_storage_targets(tmp_path: Path) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    _journal(journal, 1)
+    clock = _Clock()
+
+    result = reconcile_staging_public_resources(
+        allocation_journal_path=journal,
+        private_manifest_path=tmp_path / "private" / "cleanup.json",
+        invocation_id="scaling.r1.basic.c1",
+        requested_concurrency=1,
+        service_api_base_url="https://api-staging.dify.dev/v1/",
+        service_api_key=SecretStr("key"),
+        runner=_runner([]),
+        conversation_deleter=lambda _conversation_id, _end_user: 204,
+        vendor_remaining_probe=_vendor_probe(clock),
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    assert result.database.target_tool_files == 0
+    assert result.database.target_storage_objects == 0
+    assert result.database.tool_files_remaining == 0
+    assert result.database.storage_objects_remaining == 0
 
 
 def test_database_cleanup_probe_retries_one_transient_invalid_response(tmp_path: Path) -> None:
@@ -172,8 +246,17 @@ def test_database_cleanup_probe_retries_one_transient_invalid_response(tmp_path:
             return base_runner(argv, stdin)
         count_attempts += 1
         if count_attempts == 1:
-            return json.dumps({"conversations": None, "workspaces": 0, "bindings": 0})
-        return json.dumps({"conversations": 0, "workspaces": 0, "bindings": 0})
+            return json.dumps(
+                {
+                    "conversations": None,
+                    "workspaces": 0,
+                    "bindings": 0,
+                    "tool_files": 0,
+                    "storage_objects": 0,
+                    "storage_probe_errors": 0,
+                }
+            )
+        return _counts()
 
     result = reconcile_staging_public_resources(
         allocation_journal_path=journal,
@@ -205,7 +288,16 @@ def test_database_cleanup_probe_fails_closed_after_bounded_invalid_responses(tmp
         if "count-targets" not in argv[-1]:
             return base_runner(argv, stdin)
         count_attempts += 1
-        return json.dumps({"conversations": None, "workspaces": 0, "bindings": 0})
+        return json.dumps(
+            {
+                "conversations": None,
+                "workspaces": 0,
+                "bindings": 0,
+                "tool_files": 0,
+                "storage_objects": 0,
+                "storage_probe_errors": 0,
+            }
+        )
 
     with pytest.raises(RuntimeError, match="database cleanup probe returned an invalid response"):
         reconcile_staging_public_resources(
@@ -223,6 +315,109 @@ def test_database_cleanup_probe_fails_closed_after_bounded_invalid_responses(tmp
         )
 
     assert count_attempts == 3
+
+
+def test_storage_probe_errors_fail_closed_without_leaking_the_object_key(tmp_path: Path) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    _journal(journal, 1)
+    clock = _Clock()
+    base_runner = _runner([], tool_files_per_conversation=1)
+    count_attempts = 0
+
+    def runner(argv, stdin):
+        nonlocal count_attempts
+        if "count-targets" not in argv[-1]:
+            return base_runner(argv, stdin)
+        count_attempts += 1
+        return _counts(tool_files=0, storage_objects=0, storage_probe_errors=1)
+
+    with pytest.raises(RuntimeError, match="could not prove object state") as caught:
+        reconcile_staging_public_resources(
+            allocation_journal_path=journal,
+            private_manifest_path=tmp_path / "private" / "cleanup.json",
+            invocation_id="run",
+            requested_concurrency=1,
+            service_api_base_url="https://api-staging.dify.dev/v1/",
+            service_api_key=SecretStr("key"),
+            runner=runner,
+            conversation_deleter=lambda _conversation_id, _end_user: 204,
+            vendor_remaining_probe=_vendor_probe(clock),
+            monotonic=clock.monotonic,
+            sleep=clock.sleep,
+        )
+
+    assert count_attempts == 3
+    assert "tool-files/0/0.bin" not in str(caught.value)
+
+
+def test_storage_probe_uses_strict_s3_head_object_states() -> None:
+    compile(_COUNT_TARGETS_SCRIPT, "<staging-cleanup-count-probe>", "exec")
+    assert "runner.client.head_object" in _COUNT_TARGETS_SCRIPT
+    assert "status==404" in _COUNT_TARGETS_SCRIPT
+    assert "'NoSuchKey'" in _COUNT_TARGETS_SCRIPT
+    assert "storage.exists" not in _COUNT_TARGETS_SCRIPT
+
+
+@pytest.mark.parametrize(
+    ("status_code", "error_code", "expected"),
+    [
+        (404, "404", True),
+        (404, "NoSuchKey", True),
+        (404, "NotFound", True),
+        (403, "NoSuchKey", False),
+        (404, "AccessDenied", False),
+        (500, "NoSuchKey", False),
+        (None, "NoSuchKey", False),
+    ],
+)
+def test_storage_probe_requires_consistent_not_found_status_and_code(
+    status_code: object,
+    error_code: object,
+    expected: bool,
+) -> None:
+    assert _is_explicit_s3_not_found(status_code, error_code) is expected
+
+
+def test_parent_replays_conversation_cleanup_once_after_tool_file_stall(tmp_path: Path) -> None:
+    journal = tmp_path / "allocations.jsonl"
+    _journal(journal, 1)
+    clock = _Clock()
+    base_runner = _runner([], tool_files_per_conversation=1)
+    replay_payloads: list[dict[str, object]] = []
+    replayed = False
+
+    def runner(argv, stdin):
+        nonlocal replayed
+        script = argv[-1]
+        if "replay-conversation-cleanup" in script:
+            assert stdin is not None
+            payload = json.loads(stdin)
+            replay_payloads.append(payload)
+            replayed = True
+            return json.dumps({"enqueued": True, "target_count": len(payload["conversation_ids"])})
+        if "count-targets" in script:
+            return _counts(0 if replayed else 1)
+        return base_runner(argv, stdin)
+
+    result = reconcile_staging_public_resources(
+        allocation_journal_path=journal,
+        private_manifest_path=tmp_path / "private" / "cleanup.json",
+        invocation_id="scaling.r1.file.c1",
+        requested_concurrency=1,
+        service_api_base_url="https://api-staging.dify.dev/v1/",
+        service_api_key=SecretStr("key"),
+        runner=runner,
+        conversation_deleter=lambda _conversation_id, _end_user: 204,
+        vendor_remaining_probe=_vendor_probe(clock),
+        cleanup_timeout_seconds=100,
+        monotonic=clock.monotonic,
+        sleep=clock.sleep,
+    )
+
+    assert result.joint.complete is True
+    assert replay_payloads == [{"conversation_ids": ["conversation-0"]}]
+    compile(_REPLAY_CONVERSATION_CLEANUP_SCRIPT, "<staging-conversation-replay>", "exec")
+    assert "queue='conversation'" in _REPLAY_CONVERSATION_CLEANUP_SCRIPT
 
 
 def test_parent_replays_exact_retired_workspaces_once_after_a_db_and_vendor_stall(
@@ -252,7 +447,16 @@ def test_parent_replays_exact_retired_workspaces_once_after_a_db_and_vendor_stal
             return json.dumps({"enqueued": True, "target_count": len(payload["workspace_ids"])})
         if "count-targets" in script:
             remaining = 0 if replayed else 2
-            return json.dumps({"conversations": 0, "workspaces": remaining, "bindings": remaining})
+            return json.dumps(
+                {
+                    "conversations": 0,
+                    "workspaces": remaining,
+                    "bindings": remaining,
+                    "tool_files": 0,
+                    "storage_objects": 0,
+                    "storage_probe_errors": 0,
+                }
+            )
         return base_runner(argv, stdin)
 
     result = reconcile_staging_public_resources(
@@ -293,13 +497,7 @@ def test_db_and_vendor_zero_windows_are_not_synthesized_when_they_do_not_overlap
         if "count-targets" not in argv[-1]:
             return base_runner(argv, stdin)
         remaining = next(database_remaining, 1)
-        return json.dumps(
-            {
-                "conversations": remaining,
-                "workspaces": remaining,
-                "bindings": remaining,
-            }
-        )
+        return _counts(remaining)
 
     result = reconcile_staging_public_resources(
         allocation_journal_path=journal,
@@ -319,7 +517,7 @@ def test_db_and_vendor_zero_windows_are_not_synthesized_when_they_do_not_overlap
     assert result.joint.complete is False
     assert result.joint.consecutive_zero_checks == 0
     assert result.joint.errors == [
-        "database Agent resources and Vendor Sandboxes did not jointly remain zero for two checks ten seconds apart"
+        "database, storage, and Vendor resources did not jointly remain zero for two checks ten seconds apart"
     ]
 
 
@@ -360,12 +558,13 @@ def test_capture_requires_an_exact_one_to_one_conversation_mapping(tmp_path: Pat
                             "binding_id": f"binding-{index}",
                             "backend_workspace_ref": f"sandbox-{index}",
                             "backend_binding_ref": f"sandbox-{index}",
+                            "tool_files": [],
                         }
                         for index in range(2)
                     ]
                 }
             )
-        return json.dumps({"conversations": 0, "workspaces": 0, "bindings": 0})
+        return _counts()
 
     with pytest.raises(RuntimeError, match="not every benchmark Conversation"):
         clock = _Clock()
@@ -444,7 +643,7 @@ def test_zero_allocations_produce_a_secure_empty_manifest_without_a_db_probe(tmp
     assert result.database.target_conversations == 0
     assert callbacks == [manifest]
     assert manifest.stat().st_mode & 0o777 == 0o600
-    assert json.loads(manifest.read_text()) == {"allocations": [], "targets": []}
+    assert json.loads(manifest.read_text()) == {"schema_version": 2, "allocations": [], "targets": []}
 
 
 def test_api_probe_uses_the_f5_conversation_owner_contract() -> None:
@@ -456,6 +655,10 @@ def test_api_probe_uses_the_f5_conversation_owner_contract() -> None:
         "AgentWorkspace.owner_scope_key=='root'",
         "AgentWorkspaceBinding.tenant_id==App.tenant_id",
         "AgentWorkspaceBinding.app_id==Conversation.app_id",
+        "ToolFile.conversation_id.in_(ids)",
+        "'tool_file_id':f[0]",
+        "'file_key':f[2]",
+        "'size':f[3]",
     ):
         assert required_expression in _CAPTURE_TARGETS_SCRIPT
 

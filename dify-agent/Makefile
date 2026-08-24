@@ -4,7 +4,7 @@ PROJECT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 STAGING_BUILD_DIR ?= $(PROJECT_DIR)/benchmarks/build/staging
 STAGING_FIXTURE_DIR ?= $(STAGING_BUILD_DIR)/config-fixtures
 STAGING_PLUGIN_DIR := $(PROJECT_DIR)/benchmarks/staging_plugin
-STAGING_PLUGIN_PACKAGE ?= $(STAGING_BUILD_DIR)/dify-agent-benchmark-model-0.1.2.difypkg
+STAGING_PLUGIN_PACKAGE ?= $(STAGING_BUILD_DIR)/dify-agent-benchmark-model-0.1.4.difypkg
 DIFY_PLUGIN_CLI ?= dify
 
 .PHONY: help serve dev check fix typecheck test update-examples docs docs-serve \

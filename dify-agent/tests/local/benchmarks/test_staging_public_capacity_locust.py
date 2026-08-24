@@ -95,6 +95,17 @@ def test_capacity_parent_accepts_positive_dynamic_concurrency(concurrency: int) 
     assert request.requested_concurrency == concurrency
 
 
+def test_capacity_parent_accepts_file_canary_scenario() -> None:
+    request = StagingPublicCapacityRequest(
+        invocation_id="capacity-file-canary",
+        settings=_Settings(api_key=SecretStr("secret")),
+        scenario_id="file",
+        requested_concurrency=1,
+    )
+
+    assert request.scenario_id == "file"
+
+
 @pytest.mark.parametrize("concurrency", [False, 0, 161])
 def test_capacity_parent_rejects_concurrency_outside_safe_range(concurrency: int) -> None:
     with pytest.raises(ValueError, match="integer from 1 through 160"):
@@ -423,7 +434,11 @@ assert observed["start"] == (2, 1.0)
     assert process.returncode == 0, process.stderr
 
 
-def test_capacity_worker_runs_closed_loop_phases_and_unique_conversations(tmp_path: Path) -> None:
+@pytest.mark.parametrize("target_scenario", ["config", "file"])
+def test_capacity_worker_runs_closed_loop_phases_and_unique_conversations(
+    tmp_path: Path,
+    target_scenario: str,
+) -> None:
     script = r"""
 from pathlib import Path
 import json
@@ -464,14 +479,17 @@ class FakeClient:
             config_materialized_bytes=53248 if scenario_id == "config" else 0,
             config_materialized_sha256="a" * 64 if scenario_id == "config" else None,
             config_sha_valid=scenario_id == "config",
+            file_payload_bytes=16 * 1024 * 1024 if scenario_id == "file" else 0,
+            file_payload_sha256="341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1" if scenario_id == "file" else None,
+            file_integrity_valid=scenario_id == "file",
         ))
     def cleanup_conversation(self): raise AssertionError("worker must not DELETE Conversation")
     def close(self): closed.add(self.end_user)
 
 worker.StagingPublicServiceClient = FakeClient
 request = StagingPublicCapacityPointRequest(
-    invocation_id="capacity.config.c10", service_api_base_url="https://api-staging.example/v1/",
-    config_expected_sha256="a" * 64, scenario_id="config", requested_concurrency=10,
+    invocation_id="capacity.__SCENARIO__.c10", service_api_base_url="https://api-staging.example/v1/",
+    config_expected_sha256="a" * 64, scenario_id="__SCENARIO__", requested_concurrency=10,
     block_index=1, phase="initial", setup_timeout_seconds=10,
     warmup_seconds=0.08, measurement_seconds=0.10, drain_timeout_seconds=10,
 )
@@ -488,7 +506,7 @@ assert execution.load.measurement_started_at.tzinfo is not None
 assert execution.load.measurement_ended_at >= execution.load.measurement_started_at
 assert execution.load.attempted == len(execution.observations)
 assert execution.load.successful == len(execution.observations)
-assert all(item.sample.scenario_id == "config" for item in execution.observations)
+assert all(item.sample.scenario_id == "__SCENARIO__" for item in execution.observations)
 assert all(item.turn_index >= 0 for item in execution.observations)
 run_ids = [item.sample.benchmark_run_id for item in execution.observations]
 assert len(run_ids) == len(set(run_ids))
@@ -500,6 +518,7 @@ events = [json.loads(line) for line in Path(__import__('sys').argv[1]).read_text
 assert len(events) == 10 and all(item["event"] == "allocated" for item in events)
 assert Path(__import__('sys').argv[1]).stat().st_mode & 0o777 == 0o600
 """
+    script = script.replace("__SCENARIO__", target_scenario)
     environment = dict(os.environ)
     environment.pop("LOCUST_SKIP_MONKEY_PATCH", None)
     for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):

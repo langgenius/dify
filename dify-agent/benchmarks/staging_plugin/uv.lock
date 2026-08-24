@@ -101,7 +101,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent-benchmark-model"
-version = "0.1.2"
+version = "0.1.4"
 source = { virtual = "." }
 dependencies = [
     { name = "dify-plugin" },

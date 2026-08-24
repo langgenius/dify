@@ -17,6 +17,7 @@ from pydantic import SecretStr
 from benchmarks.staging_public_locust import bounded_end_user, staging_public_worker_environment
 from benchmarks.staging_public_schemas import StagingPublicScenarioId
 from benchmarks.staging_public_capacity_schemas import (
+    STAGING_PUBLIC_CAPACITY_SCENARIOS,
     StagingPublicCapacityConcurrency,
     StagingPublicCapacityExecution,
     StagingPublicCapacityLoadResult,
@@ -51,7 +52,7 @@ class StagingPublicCapacityRequest:
     def __post_init__(self) -> None:
         if not self.invocation_id or len(self.invocation_id) > 120:
             raise ValueError("invocation_id must contain 1 to 120 characters")
-        if self.scenario_id not in {"basic", "shell", "config"}:
+        if self.scenario_id not in STAGING_PUBLIC_CAPACITY_SCENARIOS:
             raise ValueError("unsupported public capacity scenario")
         if (
             isinstance(self.requested_concurrency, bool)

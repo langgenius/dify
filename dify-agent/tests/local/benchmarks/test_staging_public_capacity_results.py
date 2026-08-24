@@ -55,6 +55,13 @@ def _sample(scenario: StagingPublicScenarioId, index: int, terminal_ms: float) -
         config_materialized_bytes=53_248 if scenario == "config" else 0,
         config_materialized_sha256="a" * 64 if scenario == "config" else None,
         config_sha_valid=scenario == "config",
+        file_payload_bytes=16 * 1024 * 1024 if scenario == "file" else 0,
+        file_payload_sha256=(
+            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
+            if scenario == "file"
+            else None
+        ),
+        file_integrity_valid=scenario == "file",
         edge_version="v1",
     )
 
@@ -133,6 +140,7 @@ def _execution(
             checked=True,
             target_conversations=concurrency,
             target_sandboxes=concurrency,
+            target_tool_files=1 if scenario == "file" else 0,
             consecutive_zero_checks=2,
             interval_seconds=10,
             complete=True,
@@ -167,7 +175,7 @@ def _environment():
         harness_dirty=False,
         target_commit="f" * 40,
         scenario_manifest_sha256="b" * 64,
-        deterministic_plugin_version="0.1.2",
+        deterministic_plugin_version="0.1.4",
         deterministic_plugin_package_sha256="c" * 64,
         config_expected_sha256="d" * 64,
         e2b_observer_mode="local",
@@ -178,7 +186,11 @@ def _environment():
     )
 
 
-def _deployment(replicas: StagingPublicCapacityReplicaCount) -> dict[str, object]:
+def _deployment(
+    replicas: StagingPublicCapacityReplicaCount,
+    *,
+    file_cleanup_valid: bool = True,
+) -> dict[str, object]:
     return StagingBackendDeploymentEvidence(
         captured_at="2026-08-13T00:00:00+00:00",
         kube_context="staging-main",
@@ -212,6 +224,7 @@ def _deployment(replicas: StagingPublicCapacityReplicaCount) -> dict[str, object
             pod_image="registry/api@sha256:collector",
             pod_image_id="registry/api@sha256:collector",
             retention_queue_configured=True,
+            file_cleanup_valid=file_cleanup_valid,
             agent_backend_base_url_configured=True,
             agent_backend_health_reachable=False,
             agent_backend_openapi_reachable=True,
@@ -596,6 +609,21 @@ def test_physical_cleanup_requires_two_zero_checks_ten_seconds_apart() -> None:
     assert finalize_staging_public_capacity_point(execution).status == "invalid"
 
 
+def test_file_point_requires_captured_toolfile_and_storage_zero_evidence() -> None:
+    execution = _execution("file", 1)
+    assert finalize_staging_public_capacity_point(execution).status == "valid_scaling"
+
+    execution.physical_cleanup.db_tool_files_remaining = 1
+    execution.physical_cleanup.complete = False
+    point = finalize_staging_public_capacity_point(execution)
+    assert point.status == "invalid"
+    assert any("ToolFile" in error for error in point.errors)
+
+    execution = _execution("file", 1)
+    execution.physical_cleanup.target_tool_files = 0
+    assert finalize_staging_public_capacity_point(execution).status == "invalid"
+
+
 def test_detects_first_dynamic_basic_boundary_only() -> None:
     c20 = _point("basic", 20, count=100, terminal_ms=100)
     c30 = _point("basic", 30, count=105, terminal_ms=130)
@@ -628,7 +656,7 @@ def test_scaling_requires_all_three_replica_boundaries_and_uses_twenty_percent_g
         blocks=blocks,
     )
     assert success
-    assert result.schema_version == 6
+    assert result.schema_version == 7
     assert result.mode == "staging-public-e2e-scaling"
     assert result.confidence == "single_block_shared_traffic"
     assert result.conclusion == "directional_scaling_observed"
@@ -737,7 +765,7 @@ def test_skipped_point_is_single_block_and_does_not_fabricate_cleanup() -> None:
 
 
 def test_stage_matrix_and_finalize_are_replica_relative(tmp_path: Path) -> None:
-    assert len(staging_public_capacity_stage_matrix(1)) == 15
+    assert len(staging_public_capacity_stage_matrix(1)) == 18
     assert len(staging_public_capacity_stage_matrix(2)) == 11
     assert len(staging_public_capacity_stage_matrix(4)) == 11
     blocks = [
@@ -810,6 +838,47 @@ def test_stage_report_separates_skipped_basic_points_from_metrics(tmp_path: Path
     assert "## Not run" in report
     assert "- Basic c10: stopped after a prior cleanup failure." in report
     assert "10s buckets attempted/successful/runs-s/p95-ms" not in report
+
+
+def test_stage_report_keeps_file_as_runtime_correctness_and_cleanup_evidence(tmp_path: Path) -> None:
+    result, success = finalize_staging_public_capacity_stage(
+        artifact_dir=tmp_path,
+        environment=_environment(),
+        backend_replicas=1,
+        deployment_before=_deployment(1),
+        deployment_after=_deployment(1),
+        blocks=[_point("file", 1)],
+    )
+    assert success
+    assert result.assessments[0].terminal_runs_per_second_lower_bound is None
+    report = (tmp_path / "report.md").read_text()
+    assert "| `file` | c1 | `valid`" in report
+    assert "ToolFiles/storage remaining" in report
+
+
+def test_stage_file_block_requires_file_cleanup_deployment_capability(tmp_path: Path) -> None:
+    result, success = finalize_staging_public_capacity_stage(
+        artifact_dir=tmp_path / "file",
+        environment=_environment(),
+        backend_replicas=1,
+        deployment_before=_deployment(1, file_cleanup_valid=False),
+        deployment_after=_deployment(1, file_cleanup_valid=False),
+        blocks=[_point("file", 1)],
+    )
+    assert not success
+    assert result.status == "failed"
+    assert any("File cleanup capability" in error for error in result.errors)
+
+    result, success = finalize_staging_public_capacity_stage(
+        artifact_dir=tmp_path / "basic",
+        environment=_environment(),
+        backend_replicas=1,
+        deployment_before=_deployment(1, file_cleanup_valid=False),
+        deployment_after=_deployment(1, file_cleanup_valid=False),
+        blocks=[_point("basic", 1)],
+    )
+    assert success
+    assert result.status == "degraded"
 
 
 def test_stage_edge_probes_are_required_even_without_measurement_samples(tmp_path: Path) -> None:

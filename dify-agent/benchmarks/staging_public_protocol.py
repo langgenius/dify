@@ -19,6 +19,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from benchmarks.capacity_protocol import RequestMetric
+from benchmarks.staging_plugin.models.llm.contract import FILE_EXPECTED_SHA256, FILE_PAYLOAD_BYTES
 from benchmarks.staging_public_schemas import (
     StagingPublicCleanupResult,
     StagingPublicEdgeProbeEvidence,
@@ -45,6 +46,17 @@ _CONFIG_EVIDENCE_RE = re.compile(
         )
     )
 )
+_FILE_EVIDENCE_RE = re.compile(
+    "".join(
+        (
+            r"DIFY_BENCHMARK_FILE_SHA256\|",
+            r"(DIFY_BENCHMARK_MARKER:",
+            _CANONICAL_MARKER_PAYLOAD_PATTERN,
+            r")",
+            r"\|bytes=(\d+)\|sha256=([0-9a-f]{64})",
+        )
+    )
+)
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,200}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _EXPECTED_CONFIG_SKILLS = 3
@@ -52,6 +64,7 @@ _EXPECTED_CONFIG_FILES = 10
 _EXPECTED_CONFIG_ITEMS = _EXPECTED_CONFIG_SKILLS + _EXPECTED_CONFIG_FILES
 _EXPECTED_CONFIG_BYTES = 53_248
 _ANSWER_EVENT_TYPES = frozenset({"message", "agent_message", "text_chunk"})
+_APP_KEY_RE = re.compile(r"\bapp-[A-Za-z0-9_-]+")
 
 
 class StagingPublicProtocolSettings(BaseModel):
@@ -67,6 +80,14 @@ class StagingPublicProtocolSettings(BaseModel):
     @classmethod
     def normalize_service_api_base_url(cls, value: str) -> str:
         return _normalize_service_api_base_url(value)
+
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, value: SecretStr) -> SecretStr:
+        raw = value.get_secret_value()
+        if not raw or len(raw) > 255 or any(character.isspace() or not character.isprintable() for character in raw):
+            raise ValueError("api_key must be one printable line")
+        return value
 
     @field_validator("config_expected_sha256")
     @classmethod
@@ -354,6 +375,8 @@ class StagingPublicServiceClient:
                     markers=markers,
                     expected_sha256=self._settings.config_expected_sha256,
                 )
+            elif scenario_id == "file":
+                _validate_file_evidence(sample=sample, events=events, markers=markers)
             sample.terminal_status = "succeeded"
         except StagingPublicOperationalError as exc:
             sample.terminal_status = "failed" if sample.terminal_e2e_ms is not None else "not_terminal"
@@ -453,7 +476,7 @@ class StagingPublicServiceClient:
         redacted = value
         for secret in self._sensitive_values:
             redacted = redacted.replace(secret, "[REDACTED]")
-        return redacted
+        return _APP_KEY_RE.sub("[REDACTED]", redacted)
 
 
 def build_staging_public_chat_request(
@@ -650,6 +673,28 @@ def _validate_config_evidence(
         raise StagingPublicValidationError(
             "Config evidence did not match 3 skills, 10 files, 53248 bytes, and expected SHA256"
         )
+
+
+def _validate_file_evidence(
+    *,
+    sample: StagingPublicRunSample,
+    events: object,
+    markers: Sequence[PublicBenchmarkMarker],
+) -> None:
+    evidence = _extract_single_match(
+        _iter_tool_observations(events),
+        _FILE_EVIDENCE_RE,
+        label="File transfer",
+    )
+    if _parse_response_marker(evidence.group(1)) != markers[0]:
+        raise StagingPublicValidationError("File marker did not match the tool-call identity")
+    payload_bytes = int(evidence.group(2))
+    digest = evidence.group(3)
+    sample.file_payload_bytes = payload_bytes
+    sample.file_payload_sha256 = digest
+    sample.file_integrity_valid = payload_bytes == FILE_PAYLOAD_BYTES and digest == FILE_EXPECTED_SHA256
+    if not sample.file_integrity_valid:
+        raise StagingPublicValidationError("File evidence did not match 16777216 bytes and expected SHA256")
 
 
 def _extract_single_match(values: Iterator[str], pattern: re.Pattern[str], *, label: str) -> re.Match[str]:

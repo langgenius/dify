@@ -1,10 +1,10 @@
 """Capture and reconcile private Staging Conversation resource ownership.
 
-The public API does not expose Workspace, Binding, or Sandbox identity.  This
-module therefore captures an exact private manifest from the Staging database
-*before* issuing Conversation DELETE, then returns count-only cleanup evidence.
-Private identifiers are sent to an API Pod over stdin and are never placed in
-kubectl argv, logs, or public benchmark artifacts.
+The public API does not expose Workspace, Binding, Sandbox, or generated-file
+identity. This module therefore captures an exact private manifest from the
+Staging database *before* issuing Conversation DELETE, then returns count-only
+cleanup evidence. Private identifiers are sent to an API Pod over stdin and are
+never placed in kubectl argv, logs, or public benchmark artifacts.
 """
 
 from __future__ import annotations
@@ -35,6 +35,13 @@ StalledResourceReplayer = Callable[[tuple[str, ...]], None]
 STALLED_CLEANUP_REPLAY_AFTER_SECONDS = 60
 DATABASE_CLEANUP_PROBE_ATTEMPTS = 3
 DATABASE_CLEANUP_PROBE_RETRY_SECONDS = 1
+_S3_NOT_FOUND_CODES = ("404", "NoSuchKey", "NotFound")
+
+
+def _is_explicit_s3_not_found(status_code: object, error_code: object) -> bool:
+    """Accept only a consistent S3 not-found response as absence evidence."""
+
+    return status_code == 404 and error_code in _S3_NOT_FOUND_CODES
 
 
 class StagingDatabaseCleanupEvidence(BaseModel):
@@ -43,9 +50,13 @@ class StagingDatabaseCleanupEvidence(BaseModel):
     target_conversations: int = Field(ge=0)
     target_workspaces: int = Field(ge=0)
     target_bindings: int = Field(ge=0)
+    target_tool_files: int = Field(default=0, ge=0)
+    target_storage_objects: int = Field(default=0, ge=0)
     conversations_remaining: int = Field(ge=0)
     workspaces_remaining: int = Field(ge=0)
     bindings_remaining: int = Field(ge=0)
+    tool_files_remaining: int = Field(default=0, ge=0)
+    storage_objects_remaining: int = Field(default=0, ge=0)
     consecutive_zero_checks: int = Field(ge=0)
     interval_seconds: float = Field(ge=0)
     complete: bool
@@ -60,6 +71,8 @@ class StagingJointCleanupEvidence(BaseModel):
     conversations_remaining: int = Field(ge=0)
     workspaces_remaining: int = Field(ge=0)
     bindings_remaining: int = Field(ge=0)
+    tool_files_remaining: int = Field(default=0, ge=0)
+    storage_objects_remaining: int = Field(default=0, ge=0)
     vendor_sandboxes_remaining: int = Field(ge=0)
     consecutive_zero_checks: int = Field(ge=0)
     interval_seconds: float = Field(ge=0)
@@ -115,6 +128,15 @@ class _Target:
     binding_id: str
     backend_workspace_ref: str
     backend_binding_ref: str
+    tool_files: tuple["_ToolFileTarget", ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ToolFileTarget:
+    tool_file_id: str
+    conversation_id: str
+    file_key: str
+    size: int
 
 
 class _RecoveryScope(TypedDict):
@@ -337,7 +359,23 @@ def reconcile_staging_public_resources(
             )
         next_delete_at = max(next_delete_at + 0.5, monotonic())
 
+    stalled_conversation_replayer: StalledResourceReplayer | None = None
     stalled_resource_replayer: StalledResourceReplayer | None = None
+    if targets:
+        if api_pod is None:
+            raise RuntimeError("database cleanup probe Pod was missing")
+
+        def replay_conversations(conversation_ids: tuple[str, ...]) -> None:
+            _replay_conversation_cleanup(
+                invoke,
+                api_pod=api_pod,
+                kube_context=kube_context,
+                namespace=namespace,
+                conversation_ids=conversation_ids,
+            )
+
+        stalled_conversation_replayer = replay_conversations
+
     if targets and benchmark_tenant_id is not None:
         if api_pod is None:
             raise RuntimeError("database cleanup probe Pod was missing")
@@ -362,6 +400,7 @@ def reconcile_staging_public_resources(
         targets=targets,
         timeout_seconds=cleanup_timeout_seconds,
         vendor_remaining_probe=vendor_remaining_probe,
+        stalled_conversation_replayer=stalled_conversation_replayer,
         stalled_resource_replayer=stalled_resource_replayer,
         monotonic=monotonic,
         sleep=sleep,
@@ -663,6 +702,30 @@ def _capture_targets(
         binding_id = _required_string(row.get("binding_id"))
         backend_workspace_ref = _required_string(row.get("backend_workspace_ref"))
         backend_binding_ref = _required_string(row.get("backend_binding_ref"))
+        raw_tool_files = row.get("tool_files")
+        if not isinstance(raw_tool_files, list):
+            raise RuntimeError("private resource capture returned an invalid response")
+        tool_files: list[_ToolFileTarget] = []
+        for raw_tool_file in raw_tool_files:
+            if not isinstance(raw_tool_file, dict):
+                raise RuntimeError("private resource capture returned an invalid response")
+            tool_file_conversation_id = _required_string(raw_tool_file.get("conversation_id"))
+            size = raw_tool_file.get("size")
+            if (
+                tool_file_conversation_id != conversation_id
+                or isinstance(size, bool)
+                or not isinstance(size, int)
+                or size < 0
+            ):
+                raise RuntimeError("captured ToolFile ownership did not match its Conversation")
+            tool_files.append(
+                _ToolFileTarget(
+                    tool_file_id=_required_string(raw_tool_file.get("tool_file_id")),
+                    conversation_id=tool_file_conversation_id,
+                    file_key=_required_string(raw_tool_file.get("file_key")),
+                    size=size,
+                )
+            )
         allocation = allocation_by_conversation.get(conversation_id)
         if allocation is None or backend_workspace_ref != backend_binding_ref:
             raise RuntimeError("captured Agent resource ownership did not match the benchmark contract")
@@ -674,6 +737,7 @@ def _capture_targets(
                 binding_id=binding_id,
                 backend_workspace_ref=backend_workspace_ref,
                 backend_binding_ref=backend_binding_ref,
+                tool_files=tuple(tool_files),
             )
         )
     captured_conversations = {item.conversation_id for item in targets}
@@ -683,6 +747,11 @@ def _capture_targets(
         {item.binding_id for item in targets}
     ) != len(targets):
         raise RuntimeError("Agent Workspace or Binding identity was shared between load Users")
+    captured_tool_files = [tool_file for target in targets for tool_file in target.tool_files]
+    if len({item.tool_file_id for item in captured_tool_files}) != len(captured_tool_files) or len(
+        {item.file_key for item in captured_tool_files}
+    ) != len(captured_tool_files):
+        raise RuntimeError("ToolFile identity or storage object key was shared between load Users")
     return tuple(sorted(targets, key=lambda item: item.worker_index))
 
 
@@ -695,6 +764,7 @@ def _wait_for_joint_zero(
     targets: Sequence[_Target],
     timeout_seconds: float,
     vendor_remaining_probe: VendorRemainingProbe,
+    stalled_conversation_replayer: StalledResourceReplayer | None,
     stalled_resource_replayer: StalledResourceReplayer | None,
     monotonic: Callable[[], float],
     sleep: Callable[[float], None],
@@ -705,11 +775,19 @@ def _wait_for_joint_zero(
     first_joint_zero_at: float | None = None
     first_joint_vendor_timestamp: datetime | None = None
     joint_zero_checks = 0
-    latest = {"conversations": len(targets), "workspaces": len(targets), "bindings": len(targets)}
+    tool_files = tuple(tool_file for target in targets for tool_file in target.tool_files)
+    latest = {
+        "conversations": len(targets),
+        "workspaces": len(targets),
+        "bindings": len(targets),
+        "tool_files": len(tool_files),
+        "storage_objects": len(tool_files),
+    }
     latest_vendor = len(targets)
     database_errors: list[str] = []
     joint_errors: list[str] = []
-    replay_attempted = False
+    conversation_replay_attempted = False
+    resource_replay_attempted = False
     while monotonic() - started <= timeout_seconds:
         if targets:
             if api_pod is None:
@@ -728,9 +806,20 @@ def _wait_for_joint_zero(
                             "conversation_ids": [item.conversation_id for item in targets],
                             "workspace_ids": [item.workspace_id for item in targets],
                             "binding_ids": [item.binding_id for item in targets],
+                            "tool_file_ids": [item.tool_file_id for item in tool_files],
+                            "file_keys": [item.file_key for item in tool_files],
                         },
                     )
                     candidate = _parse_private_probe_json_object(raw)
+                    storage_probe_errors = candidate.get("storage_probe_errors")
+                    if (
+                        isinstance(storage_probe_errors, bool)
+                        or not isinstance(storage_probe_errors, int)
+                        or storage_probe_errors < 0
+                    ):
+                        raise RuntimeError("storage cleanup probe returned an invalid response")
+                    if storage_probe_errors:
+                        raise RuntimeError("storage cleanup probe could not prove object state")
                     if any(
                         isinstance(candidate.get(key), bool)
                         or not isinstance(candidate.get(key), int)
@@ -746,7 +835,9 @@ def _wait_for_joint_zero(
                 value = candidate
                 break
             if value is None:
-                raise RuntimeError("database cleanup probe returned an invalid response") from last_probe_error
+                if last_probe_error is not None:
+                    raise last_probe_error
+                raise RuntimeError("database cleanup probe returned an invalid response")
             latest = {key: int(value[key]) for key in latest}
         vendor_sample = vendor_remaining_probe()
         latest_vendor = vendor_sample.target_remaining
@@ -780,7 +871,17 @@ def _wait_for_joint_zero(
             first_joint_vendor_timestamp = None
             joint_zero_checks = 0
         if (
-            not replay_attempted
+            not conversation_replay_attempted
+            and stalled_conversation_replayer is not None
+            and now - started >= STALLED_CLEANUP_REPLAY_AFTER_SECONDS
+            and (latest["conversations"] > 0 or latest["tool_files"] > 0 or latest["storage_objects"] > 0)
+        ):
+            # Conversation cleanup owns ToolFile row and object deletion. Replay
+            # the immutable target set once when the normal queue path stalls.
+            stalled_conversation_replayer(tuple(item.conversation_id for item in targets))
+            conversation_replay_attempted = True
+        if (
+            not resource_replay_attempted
             and stalled_resource_replayer is not None
             and now - started >= STALLED_CLEANUP_REPLAY_AFTER_SECONDS
             and latest["conversations"] == 0
@@ -790,21 +891,27 @@ def _wait_for_joint_zero(
             # failures as best-effort. Re-enqueue this immutable manifest once
             # after a sustained DB or Vendor stall; deleted targets are no-ops.
             stalled_resource_replayer(tuple(item.workspace_id for item in targets))
-            replay_attempted = True
+            resource_replay_attempted = True
         sleep(5)
     if database_zero_checks < 2:
-        database_errors.append("database Agent resources did not remain zero for two checks ten seconds apart")
+        database_errors.append(
+            "database and storage resources did not remain zero for two checks ten seconds apart"
+        )
     if joint_zero_checks < 2:
         joint_errors.append(
-            "database Agent resources and Vendor Sandboxes did not jointly remain zero for two checks ten seconds apart"
+            "database, storage, and Vendor resources did not jointly remain zero for two checks ten seconds apart"
         )
     database = StagingDatabaseCleanupEvidence(
         target_conversations=len(targets),
         target_workspaces=len(targets),
         target_bindings=len(targets),
+        target_tool_files=len(tool_files),
+        target_storage_objects=len(tool_files),
         conversations_remaining=latest["conversations"],
         workspaces_remaining=latest["workspaces"],
         bindings_remaining=latest["bindings"],
+        tool_files_remaining=latest["tool_files"],
+        storage_objects_remaining=latest["storage_objects"],
         consecutive_zero_checks=database_zero_checks,
         interval_seconds=10 if database_zero_checks >= 2 else 0,
         complete=database_zero_checks >= 2 and all(count == 0 for count in latest.values()),
@@ -814,6 +921,8 @@ def _wait_for_joint_zero(
         conversations_remaining=latest["conversations"],
         workspaces_remaining=latest["workspaces"],
         bindings_remaining=latest["bindings"],
+        tool_files_remaining=latest["tool_files"],
+        storage_objects_remaining=latest["storage_objects"],
         vendor_sandboxes_remaining=latest_vendor,
         consecutive_zero_checks=joint_zero_checks,
         interval_seconds=10 if joint_zero_checks >= 2 else 0,
@@ -821,6 +930,27 @@ def _wait_for_joint_zero(
         errors=joint_errors,
     )
     return database, joint
+
+
+def _replay_conversation_cleanup(
+    runner: CommandRunner,
+    *,
+    api_pod: str,
+    kube_context: str,
+    namespace: str,
+    conversation_ids: tuple[str, ...],
+) -> None:
+    raw = _exec_private_probe(
+        runner,
+        api_pod=api_pod,
+        kube_context=kube_context,
+        namespace=namespace,
+        script=_REPLAY_CONVERSATION_CLEANUP_SCRIPT,
+        payload={"conversation_ids": conversation_ids},
+    )
+    value = _parse_private_probe_json_object(raw)
+    if value != {"enqueued": True, "target_count": len(conversation_ids)}:
+        raise RuntimeError("Conversation cleanup replay returned an invalid response")
 
 
 def _replay_retired_workspace_collection(
@@ -904,6 +1034,7 @@ def _write_private_manifest(
     _write_private_json(
         path,
         {
+            "schema_version": 2,
             "allocations": [asdict(item) for item in allocations],
             "targets": [asdict(item) for item in targets],
         },
@@ -1022,23 +1153,48 @@ import json,sys
 from app import app
 from extensions.ext_database import db
 from models import AgentWorkingResourceStatus,AgentWorkspace,AgentWorkspaceBinding,AgentWorkspaceOwnerType,App,Conversation
+from models.tools import ToolFile
 from sqlalchemy import and_,select
 p=json.load(sys.stdin); ids=p['conversation_ids']
 with app.app_context(), db.session() as s:
  rows=s.execute(select(Conversation.id,AgentWorkspace.id,AgentWorkspaceBinding.id,AgentWorkspace.backend_workspace_ref,AgentWorkspaceBinding.backend_binding_ref).join(AgentWorkspaceBinding,AgentWorkspaceBinding.id==Conversation.agent_workspace_binding_id).join(AgentWorkspace,and_(AgentWorkspace.id==AgentWorkspaceBinding.workspace_id,AgentWorkspace.tenant_id==AgentWorkspaceBinding.tenant_id,AgentWorkspace.app_id==AgentWorkspaceBinding.app_id)).join(App,App.id==Conversation.app_id).where(Conversation.id.in_(ids),Conversation.is_deleted.is_(False),AgentWorkspaceBinding.app_id==Conversation.app_id,AgentWorkspaceBinding.tenant_id==App.tenant_id,AgentWorkspaceBinding.status==AgentWorkingResourceStatus.ACTIVE,AgentWorkspace.owner_type==AgentWorkspaceOwnerType.CONVERSATION,AgentWorkspace.owner_id==Conversation.id,AgentWorkspace.owner_scope_key=='root',AgentWorkspace.status==AgentWorkingResourceStatus.ACTIVE)).all()
-print(json.dumps({'targets':[{'conversation_id':r[0],'workspace_id':r[1],'binding_id':r[2],'backend_workspace_ref':r[3],'backend_binding_ref':r[4]} for r in rows]},separators=(',',':')))
+ files=s.execute(select(ToolFile.id,ToolFile.conversation_id,ToolFile.file_key,ToolFile.size).where(ToolFile.conversation_id.in_(ids)).order_by(ToolFile.conversation_id,ToolFile.id)).all()
+ by_conversation={conversation_id:[] for conversation_id in ids}
+ for f in files: by_conversation[f[1]].append({'tool_file_id':f[0],'conversation_id':f[1],'file_key':f[2],'size':f[3]})
+print(json.dumps({'targets':[{'conversation_id':r[0],'workspace_id':r[1],'binding_id':r[2],'backend_workspace_ref':r[3],'backend_binding_ref':r[4],'tool_files':by_conversation[r[0]]} for r in rows]},separators=(',',':')))
 """
 
 _COUNT_TARGETS_SCRIPT = r"""# dify-benchmark-count-targets
 import json,sys
 from app import app
+from botocore.exceptions import ClientError
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from models import AgentWorkspace,AgentWorkspaceBinding,Conversation
+from models.tools import ToolFile
 from sqlalchemy import func,select
 p=json.load(sys.stdin)
 with app.app_context(), db.session() as s:
- out={'conversations':s.scalar(select(func.count()).select_from(Conversation).where(Conversation.id.in_(p['conversation_ids']))) or 0,'workspaces':s.scalar(select(func.count()).select_from(AgentWorkspace).where(AgentWorkspace.id.in_(p['workspace_ids']))) or 0,'bindings':s.scalar(select(func.count()).select_from(AgentWorkspaceBinding).where(AgentWorkspaceBinding.id.in_(p['binding_ids']))) or 0}
+ out={'conversations':s.scalar(select(func.count()).select_from(Conversation).where(Conversation.id.in_(p['conversation_ids']))) or 0,'workspaces':s.scalar(select(func.count()).select_from(AgentWorkspace).where(AgentWorkspace.id.in_(p['workspace_ids']))) or 0,'bindings':s.scalar(select(func.count()).select_from(AgentWorkspaceBinding).where(AgentWorkspaceBinding.id.in_(p['binding_ids']))) or 0,'tool_files':s.scalar(select(func.count()).select_from(ToolFile).where(ToolFile.id.in_(p['tool_file_ids']))) or 0}
+runner=storage.storage_runner; present=0; errors=0
+for key in p['file_keys']:
+ try:
+  runner.client.head_object(Bucket=runner.bucket_name,Key=key)
+ except ClientError as e:
+  code=str(e.response.get('Error',{}).get('Code','')); status=e.response.get('ResponseMetadata',{}).get('HTTPStatusCode')
+  if not (status==404 and code in __S3_NOT_FOUND_CODES__): errors+=1
+ except Exception: errors+=1
+ else: present+=1
+out['storage_objects']=present; out['storage_probe_errors']=errors
 print(json.dumps(out,separators=(',',':')))
+""".replace("__S3_NOT_FOUND_CODES__", repr(_S3_NOT_FOUND_CODES))
+
+_REPLAY_CONVERSATION_CLEANUP_SCRIPT = r"""# dify-benchmark-replay-conversation-cleanup
+import json,sys
+from app import celery
+p=json.load(sys.stdin)
+for conversation_id in p['conversation_ids']: celery.send_task('tasks.delete_conversation_task.delete_conversation_related_data',args=[conversation_id],queue='conversation')
+print(json.dumps({'enqueued':True,'target_count':len(p['conversation_ids'])},separators=(',',':')))
 """
 
 _REPLAY_RETIRED_WORKSPACES_SCRIPT = r"""# dify-benchmark-replay-retired-workspaces

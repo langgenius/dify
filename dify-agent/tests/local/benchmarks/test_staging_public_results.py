@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pytest
+
+from benchmarks.staging_public_artifact_safety import PublicArtifactSafetyError
 from benchmarks.staging_public_results import (
     build_staging_public_environment,
     finalize_staging_public_smoke,
@@ -46,7 +49,7 @@ def _environment():
         harness_dirty=True,
         target_commit="f" * 40,
         scenario_manifest_sha256="b" * 64,
-        deterministic_plugin_version="0.1.2",
+        deterministic_plugin_version="0.1.4",
         deterministic_plugin_package_sha256="c" * 64,
         config_expected_sha256="d" * 64,
         edge_version="1.16.1",
@@ -144,3 +147,19 @@ def test_result_requires_one_conversation_and_proven_cleanup(tmp_path: Path) -> 
     assert not success
     assert any("one conversation chain" in error for error in result.errors)
     assert "public conversation cleanup was incomplete" in result.errors
+
+
+def test_smoke_artifacts_fail_before_write_when_diagnostics_contain_a_key(tmp_path: Path) -> None:
+    sample = _sample("basic")
+    sample.error_type = "http_error"
+    sample.error = "LocalProtocolError: Bearer app-secret-must-not-persist"
+    sample.terminal_status = "not_terminal"
+
+    with pytest.raises(PublicArtifactSafetyError):
+        finalize_staging_public_smoke(
+            artifact_dir=tmp_path,
+            environment=_environment(),
+            execution=_execution([sample]),
+        )
+
+    assert list(tmp_path.iterdir()) == []

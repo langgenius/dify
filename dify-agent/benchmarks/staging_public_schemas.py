@@ -11,8 +11,10 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from benchmarks.staging_plugin.models.llm.contract import FILE_EXPECTED_SHA256, FILE_PAYLOAD_BYTES
 
-StagingPublicScenarioId = Literal["basic", "shell", "config"]
+
+StagingPublicScenarioId = Literal["basic", "shell", "config", "file"]
 STAGING_PUBLIC_SCENARIO_SEQUENCE: tuple[StagingPublicScenarioId, ...] = ("basic", "shell", "config")
 StagingPublicTerminalStatus = Literal["succeeded", "failed", "not_terminal"]
 StagingPublicSmokeStatus = Literal["passed", "failed"]
@@ -45,6 +47,9 @@ class StagingPublicRunSample(BaseModel):
     config_materialized_bytes: int = Field(default=0, ge=0)
     config_materialized_sha256: str | None = None
     config_sha_valid: bool = False
+    file_payload_bytes: int = Field(default=0, ge=0)
+    file_payload_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    file_integrity_valid: bool = False
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -72,6 +77,12 @@ class StagingPublicRunSample(BaseModel):
                 and self.config_materialized_bytes == _CONFIG_TOTAL_BYTES
                 and self.config_materialized_sha256 is not None
                 and self.config_sha_valid
+            )
+        if self.scenario_id == "file":
+            return (
+                self.file_payload_bytes == FILE_PAYLOAD_BYTES
+                and self.file_payload_sha256 == FILE_EXPECTED_SHA256
+                and self.file_integrity_valid
             )
         return True
 

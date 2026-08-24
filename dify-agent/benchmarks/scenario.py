@@ -112,7 +112,7 @@ def config_skill_name(benchmark_run_id: str, index: int) -> str:
     if re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", candidate) is not None:
         return candidate
     digest = hashlib.sha256(f"{index}:{benchmark_run_id}".encode()).hexdigest()[:32]
-    return f"skill-{digest}"
+    return f"skill-{index}-{digest}"
 
 
 def config_file_name(benchmark_run_id: str, index: int) -> str:

@@ -9,6 +9,10 @@ from pathlib import Path
 import platform
 from typing import Literal
 
+from benchmarks.staging_public_artifact_safety import (
+    validate_public_artifact_payload,
+    validate_public_artifact_text,
+)
 from benchmarks.staging_public_schemas import (
     STAGING_PUBLIC_SCENARIO_SEQUENCE,
     StagingPublicEnvironment,
@@ -206,11 +210,15 @@ def render_staging_public_markdown(result: StagingPublicSmokeResult) -> str:
 
 
 def _write_artifacts(*, artifact_dir: Path, result: StagingPublicSmokeResult) -> None:
+    result_payload = result.model_dump(mode="json")
+    report = render_staging_public_markdown(result)
+    validate_public_artifact_payload(result_payload)
+    validate_public_artifact_text(report)
     artifact_dir.mkdir(parents=True, exist_ok=True)
     logs_dir = artifact_dir / "logs"
     logs_dir.mkdir(exist_ok=True)
     (artifact_dir / "result.json").write_text(result.model_dump_json(indent=2), encoding="utf-8")
-    (artifact_dir / "report.md").write_text(render_staging_public_markdown(result), encoding="utf-8")
+    (artifact_dir / "report.md").write_text(report, encoding="utf-8")
     (artifact_dir / "environment.json").write_text(
         result.environment.model_dump_json(indent=2),
         encoding="utf-8",

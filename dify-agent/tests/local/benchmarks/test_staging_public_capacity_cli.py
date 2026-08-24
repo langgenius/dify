@@ -56,7 +56,12 @@ class _FakeRequest:
     invocation_id: str
 
 
-def _deployment(replicas: int, *, uid_suffix: str = "stable") -> StagingBackendDeploymentEvidence:
+def _deployment(
+    replicas: int,
+    *,
+    uid_suffix: str = "stable",
+    file_cleanup_valid: bool = True,
+) -> StagingBackendDeploymentEvidence:
     return StagingBackendDeploymentEvidence(
         captured_at=_NOW.isoformat(),
         kube_context="staging-main",
@@ -90,6 +95,7 @@ def _deployment(replicas: int, *, uid_suffix: str = "stable") -> StagingBackendD
             pod_image="registry/api@sha256:collector",
             pod_image_id="registry/api@sha256:collector",
             retention_queue_configured=True,
+            file_cleanup_valid=file_cleanup_valid,
             agent_backend_base_url_configured=True,
             agent_backend_health_reachable=False,
             agent_backend_openapi_reachable=True,
@@ -139,6 +145,13 @@ def _sample(scenario_id: StagingPublicScenarioId, benchmark_run_id: str) -> Stag
         config_materialized_bytes=53_248 if scenario_id == "config" else 0,
         config_materialized_sha256="a" * 64 if scenario_id == "config" else None,
         config_sha_valid=scenario_id == "config",
+        file_payload_bytes=16 * 1024 * 1024 if scenario_id == "file" else 0,
+        file_payload_sha256=(
+            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
+            if scenario_id == "file"
+            else None
+        ),
+        file_integrity_valid=scenario_id == "file",
     )
 
 
@@ -207,6 +220,7 @@ def _valid_execution(request: _FakeRequest) -> StagingPublicCapacityExecution:
             checked=True,
             target_conversations=concurrency,
             target_sandboxes=concurrency,
+            target_tool_files=1 if request.scenario_id == "file" else 0,
             consecutive_zero_checks=2,
             interval_seconds=10,
             complete=True,
@@ -221,7 +235,7 @@ def _prepare(monkeypatch, tmp_path: Path, *, replicas: int = 1) -> Path:
     monkeypatch.setenv("BENCH_CONFIRM_STAGING_RUN", "RUN_STAGING_BENCHMARK")
     monkeypatch.setenv("BENCH_STAGING_API_KEY", _API_KEY)
     monkeypatch.setenv("BENCH_E2B_API_KEY", _E2B_API_KEY)
-    monkeypatch.setattr(staging_public_capacity_cli, "_plugin_package_version", lambda _path: "0.1.2")
+    monkeypatch.setattr(staging_public_capacity_cli, "_plugin_package_version", lambda _path: "0.1.4")
     monkeypatch.setattr(staging_public_capacity_cli, "_git_identity", lambda: ("a" * 40, False))
     monkeypatch.setattr(staging_public_capacity_cli.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(
@@ -316,7 +330,7 @@ def test_dirty_harness_fails_before_deployment_or_load(monkeypatch, tmp_path: Pa
     monkeypatch.setenv("BENCH_CONFIRM_STAGING_RUN", "RUN_STAGING_BENCHMARK")
     monkeypatch.setenv("BENCH_STAGING_API_KEY", _API_KEY)
     monkeypatch.setenv("BENCH_E2B_API_KEY", _E2B_API_KEY)
-    monkeypatch.setattr(staging_public_capacity_cli, "_plugin_package_version", lambda _path: "0.1.2")
+    monkeypatch.setattr(staging_public_capacity_cli, "_plugin_package_version", lambda _path: "0.1.4")
     monkeypatch.setattr(staging_public_capacity_cli, "_git_identity", lambda: ("a" * 40, True))
     monkeypatch.setattr(
         staging_public_capacity_cli,
@@ -674,10 +688,10 @@ def test_replica_one_runs_asymmetric_stage_in_gate_first_order(monkeypatch, tmp_
 
     monkeypatch.setattr(staging_public_capacity_cli, "_execute_block", execute)
     assert staging_public_capacity_cli.main() == 0
-    assert calls[:3] == [("basic", 1), ("shell", 1), ("config", 1)]
+    assert calls[:4] == [("basic", 1), ("shell", 1), ("config", 1), ("file", 1)]
     assert set(calls) == set(staging_public_capacity_stage_matrix(1))
     result = json.loads((artifact_dir / "result.json").read_text())
-    assert result["schema_version"] == 6
+    assert result["schema_version"] == 7
     assert result["mode"] == "staging-public-e2e-scaling-stage"
     assert result["backend_replicas"] == 1
     assert result["matrix_complete"] is True
@@ -704,6 +718,78 @@ def test_scale_out_stage_runs_runtime_correctness_before_basic_scan(
     assert staging_public_capacity_cli.main() == 0
     assert calls[:3] == [("basic", 1), ("shell", 10), ("config", 10)]
     assert set(calls) == set(staging_public_capacity_stage_matrix(cast(StagingPublicCapacityReplicaCount, replicas)))
+
+
+def test_file_points_are_available_only_in_r1() -> None:
+    assert staging_public_capacity_cli._selected_stage_matrix(
+        1,
+        scenario_filter="file",
+        concurrency_filter=1,
+    ) == [("file", 1)]
+    assert staging_public_capacity_cli._selected_stage_matrix(
+        1,
+        scenario_filter="file",
+        concurrency_filter=10,
+    ) == [("file", 10)]
+    assert staging_public_capacity_cli._selected_stage_matrix(
+        1,
+        scenario_filter="file",
+        concurrency_filter=20,
+    ) == [("file", 20)]
+    assert staging_public_capacity_cli._selected_stage_matrix(
+        2,
+        scenario_filter="file",
+        concurrency_filter=1,
+    ) == []
+
+
+def test_r1_file_matrix_fails_before_load_when_cleanup_capability_is_missing(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare(monkeypatch, tmp_path, replicas=1)
+    monkeypatch.setattr(
+        staging_public_capacity_cli,
+        "collect_staging_backend_deployment_evidence",
+        lambda **_kwargs: _deployment(1, file_cleanup_valid=False),
+    )
+    calls = 0
+
+    def execute(**_kwargs):
+        nonlocal calls
+        calls += 1
+        raise AssertionError("File capability gate must run before load")
+
+    monkeypatch.setattr(staging_public_capacity_cli, "_execute_block", execute)
+    assert staging_public_capacity_cli.main() == 2
+    assert calls == 0
+
+
+def test_basic_debug_subset_does_not_require_file_cleanup_capability(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare(monkeypatch, tmp_path, replicas=1)
+    monkeypatch.setattr(
+        staging_public_capacity_cli,
+        "collect_staging_backend_deployment_evidence",
+        lambda **_kwargs: _deployment(1, file_cleanup_valid=False),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [*sys.argv, "--scenario", "basic", "--concurrency", "1"],
+    )
+    calls: list[tuple[str, int]] = []
+
+    def execute(**kwargs):
+        request = _fake_request(kwargs)
+        calls.append((request.scenario_id, request.requested_concurrency))
+        return _valid_execution(request)
+
+    monkeypatch.setattr(staging_public_capacity_cli, "_execute_block", execute)
+    assert staging_public_capacity_cli.main() == 0
+    assert calls == [("basic", 1)]
 
 
 def test_basic_stops_after_first_suspected_boundary_without_repeats(monkeypatch, tmp_path: Path) -> None:

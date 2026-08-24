@@ -62,7 +62,7 @@ def _environment(
         harness_dirty=False,
         target_commit=target_commit,
         scenario_manifest_sha256="b" * 64,
-        deterministic_plugin_version="0.1.2",
+        deterministic_plugin_version="0.1.4",
         deterministic_plugin_package_sha256="c" * 64,
         config_expected_sha256=config_expected_sha256,
         e2b_observer_mode="local",
@@ -80,6 +80,7 @@ def _deployment(
     generation: int,
     image_id: str = "registry/agent@sha256:abc",
     effective_agent_config_fingerprint: str = "d" * 64,
+    file_cleanup_valid: bool = True,
 ) -> dict[str, object]:
     pods = [
         StagingBackendPodEvidence(
@@ -133,6 +134,7 @@ def _deployment(
             pod_image="registry/api@sha256:collector",
             pod_image_id="registry/api@sha256:collector",
             retention_queue_configured=True,
+            file_cleanup_valid=file_cleanup_valid,
             agent_backend_base_url_configured=True,
             agent_backend_health_reachable=False,
             agent_backend_openapi_reachable=True,
@@ -168,6 +170,13 @@ def _sample(
         config_materialized_bytes=53_248 if scenario_id == "config" else 0,
         config_materialized_sha256="a" * 64 if scenario_id == "config" else None,
         config_sha_valid=scenario_id == "config",
+        file_payload_bytes=16 * 1024 * 1024 if scenario_id == "file" else 0,
+        file_payload_sha256=(
+            "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
+            if scenario_id == "file"
+            else None
+        ),
+        file_integrity_valid=scenario_id == "file",
     )
 
 
@@ -244,6 +253,7 @@ def _canonical_point(
             checked=True,
             target_conversations=concurrency,
             target_sandboxes=concurrency,
+            target_tool_files=1 if scenario_id == "file" else 0,
             consecutive_zero_checks=2,
             interval_seconds=10,
             complete=True,
@@ -306,6 +316,7 @@ def _stage(
     config_expected_sha256: str = "f" * 64,
     before_config_fingerprint: str = "d" * 64,
     after_config_fingerprint: str | None = None,
+    file_cleanup_valid: bool = True,
 ) -> StagingPublicCapacityStageResult:
     blocks = [
         _canonical_point(
@@ -329,6 +340,7 @@ def _stage(
             captured_at="2026-08-13T01:00:00+00:00",
             generation=replicas,
             effective_agent_config_fingerprint=before_config_fingerprint,
+            file_cleanup_valid=file_cleanup_valid,
         ),
         deployment_after=_deployment(
             replicas,
@@ -336,6 +348,7 @@ def _stage(
             generation=replicas,
             image_id=after_image_id,
             effective_agent_config_fingerprint=(after_config_fingerprint or before_config_fingerprint),
+            file_cleanup_valid=file_cleanup_valid,
         ),
         blocks=blocks,
         points=[],
@@ -375,19 +388,20 @@ def _arguments(tmp_path: Path, stages: tuple[StagingPublicCapacityStageResult, .
     )
 
 
-def test_aggregates_three_valid_schema_v6_stages_offline(tmp_path: Path) -> None:
+def test_aggregates_three_valid_schema_v7_stages_offline(tmp_path: Path) -> None:
     args, output = _arguments(tmp_path, (_stage(1), _stage(2), _stage(4)))
 
     assert main(args) == 0
 
     result = StagingPublicCapacityResult.model_validate_json((output / "result.json").read_text(encoding="utf-8"))
-    assert result.schema_version == 6
+    assert result.schema_version == 7
     assert result.mode == "staging-public-e2e-scaling"
     assert result.confidence == "single_block_shared_traffic"
     assert {(block.backend_replicas, block.scenario_id) for block in result.blocks} == {
         (1, "basic"),
         (1, "shell"),
-        (1, "config"),
+            (1, "config"),
+            (1, "file"),
         (2, "basic"),
         (2, "shell"),
         (2, "config"),
@@ -629,6 +643,17 @@ def test_rejects_deployment_drift_within_a_stage(tmp_path: Path) -> None:
     diagnostics, text = _read_diagnostics(output)
     assert diagnostics.error.code == "deployment_drift"
     assert "sha256:different" not in text
+
+
+def test_rejects_r1_file_stage_without_cleanup_capability(tmp_path: Path) -> None:
+    args, output = _arguments(
+        tmp_path,
+        (_stage(1, file_cleanup_valid=False), _stage(2), _stage(4)),
+    )
+
+    assert main(args) == 2
+    diagnostics, _text = _read_diagnostics(output)
+    assert diagnostics.error.code == "invalid_deployment_evidence"
 
 
 def test_rejects_effective_agent_config_drift_within_a_stage(tmp_path: Path) -> None:

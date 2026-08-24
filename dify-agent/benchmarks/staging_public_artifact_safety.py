@@ -14,16 +14,23 @@ FORBIDDEN_DYNAMIC_KEY_PARTS: tuple[str, ...] = (
     "backend_ref",
     "binding_ref",
     "conversation_id",
+    "file_key",
+    "record_id",
     "sandbox_id",
     "secret",
     "snapshot_id",
+    "storage_key",
     "task_id",
     "tenant_id",
     "token",
+    "tool_file_id",
     "user_id",
     "workspace_id",
 )
 CREDENTIAL_VALUE_RE = re.compile(r"(?i)(?:bearer\s+\S+|\be2b_[A-Za-z0-9]{16,}|\bapp-[A-Za-z0-9_-]{16,})")
+PRIVATE_FILE_REFERENCE_RE = re.compile(
+    r"(?i)(?:\bdify-file-ref(?:://|[:/])\S*|(?:https?://[^\s\"']*)?/files/tools(?=$|[/?:#\s\"'])(?:[/?:#][^\s\"']*)?)"
+)
 DYNAMIC_KEY_ASSIGNMENT_RE = re.compile(r"(?i)(?:^|[\s,{])['\"]?([A-Za-z][A-Za-z0-9_-]*)['\"]?\s*[:=]")
 PRIVATE_VALUE_LABEL_RE = re.compile(
     r"(?i)\b(?:backend|binding|conversation|sandbox|snapshot|task|tenant|user|workspace)"
@@ -100,6 +107,7 @@ def _validate_value(value: object, *, forbidden_values: tuple[str, ...]) -> None
 def _validate_string(value: str, *, forbidden_values: tuple[str, ...]) -> None:
     if (
         CREDENTIAL_VALUE_RE.search(value)
+        or PRIVATE_FILE_REFERENCE_RE.search(value)
         or PRIVATE_VALUE_LABEL_RE.search(value)
         or any(secret in value for secret in forbidden_values)
     ):
@@ -114,6 +122,7 @@ __all__ = [
     "DYNAMIC_KEY_ASSIGNMENT_RE",
     "FORBIDDEN_DYNAMIC_KEY_PARTS",
     "PRIVATE_VALUE_LABEL_RE",
+    "PRIVATE_FILE_REFERENCE_RE",
     "PUBLIC_METADATA_KEY_ALLOWLIST",
     "PublicArtifactSafetyError",
     "validate_public_artifact_payload",

@@ -9,6 +9,7 @@ import pytest
 from pydantic import SecretStr
 
 from benchmarks.capacity_protocol import RequestMetric
+from benchmarks.staging_plugin.models.llm.contract import FILE_EXPECTED_SHA256, FILE_PAYLOAD_BYTES
 from benchmarks.staging_public_protocol import (
     StagingPublicProtocolSettings,
     StagingPublicServiceClient,
@@ -137,6 +138,23 @@ def _config_events(run_id: str, *, digest: str = _CONFIG_SHA256) -> list[dict[st
     ]
 
 
+def _file_events(
+    run_id: str,
+    *,
+    payload_bytes: int = FILE_PAYLOAD_BYTES,
+    digest: str = FILE_EXPECTED_SHA256,
+) -> list[dict[str, object]]:
+    tool_call = _marker(run_id, "file", round_number=1, kind="tool_call")
+    terminal = _marker(run_id, "file", round_number=2, kind="terminal")
+    evidence = f"DIFY_BENCHMARK_FILE_SHA256|{tool_call}|bytes={payload_bytes}|sha256={digest}"
+    return [
+        _event("agent_thought", thought=tool_call, observation="", tool="shell_run"),
+        _event("agent_thought", thought=tool_call, observation=_shell_observation(evidence), tool="shell_run"),
+        _event("message", answer=terminal),
+        _event("message_end", id="message-1", metadata={}, files=[]),
+    ]
+
+
 def _client(
     *,
     settings: StagingPublicProtocolSettings,
@@ -169,6 +187,16 @@ def test_settings_normalize_v1_base_and_never_serialize_key() -> None:
         _ = StagingPublicProtocolSettings(
             service_api_base_url="https://api-staging.example/api",
             api_key=SecretStr(_API_KEY),
+            config_expected_sha256=_CONFIG_SHA256,
+        )
+
+
+@pytest.mark.parametrize("api_key", ["app-valid\nstartup-log", " app-valid", "app-valid\t"])
+def test_settings_reject_api_keys_with_whitespace_before_network(api_key: str) -> None:
+    with pytest.raises(ValueError, match="one printable line"):
+        StagingPublicProtocolSettings(
+            service_api_base_url="https://api-staging.example/v1/",
+            api_key=SecretStr(api_key),
             config_expected_sha256=_CONFIG_SHA256,
         )
 
@@ -556,6 +584,85 @@ def test_config_evidence_requires_counts_bytes_and_sha(
     assert wrong.sample.succeeded is False
     assert wrong.sample.error_type == "validation_error"
     assert wrong.sample.config_sha_valid is False
+
+
+@pytest.mark.parametrize(
+    ("payload_bytes", "digest"),
+    [
+        (FILE_PAYLOAD_BYTES, FILE_EXPECTED_SHA256),
+        (FILE_PAYLOAD_BYTES - 1, FILE_EXPECTED_SHA256),
+        (FILE_PAYLOAD_BYTES, "b" * 64),
+    ],
+)
+def test_file_evidence_requires_exact_bytes_and_sha(
+    settings: StagingPublicProtocolSettings,
+    payload_bytes: int,
+    digest: str,
+) -> None:
+    run_id = f"invocation.file.{payload_bytes}.{digest[:1]}"
+    with _client(
+        settings=settings,
+        handler=lambda _request: _sse_response(_file_events(run_id, payload_bytes=payload_bytes, digest=digest)),
+    ) as client:
+        observation = client.run_once(
+            benchmark_run_id=run_id,
+            scenario_id="file",
+            scenario_version=1,
+        )
+
+    sample = observation.sample
+    assert sample.file_payload_bytes == payload_bytes
+    assert sample.file_payload_sha256 == digest
+    assert sample.file_integrity_valid is (payload_bytes == FILE_PAYLOAD_BYTES and digest == FILE_EXPECTED_SHA256)
+    assert sample.succeeded is sample.file_integrity_valid
+    if not sample.file_integrity_valid:
+        assert sample.error_type == "validation_error"
+        assert "File evidence did not match" in cast(str, sample.error)
+
+
+def test_file_accepts_evidence_only_from_agent_thought_observation(
+    settings: StagingPublicProtocolSettings,
+) -> None:
+    run_id = "invocation.file.echo"
+    tool_call = _marker(run_id, "file", round_number=1, kind="tool_call")
+    terminal = _marker(run_id, "file", round_number=2, kind="terminal")
+    evidence = f"DIFY_BENCHMARK_FILE_SHA256|{tool_call}|bytes={FILE_PAYLOAD_BYTES}|sha256={FILE_EXPECTED_SHA256}"
+    private_reference = "dify-file-ref:private-record"
+    private_url = "https://files.example/private?sign=secret"
+    events = [
+        _event(
+            "agent_thought",
+            thought=tool_call,
+            observation="",
+            tool="shell_run",
+            tool_input=json.dumps(
+                {
+                    "script": evidence,
+                    "reference": private_reference,
+                    "public_download_url": private_url,
+                }
+            ),
+        ),
+        _event("message", answer=f"{evidence}\n{terminal}"),
+        _event("message_end", id="message-1", metadata={}, files=[]),
+    ]
+
+    with _client(settings=settings, handler=lambda _request: _sse_response(events)) as client:
+        observation = client.run_once(
+            benchmark_run_id=run_id,
+            scenario_id="file",
+            scenario_version=1,
+        )
+
+    serialized = observation.sample.model_dump_json()
+    assert observation.sample.succeeded is False
+    assert observation.sample.file_payload_bytes == 0
+    assert observation.sample.file_payload_sha256 is None
+    assert observation.sample.file_integrity_valid is False
+    assert observation.sample.error_type == "validation_error"
+    assert "File transfer evidence count was 0" in cast(str, observation.sample.error)
+    assert private_reference not in serialized
+    assert private_url not in serialized
 
 
 @pytest.mark.parametrize(

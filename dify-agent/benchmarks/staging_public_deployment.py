@@ -71,7 +71,15 @@ class StagingCollectorPreflightEvidence(BaseModel):
     pod_image: str
     pod_image_id: str
     retention_queue_configured: bool
+    conversation_queue_configured: bool = False
+    conversation_cleanup_task_importable: bool = False
+    tool_file_storage_cleanup_capable: bool = False
+    conversation_cleanup_retry_configured: bool = False
+    conversation_cleanup_sweeper_available: bool = False
+    file_cleanup_valid: bool = False
+    file_cleanup_errors: list[str] = Field(default_factory=list)
     agent_backend_base_url_configured: bool
+    agent_backend_auth_configured: bool = False
     agent_backend_health_reachable: bool
     agent_backend_openapi_reachable: bool
     valid: bool
@@ -207,7 +215,7 @@ def collect_staging_backend_deployment_evidence(
             int(worker_payload.get("observed", 0)),
         )
     collector_pod_items = _items(collector_pods)
-    collector_probe_evidence: dict[str, tuple[bool, bool, bool, bool]] = {}
+    collector_probe_evidence: dict[str, tuple[bool, ...]] = {}
     for pod in collector_pod_items:
         metadata = _mapping(pod.get("metadata"), "collector Pod metadata")
         pod_name = _string(metadata.get("name"), "collector Pod metadata.name")
@@ -239,6 +247,12 @@ def collect_staging_backend_deployment_evidence(
             probe_payload.get("agent_backend_base_url_configured") is True,
             probe_payload.get("agent_backend_health_reachable") is True,
             probe_payload.get("agent_backend_openapi_reachable") is True,
+            probe_payload.get("conversation_queue_configured") is True,
+            probe_payload.get("conversation_cleanup_task_importable") is True,
+            probe_payload.get("tool_file_storage_cleanup_capable") is True,
+            probe_payload.get("conversation_cleanup_retry_configured") is True,
+            probe_payload.get("conversation_cleanup_sweeper_available") is True,
+            probe_payload.get("agent_backend_auth_configured") is True,
         )
     return evaluate_staging_backend_deployment(
         expected_replicas=expected_replicas,
@@ -283,7 +297,7 @@ def evaluate_staging_backend_deployment(
     collector_container_name: str,
     collector_deployment: Mapping[str, Any],
     collector_pods: Sequence[Mapping[str, Any]],
-    collector_probe_evidence: Mapping[str, tuple[bool, bool, bool, bool]],
+    collector_probe_evidence: Mapping[str, tuple[bool, ...]],
     config_maps: Mapping[str, Mapping[str, Any]] | None = None,
     secret_metadata: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> StagingBackendDeploymentEvidence:
@@ -405,9 +419,10 @@ def _evaluate_collector_preflight(
     container_name: str,
     deployment: Mapping[str, Any],
     pods: Sequence[Mapping[str, Any]],
-    probe_evidence: Mapping[str, tuple[bool, bool, bool, bool]],
+    probe_evidence: Mapping[str, tuple[bool, ...]],
 ) -> StagingCollectorPreflightEvidence:
     errors: list[str] = []
+    file_cleanup_errors: list[str] = []
     metadata = _mapping(deployment.get("metadata"), "collector Deployment metadata")
     spec = _mapping(deployment.get("spec"), "collector Deployment spec")
     status = _mapping(deployment.get("status", {}), "collector Deployment status")
@@ -462,17 +477,44 @@ def _evaluate_collector_preflight(
         base_url_configured = False
         health_reachable = False
         openapi_reachable = False
+        api_token_configured = False
+        conversation_queue_configured = False
+        conversation_cleanup_task_importable = False
+        tool_file_storage_cleanup_capable = False
+        conversation_cleanup_retry_configured = False
+        conversation_cleanup_sweeper_available = False
     else:
+        # New probe fields are appended so older test fixtures keep their
+        # established positional meaning. Missing fields remain fail-closed.
+        normalized_probe = (*probe_values[0][:10], False, False, False, False, False, False, False, False, False, False)
         (
             retention_queue_configured,
             base_url_configured,
             health_reachable,
             openapi_reachable,
-        ) = probe_values[0]
+            conversation_queue_configured,
+            conversation_cleanup_task_importable,
+            tool_file_storage_cleanup_capable,
+            conversation_cleanup_retry_configured,
+            conversation_cleanup_sweeper_available,
+            api_token_configured,
+        ) = normalized_probe[:10]
     if not retention_queue_configured:
         errors.append("collector effective Celery queues did not include retention")
+    if not conversation_queue_configured:
+        file_cleanup_errors.append("collector effective Celery queues did not include conversation")
+    if not conversation_cleanup_task_importable:
+        file_cleanup_errors.append("collector could not import the conversation cleanup task")
+    if not tool_file_storage_cleanup_capable:
+        file_cleanup_errors.append("collector did not expose the required ToolFile storage cleanup ordering")
+    if not conversation_cleanup_retry_configured:
+        file_cleanup_errors.append("collector conversation cleanup task did not expose retry capability")
+    if not conversation_cleanup_sweeper_available:
+        file_cleanup_errors.append("collector did not expose the soft-deleted conversation cleanup sweeper")
     if not base_url_configured:
         errors.append("collector Agent Backend base URL was not configured")
+    if not api_token_configured:
+        errors.append("collector Agent Backend API token was not configured")
     if not (health_reachable or openapi_reachable):
         errors.append("collector could not reach an Agent Backend health or OpenAPI endpoint")
 
@@ -491,7 +533,15 @@ def _evaluate_collector_preflight(
         pod_image=pod_image,
         pod_image_id=pod_image_id,
         retention_queue_configured=retention_queue_configured,
+        conversation_queue_configured=conversation_queue_configured,
+        conversation_cleanup_task_importable=conversation_cleanup_task_importable,
+        tool_file_storage_cleanup_capable=tool_file_storage_cleanup_capable,
+        conversation_cleanup_retry_configured=conversation_cleanup_retry_configured,
+        conversation_cleanup_sweeper_available=conversation_cleanup_sweeper_available,
+        file_cleanup_valid=not file_cleanup_errors,
+        file_cleanup_errors=file_cleanup_errors,
         agent_backend_base_url_configured=base_url_configured,
+        agent_backend_auth_configured=api_token_configured,
         agent_backend_health_reachable=health_reachable,
         agent_backend_openapi_reachable=openapi_reachable,
         valid=not errors,
@@ -795,7 +845,7 @@ print(json.dumps({'declared':int(os.environ.get('UVICORN_WORKERS','0')),'observe
 """
 
 
-_COLLECTOR_PROBE = """import json,os,urllib.request
+_COLLECTOR_PROBE = """import inspect,json,os,urllib.request
 queues=''
 try:
     argv=[item.decode() for item in open('/proc/1/cmdline','rb').read().split(b'\\0') if item]
@@ -809,7 +859,44 @@ for index,item in enumerate(argv):
 if not queues:
     queues=os.environ.get('CELERY_WORKER_QUEUES') or os.environ.get('CELERY_QUEUES') or ''
 queue_names={item.strip() for item in queues.split(',') if item.strip()}
+cleanup_capabilities={
+    'conversation_cleanup_task_importable':False,
+    'tool_file_storage_cleanup_capable':False,
+    'conversation_cleanup_retry_configured':False,
+    'conversation_cleanup_sweeper_available':False,
+}
+try:
+    import tasks.delete_conversation_task as cleanup_module
+    cleanup_task=getattr(cleanup_module,'delete_conversation_related_data',None)
+    cleanup_capabilities['conversation_cleanup_task_importable']=callable(cleanup_task)
+    cleanup_function=getattr(cleanup_module,'_cleanup_conversation_related_data',None)
+    delete_function=getattr(cleanup_module,'_delete_storage_object',None)
+    if callable(cleanup_function) and callable(delete_function):
+        cleanup_source=''.join(inspect.getsource(cleanup_function).split())
+        delete_source=''.join(inspect.getsource(delete_function).split())
+        storage_call='_delete_storage_object(tool_file.file_key)'
+        row_call='session.delete(tool_file)'
+        cleanup_capabilities['tool_file_storage_cleanup_capable']=(
+            'ToolFile.conversation_id==conversation_id' in cleanup_source
+            and storage_call in cleanup_source
+            and row_call in cleanup_source
+            and cleanup_source.index(storage_call) < cleanup_source.index(row_call)
+            and 'storage.delete(file_key)' in delete_source
+            and 'storage.exists(file_key)' in delete_source
+        )
+    if cleanup_task is not None:
+        task_source=inspect.getsource(cleanup_task.run)
+        cleanup_capabilities['conversation_cleanup_retry_configured']=(
+            int(getattr(cleanup_task,'max_retries',0) or 0) > 0
+            and 'self.retry' in task_source
+        )
+    cleanup_capabilities['conversation_cleanup_sweeper_available']=callable(
+        getattr(cleanup_module,'sweep_deleted_conversations',None)
+    )
+except Exception:
+    pass
 base_url=os.environ.get('AGENT_BACKEND_BASE_URL','').strip().rstrip('/')
+api_token_configured=bool(os.environ.get('AGENT_BACKEND_API_TOKEN','').strip())
 opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
 def reachable(path):
     if not base_url:
@@ -823,9 +910,12 @@ health=reachable('/health') or reachable('/healthz')
 openapi=reachable('/openapi.json')
 print(json.dumps({
     'retention_queue_configured':'retention' in queue_names,
+    'conversation_queue_configured':'conversation' in queue_names,
     'agent_backend_base_url_configured':bool(base_url),
+    'agent_backend_auth_configured':api_token_configured,
     'agent_backend_health_reachable':health,
     'agent_backend_openapi_reachable':openapi,
+    **cleanup_capabilities,
 }))
 """
 

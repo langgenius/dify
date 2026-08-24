@@ -160,7 +160,7 @@ def _evaluate(
     child_enabled: bool = False,
     collector_deployment: dict[str, Any] | None = None,
     collector_pods: list[dict[str, Any]] | None = None,
-    collector_probe: tuple[bool, bool, bool, bool] = (True, True, False, True),
+    collector_probe: tuple[bool, ...] = (True, True, False, True, True, True, True, True, True, True),
 ):
     pod_items = pods or [_pod(index) for index in range(replicas)]
     collector_pod_items = collector_pods or [_collector_pod()]
@@ -200,11 +200,19 @@ def test_valid_replica_stage_requires_fixed_resources_workers_and_topology() -> 
     assert {pod.observed_workers for pod in evidence.pods} == {2}
     assert {pod.image_id for pod in evidence.pods} == {"registry/agent@sha256:abc"}
     assert evidence.collector_preflight.valid is True
+    assert evidence.collector_preflight.agent_backend_auth_configured is True
     assert evidence.collector_preflight.agent_backend_openapi_reachable is True
     assert evidence.collector_preflight.deployment_generation == 11
     assert evidence.collector_preflight.deployment_observed_generation == 11
     assert evidence.collector_preflight.pod_uid == "collector-uid-0"
     assert evidence.collector_preflight.pod_image_id == "registry/api@sha256:collector"
+    assert evidence.collector_preflight.conversation_queue_configured is True
+    assert evidence.collector_preflight.conversation_cleanup_task_importable is True
+    assert evidence.collector_preflight.tool_file_storage_cleanup_capable is True
+    assert evidence.collector_preflight.conversation_cleanup_retry_configured is True
+    assert evidence.collector_preflight.conversation_cleanup_sweeper_available is True
+    assert evidence.collector_preflight.file_cleanup_valid is True
+    assert evidence.collector_preflight.file_cleanup_errors == []
     assert len(evidence.effective_agent_config_fingerprint) == 64
 
 
@@ -286,6 +294,40 @@ def test_collector_preflight_fails_closed_without_retention_or_backend_reachabil
     assert any("health or OpenAPI" in error for error in evidence.collector_preflight.errors)
 
 
+def test_file_cleanup_preflight_fails_closed_without_regressing_other_scenarios() -> None:
+    evidence = _evaluate(1, collector_probe=(True, True, False, True, False, False, False, False, False, True))
+
+    assert evidence.valid is True
+    assert evidence.collector_preflight.valid is True
+    assert evidence.collector_preflight.file_cleanup_valid is False
+    assert evidence.collector_preflight.conversation_queue_configured is False
+    assert evidence.collector_preflight.conversation_cleanup_task_importable is False
+    assert evidence.collector_preflight.tool_file_storage_cleanup_capable is False
+    assert evidence.collector_preflight.conversation_cleanup_retry_configured is False
+    assert evidence.collector_preflight.conversation_cleanup_sweeper_available is False
+    assert evidence.collector_preflight.errors == []
+    assert any("did not include conversation" in error for error in evidence.collector_preflight.file_cleanup_errors)
+    assert any(
+        "ToolFile storage cleanup ordering" in error for error in evidence.collector_preflight.file_cleanup_errors
+    )
+    assert not any("collector preflight failed" in error for error in evidence.errors)
+
+
+def test_collector_preflight_fails_closed_when_backend_token_is_missing() -> None:
+    evidence = _evaluate(
+        1,
+        collector_probe=(True, True, False, True, True, True, True, True, True, False),
+    )
+
+    assert evidence.valid is False
+    assert evidence.collector_preflight.valid is False
+    assert evidence.collector_preflight.agent_backend_base_url_configured is True
+    assert evidence.collector_preflight.agent_backend_openapi_reachable is True
+    assert evidence.collector_preflight.agent_backend_auth_configured is False
+    assert any("API token was not configured" in error for error in evidence.collector_preflight.errors)
+    assert any("collector preflight failed" in error for error in evidence.errors)
+
+
 def test_collector_preflight_requires_one_ready_unrestarted_replica() -> None:
     evidence = _evaluate(
         1,
@@ -328,7 +370,13 @@ def test_collection_probes_collector_without_serializing_queue_or_backend_url_va
             return json.dumps(
                 {
                     "retention_queue_configured": True,
+                    "conversation_queue_configured": True,
+                    "conversation_cleanup_task_importable": True,
+                    "tool_file_storage_cleanup_capable": True,
+                    "conversation_cleanup_retry_configured": True,
+                    "conversation_cleanup_sweeper_available": True,
                     "agent_backend_base_url_configured": True,
+                    "agent_backend_auth_configured": True,
                     "agent_backend_health_reachable": False,
                     "agent_backend_openapi_reachable": True,
                 }
@@ -345,6 +393,9 @@ def test_collection_probes_collector_without_serializing_queue_or_backend_url_va
     serialized = evidence.model_dump_json()
     assert evidence.valid is True
     assert evidence.collector_preflight.ready_pods == 1
+    assert evidence.collector_preflight.agent_backend_auth_configured is True
+    assert evidence.collector_preflight.conversation_cleanup_sweeper_available is True
+    assert evidence.collector_preflight.file_cleanup_valid is True
     assert "dataset,dataset_summary,retention" not in serialized
     assert "http://private-agent-backend" not in serialized
     assert "agent-config" not in serialized

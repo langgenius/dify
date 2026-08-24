@@ -1,4 +1,4 @@
-version: 0.1.2
+version: 0.1.4
 type: plugin
 author: dify-agent-benchmark
 name: dify_agent_benchmark_model

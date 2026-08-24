@@ -14,7 +14,9 @@ from pathlib import Path
 import platform
 import re
 import subprocess
+import tempfile
 from typing import Iterable, Sequence, cast
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import BaseModel
 
@@ -42,6 +44,7 @@ logger = logging.getLogger(__name__)
 _HARNESS_VERSION = 1
 _REDIS_IMAGE = "redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2"
 _COMPOSE_FILE = "docker-compose.capacity.yml"
+_E2B_PUBLIC_FILE_COMPOSE_FILE = "docker-compose.capacity-e2b-public-file.yml"
 _E2B_ALLOCATION_JOURNAL = ".e2b-allocations.jsonl"
 _LOCUST_DRAIN_TIMEOUT_SECONDS = 180
 _LOCUST_PROCESS_BUFFER_SECONDS = 30
@@ -81,6 +84,8 @@ class CapacityOptions:
     e2b_api_key: str | None = field(default=None, repr=False)
     e2b_template: str | None = None
     e2b_max_concurrency: int | None = None
+    e2b_public_stub_base_url: str | None = None
+    e2b_public_files_base_url: str | None = None
 
     def __post_init__(self) -> None:
         if self.concurrency is not None and self.concurrency < 1:
@@ -91,6 +96,24 @@ class CapacityOptions:
             required = self.concurrency or max(CONCURRENCY_LEVELS)
             if self.e2b_max_concurrency is None or self.e2b_max_concurrency < required:
                 raise ValueError(f"BENCH_E2B_MAX_CONCURRENCY must be at least {required} for the selected matrix")
+            if self.scenario_id in {None, "file"}:
+                object.__setattr__(
+                    self,
+                    "e2b_public_stub_base_url",
+                    _normalize_public_https_url(
+                        self.e2b_public_stub_base_url,
+                        env_name="BENCH_E2B_PUBLIC_STUB_BASE_URL",
+                        agent_stub=True,
+                    ),
+                )
+                object.__setattr__(
+                    self,
+                    "e2b_public_files_base_url",
+                    _normalize_public_https_url(
+                        self.e2b_public_files_base_url,
+                        env_name="BENCH_E2B_PUBLIC_FILES_BASE_URL",
+                    ),
+                )
 
 
 class BenchmarkCommandError(RuntimeError):
@@ -151,6 +174,8 @@ def run_capacity(options: CapacityOptions) -> tuple[Path, bool]:
                 keep_containers=options.keep_containers,
                 e2b_api_key=options.e2b_api_key,
                 e2b_template=options.e2b_template,
+                e2b_public_stub_base_url=options.e2b_public_stub_base_url,
+                e2b_public_files_base_url=options.e2b_public_files_base_url,
             )
         except Exception as exc:
             command_failed = True
@@ -194,12 +219,14 @@ def _run_compose_block(
     keep_containers: bool,
     e2b_api_key: str | None,
     e2b_template: str | None,
+    e2b_public_stub_base_url: str | None,
+    e2b_public_files_base_url: str | None,
 ) -> BlockResult:
     block_name = f"{point.scenario.id}-c{point.requested_concurrency}"
     block_dir = invocation_dir / "blocks" / block_name
     block_dir.mkdir()
     project = _compose_project_name(invocation_id, block_name)
-    compose_file = root / "dify-agent" / "benchmarks" / _COMPOSE_FILE
+    compose_files = _compose_files_for_point(root, point)
     environment = {
         **os.environ,
         "BENCH_MODE": point.mode,
@@ -219,11 +246,19 @@ def _run_compose_block(
         "BENCH_RUNTIME_BACKEND": "e2b" if point.mode == "local-e2b" else "local",
         "BENCH_E2B_API_KEY": e2b_api_key or "",
         "BENCH_E2B_TEMPLATE": e2b_template or "",
-        "BENCH_AGENT_STUB_API_BASE_URL": _agent_stub_api_base_url(point),
-        "BENCH_SANDBOX_FILES_BASE_URL": "http://fake-deps:5002",
-        "BENCH_PUBLIC_DATA_BASE_URL": "http://fake-deps:5002/__bench",
+        **_data_plane_environment(
+            point,
+            e2b_public_stub_base_url=e2b_public_stub_base_url,
+            e2b_public_files_base_url=e2b_public_files_base_url,
+        ),
     }
-    compose = ["docker", "compose", "-f", str(compose_file), "-p", project]
+    compose = [
+        "docker",
+        "compose",
+        *(argument for compose_file in compose_files for argument in ("-f", str(compose_file))),
+        "-p",
+        project,
+    ]
     services = _services_for_point(point)
     sampler: DockerStatsSampler | None = None
     sampler_stopped = False
@@ -585,22 +620,43 @@ def _stop_compose_service_containers(
 def _build_harness_image(root: Path) -> str:
     content_hash = _hash_paths(
         root,
-        ("dify-agent/benchmarks", "dify-agent/pyproject.toml", "dify-agent/uv.lock"),
+        (
+            "dify-agent/benchmarks",
+            "dify-agent/pyproject.toml",
+            "dify-agent/uv.lock",
+            "dify-agent-runtime",
+        ),
     )
     tag = f"dify-agent-bench-harness:{content_hash[:16]}"
-    _run_command(
-        [
-            "docker",
-            "build",
-            "--progress=plain",
-            "-f",
-            "dify-agent/benchmarks/Dockerfile",
-            "-t",
-            tag,
-            ".",
-        ],
-        cwd=root,
-    )
+    with tempfile.TemporaryDirectory(prefix="dify-agent-benchmark-cli-") as cli_context:
+        cli_binary = Path(cli_context) / "dify-agent"
+        build_environment = {
+            **os.environ,
+            "CGO_ENABLED": "0",
+            "GOOS": "linux",
+            "GOARCH": "amd64",
+        }
+        _run_command(
+            ["go", "build", "-trimpath", "-o", str(cli_binary), "./cmd/dify-agent-cli"],
+            cwd=root / "dify-agent-runtime",
+            env=build_environment,
+        )
+        cli_binary.chmod(0o755)
+        _run_command(
+            [
+                "docker",
+                "build",
+                "--progress=plain",
+                "--build-context",
+                f"benchmark-agent-cli={cli_context}",
+                "-f",
+                "dify-agent/benchmarks/Dockerfile",
+                "-t",
+                tag,
+                ".",
+            ],
+            cwd=root,
+        )
     return tag
 
 
@@ -711,7 +767,6 @@ def _capture_environment(
 ) -> EnvironmentFingerprint:
     docker_info = json.loads(_run_command(["docker", "info", "--format", "{{json .}}"]).stdout)
     server = json.loads(_run_command(["docker", "version", "--format", "{{json .Server}}"]).stdout)
-    compose_file = root / "dify-agent" / "benchmarks" / _COMPOSE_FILE
     limits = {name: value for name, value in _RESOURCE_LIMITS.items() if name != "runtime" or mode != "local-e2b"}
     return EnvironmentFingerprint(
         captured_at=datetime.now(timezone.utc).isoformat(),
@@ -723,10 +778,21 @@ def _capture_environment(
         docker_compose=_run_command(["docker", "compose", "version", "--short"]).stdout.strip(),
         docker_cpus=int(docker_info.get("NCPU", 0)),
         docker_memory_bytes=int(docker_info.get("MemTotal", 0)),
-        compose_hash=_hash_file(compose_file),
+        compose_hash=_hash_paths(
+            root,
+            (
+                f"dify-agent/benchmarks/{_COMPOSE_FILE}",
+                f"dify-agent/benchmarks/{_E2B_PUBLIC_FILE_COMPOSE_FILE}",
+            ),
+        ),
         harness_hash=_hash_paths(
             root,
-            ("dify-agent/benchmarks", "dify-agent/pyproject.toml", "dify-agent/uv.lock"),
+            (
+                "dify-agent/benchmarks",
+                "dify-agent/pyproject.toml",
+                "dify-agent/uv.lock",
+                "dify-agent-runtime",
+            ),
         ),
         scenario_manifest_hash=_hash_file(root / "dify-agent" / "benchmarks" / "capacity_scenarios.json"),
         redis_image=_REDIS_IMAGE,
@@ -814,10 +880,102 @@ def _services_for_point(point: CapacityMatrixPoint) -> tuple[str, ...]:
     return ("redis", "fake-deps", "agent")
 
 
-def _agent_stub_api_base_url(point: CapacityMatrixPoint) -> str:
+def _uses_e2b_public_file_data_plane(point: CapacityMatrixPoint) -> bool:
+    return point.mode == "local-e2b" and point.scenario.workload == "file"
+
+
+def _compose_files_for_point(root: Path, point: CapacityMatrixPoint) -> tuple[Path, ...]:
+    compose_files = [root / "dify-agent" / "benchmarks" / _COMPOSE_FILE]
+    if _uses_e2b_public_file_data_plane(point):
+        compose_files.append(root / "dify-agent" / "benchmarks" / _E2B_PUBLIC_FILE_COMPOSE_FILE)
+    return tuple(compose_files)
+
+
+def _data_plane_environment(
+    point: CapacityMatrixPoint,
+    *,
+    e2b_public_stub_base_url: str | None = None,
+    e2b_public_files_base_url: str | None = None,
+) -> dict[str, str]:
+    return {
+        "BENCH_AGENT_STUB_API_BASE_URL": _agent_stub_api_base_url(
+            point,
+            e2b_public_stub_base_url=e2b_public_stub_base_url,
+        ),
+        "BENCH_SANDBOX_FILES_BASE_URL": _sandbox_files_base_url(
+            point,
+            e2b_public_files_base_url=e2b_public_files_base_url,
+        ),
+        "BENCH_PUBLIC_DATA_BASE_URL": _benchmark_public_data_base_url(
+            point,
+            e2b_public_files_base_url=e2b_public_files_base_url,
+        ),
+    }
+
+
+def _agent_stub_api_base_url(
+    point: CapacityMatrixPoint,
+    *,
+    e2b_public_stub_base_url: str | None = None,
+) -> str:
     if point.mode == "local-e2b" and point.scenario.workload == "config":
         return f"http://{E2B_CONFIG_STUB_DEFAULT_HOST}:{E2B_CONFIG_STUB_DEFAULT_PORT}/agent-stub"
+    if _uses_e2b_public_file_data_plane(point):
+        if e2b_public_stub_base_url is None:
+            raise ValueError("BENCH_E2B_PUBLIC_STUB_BASE_URL is required for local-e2b File")
+        return e2b_public_stub_base_url
     return "http://agent:5050/agent-stub"
+
+
+def _sandbox_files_base_url(
+    point: CapacityMatrixPoint,
+    *,
+    e2b_public_files_base_url: str | None = None,
+) -> str:
+    if _uses_e2b_public_file_data_plane(point):
+        if e2b_public_files_base_url is None:
+            raise ValueError("BENCH_E2B_PUBLIC_FILES_BASE_URL is required for local-e2b File")
+        return e2b_public_files_base_url
+    return "http://fake-deps:5002"
+
+
+def _benchmark_public_data_base_url(
+    point: CapacityMatrixPoint,
+    *,
+    e2b_public_files_base_url: str | None = None,
+) -> str:
+    return f"{_sandbox_files_base_url(point, e2b_public_files_base_url=e2b_public_files_base_url)}/__bench"
+
+
+def _normalize_public_https_url(
+    value: str | None,
+    *,
+    env_name: str,
+    agent_stub: bool = False,
+) -> str:
+    if value is None or not value.strip():
+        raise ValueError(f"{env_name} is required for local-e2b File")
+    parsed = urlsplit(value.strip())
+    if parsed.scheme != "https":
+        raise ValueError(f"{env_name} must use https")
+    if not parsed.netloc or parsed.hostname is None:
+        raise ValueError(f"{env_name} must include a host")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError(f"{env_name} must not include user info")
+    if parsed.query or parsed.fragment:
+        raise ValueError(f"{env_name} must not include a query string or fragment")
+    try:
+        _ = parsed.port
+    except ValueError as exc:
+        raise ValueError(f"{env_name} contains an invalid port") from exc
+
+    path = parsed.path.rstrip("/")
+    if agent_stub:
+        if path in {"", "/"}:
+            path = "/agent-stub"
+        elif path != "/agent-stub":
+            raise ValueError(f"{env_name} path must be empty or /agent-stub")
+    return urlunsplit(("https", parsed.netloc, path, "", ""))
 
 
 def _redact_secret_in_directory(directory: Path, secret: str) -> None:
@@ -940,10 +1098,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> CapacityOptions:
     parser.add_argument("--results-root", type=Path)
     args = parser.parse_args(argv)
     mode = cast(BenchmarkMode, args.mode)
+    scenario_id = cast(str | None, args.scenario)
+    uses_e2b_public_file_data_plane = mode == "local-e2b" and scenario_id in {None, "file"}
     return CapacityOptions(
         mode=mode,
         keep_containers=cast(bool, args.keep_containers),
-        scenario_id=cast(str | None, args.scenario),
+        scenario_id=scenario_id,
         concurrency=cast(int | None, args.concurrency),
         results_root=cast(Path | None, args.results_root),
         e2b_api_key=os.environ.get("BENCH_E2B_API_KEY") if mode == "local-e2b" else None,
@@ -952,6 +1112,12 @@ def _parse_args(argv: Sequence[str] | None = None) -> CapacityOptions:
             int(os.environ["BENCH_E2B_MAX_CONCURRENCY"])
             if mode == "local-e2b" and os.environ.get("BENCH_E2B_MAX_CONCURRENCY")
             else None
+        ),
+        e2b_public_stub_base_url=(
+            os.environ.get("BENCH_E2B_PUBLIC_STUB_BASE_URL") if uses_e2b_public_file_data_plane else None
+        ),
+        e2b_public_files_base_url=(
+            os.environ.get("BENCH_E2B_PUBLIC_FILES_BASE_URL") if uses_e2b_public_file_data_plane else None
         ),
     )
 

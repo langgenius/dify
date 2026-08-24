@@ -18,9 +18,11 @@ CONFIG_ITEM_BYTES = 4096
 CONFIG_ITEM_COUNT = CONFIG_SKILL_COUNT + CONFIG_FILE_COUNT
 CONFIG_TOTAL_BYTES = CONFIG_ITEM_COUNT * CONFIG_ITEM_BYTES
 CONFIG_EXPECTED_SHA256 = "318fdd5b5ef72c47b2df2890d724cf8fbb4764dee352911f9de8535af4748dc3"
+FILE_PAYLOAD_BYTES = 16 * 1024 * 1024
+FILE_EXPECTED_SHA256 = "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
 BENCHMARK_REQUEST_PREFIX = "DIFY_BENCHMARK_REQUEST:"
 
-_SUPPORTED_SCENARIOS = frozenset({"basic", "shell", "config"})
+_SUPPORTED_SCENARIOS = frozenset({"basic", "shell", "config", "file"})
 _IDENTITY_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{1,200}$")
 _MARKER_PREFIX = "DIFY_BENCHMARK_MARKER:"
 _REQUEST_KEYS = frozenset({"benchmark_run_id", "scenario_id", "scenario_version"})
@@ -203,7 +205,73 @@ def _runtime_script(identity: BenchmarkIdentity) -> str:
                 "PY",
             ]
         )
+    if identity.scenario_id == "file":
+        return _file_runtime_script(marker)
     raise ValueError(f"scenario {identity.scenario_id!r} has no Runtime script")
+
+
+def _file_runtime_script(marker: str) -> str:
+    """Build a script that keeps opaque ToolFile identities inside the sandbox."""
+
+    evidence_prefix = f"DIFY_BENCHMARK_FILE_SHA256|{marker}|bytes="
+    return "\n".join(
+        [
+            "set -eu",
+            "mkdir -p dify-bench-file",
+            "python - <<'PY'",
+            "from pathlib import Path",
+            f"size = {FILE_PAYLOAD_BYTES}",
+            "pattern = bytes(range(256))",
+            "Path('dify-bench-file/payload.bin').write_bytes((pattern * ((size + 255) // 256))[:size])",
+            "PY",
+            'upload_json="$(dify-agent file upload dify-bench-file/payload.bin)"',
+            "python - \"$upload_json\" <<'PY'",
+            "import base64",
+            "from hashlib import sha256",
+            "import json",
+            "from pathlib import Path",
+            "import sys",
+            "from urllib.parse import urlsplit",
+            "from urllib.request import Request, urlopen",
+            "def fail(message):",
+            "    raise SystemExit(message)",
+            "try:",
+            "    upload = json.loads(sys.argv[1])",
+            "    if set(upload) != {'transfer_method', 'reference', 'public_download_url'}:",
+            "        fail('DIFY_BENCHMARK_FILE_UPLOAD_CONTRACT_FAILED')",
+            "    if upload['transfer_method'] != 'tool_file':",
+            "        fail('DIFY_BENCHMARK_FILE_UPLOAD_CONTRACT_FAILED')",
+            "    reference = upload['reference']",
+            "    if not isinstance(reference, str) or not reference.startswith('dify-file-ref:'):",
+            "        fail('DIFY_BENCHMARK_FILE_UPLOAD_CONTRACT_FAILED')",
+            "    encoded = reference.removeprefix('dify-file-ref:')",
+            "    decoded = base64.b64decode(encoded, altchars=b'-_', validate=True)",
+            "    if base64.urlsafe_b64encode(decoded).decode() != encoded:",
+            "        fail('DIFY_BENCHMARK_FILE_UPLOAD_CONTRACT_FAILED')",
+            "    reference_payload = json.loads(decoded)",
+            "    if not isinstance(reference_payload, dict) or not isinstance(reference_payload.get('record_id'), str) or not reference_payload['record_id']:",
+            "        fail('DIFY_BENCHMARK_FILE_UPLOAD_CONTRACT_FAILED')",
+            "    public_url = upload['public_download_url']",
+            "    parsed_url = urlsplit(public_url) if isinstance(public_url, str) else None",
+            "    if parsed_url is None or parsed_url.scheme not in {'http', 'https'} or not parsed_url.netloc:",
+            "        fail('DIFY_BENCHMARK_FILE_UPLOAD_CONTRACT_FAILED')",
+            "    download_request = Request(public_url, headers={'User-Agent': 'dify-agent-benchmark/1.0'})",
+            "    with urlopen(download_request, timeout=180) as response:",
+            f"        downloaded = response.read({FILE_PAYLOAD_BYTES + 1})",
+            "except SystemExit:",
+            "    raise",
+            "except Exception:",
+            "    fail('DIFY_BENCHMARK_FILE_TRANSFER_FAILED')",
+            "expected = Path('dify-bench-file/payload.bin').read_bytes()",
+            "actual_digest = sha256(downloaded).hexdigest()",
+            f"if len(expected) != {FILE_PAYLOAD_BYTES} or sha256(expected).hexdigest() != {FILE_EXPECTED_SHA256!r}:",
+            "    fail('DIFY_BENCHMARK_FILE_SOURCE_INTEGRITY_FAILED')",
+            f"if downloaded != expected or len(downloaded) != {FILE_PAYLOAD_BYTES} or actual_digest != {FILE_EXPECTED_SHA256!r}:",
+            "    fail('DIFY_BENCHMARK_FILE_DOWNLOAD_INTEGRITY_FAILED')",
+            f"print({evidence_prefix!r} + str(len(downloaded)) + '|sha256=' + actual_digest)",
+            "PY",
+        ]
+    )
 
 
 __all__ = [
@@ -215,6 +283,8 @@ __all__ = [
     "CONFIG_ITEM_BYTES",
     "CONFIG_SKILL_COUNT",
     "CONFIG_TOTAL_BYTES",
+    "FILE_EXPECTED_SHA256",
+    "FILE_PAYLOAD_BYTES",
     "MODEL_DELAY_SECONDS",
     "MODEL_NAME",
     "ResponsePlan",

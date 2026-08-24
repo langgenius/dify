@@ -15,6 +15,7 @@ from benchmarks.staging_public_capacity_schemas import (
     StagingPublicCapacityResult,
     StagingPublicCapacitySetupResult,
     StagingPublicCapacityStageResult,
+    staging_public_capacity_setup_sequence,
 )
 
 
@@ -36,13 +37,20 @@ def test_capacity_matrices_are_directional_and_replica_asymmetric() -> None:
         ("config", 1),
         ("config", 10),
         ("config", 20),
+        ("file", 1),
+        ("file", 10),
+        ("file", 20),
     )
-    assert len(STAGING_PUBLIC_CAPACITY_SCALING_MATRIX) == 37
+    assert len(STAGING_PUBLIC_CAPACITY_SCALING_MATRIX) == 40
     assert (1, "shell", 20) in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
     assert (2, "shell", 10) in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
     assert (4, "config", 10) in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
     assert (2, "shell", 20) not in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
     assert (4, "config", 20) not in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
+    assert (1, "file", 1) in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
+    assert (1, "file", 10) in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
+    assert (1, "file", 20) in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
+    assert (2, "file", 1) not in STAGING_PUBLIC_CAPACITY_SCALING_MATRIX
 
 
 def test_capacity_request_is_dynamic_single_block_secret_free_and_strict() -> None:
@@ -65,6 +73,10 @@ def test_capacity_request_is_dynamic_single_block_secret_free_and_strict() -> No
         StagingPublicCapacityPointRequest.model_validate({**request.model_dump(), "api_key": "secret"})
     with pytest.raises(ValidationError):
         StagingPublicCapacityPointRequest.model_validate({**request.model_dump(), "requested_concurrency": 161})
+
+
+def test_file_uses_a_warm_runtime_conversation_without_polluting_smoke() -> None:
+    assert staging_public_capacity_setup_sequence("file") == ("basic", "shell")
 
 
 @pytest.mark.parametrize("block_index", [0, 2])
@@ -142,9 +154,9 @@ def test_measurement_window_must_be_ordered_utc() -> None:
         )
 
 
-def test_result_contract_is_schema_v6_scaling_and_has_no_repeat_or_cv_fields() -> None:
+def test_result_contract_is_schema_v7_scaling_and_has_no_repeat_or_cv_fields() -> None:
     fields = StagingPublicCapacityResult.model_fields
-    assert fields["schema_version"].default == 6
+    assert fields["schema_version"].default == 7
     assert fields["mode"].default == "staging-public-e2e-scaling"
     assert fields["confidence"].default == "single_block_shared_traffic"
     assert "repeated_boundary" not in fields

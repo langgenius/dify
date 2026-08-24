@@ -45,6 +45,10 @@ def test_long_config_skill_name_matches_current_agent_stub_contract() -> None:
 
     assert first != second
     assert config_skill_name(run_id, 0) == first
+    assert first.startswith("skill-0-")
+    assert second.startswith("skill-1-")
+    assert len(first) <= 64
+    assert len(second) <= 64
     assert AgentStubConfigDownloadSource(kind="skill", name=first).name == first
 
 

@@ -40,6 +40,7 @@ from benchmarks.staging_public_capacity_results import (
 from benchmarks.staging_public_capacity_schemas import (
     STAGING_PUBLIC_CAPACITY_CONCURRENCY,
     STAGING_PUBLIC_CAPACITY_SCENARIOS,
+    STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS,
     StagingPublicCapacityConcurrency,
     StagingPublicCapacityExecution,
     StagingPublicCapacityLoadResult,
@@ -47,6 +48,8 @@ from benchmarks.staging_public_capacity_schemas import (
     StagingPublicCapacityPoint,
     StagingPublicCapacityReplicaCount,
     StagingPublicCapacitySetupResult,
+    staging_public_capacity_setup_sequence,
+    staging_public_capacity_stage_execution_order,
 )
 from benchmarks.staging_public_artifact_safety import (
     PublicArtifactSafetyError,
@@ -144,6 +147,8 @@ def main() -> int:
             scenario_filter=args.scenario,
             concurrency_filter=args.concurrency,
         )
+        if not selected_matrix:
+            raise ValueError("selected scenario/concurrency was not part of this replica-stage matrix")
         deployment_before = collect_staging_backend_deployment_evidence(
             expected_replicas=args.backend_replicas,
             kube_context=args.kube_context,
@@ -154,6 +159,10 @@ def main() -> int:
             deployment_before.model_dump(mode="json"),
             forbidden_values=private_values,
         )
+        if any(scenario_id == "file" for scenario_id, _ in selected_matrix) and not (
+            deployment_before.collector_preflight.file_cleanup_valid
+        ):
+            raise RuntimeError("Staging File cleanup capability preflight did not pass")
         # This read-only OPTIONS probe is deliberately independent of load.
         # It catches an edge rollout even when warmup establishes a boundary
         # and therefore no measurement transaction is admitted.
@@ -377,7 +386,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--plugin-package",
         type=Path,
-        default=Path(__file__).with_name("build") / "staging" / "dify-agent-benchmark-model-0.1.2.difypkg",
+        default=Path(__file__).with_name("build") / "staging" / "dify-agent-benchmark-model-0.1.4.difypkg",
     )
     parser.add_argument("--results-root", type=Path, default=Path(__file__).with_name("results"))
     parser.add_argument(
@@ -533,7 +542,7 @@ def _execute_block(
                 measurement_ended_at=execution.load.measurement_ended_at,
             )
         elif (
-            execution.scenario_id in {"shell", "config"}
+            execution.scenario_id in STAGING_PUBLIC_CAPACITY_RUNTIME_SCENARIOS
             and execution.load.warmup_started_at is not None
             and execution.load.warmup_ended_at is not None
         ):
@@ -551,8 +560,11 @@ def _execute_block(
             checked=True,
             target_conversations=expected_allocations,
             target_sandboxes=expected_allocations,
+            target_tool_files=cleanup.database.target_tool_files,
             db_workspaces_remaining=joint.workspaces_remaining,
             db_bindings_remaining=joint.bindings_remaining,
+            db_tool_files_remaining=joint.tool_files_remaining,
+            storage_objects_remaining=joint.storage_objects_remaining,
             vendor_sandboxes_remaining=joint.vendor_sandboxes_remaining,
             consecutive_zero_checks=joint.consecutive_zero_checks,
             interval_seconds=joint.interval_seconds,
@@ -726,23 +738,7 @@ def _validate_plugin_package(path: Path) -> str:
 def _stage_execution_order(
     backend_replicas: StagingPublicCapacityReplicaCount,
 ) -> tuple[tuple[StagingPublicScenarioId, int], ...]:
-    if backend_replicas == 1:
-        return (
-            ("basic", 1),
-            ("shell", 1),
-            ("config", 1),
-            *(("basic", value) for value in STAGING_PUBLIC_CAPACITY_CONCURRENCY if value != 1),
-            ("shell", 10),
-            ("shell", 20),
-            ("config", 10),
-            ("config", 20),
-        )
-    return (
-        ("basic", 1),
-        ("shell", 10),
-        ("config", 10),
-        *(("basic", value) for value in STAGING_PUBLIC_CAPACITY_CONCURRENCY if value != 1),
-    )
+    return staging_public_capacity_stage_execution_order(backend_replicas)
 
 
 def _selected_stage_matrix(
@@ -823,8 +819,11 @@ def _public_scaling_manifest_sha256() -> str:
             "cooldown_seconds": _COOLDOWN_SECONDS,
             "measurement": "closed_loop_sustained",
             "blocks_per_point": 1,
-            "cleanup": "parent_db_and_e2b_reconciled",
-            "setup": {"basic": ["basic"], "shell": ["basic"], "config": ["basic", "shell"]},
+            "cleanup": "parent_db_storage_and_e2b_reconciled",
+            "setup": {
+                scenario: staging_public_capacity_setup_sequence(scenario)
+                for scenario in STAGING_PUBLIC_CAPACITY_SCENARIOS
+            },
         },
         separators=(",", ":"),
         sort_keys=True,

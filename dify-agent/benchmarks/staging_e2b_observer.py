@@ -765,7 +765,7 @@ def summarize_e2b_observation(
 
 
 def to_capacity_e2b_observation(summary: E2BObserverSummary) -> StagingPublicCapacityE2BObservation:
-    """Map observer output to the Schema v6 count-only capacity evidence."""
+    """Map observer output to the Schema v7 count-only capacity evidence."""
 
     from benchmarks.staging_public_capacity_schemas import StagingPublicCapacityE2BObservation
 

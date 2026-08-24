@@ -11,12 +11,18 @@ from benchmarks.orchestrator import (
     BenchmarkCommandError,
     CapacityOptions,
     _agent_stub_api_base_url,
+    _benchmark_public_data_base_url,
     _cleanup_e2b_allocation_journal,
+    _compose_files_for_point,
+    _data_plane_environment,
     _driver_timeout_seconds,
     _finalize_block_result,
+    _normalize_public_https_url,
+    _parse_args,
     _pin_target_image,
     _redact_secret_in_directory,
     _run_command,
+    _sandbox_files_base_url,
     _services_for_point,
     _should_keep_failed_compose_project,
     _stop_compose_service_containers,
@@ -51,6 +57,14 @@ def test_compose_uses_fixed_local_capacity_resources() -> None:
     assert "BENCH_MINIMUM_MEASUREMENT_RUNS" in driver_environment
     assert "BENCH_MAXIMUM_MEASUREMENT_SECONDS" in driver_environment
 
+    public_file_override_path = Path(__file__).parents[3] / "benchmarks" / "docker-compose.capacity-e2b-public-file.yml"
+    public_file_override = cast(dict[str, object], yaml.safe_load(public_file_override_path.read_text()))
+    public_file_services = cast(dict[str, object], public_file_override["services"])
+    public_agent = cast(dict[str, object], public_file_services["agent"])
+    public_fake_deps = cast(dict[str, object], public_file_services["fake-deps"])
+    assert public_agent["ports"] == ["127.0.0.1:${BENCH_E2B_PUBLIC_STUB_HOST_PORT:-15050}:5050"]
+    assert public_fake_deps["ports"] == ["127.0.0.1:${BENCH_E2B_PUBLIC_FILES_HOST_PORT:-15002}:5002"]
+
 
 def test_local_e2b_requires_credentials_and_selected_concurrency_limit() -> None:
     with pytest.raises(ValueError, match="API_KEY"):
@@ -66,6 +80,7 @@ def test_local_e2b_requires_credentials_and_selected_concurrency_limit() -> None
 
     options = CapacityOptions(
         mode="local-e2b",
+        scenario_id="shell",
         e2b_api_key="secret",
         e2b_template="template",
         e2b_max_concurrency=10,
@@ -77,6 +92,7 @@ def test_local_e2b_requires_credentials_and_selected_concurrency_limit() -> None
 def test_explicit_concurrency_accepts_positive_non_default_value() -> None:
     options = CapacityOptions(
         mode="local-e2b",
+        scenario_id="shell",
         e2b_api_key="secret",
         e2b_template="template",
         e2b_max_concurrency=20,
@@ -87,6 +103,73 @@ def test_explicit_concurrency_accepts_positive_non_default_value() -> None:
 
     with pytest.raises(ValueError, match="positive"):
         CapacityOptions(mode="local-runtime", concurrency=0)
+
+
+def test_local_e2b_file_requires_normalized_https_public_data_plane() -> None:
+    with pytest.raises(ValueError, match="BENCH_E2B_PUBLIC_STUB_BASE_URL"):
+        CapacityOptions(
+            mode="local-e2b",
+            scenario_id="file",
+            concurrency=1,
+            e2b_api_key="secret",
+            e2b_template="template",
+            e2b_max_concurrency=1,
+        )
+    with pytest.raises(ValueError, match="BENCH_E2B_PUBLIC_FILES_BASE_URL"):
+        CapacityOptions(
+            mode="local-e2b",
+            scenario_id="file",
+            concurrency=1,
+            e2b_api_key="secret",
+            e2b_template="template",
+            e2b_max_concurrency=1,
+            e2b_public_stub_base_url="https://stub.example.com/agent-stub",
+        )
+
+    options = CapacityOptions(
+        mode="local-e2b",
+        scenario_id="file",
+        concurrency=1,
+        e2b_api_key="secret",
+        e2b_template="template",
+        e2b_max_concurrency=1,
+        e2b_public_stub_base_url="https://stub.example.com/",
+        e2b_public_files_base_url="https://files.example.com/bench/",
+    )
+    assert options.e2b_public_stub_base_url == "https://stub.example.com/agent-stub"
+    assert options.e2b_public_files_base_url == "https://files.example.com/bench"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("e2b_public_stub_base_url", "http://stub.example.com/agent-stub", "must use https"),
+        ("e2b_public_stub_base_url", "https://stub.example.com/not-stub", "path must be"),
+        ("e2b_public_stub_base_url", "https://user@stub.example.com/agent-stub", "user info"),
+        ("e2b_public_files_base_url", "http://files.example.com", "must use https"),
+        ("e2b_public_files_base_url", "https://files.example.com?token=value", "query string"),
+    ],
+)
+def test_local_e2b_file_rejects_unsafe_public_data_plane_url(field: str, value: str, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        _normalize_public_https_url(
+            value,
+            env_name=field,
+            agent_stub=field == "e2b_public_stub_base_url",
+        )
+
+
+def test_non_file_modes_do_not_read_public_file_data_plane_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BENCH_E2B_API_KEY", "secret")
+    monkeypatch.setenv("BENCH_E2B_TEMPLATE", "template")
+    monkeypatch.setenv("BENCH_E2B_MAX_CONCURRENCY", "1")
+    monkeypatch.setenv("BENCH_E2B_PUBLIC_STUB_BASE_URL", "not-a-url")
+    monkeypatch.setenv("BENCH_E2B_PUBLIC_FILES_BASE_URL", "not-a-url")
+
+    options = _parse_args(["local-e2b", "--scenario", "shell", "--concurrency", "1"])
+
+    assert options.e2b_public_stub_base_url is None
+    assert options.e2b_public_files_base_url is None
 
 
 def test_built_target_image_gets_an_independent_frozen_tag(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -131,7 +214,67 @@ def test_local_e2b_points_do_not_start_a_public_callback_proxy() -> None:
     assert _services_for_point(file) == ("redis", "fake-deps", "agent")
     assert _services_for_point(config) == ("redis", "fake-deps", "agent")
     assert _agent_stub_api_base_url(config) == "http://127.0.0.1:8765/agent-stub"
-    assert _agent_stub_api_base_url(file) == "http://agent:5050/agent-stub"
+    assert (
+        _agent_stub_api_base_url(
+            file,
+            e2b_public_stub_base_url="https://stub.example.com/agent-stub",
+        )
+        == "https://stub.example.com/agent-stub"
+    )
+    assert (
+        _sandbox_files_base_url(
+            file,
+            e2b_public_files_base_url="https://files.example.com",
+        )
+        == "https://files.example.com"
+    )
+    assert (
+        _benchmark_public_data_base_url(
+            file,
+            e2b_public_files_base_url="https://files.example.com",
+        )
+        == "https://files.example.com/__bench"
+    )
+    assert _agent_stub_api_base_url(shell) == "http://agent:5050/agent-stub"
+    assert _sandbox_files_base_url(shell) == "http://fake-deps:5002"
+
+    local_file = file.model_copy(update={"mode": "local-runtime"})
+    assert _agent_stub_api_base_url(local_file) == "http://agent:5050/agent-stub"
+    assert _sandbox_files_base_url(local_file) == "http://fake-deps:5002"
+
+
+def test_only_local_e2b_file_uses_public_data_plane_compose_override() -> None:
+    root = Path("/repo")
+    manifest = load_scenario_manifest()
+    local_e2b_file = CapacityMatrixPoint(
+        mode="local-e2b",
+        scenario=manifest.get("file"),
+        requested_concurrency=1,
+    )
+    local_e2b_shell = local_e2b_file.model_copy(update={"scenario": manifest.get("shell")})
+    local_runtime_file = local_e2b_file.model_copy(update={"mode": "local-runtime"})
+
+    assert [path.name for path in _compose_files_for_point(root, local_e2b_file)] == [
+        "docker-compose.capacity.yml",
+        "docker-compose.capacity-e2b-public-file.yml",
+    ]
+    assert [path.name for path in _compose_files_for_point(root, local_e2b_shell)] == ["docker-compose.capacity.yml"]
+    assert [path.name for path in _compose_files_for_point(root, local_runtime_file)] == ["docker-compose.capacity.yml"]
+
+    assert _data_plane_environment(
+        local_e2b_file,
+        e2b_public_stub_base_url="https://stub.example.com/agent-stub",
+        e2b_public_files_base_url="https://files.example.com",
+    ) == {
+        "BENCH_AGENT_STUB_API_BASE_URL": "https://stub.example.com/agent-stub",
+        "BENCH_SANDBOX_FILES_BASE_URL": "https://files.example.com",
+        "BENCH_PUBLIC_DATA_BASE_URL": "https://files.example.com/__bench",
+    }
+    assert _data_plane_environment(local_e2b_shell) == {
+        "BENCH_AGENT_STUB_API_BASE_URL": "http://agent:5050/agent-stub",
+        "BENCH_SANDBOX_FILES_BASE_URL": "http://fake-deps:5002",
+        "BENCH_PUBLIC_DATA_BASE_URL": "http://fake-deps:5002/__bench",
+    }
 
 
 def test_driver_timeout_covers_locust_drain_and_resume_setup() -> None:

@@ -29,6 +29,7 @@ from benchmarks.staging_public_capacity_schemas import (
     StagingPublicCapacityObservation,
     StagingPublicCapacityPointRequest,
     StagingPublicCapacitySetupResult,
+    staging_public_capacity_setup_sequence,
 )
 from benchmarks.staging_public_locust import bounded_end_user
 from benchmarks.staging_public_protocol import StagingPublicProtocolSettings, StagingPublicServiceClient
@@ -191,11 +192,7 @@ class _WorkerState:
                     self.setup_done.set()
                 return False
             self.setup_attempted += 1
-        setup: tuple[StagingPublicScenarioId, ...]
-        if self.request.scenario_id in {"basic", "shell"}:
-            setup = ("basic",)
-        else:
-            setup = ("basic", "shell")
+        setup = staging_public_capacity_setup_sequence(self.request.scenario_id)
         try:
             for sequence, scenario_id in enumerate(setup, start=1):
                 observation = client.run_once(

@@ -11,6 +11,7 @@ COPY dify-agent/src ./src
 RUN uv sync --frozen --no-dev --no-editable --extra server --group benchmark
 
 COPY dify-agent/benchmarks ./benchmarks
+COPY --from=benchmark-agent-cli /dify-agent ./benchmarks/bin/dify-agent
 
 ENV VIRTUAL_ENV=/app/dify-agent/.venv
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"

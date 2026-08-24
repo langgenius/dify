@@ -26,8 +26,38 @@ make -C dify-agent bench-local-runtime
 BENCH_E2B_API_KEY=<secret> \
 BENCH_E2B_TEMPLATE=<template> \
 BENCH_E2B_MAX_CONCURRENCY=20 \
+BENCH_E2B_PUBLIC_STUB_BASE_URL=https://<agent-stub-host>/agent-stub \
+BENCH_E2B_PUBLIC_FILES_BASE_URL=https://<files-host> \
 make -C dify-agent bench-local-e2b
 ```
+
+The `local-e2b` File workload additionally requires two temporary HTTPS
+endpoints reachable from E2B. A stable development tunnel can route them to
+the loopback-only ports exposed for that workload:
+
+```text
+https://<agent-stub-host>/agent-stub -> http://127.0.0.1:15050/agent-stub
+https://<files-host>/files/*          -> http://127.0.0.1:15002/files/*
+```
+
+Run the focused File integration with:
+
+```bash
+BENCH_E2B_API_KEY=<secret> \
+BENCH_E2B_TEMPLATE=<template> \
+BENCH_E2B_MAX_CONCURRENCY=1 \
+BENCH_E2B_PUBLIC_STUB_BASE_URL=https://<agent-stub-host>/agent-stub \
+BENCH_E2B_PUBLIC_FILES_BASE_URL=https://<files-host> \
+make -C dify-agent bench-local-e2b BENCH_SCENARIO=file BENCH_CONCURRENCY=1
+```
+
+The Harness rejects missing, non-HTTPS, credential-bearing, or query-bearing
+public URLs before it probes Docker or creates any Compose/E2B resources. Only
+the File point loads the public endpoints; `local-runtime` and the other
+`local-e2b` scenarios retain their existing data paths. Override the loopback
+ports with `BENCH_E2B_PUBLIC_STUB_HOST_PORT` and
+`BENCH_E2B_PUBLIC_FILES_HOST_PORT` if necessary. Tunnel credentials belong only
+to the tunnel process and must not be passed to the Harness.
 
 Both commands run `basic`, `shell`, `resume`, `config`, and a 16 MiB `file`
 roundtrip at concurrency 1, 10, and 20. Each point warms up for 15 seconds,
@@ -45,12 +75,15 @@ inside the same Run. In `local-e2b`, each worker Sandbox hosts a deterministic
 localhost Config stub; every run-scoped item may be pulled exactly once, and
 duplicate or out-of-range pulls fail the Run. The final digest therefore proves
 that the fixed three Skills and ten Files were each materialized with the exact
-bytes, without depending on a public tunnel. The
-File workload writes its fixed payload inside the Runtime and exports it
-through `POST /execution-bindings/files/download`; the Driver resolves the
-canonical reference through the current inner File API, downloads it, and
-verifies the exact size and SHA256 over the local Docker data path. The 16 MiB
-File payload also never traverses a public tunnel.
+bytes, without depending on a public tunnel. The File workload writes its fixed
+payload inside the Runtime and exports it through
+`POST /execution-bindings/files/download`; the Driver resolves the canonical
+reference through the current inner File API, downloads it, and verifies the
+exact size and SHA256. In `local-runtime` the 16 MiB payload stays on the Docker
+data path. In `local-e2b` the Sandbox upload/download leg uses the explicit
+temporary HTTPS endpoints above. Treat tunneled File results as integration
+evidence rather than formal capacity data because the tunnel can be the
+bottleneck.
 
 For focused debugging:
 
@@ -89,10 +122,10 @@ Build the deterministic Config fixtures and plugin package locally:
 make -C dify-agent bench-staging-fixtures
 
 make -C dify-agent bench-staging-plugin-package \
-  STAGING_PLUGIN_PACKAGE="$PWD/dify-agent/benchmarks/build/staging/dify-agent-benchmark-model-0.1.2.difypkg"
+  STAGING_PLUGIN_PACKAGE="$PWD/dify-agent/benchmarks/build/staging/dify-agent-benchmark-model-0.1.4.difypkg"
 ```
 
-The plugin release version is `0.1.2`; its `meta.version` remains `0.0.1`.
+The plugin release version is `0.1.4`; its `meta.version` remains `0.0.1`.
 Install or upgrade it only in the Benchmark Tenant and keep the non-secret
 Benchmark provider credential set to `Enabled`. The Service API key is read
 only from `BENCH_STAGING_API_KEY`; it must never be passed as an argument,
@@ -146,15 +179,20 @@ edge bottlenecks.
 Each replica stage is an independent, explicitly confirmed command. The
 asymmetric matrix is:
 
-| Agent replicas | `basic` | `shell` | `config` |
-|---:|---|---|---|
-| 1 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c1/c10/c20 | c1/c10/c20 |
-| 2 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c10 | c10 |
-| 4 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c10 | c10 |
+| Agent replicas | `basic` | `shell` | `config` | `file` |
+|---:|---|---|---|---|
+| 1 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c1/c10/c20 | c1/c10/c20 | c1/c10/c20 |
+| 2 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c10 | c10 | not run |
+| 4 | c1/c10/c20/c30/c40/c60/c80/c120/c160 | c10 | c10 | not run |
 
 Every point has one block. `basic` stops after the first suspected boundary and
 does not repeat it. `shell` and `config` verify the real Runtime path and
 multi-Pod correctness; they do not determine the replica-scaling throughput.
+The R1-only File workload creates a deterministic 16 MiB payload, uploads it as a
+conversation-owned ToolFile, downloads its public URL inside the Sandbox, and
+requires exact byte count and SHA256. File c10/c20 run only after c1 proves both
+transfer correctness and physical file cleanup; any correctness or cleanup
+failure stops the remaining File points.
 Every User owns one end user and Conversation, setup is limited to one User per
 second, and all Users pass a setup barrier before the 15-second warmup. Warmup
 is drained and discarded before a 60-second closed-loop measurement; admitted
@@ -200,11 +238,22 @@ incomplete and cannot support the final scaling comparison.
 Conversation deletion belongs to the parent Harness, not the Locust process.
 Before DELETE, the parent captures an exact private Workspace/Binding/backend
 mapping from Staging DB, then deletes at two Conversations per second and waits
-for both DB resources and matching Vendor inventory to remain zero twice ten
-seconds apart. Private manifests use mode `0600`, stay outside public artifacts,
-and are removed only after DB/Vendor reconciliation and observer cleanup both
-succeed. DELETE 204 without physical zero evidence fails the Stage and stops
-later blocks.
+for Conversation, Workspace, Binding, ToolFile rows, exact storage objects, and
+matching Vendor inventory to remain zero twice ten seconds apart. Storage
+verification uses strict object-store HEAD semantics: only an explicit
+not-found result counts as absent; permission, network, and 5xx failures make
+the evidence invalid. Private manifests use mode `0600`, stay outside public
+artifacts, and are removed only after DB/storage/Vendor reconciliation and
+observer cleanup all succeed. DELETE 204 without physical zero evidence fails
+the Stage and stops later blocks.
+
+The deployment preflight also requires the `conversation` queue consumer to
+load the retrying ToolFile cleanup task and sweeper introduced by product fix
+`dfac3e524e` (#40792). A Staging image that still deletes only the ToolFile DB
+row, without deleting its storage object, is rejected before any File resource
+is created. If cleanup stalls, the parent may re-enqueue the exact soft-deleted
+Conversation cleanup task once; it never directly deletes a ToolFile row or
+storage object.
 
 Each block first creates a durable `0700` recovery directory under
 `BENCH_PRIVATE_RECOVERY_ROOT` (default:
@@ -229,7 +278,7 @@ make -C dify-agent bench-staging-public-scaling-report \
 ```
 
 `BENCH_SCALING_OUTPUT_DIR` optionally selects a new, non-existing output
-directory. Aggregation validates Schema v6 Stage mode, replica identity,
+directory. Aggregation validates Schema v7 Stage mode, replica identity,
 target/harness/plugin/scenario fingerprints, deployment stability, and public
 artifact safety before combining blocks. It performs no network or cluster
 operation.

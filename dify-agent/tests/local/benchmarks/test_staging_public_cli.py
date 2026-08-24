@@ -10,7 +10,7 @@ from benchmarks import staging_public_cli
 
 def _plugin_package(path: Path) -> Path:
     with ZipFile(path, "w") as archive:
-        archive.writestr("manifest.yaml", "version: 0.1.2\ntype: plugin\n")
+        archive.writestr("manifest.yaml", "version: 0.1.4\ntype: plugin\n")
     return path
 
 
@@ -82,7 +82,7 @@ def test_cli_rejects_wrong_plugin_version_before_network(monkeypatch, capsys, tm
     assert staging_public_cli.main() == 2
     assert not called
     captured = capsys.readouterr()
-    assert "expected 0.1.2, found 0.1.1" in captured.err
+    assert "expected 0.1.4, found 0.1.1" in captured.err
     assert "secret-never-print" not in captured.err
 
 
