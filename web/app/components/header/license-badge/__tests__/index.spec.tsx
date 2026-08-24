@@ -1,4 +1,3 @@
-import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { zLicenseStatus } from '@dify/contracts/api/console/system-features/zod.gen'
 import { screen } from '@testing-library/react'
 import dayjs from 'dayjs'
@@ -10,10 +9,7 @@ import {
 } from '@/test/console/query-data'
 import LicenseBadge from '../index'
 
-const renderLicenseBadge = (
-  license?: Parameters<typeof seedSystemFeaturesLicense>[1],
-  systemFeatures?: ConsoleQueryTestOptions['systemFeatures'],
-) => {
+const renderLicenseBadge = (license?: Parameters<typeof seedSystemFeaturesLicense>[1]) => {
   const queryClient = createConsoleQueryClient()
   if (license) seedSystemFeaturesLicense(queryClient, license)
   else {
@@ -22,7 +18,7 @@ const renderLicenseBadge = (
       queryFn: () => new Promise(() => {}),
     })
   }
-  return renderWithConsoleQuery(<LicenseBadge />, { queryClient, systemFeatures })
+  return renderWithConsoleQuery(<LicenseBadge />, { queryClient })
 }
 
 describe('LicenseBadge', () => {
@@ -54,40 +50,53 @@ describe('LicenseBadge', () => {
 
   it('should render singular expiring message when license expires in 0 days', () => {
     const expiredAt = dayjs().add(2, 'hours').toISOString()
-    renderLicenseBadge({ status: zLicenseStatus.enum.expiring, expired_at: expiredAt })
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: expiredAt,
+      license_expiry_notice_enabled: true,
+    })
     expect(screen.getByText(/license\.expiring/)).toBeInTheDocument()
     expect(screen.getByText(/count":0/)).toBeInTheDocument()
   })
 
   it('should render singular expiring message when license expires in 1 day', () => {
     const tomorrow = dayjs().add(1, 'day').add(1, 'hour').toISOString()
-    renderLicenseBadge({ status: zLicenseStatus.enum.expiring, expired_at: tomorrow })
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: tomorrow,
+      license_expiry_notice_enabled: true,
+    })
     expect(screen.getByText(/license\.expiring/)).toBeInTheDocument()
     expect(screen.getByText(/count":1/)).toBeInTheDocument()
   })
 
   it('should render plural expiring message when license expires in 5 days', () => {
     const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
-    renderLicenseBadge({ status: zLicenseStatus.enum.expiring, expired_at: fiveDaysLater })
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: fiveDaysLater,
+      license_expiry_notice_enabled: true,
+    })
     expect(screen.getByText(/license\.expiring_plural/)).toBeInTheDocument()
     expect(screen.getByText(/count":5/)).toBeInTheDocument()
   })
 
   it('should fall back to the Enterprise badge when the expiry notice is disabled', () => {
     const fiveDaysLater = dayjs().add(5, 'day').add(1, 'hour').toISOString()
-    renderLicenseBadge(
-      { status: zLicenseStatus.enum.expiring, expired_at: fiveDaysLater },
-      { enable_license_expiry_notice: false },
-    )
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.expiring,
+      expired_at: fiveDaysLater,
+      license_expiry_notice_enabled: false,
+    })
     expect(screen.queryByText(/license\.expiring/)).not.toBeInTheDocument()
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 
   it('should keep rendering the Enterprise badge for an active license when the expiry notice is disabled', () => {
-    renderLicenseBadge(
-      { status: zLicenseStatus.enum.active },
-      { enable_license_expiry_notice: false },
-    )
+    renderLicenseBadge({
+      status: zLicenseStatus.enum.active,
+      license_expiry_notice_enabled: false,
+    })
     expect(screen.getByText('Enterprise')).toBeInTheDocument()
   })
 })

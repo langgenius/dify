@@ -74,7 +74,7 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
   if (!isPanelContextMenu) return null
 
   return (
-    <ContextMenuContent popupClassName="w-[200px] rounded-lg" sideOffset={4}>
+    <ContextMenuContent className="w-[200px] rounded-lg" sideOffset={4}>
       <ContextMenuGroup>
         {canEditWorkflow && (
           <AddBlock

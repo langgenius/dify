@@ -520,7 +520,6 @@ export type SystemFeatureModel = {
   enable_email_password_login: boolean
   enable_explore_banner: boolean
   enable_learn_app: boolean
-  enable_license_expiry_notice: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_step_by_step_tour: boolean
@@ -1544,7 +1543,9 @@ export type GetWebappAccessModeData = {
 
 export type GetWebappAccessModeErrors = {
   400: unknown
+  404: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappAccessModeResponses = {
@@ -1567,6 +1568,7 @@ export type GetWebappPermissionErrors = {
   400: unknown
   401: unknown
   500: unknown
+  503: unknown
 }
 
 export type GetWebappPermissionResponses = {

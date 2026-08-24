@@ -1,20 +1,19 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import copyStyle from './style.module.css'
 
-type Props = Readonly<{
+type CopyFeedbackProps = Readonly<{
   content: string
   className?: string
 }>
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 
-const CopyFeedback = ({ content }: Props) => {
+export function CopyFeedback({ content, className }: CopyFeedbackProps) {
   const { t } = useTranslation()
   // Rely on useClipboard's own timer to flip `copied` back to false so the
   // "Copied" tooltip stays visible long enough to be read, matching the
@@ -35,47 +34,12 @@ const CopyFeedback = ({ content }: Props) => {
     <Tooltip>
       <TooltipTrigger
         render={
-          <ActionButton aria-label={safeText} onClick={handleCopy}>
-            {copied && <RiClipboardFill className="size-4" aria-hidden="true" />}
-            {!copied && <RiClipboardLine className="size-4" aria-hidden="true" />}
-          </ActionButton>
-        }
-      />
-      <TooltipContent>{safeText}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-export default CopyFeedback
-
-export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' | 'content'>) => {
-  const { t } = useTranslation()
-  const { copied, copy } = useClipboard({ timeout: 2000 })
-
-  const tooltipText = copied
-    ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
-    : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })
-  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
-  const safeText = tooltipText || ''
-
-  const handleCopy = useCallback(() => {
-    copy(content)
-  }, [copy, content])
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            aria-label={safeText}
-            className={`size-8 cursor-pointer rounded-lg border-none bg-transparent p-0 hover:bg-components-button-ghost-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden ${className ?? ''}`}
-            onClick={handleCopy}
-          >
-            <div
-              className={`size-full ${copyStyle.copyIcon} ${copied ? copyStyle.copied : ''}`}
-            ></div>
-          </button>
+          <IconButton aria-label={safeText} className={className} onClick={handleCopy}>
+            <span
+              aria-hidden="true"
+              className={cn('size-4', copied ? 'i-ri-clipboard-fill' : 'i-ri-clipboard-line')}
+            />
+          </IconButton>
         }
       />
       <TooltipContent>{safeText}</TooltipContent>

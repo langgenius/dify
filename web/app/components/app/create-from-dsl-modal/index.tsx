@@ -11,8 +11,10 @@ import {
   DialogPortal,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -23,18 +25,18 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
-import { getDSLImportWarningDescription } from '@/utils/dsl-import-warning'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 import DSLConfirmModal from './dsl-confirm-modal'
+import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
 import { Uploader } from './uploader'
 
@@ -121,7 +123,10 @@ function CreateFromDSLModal({
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
@@ -142,10 +147,12 @@ function CreateFromDSLModal({
       {
         type: response.status === 'completed' ? 'success' : 'warning',
         description:
-          response.status === 'completed-with-warnings'
-            ? getDSLImportWarningDescription(response.warnings) ||
-              t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
-            : undefined,
+          response.status === 'completed-with-warnings' ? (
+            <DSLImportWarningDescription
+              warnings={response.warnings}
+              fallback={t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })}
+            />
+          ) : undefined,
       },
     )
     if (!response.app_id || !appMode) return
@@ -254,16 +261,16 @@ function CreateFromDSLModal({
               <DialogTitle className="title-2xl-semi-bold text-text-primary">
                 {t(($) => $.importApp, { ns: 'app' })}
               </DialogTitle>
-              <Button
+              <IconButton
                 variant="ghost"
-                size="small"
+                size="lg"
                 aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
-                className="size-8 p-0"
+                className="rounded-md"
                 disabled={isImporting}
                 onClick={onClose}
               >
                 <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-              </Button>
+              </IconButton>
             </div>
             <Form<ImportFormValues> ref={formRef} onFormSubmit={handleSubmit}>
               <Tabs value={currentTab} onValueChange={handleTabChange}>
@@ -303,7 +310,7 @@ function CreateFromDSLModal({
                 >
                   <Field name="dslUrl">
                     <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
-                    <FieldControl
+                    <Input
                       type="url"
                       inputMode="url"
                       autoComplete="off"

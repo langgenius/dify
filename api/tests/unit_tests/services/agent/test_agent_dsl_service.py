@@ -18,7 +18,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentSoulConfig
 from services.agent.dsl_entities import (
     AGENT_NODE_JOB_DSL_KEY,
     AGENT_PACKAGE_REF_KEY,
@@ -60,7 +60,7 @@ def _snapshot(*, snapshot_id: str = "snapshot-1", soul: AgentSoulConfig | None =
 
 
 def _agent_node(node_id: str, binding: object | None = None) -> dict:
-    data = {"type": BuiltinNodeTypes.AGENT, "version": "2"}
+    data = {"type": BuiltinNodeTypes.AGENT, "version": "2", "agent_node_kind": "dify_agent"}
     if binding is not None:
         data["agent_binding"] = binding
     return {"id": node_id, "data": data}
@@ -191,7 +191,7 @@ def test_agent_package_rejects_null_file_id_for_available_assets(asset: dict) ->
         AgentPackage.model_validate(package)
 
 
-def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch) -> None:
+def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch: pytest.MonkeyPatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "tools": {
@@ -326,7 +326,7 @@ def test_graph_without_package_bindings_removes_portable_fields() -> None:
     assert AGENT_NODE_JOB_DSL_KEY in graph["nodes"][0]["data"]
 
 
-def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch) -> None:
+def test_import_agent_app_package_creates_config_and_unpublished_draft(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     soul = AgentSoulConfig(config_note="portable")
@@ -465,47 +465,44 @@ def test_import_workflow_packages_rejects_invalid_package_binding(binding: dict,
         )
 
 
-def test_clone_inline_binding_copies_soul_and_drive_rows(monkeypatch) -> None:
+def test_clone_inline_binding_copies_soul() -> None:
     session = Mock()
     service = AgentDslService(session)
     target_agent = SimpleNamespace(id="target-agent")
     target_snapshot = SimpleNamespace(id="target-snapshot")
     service._create_workflow_only_agent = Mock(return_value=(target_agent, target_snapshot))
-    copy_rows = Mock()
-    monkeypatch.setattr("services.agent.composer_service.AgentComposerService._copy_agent_drive_rows", copy_rows)
     source_agent = _agent()
-    source_snapshot = SimpleNamespace(
-        config_snapshot_dict=AgentSoulConfig(config_note="source").model_dump(mode="json")
+    source_soul = AgentSoulConfig(
+        config_note="source",
+        config_skills=[AgentConfigSkillRefConfig(name="summarizer", file_id="skill-file-1")],
+        config_files=[AgentConfigFileRefConfig(name="brief.pdf", file_kind="upload_file", file_id="config-file-1")],
     )
+    source_snapshot = SimpleNamespace(config_snapshot_dict=source_soul.model_dump(mode="json"))
     workflow = SimpleNamespace(tenant_id="tenant-1", app_id="app-1", id="workflow-1")
-    node_job = WorkflowNodeJobConfig(workflow_prompt="work")
 
     result = service.clone_inline_binding_for_node(
         workflow=workflow,
         node_id="target-node",
         source_agent=source_agent,
         source_snapshot=source_snapshot,
-        node_job=node_job,
         account_id="account-1",
     )
 
     assert result == (target_agent, target_snapshot)
     create_kwargs = service._create_workflow_only_agent.call_args.kwargs
     assert create_kwargs["metadata"].name == source_agent.name
-    assert create_kwargs["soul"].config_note == "source"
+    cloned_soul = create_kwargs["soul"]
+    assert cloned_soul.config_note == "source"
+    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_skills] == [
+        ("summarizer", "tool_file", "skill-file-1")
+    ]
+    assert [(item.name, item.file_kind, item.file_id) for item in cloned_soul.config_files] == [
+        ("brief.pdf", "upload_file", "config-file-1")
+    ]
     assert create_kwargs["source"] == AgentSource.WORKFLOW
-    copy_rows.assert_called_once_with(
-        tenant_id="tenant-1",
-        source_agent_id="agent-1",
-        target_agent_id="target-agent",
-        account_id="account-1",
-        agent_soul=create_kwargs["soul"],
-        node_job=node_job,
-        session=session,
-    )
 
 
-def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch) -> None:
+def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:
     model_dependency = Mock(side_effect=lambda provider: f"model:{provider}")
     tool_dependency = Mock(side_effect=lambda provider: f"tool:{provider}")
     monkeypatch.setattr(
@@ -588,7 +585,7 @@ def test_create_imported_inline_agent_uses_import_provenance() -> None:
     )
 
 
-def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch) -> None:
+def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     service = AgentDslService(session)
     roster_service = Mock()
@@ -618,7 +615,7 @@ def test_create_workflow_only_agent_sets_backing_app_and_snapshot(monkeypatch) -
     assert session.flush.call_count == 2
 
 
-def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(monkeypatch) -> None:
+def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(monkeypatch: pytest.MonkeyPatch) -> None:
     soul = AgentSoulConfig.model_validate(
         {
             "config_skills": [{"name": "skill", "file_kind": "tool_file", "file_id": "skill-file"}],
@@ -734,4 +731,17 @@ def test_require_helpers_and_graph_detection() -> None:
     assert AgentDslService._agent_icon_type(AgentIconType.EMOJI.value) == AgentIconType.EMOJI
     assert AgentDslService._agent_icon_type(None) is None
     assert is_agent_v2_graph({"nodes": [_agent_node("agent")]}) is True
+    assert is_agent_v2_graph({"nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}]}) is False
     assert is_agent_v2_graph({"nodes": ["invalid", {"data": {"type": "start"}}]}) is False
+
+
+def test_export_workflow_packages_ignores_historical_agent_version_two() -> None:
+    session = Mock()
+    service = AgentDslService(session)
+    graph = {"nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}]}
+
+    portable_graph, packages = service.export_workflow_packages(workflow=Mock(), graph=graph)
+
+    assert portable_graph == graph
+    assert packages == {}
+    session.scalars.assert_not_called()

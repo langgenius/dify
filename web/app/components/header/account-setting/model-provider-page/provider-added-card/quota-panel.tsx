@@ -61,7 +61,7 @@ const QuotaInfotip: FC<QuotaInfotipProps> = ({ tipText }) => {
       </PopoverTrigger>
       <PopoverContent
         placement="top"
-        popupClassName="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
+        className="max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary"
       >
         {tipText}
       </PopoverContent>
@@ -277,7 +277,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
                           aria-busy={isLoadingPlugin}
                           aria-disabled={isLoadingPlugin}
                           className={cn(
-                            'relative size-6 border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+                            'relative size-6 border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
                             !providerType && canInstallPlugin && 'cursor-pointer hover:opacity-80',
                           )}
                           onClick={() => handleIconClick(key)}

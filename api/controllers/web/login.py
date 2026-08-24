@@ -25,11 +25,13 @@ from controllers.console.error import AccountBannedError
 from controllers.console.wraps import (
     decrypt_code_field,
     decrypt_password_field,
+    model_validate,
     only_edition_enterprise,
     setup_required,
 )
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
+from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
@@ -99,9 +101,9 @@ class LoginApi(Resource):
     )
     @web_ns.response(200, "Authentication successful", web_ns.models[AccessTokenResultResponse.__name__])
     @decrypt_password_field
-    def post(self):
+    @model_validate(LoginPayload)
+    def post(self, payload: LoginPayload):
         """Authenticate user and login."""
-        payload = LoginPayload.model_validate(web_ns.payload or {})
         normalized_email = payload.email.lower()
 
         try:
@@ -138,16 +140,17 @@ class LoginStatusApi(Resource):
         }
     )
     @web_ns.response(200, "Login status", web_ns.models[LoginStatusResponse.__name__])
-    def get(self):
-        query = LoginStatusQuery.model_validate(request.args.to_dict(flat=True))
+    @model_validate(LoginStatusQuery)
+    def get(self, query: LoginStatusQuery):
         app_code = query.app_code
         user_id = query.user_id
         token = extract_webapp_access_token(request)
         if not app_code:
             return LoginStatusResponse(logged_in=bool(token), app_logged_in=False).model_dump(mode="json")
         app_id = AppService.get_app_id_by_code(app_code, session=db.session())
-        is_public = not dify_config.ENTERPRISE_ENABLED or not WebAppAuthService.is_app_require_permission_check(
-            app_id=app_id, session=db.session()
+        is_public = (
+            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE
+            or not WebAppAuthService.is_app_require_permission_check(app_id=app_id, session=db.session())
         )
         user_logged_in = False
 
@@ -204,9 +207,8 @@ class EmailCodeLoginSendEmailApi(Resource):
         }
     )
     @web_ns.response(200, "Email code sent successfully", web_ns.models[SimpleResultDataResponse.__name__])
-    def post(self):
-        payload = EmailCodeLoginSendPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(EmailCodeLoginSendPayload)
+    def post(self, payload: EmailCodeLoginSendPayload):
         if payload.language == "zh-Hans":
             language = "zh-Hans"
         else:
@@ -240,9 +242,8 @@ class EmailCodeLoginApi(Resource):
         web_ns.models[AccessTokenResultResponse.__name__],
     )
     @decrypt_code_field
-    def post(self):
-        payload = EmailCodeLoginVerifyPayload.model_validate(web_ns.payload or {})
-
+    @model_validate(EmailCodeLoginVerifyPayload)
+    def post(self, payload: EmailCodeLoginVerifyPayload):
         user_email = payload.email.lower()
 
         token_data = WebAppAuthService.get_email_code_login_data(payload.token)

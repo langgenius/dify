@@ -1,11 +1,11 @@
 'use client'
 import type { InputProps } from '../input'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '../action-button'
 
 type InputWithCopyProps = {
   showCopyButton?: boolean
@@ -55,12 +55,12 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>(
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <ActionButton
+                  <IconButton
                     size="xs"
+                    variant="ghost"
                     aria-label={safeTooltipText}
                     onClick={handleCopy}
                     onMouseLeave={reset}
-                    className="hover:bg-components-button-ghost-bg-hover"
                   >
                     {copied ? (
                       <span
@@ -73,7 +73,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>(
                         aria-hidden="true"
                       />
                     )}
-                  </ActionButton>
+                  </IconButton>
                 }
               />
               <TooltipContent>{safeTooltipText}</TooltipContent>

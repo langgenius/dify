@@ -4,9 +4,7 @@ from collections.abc import Mapping
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
-from enums.hosted_provider import HostedTrialProvider
+from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
@@ -30,14 +28,14 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             cls._fulfill_params_from_billing_api(
                 features,
                 tenant_id,
                 exclude_vector_space=exclude_vector_space,
             )
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             features.webapp_copyright_enabled = True
             features.knowledge_pipeline.publish_enabled = True
             cls._fulfill_params_from_workspace_info(features, tenant_id)
@@ -52,7 +50,7 @@ class FeatureService:
     @classmethod
     def get_vector_space(cls, tenant_id: str) -> feature_entities.VectorSpaceLimitationModel:
         vector_space = feature_entities.VectorSpaceLimitationModel(size=0, limit=5)
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             billing_vector_space = BillingService.get_vector_space(tenant_id)
             # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
             # but feature API keeps LimitationModel.size as int for compatibility.
@@ -65,7 +63,7 @@ class FeatureService:
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel()
-        if dify_config.BILLING_ENABLED and tenant_id:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
             knowledge_rate_limit.limit = limit_info.get("limit", 10)
@@ -75,7 +73,7 @@ class FeatureService:
     @classmethod
     def get_knowledge_file_size_limit(cls, tenant_id: str | None) -> int:
         default_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT
-        if not dify_config.BILLING_ENABLED or not tenant_id:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD or not tenant_id:
             return default_limit
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
@@ -91,7 +89,7 @@ class FeatureService:
     def _resolve_human_input_email_delivery_enabled(
         cls, *, features: feature_entities.FeatureModel, tenant_id: str | None
     ) -> bool:
-        if dify_config.ENTERPRISE_ENABLED or not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return True
         if not tenant_id:
             return False
@@ -106,10 +104,10 @@ class FeatureService:
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
+        system_features.webapp_auth.enabled = cls.is_webapp_auth_enabled()
 
-        if dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
             system_features.branding.enabled = True
-            system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
             cls._fulfill_params_from_enterprise(system_features)
 
@@ -125,7 +123,7 @@ class FeatureService:
     def is_workspace_creation_allowed(cls) -> bool:
         """Resolve the backend workspace-creation policy, including the Enterprise override."""
         is_allowed = dify_config.ALLOW_CREATE_WORKSPACE
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return is_allowed
 
         enterprise_info = EnterpriseService.get_info()
@@ -134,12 +132,12 @@ class FeatureService:
     @classmethod
     def is_plugin_manager_enabled(cls) -> bool:
         """Return whether Enterprise plugin credential policies must be enforced."""
-        return dify_config.ENTERPRISE_ENABLED
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
 
     @classmethod
     def get_plugin_installation_permission(cls) -> feature_entities.PluginInstallationPermissionModel:
         """Resolve the validated deployment-wide plugin installation policy."""
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return feature_entities.PluginInstallationPermissionModel()
 
         return cls._resolve_plugin_installation_permission(EnterpriseService.get_info())
@@ -151,13 +149,23 @@ class FeatureService:
         Non-enterprise deployments have no license, so an unconstrained default
         (unlimited seats/workspaces) is returned.
         """
-        if not dify_config.ENTERPRISE_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
             return feature_entities.LicenseModel()
-        return cls._build_license(EnterpriseService.get_info())
+        license_model = cls._build_license(EnterpriseService.get_info())
+        license_model.license_expiry_notice_enabled = dify_config.ENABLE_LICENSE_EXPIRY_NOTICE
+        return license_model
 
     @staticmethod
     def is_explore_banner_enabled() -> bool:
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_EXPLORE_BANNER
+
+    @staticmethod
+    def is_webapp_auth_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
+    @staticmethod
+    def is_trial_app_enabled() -> bool:
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ENABLE_TRIAL_APP
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: feature_entities.SystemFeatureModel):
@@ -173,7 +181,6 @@ class FeatureService:
         system_features.webapp_auth.allow_public_access = dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED
         system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR
         system_features.knowledge_fs_enabled = dify_config.KNOWLEDGE_FS_ENABLED
-        system_features.enable_license_expiry_notice = dify_config.ENABLE_LICENSE_EXPIRY_NOTICE
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
@@ -221,7 +228,7 @@ class FeatureService:
         features_usage_info = BillingService.get_quota_info(tenant_id)
 
         features.billing.enabled = billing_info["enabled"]
-        features.billing.subscription.plan = billing_info["subscription"]["plan"]
+        features.billing.subscription.plan = CloudPlan(billing_info["subscription"]["plan"])
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
 

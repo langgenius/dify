@@ -6,8 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
-from enums.deployment_edition import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.billing_service import BillingService
@@ -16,7 +15,7 @@ from services.feature_service import FeatureService
 
 @dataclass(frozen=True)
 class EffectiveCreditPool:
-    plan: str | None = None
+    plan: CloudPlan | None = None
     pool_type: Literal["paid", "trial"] | None = None
     quota_limit: int | None = None
     quota_used: int | None = None
@@ -53,11 +52,11 @@ def _set_credit_pool_info(
 class WorkspaceService:
     @classmethod
     def get_effective_credit_pool(cls, tenant_id: str, *, session: Session) -> EffectiveCreditPool:
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool()
 
         billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-        subscription_plan: str = billing_info["subscription"]["plan"]
+        subscription_plan = CloudPlan(billing_info["subscription"]["plan"])
 
         from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 
@@ -95,6 +94,25 @@ class WorkspaceService:
             exhausted_at=exhausted_at,
             next_credit_reset_date=billing_info.get("next_credit_reset_date"),
         )
+
+    @classmethod
+    def get_current_workspace_summary(cls, tenant: Tenant, account_id: str, *, session: Session) -> dict[str, object]:
+        tenant_account_join = session.scalar(
+            select(TenantAccountJoin)
+            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account_id)
+            .limit(1)
+        )
+        assert tenant_account_join is not None, "TenantAccountJoin not found"
+
+        effective_pool = cls.get_effective_credit_pool(tenant.id, session=session)
+
+        return {
+            "id": tenant.id,
+            "name": tenant.name,
+            "role": tenant_account_join.role,
+            "plan": effective_pool.plan,
+            "credits": effective_pool.remaining_credits,
+        }
 
     @classmethod
     def get_tenant_info(cls, tenant: Tenant, session: Session):

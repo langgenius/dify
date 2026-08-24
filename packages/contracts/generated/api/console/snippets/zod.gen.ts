@@ -317,6 +317,7 @@ export const zSnippetWorkflowResponse = z.object({
   updated_at: z.int(),
   updated_by: zSimpleAccountResponse.nullish(),
   version: z.string(),
+  version_number: z.int().nullish(),
 })
 
 /**
@@ -789,55 +790,6 @@ export const zAgentEnvVariableConfig = z.object({
 })
 
 /**
- * AgentFileRefConfig
- */
-export const zAgentFileRefConfig = z.object({
-  drive_key: z.string().max(512).nullish(),
-  file_id: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  name: z.string().max(255).nullish(),
-  reference: z.string().max(255).nullish(),
-  remote_url: z.string().nullish(),
-  tenant_id: z.string().max(255).nullish(),
-  transfer_method: z.string().max(64).nullish(),
-  type: z.string().max(64).nullish(),
-  upload_file_id: z.string().max(255).nullish(),
-  url: z.string().nullish(),
-})
-
-/**
- * WorkflowNodeJobMetadata
- */
-export const zWorkflowNodeJobMetadata = z.object({
-  agent_soul: z.record(z.string(), z.unknown()).nullish(),
-  file_refs: z.array(zAgentFileRefConfig).nullish(),
-})
-
-/**
- * AgentSkillRefConfig
- */
-export const zAgentSkillRefConfig = z.object({
-  description: z.string().nullish(),
-  file_id: z.string().max(255).nullish(),
-  full_archive_file_id: z.string().max(255).nullish(),
-  full_archive_key: z.string().max(512).nullish(),
-  id: z.string().max(255).nullish(),
-  manifest_files: z.array(z.string()).nullish(),
-  name: z.string().max(255).nullish(),
-  path: z.string().nullish(),
-  skill_md_file_id: z.string().max(255).nullish(),
-  skill_md_key: z.string().max(512).nullish(),
-})
-
-/**
- * AgentSoulFilesConfig
- */
-export const zAgentSoulFilesConfig = z.object({
-  files: z.array(zAgentFileRefConfig).optional(),
-  skills: z.array(zAgentSkillRefConfig).optional(),
-})
-
-/**
  * AgentHumanToolConfig
  */
 export const zAgentHumanToolConfig = z.object({
@@ -900,6 +852,30 @@ export const zAgentSandboxProviderConfig = z.object({
 export const zAgentSoulSandboxConfig = z.object({
   config: zAgentSandboxProviderConfig.optional(),
   provider: z.string().nullish(),
+})
+
+/**
+ * AgentFileRefConfig
+ */
+export const zAgentFileRefConfig = z.object({
+  file_id: z.string().max(255).nullish(),
+  id: z.string().max(255).nullish(),
+  name: z.string().max(255).nullish(),
+  reference: z.string().max(255).nullish(),
+  remote_url: z.string().nullish(),
+  tenant_id: z.string().max(255).nullish(),
+  transfer_method: z.string().max(64).nullish(),
+  type: z.string().max(64).nullish(),
+  upload_file_id: z.string().max(255).nullish(),
+  url: z.string().nullish(),
+})
+
+/**
+ * WorkflowNodeJobMetadata
+ */
+export const zWorkflowNodeJobMetadata = z.object({
+  agent_soul: z.record(z.string(), z.unknown()).nullish(),
+  file_refs: z.array(zAgentFileRefConfig).nullish(),
 })
 
 /**
@@ -1155,6 +1131,13 @@ export const zAgentModelResponseFormatConfig = z.object({
 
 /**
  * AgentSoulModelSettings
+ *
+ * Model parameters for the Agent Soul model.
+ *
+ * Model plugins can declare arbitrary parameters via ``parameter_rules``
+ * (e.g. Qwen/Tongyi's ``enable_thinking``) beyond the common OpenAI-style
+ * fields typed below, so extra keys must round-trip through persistence
+ * rather than being dropped.
  */
 export const zAgentSoulModelSettings = z.object({
   frequency_penalty: z.number().nullish(),
@@ -1439,6 +1422,14 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
 
 /**
  * AgentKnowledgeMetadataCondition
+ *
+ * One manual metadata filter clause.
+ *
+ * ``id`` and ``metadata_id`` are UI-only bookkeeping the composer sends on
+ * every save (a stable row key and a reference to the selected metadata
+ * field). They are persisted here for round-tripping the composer's draft
+ * state but are stripped before building the Agent runtime request, whose
+ * DTO only accepts ``name``/``comparison_operator``/``value``.
  */
 export const zAgentKnowledgeMetadataCondition = z.object({
   comparison_operator: z.enum([
@@ -1461,6 +1452,8 @@ export const zAgentKnowledgeMetadataCondition = z.object({
     '≤',
     '≥',
   ]),
+  id: z.string().nullish(),
+  metadata_id: z.string().nullish(),
   name: z.string().min(1).max(255),
   value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
 })
@@ -1535,7 +1528,6 @@ export const zAgentSoulConfig = z.object({
   config_note: z.string().optional().default(''),
   config_skills: z.array(zAgentConfigSkillRefConfig).optional(),
   env: zAgentSoulEnvConfig.optional(),
-  files: zAgentSoulFilesConfig.optional(),
   human: zAgentSoulHumanConfig.optional(),
   knowledge: zAgentSoulKnowledgeConfig.optional(),
   memory: zAgentSoulMemoryConfig.optional(),
@@ -1995,6 +1987,16 @@ export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
  * Workflow published successfully
  */
 export const zPostSnippetsBySnippetIdWorkflowsPublishResponse = zWorkflowPublishResponse
+
+export const zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath = z.object({
+  snippet_id: z.uuid(),
+  workflow_id: z.string(),
+})
+
+/**
+ * Workflow deleted successfully
+ */
+export const zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse = z.void()
 
 export const zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdBody = zWorkflowUpdatePayload
 

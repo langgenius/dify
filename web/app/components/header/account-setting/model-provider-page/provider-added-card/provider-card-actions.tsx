@@ -174,7 +174,7 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
           {canChangeVersion ? (
             <button
               type="button"
-              className="rounded-md border-0 bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="rounded-md border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
               aria-label={summary.version}
               disabled={loadingAction === 'version'}
               onClick={() => loadDetail('version')}

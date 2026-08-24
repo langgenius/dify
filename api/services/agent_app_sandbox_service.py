@@ -4,23 +4,27 @@ from __future__ import annotations
 
 import urllib.parse
 from collections.abc import Callable
-from typing import Any, Literal, cast
+from dataclasses import dataclass
+from typing import Literal, cast
 
 from dify_agent.client import Client
 from dify_agent.layers.execution_context import (
     DifyExecutionContextAgentConfigVersionKind,
     DifyExecutionContextLayerConfig,
 )
-from dify_agent.protocol import WorkspaceListResponse, WorkspaceReadResponse, WorkspaceUploadRequest
+from dify_agent.protocol import (
+    BindingFileDownloadRequest,
+    BindingFileListResponse,
+    BindingFileReadResponse,
+)
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clients.agent_backend.factory import create_agent_backend_client
 from configs import dify_config
-from core.app.file_access import DatabaseFileAccessController
-from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.db.session_factory import session_factory
-from factories import file_factory
+from core.tools.signature import bind_file_uri
 from models.agent import (
     Agent,
     AgentConfigDraft,
@@ -28,10 +32,11 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.model import App, Conversation
+from models.model import App, AppMode, Conversation
 from models.workflow import WorkflowNodeExecutionModel
 from services.agent.roster_service import AgentRosterService
 from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from services.file_request_service import FileRequestService
 
 
 class AgentSandboxInspectorError(Exception):
@@ -50,13 +55,36 @@ class AgentSandboxInfo(BaseModel):
     workspace_cwd: str
 
 
-class AgentSandboxUploadDownload(BaseModel):
+class AgentSandboxDownload(BaseModel):
     url: str
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedBinding:
+    """Detached scalar Binding data safe to carry beyond its read transaction.
+
+    Resolvers must end the transaction before Dify Agent network I/O; ORM and
+    session-bound objects never cross that boundary.
+    """
+
+    backend_binding_ref: str
+    agent_id: str
+    agent_config_version_id: str
+    agent_config_version_kind: str
 
 
 class AgentAppSandboxService:
     def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
+
+    @staticmethod
+    def resolve_app_id(*, tenant_id: str, agent_id: str) -> str:
+        with session_factory.create_session() as session:
+            app = AgentRosterService(session).get_agent_runtime_app_model(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+            )
+            return app.id
 
     def get_info(
         self,
@@ -88,7 +116,7 @@ class AgentAppSandboxService:
         caller_id: str,
         account_id: str,
         path: str,
-    ) -> WorkspaceListResponse:
+    ) -> BindingFileListResponse:
         binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -98,7 +126,7 @@ class AgentAppSandboxService:
             account_id=account_id,
         )
         with self._client_factory() as client:
-            return client.list_workspace_files_sync(binding.backend_binding_ref, path)
+            return client.list_binding_files_sync(binding.backend_binding_ref, path)
 
     def read_file(
         self,
@@ -110,7 +138,7 @@ class AgentAppSandboxService:
         caller_id: str,
         account_id: str,
         path: str,
-    ) -> WorkspaceReadResponse:
+    ) -> BindingFileReadResponse:
         binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -120,9 +148,9 @@ class AgentAppSandboxService:
             account_id=account_id,
         )
         with self._client_factory() as client:
-            return client.read_workspace_file_sync(binding.backend_binding_ref, path)
+            return client.read_binding_file_sync(binding.backend_binding_ref, path)
 
-    def upload_file(
+    def download_file(
         self,
         *,
         tenant_id: str,
@@ -132,7 +160,7 @@ class AgentAppSandboxService:
         caller_id: str,
         account_id: str,
         path: str,
-    ) -> AgentSandboxUploadDownload:
+    ) -> AgentSandboxDownload:
         binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -142,26 +170,28 @@ class AgentAppSandboxService:
             account_id=account_id,
         )
         with self._client_factory() as client:
-            uploaded = client.upload_workspace_file_sync(
-                WorkspaceUploadRequest(
+            downloaded = client.download_binding_file_sync(
+                BindingFileDownloadRequest(
                     backend_binding_ref=binding.backend_binding_ref,
                     path=path,
                     execution_context=DifyExecutionContextLayerConfig(
                         tenant_id=tenant_id,
+                        user_id=account_id,
+                        user_from="account",
                         app_id=app_id,
                         conversation_id=caller_id if caller_type == "conversation" else None,
                         agent_id=agent_id,
                         agent_config_version_id=binding.agent_config_version_id,
                         agent_config_version_kind=cast(
                             DifyExecutionContextAgentConfigVersionKind,
-                            binding.agent_config_version_kind.value,
+                            binding.agent_config_version_kind,
                         ),
                         agent_mode="agent_app",
                         invoke_from="debugger",
                     ),
                 )
             )
-        return _upload_download_response(tenant_id=tenant_id, file_mapping=uploaded.file.model_dump(mode="python"))
+        return _download_response(tenant_id=tenant_id, account_id=account_id, reference=downloaded.reference)
 
     @staticmethod
     def _resolve_binding(
@@ -172,7 +202,7 @@ class AgentAppSandboxService:
         caller_type: Literal["conversation", "build_draft"],
         caller_id: str,
         account_id: str,
-    ) -> AgentWorkspaceBinding:
+    ) -> _ResolvedBinding:
         with session_factory.create_session() as session:
             caller: AgentConfigDraft | Conversation | None
             if caller_type == "build_draft":
@@ -236,13 +266,24 @@ class AgentAppSandboxService:
                     "this caller has no active Agent Workspace Binding",
                     status_code=404,
                 )
-            session.expunge(binding)
-            return binding
+            return _binding_value(binding)
 
 
 class WorkflowAgentSandboxService:
     def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
+
+    @staticmethod
+    def resolve_app_id(*, tenant_id: str, app_id: str) -> str | None:
+        with session_factory.create_session() as session:
+            return session.scalar(
+                select(App.id).where(
+                    App.id == app_id,
+                    App.tenant_id == tenant_id,
+                    App.status == "normal",
+                    App.mode.in_((AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value)),
+                )
+            )
 
     def list_files(
         self,
@@ -254,7 +295,7 @@ class WorkflowAgentSandboxService:
         node_execution_id: str,
         path: str,
         session: Session,
-    ) -> WorkspaceListResponse:
+    ) -> BindingFileListResponse:
         binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -264,7 +305,7 @@ class WorkflowAgentSandboxService:
             session=session,
         )
         with self._client_factory() as client:
-            return client.list_workspace_files_sync(binding.backend_binding_ref, path)
+            return client.list_binding_files_sync(binding.backend_binding_ref, path)
 
     def read_file(
         self,
@@ -276,7 +317,7 @@ class WorkflowAgentSandboxService:
         node_execution_id: str,
         path: str,
         session: Session,
-    ) -> WorkspaceReadResponse:
+    ) -> BindingFileReadResponse:
         binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -286,9 +327,9 @@ class WorkflowAgentSandboxService:
             session=session,
         )
         with self._client_factory() as client:
-            return client.read_workspace_file_sync(binding.backend_binding_ref, path)
+            return client.read_binding_file_sync(binding.backend_binding_ref, path)
 
-    def upload_file(
+    def download_file(
         self,
         *,
         tenant_id: str,
@@ -296,39 +337,43 @@ class WorkflowAgentSandboxService:
         workflow_run_id: str,
         node_id: str,
         node_execution_id: str,
+        account_id: str,
         path: str,
-        session: Session,
-    ) -> AgentSandboxUploadDownload:
-        binding = self._resolve_binding(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            workflow_run_id=workflow_run_id,
-            node_id=node_id,
-            node_execution_id=node_execution_id,
-            session=session,
-        )
+    ) -> AgentSandboxDownload:
+        with session_factory.create_session() as session:
+            binding = self._resolve_binding(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                node_execution_id=node_execution_id,
+                session=session,
+            )
         with self._client_factory() as client:
-            uploaded = client.upload_workspace_file_sync(
-                WorkspaceUploadRequest(
+            downloaded = client.download_binding_file_sync(
+                BindingFileDownloadRequest(
                     backend_binding_ref=binding.backend_binding_ref,
                     path=path,
                     execution_context=DifyExecutionContextLayerConfig(
                         tenant_id=tenant_id,
+                        user_id=account_id,
+                        user_from="account",
                         app_id=app_id,
                         workflow_run_id=workflow_run_id,
                         node_id=node_id,
+                        node_execution_id=node_execution_id,
                         agent_id=binding.agent_id,
                         agent_config_version_id=binding.agent_config_version_id,
                         agent_config_version_kind=cast(
                             DifyExecutionContextAgentConfigVersionKind,
-                            binding.agent_config_version_kind.value,
+                            binding.agent_config_version_kind,
                         ),
                         agent_mode="workflow_run",
                         invoke_from="debugger",
                     ),
                 )
             )
-        return _upload_download_response(tenant_id=tenant_id, file_mapping=uploaded.file.model_dump(mode="python"))
+        return _download_response(tenant_id=tenant_id, account_id=account_id, reference=downloaded.reference)
 
     @staticmethod
     def _resolve_binding(
@@ -339,7 +384,7 @@ class WorkflowAgentSandboxService:
         node_id: str,
         node_execution_id: str,
         session: Session,
-    ) -> AgentWorkspaceBinding:
+    ) -> _ResolvedBinding:
         execution = session.scalar(
             select(WorkflowNodeExecutionModel).where(
                 WorkflowNodeExecutionModel.id == node_execution_id,
@@ -379,28 +424,38 @@ class WorkflowAgentSandboxService:
                 "this Workflow Agent node execution has no active Workspace Binding",
                 status_code=404,
             )
-        return binding
+        resolved = _binding_value(binding)
+        # Deliberately end the read transaction before the caller performs Dify Agent I/O.
+        session.rollback()
+        return resolved
 
 
-def _upload_download_response(*, tenant_id: str, file_mapping: dict[str, Any]) -> AgentSandboxUploadDownload:
-    controller = DatabaseFileAccessController()
-    runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
+def _binding_value(binding: AgentWorkspaceBinding) -> _ResolvedBinding:
+    return _ResolvedBinding(
+        backend_binding_ref=binding.backend_binding_ref,
+        agent_id=binding.agent_id,
+        agent_config_version_id=binding.agent_config_version_id,
+        agent_config_version_kind=binding.agent_config_version_kind.value,
+    )
+
+
+def _download_response(*, tenant_id: str, account_id: str, reference: str) -> AgentSandboxDownload:
     try:
-        file = file_factory.build_from_mapping(mapping=file_mapping, tenant_id=tenant_id, access_controller=controller)
-        url = runtime.resolve_file_url(file=file, for_external=True)
+        result = FileRequestService().request_download(
+            tenant_id=tenant_id,
+            user_id=account_id,
+            user_from="account",
+            invoke_from="debugger",
+            file_mapping={"transfer_method": "tool_file", "reference": reference},
+        )
+        url = bind_file_uri(result.download_uri, dify_config.FILES_URL)
     except ValueError as exc:
         raise AgentSandboxInspectorError(
-            "workspace_upload_download_unavailable",
-            "uploaded Workspace file could not be converted to a download URL",
+            "binding_file_download_unavailable",
+            "Binding file could not be converted to a download URL",
             status_code=502,
         ) from exc
-    if not url:
-        raise AgentSandboxInspectorError(
-            "workspace_upload_download_unavailable",
-            "uploaded Workspace file does not support download URL generation",
-            status_code=502,
-        )
-    return AgentSandboxUploadDownload(url=_with_as_attachment(url))
+    return AgentSandboxDownload(url=_with_as_attachment(url))
 
 
 def _with_as_attachment(url: str) -> str:
@@ -415,16 +470,20 @@ def _default_client_factory() -> Client:
     if not base_url:
         raise AgentSandboxInspectorError(
             "inspector_unavailable",
-            "the Workspace file inspector is not available (Agent backend not configured)",
+            "the Binding file inspector is not available (Agent backend not configured)",
             status_code=503,
         )
-    return Client(base_url=base_url)
+    return create_agent_backend_client(
+        base_url=base_url,
+        api_token=dify_config.AGENT_BACKEND_API_TOKEN,
+        binding_file_download_timeout=dify_config.AGENT_BACKEND_BINDING_FILE_DOWNLOAD_TIMEOUT_SECONDS,
+    )
 
 
 __all__ = [
     "AgentAppSandboxService",
+    "AgentSandboxDownload",
     "AgentSandboxInfo",
     "AgentSandboxInspectorError",
-    "AgentSandboxUploadDownload",
     "WorkflowAgentSandboxService",
 ]

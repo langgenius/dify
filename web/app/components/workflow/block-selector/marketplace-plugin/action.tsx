@@ -1,5 +1,4 @@
 'use client'
-import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,6 +6,7 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { memo } from 'react'
@@ -52,20 +52,20 @@ function OperationDropdown({ open, onOpenChange, author, name, version }: Props)
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <Button
+          <IconButton
             variant="ghost"
-            size="small"
-            className="size-6 min-h-0 rounded-lg p-0 focus-visible:ring-inset data-popup-open:bg-state-base-hover"
+            size="md"
+            className="rounded-lg focus-visible:ring-inset data-popup-open:bg-state-base-hover"
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
           >
             <span
               aria-hidden
               className="i-ri-more-fill size-4 text-components-button-secondary-accent-text"
             />
-          </Button>
+          </IconButton>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[176px]">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[176px]">
         <DropdownMenuItem className="system-md-regular" onClick={handleDownload}>
           {t(($) => $['operation.download'], { ns: 'common' })}
         </DropdownMenuItem>

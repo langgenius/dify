@@ -826,7 +826,9 @@ Retrieve the access mode for a web application (public or restricted).
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessModeResponse](#accessmoderesponse)<br> |
 | 400 | Bad Request |  |
+| 404 | App Not Found |  |
 | 500 | Internal Server Error |  |
+| 503 | Web App Access Service Unavailable |  |
 
 ### [GET] /webapp/permission
 Check if user has permission to access a web application.
@@ -845,6 +847,7 @@ Check if user has permission to access a web application.
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 500 | Internal Server Error |  |
+| 503 | Web App Access Service Unavailable |  |
 
 ### [POST] /workflows/run
 **Run workflow**
@@ -1566,7 +1569,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
-| enable_license_expiry_notice | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_step_by_step_tour | boolean |  | Yes |

@@ -6,9 +6,12 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+import tasks.remove_app_and_related_data_task as remove_app_task_module
+from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError
 from models import AppStar
+from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowArchiveLog
 from tasks.remove_app_and_related_data_task import (
@@ -17,8 +20,102 @@ from tasks.remove_app_and_related_data_task import (
     _delete_archived_workflow_run_files,
     _delete_draft_variable_offload_data,
     _delete_draft_variables,
+    _delete_workflow_agent_node_bindings,
     delete_draft_variables_batch,
 )
+
+
+def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_session: Session) -> None:
+    target = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_version="draft",
+        node_id="node-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="agent-1",
+        current_snapshot_id="snapshot-1",
+        node_job_config={},
+    )
+    kept = WorkflowAgentNodeBinding(
+        tenant_id="tenant-1",
+        app_id="app-2",
+        workflow_id="workflow-2",
+        workflow_version="draft",
+        node_id="node-2",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="agent-2",
+        current_snapshot_id="snapshot-2",
+        node_job_config={},
+    )
+    other_tenant = WorkflowAgentNodeBinding(
+        tenant_id="tenant-2",
+        app_id="app-1",
+        workflow_id="workflow-3",
+        workflow_version="draft",
+        node_id="node-3",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="agent-3",
+        current_snapshot_id="snapshot-3",
+        node_job_config={},
+    )
+    sqlite_session.add_all([target, kept, other_tenant])
+    sqlite_session.commit()
+    target_id = target.id
+    kept_id = kept.id
+    other_tenant_id = other_tenant.id
+
+    _delete_workflow_agent_node_bindings("tenant-1", "app-1")
+
+    sqlite_session.expire_all()
+    assert sqlite_session.get(WorkflowAgentNodeBinding, target_id) is None
+    assert sqlite_session.get(WorkflowAgentNodeBinding, kept_id) is not None
+    assert sqlite_session.get(WorkflowAgentNodeBinding, other_tenant_id) is not None
+
+
+def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+    monkeypatch.setattr(remove_app_task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    other_cleanup_names = (
+        "_delete_app_model_configs",
+        "_delete_app_site",
+        "_delete_app_mcp_servers",
+        "_delete_app_api_tokens",
+        "_delete_installed_apps",
+        "_delete_app_stars",
+        "_delete_recommended_apps",
+        "_delete_app_annotation_data",
+        "_delete_app_dataset_joins",
+        "_delete_app_workflow_runs",
+        "_delete_app_workflow_node_executions",
+        "_delete_app_workflow_app_logs",
+        "_delete_app_conversations",
+        "_delete_app_messages",
+        "_delete_workflow_tool_providers",
+        "_delete_app_tag_bindings",
+        "_delete_end_users",
+        "_delete_trace_app_configs",
+        "_delete_conversation_variables",
+        "_delete_draft_variables",
+        "_delete_app_triggers",
+        "_delete_workflow_plugin_triggers",
+        "_delete_workflow_webhook_triggers",
+        "_delete_workflow_schedule_plans",
+        "_delete_workflow_trigger_logs",
+    )
+    for name in other_cleanup_names:
+        monkeypatch.setattr(remove_app_task_module, name, MagicMock())
+
+    delete_bindings = MagicMock(side_effect=lambda *_args: events.append("bindings"))
+    delete_workflows = MagicMock(side_effect=lambda *_args: events.append("workflows"))
+    monkeypatch.setattr(remove_app_task_module, "_delete_workflow_agent_node_bindings", delete_bindings)
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_workflows", delete_workflows)
+
+    remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    assert events == ["bindings", "workflows"]
+    delete_bindings.assert_called_once_with("tenant-1", "app-1")
+    delete_workflows.assert_called_once_with("tenant-1", "app-1")
 
 
 class TestDeleteDraftVariablesBatch:

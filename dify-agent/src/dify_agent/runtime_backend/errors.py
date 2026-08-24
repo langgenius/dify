@@ -13,6 +13,10 @@ class HomeSnapshotNotFoundError(RuntimeBackendError):
     pass
 
 
+class HomeSnapshotTooLargeError(RuntimeBackendError):
+    pass
+
+
 class BindingCreateError(RuntimeBackendError):
     pass
 
@@ -41,22 +45,6 @@ class WorkspaceUnavailableError(RuntimeBackendError):
     pass
 
 
-class WorkspacePathError(RuntimeBackendError):
-    pass
-
-
-class WorkspaceFileTooLargeError(RuntimeBackendError):
-    path: str
-    size: int
-    max_bytes: int
-
-    def __init__(self, *, path: str, size: int, max_bytes: int) -> None:
-        self.path = path
-        self.size = size
-        self.max_bytes = max_bytes
-        super().__init__(f"Workspace file {path!r} exceeds the {max_bytes}-byte ToolFile upload limit")
-
-
 __all__ = [
     "BindingAcquireError",
     "BindingCreateError",
@@ -64,10 +52,9 @@ __all__ = [
     "BindingLostError",
     "HomeSnapshotCreateError",
     "HomeSnapshotNotFoundError",
+    "HomeSnapshotTooLargeError",
     "RuntimeBackendError",
     "SharedWorkspaceUnsupportedError",
-    "WorkspaceFileTooLargeError",
-    "WorkspacePathError",
     "WorkspacePreservationUnsupportedError",
     "WorkspaceUnavailableError",
 ]

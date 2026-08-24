@@ -79,6 +79,10 @@ const AgentOutputBlockComponent = ({
   const skipNameFocusRef = useRef(false)
 
   useEffect(() => {
+    latestDraftNameRef.current = name
+  }, [name])
+
+  useEffect(() => {
     if (!isEditing) return
     if (skipNameFocusRef.current) {
       skipNameFocusRef.current = false
@@ -96,7 +100,6 @@ const AgentOutputBlockComponent = ({
   if (name !== lastNodeName) {
     setLastNodeName(name)
     setDraftName(name)
-    latestDraftNameRef.current = name
   }
 
   const commitOutput = (
@@ -292,7 +295,7 @@ const AgentOutputBlockComponent = ({
         >
           {selected.label}
         </SelectTrigger>
-        <SelectContent popupClassName="w-40">
+        <SelectContent className="w-40">
           {AGENT_OUTPUT_TYPE_OPTIONS.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <SelectItemText>{option.label}</SelectItemText>

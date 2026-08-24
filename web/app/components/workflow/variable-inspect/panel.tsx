@@ -2,10 +2,10 @@ import type { FC } from 'react'
 import type { NodeProps } from '../types'
 import type { VarInInspect } from '@/types/workflow'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { VarInInspectType } from '@/types/workflow'
@@ -175,9 +175,12 @@ const Panel: FC = () => {
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
+            <RiCloseLine aria-hidden className="size-4" />
+          </IconButton>
         </div>
         <div className="grow p-2">
           <Listening onStop={handleStopListening} />
@@ -193,9 +196,12 @@ const Panel: FC = () => {
           <div className="system-sm-semibold-uppercase text-text-primary">
             {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
           </div>
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={() => setShowVariableInspectPanel(false)}
+          >
+            <RiCloseLine aria-hidden className="size-4" />
+          </IconButton>
         </div>
         <div className="grow p-2">
           <Empty />

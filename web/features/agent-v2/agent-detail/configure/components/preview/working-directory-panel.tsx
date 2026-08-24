@@ -6,19 +6,27 @@ import type {
   SandboxReadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSkillDetailDownloadAction } from '../orchestrate/skills/detail-dialog'
-import type { AgentWorkingDirectoryPath } from './working-directory-breadcrumb'
+import type {
+  AgentWorkingDirectoryPath,
+  AgentWorkingDirectoryRootPath,
+} from './working-directory-breadcrumb'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import { Dialog } from '@langgenius/dify-ui/dialog'
+import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { downloadUrl } from '@/utils/download'
 import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
-import { AgentWorkingDirectoryBreadcrumb } from './working-directory-breadcrumb'
+import {
+  AGENT_SAVED_FILES_ROOT_PATH,
+  AGENT_TEMPORARY_FILES_ROOT_PATH,
+  AgentWorkingDirectoryBreadcrumb,
+} from './working-directory-breadcrumb'
 
 type AgentWorkingDirectoryPanelProps = {
   source: AgentWorkingDirectorySource
@@ -45,31 +53,37 @@ type SandboxErrorPayload = {
   code?: string
 }
 
-const normalizeSandboxPath = (path: string) => {
-  const normalizedPath = path
+const getSandboxRootPath = (path: string): AgentWorkingDirectoryRootPath =>
+  path === AGENT_SAVED_FILES_ROOT_PATH || path.startsWith(`${AGENT_SAVED_FILES_ROOT_PATH}/`)
+    ? AGENT_SAVED_FILES_ROOT_PATH
+    : AGENT_TEMPORARY_FILES_ROOT_PATH
+
+const getSandboxRelativePath = (path: string) => {
+  const relativePath = path
     .replace(/^~(?:\/|$)/, '')
     .replace(/^\.\//, '')
     .replace(/^\/+|\/+$/g, '')
-  return normalizedPath === '.' ? '' : normalizedPath
+  return relativePath === AGENT_TEMPORARY_FILES_ROOT_PATH ? '' : relativePath
 }
 
-const toSandboxHomePath = (path: string) => {
-  if (path === '.') return '.'
+const toSandboxApiPath = (path: string) => {
+  const rootPath = getSandboxRootPath(path)
+  const relativePath = getSandboxRelativePath(path)
 
-  const normalizedPath = normalizeSandboxPath(path)
-  return normalizedPath ? `~/${normalizedPath}` : '~'
+  return relativePath ? `${rootPath}/${relativePath}` : rootPath
 }
-
-const toSandboxApiPath = toSandboxHomePath
 
 const joinSandboxPath = (basePath: string, name: string) => {
-  const normalizedBasePath = normalizeSandboxPath(basePath)
-  return normalizedBasePath ? `${normalizedBasePath}/${name}` : name
+  const rootPath = getSandboxRootPath(basePath)
+  const baseRelativePath = getSandboxRelativePath(basePath)
+  const relativePath = [baseRelativePath, name].filter(Boolean).join('/')
+
+  return relativePath ? `${rootPath}/${relativePath}` : rootPath
 }
 
 function getSandboxEntryRelativePathSegments(entryName: string, basePath: string) {
-  const normalizedBasePath = normalizeSandboxPath(basePath)
-  const normalizedEntryName = normalizeSandboxPath(entryName)
+  const normalizedBasePath = getSandboxRelativePath(basePath)
+  const normalizedEntryName = getSandboxRelativePath(entryName)
 
   if (!normalizedEntryName) return []
 
@@ -91,14 +105,14 @@ function buildSandboxFileTree(
   basePath = '.',
   options: { nestRootPath?: string; nestUnderBasePath?: boolean } = {},
 ): AgentFileNode[] {
-  const normalizedBasePath = normalizeSandboxPath(basePath)
-  const normalizedNestRootPath = normalizeSandboxPath(options.nestRootPath ?? '.')
+  const normalizedBasePath = getSandboxRelativePath(basePath)
+  const normalizedNestRootPath = getSandboxRelativePath(options.nestRootPath ?? '.')
   const rootFiles: AgentFileNode[] = []
   let baseFolder: AgentFileNode | undefined
 
   if (options.nestUnderBasePath && normalizedBasePath) {
     let currentFiles = rootFiles
-    let currentPath = normalizedNestRootPath
+    let currentPath = toSandboxApiPath(options.nestRootPath ?? basePath)
     const basePathSegments = normalizedBasePath.split('/').filter(Boolean)
     const nestRootPathSegments = normalizedNestRootPath.split('/').filter(Boolean)
     const nestedBasePathSegments =
@@ -128,7 +142,7 @@ function buildSandboxFileTree(
     if (!pathSegments.length) continue
 
     let currentFiles = baseFolder?.children ?? rootFiles
-    let currentPath = normalizedBasePath
+    let currentPath = toSandboxApiPath(basePath)
 
     pathSegments.forEach((segment, index) => {
       const isLeaf = index === pathSegments.length - 1
@@ -225,17 +239,6 @@ async function isNoActiveBindingError(error: unknown) {
 
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
-function isSandboxPathWithinDirectory(path: string, directory: string) {
-  const normalizedPath = normalizeSandboxPath(path)
-  const normalizedDirectory = normalizeSandboxPath(directory)
-
-  if (!normalizedDirectory) return true
-
-  return (
-    normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
-  )
-}
-
 export function AgentWorkingDirectoryPanel({
   source,
   onOpenChange,
@@ -243,55 +246,36 @@ export function AgentWorkingDirectoryPanel({
 }: AgentWorkingDirectoryPanelProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [selectedDirectoryPath, setSelectedDirectoryPath] = useState<AgentWorkingDirectoryPath>()
+  const persistentFilesTooltip = t(
+    ($) => $['agentDetail.configure.workingDirectory.persistentFilesTooltip'],
+  )
+  const temporaryFilesTooltip = t(
+    ($) => $['agentDetail.configure.workingDirectory.temporaryFilesTooltip'],
+  )
+  const [selectedDirectoryPath, setSelectedDirectoryPath] = useState<AgentWorkingDirectoryPath>(
+    AGENT_SAVED_FILES_ROOT_PATH,
+  )
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
   const [pendingOpenFolderPaths, setPendingOpenFolderPaths] = useState<string[]>([])
   const [downloadActionLoadingTarget, setDownloadActionLoadingTarget] =
     useState<AgentSkillDetailDownloadAction | null>(null)
-  const sandboxInfoQueryOptions = consoleQuery.agent.byAgentId.sandbox.get.queryOptions({
-    input:
-      source.type === 'agent'
-        ? {
+  const directoryPath = selectedDirectoryPath
+  const selectedRootPath = getSandboxRootPath(directoryPath)
+  const getFileListQueryOptions = (path: string) =>
+    source.type === 'agent'
+      ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
+          input: {
             params: {
               agent_id: source.agentId,
             },
             query: {
               caller_type: source.callerType,
               caller_id: source.callerId,
+              path: toSandboxApiPath(path),
             },
-          }
-        : skipToken,
-    context: {
-      silent: true,
-    },
-  })
-  const sandboxInfoQuery = useQuery({
-    ...sandboxInfoQueryOptions,
-    enabled: open && source.type === 'agent',
-    retry: false,
-  })
-  const isSandboxInfoLoading = source.type === 'agent' && sandboxInfoQuery.isPending
-  const workspaceDirectoryPath = sandboxInfoQuery.data?.workspace_cwd
-  const directoryPath = selectedDirectoryPath ?? workspaceDirectoryPath ?? '.'
-  const showReturnToWorkspaceButton =
-    !!workspaceDirectoryPath && !isSandboxPathWithinDirectory(directoryPath, workspaceDirectoryPath)
-  const getFileListQueryOptions = (path: string) =>
-    source.type === 'agent'
-      ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
-          input: !isSandboxInfoLoading
-            ? {
-                params: {
-                  agent_id: source.agentId,
-                },
-                query: {
-                  caller_type: source.callerType,
-                  caller_id: source.callerId,
-                  path: toSandboxApiPath(path),
-                },
-              }
-            : skipToken,
+          },
           context: {
             silent: true,
           },
@@ -368,18 +352,18 @@ export function AgentWorkingDirectoryPanel({
     (files, query, index) => {
       return mergeSandboxFileTree(
         files,
-        buildSandboxFileTree(query.data?.entries, loadedFolderPaths[index] ?? query.data?.path, {
+        buildSandboxFileTree(query.data?.entries, loadedFolderPaths[index], {
           nestRootPath: directoryPath,
           nestUnderBasePath: true,
         }),
       )
     },
-    buildSandboxFileTree(fileListQuery.data?.entries, fileListQuery.data?.path),
+    buildSandboxFileTree(fileListQuery.data?.entries, directoryPath),
   )
   const selectedWorkingDirectoryFile =
     findReadableFile(workingDirectoryFiles, selectedFileId) ??
     findFirstReadableFile(workingDirectoryFiles)
-  const isFileListLoading = isSandboxInfoLoading || fileListQuery.isPending
+  const isFileListLoading = fileListQuery.isPending
   const loadingFolderPaths = new Set(
     loadedFolderPaths.filter((path, index) => expandedFolderQueries[index]?.isPending),
   )
@@ -445,18 +429,18 @@ export function AgentWorkingDirectoryPanel({
     },
     retry: false,
   })
-  const agentSandboxUploadMutation = useMutation(
-    consoleQuery.agent.byAgentId.sandbox.files.upload.post.mutationOptions(),
+  const agentSandboxDownloadMutation = useMutation(
+    consoleQuery.agent.byAgentId.sandbox.files.download.post.mutationOptions(),
   )
-  const workflowSandboxUploadMutation = useMutation(
-    consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post.mutationOptions(),
+  const workflowSandboxDownloadMutation = useMutation(
+    consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.download.post.mutationOptions(),
   )
-  const { mutateAsync: uploadAgentSandboxFile } = agentSandboxUploadMutation
+  const { mutateAsync: downloadAgentSandboxFile } = agentSandboxDownloadMutation
   const isImagePreviewFile = selectedWorkingDirectoryFile?.icon === 'image'
   const selectedWorkingDirectoryFilePath = selectedWorkingDirectoryFile?.id
-  const { mutateAsync: uploadWorkflowSandboxFile } = workflowSandboxUploadMutation
+  const { mutateAsync: downloadWorkflowSandboxFile } = workflowSandboxDownloadMutation
   const isFileDownloadPending =
-    agentSandboxUploadMutation.isPending || workflowSandboxUploadMutation.isPending
+    agentSandboxDownloadMutation.isPending || workflowSandboxDownloadMutation.isPending
   const isFileReadLoading =
     !!selectedWorkingDirectoryFile && !isImagePreviewFile && fileReadQuery.isPending
   const imagePreviewQuery = useQuery({
@@ -476,7 +460,7 @@ export function AgentWorkingDirectoryPanel({
         throw new Error('Missing selected working directory file')
 
       if (source.type === 'agent') {
-        return consoleClient.agent.byAgentId.sandbox.files.upload.post({
+        return consoleClient.agent.byAgentId.sandbox.files.download.post({
           params: {
             agent_id: source.agentId,
           },
@@ -488,7 +472,7 @@ export function AgentWorkingDirectoryPanel({
         })
       }
 
-      return consoleClient.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post(
+      return consoleClient.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.download.post(
         {
           params: {
             app_id: source.appId,
@@ -511,7 +495,7 @@ export function AgentWorkingDirectoryPanel({
       if (source.type === 'agent') {
         setDownloadActionLoadingTarget(action)
         try {
-          const result = await uploadAgentSandboxFile({
+          const result = await downloadAgentSandboxFile({
             params: {
               agent_id: source.agentId,
             },
@@ -523,6 +507,8 @@ export function AgentWorkingDirectoryPanel({
           })
           downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
           toast.success(tCommon(($) => $['operation.downloadSuccess']))
+        } catch {
+          // The generated client reports the mutation failure through its shared error handler.
         } finally {
           setDownloadActionLoadingTarget(null)
         }
@@ -531,7 +517,7 @@ export function AgentWorkingDirectoryPanel({
 
       setDownloadActionLoadingTarget(action)
       try {
-        const result = await uploadWorkflowSandboxFile({
+        const result = await downloadWorkflowSandboxFile({
           params: {
             app_id: source.appId,
             workflow_run_id: source.workflowRunId,
@@ -544,6 +530,8 @@ export function AgentWorkingDirectoryPanel({
         })
         downloadUrl({ url: result.url, fileName: selectedWorkingDirectoryFile.name })
         toast.success(tCommon(($) => $['operation.downloadSuccess']))
+      } catch {
+        // The generated client reports the mutation failure through its shared error handler.
       } finally {
         setDownloadActionLoadingTarget(null)
       }
@@ -553,8 +541,8 @@ export function AgentWorkingDirectoryPanel({
       selectedWorkingDirectoryFile,
       source,
       tCommon,
-      uploadAgentSandboxFile,
-      uploadWorkflowSandboxFile,
+      downloadAgentSandboxFile,
+      downloadWorkflowSandboxFile,
     ],
   )
 
@@ -565,46 +553,74 @@ export function AgentWorkingDirectoryPanel({
         detail={{
           description: t(($) => $['agentDetail.configure.workingDirectory.description']),
           fileCount: countReadableFiles(workingDirectoryFiles),
-          fileListHeader: isSandboxInfoLoading ? (
-            <h3
-              id="agent-skill-detail-files-heading"
-              className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary"
-            >
-              {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
-            </h3>
-          ) : (
+          fileListHeader: (
             <div className="flex shrink-0 flex-col">
-              <div className="flex items-center gap-1 px-4 pt-3.5 pb-3">
-                <h3
-                  id="agent-skill-detail-files-heading"
-                  className="min-w-0 flex-1 system-xl-semibold text-text-primary"
-                >
-                  {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
-                </h3>
-                {showReturnToWorkspaceButton && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      aria-label={t(
-                        ($) => $['agentDetail.configure.workingDirectory.returnToWorkspace'],
-                      )}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md p-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => handleDirectoryPathChange(workspaceDirectoryPath)}
+              <h3
+                id="agent-skill-detail-files-heading"
+                className="px-4 pt-3.5 pb-2 system-xl-semibold text-text-primary"
+              >
+                {t(($) => $['agentDetail.configure.workingDirectory.fileSystem'])}
+              </h3>
+              <Tabs
+                value={selectedRootPath}
+                onValueChange={(path) =>
+                  handleDirectoryPathChange(path as AgentWorkingDirectoryPath)
+                }
+              >
+                <TabsList className="relative h-9 gap-4 border-b-[0.5px] border-divider-regular px-4">
+                  <div className="flex h-full items-center gap-0.5">
+                    <TabsTab
+                      value={AGENT_SAVED_FILES_ROOT_PATH}
+                      className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
                     >
-                      <span aria-hidden className="i-ri-arrow-go-back-line size-3.5" />
-                    </TooltipTrigger>
-                    <TooltipContent placement="top">
-                      {t(($) => $['agentDetail.configure.workingDirectory.returnToWorkspace'])}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-              <AgentWorkingDirectoryBreadcrumb
-                path={directoryPath}
-                onPathChange={handleDirectoryPathChange}
-              />
+                      {t(($) => $['agentDetail.configure.workingDirectory.persistentFiles'])}
+                    </TabsTab>
+                    <Infotip
+                      aria-label={persistentFilesTooltip}
+                      iconVariant="information"
+                      popupClassName="w-64"
+                    >
+                      {persistentFilesTooltip}
+                    </Infotip>
+                  </div>
+                  <div className="flex h-full items-center gap-0.5">
+                    <TabsTab
+                      value={AGENT_TEMPORARY_FILES_ROOT_PATH}
+                      className="h-full min-w-0 pt-0 pb-0 system-sm-semibold data-active:border-transparent"
+                    >
+                      {t(($) => $['agentDetail.configure.workingDirectory.temporaryFiles'])}
+                    </TabsTab>
+                    <Infotip
+                      aria-label={temporaryFilesTooltip}
+                      iconVariant="information"
+                      popupClassName="w-64"
+                    >
+                      {temporaryFilesTooltip}
+                    </Infotip>
+                  </div>
+                  <TabsIndicator
+                    className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+                    style={{
+                      translate: 'var(--active-tab-left)',
+                      width: 'var(--active-tab-width)',
+                    }}
+                  />
+                </TabsList>
+                <TabsPanel value={AGENT_SAVED_FILES_ROOT_PATH} tabIndex={-1}>
+                  <AgentWorkingDirectoryBreadcrumb
+                    path={directoryPath}
+                    onPathChange={handleDirectoryPathChange}
+                  />
+                </TabsPanel>
+                <TabsPanel value={AGENT_TEMPORARY_FILES_ROOT_PATH} tabIndex={-1}>
+                  <AgentWorkingDirectoryBreadcrumb
+                    path={directoryPath}
+                    onPathChange={handleDirectoryPathChange}
+                  />
+                </TabsPanel>
+              </Tabs>
             </div>
           ),
-          fileListLoading: isSandboxInfoLoading,
           fileListPanelClassName: 'w-[360px]',
           fileListTreeClassName: 'px-0',
           fileListTreeListClassName: 'px-1',
@@ -653,7 +669,7 @@ export function AgentWorkingDirectoryPanel({
                 : paths.filter((path) => path !== file.id),
             )
           },
-          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(toSandboxHomePath(file.id)),
+          onFolderDoubleClick: ({ file }) => handleDirectoryPathChange(file.id),
           onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
           renderFolderSuffix: ({ file }) =>
             loadingFolderPaths.has(file.id) ? (

@@ -1,18 +1,19 @@
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiMoreFill } from '@remixicon/react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { VersionHistoryContextMenuOptions } from '../../../types'
 import ActionMenuItem from './action-menu-item'
 import useActionMenu from './use-action-menu'
 
 export type ActionMenuProps = {
+  workflowId: string
   isShowDelete: boolean
   isNamedVersion: boolean
   canImportExportDSL: boolean
@@ -24,26 +25,26 @@ export type ActionMenuProps = {
 const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
   const { isShowDelete, handleClickActionMenuItem, open, setOpen } = props
   const { deleteOperation, options } = useActionMenu(props)
+  const { t } = useTranslation()
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        nativeButton={false}
         render={
-          <Button
-            nativeButton={false}
-            size="small"
-            className="px-1"
+          <IconButton
+            size="md"
+            variant="secondary"
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
         }
-      >
-        <RiMoreFill className="size-4" />
-      </DropdownMenuTrigger>
+      />
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-max min-w-[184px] max-w-[calc(100vw-24px)] shadow-shadow-shadow-5"
+        className="w-max max-w-[calc(100vw-24px)] min-w-[184px] shadow-shadow-shadow-5"
       >
         {options.map((option) => (
           <ActionMenuItem
@@ -54,7 +55,7 @@ const ActionMenu: FC<ActionMenuProps> = (props: ActionMenuProps) => {
         ))}
         {isShowDelete && (
           <>
-            <DropdownMenuSeparator className="my-0" />
+            <DropdownMenuSeparator className="my-1" />
             <ActionMenuItem
               item={deleteOperation}
               isDestructive

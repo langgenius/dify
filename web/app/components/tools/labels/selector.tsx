@@ -2,11 +2,11 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useDebounceFn } from 'ahooks'
+import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import Input from '@/app/components/base/input'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useTags } from '@/app/components/plugins/hooks'
 
 type LabelSelectorProps = {
@@ -21,18 +21,8 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
   const { tags: labelList } = useTags()
 
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(
-    () => {
-      setSearchKeywords(keywords)
-    },
-    { wait: 500 },
-  )
-
-  const handleKeywordsChange = (value: string) => {
-    setKeywords(value)
-    handleSearch()
-  }
+  const debouncedKeywords = useDebouncedValue(keywords, 500)
+  const searchKeywords = keywords ? debouncedKeywords : ''
 
   const filteredLabelList = labelList.filter((label) => label.name.includes(searchKeywords))
   const selectedLabels = value.map((v) => labelList.find((l) => l.name === v)?.label).join(', ')
@@ -62,17 +52,11 @@ function LabelSelector({ value, onChange }: LabelSelectorProps) {
         <PopoverContent
           placement="bottom-start"
           sideOffset={4}
-          popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+          className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
         >
           <div className="relative w-147.75 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
             <div className="border-b-[0.5px] border-divider-regular p-2">
-              <Input
-                showLeftIcon
-                showClearIcon
-                value={keywords}
-                onChange={(e) => handleKeywordsChange(e.target.value)}
-                onClear={() => handleKeywordsChange('')}
-              />
+              <SearchInput value={keywords} onValueChange={setKeywords} />
             </div>
             <CheckboxGroup
               aria-label={t(($) => $['createTool.toolInput.labelPlaceholder'], { ns: 'tools' })}

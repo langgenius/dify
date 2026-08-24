@@ -87,7 +87,7 @@ function WorkspaceSwitchControls({
           <DropdownMenuContent
             placement="bottom-end"
             sideOffset={4}
-            popupClassName="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
+            className="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
           >
             <DropdownMenuRadioGroup<WorkspaceSort>
               value={sort}

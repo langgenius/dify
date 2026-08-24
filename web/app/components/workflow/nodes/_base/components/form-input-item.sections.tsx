@@ -6,9 +6,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   SelectItem as DifySelectItem,
   Select,
-  SelectContent,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiLoader4Line } from '@remixicon/react'
@@ -65,28 +68,35 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
             {renderLabel()}
           </span>
         </SelectTrigger>
-        <SelectContent
-          popupClassName="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-xs"
-          listClassName="max-h-60"
-        >
-          {items.map((item) => (
-            <DifySelectItem key={item.value} value={item.value} className="h-auto py-2 pr-9 pl-3">
-              <div className="flex min-w-0 items-center">
-                {item.icon && (
-                  <img
-                    src={item.icon}
-                    alt=""
-                    width={16}
-                    height={16}
-                    className="mr-2 size-4 shrink-0"
-                  />
-                )}
-                <SelectItemText>{item.name}</SelectItemText>
-              </div>
-              <SelectItemIndicator />
-            </DifySelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup className="w-(--anchor-width) bg-components-panel-bg-blur backdrop-blur-xs">
+              <SelectList className="max-h-60">
+                {items.map((item) => (
+                  <DifySelectItem
+                    key={item.value}
+                    value={item.value}
+                    className="h-auto py-2 pr-9 pl-3"
+                  >
+                    <div className="flex min-w-0 items-center">
+                      {item.icon && (
+                        <img
+                          src={item.icon}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="mr-2 size-4 shrink-0"
+                        />
+                      )}
+                      <SelectItemText>{item.name}</SelectItemText>
+                    </div>
+                    <SelectItemIndicator />
+                  </DifySelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
     </Select>
   )

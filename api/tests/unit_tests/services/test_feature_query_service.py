@@ -2,9 +2,14 @@ from unittest.mock import create_autospec
 
 import pytest
 
-from enums.deployment_edition import DeploymentEdition
+from enums import DeploymentEdition
 from machinery.context import RequestContext
-from services.entities.feature_entities import FeatureModel, LicenseModel, LimitationModel, SystemFeatureModel
+from services.entities.feature_entities import (
+    FeatureModel,
+    LicenseModel,
+    SystemFeatureModel,
+    VectorSpaceLimitationModel,
+)
 from services.feature_query_service import FeatureQueryGateway, FeatureQueryService
 
 
@@ -20,7 +25,7 @@ def _request_context(*, active_workspace_id: str | None = "workspace_123") -> Re
 def test_workspace_queries_use_workspace_from_request_context() -> None:
     gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
     features = FeatureModel()
-    vector_space = LimitationModel(size=1, limit=5)
+    vector_space = VectorSpaceLimitationModel(size=1, limit=5)
     gateway.get_workspace_features.return_value = features
     gateway.get_vector_space.return_value = vector_space
     service = FeatureQueryService(features=gateway, trial_models=(), app_dsl_version="0.7.0")
@@ -52,11 +57,7 @@ def test_deployment_queries_delegate_without_request_context() -> None:
 
 def test_workspace_queries_require_active_workspace() -> None:
     gateway = create_autospec(FeatureQueryGateway, instance=True, spec_set=True)
-    service = FeatureQueryService(
-        features=gateway,
-        trial_models=(),
-        app_dsl_version="0.7.0",
-    )
+    service = FeatureQueryService(features=gateway, trial_models=(), app_dsl_version="0.7.0")
 
     with pytest.raises(RuntimeError, match="did not resolve an active workspace"):
         service.get_features(_request_context(active_workspace_id=None))
