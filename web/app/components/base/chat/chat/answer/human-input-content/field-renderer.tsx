@@ -2,10 +2,13 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
@@ -57,14 +60,20 @@ const HumanInputFieldRenderer = ({ field, value, onChange }: Props) => {
         <SelectTrigger size="large" className="w-full" aria-label={field.output_variable_name}>
           <SelectValue />
         </SelectTrigger>
-        <SelectContent listClassName="max-h-[140px] overflow-y-auto">
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              <SelectItemText>{option.name}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner>
+            <SelectPopup>
+              <SelectList className="max-h-[140px] overflow-y-auto">
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <SelectItemText>{option.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </Select>
     )
   }

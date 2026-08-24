@@ -129,7 +129,7 @@ export function DatasetMetadataPicker({
         placement={placement}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        popupClassName="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
+        className="w-[320px] bg-components-panel-bg-blur backdrop-blur-[5px]"
       >
         <PopoverTitle className="sr-only">
           {t(($) => $['metadata.addMetadata'], { ns: 'dataset' })}

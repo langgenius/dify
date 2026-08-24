@@ -12,10 +12,13 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
@@ -239,19 +242,20 @@ function AgentMonitoringSourceFilter({
             className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
           />
         </button>
-        <SelectContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden"
-          listClassName="max-h-72 p-1"
-        >
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              <SelectItemText title={item.name}>{item.name}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <SelectPortal>
+          <SelectPositioner placement="bottom-start" sideOffset={4}>
+            <SelectPopup className="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden">
+              <SelectList className="max-h-72 p-1">
+                {items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
     </Select>
   )

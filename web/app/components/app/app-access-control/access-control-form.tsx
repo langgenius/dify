@@ -7,7 +7,7 @@ import type {
 import type { AccessMode } from '@/models/access-control'
 import { Button } from '@langgenius/dify-ui/button'
 import { DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessMode as AccessModeValue } from '@/models/access-control'

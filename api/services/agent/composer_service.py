@@ -2193,23 +2193,18 @@ class AgentComposerService:
 
     @staticmethod
     def _declared_outputs_from_binding(binding: WorkflowAgentNodeBinding) -> list[DeclaredOutputConfig]:
-        """Re-hydrate the binding's node_job_config into typed declared outputs.
+        """Re-hydrate the binding's custom-only persisted output declarations.
 
         node_job_config is stored as JSON / LongText; the typed view is needed
-        so the effective_declared_outputs helper can fall back to defaults on
-        an empty list without callers re-implementing the fallback.
+        before the later effective-output projection prepends the system
+        ``text`` output.
         """
         node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
         return list(node_job.declared_outputs)
 
     @staticmethod
     def _serialize_effective_outputs(declared_outputs: list[DeclaredOutputConfig]) -> list[dict[str, Any]]:
-        """JSON-serialize the effective declared outputs (PRD defaults if empty).
-
-        Stage 4 decision D-3 keeps defaults out of the DB; this helper is the
-        single place that injects them into the Composer load response so the
-        wire shape stays consistent whether the user has declared anything yet.
-        """
+        """JSON-serialize system ``text`` followed by custom declarations."""
         return [output.model_dump(mode="json") for output in _effective_declared_outputs(declared_outputs)]
 
     @classmethod
@@ -2222,8 +2217,7 @@ class AgentComposerService:
             "soul_lock": {"locked": False, "can_unlock": False, "reason": "workflow_only_empty"},
             "agent_soul": AgentSoulConfig().model_dump(mode="json"),
             "node_job": WorkflowNodeJobConfig().model_dump(mode="json"),
-            # Stage 4 §4.1 / §10.1 (D-3): empty composer state still surfaces the
-            # PRD defaults so the front-end has stable output names to render.
+            # ``text`` is derived for the editor and is not stored in node_job.
             "effective_declared_outputs": cls._serialize_effective_outputs([]),
             "save_options": [ComposerSaveStrategy.NODE_JOB_ONLY.value, ComposerSaveStrategy.SAVE_TO_ROSTER.value],
             "impact_summary": None,
@@ -2289,10 +2283,7 @@ class AgentComposerService:
             if version
             else AgentSoulConfig().model_dump(mode="json"),
             "node_job": binding.node_job_config_dict,
-            # Stage 4 §4.1 / §10.1 (D-3): when the saved node_job carries no
-            # declared_outputs, surface the PRD defaults so the front-end can
-            # render them as read-only chips. When user-defined outputs exist
-            # this is the same list (so callers don't need to special-case).
+            # Surface system ``text`` followed by the binding's custom outputs.
             "effective_declared_outputs": cls._serialize_effective_outputs(cls._declared_outputs_from_binding(binding)),
             "save_options": save_options,
             "impact_summary": cls.calculate_impact(

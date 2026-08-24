@@ -1198,8 +1198,12 @@ export const summary = {
   get: get14,
 }
 
-export const get15 = oc
+/**
+ * @deprecated
+ */
+export const get14 = oc
   .route({
+    deprecated: true,
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentModelProvidersByProviderCheckoutUrl',

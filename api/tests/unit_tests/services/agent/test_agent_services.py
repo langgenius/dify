@@ -57,7 +57,12 @@ from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppListParams, AppService
-from services.entities.agent_entities import AgentSoulConfig, ComposerSavePayload, ComposerSaveStrategy, ComposerVariant
+from services.entities.agent_entities import (
+    AgentSoulConfig,
+    ComposerSavePayload,
+    ComposerSaveStrategy,
+    ComposerVariant,
+)
 
 
 def _agent_soul_with_model() -> AgentSoulConfig:
@@ -254,13 +259,9 @@ def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPa
     assert result["binding"] is None
     assert result["save_options"] == ["node_job_only", "save_to_roster"]
     assert result["workflow_id"] == "workflow-1"
-    # Stage 4 §4.1 / §10.1 (D-3): empty state still surfaces PRD defaults so
-    # the front-end has stable output names to render before the user declares
-    # anything.
     effective = result["effective_declared_outputs"]
-    assert [o["name"] for o in effective] == ["text", "files", "json"]
-    files_output = next(o for o in effective if o["name"] == "files")
-    assert files_output["array_item"] == {"type": "file", "description": None, "children": []}
+    assert [o["name"] for o in effective] == ["text"]
+    assert effective[0]["required"] is False
 
 
 def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
@@ -2260,10 +2261,8 @@ def test_serialize_workflow_state_changes_lock_and_save_options(
     assert state["agent"]["icon_background"] == "#F5F3FF"
     assert "save_as_new_version" in state["save_options"]
     assert state["agent_soul"]["app_features"] == {}
-    # Stage 4 §10.1 (D-3): binding with no declared_outputs → response surfaces
-    # PRD defaults via effective_declared_outputs (DB row remains untouched).
     effective_names = [o["name"] for o in state["effective_declared_outputs"]]
-    assert effective_names == ["text", "files", "json"]
+    assert effective_names == ["text"]
 
 
 def test_serialize_workflow_state_passes_user_declared_outputs_through_effective(
@@ -2297,12 +2296,11 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
         session=session, binding=binding, agent=agent, version=version
     )
 
-    # When the user has declared outputs, effective_declared_outputs is the same
-    # list (no defaults injected).
     effective = state["effective_declared_outputs"]
-    assert [o["name"] for o in effective] == ["summary"]
-    assert effective[0]["type"] == "string"
-    assert effective[0]["required"] is True
+    assert [o["name"] for o in effective] == ["text", "summary"]
+    assert effective[0]["required"] is False
+    assert effective[1]["type"] == "string"
+    assert effective[1]["required"] is True
 
 
 def test_serialize_workflow_state_includes_inline_debug_conversation_message_state(
@@ -4410,7 +4408,7 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
             {
                 "declared_outputs": [
                     {
-                        "name": "text",
+                        "name": "summary",
                         "type": "string",
                         "check": {
                             "enabled": True,
@@ -4438,6 +4436,21 @@ def test_composer_validator_rejects_stage_4_declared_output_violations():
                 ]
             }
         )
+
+    for reserved_name in ("text", "switch", "_session"):
+        with pytest.raises(InvalidComposerConfigError, match="reserved"):
+            ComposerConfigValidator.validate_node_job_dict(
+                {"declared_outputs": [{"name": reserved_name, "type": "string"}]}
+            )
+
+    ComposerConfigValidator.validate_node_job_dict(
+        {
+            "declared_outputs": [
+                {"name": "files", "type": "string"},
+                {"name": "json", "type": "string"},
+            ]
+        }
+    )
 
     # Nested array_item is rejected outright.
     with pytest.raises(InvalidComposerConfigError):
@@ -5862,6 +5875,27 @@ class TestWorkflowAgentDraftBindingSync:
                 )
             ],
         ).model_dump(mode="json")
+
+    @pytest.mark.parametrize("reserved_name", ["text", "switch", "_session"])
+    def test_rejects_reserved_output_names_from_agent_node_graph(self, reserved_name: str):
+        with pytest.raises(ValueError, match="invalid agent_declared_outputs"):
+            WorkflowAgentPublishService._node_job_config_from_node_data(
+                existing_binding=None,
+                node_data={
+                    "agent_declared_outputs": [{"name": reserved_name, "type": "string"}],
+                },
+            )
+
+    @pytest.mark.parametrize("output_name", ["files", "json"])
+    def test_accepts_retired_output_names_as_custom_outputs_from_agent_node_graph(self, output_name: str):
+        node_job = WorkflowAgentPublishService._node_job_config_from_node_data(
+            existing_binding=None,
+            node_data={
+                "agent_declared_outputs": [{"name": output_name, "type": "string"}],
+            },
+        )
+
+        assert [output.name for output in node_job.declared_outputs] == [output_name]
 
     def test_creates_roster_binding_deriving_previous_node_refs_from_agent_task(self, sqlite_session: Session):
         node_job = self._sync_roster_agent_task_refs(

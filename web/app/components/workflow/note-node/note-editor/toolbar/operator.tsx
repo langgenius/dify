@@ -1,8 +1,10 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPopup,
+  DropdownMenuPortal,
+  DropdownMenuPositioner,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -46,60 +48,60 @@ const Operator = ({
       >
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <div className="min-w-48 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl">
-          <div className="p-1">
-            <DropdownMenuItem
-              className="justify-between rounded-md px-3 text-sm text-text-secondary"
-              onClick={() => {
-                setOpen(false)
-                onCopy()
-              }}
-            >
-              {t(($) => $['common.copy'], { ns: 'workflow' })}
-              <ShortcutKbd shortcut="workflow.copy" />
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="justify-between rounded-md px-3 text-sm text-text-secondary"
-              onClick={() => {
-                setOpen(false)
-                onDuplicate()
-              }}
-            >
-              {t(($) => $['common.duplicate'], { ns: 'workflow' })}
-              <ShortcutKbd shortcut="workflow.duplicate" />
-            </DropdownMenuItem>
-          </div>
-          <DropdownMenuSeparator className="my-0" />
-          <div className="p-1">
-            <div
-              className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div>{t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}</div>
-              <Switch size="lg" checked={showAuthor} onCheckedChange={onShowAuthorChange} />
+      <DropdownMenuPortal>
+        <DropdownMenuPositioner placement="bottom-end" sideOffset={4}>
+          <DropdownMenuPopup>
+            <div className="min-w-48 rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl">
+              <div className="p-1">
+                <DropdownMenuItem
+                  className="justify-between rounded-md px-3 text-sm text-text-secondary"
+                  onClick={() => {
+                    setOpen(false)
+                    onCopy()
+                  }}
+                >
+                  {t(($) => $['common.copy'], { ns: 'workflow' })}
+                  <ShortcutKbd shortcut="workflow.copy" />
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="justify-between rounded-md px-3 text-sm text-text-secondary"
+                  onClick={() => {
+                    setOpen(false)
+                    onDuplicate()
+                  }}
+                >
+                  {t(($) => $['common.duplicate'], { ns: 'workflow' })}
+                  <ShortcutKbd shortcut="workflow.duplicate" />
+                </DropdownMenuItem>
+              </div>
+              <DropdownMenuSeparator className="my-0" />
+              <div className="p-1">
+                <div
+                  className="flex h-8 cursor-pointer items-center justify-between rounded-md px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div>{t(($) => $['nodes.note.editor.showAuthor'], { ns: 'workflow' })}</div>
+                  <Switch size="lg" checked={showAuthor} onCheckedChange={onShowAuthorChange} />
+                </div>
+              </div>
+              <DropdownMenuSeparator className="my-0" />
+              <div className="p-1">
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="justify-between rounded-md px-3 text-sm text-text-secondary"
+                  onClick={() => {
+                    setOpen(false)
+                    onDelete()
+                  }}
+                >
+                  {t(($) => $['operation.delete'], { ns: 'common' })}
+                  <ShortcutKbd shortcut="workflow.delete" />
+                </DropdownMenuItem>
+              </div>
             </div>
-          </div>
-          <DropdownMenuSeparator className="my-0" />
-          <div className="p-1">
-            <DropdownMenuItem
-              variant="destructive"
-              className="justify-between rounded-md px-3 text-sm text-text-secondary"
-              onClick={() => {
-                setOpen(false)
-                onDelete()
-              }}
-            >
-              {t(($) => $['operation.delete'], { ns: 'common' })}
-              <ShortcutKbd shortcut="workflow.delete" />
-            </DropdownMenuItem>
-          </div>
-        </div>
-      </DropdownMenuContent>
+          </DropdownMenuPopup>
+        </DropdownMenuPositioner>
+      </DropdownMenuPortal>
     </DropdownMenu>
   )
 }

@@ -4998,6 +4998,9 @@ Restore a published workflow version into the draft workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
+| 403 | Forbidden |  |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [PUT] /billing/partners/{partner_key}/tenants
 Sync partner tenants bindings
@@ -5034,6 +5037,10 @@ Sync partner tenants bindings
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
+| 403 | Forbidden |  |
+| 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -10322,7 +10329,10 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
 
-### [GET] /workspaces/current/model-providers/{provider}/checkout-url
+### ~~[GET] /workspaces/current/model-providers/{provider}/checkout-url~~
+
+***DEPRECATED***
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -15869,6 +15879,14 @@ ExporleBanner status
 | enabled | boolean | Deprecated. Use system features deployment_edition to determine the product edition. | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
+#### BillingOperationFailedErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
 #### BillingResponse
 
 | Name | Type | Description | Required |
@@ -15880,6 +15898,22 @@ ExporleBanner status
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string |  | Yes |
+
+#### BillingUnavailableErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### BillingUnprocessableEntityErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
 
 #### BinaryFileResponse
 

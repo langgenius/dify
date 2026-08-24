@@ -5,6 +5,8 @@ domain value type through its public API.
 
 ## Primitive choice
 
+- [`RadioGroup`] selects one persistent field value from a visible set of options. Every `Radio` or
+  `RadioItem` belongs to a group; do not render a standalone radio.
 - `SegmentedControl` selects one mode, filter, or view. It follows radio-group semantics: an active
   item cannot be toggled off, `Tab` enters on the selected item, and arrow keys move and select.
 - `Tabs` selects a panel and provides `tablist` and `tabpanel` semantics.
@@ -22,6 +24,12 @@ a fixed width or an unclamped minimum width.
 Use `Radio` for the default radio appearance. Use `RadioItem` when custom content itself is a
 radio item, and put `RadioControl` inside it for Dify UI's visual indicator. `RadioControl` is a
 visual part, not a standalone radio.
+
+Import the complete family from its single public subpath:
+
+```tsx
+import { Radio, RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
+```
 
 ## Typed values
 
@@ -71,4 +79,5 @@ the domain boundary unless the upstream primitive contract changes.
 
 [`Autocomplete`]: https://base-ui.com/react/components/autocomplete
 [`Combobox`]: https://base-ui.com/react/components/combobox
+[`RadioGroup`]: https://base-ui.com/react/components/radio
 [`Select`]: https://base-ui.com/react/components/select
