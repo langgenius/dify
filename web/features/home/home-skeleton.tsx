@@ -2,6 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { HomeIntroSkeleton } from './home-intro'
 
 function HomeTemplateCardSkeleton() {
   return (
@@ -95,15 +96,6 @@ function HomeBannerSkeleton() {
       <div className="@container/banner w-full">
         <SkeletonRectangle className="my-0 h-56 w-full animate-pulse rounded-2xl @min-[996px]/banner:h-46" />
       </div>
-    </div>
-  )
-}
-
-function HomeIntroSkeleton() {
-  return (
-    <div className="flex w-full flex-col gap-1 px-8 pt-6 pb-4">
-      <SkeletonRectangle className="my-0 h-6 w-60 max-w-full animate-pulse" />
-      <SkeletonRectangle className="my-0 h-4 w-72 max-w-full animate-pulse" />
     </div>
   )
 }
