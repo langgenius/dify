@@ -70,10 +70,10 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
     monkeypatch.setattr(feature_service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_OPENAI_TRIAL_ENABLED", True, raising=False)
     monkeypatch.setattr(feature_service_module.dify_config, "HOSTED_XAI_PAID_ENABLED", True, raising=False)
-    get_info = Mock(return_value={"subscription": {"plan": plan}})
-    monkeypatch.setattr(feature_service_module.BillingService, "get_info", get_info)
+    get_workspace_plan = Mock(return_value=plan)
+    monkeypatch.setattr(feature_service_module.FeatureService, "get_workspace_plan", get_workspace_plan)
 
     result = FeatureService.get_trial_models("tenant_1")
 
     assert result == expected
-    get_info.assert_called_once_with("tenant_1", exclude_vector_space=True)
+    get_workspace_plan.assert_called_once_with("tenant_1")
