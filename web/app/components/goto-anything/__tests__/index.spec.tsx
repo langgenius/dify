@@ -722,11 +722,11 @@ describe('GotoAnything', () => {
       triggerSearchShortcut()
 
       const expectedScopeIcons = [
-        ['@app', 'i-custom-vender-main-nav-studio'],
-        ['@kb', 'i-custom-vender-main-nav-knowledge'],
-        ['@plugin', 'i-custom-vender-main-nav-marketplace'],
+        ['@app', 'i-custom-vender-main-nav-studio-v2'],
+        ['@kb', 'i-custom-vender-main-nav-knowledge-v2'],
+        ['@plugin', 'i-custom-vender-main-nav-marketplace-v2'],
         ['@skill', 'i-custom-vender-main-nav-skill'],
-        ['@agents', 'i-custom-vender-main-nav-roster'],
+        ['@agents', 'i-custom-vender-main-nav-agent'],
       ] as const
 
       for (const [scope, icon] of expectedScopeIcons) {
