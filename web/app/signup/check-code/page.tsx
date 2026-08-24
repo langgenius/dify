@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useLocale } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
@@ -22,15 +23,17 @@ export default function CheckCode() {
   const locale = useLocale()
   const { mutateAsync: submitMail } = useSendMail()
   const { mutateAsync: verifyCode } = useMailValidity()
+  const pageTitle = t(($) => $['checkCode.checkYourEmail'], { ns: 'login' })
+  useDocumentTitle(pageTitle)
 
   const verify = async () => {
     try {
       if (!code.trim()) {
-        toast.error(t('checkCode.emptyCode', { ns: 'login' }))
+        toast.error(t(($) => $['checkCode.emptyCode'], { ns: 'login' }))
         return
       }
       if (!/\d{6}/.test(code)) {
-        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
+        toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
         return
       }
       setIsLoading(true)
@@ -39,13 +42,12 @@ export default function CheckCode() {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent((res as MailValidityResponse).token))
         router.push(`/signup/set-password?${params.toString()}`)
+      } else {
+        toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
       }
-      else {
-        toast.error(t('checkCode.invalidCode', { ns: 'login' }))
-      }
-    }
-    catch (error) { console.error(error) }
-    finally {
+    } catch (error) {
+      console.error(error)
+    } finally {
       setIsLoading(false)
     }
   }
@@ -60,8 +62,9 @@ export default function CheckCode() {
         setToken(newToken)
         router.replace(`/signup/check-code?${params.toString()}`)
       }
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
   }
 
   return (
@@ -70,32 +73,54 @@ export default function CheckCode() {
         <RiMailSendFill className="size-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pt-2 pb-4">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
+        <h1 className="title-4xl-semi-bold text-text-primary">{pageTitle}</h1>
         <p className="mt-2 body-md-regular text-text-secondary">
           <span>
-            {t('checkCode.tipsPrefix', { ns: 'login' })}
+            {t(($) => $['checkCode.tipsPrefix'], { ns: 'login' })}
             <strong>{email}</strong>
           </span>
           <br />
-          {t('checkCode.validTime', { ns: 'login' })}
+          {t(($) => $['checkCode.validTime'], { ns: 'login' })}
         </p>
       </div>
 
       <form action="">
-        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
-        <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) as string} />
-        <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('checkCode.verify', { ns: 'login' })}</Button>
+        <label htmlFor="code" className="mb-1 system-md-semibold text-text-secondary">
+          {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
+        </label>
+        <Input
+          value={code}
+          onChange={(e) => setVerifyCode(e.target.value)}
+          maxLength={6}
+          className="mt-1"
+          placeholder={
+            t(($) => $['checkCode.verificationCodePlaceholder'], { ns: 'login' }) as string
+          }
+        />
+        <Button
+          loading={loading}
+          disabled={loading}
+          className="my-3 w-full"
+          variant="primary"
+          onClick={verify}
+        >
+          {t(($) => $['checkCode.verify'], { ns: 'login' })}
+        </Button>
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
       </div>
-      <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
-        <div className="bg-background-default-dimm inline-block rounded-full p-1">
-          <RiArrowLeftLine size={12} />
-        </div>
-        <span className="ml-2 system-xs-regular">{t('back', { ns: 'login' })}</span>
-      </div>
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="flex h-9 cursor-pointer appearance-none items-center justify-center text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      >
+        <span className="bg-background-default-dimm inline-block rounded-full p-1">
+          <RiArrowLeftLine aria-hidden size={12} />
+        </span>
+        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+      </button>
     </div>
   )
 }

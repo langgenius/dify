@@ -46,7 +46,9 @@ const mockAutoGenerateWebhookUrl = vi.fn()
 
 let workflowStoreState: WorkflowStoreState
 let mockCanEdit = true
-let eventSubscription: ((value: { type: string, payload: { data: Array<Record<string, unknown>> } }) => void) | null = null
+let eventSubscription:
+  | ((value: { type: string; payload: { data: Array<Record<string, unknown>> } }) => void)
+  | null = null
 let lastGenerateNodeInput: Record<string, unknown> | null = null
 
 vi.mock('reactflow', () => ({
@@ -63,7 +65,9 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean, canEdit: boolean } }) => T): T =>
+  useHooksStore: <T,>(
+    selector: (state: { accessControl: { canImportExportDSL: boolean; canEdit: boolean } }) => T,
+  ): T =>
     selector({
       accessControl: {
         canImportExportDSL: true,
@@ -82,14 +86,24 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks/use-DSL', () => ({
   useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
   useDSL: () => ({
     exportCheck: mockExportCheck,
     handleExportDSL: mockHandleExportDSL,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-workflow-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
+  }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-panel-interactions', () => ({
+  usePanelInteractions: () => ({
+    handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
+    handlePaneContextMenu: vi.fn(),
   }),
 }))
 
@@ -97,6 +111,10 @@ vi.mock('@/app/components/workflow/hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({
     handleSyncWorkflowDraft: mockHandleSyncWorkflowDraft,
   }),
+}))
+
+vi.mock('@/app/components/workflow/hooks/use-auto-generate-webhook-url', () => ({
+  useAutoGenerateWebhookUrl: () => mockAutoGenerateWebhookUrl,
 }))
 
 vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
@@ -116,7 +134,7 @@ vi.mock('@/app/components/workflow/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('@/app/components/workflow-app/hooks', () => ({
+vi.mock('../../hooks/use-available-nodes-meta-data', () => ({
   useAvailableNodesMetaData: () => ({
     nodesMap: {
       [BlockEnum.Start]: {
@@ -141,7 +159,7 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   }),
 }))
 
-vi.mock('@/app/components/workflow-app/hooks/use-auto-onboarding', () => ({
+vi.mock('../../hooks/use-auto-onboarding', () => ({
   useAutoOnboarding: () => ({
     handleOnboardingClose: mockHandleOnboardingClose,
   }),
@@ -163,17 +181,16 @@ vi.mock('@/next/dynamic', async () => {
   const ReactModule = await import('react')
 
   return {
-    default: (
-      loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>,
-    ) => {
+    default: (loader: () => Promise<{ default: React.ComponentType<Record<string, unknown>> }>) => {
       const DynamicComponent = (props: Record<string, unknown>) => {
-        const [Loaded, setLoaded] = ReactModule.useState<React.ComponentType<Record<string, unknown>> | null>(null)
+        const [Loaded, setLoaded] = ReactModule.useState<React.ComponentType<
+          Record<string, unknown>
+        > | null>(null)
 
         ReactModule.useEffect(() => {
           let mounted = true
           loader().then((mod) => {
-            if (mounted)
-              setLoaded(() => mod.default)
+            if (mounted) setLoaded(() => mod.default)
           })
           return () => {
             mounted = false
@@ -203,9 +220,15 @@ vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
     onImport: () => void
   }) => (
     <div data-testid="update-dsl-modal">
-      <button type="button" onClick={onCancel}>cancel-import-dsl</button>
-      <button type="button" onClick={onBackup}>backup-dsl</button>
-      <button type="button" onClick={onImport}>import-dsl</button>
+      <button type="button" onClick={onCancel}>
+        cancel-import-dsl
+      </button>
+      <button type="button" onClick={onBackup}>
+        backup-dsl
+      </button>
+      <button type="button" onClick={onImport}>
+        import-dsl
+      </button>
     </div>
   ),
 }))
@@ -221,8 +244,12 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
     onClose: () => void
   }) => (
     <div data-testid="dsl-export-confirm-modal" data-env-count={String(envList.length)}>
-      <button type="button" onClick={onConfirm}>confirm-export-dsl</button>
-      <button type="button" onClick={onClose}>close-export-dsl</button>
+      <button type="button" onClick={onConfirm}>
+        confirm-export-dsl
+      </button>
+      <button type="button" onClick={onClose}>
+        close-export-dsl
+      </button>
     </div>
   ),
 }))
@@ -237,55 +264,65 @@ vi.mock('@/app/components/workflow-app/components/workflow-onboarding-modal', ()
     onSelectStartNode: (nodeType: BlockEnum, config?: TriggerPluginConfig) => void
   }) => (
     <div data-testid="workflow-onboarding-modal">
-      <button type="button" onClick={onClose}>close-onboarding</button>
-      <button type="button" onClick={() => onSelectStartNode(BlockEnum.Start)}>select-start-node</button>
+      <button type="button" onClick={onClose}>
+        close-onboarding
+      </button>
+      <button type="button" onClick={() => onSelectStartNode(BlockEnum.Start)}>
+        select-start-node
+      </button>
       <button
         type="button"
-        onClick={() => onSelectStartNode(BlockEnum.Start, {
-          title: 'Configured Start Title',
-          desc: 'Configured Start Description',
-          config: { image: true, custom: 'config' },
-          extra: 'field',
-        } as never)}
+        onClick={() =>
+          onSelectStartNode(BlockEnum.Start, {
+            title: 'Configured Start Title',
+            desc: 'Configured Start Description',
+            config: { image: true, custom: 'config' },
+            extra: 'field',
+          } as never)
+        }
       >
         select-start-node-with-config
       </button>
       <button
         type="button"
-        onClick={() => onSelectStartNode(BlockEnum.TriggerPlugin, {
-          plugin_id: 'plugin-id',
-          provider_name: 'provider-name',
-          provider_type: 'tool',
-          event_name: 'event-name',
-          event_label: 'Event Label',
-          event_description: 'Event Description',
-          output_schema: { output: true },
-          paramSchemas: [{ name: 'api_key' }],
-          params: { token: 'abc' },
-          subscription_id: 'subscription-id',
-          plugin_unique_identifier: 'plugin-unique',
-          is_team_authorization: true,
-          meta: { source: 'plugin' },
-        })}
+        onClick={() =>
+          onSelectStartNode(BlockEnum.TriggerPlugin, {
+            plugin_id: 'plugin-id',
+            provider_name: 'provider-name',
+            provider_type: 'tool',
+            event_name: 'event-name',
+            event_label: 'Event Label',
+            event_description: 'Event Description',
+            output_schema: { output: true },
+            paramSchemas: [{ name: 'api_key' }],
+            params: { token: 'abc' },
+            subscription_id: 'subscription-id',
+            plugin_unique_identifier: 'plugin-unique',
+            is_team_authorization: true,
+            meta: { source: 'plugin' },
+          })
+        }
       >
         select-trigger-plugin
       </button>
       <button
         type="button"
-        onClick={() => onSelectStartNode(BlockEnum.TriggerPlugin, {
-          plugin_id: 'plugin-id-2',
-          provider_name: 'provider-name-2',
-          provider_type: 'tool',
-          event_name: 'event-name-2',
-          event_label: '',
-          event_description: '',
-          output_schema: {},
-          paramSchemas: undefined,
-          params: {},
-          subscription_id: 'subscription-id-2',
-          plugin_unique_identifier: 'plugin-unique-2',
-          is_team_authorization: false,
-        } as never)}
+        onClick={() =>
+          onSelectStartNode(BlockEnum.TriggerPlugin, {
+            plugin_id: 'plugin-id-2',
+            provider_name: 'provider-name-2',
+            provider_type: 'tool',
+            event_name: 'event-name-2',
+            event_label: '',
+            event_description: '',
+            output_schema: {},
+            paramSchemas: undefined,
+            params: {},
+            subscription_id: 'subscription-id-2',
+            plugin_unique_identifier: 'plugin-unique-2',
+            is_team_authorization: false,
+          } as never)
+        }
       >
         select-trigger-plugin-fallback
       </button>
@@ -308,9 +345,11 @@ describe('WorkflowChildren', () => {
     eventSubscription = null
     lastGenerateNodeInput = null
     mockCanEdit = true
-    mockHandleSyncWorkflowDraft.mockImplementation((_force?: boolean, _notRefresh?: boolean, callback?: { onSuccess?: () => void }) => {
-      callback?.onSuccess?.()
-    })
+    mockHandleSyncWorkflowDraft.mockImplementation(
+      (_force?: boolean, _notRefresh?: boolean, callback?: { onSuccess?: () => void }) => {
+        callback?.onSuccess?.()
+      },
+    )
   })
 
   it('should render feature panel, import modal actions, and default workflow chrome', async () => {
@@ -352,7 +391,10 @@ describe('WorkflowChildren', () => {
       })
     })
 
-    expect(await screen.findByTestId('dsl-export-confirm-modal')).toHaveAttribute('data-env-count', '2')
+    expect(await screen.findByTestId('dsl-export-confirm-modal')).toHaveAttribute(
+      'data-env-count',
+      '2',
+    )
 
     await user.click(screen.getByRole('button', { name: /confirm-export-dsl/i }))
     await user.click(screen.getByRole('button', { name: /close-export-dsl/i }))

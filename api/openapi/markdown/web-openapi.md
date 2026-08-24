@@ -21,7 +21,7 @@ Convert audio file to text using speech-to-text service.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
+| 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
@@ -346,23 +346,29 @@ Verify password reset token validity
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by token**
 
+Get a human input form definition by token
 GET /api/form/human_input/<form_token>
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| form_token | path |  | Yes | string |
+| form_token | path | Human input form token | Yes | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
+| 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
+| 403 | Forbidden |  |
+| 404 | Form not found |  |
+| 412 | Form already submitted or expired |  |
+| 429 | Too many requests |  |
 
 ### [POST] /form/human_input/{form_token}
 **Submit human input form by token**
 
+Submit a human input form by token
 POST /api/form/human_input/<form_token>
 
 Request body:
@@ -377,7 +383,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| form_token | path |  | Yes | string |
+| form_token | path | Human input form token | Yes | string |
 
 #### Request Body
 
@@ -389,24 +395,32 @@ Request body:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| 400 | Bad request - invalid submission data |  |
+| 404 | Form not found |  |
+| 412 | Form already submitted or expired |  |
+| 429 | Too many requests |  |
 
 ### [POST] /form/human_input/{form_token}/upload-token
 **Issue an upload token for a human input form**
 
+Issue an upload token for an active human input form
 POST /api/form/human_input/<form_token>/upload-token
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| form_token | path |  | Yes | string |
+| form_token | path | Human input form token | Yes | string |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
+| 200 | Upload token issued successfully | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
+| 404 | Form not found |  |
+| 412 | Form already submitted or expired |  |
+| 429 | Too many requests |  |
 
 ### [POST] /human-input-forms/files
 **Upload one local file or remote URL file for a HITL human input form**
@@ -600,7 +614,7 @@ Get authentication passport for web application access
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Passport retrieved successfully | **application/json**: [AccessTokenData](#accesstokendata)<br> |
+| 200 | Passport retrieved successfully | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
 | 401 | Unauthorized - missing app code or invalid authentication |  |
 | 404 | Application or user not found |  |
 
@@ -752,7 +766,7 @@ Retrieve app site information and configuration.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AppSiteInfoResponse](#appsiteinforesponse)<br> |
+| 200 | Success | **application/json**: [WebAppSiteResponse](#webappsiteresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
@@ -760,24 +774,13 @@ Retrieve app site information and configuration.
 | 500 | Internal Server Error |  |
 
 ### [GET] /system-features
-**Get system feature flags and configuration**
+**Get the non-sensitive bootstrap snapshot exposed before authentication**
 
-Get system feature flags and configuration
-Returns the current system feature flags and configuration
-that control various functionalities across the platform.
-
-Returns:
-    dict: System feature configuration object
-
+Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.
 This endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,
 except it is intended for use by the web app, instead of the console dashboard.
 
-NOTE: This endpoint is unauthenticated by design, as it provides system features
-data required for webapp initialization.
-
-Authentication would create circular dependency (can't authenticate without webapp loading).
-
-Only non-sensitive configuration data should be returned by this endpoint.
+Authentication configuration must be available before the authentication flow can be selected.
 
 #### Responses
 
@@ -799,13 +802,13 @@ Convert text to audio using text-to-speech service.
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
-| 400 | Bad Request |  |
-| 401 | Unauthorized |  |
-| 403 | Forbidden |  |
-| 500 | Internal Server Error |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
+| 400 | Bad Request |
+| 401 | Unauthorized |
+| 403 | Forbidden |
+| 500 | Internal Server Error |
 
 ### [GET] /webapp/access-mode
 Retrieve the access mode for a web application (public or restricted).
@@ -823,7 +826,9 @@ Retrieve the access mode for a web application (public or restricted).
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessModeResponse](#accessmoderesponse)<br> |
 | 400 | Bad Request |  |
+| 404 | App Not Found |  |
 | 500 | Internal Server Error |  |
+| 503 | Web App Access Service Unavailable |  |
 
 ### [GET] /webapp/permission
 Check if user has permission to access a web application.
@@ -842,6 +847,7 @@ Check if user has permission to access a web application.
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 500 | Internal Server Error |  |
+| 503 | Web App Access Service Unavailable |  |
 
 ### [POST] /workflows/run
 **Run workflow**
@@ -936,6 +942,7 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| answer | string |  | No |
 | chain_id | string |  | No |
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |
@@ -961,65 +968,19 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object | Tool icon metadata keyed by tool name | No |
 
+#### AppMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppMode | string |  |  |
+
 #### AppPermissionQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
-#### AppSiteInfoResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
-| can_replace_logo | boolean |  | Yes |
-| custom_config | object |  | No |
-| enable_site | boolean |  | Yes |
-| end_user_id | string |  | No |
-| model_config | [AppSiteModelConfigResponse](#appsitemodelconfigresponse) |  | No |
-| plan | string |  | No |
-| site | [AppSiteResponse](#appsiteresponse) |  | Yes |
-
-#### AppSiteModelConfigResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| model |  |  | Yes |
-| more_like_this |  |  | Yes |
-| opening_statement | string |  | No |
-| pre_prompt | string |  | No |
-| suggested_questions |  |  | Yes |
-| suggested_questions_after_answer |  |  | Yes |
-| user_input_form |  |  | Yes |
-
-#### AppSiteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| copyright | string |  | No |
-| custom_disclaimer | string |  | No |
-| default_language | string |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-| input_placeholder | string |  | No |
-| privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-
-#### AudioBinaryResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| AudioBinaryResponse | string |  |  |
-
-#### AudioTranscriptResponse
+#### AudioToTextResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -1094,6 +1055,14 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
+
+#### DeploymentEdition
+
+Enum representing the deployment edition of the platform.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
 
 #### EmailCodeLoginSendPayload
 
@@ -1261,11 +1230,11 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | Yes |
-| form_content |  |  | Yes |
-| inputs |  |  | Yes |
+| form_content | string |  | Yes |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | Yes |
 | resolved_default_values | object |  | Yes |
-| site | object |  | No |
-| user_actions |  |  | Yes |
+| site | [WebAppSiteResponse](#webappsiteresponse) |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
 #### HumanInputFormSubmissionData
 
@@ -1321,31 +1290,17 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
-#### LicenseLimitationModel
-
-- enabled: whether this limit is enforced
-- size: current usage count
-- limit: maximum allowed count; 0 means unlimited
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean | Whether this limit is currently active | Yes |
-| limit | integer | Maximum number of resources allowed; 0 means no limit | Yes |
-| size | integer | Number of resources already consumed | Yes |
-
-#### LicenseModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| expired_at | string |  | Yes |
-| status | [LicenseStatus](#licensestatus) |  | Yes |
-| workspaces | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
-
 #### LicenseStatus
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | LicenseStatus | string |  |  |
+
+#### LicenseStatusModel
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [LicenseStatus](#licensestatus) |  | Yes |
 
 #### LoginPayload
 
@@ -1430,6 +1385,12 @@ Form input definition.
 | text_to_speech | [JSONObject](#jsonobject) |  | Yes |
 | user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
 
+#### PassportAccessTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
+
 #### PassportQuery
 
 | Name | Type | Description | Required |
@@ -1448,12 +1409,6 @@ Form input definition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | PluginInstallationScope | string |  |  |
-
-#### PluginManagerModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
 
 #### RemoteFileInfo
 
@@ -1495,6 +1450,12 @@ Form input definition.
 | segment_position | integer |  | No |
 | summary | string |  | No |
 | word_count | integer |  | No |
+
+#### SSOProtocol
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SSOProtocol | string |  |  |
 
 #### SavedMessageCreatePayload
 
@@ -1594,9 +1555,12 @@ Default configuration for form inputs.
 
 #### SystemFeatureModel
 
+Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
 | enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
@@ -1607,17 +1571,15 @@ Default configuration for form inputs.
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
-| enable_trial_app | boolean |  | Yes |
-| is_allow_create_workspace | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
-| license | [LicenseModel](#licensemodel) |  | Yes |
-| max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
+| knowledge_fs_enabled | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
 | rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | string |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
@@ -1652,11 +1614,11 @@ User action configuration.
 #### ValueSourceType
 
 ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
+in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definition, or a variable while the workflow is running. |  |
 
 #### VerificationTokenResponse
 
@@ -1672,6 +1634,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
@@ -1680,7 +1643,28 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| protocol | string |  | Yes |
+| protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebAppCustomConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| remove_webapp_brand | boolean |  | Yes |
+| replace_webapp_logo | string |  | No |
+
+#### WebAppSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| can_replace_logo | boolean |  | Yes |
+| custom_config | [WebAppCustomConfigResponse](#webappcustomconfigresponse) |  | No |
+| enable_site | boolean |  | Yes |
+| end_user_id | string |  | No |
+| mode | [AppMode](#appmode) |  | Yes |
+| model_config | [WebModelConfigResponse](#webmodelconfigresponse) |  | No |
+| plan | string |  | Yes |
+| site | [WebSiteResponse](#websiteresponse) |  | Yes |
 
 #### WebMessageInfiniteScrollPagination
 
@@ -1696,19 +1680,58 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
+| answer_tokens | integer |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
+| currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
+| provider_response_latency | number |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
+| total_price | string |  | No |
+| total_tokens | integer |  | Yes |
+
+#### WebModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model |  |  | No |
+| more_like_this |  |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| suggested_questions |  |  | No |
+| suggested_questions_after_answer |  |  | No |
+| user_input_form |  |  | No |
+
+#### WebSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | Yes |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
+| input_placeholder | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | Yes |
+| use_icon_as_answer_icon | boolean |  | No |
 
 #### WorkflowRunPayload
 

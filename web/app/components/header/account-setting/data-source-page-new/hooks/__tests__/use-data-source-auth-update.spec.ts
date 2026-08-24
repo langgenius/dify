@@ -33,7 +33,9 @@ describe('useDataSourceAuthUpdate', () => {
 
     vi.mocked(useInvalidDataSourceAuth).mockReturnValue(mockInvalidateDataSourceAuth)
     vi.mocked(useInvalidDataSourceListAuth).mockReturnValue(mockInvalidateDataSourceListAuth)
-    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(mockInvalidDefaultDataSourceListAuth)
+    vi.mocked(useInvalidDefaultDataSourceListAuth).mockReturnValue(
+      mockInvalidDefaultDataSourceListAuth,
+    )
     vi.mocked(useInvalidDataSourceList).mockReturnValue(mockInvalidateDataSourceList)
   })
 
@@ -42,10 +44,12 @@ describe('useDataSourceAuthUpdate', () => {
       // Arrange
       const pluginId = 'test-plugin-id'
       const provider = 'test-provider'
-      const { result } = renderHook(() => useDataSourceAuthUpdate({
-        pluginId,
-        provider,
-      }))
+      const { result } = renderHook(() =>
+        useDataSourceAuthUpdate({
+          pluginId,
+          provider,
+        }),
+      )
 
       // Assert Initialization
       expect(useInvalidDataSourceAuth).toHaveBeenCalledWith({ pluginId, provider })

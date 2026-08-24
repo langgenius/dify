@@ -8,12 +8,23 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type SimpleResultMessageResponse = {
+  message: string
+  result: string
+}
+
 export type PostRefreshTokenData = {
   body?: never
   path?: never
   query?: never
   url: '/refresh-token'
 }
+
+export type PostRefreshTokenErrors = {
+  401: SimpleResultMessageResponse
+}
+
+export type PostRefreshTokenError = PostRefreshTokenErrors[keyof PostRefreshTokenErrors]
 
 export type PostRefreshTokenResponses = {
   200: SimpleResultResponse

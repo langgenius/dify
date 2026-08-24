@@ -1,7 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import SnippetCreateButton from '../snippet-create-button'
 
-const { mockPush, mockCreateMutateAsync, mockSyncDraftWorkflow, mockImportMutateAsync, mockConfirmImportMutateAsync, mockToastSuccess, mockToastError, mockWorkspacePermissionKeys } = vi.hoisted(() => ({
+const {
+  mockPush,
+  mockCreateMutateAsync,
+  mockSyncDraftWorkflow,
+  mockImportMutateAsync,
+  mockConfirmImportMutateAsync,
+  mockToastSuccess,
+  mockToastError,
+  mockWorkspacePermissionKeys,
+} = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockCreateMutateAsync: vi.fn(),
   mockSyncDraftWorkflow: vi.fn(),
@@ -25,14 +35,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
-    workspacePermissionKeys: mockWorkspacePermissionKeys(),
-  }),
-}))
+  }))
+})
 
 vi.mock('@/service/use-snippets', () => ({
   useCreateSnippetMutation: () => ({
@@ -79,7 +87,11 @@ describe('SnippetCreateButton', () => {
 
   it('should open the create dialog and create a snippet from the modal', async () => {
     mockCreateMutateAsync.mockResolvedValue({ id: 'snippet-123' })
-    mockSyncDraftWorkflow.mockResolvedValue({ result: 'success', hash: 'draft-hash', updated_at: 1704067200 })
+    mockSyncDraftWorkflow.mockResolvedValue({
+      result: 'success',
+      hash: 'draft-hash',
+      updated_at: 1704067200,
+    })
 
     render(<SnippetCreateButton />)
 

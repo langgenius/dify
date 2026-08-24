@@ -1,10 +1,8 @@
 import { act, waitFor } from '@testing-library/react'
-import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import {
   PRICING_MODAL_QUERY_PARAM,
   PRICING_MODAL_QUERY_VALUE,
-  useAccountSettingModal,
   usePluginInstallation,
   usePricingModal,
 } from './use-query-params'
@@ -142,186 +140,6 @@ describe('useQueryParams hooks', () => {
     })
   })
 
-  // Account settings modal query behavior.
-  describe('useAccountSettingModal', () => {
-    it('should return closed state with null payload when query params are missing', () => {
-      // Arrange
-      const { result } = renderWithAdapter(() => useAccountSettingModal())
-
-      // Act
-      const [state] = result.current
-
-      // Assert
-      expect(state.isOpen).toBe(false)
-      expect(state.payload).toBeNull()
-    })
-
-    it('should return open state when action matches', () => {
-      // Arrange
-      const { result } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=billing`,
-      )
-
-      // Act
-      const [state] = result.current
-
-      // Assert
-      expect(state.isOpen).toBe(true)
-      expect(state.payload).toBe('billing')
-    })
-
-    it('should accept integrations tabs with the shared settings action', () => {
-      // Arrange
-      const { result } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=mcp`,
-      )
-
-      // Act
-      const [state] = result.current
-
-      // Assert
-      expect(state.isOpen).toBe(true)
-      expect(state.payload).toBe('mcp')
-    })
-
-    it('should return closed state when action does not match', () => {
-      // Arrange
-      const { result } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        '?action=other&tab=billing',
-      )
-
-      // Act
-      const [state] = result.current
-
-      // Assert
-      expect(state.isOpen).toBe(false)
-      expect(state.payload).toBeNull()
-    })
-
-    it('should set action and tab when opening', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(() => useAccountSettingModal())
-
-      // Act
-      act(() => {
-        result.current[1]({ payload: 'members' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
-      expect(update.searchParams.get('tab')).toBe('members')
-    })
-
-    it('should set an integrations tab with the shared settings action', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(() => useAccountSettingModal())
-
-      // Act
-      act(() => {
-        result.current[1]({ payload: 'data-source' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.searchParams.get('action')).toBe(ACCOUNT_SETTING_MODAL_ACTION)
-      expect(update.searchParams.get('tab')).toBe('data-source')
-    })
-
-    it('should use push history when opening from closed state', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(() => useAccountSettingModal())
-
-      // Act
-      act(() => {
-        result.current[1]({ payload: 'members' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.options.history).toBe('push')
-    })
-
-    it('should update tab when switching while open', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=billing`,
-      )
-
-      // Act
-      act(() => {
-        result.current[1]({ payload: 'provider' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.searchParams.get('tab')).toBe('provider')
-    })
-
-    it('should use replace history when switching tabs while open', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=billing`,
-      )
-
-      // Act
-      act(() => {
-        result.current[1]({ payload: 'provider' })
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.options.history).toBe('replace')
-    })
-
-    it('should clear action and tab when closing', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=billing`,
-      )
-
-      // Act
-      act(() => {
-        result.current[1](null)
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.searchParams.has('action')).toBe(false)
-      expect(update.searchParams.has('tab')).toBe(false)
-    })
-
-    it('should use replace history when closing', async () => {
-      // Arrange
-      const { result, onUrlUpdate } = renderWithAdapter(
-        () => useAccountSettingModal(),
-        `?action=${ACCOUNT_SETTING_MODAL_ACTION}&tab=billing`,
-      )
-
-      // Act
-      act(() => {
-        result.current[1](null)
-      })
-
-      // Assert
-      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
-      const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
-      expect(update.options.history).toBe('replace')
-    })
-  })
-
   // Plugin installation query behavior.
   describe('usePluginInstallation', () => {
     it('should parse package ids from JSON arrays', () => {
@@ -342,10 +160,7 @@ describe('useQueryParams hooks', () => {
 
     it('should return raw package id when JSON parsing fails', () => {
       // Arrange
-      const { result } = renderWithAdapter(
-        () => usePluginInstallation(),
-        '?package-ids=org/plugin',
-      )
+      const { result } = renderWithAdapter(() => usePluginInstallation(), '?package-ids=org/plugin')
 
       // Act
       const [state] = result.current

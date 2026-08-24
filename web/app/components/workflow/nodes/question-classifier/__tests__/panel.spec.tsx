@@ -6,26 +6,38 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import Panel from '../panel'
 import useConfig from '../use-config'
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
-  default: ({
-    setModel,
-    onCompletionParamsChange,
-  }: {
-    setModel: (model: { provider: string, modelId: string, mode?: string }) => void
-    onCompletionParamsChange: (params: Record<string, unknown>) => void
-  }) => (
-    <div>
-      <button type="button" onClick={() => setModel({ provider: 'openai', modelId: 'gpt-4o', mode: 'chat' })}>set-model</button>
-      <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>set-params</button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    __esModule: true,
+    default: ({
+      setModel,
+      onCompletionParamsChange,
+    }: {
+      setModel: (model: { provider: string; modelId: string; mode?: string }) => void
+      onCompletionParamsChange: (params: Record<string, unknown>) => void
+    }) => (
+      <div>
+        <button
+          type="button"
+          onClick={() => setModel({ provider: 'openai', modelId: 'gpt-4o', mode: 'chat' })}
+        >
+          set-model
+        </button>
+        <button type="button" onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
+          set-params
+        </button>
+      </div>
+    ),
+  }),
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   __esModule: true,
   default: ({ onChange }: { onChange: (value: string[]) => void }) => (
-    <button type="button" onClick={() => onChange(['node-1', 'query'])}>var-picker</button>
+    <button type="button" onClick={() => onChange(['node-1', 'query'])}>
+      var-picker
+    </button>
   ),
 }))
 
@@ -39,8 +51,12 @@ vi.mock('@/app/components/workflow/nodes/_base/components/config-vision', () => 
     onConfigChange: (value: { resolution: string }) => void
   }) => (
     <div>
-      <button type="button" onClick={() => onEnabledChange(true)}>vision-toggle</button>
-      <button type="button" onClick={() => onConfigChange({ resolution: 'high' })}>vision-config</button>
+      <button type="button" onClick={() => onEnabledChange(true)}>
+        vision-toggle
+      </button>
+      <button type="button" onClick={() => onConfigChange({ resolution: 'high' })}>
+        vision-config
+      </button>
     </div>
   ),
 }))
@@ -58,7 +74,7 @@ vi.mock('../components/advanced-setting', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/output-vars', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  VarItem: ({ name, type }: { name: string, type: string }) => <div>{`${name}:${type}`}</div>,
+  VarItem: ({ name, type }: { name: string; type: string }) => <div>{`${name}:${type}`}</div>,
 }))
 
 vi.mock('../use-config', () => ({
@@ -68,7 +84,9 @@ vi.mock('../use-config', () => ({
 
 const mockUseConfig = vi.mocked(useConfig)
 
-const createData = (overrides: Partial<QuestionClassifierNodeType> = {}): QuestionClassifierNodeType => ({
+const createData = (
+  overrides: Partial<QuestionClassifierNodeType> = {},
+): QuestionClassifierNodeType => ({
   title: 'Question Classifier',
   desc: '',
   type: BlockEnum.QuestionClassifier,
@@ -124,13 +142,7 @@ describe('question-classifier/panel', () => {
   it('wires panel actions and renders output variables', async () => {
     const user = userEvent.setup()
 
-    render(
-      <Panel
-        id="node-1"
-        data={createData()}
-        panelProps={panelProps}
-      />,
-    )
+    render(<Panel id="node-1" data={createData()} panelProps={panelProps} />)
 
     await user.click(screen.getByRole('button', { name: 'set-model' }))
     await user.click(screen.getByRole('button', { name: 'set-params' }))
@@ -138,7 +150,11 @@ describe('question-classifier/panel', () => {
     await user.click(screen.getByRole('button', { name: 'vision-toggle' }))
     await user.click(screen.getByRole('button', { name: 'vision-config' }))
 
-    expect(handleModelChanged).toHaveBeenCalledWith({ provider: 'openai', modelId: 'gpt-4o', mode: 'chat' })
+    expect(handleModelChanged).toHaveBeenCalledWith({
+      provider: 'openai',
+      modelId: 'gpt-4o',
+      mode: 'chat',
+    })
     expect(handleCompletionParamsChange).toHaveBeenCalledWith({ temperature: 0.2 })
     expect(handleQueryVarChange).toHaveBeenCalledWith(['node-1', 'query'])
     expect(handleVisionResolutionEnabledChange).toHaveBeenCalledWith(true)

@@ -26,8 +26,8 @@ Design constraints baked into this version:
    Cross-tenant / cross-app rows still 404 via the standard tenant/app scope.
 3. **Declared outputs by node kind**:
    * Agent v2 nodes resolve their declared list via
-     :class:`WorkflowAgentBindingResolver` (the binding owns the canonical
-     ``DeclaredOutputConfig`` list and falls back to PRD defaults when empty).
+     :class:`WorkflowAgentBindingResolver` (the binding owns custom declarations;
+     the system ``text`` output is derived for display).
    * Other node kinds don't have a declared-output schema yet; we surface the
      keys present in the execution payload as a best-effort list typed
      ``unknown`` so the panel can still render them.
@@ -52,25 +52,19 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.file_access import DatabaseFileAccessController
-from core.db.session_factory import session_factory
 from core.workflow.nodes.agent_v2.binding_resolver import (
     WorkflowAgentBindingError,
     WorkflowAgentBindingResolver,
 )
-from core.workflow.nodes.agent_v2.runtime_request_builder import (
-    WorkflowAgentRuntimeRequestBuilder,
-)
+from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from factories.file_factory.builders import build_from_mapping
-from graphon.enums import (
-    BuiltinNodeTypes,
-    WorkflowExecutionStatus,
-    WorkflowNodeExecutionStatus,
-)
+from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.file import helpers as file_helpers
 from models import App
-from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
+from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType, effective_declared_outputs
 from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 
 logger = logging.getLogger(__name__)
@@ -182,18 +176,12 @@ class _ResolvedDeclaration:
 
 
 def _is_agent_v2_node(node: Mapping[str, Any]) -> bool:
-    """A graph node is Agent v2 iff its ``data.type`` is the AGENT builtin
-    AND its ``data.version`` is ``"2"``.
+    """Return whether a graph node explicitly identifies the new Dify Agent node."""
 
-    ``BuiltinNodeTypes.AGENT`` is a ``ClassVar[NodeType]`` (plain string), not
-    a StrEnum, so we compare against it directly without ``.value``.
-    """
     data = node.get("data") or {}
     if not isinstance(data, Mapping):
         return False
-    if data.get("type") != BuiltinNodeTypes.AGENT:
-        return False
-    return str(data.get("version", "")) == "2"
+    return is_dify_agent_node_data(data)
 
 
 def _graph_nodes(workflow_run: WorkflowRun) -> list[Mapping[str, Any]]:
@@ -410,8 +398,8 @@ class NodeOutputInspectorService:
     The service is dependency-light: it holds a single
     :class:`WorkflowAgentBindingResolver` so agent v2 nodes can map to their
     declared outputs without re-implementing binding lookup. All other I/O
-    uses the global session factory so workflow runs / executions stay on the
-    repo-default code path.
+    receives an explicit SQLAlchemy session from its caller so transaction
+    ownership stays at the controller/task boundary.
 
     Tenancy is enforced via ``app_model.tenant_id`` + ``app_model.id`` on
     every load — the same scope guard regardless of trigger source.
@@ -422,9 +410,13 @@ class NodeOutputInspectorService:
 
     # ── public API ────────────────────────────────────────────────────────
 
-    def snapshot_workflow_run(self, *, app_model: App, workflow_run_id: str) -> WorkflowRunSnapshotView:
+    def snapshot_workflow_run(
+        self, *, app_model: App, workflow_run_id: str, session: Session
+    ) -> WorkflowRunSnapshotView:
         """Build the per-node snapshot for one debug workflow run."""
-        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        workflow_run, executions = self._load_run_and_executions(
+            app_model=app_model, workflow_run_id=workflow_run_id, session=session
+        )
         executions_by_node = self._index_executions_by_node(executions)
         graph_nodes = _graph_nodes(workflow_run)
 
@@ -447,9 +439,11 @@ class NodeOutputInspectorService:
             node_outputs=node_views,
         )
 
-    def node_detail(self, *, app_model: App, workflow_run_id: str, node_id: str) -> NodeOutputsView:
+    def node_detail(self, *, app_model: App, workflow_run_id: str, node_id: str, session: Session) -> NodeOutputsView:
         """Per-node Inspector entry — returns one ``NodeOutputsView``."""
-        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        workflow_run, executions = self._load_run_and_executions(
+            app_model=app_model, workflow_run_id=workflow_run_id, session=session
+        )
         graph_nodes = _graph_nodes(workflow_run)
         raw_node = next((n for n in graph_nodes if str(n.get("id")) == node_id), None)
         if raw_node is None:
@@ -474,9 +468,12 @@ class NodeOutputInspectorService:
         workflow_run_id: str,
         node_id: str,
         output_name: str,
+        session: Session,
     ) -> OutputPreviewView:
         """Full payload for one declared output (with signed file URL)."""
-        workflow_run, executions = self._load_run_and_executions(app_model=app_model, workflow_run_id=workflow_run_id)
+        workflow_run, executions = self._load_run_and_executions(
+            app_model=app_model, workflow_run_id=workflow_run_id, session=session
+        )
         graph_nodes = _graph_nodes(workflow_run)
         raw_node = next((n for n in graph_nodes if str(n.get("id")) == node_id), None)
         if raw_node is None:
@@ -536,7 +533,7 @@ class NodeOutputInspectorService:
     # ── DB loading ────────────────────────────────────────────────────────
 
     def _load_run_and_executions(
-        self, *, app_model: App, workflow_run_id: str
+        self, *, app_model: App, workflow_run_id: str, session: Session
     ) -> tuple[WorkflowRun, Sequence[WorkflowNodeExecutionModel]]:
         """Fetch the ``WorkflowRun`` row + every execution that belongs to it.
 
@@ -548,24 +545,23 @@ class NodeOutputInspectorService:
         deliberately not checked here — D-1 was lifted 2026-05-26 and the
         Inspector now serves both draft and published runs.
         """
-        with session_factory.create_session() as session:
-            workflow_run = session.scalar(
-                select(WorkflowRun).where(
-                    WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.app_id == app_model.id,
-                    WorkflowRun.tenant_id == app_model.tenant_id,
-                )
+        workflow_run = session.scalar(
+            select(WorkflowRun).where(
+                WorkflowRun.id == workflow_run_id,
+                WorkflowRun.app_id == app_model.id,
+                WorkflowRun.tenant_id == app_model.tenant_id,
             )
-            if workflow_run is None:
-                raise NodeOutputInspectorError("workflow_run_not_found", "Workflow run not found.")
+        )
+        if workflow_run is None:
+            raise NodeOutputInspectorError("workflow_run_not_found", "Workflow run not found.")
 
-            executions = session.scalars(
-                select(WorkflowNodeExecutionModel).where(
-                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-                    WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
-                    WorkflowNodeExecutionModel.app_id == app_model.id,
-                )
-            ).all()
+        executions = session.scalars(
+            select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_model.id,
+            )
+        ).all()
 
         return workflow_run, executions
 
@@ -784,7 +780,7 @@ class NodeOutputInspectorService:
                 "NodeOutputInspector: malformed node_job_config for binding %s", bundle.binding.id, exc_info=True
             )
             return None
-        return list(WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(list(node_job.declared_outputs)))
+        return list(effective_declared_outputs(node_job.declared_outputs))
 
     @staticmethod
     def _infer_outputs_from_payload(*, execution: WorkflowNodeExecutionModel | None) -> list[_ResolvedDeclaration]:

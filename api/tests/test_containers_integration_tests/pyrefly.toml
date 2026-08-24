@@ -1,42 +1,23 @@
 preset = "strict"
-strict-callable-subtyping = true
 project-includes = ["."]
 search-path = ["../.."]
+python-platform = "linux"
+python-version = "3.12.0"
+infer-with-first-use = true
+min-severity = "warn"
 
-# Verify project-excludes from the repo root:
-#   tmp_config=$(mktemp --tmpdir=api/tests/test_containers_integration_tests pyrefly-no-excludes.XXXXXX.toml)
-#   awk 'BEGIN {skip=0} /^project-excludes = \[/ {skip=1; next} skip && /^\]/ {skip=0; next} !skip {print}' api/tests/test_containers_integration_tests/pyrefly.toml > "$tmp_config"
-#   tmp_name=$(basename "$tmp_config")
-#   comm -3 <(sed -n 's/^  "\(.*\)",$/\1/p' api/tests/test_containers_integration_tests/pyrefly.toml | sort) <(uv --directory api run pyrefly check --config "tests/test_containers_integration_tests/$tmp_name" --summary=none --output-format=min-text 2>/dev/null | rg '^ERROR ' | sed -E 's#^ERROR (tests/test_containers_integration_tests/[^:]+):.*#\1#' | sed 's#^tests/test_containers_integration_tests/##' | sort -u)
-#   rm --force "$tmp_config"
+# Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
   "commands/test_legacy_model_type_migration.py",
-  "controllers/console/app/test_app_apis.py",
-  "controllers/console/app/test_app_import_api.py",
   "controllers/console/app/test_chat_conversation_status_count_api.py",
   "controllers/console/app/test_conversation_read_timestamp.py",
   "controllers/console/app/test_workflow_draft_variable.py",
-  "controllers/console/auth/test_email_register.py",
-  "controllers/console/auth/test_forgot_password.py",
-  "controllers/console/auth/test_oauth.py",
-  "controllers/console/auth/test_password_reset.py",
-  "controllers/console/datasets/rag_pipeline/test_rag_pipeline.py",
-  "controllers/console/datasets/rag_pipeline/test_rag_pipeline_datasets.py",
-  "controllers/console/datasets/rag_pipeline/test_rag_pipeline_import.py",
-  "controllers/console/datasets/rag_pipeline/test_rag_pipeline_workflow.py",
-  "controllers/console/datasets/test_data_source.py",
-  "controllers/console/explore/test_conversation.py",
   "controllers/console/test_api_based_extension.py",
   "controllers/console/test_apikey.py",
-  "controllers/console/workspace/test_tool_provider.py",
-  "controllers/console/workspace/test_trigger_providers.py",
   "controllers/console/workspace/test_workspace_wraps.py",
-  "controllers/mcp/test_mcp.py",
   "controllers/service_api/dataset/test_dataset.py",
-  "controllers/service_api/test_site.py",
   "controllers/web/test_conversation.py",
   "controllers/web/test_site.py",
-  "controllers/web/test_web_forgot_password.py",
   "controllers/web/test_wraps.py",
   "core/app/layers/test_pause_state_persist_layer.py",
   "core/rag/pipeline/test_queue_integration.py",
@@ -57,22 +38,15 @@ project-excludes = [
   "repositories/test_sqlalchemy_execution_extra_content_repository.py",
   "repositories/test_sqlalchemy_workflow_node_execution_repository.py",
   "repositories/test_workflow_run_repository.py",
-  "services/auth/test_api_key_auth_service.py",
   "services/auth/test_auth_integration.py",
   "services/dataset_collection_binding.py",
   "services/dataset_service_update_delete.py",
   "services/document_service_status.py",
-  "services/enterprise/test_account_deletion_sync.py",
-  "services/plugin/test_plugin_parameter_service.py",
-  "services/plugin/test_plugin_service.py",
-  "services/rag_pipeline/test_rag_pipeline_service_db.py",
-  "services/recommend_app/test_database_retrieval.py",
   "services/test_account_service.py",
   "services/test_advanced_prompt_template_service.py",
   "services/test_agent_service.py",
   "services/test_annotation_service.py",
   "services/test_api_based_extension_service.py",
-  "services/test_api_token_service.py",
   "services/test_app_dsl_service.py",
   "services/test_app_generate_service.py",
   "services/test_app_service.py",
@@ -97,20 +71,15 @@ project-excludes = [
   "services/test_document_service_rename_document.py",
   "services/test_end_user_service.py",
   "services/test_feature_service.py",
-  "services/test_feedback_service.py",
   "services/test_file_service.py",
   "services/test_human_input_delivery_test.py",
-  "services/test_human_input_delivery_test_service.py",
   "services/test_message_export_service.py",
   "services/test_message_service.py",
   "services/test_message_service_execution_extra_content.py",
   "services/test_message_service_extra_contents.py",
   "services/test_messages_clean_service.py",
-  "services/test_metadata_partial_update.py",
-  "services/test_metadata_service.py",
   "services/test_model_load_balancing_service.py",
   "services/test_model_provider_service.py",
-  "services/test_oauth_server_service.py",
   "services/test_ops_service.py",
   "services/test_restore_archived_workflow_run.py",
   "services/test_saved_message_service.py",
@@ -124,7 +93,6 @@ project-excludes = [
   "services/test_workflow_run_service.py",
   "services/test_workflow_service.py",
   "services/test_workspace_service.py",
-  "services/tools/test_api_tools_manage_service.py",
   "services/tools/test_mcp_tools_manage_service.py",
   "services/tools/test_tools_transform_service.py",
   "services/tools/test_workflow_tools_manage_service.py",
@@ -161,7 +129,6 @@ project-excludes = [
   "test_workflow_pause_integration.py",
   "trigger/conftest.py",
   "trigger/test_trigger_e2e.py",
-  "workflow/nodes/code_executor/test_code_executor.py",
   "workflow/nodes/code_executor/test_code_javascript.py",
   "workflow/nodes/code_executor/test_code_jinja2.py",
   "workflow/nodes/code_executor/test_code_python3.py",
@@ -169,7 +136,9 @@ project-excludes = [
 ]
 
 [errors]
+missing-override-decorator = "error"
 redundant-cast = true
 unannotated-return = true
-unnecessary-type-conversion = true
 unused-ignore = true
+implicit-any-lambda = "info"
+unnecessary-type-conversion = "info"

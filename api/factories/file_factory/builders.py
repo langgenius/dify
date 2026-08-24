@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import mimetypes
+import os
 import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal, NotRequired, TypedDict, assert_never, cast
@@ -285,7 +286,7 @@ def _build_from_remote_url(
         raise ValueError("Invalid file url")
 
     mime_type, filename, file_size = get_remote_file_info(url)
-    extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
+    extension = os.path.splitext(filename)[1].lower() or mimetypes.guess_extension(mime_type) or ".bin"
     detected_file_type = standardize_file_type(extension=extension, mime_type=mime_type)
     file_type = _resolve_file_type(
         detected_file_type=detected_file_type,
@@ -326,7 +327,12 @@ def _build_from_tool_file(
         if tool_file is None:
             raise ValueError(f"ToolFile {tool_file_id} not found")
 
-        extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
+        extension = (
+            os.path.splitext(tool_file.name)[1].lower()
+            or mimetypes.guess_extension(tool_file.mimetype)
+            or os.path.splitext(tool_file.file_key)[1].lower()
+            or ".bin"
+        )
         detected_file_type = standardize_file_type(extension=extension, mime_type=tool_file.mimetype)
         file_type = _resolve_file_type(
             detected_file_type=detected_file_type,

@@ -41,7 +41,7 @@ from services.errors.agent_tool_inner import AgentToolInnerServiceError
 class AgentToolInnerService:
     """Invoke one API-owned Agent tool declaration, including explicit plugin-via-core calls."""
 
-    def invoke(self, session: Session, request: AgentToolInvokeRequest) -> AgentToolInvokeResponse:
+    def invoke(self, request: AgentToolInvokeRequest, *, session: Session) -> AgentToolInvokeResponse:
         app = session.get(App, request.caller.app_id)
         if app is None:
             raise AgentToolInnerServiceError(

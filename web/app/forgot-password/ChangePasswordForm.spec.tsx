@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
 import ChangePasswordForm from './ChangePasswordForm'
@@ -17,17 +18,34 @@ vi.mock('@/service/common', () => ({
   changePasswordWithToken: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}))
+
 vi.mock('@/utils/var', () => ({ basePath: '' }))
 
 type UseVerifyResult = ReturnType<typeof useVerifyForgotPasswordToken>
 const mockUseVerify = vi.mocked(useVerifyForgotPasswordToken)
 const mockChangePassword = vi.mocked(changePasswordWithToken)
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const VALID_PASSWORD = 'ValidPass123!'
 
 describe('ChangePasswordForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('uses the loading title while the token is being verified', () => {
+    mockUseVerify.mockReturnValue({
+      data: undefined,
+      refetch: vi.fn(),
+    } as unknown as UseVerifyResult)
+
+    render(<ChangePasswordForm />)
+
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
   })
 
   describe('when token is valid', () => {
@@ -42,7 +60,8 @@ describe('ChangePasswordForm', () => {
 
     it('renders the password form', () => {
       render(<ChangePasswordForm />)
-      expect(screen.getByText('login.changePassword')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.changePassword')
+      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.changePassword')
     })
 
     it('submits with T2 (from validity response), NOT T1 (from URL)', async () => {
@@ -50,7 +69,9 @@ describe('ChangePasswordForm', () => {
 
       render(<ChangePasswordForm />)
 
-      const inputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="password"]')) as [HTMLInputElement, HTMLInputElement]
+      const inputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[type="password"]'),
+      ) as [HTMLInputElement, HTMLInputElement]
       fireEvent.change(inputs[0], { target: { value: VALID_PASSWORD } })
       fireEvent.change(inputs[1], { target: { value: VALID_PASSWORD } })
 
@@ -67,6 +88,24 @@ describe('ChangePasswordForm', () => {
         })
       })
     })
+
+    it('uses the success title after the password is changed', async () => {
+      mockChangePassword.mockResolvedValue({ result: 'success' })
+
+      render(<ChangePasswordForm />)
+
+      const inputs = Array.from(
+        document.querySelectorAll<HTMLInputElement>('input[type="password"]'),
+      ) as [HTMLInputElement, HTMLInputElement]
+      fireEvent.change(inputs[0], { target: { value: VALID_PASSWORD } })
+      fireEvent.change(inputs[1], { target: { value: VALID_PASSWORD } })
+      fireEvent.click(screen.getByRole('button', { name: /common\.operation\.reset/ }))
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'login.passwordChangedTip' }),
+      ).toBeInTheDocument()
+      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.passwordChangedTip')
+    })
   })
 
   describe('when token is invalid', () => {
@@ -79,8 +118,11 @@ describe('ChangePasswordForm', () => {
 
     it('shows invalid token state and no form', () => {
       render(<ChangePasswordForm />)
-      expect(screen.getByText('login.invalid')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /common\.operation\.reset/ })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.invalid')
+      expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.invalid')
+      expect(
+        screen.queryByRole('button', { name: /common\.operation\.reset/ }),
+      ).not.toBeInTheDocument()
     })
   })
 })

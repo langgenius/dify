@@ -20,9 +20,14 @@ def _get_ssl_cert_reqs() -> ssl.VerifyMode:
 
 
 def _build_redis_options(redis_url: str) -> dict[str, Any]:
-    """Build Redis options for Socket.IO's cross-process pub/sub manager."""
+    """Build Redis options for Socket.IO's cross-process pub/sub manager.
+
+    Note: ``socket_timeout`` is intentionally omitted. The RedisManager runs a
+    blocking ``pubsub.listen()`` loop that idles indefinitely between messages;
+    applying a read timeout there causes a reconnect storm (issue #39423).
+    ``socket_connect_timeout`` still guards connection establishment.
+    """
     options: dict[str, Any] = {
-        "socket_timeout": dify_config.REDIS_SOCKET_TIMEOUT,
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,

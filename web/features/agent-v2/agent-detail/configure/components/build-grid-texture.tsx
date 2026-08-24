@@ -12,10 +12,11 @@ function getBuildGridCellOpacity(row: number, column: number) {
   const horizontalWeight = Math.min(1, column / 160)
   const verticalWeight = (1 - verticalProgress) ** 1.7
 
-  if (noise < densityThreshold)
-    return 0
+  if (noise < densityThreshold) return 0
 
-  return Number(Math.min(0.272, (0.032 + noise * 0.058 + horizontalWeight * 0.09) * verticalWeight).toFixed(3))
+  return Number(
+    Math.min(0.272, (0.032 + noise * 0.058 + horizontalWeight * 0.09) * verticalWeight).toFixed(3),
+  )
 }
 
 const buildGridCells = Array.from(
@@ -32,7 +33,7 @@ const buildGridCells = Array.from(
       row: row + 1,
     }
   },
-).filter(cell => cell.opacity > 0)
+).filter((cell) => cell.opacity > 0)
 
 export function AgentBuildGridTexture({
   cellOpacityMultiplier = 1,
@@ -45,14 +46,21 @@ export function AgentBuildGridTexture({
 }) {
   return (
     <div
-      className={cn('grid grid-cols-[repeat(384,4px)] grid-rows-[repeat(32,4px)] gap-0.5 opacity-70', className)}
+      className={cn(
+        'grid grid-cols-[repeat(384,4px)] grid-rows-[repeat(32,4px)] gap-0.5 opacity-70',
+        className,
+      )}
       {...props}
     >
-      {buildGridCells.map(cell => (
+      {buildGridCells.map((cell) => (
         <span
           key={cell.id}
           className={cn('rounded-[1px] bg-[#98A2B2]', dotClassName)}
-          style={{ gridColumn: `${cell.column}`, gridRow: `${cell.row}`, opacity: Math.min(1, cell.opacity * cellOpacityMultiplier) }}
+          style={{
+            gridColumn: `${cell.column}`,
+            gridRow: `${cell.row}`,
+            opacity: Math.min(1, cell.opacity * cellOpacityMultiplier),
+          }}
         />
       ))}
     </div>

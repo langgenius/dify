@@ -1,5 +1,9 @@
 import type { WorkflowFeaturesConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
-import type { BlockEnum, ConversationVariable, EnvironmentVariable } from '@/app/components/workflow/types'
+import type {
+  BlockEnum,
+  ConversationVariable,
+  EnvironmentVariable,
+} from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
@@ -15,35 +19,68 @@ import { getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
 
+export type EnvironmentVariablePatch = {
+  environmentVariables: EnvironmentVariable[]
+  deletedEnvironmentVariableIds: string[]
+}
+
+type EnvironmentVariablePatchPayload = {
+  environment_variables: EnvironmentVariable[]
+  deleted_environment_variable_ids: string[]
+}
+
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
-export const syncWorkflowDraft = ({ url, params }: {
+export const syncWorkflowDraft = ({
+  url,
+  params,
+}: {
   url: string
-  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
+  params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'conversation_variables'> &
+    Partial<Pick<FetchWorkflowDraftResponse, 'environment_variables'>> & {
+      environment_variable_patch?: EnvironmentVariablePatchPayload
+    }
 }) => {
-  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
+  return post<CommonResponse & { updated_at: number; hash: string }>(
+    url,
+    { body: params },
+    { silent: true },
+  )
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {
   return get<NodesDefaultConfigsResponse>(url)
 }
 
-export const singleNodeRun = (flowType: FlowType, flowId: string, nodeId: string, params: object) => {
-  return post(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
+export const singleNodeRun = (
+  flowType: FlowType,
+  flowId: string,
+  nodeId: string,
+  params: object,
+) => {
+  return post(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/run`, {
+    body: params,
+  })
 }
 
-export const getIterationSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean, flowId: string, nodeId: string) => {
+export const getIterationSingleNodeRunUrl = (
+  flowType: FlowType,
+  isChatFlow: boolean,
+  flowId: string,
+  nodeId: string,
+) => {
   return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
 }
 
-export const getLoopSingleNodeRunUrl = (flowType: FlowType, isChatFlow: boolean, flowId: string, nodeId: string) => {
+export const getLoopSingleNodeRunUrl = (
+  flowType: FlowType,
+  isChatFlow: boolean,
+  flowId: string,
+  nodeId: string,
+) => {
   return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
-}
-
-export const fetchPublishedWorkflow = (url: string) => {
-  return get<FetchWorkflowDraftResponse | null>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {
@@ -72,16 +109,22 @@ export const fetchCurrentValueOfConversationVariable = ({
   return get<ConversationVariableResponse>(url, { params })
 }
 
-const fetchAllInspectVarsOnePage = async (flowType: FlowType, flowId: string, page: number): Promise<{ total: number, items: VarInInspect[] }> => {
+const fetchAllInspectVarsOnePage = async (
+  flowType: FlowType,
+  flowId: string,
+  page: number,
+): Promise<{ total: number; items: VarInInspect[] }> => {
   return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`, {
     params: { page, limit: 100 },
   })
 }
-export const fetchAllInspectVars = async (flowType: FlowType, flowId: string): Promise<VarInInspect[]> => {
+export const fetchAllInspectVars = async (
+  flowType: FlowType,
+  flowId: string,
+): Promise<VarInInspect[]> => {
   const res = await fetchAllInspectVarsOnePage(flowType, flowId, 1)
   const { items, total } = res
-  if (total <= 100)
-    return items
+  if (total <= 100) return items
 
   const pageCount = Math.ceil(total / 100)
   const promises = []
@@ -95,22 +138,37 @@ export const fetchAllInspectVars = async (flowType: FlowType, flowId: string): P
   return items
 }
 
-export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, nodeId: string): Promise<VarInInspect[]> => {
-  const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
+export const fetchNodeInspectVars = async (
+  flowType: FlowType,
+  flowId: string,
+  nodeId: string,
+): Promise<VarInInspect[]> => {
+  const { items } = (await get(
+    `${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`,
+  )) as { items: VarInInspect[] }
   return items
 }
 
-export const updateEnvironmentVariables = ({ appId, environmentVariables }: {
+export const updateEnvironmentVariables = ({
+  appId,
+  environmentVariables,
+  deletedEnvironmentVariableIds,
+}: {
   appId: string
-  environmentVariables: EnvironmentVariable[]
-}) => {
-  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
-    params: { app_id: appId },
-    body: { environment_variables: environmentVariables },
+} & EnvironmentVariablePatch) => {
+  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+    body: {
+      environment_variables: environmentVariables,
+      patch: true,
+      deleted_environment_variable_ids: deletedEnvironmentVariableIds,
+    },
   })
 }
 
-export const updateConversationVariables = ({ appId, conversationVariables }: {
+export const updateConversationVariables = ({
+  appId,
+  conversationVariables,
+}: {
   appId: string
   conversationVariables: ConversationVariable[]
 }) => {
@@ -120,7 +178,10 @@ export const updateConversationVariables = ({ appId, conversationVariables }: {
   })
 }
 
-export const updateFeatures = ({ appId, features }: {
+export const updateFeatures = ({
+  appId,
+  features,
+}: {
   appId: string
   features: WorkflowDraftFeaturesPayload
 }) => {
@@ -130,10 +191,13 @@ export const updateFeatures = ({ appId, features }: {
   })
 }
 
-export const submitHumanInputForm = (token: string, data: {
-  inputs: Record<string, unknown>
-  action: string
-}) => {
+export const submitHumanInputForm = (
+  token: string,
+  data: {
+    inputs: Record<string, unknown>
+    action: string
+  },
+) => {
   return post(`/form/human_input/${token}`, { body: data })
 }
 

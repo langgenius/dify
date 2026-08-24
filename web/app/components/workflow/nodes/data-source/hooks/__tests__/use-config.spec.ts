@@ -10,11 +10,18 @@ vi.mock('reactflow', () => ({
   useStoreApi: () => mockUseStoreApi(),
 }))
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  useNodeDataUpdate: () => mockUseNodeDataUpdate(),
-}))
+vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../hooks/use-node-data-update')>()
 
-const createNode = (overrides: Partial<DataSourceNodeType> = {}): { id: string, data: DataSourceNodeType } => ({
+  return {
+    ...actual,
+    useNodeDataUpdate: () => mockUseNodeDataUpdate(),
+  }
+})
+
+const createNode = (
+  overrides: Partial<DataSourceNodeType> = {},
+): { id: string; data: DataSourceNodeType } => ({
   id: 'data-source-node',
   data: {
     title: 'Datasource',
@@ -89,29 +96,33 @@ describe('data-source/hooks/use-config', () => {
   })
 
   it('should derive output schema metadata and detect object outputs', () => {
-    const dataSourceList = [{
-      plugin_id: 'plugin-1',
-      tools: [{
-        name: 'source-a',
-        output_schema: {
-          properties: {
-            items: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'List of items',
-            },
-            metadata: {
-              type: 'object',
-              description: 'Object field',
-            },
-            count: {
-              type: 'number',
-              description: 'Total count',
+    const dataSourceList = [
+      {
+        plugin_id: 'plugin-1',
+        tools: [
+          {
+            name: 'source-a',
+            output_schema: {
+              properties: {
+                items: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'List of items',
+                },
+                metadata: {
+                  type: 'object',
+                  description: 'Object field',
+                },
+                count: {
+                  type: 'number',
+                  description: 'Total count',
+                },
+              },
             },
           },
-        },
-      }],
-    }]
+        ],
+      },
+    ]
 
     const { result } = renderHook(() => useConfig('data-source-node', dataSourceList))
 

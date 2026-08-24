@@ -40,9 +40,14 @@ vi.mock('@/app/components/workflow/nodes/_base/components/file-type-item', () =>
         <input
           aria-label="custom file extensions"
           value={customFileTypes.join(',')}
-          onChange={e => onCustomFileTypesChange(
-            e.target.value.split(',').map(v => v.trim()).filter(Boolean),
-          )}
+          onChange={(e) =>
+            onCustomFileTypesChange(
+              e.target.value
+                .split(',')
+                .map((v) => v.trim())
+                .filter(Boolean),
+            )
+          }
         />
       )}
     </div>
@@ -62,7 +67,9 @@ describe('FileTypesField', () => {
     render(<FileTypesField label="Allowed file types" />)
 
     expect(screen.getByText('Allowed file types')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: SupportUploadFileTypes.document })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: SupportUploadFileTypes.document }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SupportUploadFileTypes.image })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SupportUploadFileTypes.audio })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: SupportUploadFileTypes.video })).toBeInTheDocument()

@@ -46,8 +46,6 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type CompletionRequest = {
   files?: Array<unknown> | null
   inputs: {
@@ -64,6 +62,24 @@ export type TrialDatasetListResponse = {
   limit: number
   page: number
   total: number
+}
+
+export type FileResponse = {
+  conversation_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  extension?: string | null
+  file_key?: string | null
+  id: string
+  mime_type?: string | null
+  name: string
+  original_url?: string | null
+  preview_url?: string | null
+  reference?: string | null
+  size: number
+  source_url?: string | null
+  tenant_id?: string | null
+  user_id?: string | null
 }
 
 export type SuggestedQuestionsResponse = {
@@ -83,6 +99,21 @@ export type Parameters = {
   system_parameters: SystemParameters
   text_to_speech: JsonObject
   user_input_form: Array<JsonObject>
+}
+
+export type RemoteFileUploadPayload = {
+  url: string
+}
+
+export type FileWithSignedUrl = {
+  created_at: number | null
+  created_by: string | null
+  extension: string | null
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  url: string | null
 }
 
 export type Site = {
@@ -113,9 +144,9 @@ export type TextToSpeechRequest = {
 export type AudioBinaryResponse = Blob | File
 
 export type TrialWorkflowResponse = {
-  conversation_variables?: Array<JsonObject2>
+  conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
-  created_by?: TrialWorkflowAccount | null
+  created_by?: TrialSimpleAccount | null
   environment_variables?: Array<JsonObject2>
   features?: JsonObject2
   graph: JsonObject2
@@ -126,7 +157,7 @@ export type TrialWorkflowResponse = {
   rag_pipeline_variables?: Array<JsonObject2>
   tool_published?: boolean | null
   updated_at?: number | null
-  updated_by?: TrialWorkflowAccount | null
+  updated_by?: TrialSimpleAccount | null
   version?: string | null
 }
 
@@ -220,17 +251,6 @@ export type TrialWorkflowPartialResponse = {
   updated_by?: string | null
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type TrialDatasetResponse = {
   created_at?: number | null
   created_by?: string | null
@@ -255,14 +275,22 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
-export type JsonObject2 = {
-  [key: string]: unknown
+export type WorkflowConversationVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
 }
 
-export type TrialWorkflowAccount = {
+export type TrialSimpleAccount = {
   email?: string | null
   id: string
   name?: string | null
+}
+
+export type JsonObject2 = {
+  [key: string]: unknown
 }
 
 export type TrialAppAgentMode = {
@@ -277,8 +305,6 @@ export type TrialAppModel = {
   name: string
   provider: string
 }
-
-export type GeneratedAppResponseWritable = JsonValue
 
 export type SiteWritable = {
   chat_color_theme?: string | null
@@ -310,8 +336,8 @@ export type GetTrialAppsByAppIdResponses = {
   200: TrialAppDetailResponse
 }
 
-export type GetTrialAppsByAppIdResponse
-  = GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
+export type GetTrialAppsByAppIdResponse =
+  GetTrialAppsByAppIdResponses[keyof GetTrialAppsByAppIdResponses]
 
 export type PostTrialAppsByAppIdAudioToTextData = {
   body?: never
@@ -326,8 +352,8 @@ export type PostTrialAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
 
-export type PostTrialAppsByAppIdAudioToTextResponse
-  = PostTrialAppsByAppIdAudioToTextResponses[keyof PostTrialAppsByAppIdAudioToTextResponses]
+export type PostTrialAppsByAppIdAudioToTextResponse =
+  PostTrialAppsByAppIdAudioToTextResponses[keyof PostTrialAppsByAppIdAudioToTextResponses]
 
 export type PostTrialAppsByAppIdChatMessagesData = {
   body: ChatRequest
@@ -339,11 +365,13 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostTrialAppsByAppIdChatMessagesResponse
-  = PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
+export type PostTrialAppsByAppIdChatMessagesResponse =
+  PostTrialAppsByAppIdChatMessagesResponses[keyof PostTrialAppsByAppIdChatMessagesResponses]
 
 export type PostTrialAppsByAppIdCompletionMessagesData = {
   body: CompletionRequest
@@ -355,11 +383,13 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostTrialAppsByAppIdCompletionMessagesResponse
-  = PostTrialAppsByAppIdCompletionMessagesResponses[keyof PostTrialAppsByAppIdCompletionMessagesResponses]
+export type PostTrialAppsByAppIdCompletionMessagesResponse =
+  PostTrialAppsByAppIdCompletionMessagesResponses[keyof PostTrialAppsByAppIdCompletionMessagesResponses]
 
 export type GetTrialAppsByAppIdDatasetsData = {
   body?: never
@@ -378,8 +408,27 @@ export type GetTrialAppsByAppIdDatasetsResponses = {
   200: TrialDatasetListResponse
 }
 
-export type GetTrialAppsByAppIdDatasetsResponse
-  = GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+export type GetTrialAppsByAppIdDatasetsResponse =
+  GetTrialAppsByAppIdDatasetsResponses[keyof GetTrialAppsByAppIdDatasetsResponses]
+
+export type PostTrialAppsByAppIdFilesUploadData = {
+  body: {
+    file: Blob | File
+    source?: 'datasets'
+  }
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/files/upload'
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponses = {
+  201: FileResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadResponse =
+  PostTrialAppsByAppIdFilesUploadResponses[keyof PostTrialAppsByAppIdFilesUploadResponses]
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
@@ -395,8 +444,8 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = 
   200: SuggestedQuestionsResponse
 }
 
-export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse
-  = GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse =
+  GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses]
 
 export type GetTrialAppsByAppIdParametersData = {
   body?: never
@@ -411,8 +460,24 @@ export type GetTrialAppsByAppIdParametersResponses = {
   200: Parameters
 }
 
-export type GetTrialAppsByAppIdParametersResponse
-  = GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+export type GetTrialAppsByAppIdParametersResponse =
+  GetTrialAppsByAppIdParametersResponses[keyof GetTrialAppsByAppIdParametersResponses]
+
+export type PostTrialAppsByAppIdRemoteFilesUploadData = {
+  body: RemoteFileUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/trial-apps/{app_id}/remote-files/upload'
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadResponse =
+  PostTrialAppsByAppIdRemoteFilesUploadResponses[keyof PostTrialAppsByAppIdRemoteFilesUploadResponses]
 
 export type GetTrialAppsByAppIdSiteData = {
   body?: never
@@ -427,8 +492,8 @@ export type GetTrialAppsByAppIdSiteResponses = {
   200: Site
 }
 
-export type GetTrialAppsByAppIdSiteResponse
-  = GetTrialAppsByAppIdSiteResponses[keyof GetTrialAppsByAppIdSiteResponses]
+export type GetTrialAppsByAppIdSiteResponse =
+  GetTrialAppsByAppIdSiteResponses[keyof GetTrialAppsByAppIdSiteResponses]
 
 export type PostTrialAppsByAppIdTextToAudioData = {
   body: TextToSpeechRequest
@@ -443,8 +508,8 @@ export type PostTrialAppsByAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
 
-export type PostTrialAppsByAppIdTextToAudioResponse
-  = PostTrialAppsByAppIdTextToAudioResponses[keyof PostTrialAppsByAppIdTextToAudioResponses]
+export type PostTrialAppsByAppIdTextToAudioResponse =
+  PostTrialAppsByAppIdTextToAudioResponses[keyof PostTrialAppsByAppIdTextToAudioResponses]
 
 export type GetTrialAppsByAppIdWorkflowsData = {
   body?: never
@@ -459,8 +524,8 @@ export type GetTrialAppsByAppIdWorkflowsResponses = {
   200: TrialWorkflowResponse
 }
 
-export type GetTrialAppsByAppIdWorkflowsResponse
-  = GetTrialAppsByAppIdWorkflowsResponses[keyof GetTrialAppsByAppIdWorkflowsResponses]
+export type GetTrialAppsByAppIdWorkflowsResponse =
+  GetTrialAppsByAppIdWorkflowsResponses[keyof GetTrialAppsByAppIdWorkflowsResponses]
 
 export type PostTrialAppsByAppIdWorkflowsRunData = {
   body: WorkflowRunRequest
@@ -472,11 +537,13 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
-export type PostTrialAppsByAppIdWorkflowsRunResponse
-  = PostTrialAppsByAppIdWorkflowsRunResponses[keyof PostTrialAppsByAppIdWorkflowsRunResponses]
+export type PostTrialAppsByAppIdWorkflowsRunResponse =
+  PostTrialAppsByAppIdWorkflowsRunResponses[keyof PostTrialAppsByAppIdWorkflowsRunResponses]
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
   body?: never
@@ -492,5 +559,5 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
 
-export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse
-  = PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses]
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse =
+  PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses]

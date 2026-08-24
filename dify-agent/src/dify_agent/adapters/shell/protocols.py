@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from typing import Literal, Protocol
 
 
+type ShellExecutionMode = Literal["pty", "stdio"]
+
+
 @dataclass(frozen=True, slots=True)
 class ShellCommandResult:
     job_id: str
@@ -47,10 +50,12 @@ class ShellPromptObservation:
 
 class ShellProviderError(RuntimeError):
     code: str | None
+    status_code: int | None
 
-    def __init__(self, message: str, *, code: str | None = None) -> None:
+    def __init__(self, message: str, *, code: str | None = None, status_code: int | None = None) -> None:
         super().__init__(message)
         self.code = code
+        self.status_code = status_code
 
 
 class ShellCommandProtocol(Protocol):
@@ -61,6 +66,7 @@ class ShellCommandProtocol(Protocol):
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         timeout: float,
+        mode: ShellExecutionMode = "pty",
     ) -> ShellCommandResult: ...
 
     async def wait(
@@ -103,23 +109,3 @@ class ShellCommandProtocol(Protocol):
         force: bool = False,
         grace_seconds: float | None = None,
     ) -> None: ...
-
-
-class ShellFileTransferProtocol(Protocol):
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None: ...
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes: ...
-
-
-class ShellResourceProtocol(Protocol):
-    @property
-    def commands(self) -> ShellCommandProtocol: ...
-
-    @property
-    def files(self) -> ShellFileTransferProtocol: ...
-
-    async def close(self) -> None: ...
-
-
-class ShellProviderProtocol(Protocol):
-    async def create(self) -> ShellResourceProtocol: ...

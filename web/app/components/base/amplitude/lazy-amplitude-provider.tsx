@@ -1,11 +1,15 @@
 'use client'
 
-import type { FC } from 'react'
 import type { IAmplitudeProps } from './AmplitudeProvider'
 import dynamic from '@/next/dynamic'
 
-const AmplitudeProvider = dynamic(() => import('./AmplitudeProvider'), { ssr: false })
+const AmplitudeProvider = dynamic(
+  () => import('./AmplitudeProvider').then((module) => module.AmplitudeProvider),
+  { ssr: false },
+)
 
-const LazyAmplitudeProvider: FC<IAmplitudeProps> = props => <AmplitudeProvider {...props} />
+function LazyAmplitudeProvider(props: IAmplitudeProps) {
+  return <AmplitudeProvider {...props} />
+}
 
 export default LazyAmplitudeProvider

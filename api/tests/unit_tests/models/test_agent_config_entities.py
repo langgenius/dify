@@ -2,11 +2,30 @@ import pytest
 
 from core.workflow.file_reference import build_file_reference
 from models.agent_config_entities import (
+    AgentSoulModelSettings,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
+    WorkflowNodeJobConfig,
+    effective_declared_outputs,
 )
+
+
+def test_agent_soul_model_settings_preserves_plugin_declared_parameters() -> None:
+    settings = AgentSoulModelSettings.model_validate(
+        {
+            "temperature": 0.7,
+            "enable_thinking": True,
+            "thinking_budget": 4096,
+        }
+    )
+
+    dumped = settings.model_dump(mode="json", exclude_none=True)
+
+    assert dumped["temperature"] == 0.7
+    assert dumped["enable_thinking"] is True
+    assert dumped["thinking_budget"] == 4096
 
 
 def test_file_default_value_accepts_canonical_reference_mapping() -> None:
@@ -139,6 +158,23 @@ def test_declared_output_child_validates_shape_and_defaults() -> None:
         )
 
 
+def test_declared_output_child_schema_matches_nullable_serialization() -> None:
+    config = DeclaredOutputConfig(
+        name="response",
+        type=DeclaredOutputType.OBJECT,
+        children=[DeclaredOutputChildConfig(name="text", type=DeclaredOutputType.STRING)],
+    )
+    child = config.model_dump(mode="json")["children"][0]
+
+    assert child["file"] is None
+    assert child["array_item"] is None
+
+    children_schema = DeclaredOutputConfig.model_json_schema(mode="serialization")["properties"]["children"]
+    child_properties = children_schema["items"]["properties"]
+    assert {"type": "null"} in child_properties["file"]["anyOf"]
+    assert {"type": "null"} in child_properties["array_item"]["anyOf"]
+
+
 def test_declared_output_validates_shape_and_defaults() -> None:
     file_output = DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE)
     assert file_output.file is not None
@@ -184,3 +220,29 @@ def test_declared_output_validates_shape_and_defaults() -> None:
                 },
             }
         )
+
+
+def test_workflow_node_job_reserves_system_output_names() -> None:
+    for name in ("text", "switch", "_session"):
+        with pytest.raises(ValueError, match=f"declared output name '{name}' is reserved"):
+            WorkflowNodeJobConfig.model_validate({"declared_outputs": [{"name": name, "type": "string"}]})
+
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {
+            "declared_outputs": [
+                {"name": "files", "type": "string"},
+                {"name": "json", "type": "string"},
+            ]
+        }
+    )
+    assert [output.name for output in node_job.declared_outputs] == ["files", "json"]
+
+
+def test_effective_declared_outputs_prepends_optional_system_text() -> None:
+    custom = DeclaredOutputConfig(name="summary", type=DeclaredOutputType.STRING)
+
+    effective = effective_declared_outputs([custom])
+
+    assert [output.name for output in effective] == ["text", "summary"]
+    assert effective[0].type == DeclaredOutputType.STRING
+    assert effective[0].required is False

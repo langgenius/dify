@@ -55,11 +55,7 @@ describe('File upload support components', () => {
       const onToggle = vi.fn()
 
       render(
-        <FileTypeItem
-          type={SupportUploadFileTypes.image}
-          selected={false}
-          onToggle={onToggle}
-        />,
+        <FileTypeItem type={SupportUploadFileTypes.image} selected={false} onToggle={onToggle} />,
       )
 
       expect(screen.getByText('appDebug.variableConfig.file.image.name')).toBeInTheDocument()
@@ -83,7 +79,9 @@ describe('File upload support components', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('appDebug.variableConfig.file.custom.createPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'appDebug.variableConfig.file.custom.createPlaceholder',
+      )
       await user.type(input, 'csv')
       fireEvent.blur(input)
 
@@ -97,41 +95,35 @@ describe('File upload support components', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
 
-      render(
-        <FileUploadSetting
-          payload={createPayload()}
-          isMultiple
-          onChange={onChange}
-        />,
-      )
+      render(<FileUploadSetting payload={createPayload()} isMultiple onChange={onChange} />)
 
       await user.click(screen.getByText('appDebug.variableConfig.file.image.name'))
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        allowed_file_types: [SupportUploadFileTypes.document, SupportUploadFileTypes.image],
-      }))
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowed_file_types: [SupportUploadFileTypes.document, SupportUploadFileTypes.image],
+        }),
+      )
 
       await user.click(screen.getByText('URL'))
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        allowed_file_upload_methods: [TransferMethod.remote_url],
-      }))
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowed_file_upload_methods: [TransferMethod.remote_url],
+        }),
+      )
 
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '5' } })
-      expect(onChange).toHaveBeenCalledWith(expect.objectContaining({
-        max_length: 5,
-      }))
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          max_length: 5,
+        }),
+      )
     })
 
     it('should keep upload limits within the configured range', () => {
       const StatefulFileUploadSetting = () => {
         const [payload, setPayload] = useState(createPayload())
 
-        return (
-          <FileUploadSetting
-            payload={payload}
-            isMultiple
-            onChange={setPayload}
-          />
-        )
+        return <FileUploadSetting payload={payload} isMultiple onChange={setPayload} />
       }
 
       render(<StatefulFileUploadSetting />)
@@ -154,30 +146,26 @@ describe('File upload support components', () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
       const { rerender } = render(
-        <FileUploadSetting
-          payload={createPayload()}
-          isMultiple={false}
-          onChange={onChange}
-        />,
+        <FileUploadSetting payload={createPayload()} isMultiple={false} onChange={onChange} />,
       )
 
       await user.click(screen.getByText('appDebug.variableConfig.file.document.name'))
-      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        allowed_file_types: [],
-      }))
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          allowed_file_types: [],
+        }),
+      )
 
       rerender(
-        <FileUploadSetting
-          payload={createPayload()}
-          isMultiple={false}
-          onChange={onChange}
-        />,
+        <FileUploadSetting payload={createPayload()} isMultiple={false} onChange={onChange} />,
       )
 
       await user.click(screen.getByText('appDebug.variableConfig.file.custom.name'))
-      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        allowed_file_types: [SupportUploadFileTypes.custom],
-      }))
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          allowed_file_types: [SupportUploadFileTypes.custom],
+        }),
+      )
 
       rerender(
         <FileUploadSetting
@@ -190,26 +178,26 @@ describe('File upload support components', () => {
       )
 
       await user.click(screen.getByText('appDebug.variableConfig.file.custom.name'))
-      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        allowed_file_types: [],
-      }))
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          allowed_file_types: [],
+        }),
+      )
     })
 
     it('should support both upload methods and update custom extensions', async () => {
       const user = userEvent.setup()
       const onChange = vi.fn()
       const { rerender } = render(
-        <FileUploadSetting
-          payload={createPayload()}
-          isMultiple={false}
-          onChange={onChange}
-        />,
+        <FileUploadSetting payload={createPayload()} isMultiple={false} onChange={onChange} />,
       )
 
       await user.click(screen.getByText('appDebug.variableConfig.both'))
-      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      }))
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+        }),
+      )
 
       rerender(
         <FileUploadSetting
@@ -221,13 +209,17 @@ describe('File upload support components', () => {
         />,
       )
 
-      const input = screen.getByPlaceholderText('appDebug.variableConfig.file.custom.createPlaceholder')
+      const input = screen.getByPlaceholderText(
+        'appDebug.variableConfig.file.custom.createPlaceholder',
+      )
       await user.type(input, 'csv')
       fireEvent.blur(input)
 
-      expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({
-        allowed_file_extensions: ['pdf', 'csv'],
-      }))
+      expect(onChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          allowed_file_extensions: ['pdf', 'csv'],
+        }),
+      )
     })
 
     it('should render support file types in the feature panel and hide them when requested', () => {
@@ -252,7 +244,9 @@ describe('File upload support components', () => {
         />,
       )
 
-      expect(screen.queryByText('appDebug.variableConfig.file.document.name')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('appDebug.variableConfig.file.document.name'),
+      ).not.toBeInTheDocument()
     })
   })
 })

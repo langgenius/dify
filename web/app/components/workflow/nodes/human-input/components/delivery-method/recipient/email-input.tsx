@@ -3,7 +3,9 @@ import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
-  PopoverContent,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
 } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -23,15 +25,7 @@ type Props = Readonly<{
   disabled?: boolean
 }>
 
-const EmailInput = ({
-  email,
-  value,
-  list,
-  onDelete,
-  onSelect,
-  onAdd,
-  disabled = false,
-}: Props) => {
+const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = false }: Props) => {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement>(null)
   const [isFocus, setIsFocus] = useState(false)
@@ -40,22 +34,27 @@ const EmailInput = ({
 
   const selectedEmails = useMemo(() => {
     return value.map((item) => {
-      const member = list.find(account => account.id === item.user_id)
+      const member = list.find((account) => account.id === item.user_id)
       return member ? { ...item, email: member.email, name: member.name } : item
     })
   }, [list, value])
 
-  const isErrorMember = useCallback((emailItem: RecipientItem) => emailItem.type === 'member' && list.every(item => item.id !== emailItem.user_id), [list])
+  const isErrorMember = useCallback(
+    (emailItem: RecipientItem) =>
+      emailItem.type === 'member' && list.every((item) => item.id !== emailItem.user_id),
+    [list],
+  )
 
   const placeholder = useMemo(() => {
-    return (selectedEmails.length === 0 || isFocus)
-      ? t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`, { ns: 'workflow' })
+    return selectedEmails.length === 0 || isFocus
+      ? t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`], {
+          ns: 'workflow',
+        })
       : ''
   }, [selectedEmails, t, isFocus])
 
   const setInputFocus = () => {
-    if (disabled)
-      return
+    if (disabled) return
     setIsFocus(true)
     inputRef.current?.focus()
   }
@@ -83,15 +82,12 @@ const EmailInput = ({
 
   const handleEmailAdd = () => {
     const emailAddress = searchKey.trim()
-    if (!checkEmailValid(emailAddress))
-      return
-    if (value.some(item => item.email === emailAddress))
-      return
-    if (list.some(item => item.email === emailAddress)) {
-      const item = list.find(item => item.email === emailAddress)!
+    if (!checkEmailValid(emailAddress)) return
+    if (value.some((item) => item.email === emailAddress)) return
+    if (list.some((item) => item.email === emailAddress)) {
+      const item = list.find((item) => item.email === emailAddress)!
       onSelect(item.id)
-    }
-    else {
+    } else {
       onAdd(emailAddress)
     }
     setSearchKey('')
@@ -109,8 +105,7 @@ const EmailInput = ({
     if (e.key === 'Enter' || e.key === 'Tab' || e.key === ' ' || e.key === ',') {
       e.preventDefault()
       handleEmailAdd()
-    }
-    else if (e.key === 'Backspace') {
+    } else if (e.key === 'Backspace') {
       if (searchKey === '' && value.length > 0) {
         e.preventDefault()
         onDelete(value[value.length - 1]!)
@@ -125,12 +120,14 @@ const EmailInput = ({
       <div
         className={cn(
           'flex max-h-24 min-h-16 flex-wrap overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal p-2',
-          isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs',
-          !disabled && 'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
+          isFocus &&
+            'border-components-input-border-active bg-components-input-bg-active shadow-xs',
+          !disabled &&
+            'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         )}
         onClick={setInputFocus}
       >
-        {selectedEmails.map(item => (
+        {selectedEmails.map((item) => (
           <EmailItem
             key={item.user_id || item.email}
             email={email}
@@ -144,7 +141,7 @@ const EmailInput = ({
           <Popover open={open} onOpenChange={setOpen}>
             <input
               ref={inputRef}
-              className="h-6 min-w-[166px] appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
+              className="h-6 min-w-41.5 appearance-none bg-transparent p-1 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder"
               placeholder={placeholder}
               onFocus={() => setIsFocus(true)}
               onBlur={handleInputBlur}
@@ -152,24 +149,30 @@ const EmailInput = ({
               onChange={handleValueChange}
               onKeyDown={handleKeyDown}
             />
-            <PopoverContent
-              placement="bottom-start"
-              sideOffset={4}
-              alignOffset={-40}
-              popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-              popupProps={{ initialFocus: false, finalFocus: false }}
-              positionerProps={{ anchor: inputRef }}
-            >
-              <MemberList
-                searchValue={searchKey}
-                list={list}
-                value={value}
-                onSearchChange={setSearchKey}
-                onSelect={handleSelect}
-                email={email}
-                hideSearch
-              />
-            </PopoverContent>
+            <PopoverPortal>
+              <PopoverPositioner
+                placement="bottom-start"
+                sideOffset={4}
+                alignOffset={-40}
+                anchor={inputRef}
+              >
+                <PopoverPopup
+                  className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
+                  initialFocus={false}
+                  finalFocus={false}
+                >
+                  <MemberList
+                    searchValue={searchKey}
+                    list={list}
+                    value={value}
+                    onSearchChange={setSearchKey}
+                    onSelect={handleSelect}
+                    email={email}
+                    hideSearch
+                  />
+                </PopoverPopup>
+              </PopoverPositioner>
+            </PopoverPortal>
           </Popover>
         )}
       </div>

@@ -1,9 +1,11 @@
 'use client'
 
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { createContext, use } from 'react'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import { consoleQuery } from '@/service/client'
 
 export type AgentConfigApiContext = {
   agentId: string
@@ -21,8 +23,7 @@ export const AgentConfigApiContextProvider = AgentConfigApiContext.Provider
 
 export const useAgentConfigApiContext = () => {
   const context = use(AgentConfigApiContext)
-  if (!context)
-    throw new Error('AgentConfigApiContextProvider is required for config-backed UI.')
+  if (!context) throw new Error('AgentConfigApiContextProvider is required for config-backed UI.')
 
   return context
 }
@@ -35,6 +36,20 @@ export const useAgentConfigSkills = () => {
     apiContext,
     skills,
   }
+}
+
+export const useAgentWorkspaceSkillBindings = () => {
+  const { agentId } = useAgentConfigApiContext()
+
+  return useQuery(
+    consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({
+      input: {
+        params: {
+          agent_id: agentId,
+        },
+      },
+    }),
+  )
 }
 
 export const useAgentConfigFiles = () => {

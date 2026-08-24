@@ -1,7 +1,7 @@
 import type { AccountContext } from './hosts'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { MemStore } from '@test/fixtures/mem-store'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
 describe('RegistrySchema', () => {
@@ -71,13 +71,15 @@ describe('notLoggedInError', () => {
     expect(notLoggedInError().toString()).toMatch(/auth login/)
   })
   it('accepts a custom hint', () => {
-    expect(notLoggedInError('run \'difyctl use host\'').toString()).toMatch(/use host/)
+    expect(notLoggedInError("run 'difyctl use host'").toString()).toMatch(/use host/)
   })
 })
 
 describe('Registry (pure)', () => {
   const baseReg = (): Registry => Registry.empty('file')
-  const ctx = (email: string): AccountContext => ({ account: { id: `id-${email}`, email, name: email } })
+  const ctx = (email: string): AccountContext => ({
+    account: { id: `id-${email}`, email, name: email },
+  })
 
   it('upsert creates host + account; remove drops them', () => {
     const reg = baseReg()
@@ -111,6 +113,21 @@ describe('Registry (pure)', () => {
     expect(active?.email).toBe('a@x')
     expect(active?.scheme).toBe('http')
     expect(active?.ctx.account.email).toBe('a@x')
+  })
+
+  it('resolveActive returns the active context with insecureTls', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setInsecureTls('h1', true)
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    expect(reg.resolveActive()?.insecureTls).toBe(true)
+  })
+
+  it('setInsecureTls is a no-op for an unknown host', () => {
+    const reg = baseReg()
+    reg.setInsecureTls('missing', true)
+    expect(reg.hosts.missing).toBeUndefined()
   })
 
   it('resolveActive returns undefined for each missing pointer', () => {

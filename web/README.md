@@ -1,28 +1,15 @@
 # Dify Frontend
 
-This is a [Next.js] project, but you can dev with [vinext].
+This is a [Next.js] application with [vinext] as the default local development server.
 
 ## Getting Started
 
 ### Run by source code
 
-Before starting the web frontend service, please make sure the following environment is ready.
+The required Node.js and pnpm versions are pinned by the repository root `.nvmrc` and `packageManager` field. [Vite+] is also available for repository checks and tests; use its official documentation as the installation reference.
 
 - [Node.js]
 - [pnpm]
-
-You can also use [Vite+] with the corresponding `vp` commands.
-For example, use `vp install` instead of `pnpm install` and `vp test` instead of `pnpm run test`.
-
-> [!TIP]
-> It is recommended to install and enable Corepack to manage package manager versions automatically:
->
-> ```bash
-> npm install -g corepack
-> corepack enable
-> ```
->
-> Learn more: [Corepack]
 
 Run the following commands from the repository root.
 
@@ -34,7 +21,7 @@ pnpm install
 
 > [!NOTE]
 > JavaScript dependencies are managed by the workspace files at the repository root: `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `.nvmrc`.
-> Install dependencies from the repository root, then run frontend scripts from `web/`.
+> Install dependencies and run the commands below from the repository root.
 
 Then, configure the environment variables.
 Create `web/.env.local` and copy the contents from `web/.env.example`.
@@ -49,17 +36,13 @@ cp web/.env.example web/.env.local
 > 1. When the frontend and backend run on different subdomains, set NEXT_PUBLIC_COOKIE_DOMAIN=1. The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 > 1. It's necessary to set NEXT_PUBLIC_API_PREFIX and NEXT_PUBLIC_PUBLIC_API_PREFIX to the correct backend API URL.
 
-Finally, run the development server:
+Finally, start the default development stack from the repository root. This runs vinext and the local API proxy together:
 
 ```bash
-pnpm -C web run dev
-# or if you are using vinext which provides a better development experience
-pnpm -C web run dev:vinext
-# (optional) start the dev proxy server so that you can use online API in development
-# edit web/dev-proxy.config.ts to choose proxy paths
-# edit web/.env.local to override DEV_PROXY_TARGET, DEV_PROXY_ENTERPRISE_TARGET, DEV_PROXY_HOST, or DEV_PROXY_PORT
-pnpm -C web run dev:proxy
+pnpm dev
 ```
+
+Use `pnpm -C web dev` only when you specifically need the Next.js development server without the default vinext process. Proxy environment variables are documented in `web/.env.example`; route ownership remains in `web/dev-proxy.config.ts`.
 
 Open <http://localhost:3000> with your browser to see the result.
 
@@ -116,39 +99,23 @@ Then follow the [Lint Documentation] to lint the code.
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
+**📖 Frontend Testing Guide**: See the [Frontend Testing Guide] for the canonical testing policy and workflow.
 
 > [!IMPORTANT]
 > As we are using Vite+, the `vitest` command is not available.
 > Please make sure to run tests with `vp` commands.
-> For example, use `npx vp test` instead of `npx vitest`.
+> For example, use `vp test` instead of `vitest`.
 
 Run test:
 
 ```bash
-pnpm -C web test
+cd web
+vp test run --project unit
 ```
 
-> [!NOTE]
-> Our test is not fully stable yet, and we are actively working on improving it.
-> If you encounter test failures only in CI but not locally, please feel free to ignore them and report the issue to us.
-> You can try to re-run the test in CI, and it may pass successfully.
+The standard unit command runs in `happy-dom`. Browser Mode is reserved for behavior that depends on a real browser; see the [Frontend Testing Guide] for its admission criteria and commands. Always select a project explicitly: bare `vp test` runs every registered project, including Browser Mode.
 
-### Example Code
-
-If you are not familiar with writing tests, refer to:
-
-- [index.spec.tsx] - Component test example
-
-### Analyze Component Complexity
-
-Before writing tests, use the script to analyze component complexity:
-
-```bash
-pnpm analyze-component app/components/your-component/index.tsx
-```
-
-This will help you determine the testing strategy. See [web/docs/test.md] for details.
+If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 
 ## Documentation
 
@@ -158,8 +125,8 @@ Visit <https://docs.dify.ai> to view the full documentation.
 
 The Dify community can be found on [Discord community], where you can ask questions, voice ideas, and share your projects.
 
-[Corepack]: https://github.com/nodejs/corepack#readme
 [Discord community]: https://discord.gg/5AEfbxcd9k
+[Frontend Testing Guide]: ./docs/test.md
 [Lint Documentation]: ./docs/lint.md
 [Next.js]: https://nextjs.org
 [Node.js]: https://nodejs.org
@@ -167,7 +134,5 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Storybook]: https://storybook.js.org
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
-[index.spec.tsx]: ./app/components/base/action-button/__tests__/index.spec.tsx
 [pnpm]: https://pnpm.io
 [vinext]: https://github.com/cloudflare/vinext
-[web/docs/test.md]: ./docs/test.md

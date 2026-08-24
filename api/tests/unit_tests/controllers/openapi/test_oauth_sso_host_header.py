@@ -18,7 +18,7 @@ def app() -> Flask:
 
 
 def _ee_features():
-    from services.feature_service import LicenseStatus
+    from services.entities.feature_entities import LicenseStatus
 
     m = MagicMock()
     m.license.status = LicenseStatus.ACTIVE
@@ -28,13 +28,14 @@ def _ee_features():
 @patch("controllers.openapi.oauth_device_sso.EnterpriseService")
 @patch("controllers.openapi.oauth_device_sso.jws")
 @patch("controllers.openapi.oauth_device_sso.DeviceFlowRedis")
-@patch("controllers.openapi.oauth_device_sso.dify_config")
 @patch("libs.device_flow_security.FeatureService.get_system_features")
 @patch("libs.rate_limit.RateLimiter.is_rate_limited", new=MagicMock(return_value=False))
 @patch("libs.rate_limit.RateLimiter.increment_rate_limit", new=MagicMock())
-def test_idp_callback_url_uses_console_api_url_not_host_header(ee_feat, cfg, redis_cls, jws_mod, ent, app: Flask):
+def test_idp_callback_url_uses_console_api_url_not_host_header(
+    ee_feat, redis_cls, jws_mod, ent, app: Flask, config_overrides
+):
     ee_feat.return_value = _ee_features()
-    cfg.CONSOLE_API_URL = "https://api.dify.example"
+    config_overrides(CONSOLE_API_URL="https://api.dify.example")
     state = MagicMock()
     from services.oauth_device_flow import DeviceFlowStatus
 
@@ -60,13 +61,12 @@ def test_idp_callback_url_uses_console_api_url_not_host_header(ee_feat, cfg, red
 
 
 @patch("controllers.openapi.oauth_device_sso.DeviceFlowRedis")
-@patch("controllers.openapi.oauth_device_sso.dify_config")
 @patch("libs.device_flow_security.FeatureService.get_system_features")
 @patch("libs.rate_limit.RateLimiter.is_rate_limited", new=MagicMock(return_value=False))
 @patch("libs.rate_limit.RateLimiter.increment_rate_limit", new=MagicMock())
-def test_sso_initiate_fails_closed_when_console_api_url_unset(ee_feat, cfg, redis_cls, app: Flask):
+def test_sso_initiate_fails_closed_when_console_api_url_unset(ee_feat, redis_cls, app: Flask, config_overrides):
     ee_feat.return_value = _ee_features()
-    cfg.CONSOLE_API_URL = ""
+    config_overrides(CONSOLE_API_URL="")
     from services.oauth_device_flow import DeviceFlowStatus
 
     state = MagicMock()

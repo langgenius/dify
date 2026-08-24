@@ -1,8 +1,11 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { seedAccountProfileQuery } from '@/test/console/account-profile'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import { ServiceApiAccessCard } from '../service-api-access-card'
 import { WebAppAccessCard } from '../web-app-access-card'
 
@@ -15,6 +18,14 @@ const mocks = vi.hoisted(() => ({
   apiEnableMutation: vi.fn(),
   createApiKeyMutation: vi.fn(),
   deleteApiKeyMutation: vi.fn(),
+  accessControlRender: vi.fn(),
+}))
+
+vi.mock('@/app/components/app/app-access-control', () => ({
+  default: ({ app }: { app: { id: string; access_mode: string } }) => {
+    mocks.accessControlRender(app)
+    return <div role="dialog" aria-label="access-control" />
+  },
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -34,25 +45,54 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
-  useThemeContext: () => ({
-    buildTheme: vi.fn(),
-    theme: {
-      primaryColor: '#1C64F2',
-    },
-  }),
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: ['app.acl.edit'],
     langGeniusVersionInfo: {
       current_env: 'PRODUCTION',
+      current_version: '',
+      latest_version: '',
+      version: '',
+      release_notes: '',
     },
-  }),
-}))
-
+  }))
+})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    userProfile: { id: 'user-1' },
+    currentWorkspace: { id: 'workspace-1' },
+    workspacePermissionKeys: ['app.acl.edit'],
+    langGeniusVersionInfo: {
+      current_env: 'PRODUCTION',
+      current_version: '',
+      latest_version: '',
+      version: '',
+      release_notes: '',
+    },
+  }))
+})
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    account: {
+      profile: {
+        get: {
+          queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+        },
+      },
+    },
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     apps: {
       byAppId: {
         siteEnable: {
@@ -84,11 +124,17 @@ vi.mock('@/service/client', () => ({
     agent: {
       byAgentId: {
         get: {
-          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-detail', input.params.agent_id],
+          queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+            'agent-detail',
+            input.params.agent_id,
+          ],
         },
         apiAccess: {
           get: {
-            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => ['agent-api-access', input.params.agent_id],
+            queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
+              'agent-api-access',
+              input.params.agent_id,
+            ],
             queryOptions: ({ input }: { input: { params: { agent_id: string } } }) => ({
               queryKey: ['agent-api-access', input.params.agent_id],
               queryFn: () => mocks.apiAccessQueryFn(input),
@@ -132,6 +178,7 @@ vi.mock('@/service/client', () => ({
 
 function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppDetailWithSite {
   return {
+    access_ready: true,
     enable_api: true,
     enable_site: true,
     icon_url: null,
@@ -139,6 +186,7 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
     mode: 'agent',
     name: 'Support Agent',
     app_id: 'app-1',
+    backing_app_id: 'app-1',
     api_base_url: 'https://api.example.test/v1',
     access_mode: 'sso_verified',
     site: {
@@ -158,20 +206,19 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
   }
 }
 
-function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = createTestQueryClient()
+function renderWithQueryClient(
+  ui: React.ReactElement,
+  { webAppAuthEnabled = true }: { webAppAuthEnabled?: boolean } = {},
+) {
+  const queryClient = createConsoleQueryClient(webAppAuthEnabled)
 
-  render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
+  render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 
   return queryClient
 }
 
-function createTestQueryClient() {
-  return new QueryClient({
+function createConsoleQueryClient(webAppAuthEnabled = true) {
+  const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -181,6 +228,13 @@ function createTestQueryClient() {
       },
     },
   })
+  seedSystemFeatures(queryClient, {
+    webapp_auth: {
+      enabled: webAppAuthEnabled,
+    },
+  })
+  seedAccountProfileQuery(queryClient, { id: 'user-1' })
+  return queryClient
 }
 
 describe('Agent access surface cards', () => {
@@ -198,10 +252,16 @@ describe('Agent access surface cards', () => {
       )
 
       expect(screen.getByText('https://chat.example.test/agent/site-token')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' })).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+      expect(
+        screen.getByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
       expect(screen.getByText('agentV2.agentDetail.access.webApp.ssoEnabled')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('switch', { name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}' }))
+      await user.click(
+        screen.getByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+        }),
+      )
 
       await waitFor(() => {
         expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
@@ -222,12 +282,20 @@ describe('Agent access surface cards', () => {
         <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }))
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
+      )
 
-      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.customize.title' })
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.customize.title',
+      })
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
-      expect(within(dialog).getByRole('button', { name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/ })).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+      expect(
+        within(dialog).getByRole('button', {
+          name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/,
+        }),
+      ).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
     })
 
     it('should open the embedded dialog with the Agent web app route', async () => {
@@ -237,17 +305,25 @@ describe('Agent access surface cards', () => {
         <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }))
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+      )
 
-      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' })
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.embedded.title',
+      })
       await waitFor(() => {
         expect(dialog).toHaveTextContent('https://chat.example.test/agent/site-token')
       })
 
-      await user.click(within(dialog).getByRole('button', { name: 'appOverview.overview.appInfo.embedded.scripts' }))
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: 'appOverview.overview.appInfo.embedded.scripts',
+        }),
+      )
 
       await waitFor(() => {
-        expect(dialog).toHaveTextContent('routeSegment: \'agent\'')
+        expect(dialog).toHaveTextContent("routeSegment: 'agent'")
       })
     })
 
@@ -258,19 +334,30 @@ describe('Agent access surface cards', () => {
         <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
       )
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }))
-      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' })
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.embedded.title',
+      })
 
-      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
 
       await waitFor(() => {
-        expect(screen.queryByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' }),
+        ).not.toBeInTheDocument()
       })
     })
 
     it('should save settings through the backing app id and update the agent detail cache', async () => {
       const user = userEvent.setup()
-      const agent = createAgent()
+      const agent = createAgent({
+        site: {
+          ...createAgent().site!,
+          icon_url: 'https://files.example.test/old-icon.png',
+        },
+      })
       mocks.siteMutation.mockResolvedValueOnce({
         app_id: 'app-1',
         code: 'new-site-token',
@@ -295,13 +382,29 @@ describe('Agent access surface cards', () => {
       queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }))
-      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.settings.title' })
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
 
       await user.clear(within(dialog).getByPlaceholderText('app.appNamePlaceholder'))
-      await user.type(within(dialog).getByPlaceholderText('app.appNamePlaceholder'), 'Support Portal')
-      await user.clear(within(dialog).getByRole('textbox', { name: 'appOverview.overview.appInfo.settings.webDesc' }))
-      await user.type(within(dialog).getByRole('textbox', { name: 'appOverview.overview.appInfo.settings.webDesc' }), 'Updated web description.')
+      await user.type(
+        within(dialog).getByPlaceholderText('app.appNamePlaceholder'),
+        'Support Portal',
+      )
+      await user.clear(
+        within(dialog).getByRole('textbox', {
+          name: 'appOverview.overview.appInfo.settings.webDesc',
+        }),
+      )
+      await user.type(
+        within(dialog).getByRole('textbox', {
+          name: 'appOverview.overview.appInfo.settings.webDesc',
+        }),
+        'Updated web description.',
+      )
       await user.clear(within(dialog).getByPlaceholderText('E.g #A020F0'))
       await user.type(within(dialog).getByPlaceholderText('E.g #A020F0'), '#123456')
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
@@ -319,15 +422,94 @@ describe('Agent access surface cards', () => {
         })
       })
       expect(mocks.siteMutation.mock.calls[0]?.[0].body).not.toHaveProperty('enable_sso')
-      expect(queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1'])).toMatchObject({
+      expect(
+        queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1']),
+      ).toMatchObject({
         site: {
           access_token: 'new-site-token',
           chat_color_theme: '#123456',
           description: 'Updated web description.',
+          icon_url: null,
           title: 'Support Portal',
         },
       })
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
+    })
+
+    it('should fall back to the Agent icon tuple when WebApp site icon data is missing', async () => {
+      const user = userEvent.setup()
+      const agent = createAgent({
+        icon: 'agent-image-file-id',
+        icon_background: null,
+        icon_type: 'image',
+        icon_url: 'https://files.example.test/agent-icon.png',
+        site: {
+          ...createAgent().site!,
+          icon: null,
+          icon_background: null,
+          icon_type: null,
+          icon_url: null,
+        },
+      })
+      mocks.siteMutation.mockResolvedValueOnce({
+        app_id: 'app-1',
+        code: 'site-token',
+        copyright: '',
+        custom_disclaimer: '',
+        customize_domain: null,
+        customize_token_strategy: 'allow',
+        default_language: 'en-US',
+        description: 'Support Agent',
+        icon: 'agent-image-file-id',
+        icon_background: null,
+        privacy_policy: '',
+        prompt_public: false,
+        show_workflow_steps: false,
+        title: 'Support Agent',
+        use_icon_as_answer_icon: false,
+      })
+
+      renderWithQueryClient(<WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />)
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(dialog).getByAltText('app icon')).toHaveAttribute(
+        'src',
+        'https://files.example.test/agent-icon.png',
+      )
+
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => {
+        expect(mocks.siteMutation.mock.calls[0]?.[0].body).toEqual(
+          expect.objectContaining({
+            icon: 'agent-image-file-id',
+            icon_background: undefined,
+            icon_type: 'image',
+          }),
+        )
+      })
+    })
+
+    it('should not show the multi-environment settings notice', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      )
+
+      const dialog = await screen.findByRole('dialog', {
+        name: 'appOverview.overview.appInfo.settings.title',
+      })
+      expect(within(dialog).queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should keep embedded disabled until the backing app id and web app token are available', () => {
@@ -346,7 +528,9 @@ describe('Agent access surface cards', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }),
+      ).toBeDisabled()
     })
 
     it('should keep settings disabled until the backing app id and site data are available', () => {
@@ -356,14 +540,16 @@ describe('Agent access surface cards', () => {
       const agentWithoutSite = createAgent({
         site: null,
       })
-      const queryClient = createTestQueryClient()
+      const queryClient = createConsoleQueryClient()
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
           <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      ).toBeDisabled()
 
       rerender(
         <QueryClientProvider client={queryClient}>
@@ -371,15 +557,39 @@ describe('Agent access surface cards', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }),
+      ).toBeDisabled()
     })
 
     it('should keep customize disabled until the generated contract provides the required fields', () => {
       renderWithQueryClient(
-        <WebAppAccessCard agent={createAgent({ api_base_url: null })} agentId="agent-1" isLoading={false} />,
+        <WebAppAccessCard
+          agent={createAgent({ api_base_url: null })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
       )
 
-      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' })).toBeDisabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.customize' }),
+      ).toBeDisabled()
+    })
+
+    it('should keep the Web App switch disabled until the Agent is published', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_ready: false, enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
     })
   })
 
@@ -387,11 +597,13 @@ describe('Agent access surface cards', () => {
     it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        access_ready: true,
         api_key_count: 2,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
       })
       mocks.apiEnableMutation.mockResolvedValueOnce({
+        access_ready: true,
         api_key_count: 2,
         enabled: false,
         service_api_base_url: 'https://api.example.test/v1',
@@ -402,7 +614,11 @@ describe('Agent access surface cards', () => {
       expect(await screen.findByText('https://api.example.test/v1')).toBeInTheDocument()
       expect(screen.getByText('2')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('switch', { name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}' }))
+      await user.click(
+        screen.getByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+        }),
+      )
 
       await waitFor(() => {
         expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
@@ -419,6 +635,7 @@ describe('Agent access surface cards', () => {
     it('should manage API keys with the Agent API key endpoints', async () => {
       const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValue({
+        access_ready: true,
         api_key_count: 1,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
@@ -445,12 +662,18 @@ describe('Agent access surface cards', () => {
 
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
-      await user.click(await screen.findByRole('button', { name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/ }))
+      await user.click(
+        await screen.findByRole('button', {
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+        }),
+      )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
       expect(await within(dialog).findByText('app...ing-secret-key-token')).toBeInTheDocument()
 
-      await user.click(within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }))
+      await user.click(
+        within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+      )
 
       await waitFor(() => {
         expect(mocks.createApiKeyMutation.mock.calls[0]?.[0]).toEqual({
@@ -473,6 +696,119 @@ describe('Agent access surface cards', () => {
             api_key_id: 'key-1',
           },
         })
+      })
+    })
+
+    it('should disable the Service API switch and key action until the Agent is published', async () => {
+      mocks.apiAccessQueryFn.mockResolvedValueOnce({
+        access_ready: false,
+        api_key_count: 0,
+        enabled: false,
+        service_api_base_url: 'https://api.example.test/v1',
+      })
+
+      renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
+
+      expect(
+        await screen.findByRole('switch', {
+          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true')
+      expect(
+        screen.getByRole('button', {
+          name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+        }),
+      ).toBeDisabled()
+    })
+  })
+
+  describe('Web app access control', () => {
+    const accessControlAgent = () =>
+      createAgent({
+        access_mode: 'private',
+        maintainer: 'user-1',
+        permission_keys: ['app.acl.release_and_version'],
+      })
+
+    const accessControlButtonName = 'agentV2.agentDetail.access.webApp.actions.accessControl'
+
+    it('should render the access control button when webapp auth is enabled and user can manage', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      expect(screen.getByRole('button', { name: accessControlButtonName })).toBeInTheDocument()
+    })
+
+    it('should hide the access control button when webapp auth is disabled', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard agent={accessControlAgent()} agentId="agent-1" isLoading={false} />,
+        { webAppAuthEnabled: false },
+      )
+
+      expect(
+        screen.queryByRole('button', { name: accessControlButtonName }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the access control button when the user cannot manage access control', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ access_mode: 'private', permission_keys: [] })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(
+        screen.queryByRole('button', { name: accessControlButtonName }),
+      ).not.toBeInTheDocument()
+    })
+
+    it.each([null, 'future-access-mode'])(
+      'should hide the access control button when the access mode is %s',
+      (accessMode) => {
+        renderWithQueryClient(
+          <WebAppAccessCard
+            agent={createAgent({
+              access_mode: accessMode,
+              maintainer: 'user-1',
+              permission_keys: ['app.acl.release_and_version'],
+            })}
+            agentId="agent-1"
+            isLoading={false}
+          />,
+        )
+
+        expect(
+          screen.queryByRole('button', { name: accessControlButtonName }),
+        ).not.toBeInTheDocument()
+      },
+    )
+
+    it('should open the access control dialog wired with the backing app id', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            access_mode: 'private',
+            app_id: 'source-app-1',
+            backing_app_id: 'backing-app-1',
+            maintainer: 'user-1',
+            permission_keys: ['app.acl.release_and_version'],
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: accessControlButtonName }))
+
+      expect(screen.getByRole('dialog', { name: 'access-control' })).toBeInTheDocument()
+      expect(mocks.accessControlRender).toHaveBeenCalledWith({
+        id: 'backing-app-1',
+        access_mode: 'private',
       })
     })
   })

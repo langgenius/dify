@@ -43,14 +43,7 @@ describe('ConfigString', () => {
   describe('Effect behavior', () => {
     it('should clamp initial value to maxLength when it exceeds limit', async () => {
       const onChange = vi.fn()
-      render(
-        <ConfigString
-          value={15}
-          maxLength={10}
-          modelId="model-id"
-          onChange={onChange}
-        />,
-      )
+      render(<ConfigString value={15} maxLength={10} modelId="model-id" onChange={onChange} />)
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(10)
@@ -61,22 +54,10 @@ describe('ConfigString', () => {
     it('should clamp when updated prop value exceeds maxLength', async () => {
       const onChange = vi.fn()
       const { rerender } = render(
-        <ConfigString
-          value={4}
-          maxLength={6}
-          modelId="model-id"
-          onChange={onChange}
-        />,
+        <ConfigString value={4} maxLength={6} modelId="model-id" onChange={onChange} />,
       )
 
-      rerender(
-        <ConfigString
-          value={9}
-          maxLength={6}
-          modelId="model-id"
-          onChange={onChange}
-        />,
-      )
+      rerender(<ConfigString value={9} maxLength={6} modelId="model-id" onChange={onChange} />)
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(6)

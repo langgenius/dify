@@ -2,50 +2,33 @@ import type {
   AgentBuildDraftResponse,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
-import { createApiContext, expectApiResponseOK } from '../../../support/api'
-
-export async function checkoutAgentBuildDraft(agentId: string): Promise<AgentBuildDraftResponse> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post(`/console/api/agent/${agentId}/build-draft/checkout`, {
-      data: { force: true },
-    })
-    await expectApiResponseOK(response, `Checkout Agent v2 build draft for ${agentId}`)
-    return (await response.json()) as AgentBuildDraftResponse
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
+import type { ConsoleClient } from '../../../support/api/console-client'
+import { ORPCError } from '@orpc/client'
 
 export async function saveAgentBuildDraft(
+  client: ConsoleClient,
   agentId: string,
   agentSoul: AgentSoulConfig,
 ): Promise<AgentBuildDraftResponse> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.put(`/console/api/agent/${agentId}/build-draft`, {
-      data: {
-        agent_soul: agentSoul,
-        save_strategy: 'save_to_current_version',
-        variant: 'agent_app',
-      },
-    })
-    await expectApiResponseOK(response, `Save Agent v2 build draft for ${agentId}`)
-    return (await response.json()) as AgentBuildDraftResponse
-  }
-  finally {
-    await ctx.dispose()
-  }
+  return client.agent.byAgentId.buildDraft.put({
+    body: {
+      agent_soul: agentSoul,
+      save_strategy: 'save_to_current_version',
+      variant: 'agent_app',
+    },
+    params: { agent_id: agentId },
+  })
 }
 
-export async function discardAgentBuildDraft(agentId: string): Promise<void> {
-  const ctx = await createApiContext()
+export async function agentBuildDraftExists(
+  client: ConsoleClient,
+  agentId: string,
+): Promise<boolean> {
   try {
-    const response = await ctx.delete(`/console/api/agent/${agentId}/build-draft`)
-    await expectApiResponseOK(response, `Discard Agent v2 build draft for ${agentId}`)
-  }
-  finally {
-    await ctx.dispose()
+    await client.agent.byAgentId.buildDraft.get({ params: { agent_id: agentId } })
+    return true
+  } catch (error) {
+    if (error instanceof ORPCError && error.status === 404) return false
+    throw error
   }
 }

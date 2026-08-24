@@ -1,6 +1,11 @@
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { fetchInitValidateStatus, fetchSetupStatus, sendForgotPasswordEmail } from '@/service/common'
+import useDocumentTitle from '@/hooks/use-document-title'
+import {
+  fetchInitValidateStatus,
+  fetchSetupStatus,
+  sendForgotPasswordEmail,
+} from '@/service/common'
 import ForgotPasswordForm from './ForgotPasswordForm'
 
 const mockPush = vi.fn()
@@ -15,13 +20,21 @@ vi.mock('@/service/common', () => ({
   sendForgotPasswordEmail: vi.fn(),
 }))
 
+vi.mock('@/hooks/use-document-title', () => ({
+  __esModule: true,
+  default: vi.fn(),
+}))
+
 const mockFetchSetupStatus = vi.mocked(fetchSetupStatus)
 const mockFetchInitValidateStatus = vi.mocked(fetchInitValidateStatus)
 const mockSendForgotPasswordEmail = vi.mocked(sendForgotPasswordEmail)
+const mockUseDocumentTitle = vi.mocked(useDocumentTitle)
 
 const prepareLoadedState = () => {
   mockFetchSetupStatus.mockResolvedValue({ step: 'not_started' } as SetupStatusResponse)
-  mockFetchInitValidateStatus.mockResolvedValue({ status: 'finished' } as InitValidateStatusResponse)
+  mockFetchInitValidateStatus.mockResolvedValue({
+    status: 'finished',
+  } as InitValidateStatusResponse)
 }
 
 describe('ForgotPasswordForm', () => {
@@ -33,7 +46,10 @@ describe('ForgotPasswordForm', () => {
   it('should render form after loading', async () => {
     render(<ForgotPasswordForm />)
 
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('common.loading')
     expect(await screen.findByLabelText('login.email')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('login.forgotPassword')
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.forgotPassword')
   })
 
   it('should show validation error when email is empty', async () => {
@@ -69,6 +85,7 @@ describe('ForgotPasswordForm', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /login\.backToSignIn/ })).toBeInTheDocument()
     })
+    expect(mockUseDocumentTitle).toHaveBeenLastCalledWith('login.resetLinkSent')
 
     fireEvent.click(screen.getByRole('button', { name: /login\.backToSignIn/ }))
     expect(mockPush).toHaveBeenCalledWith('/signin')
@@ -79,7 +96,9 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'test@example.com' },
+    })
 
     const form = screen.getByRole('button', { name: /login\.sendResetLink/ }).closest('form')
     expect(form).not.toBeNull()
@@ -103,7 +122,9 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'test@example.com' },
+    })
 
     const button = screen.getByRole('button', { name: /login\.sendResetLink/ })
     fireEvent.click(button)
@@ -128,7 +149,9 @@ describe('ForgotPasswordForm', () => {
 
     render(<ForgotPasswordForm />)
 
-    fireEvent.change(await screen.findByLabelText('login.email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(await screen.findByLabelText('login.email'), {
+      target: { value: 'test@example.com' },
+    })
     fireEvent.click(screen.getByRole('button', { name: /login\.sendResetLink/ }))
 
     await waitFor(() => {
@@ -147,7 +170,9 @@ describe('ForgotPasswordForm', () => {
       value: { href: '' },
       writable: true,
     })
-    mockFetchInitValidateStatus.mockResolvedValue({ status: 'not_started' } as InitValidateStatusResponse)
+    mockFetchInitValidateStatus.mockResolvedValue({
+      status: 'not_started',
+    } as InitValidateStatusResponse)
 
     render(<ForgotPasswordForm />)
 

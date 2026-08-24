@@ -23,8 +23,7 @@ export function OAuthRegistrationAnalytics() {
   const handledParamRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam)
-      return
+    if (oauthNewUserParam === null || handledParamRef.current === oauthNewUserParam) return
 
     handledParamRef.current = oauthNewUserParam
     const oauthNewUser = oauthNewUserParam === 'true'
@@ -38,18 +37,16 @@ export function OAuthRegistrationAnalytics() {
     if (utmInfoStr) {
       try {
         const parsed: unknown = JSON.parse(utmInfoStr)
-        if (isRecord(parsed))
-          utmInfo = parsed
-      }
-      catch (e) {
+        if (isRecord(parsed)) utmInfo = parsed
+      } catch (e) {
         console.error('Failed to parse utm_info cookie:', e)
       }
     }
 
     const eventName = utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success'
 
-    // Defer the Amplitude event until the user ID is attached. It is flushed in
-    // AppContextProvider after setUserId runs. Firing it here would record it under an
+    // Defer the Amplitude event until the user ID is attached. The app context
+    // external sync replays it after setUserId runs. Firing it here would record it under an
     // anonymous Amplitude profile (no user ID set yet).
     rememberRegistrationSuccess({ method: 'oauth', utmInfo })
 

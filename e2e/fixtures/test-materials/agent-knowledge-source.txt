@@ -1,2 +1,3 @@
 Dify Agent E2E knowledge source.
-Dify Agent E2E test passphrase is AGENT_KNOWLEDGE_PASS.
+The Dify Agent E2E knowledge marker is AGENT_KNOWLEDGE_PASS.
+Use the connected knowledge source to find the Dify Agent E2E knowledge marker.

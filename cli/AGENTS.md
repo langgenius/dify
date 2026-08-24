@@ -1,100 +1,26 @@
 # AGENTS.md — difyctl (TypeScript CLI)
 
-TypeScript port of difyctl. Stack: custom CLI framework (`src/framework/`), Node 22+, ESM, ky for HTTP, vitest, eslint via @antfu/eslint-config.
+This package is the Node 22+, ESM TypeScript implementation of `difyctl`. Development also requires the Bun version pinned in `.bun-version`; command-tree generation and the `dev`, `test`, and `build` pre-scripts invoke it. Read [`ARD.md`] before adding a command or changing shared CLI infrastructure. Read `src/commands/AGENTS.md` for command-folder and registry rules.
 
-> Architecture patterns, scaffolding recipe, printer chain, strategy pattern, testing conventions, anti-patterns: see **[`ARD.md`]**.
+## Architecture Boundaries
 
-## Code rules
+- Every leaf command extends `DifyCommand`; command classes own framework parsing and delegate behavior to domain modules.
+- Each command folder keeps its framework shell in `index.ts`. Extract behavior into sibling modules such as `run.ts` and `handlers.ts` when it needs an independently testable owner; those modules receive typed dependencies and do not import `src/framework/`.
+- `src/http/` owns ky middleware and client construction; `src/api/` owns resource clients; `src/sys/io/` owns process streams and progress UI; `src/types/` remains a pure data and schema leaf.
+- Preserve flags, output, and exit codes during refactors. Do not add dependencies or compatibility shims unless the task explicitly requires them.
+- `ARD.md` owns CLI code structure. Keep wire behavior aligned with typed API clients and the real mock-server behavior tests.
 
-- **Spaces, not tabs.**
-- **Minimum comments.** Code speak for self. Comment only non-obvious WHY — hidden constraints, subtle invariants, bug-workaround notes. Never restate code. Never reference tasks, PRs, current callers.
-- **No magic strings or numbers.** Enums or named constants for bounded value sets.
-- **No long positional arg lists.** Use options objects.
-- **No long if/switch ladders on discriminator.** Polymorphism, dispatch tables, or strategy pattern. Name concept, let implementations plug in.
-- **No `any`. No `unknown` outside genuine wire boundaries** (HTTP body parse, env vars). Narrow types everywhere else.
-- **Avoid `!` non-null assertions.** Narrow instead.
-- **`readonly` on inputs not mutated.**
-- **Discriminated unions** for variant data (SSE events, run outputs, error shapes), not optional-field bags.
-- **No backwards-compat shims.** No re-exports of old names, no `// removed:` markers, no deprecation notes. Delete, update callers.
-- **No new dependencies without explicit approval.**
-- **No CLI behavior changes in refactor commit.** Same flags, same output, same exit codes.
-- **Every leaf command extends `DifyCommand`.** Add `static agentGuide` string when command benefits from agent workflow docs — see `src/commands/AGENTS.md`.
+## Commands
 
-## Layering
+Run package scripts from `cli/`:
 
-| Layer     | Path                             | Role                                                                                                                                  |
-| --------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| commands  | `src/commands/`                  | Command class shells (extend `DifyCommand`). Only place framework imports run.                                                        |
-| domain    | `src/run/`, `src/get/`, etc.     | Plain TS modules. Take typed deps via options. Testable without the framework.                                                        |
-| api       | `src/api/`                       | One typed client per resource. Each takes `KyInstance`.                                                                               |
-| http      | `src/http/`                      | `createClient` + middleware (auth, retry, logging, error mapping). Only place ky runs.                                                |
-| io        | `src/io/`                        | Streams + spinner. Fence between data-out and progress UI.                                                                            |
-| printers  | `src/printers/`                  | `CompositePrintFlags` + `-o {json,yaml,name,wide,text}` matrix.                                                                       |
-| errors    | `src/errors/`                    | `BaseError`, `ErrorCode` enum, `ExitCode` enum, dispatch table, `formatErrorForCli`.                                                  |
-| guide     | `src/commands/**/<cmd>/guide.ts` | Per-command agent guide string. Export `agentGuide`, assign `static agentGuide = agentGuide` in command class. Surfaced via `--help`. |
-| cache     | `src/cache/`                     | On-disk caches (app-info, etc.).                                                                                                      |
-| auth      | `src/auth/`                      | Hosts file, token store, login flow.                                                                                                  |
-| config    | `src/config/`                    | XDG dir resolution, config.yml load/save.                                                                                             |
-| workspace | `src/workspace/`                 | Resolver: flag → env → bundle.                                                                                                        |
-| types     | `src/types/`                     | Pure data + zod schemas for server contracts. No runtime imports outward.                                                             |
+- Source CLI: `pnpm dev <command> [args...]`
+- Tests: `pnpm test`
+- Build: `pnpm build`
+- Regenerate and verify the registry: `pnpm tree:gen` and `pnpm tree:check`
 
-## Command Structure
+Run the scoped static check from the repository root with `vp check cli`.
 
-Scaffold recipe + checklist: see `ARD.md §New command scaffold`. Full folder convention (subcommands, guide.ts): see `src/commands/AGENTS.md`.
-
-Layer rules:
-
-- Commands thin shells. Use `this.authedCtx(opts)` for bearer context; delegate to domain function.
-- Domain receives deps via options; never imports `src/framework/`.
-- Only `src/http/client.ts` and `src/api/*` import ky at runtime; elsewhere use `import type { KyInstance }`.
-- `process.*` lives in `src/io/`, `src/store/dir.ts`, `src/util/browser.ts`. Nowhere else.
-- No circular imports. `types/` pure leaf.
-
-## Dev commands
-
-```sh
-pnpm install                                   # one-time
-pnpm dev <command> [args...]                   # run CLI from source (no -- separator)
-pnpm test                                      # vitest
-pnpm test:coverage                             # with coverage
-pnpm type-check                                # tsc, no emit
-pnpm lint                                      # eslint
-pnpm lint:fix                                  # eslint --fix
-pnpm build                                     # production bundle (vp pack)
-pnpm tree:gen                                  # regenerate src/commands/tree.ts (registry)
-pnpm tree:check                                # verify tree.ts is up-to-date with the fs
-```
-
-Release binaries (5 platform targets, Bun-compiled) are produced by `pnpm build:bin` (called from `.github/workflows/cli-release.yml`).
-
-## Tests
-
-- Behavior tests run against real Hono mock at `test/fixtures/dify-mock/`. No `nock`, `msw`, or `fetchMock` — every test exercises real HTTP.
-- Test files co-located: `foo.test.ts` next to `foo.ts`.
-- Type-check, lint, full test suite must be green before any commit.
-
-## Spec docs (`docs/specs/`)
-
-Behavior contracts. Living tree — amended in place, no version subfolders.
-
-**Keep:** HTTP wire shape (req/resp JSON, headers, status codes), SQL DDL, Redis keys + TTL, state transitions, audit event names + payload, error/exit codes, rate-limit values, JWS/cookie envelope claims.
-
-**Cut:** language type decls, internal helper sigs, decorator snippets, file-path tables, pseudocode mirroring code, "Open items"/"Handler walk"/"CI guard"/"Migration" sections, rationale (`Rejected:`/`Why X not Y`/`Historical note:`/product comparisons), release-pipeline lines, version-pinning (`in v1.0`, `post-v1.0`, milestone codes), frontmatter `date`/`status`/`author`.
-
-**Test:** "rewrite in Rust tomorrow, does spec hold?" HTTP/SQL/Redis stays; type defs go.
-
-**Rules:** behavior, not rationale. One topic per file; cross-refs = `auth.md §Storage`. Tables beat prose. Code wins on drift — update spec.
-
-## Out of scope for unrelated work
-
-Do not modify in passing:
-
-- `test/fixtures/dify-mock/` public surface (endpoints, JSON shapes, status codes, scenario names) — that's the dify-api contract.
-- `bin/`, `scripts/`, `Makefile`, `eslint.config.js`, `tsconfig*.json`, `package.json` (unless the change is required by the task).
-
-## Commits
-
-- One concern per commit. Style: `<type>(<scope>): <imperative subject>` lowercase. Body explains why if non-obvious.
-- Never push, amend, force-push, or skip hooks (`--no-verify`) without explicit user approval.
+Behavior tests use the real Hono server under `test/fixtures/dify-mock/`; do not replace it with `nock`, `msw`, or `fetchMock`. Keep tests colocated with their source files.
 
 [`ARD.md`]: ARD.md

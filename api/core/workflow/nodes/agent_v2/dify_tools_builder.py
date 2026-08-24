@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Final, Literal, Protocol
 
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolProviderType, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
@@ -11,13 +11,14 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolCredentialType,
     DifyPluginToolParameter,
     DifyPluginToolParameterForm,
+    DifyPluginToolParameterType,
     DifyPluginToolsLayerConfig,
 )
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderCredentialValidationError, ToolProviderNotFoundError
@@ -28,6 +29,13 @@ from models.agent_config_entities import AgentSoulDifyToolConfig, AgentSoulTools
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+_CORE_TOOL_PROVIDER_TYPES: Final[dict[ToolProviderType, DifyCoreToolProviderType]] = {
+    ToolProviderType.BUILT_IN: "builtin",
+    ToolProviderType.API: "api",
+    ToolProviderType.WORKFLOW: "workflow",
+    ToolProviderType.MCP: "mcp",
+}
 
 
 class WorkflowAgentDifyToolsBuildError(ValueError):
@@ -131,7 +139,7 @@ def _list_provider_tool_names(
 
 def _resolve_mcp_provider_id(*, tenant_id: str, provider_id: str) -> str:
     """Normalize MCP provider ids to the runtime-facing server identifier."""
-    service = MCPToolManageService(session=cast(Session, db.session))
+    service = MCPToolManageService(session=db.session())
     try:
         return service.get_provider_entity(provider_id, tenant_id, by_server_id=True).provider_id
     except ValueError:
@@ -235,7 +243,7 @@ class WorkflowAgentDifyToolsBuilder:
             if tool_config.tool_name is not None:
                 expanded.append(tool_config)
                 continue
-            provider_type = ToolProviderType.value_of(tool_config.provider_type)
+            provider_type = tool_config.provider_type
             provider_id = self._provider_id(tool_config)
             try:
                 tool_names = self._provider_declared_tool_names(
@@ -279,7 +287,7 @@ class WorkflowAgentDifyToolsBuilder:
         tenant_id: str,
         tool_config: AgentSoulDifyToolConfig,
     ) -> AgentSoulDifyToolConfig:
-        if tool_config.provider_type != ToolProviderType.MCP.value:
+        if tool_config.provider_type is not ToolProviderType.MCP:
             return tool_config
         provider_id = self._mcp_provider_id_resolver(tenant_id=tenant_id, provider_id=self._provider_id(tool_config))
         return tool_config.model_copy(update={"provider_id": provider_id, "plugin_id": None, "provider": None})
@@ -326,7 +334,7 @@ class WorkflowAgentDifyToolsBuilder:
     def _to_agent_tool_entity(tool_config: AgentSoulDifyToolConfig) -> AgentToolEntity:
         assert tool_config.tool_name is not None
         return AgentToolEntity(
-            provider_type=ToolProviderType.value_of(tool_config.provider_type),
+            provider_type=tool_config.provider_type,
             provider_id=WorkflowAgentDifyToolsBuilder._provider_id(tool_config),
             tool_name=tool_config.tool_name,
             tool_parameters=dict(tool_config.runtime_parameters),
@@ -343,22 +351,16 @@ class WorkflowAgentDifyToolsBuilder:
 
     @staticmethod
     def _provider_key(tool_config: AgentSoulDifyToolConfig) -> tuple[ToolProviderType, str]:
-        return (
-            ToolProviderType.value_of(tool_config.provider_type),
-            WorkflowAgentDifyToolsBuilder._provider_id(tool_config),
-        )
+        return (tool_config.provider_type, WorkflowAgentDifyToolsBuilder._provider_id(tool_config))
 
     @staticmethod
     def _tool_layer_destination(tool_config: AgentSoulDifyToolConfig) -> Literal["plugin", "core"]:
-        provider_type = ToolProviderType.value_of(tool_config.provider_type)
-        if provider_type is ToolProviderType.PLUGIN:
+        provider_type = tool_config.provider_type
+        if provider_type is ToolProviderType.PLUGIN or (
+            provider_type is ToolProviderType.BUILT_IN and _is_plugin_provider_id(tool_config.provider_id)
+        ):
             return "plugin"
-        if provider_type in {
-            ToolProviderType.BUILT_IN,
-            ToolProviderType.API,
-            ToolProviderType.WORKFLOW,
-            ToolProviderType.MCP,
-        }:
+        if provider_type in _CORE_TOOL_PROVIDER_TYPES:
             return "core"
         if provider_type is ToolProviderType.DATASET_RETRIEVAL:
             raise WorkflowAgentDifyToolsBuildError(
@@ -388,8 +390,8 @@ class WorkflowAgentDifyToolsBuilder:
                 f"Dify Tool {tool_config.tool_name!r} has no runtime.",
             )
 
-        provider_id = self._provider_id(tool_config)
-        plugin_id, provider = self._plugin_provider(tool_config, provider_id)
+        provider_id = ToolProviderID(self._provider_id(tool_config))
+        plugin_id, provider = normalize_plugin_daemon_provider_identity(provider_id, tool_config.plugin_id)
         parameters = self._prepared_parameters(tool_runtime)
         runtime_parameters = self._runtime_parameters(tool_runtime, parameters)
         description = self._description(tool_config, tool_runtime)
@@ -404,7 +406,7 @@ class WorkflowAgentDifyToolsBuilder:
             credentials=self._normalize_credentials(runtime.credentials, tool_name=exposed_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
+            parameters_json_schema=self._plugin_parameters_json_schema(tool_runtime, parameters),
         )
 
     def _to_core_backend_tool_config(
@@ -415,7 +417,7 @@ class WorkflowAgentDifyToolsBuilder:
     ) -> DifyCoreToolConfig:
         parameters = self._prepared_parameters(tool_runtime)
         return DifyCoreToolConfig(
-            provider_type=cast(DifyCoreToolProviderType, tool_config.provider_type),
+            provider_type=_CORE_TOOL_PROVIDER_TYPES[tool_config.provider_type],
             provider_id=self._provider_id(tool_config),
             tool_name=tool_config.tool_name or exposed_name,
             credential_id=tool_config.credential_ref.id if tool_config.credential_ref else None,
@@ -425,13 +427,6 @@ class WorkflowAgentDifyToolsBuilder:
             parameters=parameters,
             parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
         )
-
-    @staticmethod
-    def _plugin_provider(tool_config: AgentSoulDifyToolConfig, provider_id: str) -> tuple[str, str]:
-        if tool_config.plugin_id and tool_config.provider:
-            return tool_config.plugin_id, tool_config.provider
-        provider_id_entity = ToolProviderID(provider_id)
-        return provider_id_entity.plugin_id, provider_id_entity.provider_name
 
     @staticmethod
     def _credential_type(
@@ -455,6 +450,41 @@ class WorkflowAgentDifyToolsBuilder:
         if description is None and tool_runtime.entity.description is not None:
             description = tool_runtime.entity.description.llm
         return description
+
+    @staticmethod
+    def _plugin_parameters_json_schema(
+        tool_runtime: Tool,
+        parameters: list[DifyPluginToolParameter],
+    ) -> dict[str, Any]:
+        schema = tool_runtime.get_llm_parameters_json_schema()
+        properties = schema.setdefault("properties", {})
+        required = schema.setdefault("required", [])
+        if not isinstance(properties, dict) or not isinstance(required, list):
+            raise WorkflowAgentDifyToolsBuildError(
+                "agent_tool_declaration_invalid",
+                f"Dify Plugin Tool {tool_runtime.entity.identity.name!r} has invalid parameter schema.",
+            )
+
+        for parameter in parameters:
+            if parameter.form is not DifyPluginToolParameterForm.LLM:
+                continue
+            if parameter.type is DifyPluginToolParameterType.FILE:
+                properties[parameter.name] = _plugin_file_input_schema(parameter.llm_description or "")
+            elif parameter.type in {
+                DifyPluginToolParameterType.FILES,
+                DifyPluginToolParameterType.SYSTEM_FILES,
+            }:
+                properties[parameter.name] = {
+                    "type": "array",
+                    "items": _plugin_file_input_schema(parameter.llm_description or ""),
+                    "description": parameter.llm_description or "",
+                }
+            else:
+                continue
+
+            if parameter.required and parameter.name not in required:
+                required.append(parameter.name)
+        return schema
 
     @staticmethod
     def _runtime_parameters(
@@ -498,3 +528,44 @@ class WorkflowAgentDifyToolsBuilder:
                 ),
             )
         return normalized
+
+
+def _is_plugin_provider_id(provider_id: str | None) -> bool:
+    if not provider_id:
+        return False
+    parts = provider_id.split("/")
+    return len(parts) == 3 and all(parts)
+
+
+def _plugin_file_input_schema(description: str) -> dict[str, Any]:
+    return {
+        "description": description,
+        "anyOf": [
+            {
+                "type": "string",
+                "minLength": 1,
+                "description": "HTTP(S) URL or sandbox-local file path.",
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["transfer_method", "url"],
+                "properties": {
+                    "transfer_method": {"type": "string", "enum": ["remote_url"]},
+                    "url": {"type": "string", "minLength": 1},
+                },
+            },
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["transfer_method", "reference"],
+                "properties": {
+                    "transfer_method": {
+                        "type": "string",
+                        "enum": ["local_file", "tool_file", "datasource_file"],
+                    },
+                    "reference": {"type": "string", "minLength": 1},
+                },
+            },
+        ],
+    }

@@ -12,24 +12,31 @@ This test suite covers:
 import json
 import pickle
 from datetime import UTC, datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.entities import ParentMode
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from extensions.storage.storage_type import StorageType
+from models import dataset as dataset_module
+from models.account import Account
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
     Dataset,
     DatasetKeywordTable,
     DatasetProcessRule,
+    DatasetQuery,
     Document,
     DocumentSegment,
     Embedding,
+    ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
+    SegmentAttachmentBinding,
 )
 from models.enums import (
     CreatorUserRole,
@@ -39,7 +46,84 @@ from models.enums import (
     ProcessRuleMode,
     SegmentStatus,
 )
-from models.model import UploadFile
+from models.model import App, AppMode, IconType, UploadFile
+
+
+def _make_dataset(
+    *,
+    dataset_id: str = "dataset-1",
+    tenant_id: str = "tenant-1",
+    created_by: str = "account-1",
+    provider: str = "vendor",
+) -> Dataset:
+    return Dataset(
+        id=dataset_id,
+        tenant_id=tenant_id,
+        name=f"Dataset {dataset_id}",
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        created_by=created_by,
+        provider=provider,
+        built_in_field_enabled=False,
+    )
+
+
+def _make_document(
+    *,
+    document_id: str = "document-1",
+    dataset_id: str = "dataset-1",
+    tenant_id: str = "tenant-1",
+    process_rule_id: str | None = None,
+    position: int = 1,
+    word_count: int | None = None,
+    indexing_status: IndexingStatus = IndexingStatus.WAITING,
+) -> Document:
+    return Document(
+        id=document_id,
+        tenant_id=tenant_id,
+        dataset_id=dataset_id,
+        position=position,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        dataset_process_rule_id=process_rule_id,
+        batch="batch-1",
+        name=f"{document_id}.txt",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by="account-1",
+        word_count=word_count,
+        indexing_status=indexing_status,
+    )
+
+
+def _make_app(*, app_id: str, tenant_id: str = "tenant-1") -> App:
+    return App(
+        id=app_id,
+        tenant_id=tenant_id,
+        name=f"App {app_id}",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="app",
+        icon_background="#FFFFFF",
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=0,
+    )
+
+
+def _make_segments(document: Document, hit_counts: list[int]) -> list[DocumentSegment]:
+    return [
+        DocumentSegment(
+            tenant_id=document.tenant_id,
+            dataset_id=document.dataset_id,
+            document_id=document.id,
+            position=position,
+            content=f"Segment {position}",
+            word_count=2,
+            tokens=2,
+            created_by="account-1",
+            hit_count=hit_count,
+        )
+        for position, hit_count in enumerate(hit_counts, start=1)
+    ]
 
 
 class TestDatasetModelValidation:
@@ -85,6 +169,98 @@ class TestDatasetModelValidation:
         assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.embedding_model_provider == "openai"
+
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, Account, DatasetProcessRule, Document)], indirect=True)
+    def test_session_aware_dataset_getters_use_caller_session(self, sqlite_session: Session):
+        account = Account(name="Ada", email="ada@example.com")
+        account.id = "account-1"
+        dataset = _make_dataset(created_by=account.id)
+        process_rule = DatasetProcessRule(
+            dataset_id=dataset.id,
+            mode=ProcessRuleMode.CUSTOM,
+            rules=json.dumps({"segmentation": {"max_tokens": 100}}),
+            created_by=account.id,
+        )
+        document = _make_document(dataset_id=dataset.id)
+        document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+        sqlite_session.add_all([dataset, account, process_rule, document])
+        sqlite_session.flush()
+
+        assert dataset.get_created_by_account(session=sqlite_session) is account
+        assert dataset.get_latest_process_rule(session=sqlite_session) is process_rule
+        assert dataset.get_doc_form(session=sqlite_session) == IndexStructureType.PARAGRAPH_INDEX
+
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, Document)], indirect=True)
+    def test_get_doc_form_ignores_foreign_tenant_document(self, sqlite_session: Session) -> None:
+        dataset = _make_dataset()
+        foreign_document = _make_document(
+            dataset_id=dataset.id,
+            tenant_id="tenant-2",
+        )
+        foreign_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+        sqlite_session.add_all([dataset, foreign_document])
+        sqlite_session.flush()
+
+        assert dataset.get_doc_form(session=sqlite_session) is None
+
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetKeywordTable)], indirect=True)
+    def test_get_dataset_keyword_table_uses_caller_session(self, sqlite_session: Session):
+        dataset = _make_dataset()
+        keyword_table = DatasetKeywordTable(
+            dataset_id=dataset.id,
+            keyword_table=json.dumps({"keyword": ["node-1"]}),
+        )
+        sqlite_session.add_all([dataset, keyword_table])
+        sqlite_session.flush()
+
+        result = dataset.get_dataset_keyword_table(session=sqlite_session)
+
+        assert result is keyword_table
+
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, Account, App, AppDatasetJoin, Document)], indirect=True)
+    def test_dataset_detail_getters_use_caller_session(self, sqlite_session: Session):
+        account = Account(name="Ada", email="ada@example.com")
+        account.id = "account-1"
+        dataset = _make_dataset(created_by=account.id)
+        available_document = _make_document(
+            document_id="document-1",
+            dataset_id=dataset.id,
+            word_count=200,
+            indexing_status=IndexingStatus.COMPLETED,
+        )
+        available_document.enabled = True
+        available_document.archived = False
+        available_document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+        waiting_document = _make_document(
+            document_id="document-2",
+            dataset_id=dataset.id,
+            position=2,
+            word_count=300,
+        )
+        app = _make_app(app_id="app-1")
+        sqlite_session.add_all(
+            [
+                account,
+                dataset,
+                available_document,
+                waiting_document,
+                app,
+                AppDatasetJoin(app_id=app.id, dataset_id=dataset.id),
+            ]
+        )
+        sqlite_session.flush()
+
+        assert dataset.get_total_documents(session=sqlite_session) == 2
+        assert dataset.get_total_available_documents(session=sqlite_session) == 1
+        assert dataset.get_app_count(session=sqlite_session) == 1
+        assert dataset.get_document_count(session=sqlite_session) == 2
+        assert dataset.get_word_count(session=sqlite_session) == 500
+        assert dataset.get_author_name(session=sqlite_session) == "Ada"
+        assert dataset.get_tags(session=sqlite_session) == []
+        assert dataset.get_doc_form(session=sqlite_session) == IndexStructureType.PARAGRAPH_INDEX
+        assert dataset.get_external_knowledge_info(session=sqlite_session) is None
+        assert dataset.get_doc_metadata(session=sqlite_session) == []
+        assert dataset.get_is_published(session=sqlite_session) is False
 
     def test_dataset_indexing_technique_validation(self):
         """Test dataset indexing technique values."""
@@ -187,23 +363,124 @@ class TestDatasetModelValidation:
         assert result["top_k"] == 2
         assert result["score_threshold"] == 0.0
 
-    def test_dataset_external_knowledge_info_returns_none_for_cross_tenant_template(self):
+    @pytest.mark.parametrize(
+        "sqlite_session", [(Dataset, ExternalKnowledgeBindings, ExternalKnowledgeApis)], indirect=True
+    )
+    def test_dataset_external_knowledge_info_returns_none_for_cross_tenant_template(self, sqlite_session: Session):
         """Test external datasets fail closed when the bound template is outside the tenant."""
-        dataset = Dataset(
-            tenant_id=str(uuid4()),
-            name="External Dataset",
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            created_by=str(uuid4()),
-            provider="external",
+        dataset = _make_dataset(provider="external")
+        external_api = ExternalKnowledgeApis(
+            tenant_id="other-tenant",
+            created_by="account-1",
+            updated_by=None,
+            name="Other tenant API",
+            description="",
+            settings=json.dumps({"endpoint": "https://example.com"}),
         )
-        binding = Mock(spec=ExternalKnowledgeBindings)
-        binding.external_knowledge_id = "knowledge-1"
-        binding.external_knowledge_api_id = str(uuid4())
+        binding = ExternalKnowledgeBindings(
+            tenant_id=dataset.tenant_id,
+            external_knowledge_api_id=external_api.id,
+            dataset_id=dataset.id,
+            external_knowledge_id="knowledge-1",
+            created_by="account-id",
+        )
+        sqlite_session.add_all([dataset, external_api, binding])
+        sqlite_session.flush()
 
-        with patch("models.dataset.db") as mock_db:
-            mock_db.session.scalar.side_effect = [binding, None]
+        assert dataset.get_external_knowledge_info(session=sqlite_session) is None
 
-            assert dataset.external_knowledge_info is None
+    @pytest.mark.parametrize(
+        "sqlite_session", [(ExternalKnowledgeApis, ExternalKnowledgeBindings, Dataset)], indirect=True
+    )
+    def test_external_knowledge_api_dataset_bindings_use_caller_session(self, sqlite_session: Session):
+        external_api = ExternalKnowledgeApis(
+            tenant_id="tenant-1",
+            created_by=str(uuid4()),
+            updated_by=None,
+            name="External API",
+            description="",
+            settings=None,
+        )
+        other_api = ExternalKnowledgeApis(
+            tenant_id="tenant-1",
+            created_by="account-1",
+            updated_by=None,
+            name="Other API",
+            description="",
+            settings=None,
+        )
+        dataset = _make_dataset()
+        decoy_dataset = _make_dataset(dataset_id="dataset-2")
+        sqlite_session.add_all([external_api, other_api, dataset, decoy_dataset])
+        sqlite_session.flush()
+        sqlite_session.add_all(
+            [
+                ExternalKnowledgeBindings(
+                    tenant_id="tenant-1",
+                    external_knowledge_api_id=external_api.id,
+                    dataset_id=dataset.id,
+                    external_knowledge_id="knowledge-1",
+                    created_by="account-1",
+                ),
+                ExternalKnowledgeBindings(
+                    tenant_id="tenant-1",
+                    external_knowledge_api_id=other_api.id,
+                    dataset_id=decoy_dataset.id,
+                    external_knowledge_id="knowledge-2",
+                    created_by="account-1",
+                ),
+            ]
+        )
+        sqlite_session.flush()
+
+        result = external_api.get_dataset_bindings(session=sqlite_session)
+
+        assert result == [{"id": dataset.id, "name": dataset.name}]
+
+    @pytest.mark.parametrize("sqlite_session", [(DatasetQuery, UploadFile)], indirect=True)
+    def test_dataset_query_get_queries_uses_caller_session(self, sqlite_session: Session):
+        dataset_query = DatasetQuery(
+            dataset_id=str(uuid4()),
+            content=json.dumps([{"content_type": "image_query", "content": "file-1"}]),
+            source="hit_testing",
+            source_app_id=None,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=str(uuid4()),
+        )
+        upload_file = UploadFile(
+            tenant_id="tenant-1",
+            storage_type=StorageType.LOCAL,
+            key="image.png",
+            name="image.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="account-1",
+            created_at=datetime(2024, 1, 1),
+            used=False,
+        )
+        upload_file.id = "file-1"
+        sqlite_session.add_all([dataset_query, upload_file])
+        sqlite_session.flush()
+
+        with patch("models.dataset.sign_upload_file_preview_url", return_value="signed-url"):
+            queries = dataset_query.get_queries(session=sqlite_session)
+
+        assert queries == [
+            {
+                "content_type": "image_query",
+                "content": "file-1",
+                "file_info": {
+                    "id": "file-1",
+                    "name": "image.png",
+                    "size": 10,
+                    "extension": "png",
+                    "mime_type": "image/png",
+                    "source_url": "signed-url",
+                },
+            }
+        ]
 
     def test_dataset_retrieval_model_dict_property(self):
         """Test retrieval_model_dict property with default values."""
@@ -300,6 +577,36 @@ class TestDocumentModelRelationships:
         assert "upload_file" in Document.DATA_SOURCES
         assert "notion_import" in Document.DATA_SOURCES
         assert "website_crawl" in Document.DATA_SOURCES
+
+    @pytest.mark.parametrize("sqlite_session", [(Document, DatasetProcessRule, DocumentSegment)], indirect=True)
+    def test_session_aware_document_getters_use_caller_session(self, sqlite_session: Session):
+        process_rule = DatasetProcessRule(
+            dataset_id="dataset-1",
+            mode=ProcessRuleMode.CUSTOM,
+            rules=None,
+            created_by="account-1",
+        )
+        document = _make_document(process_rule_id=process_rule.id)
+        segments = [
+            DocumentSegment(
+                tenant_id=document.tenant_id,
+                dataset_id=document.dataset_id,
+                document_id=document.id,
+                position=position,
+                content=f"Segment {position}",
+                word_count=2,
+                tokens=2,
+                created_by="account-1",
+                hit_count=hit_count,
+            )
+            for position, hit_count in [(1, 2), (2, 1), (3, 4)]
+        ]
+        sqlite_session.add_all([process_rule, document, *segments])
+        sqlite_session.flush()
+
+        assert document.get_dataset_process_rule(session=sqlite_session) is process_rule
+        assert document.get_segment_count(session=sqlite_session) == 3
+        assert document.get_hit_count(session=sqlite_session) == 7
 
     def test_document_display_status_queuing(self):
         """Test document display_status property for queuing state."""
@@ -504,7 +811,22 @@ class TestDocumentModelRelationships:
         # Assert
         assert result == {}
 
-    def test_document_average_segment_length(self):
+    @pytest.mark.parametrize("sqlite_session", [(Document, Dataset)], indirect=True)
+    def test_document_get_dataset_uses_caller_session(self, sqlite_session: Session):
+        dataset = _make_dataset()
+        document = _make_document(dataset_id=dataset.id)
+        sqlite_session.add_all([dataset, document])
+        sqlite_session.flush()
+
+        assert document.get_dataset(session=sqlite_session) is dataset
+
+    @pytest.mark.parametrize("sqlite_session", [(Document, DocumentSegment)], indirect=True)
+    def test_document_average_segment_length(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         """Test average_segment_length property calculation."""
         # Arrange
         document = Document(
@@ -518,14 +840,17 @@ class TestDocumentModelRelationships:
             created_by=str(uuid4()),
             word_count=1000,
         )
+        sqlite_session.add(document)
+        sqlite_session.flush()
+        sqlite_session.add_all(_make_segments(document, [0] * 10))
+        sqlite_session.commit()
+        monkeypatch.setattr(dataset_module.db, "session", scoped_session(sqlite_session_factory))
 
-        # Mock segment_count property
-        with patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 10)):
-            # Act
-            result = document.average_segment_length
+        # Act
+        result = document.average_segment_length
 
-            # Assert
-            assert result == 100
+        # Assert
+        assert result == 100
 
     def test_document_average_segment_length_zero(self):
         """Test average_segment_length property when word_count is zero."""
@@ -551,6 +876,102 @@ class TestDocumentModelRelationships:
 
 class TestDocumentSegmentIndexing:
     """Test suite for DocumentSegment model indexing and operations."""
+
+    @pytest.mark.parametrize(
+        "sqlite_session", [(DocumentSegment, Document, DatasetProcessRule, ChildChunk)], indirect=True
+    )
+    def test_get_child_chunks_uses_caller_session(self, sqlite_session: Session):
+        process_rule = DatasetProcessRule(
+            dataset_id="dataset-1",
+            mode=ProcessRuleMode.HIERARCHICAL,
+            rules=json.dumps({"parent_mode": ParentMode.PARAGRAPH}),
+            created_by="account-1",
+        )
+        document = _make_document(process_rule_id=process_rule.id)
+        segment = DocumentSegment(
+            tenant_id=document.tenant_id,
+            dataset_id=document.dataset_id,
+            document_id=document.id,
+            position=1,
+            content="Test content",
+            word_count=2,
+            tokens=5,
+            created_by=str(uuid4()),
+        )
+        child_chunk = ChildChunk(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            document_id=segment.document_id,
+            segment_id=segment.id,
+            position=1,
+            content="",
+            word_count=0,
+            created_by="account-id",
+        )
+        sqlite_session.add_all([process_rule, document, segment, child_chunk])
+        sqlite_session.flush()
+
+        result = segment.get_child_chunks(session=sqlite_session)
+        assert result == [child_chunk]
+
+    @pytest.mark.parametrize(
+        "sqlite_session", [(DocumentSegment, Document, DatasetProcessRule, ChildChunk)], indirect=True
+    )
+    def test_get_child_chunks_includes_full_doc_unless_explicitly_hidden(self, sqlite_session: Session):
+        process_rule = DatasetProcessRule(
+            dataset_id="dataset-1",
+            mode=ProcessRuleMode.HIERARCHICAL,
+            rules=json.dumps({"parent_mode": ParentMode.FULL_DOC}),
+            created_by="account-1",
+        )
+        document = _make_document(process_rule_id=process_rule.id)
+        segment = DocumentSegment(
+            tenant_id=document.tenant_id,
+            dataset_id=document.dataset_id,
+            document_id=document.id,
+            position=1,
+            content="Test content",
+            word_count=2,
+            tokens=5,
+            created_by=str(uuid4()),
+        )
+        child_chunk = ChildChunk(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            document_id=segment.document_id,
+            segment_id=segment.id,
+            position=1,
+            content="",
+            word_count=0,
+            created_by="account-id",
+        )
+        sqlite_session.add_all([process_rule, document, segment, child_chunk])
+        sqlite_session.flush()
+
+        result = segment.get_child_chunks(session=sqlite_session)
+        response_result = segment.get_child_chunks(session=sqlite_session, include_full_doc=False)
+        assert result == [child_chunk]
+        assert response_result == []
+
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, Document, DocumentSegment)], indirect=True)
+    def test_relationship_getters_use_caller_session(self, sqlite_session: Session):
+        dataset = _make_dataset()
+        document = _make_document(dataset_id=dataset.id)
+        segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            position=1,
+            content="Test content",
+            word_count=2,
+            tokens=5,
+            created_by=str(uuid4()),
+        )
+        sqlite_session.add_all([dataset, document, segment])
+        sqlite_session.flush()
+
+        assert segment.get_dataset(session=sqlite_session) is dataset
+        assert segment.get_document(session=sqlite_session) is document
 
     def test_document_segment_creation_with_required_fields(self):
         """Test creating a document segment with all required fields."""
@@ -707,7 +1128,10 @@ class TestDocumentSegmentIndexing:
         # Assert
         assert segment.hit_count == 5
 
-    def test_document_segment_attachments_prefers_files_url_for_source_url(self, monkeypatch: pytest.MonkeyPatch):
+    @pytest.mark.parametrize("sqlite_session", [(DocumentSegment, UploadFile, SegmentAttachmentBinding)], indirect=True)
+    def test_document_segment_attachments_prefers_files_url_for_source_url(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    ):
         """Test attachment source URLs use FILES_URL before falling back to CONSOLE_API_URL."""
         # Arrange
         segment = DocumentSegment(
@@ -735,6 +1159,15 @@ class TestDocumentSegmentIndexing:
             used=False,
         )
         attachment.id = "upload-1"
+        binding = SegmentAttachmentBinding(
+            tenant_id=segment.tenant_id,
+            dataset_id=segment.dataset_id,
+            document_id=segment.document_id,
+            segment_id=segment.id,
+            attachment_id=attachment.id,
+        )
+        sqlite_session.add_all([segment, attachment, binding])
+        sqlite_session.flush()
 
         monkeypatch.setattr("models.dataset.time.time", lambda: 1700000000)
         monkeypatch.setattr("models.dataset.os.urandom", lambda _: b"\x01" * 16)
@@ -742,11 +1175,8 @@ class TestDocumentSegmentIndexing:
         monkeypatch.setattr("models.dataset.dify_config.FILES_URL", "https://files.example.com")
         monkeypatch.setattr("models.dataset.dify_config.CONSOLE_API_URL", "https://console.example.com")
 
-        with patch("models.dataset.db") as mock_db:
-            mock_db.session.execute.return_value.all.return_value = [(Mock(), attachment)]
-
-            # Act
-            attachments = segment.attachments
+        # Act
+        attachments = segment.get_attachments(session=sqlite_session)
 
         # Assert
         assert len(attachments) == 1
@@ -985,6 +1415,21 @@ class TestDatasetKeywordTable:
         # Assert
         assert keyword_table.data_source_type == "file"
 
+    @pytest.mark.parametrize("sqlite_session", [(Dataset, DatasetKeywordTable)], indirect=True)
+    def test_get_keyword_table_dict_from_database_uses_caller_session(self, sqlite_session: Session):
+        dataset = _make_dataset()
+        keyword_table = DatasetKeywordTable(
+            dataset_id=dataset.id,
+            keyword_table=json.dumps({"__data__": {"table": {"keyword": ["node-1"]}}}),
+            data_source_type="database",
+        )
+        sqlite_session.add_all([dataset, keyword_table])
+        sqlite_session.flush()
+
+        result = keyword_table.get_keyword_table_dict(session=sqlite_session)
+
+        assert result == {"__data__": {"table": {"keyword": {"node-1"}}}}
+
 
 class TestAppDatasetJoin:
     """Test suite for AppDatasetJoin model."""
@@ -1085,8 +1530,8 @@ class TestModelIntegration:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            id=dataset_id,
         )
-        dataset.id = dataset_id
 
         # Create document
         document = Document(
@@ -1099,8 +1544,8 @@ class TestModelIntegration:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
             word_count=100,
+            id=document_id,
         )
-        document.id = document_id
 
         # Create segment
         segment = DocumentSegment(
@@ -1124,7 +1569,13 @@ class TestModelIntegration:
         assert document.word_count == 100
         assert segment.status == SegmentStatus.COMPLETED
 
-    def test_document_to_dict_serialization(self):
+    @pytest.mark.parametrize("sqlite_session", [(Document, DocumentSegment)], indirect=True)
+    def test_document_to_dict_serialization(
+        self,
+        sqlite_session: Session,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+    ):
         """Test document to_dict method for serialization."""
         # Arrange
         tenant_id = str(uuid4())
@@ -1143,20 +1594,20 @@ class TestModelIntegration:
             word_count=100,
             indexing_status=IndexingStatus.COMPLETED,
         )
+        sqlite_session.add(document)
+        sqlite_session.flush()
+        sqlite_session.add_all(_make_segments(document, [2, 2, 2, 2, 2]))
+        sqlite_session.commit()
+        monkeypatch.setattr(dataset_module.db, "session", scoped_session(sqlite_session_factory))
 
-        # Mock segment_count and hit_count
-        with (
-            patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)),
-            patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)),
-        ):
-            # Act
-            result = document.to_dict()
+        # Act
+        result = document.to_dict()
 
-            # Assert
-            assert result["tenant_id"] == tenant_id
-            assert result["dataset_id"] == dataset_id
-            assert result["name"] == "test.pdf"
-            assert result["word_count"] == 100
-            assert result["indexing_status"] == IndexingStatus.COMPLETED
-            assert result["segment_count"] == 5
-            assert result["hit_count"] == 10
+        # Assert
+        assert result["tenant_id"] == tenant_id
+        assert result["dataset_id"] == dataset_id
+        assert result["name"] == "test.pdf"
+        assert result["word_count"] == 100
+        assert result["indexing_status"] == IndexingStatus.COMPLETED
+        assert result["segment_count"] == 5
+        assert result["hit_count"] == 10

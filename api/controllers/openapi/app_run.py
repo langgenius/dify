@@ -1,4 +1,4 @@
-"""POST /openapi/v1/apps/<app_id>/run — mode-agnostic runner."""
+"""POST /openapi/v1/apps/<app_id>:run — mode-agnostic runner."""
 
 from __future__ import annotations
 
@@ -138,7 +138,7 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest, Session], Any]] = {
 }
 
 
-@openapi_ns.route("/apps/<string:app_id>/run")
+@openapi_ns.route("/apps/<string:app_id>:run")
 class AppRunApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,
@@ -174,7 +174,7 @@ class AppRunApi(Resource):
         return helper.compact_generate_response(stream_obj)
 
 
-@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
+@openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>:stop")
 class AppRunTaskStopApi(Resource):
     @auth_router.guard(
         scope=Scope.APPS_RUN,

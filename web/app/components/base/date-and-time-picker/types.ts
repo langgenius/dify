@@ -1,4 +1,4 @@
-import type { Placement } from '@langgenius/dify-ui/popover'
+import type { PopoverTriggerProps } from '@langgenius/dify-ui/popover'
 import type { Dayjs } from 'dayjs'
 
 export enum ViewType {
@@ -12,10 +12,13 @@ export enum Period {
   PM = 'PM',
 }
 
+type PopoverTriggerRender = Exclude<NonNullable<PopoverTriggerProps['render']>, React.ReactElement>
+type TriggerRenderProps = Parameters<PopoverTriggerRender>[0]
+type TriggerState = Parameters<PopoverTriggerRender>[1]
+
 export type TriggerProps = {
   value: Dayjs | undefined
   selectedDate: Dayjs | undefined
-  isOpen: boolean
   handleClear: (e: React.MouseEvent) => void
   handleClickTrigger: (e: React.MouseEvent) => void
 }
@@ -28,7 +31,11 @@ export type DatePickerProps = {
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
   triggerWrapClassName?: string
-  renderTrigger?: (props: TriggerProps) => React.ReactElement
+  renderTrigger?: (
+    props: TriggerRenderProps,
+    state: TriggerState,
+    params: TriggerProps,
+  ) => React.ReactElement
   minuteFilter?: (minutes: string[]) => string[]
   noConfirm?: boolean
   getIsDateDisabled?: (date: Dayjs) => boolean
@@ -51,7 +58,6 @@ export type DatePickerFooterProps = {
 }
 
 export type TriggerParams = {
-  isOpen: boolean
   inputElem: React.ReactNode
   onClick: (e: React.MouseEvent) => void
 }
@@ -61,14 +67,16 @@ export type TimePickerProps = {
   placeholder?: string
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
-  renderTrigger?: (props: TriggerParams) => React.ReactElement
+  renderTrigger?: (
+    props: TriggerRenderProps,
+    state: TriggerState,
+    params: TriggerParams,
+  ) => React.ReactElement
   title?: string
   minuteFilter?: (minutes: string[]) => string[]
-  popupClassName?: string
   notClearable?: boolean
   triggerFullWidth?: boolean
   showTimezone?: boolean
-  placement?: Placement
 }
 
 export type TimePickerFooterProps = {

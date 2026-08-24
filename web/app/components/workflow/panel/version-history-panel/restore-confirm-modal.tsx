@@ -11,6 +11,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean
@@ -31,17 +32,19 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
     <AlertDialog
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <AlertDialogContent className="overflow-hidden! border-none text-left align-middle shadow-xl">
         <div className="flex flex-col gap-y-2 p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
-            {`${t('common.restore', { ns: 'workflow' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
+            {`${t(($) => $['common.restore'], { ns: 'workflow' })} ${getWorkflowVersionName(
+              versionInfo,
+              t(($) => $['versionHistory.defaultName'], { ns: 'workflow' }),
+            )}`}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-md-regular text-text-secondary">
-            {t('versionHistory.restorationTip', { ns: 'workflow' })}
+            {t(($) => $['versionHistory.restorationTip'], { ns: 'workflow' })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
@@ -50,10 +53,14 @@ const RestoreConfirmModal: FC<RestoreConfirmModalProps> = ({
             variant="secondary"
             closeProps={{ nativeButton: false }}
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t(($) => $['operation.cancel'], { ns: 'common' })}
           </AlertDialogCancelButton>
-          <AlertDialogConfirmButton nativeButton={false} tone="default" onClick={onRestore.bind(null, versionInfo)}>
-            {t('common.restore', { ns: 'workflow' })}
+          <AlertDialogConfirmButton
+            nativeButton={false}
+            tone="default"
+            onClick={onRestore.bind(null, versionInfo)}
+          >
+            {t(($) => $['common.restore'], { ns: 'workflow' })}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

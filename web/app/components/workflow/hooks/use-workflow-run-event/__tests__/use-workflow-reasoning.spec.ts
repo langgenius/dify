@@ -32,7 +32,10 @@ describe('useWorkflowReasoning', () => {
     result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'a', node_id: 'llm-1' }))
     result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: 'b', node_id: 'llm-2' }))
 
-    expect(store.getState().workflowRunningData!.reasoningContent).toEqual({ 'llm-1': 'a', 'llm-2': 'b' })
+    expect(store.getState().workflowRunningData!.reasoningContent).toEqual({
+      'llm-1': 'a',
+      'llm-2': 'b',
+    })
   })
 
   it('falls back to "_" when the chunk carries no node id', () => {
@@ -52,7 +55,9 @@ describe('useWorkflowReasoning', () => {
       },
     })
 
-    result.current.handleWorkflowReasoning(reasoningChunk({ reasoning: '', node_id: 'llm', is_final: true }))
+    result.current.handleWorkflowReasoning(
+      reasoningChunk({ reasoning: '', node_id: 'llm', is_final: true }),
+    )
 
     const state = store.getState().workflowRunningData!
     expect(state.reasoningContent).toEqual({ llm: 'done' })

@@ -7,11 +7,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useBoolean } from 'ahooks'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
 type Props = Readonly<{
   isActive?: boolean
@@ -35,50 +34,32 @@ const Operation: FC<Props> = ({
   onDelete,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [isHovering, { setTrue: setIsHovering, setFalse: setNotHovering }] = useBoolean(false)
-  useEffect(() => {
-    if (!isItemHovering && !isHovering)
-      setOpen(false)
-  }, [isItemHovering, isHovering])
   const handleDeferredAction = useCallback((action?: () => void) => {
-    if (!action)
-      return
-    setOpen(false)
+    if (!action) return
     queueMicrotask(action)
   }, [])
   return (
-    <DropdownMenu
-      modal={false}
-      open={open}
-      onOpenChange={setOpen}
-    >
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        render={(
-          <ActionButton
-            className={cn((isItemHovering || open) ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0')}
-            state={
-              isActive
-                ? ActionButtonState.Active
-                : open
-                  ? ActionButtonState.Hover
-                  : ActionButtonState.Default
-            }
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+            data-active={isActive ? '' : undefined}
+            className={cn(
+              'pointer-events-none opacity-0 data-active:bg-state-accent-active data-active:text-text-accent data-active:hover:bg-state-accent-active-alt data-popup-open:pointer-events-auto data-popup-open:bg-state-base-hover data-popup-open:opacity-100 data-active:data-popup-open:bg-state-accent-active data-active:data-popup-open:text-text-accent',
+              isItemHovering && 'pointer-events-auto opacity-100',
+            )}
           >
             <span aria-hidden className="i-ri-more-fill size-4" />
-          </ActionButton>
-        )}
-        onClick={e => e.stopPropagation()}
+          </IconButton>
+        }
+        onClick={(e) => e.stopPropagation()}
       />
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="min-w-[120px]"
-        popupProps={{
-          onMouseEnter: setIsHovering,
-          onMouseLeave: setNotHovering,
-          onClick: e => e.stopPropagation(),
-        }}
+        className="min-w-[120px]"
+        onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenuItem
           className="gap-2 px-2 system-md-regular"
@@ -87,9 +68,17 @@ const Operation: FC<Props> = ({
             togglePin()
           }}
         >
-          {isPinned && <span aria-hidden className="i-ri-unpin-line size-4 shrink-0 text-text-tertiary" />}
-          {!isPinned && <span aria-hidden className="i-ri-pushpin-line size-4 shrink-0 text-text-tertiary" />}
-          <span className="grow">{isPinned ? t('sidebar.action.unpin', { ns: 'explore' }) : t('sidebar.action.pin', { ns: 'explore' })}</span>
+          {isPinned && (
+            <span aria-hidden className="i-ri-unpin-line size-4 shrink-0 text-text-tertiary" />
+          )}
+          {!isPinned && (
+            <span aria-hidden className="i-ri-pushpin-line size-4 shrink-0 text-text-tertiary" />
+          )}
+          <span className="grow">
+            {isPinned
+              ? t(($) => $['sidebar.action.unpin'], { ns: 'explore' })
+              : t(($) => $['sidebar.action.pin'], { ns: 'explore' })}
+          </span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem
@@ -100,7 +89,7 @@ const Operation: FC<Props> = ({
             }}
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span className="grow">{t('sidebar.action.rename', { ns: 'explore' })}</span>
+            <span className="grow">{t(($) => $['sidebar.action.rename'], { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
         {isShowDelete && (
@@ -113,7 +102,7 @@ const Operation: FC<Props> = ({
             }}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span className="grow">{t('sidebar.action.delete', { ns: 'explore' })}</span>
+            <span className="grow">{t(($) => $['sidebar.action.delete'], { ns: 'explore' })}</span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

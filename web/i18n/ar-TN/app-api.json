@@ -3,7 +3,7 @@
   "actionMsg.deleteConfirmTitle": "حذف هذا المفتاح السري؟",
   "actionMsg.ok": "موافق",
   "apiKey": "مفتاح API",
-  "apiKeyModal.apiSecretKey": "مفتاح API السري",
+  "apiKeyModal.apiSecretKey": "مفتاح API",
   "apiKeyModal.apiSecretKeyTips": "لمنع إساءة استخدام API، قم بحماية مفتاح API الخاص بك. تجنب استخدامه كنص عادي في كود الواجهة الأمامية. :)",
   "apiKeyModal.createNewSecretKey": "إنشاء مفتاح سري جديد",
   "apiKeyModal.created": "تم الإنشاء",

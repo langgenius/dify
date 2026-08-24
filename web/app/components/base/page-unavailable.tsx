@@ -13,14 +13,14 @@ const PageUnavailable = ({ className }: PageUnavailableProps) => {
   return (
     <div className={cn('flex h-screen w-screen items-center justify-center', className)}>
       <h1
-        className="mr-5 h-[50px] shrink-0 pr-5 text-[24px] leading-[50px] font-medium"
+        className="mr-5 h-12.5 shrink-0 pr-5 text-[24px] leading-12.5 font-medium"
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
         }}
       >
         404
       </h1>
-      <div className="text-sm">{t('pageUnavailable', { ns: 'common' })}</div>
+      <div className="text-sm">{t(($) => $.pageUnavailable, { ns: 'common' })}</div>
     </div>
   )
 }

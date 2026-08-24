@@ -1,12 +1,16 @@
 import json
 import logging
+from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEntity
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan
+from extensions.storage.storage_type import StorageType
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 
 
@@ -66,9 +70,21 @@ class RagPipelineTaskProxyTestDataFactory:
         return RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
 
     @staticmethod
-    def create_mock_upload_file(file_id: str = "file-123") -> Mock:
-        """Create mock upload file."""
-        upload_file = Mock()
+    def create_upload_file(file_id: str = "file-123") -> UploadFile:
+        """Create a transient upload file returned by the mocked storage service."""
+        upload_file = UploadFile(
+            tenant_id="tenant-123",
+            storage_type=StorageType.LOCAL,
+            key="rag-pipeline.json",
+            name="rag-pipeline.json",
+            size=1,
+            extension="json",
+            mime_type="application/json",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by="user-456",
+            created_at=datetime(2025, 1, 1),
+            used=True,
+        )
         upload_file.id = file_id
         return upload_file
 
@@ -155,8 +171,8 @@ class TestRagPipelineTaskProxy:
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
-        mock_file_service.upload_text.return_value = mock_upload_file
+        upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
+        mock_file_service.upload_text.return_value = upload_file
 
         # Act
         result = proxy._upload_invoke_entities()
@@ -193,8 +209,8 @@ class TestRagPipelineTaskProxy:
         proxy = RagPipelineTaskProxy("tenant-123", "user-456", entities)
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-456")
-        mock_file_service.upload_text.return_value = mock_upload_file
+        upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-456")
+        mock_file_service.upload_text.return_value = upload_file
 
         # Act
         result = proxy._upload_invoke_entities()
@@ -331,7 +347,7 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
+        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
         mock_file_service.upload_text.return_value = mock_upload_file
 
         # Act
@@ -357,7 +373,7 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
+        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
         mock_file_service.upload_text.return_value = mock_upload_file
 
         # Act
@@ -381,7 +397,7 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
+        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
         mock_file_service.upload_text.return_value = mock_upload_file
 
         # Act
@@ -399,9 +415,8 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = Mock()
-        mock_upload_file.id = ""  # Empty file ID
-        mock_file_service.upload_text.return_value = mock_upload_file
+        upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("")
+        mock_file_service.upload_text.return_value = upload_file
 
         # Act & Assert
         with pytest.raises(ValueError, match="upload_file_id is empty"):
@@ -422,7 +437,7 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
+        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
         mock_file_service.upload_text.return_value = mock_upload_file
 
         # Act
@@ -446,7 +461,7 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
+        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
         mock_file_service.upload_text.return_value = mock_upload_file
 
         # Act
@@ -472,7 +487,7 @@ class TestRagPipelineTaskProxy:
 
         mock_file_service = Mock()
         mock_file_service_class.return_value = mock_file_service
-        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_mock_upload_file("file-123")
+        mock_upload_file = RagPipelineTaskProxyTestDataFactory.create_upload_file("file-123")
         mock_file_service.upload_text.return_value = mock_upload_file
 
         # Act

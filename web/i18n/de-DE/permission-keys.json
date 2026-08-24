@@ -1,8 +1,10 @@
 {
+  "agent.manage": "Agents verwalten",
   "api_extension.manage": "API-Erweiterungskonfiguration verwalten",
   "app.access_config": "App-Zugriffsberechtigungen konfigurieren",
   "app.acl.access_config": "App-Zugriffsberechtigungen konfigurieren",
   "app.acl.delete": "App löschen",
+  "app.acl.deploy": "App bereitstellen",
   "app.acl.edit": "App bearbeiten und orchestrieren",
   "app.acl.import_export_dsl": "DSL importieren / exportieren",
   "app.acl.log_and_annotation": "Auf Logs und Annotationen zugreifen",

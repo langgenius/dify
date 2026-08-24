@@ -1,27 +1,17 @@
-/* eslint-disable react-refresh/only-export-components, react/component-hook-factories */
+/* oxlint-disable react/only-export-components */
 'use client'
+import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type { Dayjs } from 'dayjs'
+import type { SelectorParam } from 'i18next'
 import type { FC } from 'react'
 import type { ChartRow } from './app-chart-utils'
+import { useQuery } from '@tanstack/react-query'
 import ReactECharts from 'echarts-for-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import Loading from '@/app/components/base/loading'
-import {
-  useAppAverageResponseTime,
-  useAppAverageSessionInteractions,
-  useAppDailyConversations,
-  useAppDailyEndUsers,
-  useAppDailyMessages,
-  useAppSatisfactionRate,
-  useAppTokenCosts,
-  useAppTokensPerSecond,
-  useWorkflowAverageInteractions,
-  useWorkflowDailyConversations,
-  useWorkflowDailyTerminals,
-  useWorkflowTokenCosts,
-} from '@/service/use-apps'
+import { consoleQuery } from '@/service/client'
 import {
   buildChartOptions,
   CHART_TYPE_CONFIG,
@@ -58,7 +48,7 @@ type IBizChartProps = {
 
 type IChartProps = {
   className?: string
-  basicInfo: { title: string, explanation: string, timePeriod: string }
+  basicInfo: { title: string; explanation: string; timePeriod: string }
   valueKey?: string
   isAvg?: boolean
   unit?: string
@@ -96,11 +86,14 @@ const Chart: React.FC<IChartProps> = ({
     unit,
   })
   const tokenSummary = getTokenSummary(statistics)
-  const showTokenSummary = CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
-  const isZeroSummary = summaryValue === '0' || summaryValue === '0 ms'
+  const showTokenSummary =
+    CHART_TYPE_CONFIG[chartType].showTokens && hasNonZeroChartData(statistics, 'total_price')
+  const isZeroSummary = !hasNonZeroChartData(statistics, yField)
 
   return (
-    <div className={`flex h-[316px] w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-[480px] ${className ?? ''}`}>
+    <div
+      className={`flex h-79 w-full min-w-0 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg xl:min-w-120 ${className ?? ''}`}
+    >
       <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <div className="flex min-w-0 items-center">
           <div className="min-w-0 truncate system-sm-semibold-uppercase text-text-secondary">
@@ -114,26 +107,26 @@ const Chart: React.FC<IChartProps> = ({
         </div>
       </div>
       <div className="flex h-8 shrink-0 items-baseline gap-1 px-6 py-1">
-        <div className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}>
+        <div
+          className={`shrink-0 title-3xl-semi-bold ${isZeroSummary ? 'text-text-quaternary' : 'text-text-primary'}`}
+        >
           {summaryValue}
         </div>
         {showTokenSummary && (
           <div className="min-w-0 truncate system-sm-medium text-text-tertiary">
-            {t('analysis.tokenUsage.consumed', { ns: 'appOverview' })}
-            {' '}
-            Tokens
-            {' '}
+            {t(($) => $['analysis.tokenUsage.consumed'], { ns: 'appOverview' })} Tokens{' '}
             <span>(</span>
-            <span className="text-orange-400">
-              ~
-              {tokenSummary}
-            </span>
+            <span className="text-orange-400">~{tokenSummary}</span>
             <span>)</span>
           </div>
         )}
       </div>
-      <div className="h-[240px] shrink-0 px-6 pb-4">
-        <ReactECharts option={options} opts={ECHARTS_RENDER_OPTIONS} style={{ height: '100%', width: '100%' }} />
+      <div className="h-60 shrink-0 px-6 pb-4">
+        <ReactECharts
+          option={options}
+          opts={ECHARTS_RENDER_OPTIONS}
+          style={{ height: '100%', width: '100%' }}
+        />
       </div>
     </div>
   )
@@ -143,45 +136,77 @@ type ChartResponse = {
   data: ChartRow[]
 }
 
-type UseChartData = (id: string, query?: PeriodParams['query']) => {
-  data?: ChartResponse
-  isLoading: boolean
-}
+type ChartQueryOptions<TData extends ChartResponse> = (
+  id: string,
+  query?: PeriodParams['query'],
+) => UseQueryOptions<TData, Error, TData, QueryKey>
 
-type BizChartConfig = {
+const CHART_TRANSLATION_SELECTOR_MAP = {
+  'analysis.activeUsers.explanation': ($) => $['analysis.activeUsers.explanation'],
+  'analysis.activeUsers.title': ($) => $['analysis.activeUsers.title'],
+  'analysis.avgResponseTime.explanation': ($) => $['analysis.avgResponseTime.explanation'],
+  'analysis.avgResponseTime.title': ($) => $['analysis.avgResponseTime.title'],
+  'analysis.avgSessionInteractions.explanation': ($) =>
+    $['analysis.avgSessionInteractions.explanation'],
+  'analysis.avgSessionInteractions.title': ($) => $['analysis.avgSessionInteractions.title'],
+  'analysis.avgUserInteractions.explanation': ($) => $['analysis.avgUserInteractions.explanation'],
+  'analysis.avgUserInteractions.title': ($) => $['analysis.avgUserInteractions.title'],
+  'analysis.ms': ($) => $['analysis.ms'],
+  'analysis.tokenPS': ($) => $['analysis.tokenPS'],
+  'analysis.tokenUsage.explanation': ($) => $['analysis.tokenUsage.explanation'],
+  'analysis.tokenUsage.title': ($) => $['analysis.tokenUsage.title'],
+  'analysis.totalConversations.explanation': ($) => $['analysis.totalConversations.explanation'],
+  'analysis.totalConversations.title': ($) => $['analysis.totalConversations.title'],
+  'analysis.totalMessages.explanation': ($) => $['analysis.totalMessages.explanation'],
+  'analysis.totalMessages.title': ($) => $['analysis.totalMessages.title'],
+  'analysis.tps.explanation': ($) => $['analysis.tps.explanation'],
+  'analysis.tps.title': ($) => $['analysis.tps.title'],
+  'analysis.userSatisfactionRate.explanation': ($) =>
+    $['analysis.userSatisfactionRate.explanation'],
+  'analysis.userSatisfactionRate.title': ($) => $['analysis.userSatisfactionRate.title'],
+} satisfies Record<string, SelectorParam<'appOverview'>>
+
+type ChartTranslationKey = keyof typeof CHART_TRANSLATION_SELECTOR_MAP
+
+type BizChartConfig<TData extends ChartResponse> = {
   chartType: keyof typeof CHART_TYPE_CONFIG
-  titleKey: string
-  explanationKey: string
-  useChartData: UseChartData
+  titleKey: ChartTranslationKey
+  explanationKey: ChartTranslationKey
+  queryOptions: ChartQueryOptions<TData>
   valueKey?: string
   emptyValueKey?: string
   yMaxWhenEmpty: number
   isAvg?: boolean
-  unitKey?: string
+  unitKey?: ChartTranslationKey
   className?: string
 }
 
-const createBizChartComponent = ({
+const createBizChartComponent = <TData extends ChartResponse>({
   chartType,
   titleKey,
   explanationKey,
-  useChartData,
+  queryOptions,
   valueKey,
   emptyValueKey,
   yMaxWhenEmpty,
   isAvg,
   unitKey,
   className,
-}: BizChartConfig): FC<IBizChartProps> => {
+}: BizChartConfig<TData>): FC<IBizChartProps> => {
   const BizChart: FC<IBizChartProps> = ({ id, period }) => {
     const { t } = useTranslation()
-    const { data: response, isLoading } = useChartData(id, period.query)
+    const { data: response, isLoading } = useQuery(queryOptions(id, period.query))
 
-    if (isLoading || !response)
-      return <Loading />
+    if (isLoading || !response) return <Loading />
 
     const noDataFlag = !response.data || response.data.length === 0
     const fallbackKey = emptyValueKey ?? valueKey
+    const titleSelector: SelectorParam<'appOverview'> = CHART_TRANSLATION_SELECTOR_MAP[titleKey]
+    const explanationSelector: SelectorParam<'appOverview'> =
+      CHART_TRANSLATION_SELECTOR_MAP[explanationKey]
+    const unitSelector: SelectorParam<'appOverview'> | undefined = unitKey
+      ? CHART_TRANSLATION_SELECTOR_MAP[unitKey]
+      : undefined
     const fallbackData = {
       data: getDefaultChartData({
         ...(period.query ?? defaultPeriod),
@@ -192,15 +217,19 @@ const createBizChartComponent = ({
     return (
       <Chart
         basicInfo={{
-          title: t(titleKey, titleKey, { ns: 'appOverview' }),
-          explanation: t(explanationKey, explanationKey, { ns: 'appOverview' }),
+          title: t(titleSelector, { ns: 'appOverview', defaultValue: titleKey }),
+          explanation: t(explanationSelector, { ns: 'appOverview', defaultValue: explanationKey }),
           timePeriod: period.name,
         }}
         chartData={noDataFlag ? fallbackData : response}
         chartType={chartType}
         valueKey={valueKey}
         isAvg={isAvg}
-        unit={unitKey ? t(unitKey, unitKey, { ns: 'appOverview' }) : undefined}
+        unit={
+          unitKey && unitSelector
+            ? t(unitSelector, { ns: 'appOverview', defaultValue: unitKey })
+            : undefined
+        }
         className={className}
         {...(noDataFlag && { yMax: yMaxWhenEmpty })}
       />
@@ -214,7 +243,10 @@ export const MessagesChart = createBizChartComponent({
   chartType: 'messages',
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
-  useChartData: useAppDailyMessages,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyMessages.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'message_count',
   emptyValueKey: 'message_count',
   yMaxWhenEmpty: 500,
@@ -224,7 +256,10 @@ export const ConversationsChart = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.totalConversations.title',
   explanationKey: 'analysis.totalConversations.explanation',
-  useChartData: useAppDailyConversations,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyConversations.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'conversation_count',
   emptyValueKey: 'conversation_count',
   yMaxWhenEmpty: 500,
@@ -234,7 +269,10 @@ export const EndUsersChart = createBizChartComponent({
   chartType: 'endUsers',
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
-  useChartData: useAppDailyEndUsers,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.dailyEndUsers.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
@@ -244,7 +282,10 @@ export const AvgSessionInteractions = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.avgSessionInteractions.title',
   explanationKey: 'analysis.avgSessionInteractions.explanation',
-  useChartData: useAppAverageSessionInteractions,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.averageSessionInteractions.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'interactions',
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,
@@ -255,7 +296,10 @@ export const AvgResponseTime = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.avgResponseTime.title',
   explanationKey: 'analysis.avgResponseTime.explanation',
-  useChartData: useAppAverageResponseTime,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.averageResponseTime.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'latency',
   emptyValueKey: 'latency',
   yMaxWhenEmpty: 500,
@@ -267,7 +311,10 @@ export const TokenPerSecond = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.tps.title',
   explanationKey: 'analysis.tps.explanation',
-  useChartData: useAppTokensPerSecond,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.tokensPerSecond.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'tps',
   emptyValueKey: 'tps',
   yMaxWhenEmpty: 100,
@@ -280,7 +327,10 @@ export const UserSatisfactionRate = createBizChartComponent({
   chartType: 'endUsers',
   titleKey: 'analysis.userSatisfactionRate.title',
   explanationKey: 'analysis.userSatisfactionRate.explanation',
-  useChartData: useAppSatisfactionRate,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.userSatisfactionRate.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'rate',
   emptyValueKey: 'rate',
   yMaxWhenEmpty: 1000,
@@ -292,7 +342,10 @@ export const CostChart = createBizChartComponent({
   chartType: 'costs',
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
-  useChartData: useAppTokenCosts,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.statistics.tokenCosts.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
@@ -302,7 +355,10 @@ export const WorkflowMessagesChart = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.totalMessages.title',
   explanationKey: 'analysis.totalMessages.explanation',
-  useChartData: useWorkflowDailyConversations,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.dailyConversations.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'runs',
   emptyValueKey: 'runs',
   yMaxWhenEmpty: 500,
@@ -312,7 +368,10 @@ export const WorkflowDailyTerminalsChart = createBizChartComponent({
   chartType: 'endUsers',
   titleKey: 'analysis.activeUsers.title',
   explanationKey: 'analysis.activeUsers.explanation',
-  useChartData: useWorkflowDailyTerminals,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.dailyTerminals.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'terminal_count',
   emptyValueKey: 'terminal_count',
   yMaxWhenEmpty: 500,
@@ -322,7 +381,10 @@ export const WorkflowCostChart = createBizChartComponent({
   chartType: 'workflowCosts',
   titleKey: 'analysis.tokenUsage.title',
   explanationKey: 'analysis.tokenUsage.explanation',
-  useChartData: useWorkflowTokenCosts,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.tokenCosts.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'token_count',
   emptyValueKey: 'token_count',
   yMaxWhenEmpty: 100,
@@ -332,7 +394,10 @@ export const AvgUserInteractions = createBizChartComponent({
   chartType: 'conversations',
   titleKey: 'analysis.avgUserInteractions.title',
   explanationKey: 'analysis.avgUserInteractions.explanation',
-  useChartData: useWorkflowAverageInteractions,
+  queryOptions: (id, query) =>
+    consoleQuery.apps.byAppId.workflow.statistics.averageAppInteractions.get.queryOptions({
+      input: { params: { app_id: id }, query },
+    }),
   valueKey: 'interactions',
   emptyValueKey: 'interactions',
   yMaxWhenEmpty: 500,

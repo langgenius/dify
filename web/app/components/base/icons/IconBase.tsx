@@ -13,14 +13,12 @@ type IconBaseProps = {
   style?: React.CSSProperties
 }
 
-const IconBase = (
-  {
-    ref,
-    ...props
-  }: IconBaseProps & {
-    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
-  },
-) => {
+const IconBase = ({
+  ref,
+  ...props
+}: IconBaseProps & {
+  ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
+}) => {
   const { data, className, onClick, style, ...restProps } = props
 
   return generate(data.icon, `svg-${data.name}`, {
@@ -30,7 +28,7 @@ const IconBase = (
     'data-icon': data.name,
     'aria-hidden': 'true',
     ...restProps,
-    'ref': ref,
+    ref,
   })
 }
 

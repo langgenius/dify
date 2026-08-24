@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from io import BytesIO
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,25 +17,49 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser, IconType
+from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
 
-def _app_model() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _app_model() -> App:
+    return App(
+        id="app-1",
+        tenant_id="tenant-1",
+        name="Web App",
+        description="",
+        mode=AppMode.CHAT,
+        icon_type=IconType.EMOJI,
+        icon="robot",
+        icon_background="#FFFFFF",
+        enable_site=True,
+        enable_api=False,
+        max_active_requests=0,
+    )
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1", external_user_id="ext-1")
+def _end_user() -> EndUser:
+    return EndUser(
+        id="eu-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        type=EndUserType.BROWSER,
+        external_user_id="ext-1",
+        name="Web User",
+        session_id="session-1",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +108,16 @@ class TestAudioApi:
 
     @patch(
         "controllers.web.audio.AudioService.transcript_asr",
+        side_effect=SpeechToTextDisabledServiceError(),
+    )
+    def test_speech_to_text_disabled(self, mock_asr: MagicMock, app: Flask) -> None:
+        data = {"file": (BytesIO(b"x"), "x.mp3")}
+        with app.test_request_context("/audio-to-text", method="POST", data=data, content_type="multipart/form-data"):
+            with pytest.raises(SpeechToTextDisabledError):
+                AudioApi().post(_app_model(), _end_user())
+
+    @patch(
+        "controllers.web.audio.AudioService.transcript_asr",
         side_effect=ProviderTokenNotInitError(description="no token"),
     )
     def test_provider_not_init(self, mock_asr: MagicMock, app: Flask) -> None:
@@ -128,15 +161,14 @@ class TestTextApi:
     def test_happy_path_with_message_ref(self, mock_ns: MagicMock, mock_tts: MagicMock, app: Flask) -> None:
         message_id = "550e8400-e29b-41d4-a716-446655440000"
         mock_ns.payload = {"text": "hello", "message_id": message_id}
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="chat")
+        app_model = _app_model()
 
         with app.test_request_context("/text-to-audio", method="POST"):
             result = TextApi().post(app_model, _end_user())
 
         assert result == "audio-bytes"
         assert mock_tts.call_args.kwargs["message_ref"] == MessageRef(
-            "tenant-1",
-            "app-1",
+            AppRef("tenant-1", "app-1"),
             message_id,
             end_user_id="eu-1",
         )

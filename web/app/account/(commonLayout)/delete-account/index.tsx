@@ -23,29 +23,30 @@ export default function DeleteAccount(props: DeleteAccountProps) {
     try {
       setShowVerifyEmail(true)
       setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
   }, [setCountdownLeftTime])
 
-  if (showFeedbackDialog)
-    return <FeedBack onCancel={props.onCancel} onConfirm={props.onConfirm} />
+  if (showFeedbackDialog) return <FeedBack onCancel={props.onCancel} onConfirm={props.onConfirm} />
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          props.onCancel()
+        if (!open) props.onCancel()
       }}
     >
       <DialogContent
-        className="max-w-[480px] overflow-hidden!"
-        backdropClassName="bg-background-overlay-backdrop backdrop-blur-[6px]"
+        className="max-w-120 overflow-hidden!"
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
       >
         <DialogTitle className="pr-8 pb-3 title-2xl-semi-bold text-text-primary">
-          {t('account.delete', { ns: 'common' })}
+          {t(($) => $['account.delete'], { ns: 'common' })}
         </DialogTitle>
-        {!showVerifyEmail && <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />}
+        {!showVerifyEmail && (
+          <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />
+        )}
         {showVerifyEmail && (
           <VerifyEmail
             onCancel={props.onCancel}

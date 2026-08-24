@@ -1,12 +1,16 @@
 {
   "name": "@dify/contracts",
-  "type": "module",
   "version": "0.0.0-private",
   "private": true,
+  "type": "module",
   "exports": {
     "./marketplace": {
       "types": "./marketplace.ts",
       "import": "./marketplace.ts"
+    },
+    "./console": {
+      "types": "./console.ts",
+      "import": "./console.ts"
     },
     "./api/*": {
       "types": "./generated/api/*.ts",
@@ -15,14 +19,23 @@
     "./enterprise/*": {
       "types": "./generated/enterprise/*.ts",
       "import": "./generated/enterprise/*.ts"
+    },
+    "./enterprise-app-deploy/*": {
+      "types": "./generated/enterprise-app-deploy/*.ts",
+      "import": "./generated/enterprise-app-deploy/*.ts"
+    },
+    "./knowledge-fs/*": {
+      "types": "./generated/knowledge-fs/*.ts",
+      "import": "./generated/knowledge-fs/*.ts"
     }
   },
   "scripts": {
-    "gen-api-contract": "pnpm gen-api-openapi && pnpm gen-api-contract-from-openapi",
-    "gen-api-contract-from-openapi": "node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && vp fmt generated/api && eslint --fix generated/api",
-    "gen-api-openapi": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi",
+    "gen-api-contract": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi && uv run --project ../../api ../../api/dev/generate_fastopenapi_specs.py --output-dir openapi && node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && vp fmt generated/api",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
-    "type-check": "tsgo"
+    "gen-enterprise-app-deploy-contract": "openapi-ts -f openapi-ts.enterprise-app-deploy.config.ts",
+    "gen-knowledge-fs-contract": "node scripts/generate-knowledge-fs-contract.mjs",
+    "test": "vp test",
+    "type-check": "tsc"
   },
   "dependencies": {
     "@orpc/contract": "catalog:",
@@ -31,12 +44,12 @@
   "devDependencies": {
     "@dify/tsconfig": "workspace:*",
     "@hey-api/openapi-ts": "catalog:",
-    "@types/js-yaml": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native-preview": "catalog:",
-    "eslint": "catalog:",
+    "@typescript/native": "catalog:",
     "js-yaml": "catalog:",
     "typescript": "catalog:",
-    "vite-plus": "catalog:"
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }

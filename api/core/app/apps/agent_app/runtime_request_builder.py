@@ -10,9 +10,8 @@ used by workflow runs.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Literal, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -30,6 +29,8 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
+from core.app.llm.model_access import resolve_model_context_window
+from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
 from core.workflow.nodes.agent_v2.dify_tools_builder import (
     WorkflowAgentDifyToolLayersBuilder,
     WorkflowAgentDifyToolsBuilder,
@@ -43,10 +44,11 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_config_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
+    load_runtime_agent_skill_configs,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulToolsConfig
 from models.provider_ids import ModelProviderID
-from services.agent.prompt_mentions import build_soul_mention_resolver, expand_prompt_mentions
+from services.agent.prompt_mentions import expand_prompt_mentions
 
 
 class AgentAppRuntimeRequestBuildError(ValueError):
@@ -55,10 +57,6 @@ class AgentAppRuntimeRequestBuildError(ValueError):
     def __init__(self, error_code: str, message: str) -> None:
         self.error_code = error_code
         super().__init__(message)
-
-
-class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +68,8 @@ class AgentAppRuntimeBuildContext:
     conversation_id: str
     user_query: str
     idempotency_key: str
+    binding_id: str
+    backend_binding_ref: str
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
@@ -81,6 +81,7 @@ class AgentAppRuntimeRequest:
     request: CreateRunRequest
     redacted_request: dict[str, Any]
     metadata: dict[str, Any]
+    binding_id: str
 
 
 class AgentAppRuntimeRequestBuilder:
@@ -89,11 +90,9 @@ class AgentAppRuntimeRequestBuilder:
     def __init__(
         self,
         *,
-        credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
         dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
-        self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
@@ -106,7 +105,6 @@ class AgentAppRuntimeRequestBuilder:
             )
 
         metadata = self._build_metadata(context)
-        credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
@@ -124,30 +122,41 @@ class AgentAppRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        config_layer_config = None
-        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
-        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(
-                agent_soul,
-                agent_id=context.agent_id,
-                config_version_id=context.agent_config_snapshot_id,
-                config_version_kind=context.agent_config_version_kind,
-            )
-            append_runtime_warnings(metadata, config_warnings)
-            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        runtime_config_skills = load_runtime_agent_skill_configs(
+            tenant_id=context.dify_context.tenant_id,
+            agent_id=context.agent_id,
+        )
+        config_layer_config, config_warnings = build_config_layer_config(
+            agent_soul,
+            agent_id=context.agent_id,
+            config_version_id=context.agent_config_snapshot_id,
+            config_version_kind=context.agent_config_version_kind,
+            runtime_config_skills=runtime_config_skills,
+        )
+        append_runtime_warnings(metadata, config_warnings)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(
+            agent_soul,
+            runtime_config_skills=runtime_config_skills,
+        )
         knowledge_config = build_knowledge_layer_config(agent_soul)
+        context_window_tokens = resolve_model_context_window(
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+        )
+        model_plugin_id, model_provider = normalize_plugin_daemon_provider_identity(
+            ModelProviderID(agent_soul.model.model_provider),
+            agent_soul.model.plugin_id,
+        )
 
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
-                    plugin_id=self._plugin_daemon_plugin_id(
-                        plugin_id=agent_soul.model.plugin_id,
-                        model_provider=agent_soul.model.model_provider,
-                    ),
-                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
+                    plugin_id=model_plugin_id,
+                    model_provider=model_provider,
                     model=agent_soul.model.model,
-                    credentials=self._normalize_credentials(credentials),
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
+                    context_window_tokens=context_window_tokens,
                 ),
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
@@ -162,10 +171,12 @@ class AgentAppRuntimeRequestBuilder:
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
                 ),
+                backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
                 # no frontend-internal {{#…#}} marker ever reaches the model.
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
+                agent_config_version_kind=context.agent_config_version_kind,
                 user_prompt=context.user_query,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
@@ -181,7 +192,12 @@ class AgentAppRuntimeRequestBuilder:
             )
         )
         redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
-        return AgentAppRuntimeRequest(request=request, redacted_request=redacted, metadata=metadata)
+        return AgentAppRuntimeRequest(
+            request=request,
+            redacted_request=redacted,
+            metadata=metadata,
+            binding_id=context.binding_id,
+        )
 
     def _build_tool_layers(
         self,
@@ -212,30 +228,6 @@ class AgentAppRuntimeRequestBuilder:
             "agent_id": context.agent_id,
             "agent_config_snapshot_id": context.agent_config_snapshot_id,
         }
-
-    @staticmethod
-    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
-        """Return the transport plugin id expected by plugin-daemon headers."""
-        if plugin_id.count("/") == 1:
-            return plugin_id.split(":", 1)[0].split("@", 1)[0]
-        if plugin_id:
-            return ModelProviderID(plugin_id).plugin_id
-        return ModelProviderID(model_provider).plugin_id
-
-    @staticmethod
-    def _plugin_daemon_provider_name(model_provider: str) -> str:
-        """Return the provider name expected by plugin-daemon dispatch payloads."""
-        return ModelProviderID(model_provider).provider_name
-
-    @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
-        normalized: dict[str, str | int | float | bool | None] = {}
-        for key, value in credentials.items():
-            if isinstance(value, str | int | float | bool) or value is None:
-                normalized[key] = value
-            else:
-                normalized[key] = str(value)
-        return normalized
 
 
 __all__ = [

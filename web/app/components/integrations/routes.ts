@@ -11,10 +11,10 @@ export const INTEGRATION_SECTION_VALUES = [
   'extension',
 ] as const
 
-export type IntegrationSection = typeof INTEGRATION_SECTION_VALUES[number]
+export type IntegrationSection = (typeof INTEGRATION_SECTION_VALUES)[number]
 
 export const TOOL_CATEGORY_VALUES = ['builtin', 'api', 'workflow', 'mcp'] as const
-export type ToolCategory = typeof TOOL_CATEGORY_VALUES[number]
+export type ToolCategory = (typeof TOOL_CATEGORY_VALUES)[number]
 
 export type LegacyToolsSearchParams = Record<string, string | string[] | undefined>
 export type IntegrationRouteSearchParams = Record<string, string | string[] | undefined>
@@ -31,8 +31,7 @@ const isToolCategory = (value: string): value is ToolCategory => {
 }
 
 const getFirstSearchParamValue = (value: string | string[] | undefined) => {
-  if (Array.isArray(value))
-    return value[0]
+  if (Array.isArray(value)) return value[0]
 
   return value
 }
@@ -41,11 +40,10 @@ const appendSearchParams = (path: string, searchParams: IntegrationRouteSearchPa
   const params = new URLSearchParams()
 
   Object.entries(searchParams).forEach(([key, value]) => {
-    if (value === undefined)
-      return
+    if (value === undefined) return
 
     if (Array.isArray(value)) {
-      value.forEach(item => params.append(key, item))
+      value.forEach((item) => params.append(key, item))
       return
     }
 
@@ -57,8 +55,8 @@ const appendSearchParams = (path: string, searchParams: IntegrationRouteSearchPa
 }
 
 export const toolCategoryBySection: Partial<Record<IntegrationSection, ToolCategory>> = {
-  'builtin': 'builtin',
-  'mcp': 'mcp',
+  builtin: 'builtin',
+  mcp: 'mcp',
   'custom-tool': 'api',
   'workflow-tool': 'workflow',
 }
@@ -71,29 +69,29 @@ export const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
 }
 
 export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
-  'provider': '/plugins/model',
-  'builtin': '/plugins/tool',
-  'mcp': '/plugins/tool',
+  provider: '/plugins/model',
+  builtin: '/plugins/tool',
+  mcp: '/plugins/tool',
   'custom-tool': '/plugins/tool',
   'workflow-tool': '/plugins/tool',
   'data-source': '/plugins/datasource',
   'custom-endpoint': '/plugins/extension',
-  'trigger': '/plugins/trigger',
+  trigger: '/plugins/trigger',
   'agent-strategy': '/plugins/agent-strategy',
-  'extension': '/plugins/extension',
+  extension: '/plugins/extension',
 }
 
 export const integrationPathBySection: Record<IntegrationSection, string> = {
-  'provider': '/integrations/model-provider',
-  'builtin': '/integrations/tools/built-in',
+  provider: '/integrations/model-provider',
+  builtin: '/integrations/tools/built-in',
   'custom-tool': '/integrations/tools/api',
   'workflow-tool': '/integrations/tools/workflow',
-  'mcp': '/integrations/tools/mcp',
+  mcp: '/integrations/tools/mcp',
   'data-source': '/integrations/data-source',
   'custom-endpoint': '/integrations/custom-endpoint',
-  'trigger': '/integrations/trigger',
+  trigger: '/integrations/trigger',
   'agent-strategy': '/integrations/agent-strategy',
-  'extension': '/integrations/extension',
+  extension: '/integrations/extension',
 }
 
 export const buildIntegrationPath = (section: IntegrationSection) => {
@@ -108,19 +106,19 @@ export const getIntegrationRedirectPathByLegacyToolsSearchParams = (
 ) => {
   const sectionParam = getFirstSearchParamValue(searchParams.section)
   const categoryParam = getFirstSearchParamValue(searchParams.category)
-  const section = sectionParam && isIntegrationSection(sectionParam)
-    ? sectionParam
-    : categoryParam && isToolCategory(categoryParam)
-      ? sectionByToolCategory[categoryParam]
-      : 'builtin'
+  const section =
+    sectionParam && isIntegrationSection(sectionParam)
+      ? sectionParam
+      : categoryParam && isToolCategory(categoryParam)
+        ? sectionByToolCategory[categoryParam]
+        : 'builtin'
 
   const preservedSearchParams = new URLSearchParams()
   Object.entries(searchParams).forEach(([key, value]) => {
-    if (key === 'section' || key === 'category' || value === undefined)
-      return
+    if (key === 'section' || key === 'category' || value === undefined) return
 
     if (Array.isArray(value)) {
-      value.forEach(item => preservedSearchParams.append(key, item))
+      value.forEach((item) => preservedSearchParams.append(key, item))
       return
     }
 
@@ -131,10 +129,10 @@ export const getIntegrationRedirectPathByLegacyToolsSearchParams = (
   return query ? `${buildIntegrationPath(section)}?${query}` : buildIntegrationPath(section)
 }
 
-type IntegrationRouteTarget
-  = | { type: 'redirect', destination: string }
-    | { type: 'section', section: IntegrationSection }
-    | { type: 'not-found' }
+type IntegrationRouteTarget =
+  | { type: 'redirect'; destination: string }
+  | { type: 'section'; section: IntegrationSection }
+  | { type: 'not-found' }
 
 const getSectionByCanonicalPath = (path: string) => {
   const entry = Object.entries(integrationPathBySection).find(([, sectionPath]) => {
@@ -144,7 +142,10 @@ const getSectionByCanonicalPath = (path: string) => {
   return entry?.[0] as IntegrationSection | undefined
 }
 
-export const getIntegrationRouteTargetBySlug = (slug?: string[], searchParams?: IntegrationRouteSearchParams): IntegrationRouteTarget => {
+export const getIntegrationRouteTargetBySlug = (
+  slug?: string[],
+  searchParams?: IntegrationRouteSearchParams,
+): IntegrationRouteTarget => {
   const path = slug?.join('/') ?? ''
   const nestedMarketplaceCallbackPath = path.endsWith('/plugins')
     ? path.slice(0, -'/plugins'.length)
@@ -156,7 +157,10 @@ export const getIntegrationRouteTargetBySlug = (slug?: string[], searchParams?: 
   if (nestedMarketplaceCallbackSection) {
     return {
       type: 'redirect',
-      destination: appendSearchParams(buildIntegrationPath(nestedMarketplaceCallbackSection), searchParams),
+      destination: appendSearchParams(
+        buildIntegrationPath(nestedMarketplaceCallbackSection),
+        searchParams,
+      ),
     }
   }
 
@@ -170,7 +174,10 @@ export const getIntegrationRouteTargetBySlug = (slug?: string[], searchParams?: 
     case 'tools/built-in':
       return { type: 'section', section: 'builtin' }
     case 'tool/api':
-      return { type: 'redirect', destination: appendSearchParams(buildIntegrationPath('custom-tool'), searchParams) }
+      return {
+        type: 'redirect',
+        destination: appendSearchParams(buildIntegrationPath('custom-tool'), searchParams),
+      }
     case 'tools/api':
       return { type: 'section', section: 'custom-tool' }
     case 'tools/workflow':

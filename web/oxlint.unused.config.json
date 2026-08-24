@@ -1,0 +1,19 @@
+{
+  "categories": {
+    "correctness": "off"
+  },
+  "ignorePatterns": [
+    ".next/**",
+    "**/__tests__/**",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "coverage/**",
+    "public/**"
+  ],
+  "plugins": [],
+  "rules": {
+    "no-unused-vars": "error"
+  }
+}

@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from typing import Self, override
 
 from extensions.redis_names import serialize_redis_name
-from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
+from libs.broadcast_channel.channel import Producer, Subscriber, Subscription, SupportsPreparedSubscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.signals import SIG_CLOSE
 from redis import Redis, RedisCluster
@@ -68,18 +68,41 @@ class StreamsTopic:
                 logger.warning("Failed to set expire for stream key %s: %s", self._key, e, exc_info=True)
 
     def as_subscriber(self) -> Subscriber:
-        return self
+        return _StreamsSubscriber(self._client, self._key)
 
     def subscribe(self) -> Subscription:
+        return self.as_subscriber().subscribe()
+
+
+class _StreamsSubscriber(SupportsPreparedSubscription):
+    def __init__(self, client: Redis | RedisCluster, key: str):
+        self._client = client
+        self._key = key
+
+    @override
+    def subscribe(self) -> Subscription:
         return _StreamsSubscription(self._client, self._key)
+
+    @override
+    def prepare_subscription(self) -> Subscription:
+        entries = self._client.xrevrange(self._key, count=1)
+        start_id = entries[0][0] if entries else "0-0"
+        return _StreamsSubscription(self._client, self._key, start_id=start_id)
 
 
 class _StreamsSubscription(Subscription):
     _SENTINEL = object()
 
-    def __init__(self, client: Redis | RedisCluster, key: str):
+    def __init__(
+        self,
+        client: Redis | RedisCluster,
+        key: str,
+        *,
+        start_id: bytes | str = "$",
+    ):
         self._client = client
         self._key = key
+        self._start_id = start_id
 
         self._queue: queue.Queue[object] = queue.Queue()
 
@@ -104,10 +127,7 @@ class _StreamsSubscription(Subscription):
         # since this method runs in a dedicated thread, acquiring `_lock` inside this method won't cause
         # deadlock.
 
-        # Setting initial last id to `$` to signal redis that we only want new messages.
-        #
-        # ref: https://redis.io/docs/latest/commands/xread/#the-special--id
-        last_id = "$"
+        last_id = self._start_id
         try:
             while True:
                 with self._lock:
@@ -128,11 +148,17 @@ class _StreamsSubscription(Subscription):
                                 data_bytes = data.encode()
                             case bytes() | bytearray():
                                 data_bytes = bytes(data)
-                        if data_bytes is not None:
-                            if data_bytes == SIG_CLOSE:
-                                break
-                            self._queue.put_nowait(data_bytes)
                         last_id = entry_id
+                        if data_bytes is None:
+                            continue
+                        if data_bytes == SIG_CLOSE:
+                            # Close signals share the stream with normal events. Ignore signals
+                            # emitted by another subscription while this one is still open.
+                            with self._lock:
+                                if self._closed:
+                                    break
+                            continue
+                        self._queue.put_nowait(data_bytes)
         finally:
             self._queue.put_nowait(self._SENTINEL)
             with self._lock:
@@ -141,11 +167,9 @@ class _StreamsSubscription(Subscription):
 
     def _start_if_needed(self) -> None:
         """This method must be called with `_lock` held."""
-        if self._listener is not None:
-            return
-        # Ensure only one listener thread is created under concurrent calls
         if self._listener is not None or self._closed:
             return
+
         self._listener = threading.Thread(
             target=self._listen,
             name=f"redis-streams-sub-{self._key}",

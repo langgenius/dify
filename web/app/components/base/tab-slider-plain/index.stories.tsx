@@ -8,21 +8,13 @@ const OPTIONS = [
   { value: 'alerts', text: 'Alerts' },
 ]
 
-const TabSliderPlainDemo = ({
-  initialValue = 'analytics',
-}: {
-  initialValue?: string
-}) => {
+const TabSliderPlainDemo = ({ initialValue = 'analytics' }: { initialValue?: string }) => {
   const [value, setValue] = useState(initialValue)
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4 rounded-2xl border border-divider-subtle bg-components-panel-bg p-6">
       <div className="text-xs tracking-[0.18em] text-text-tertiary uppercase">Underline tabs</div>
-      <TabSliderPlain
-        value={value}
-        onChange={setValue}
-        options={OPTIONS}
-      />
+      <TabSliderPlain value={value} onChange={setValue} options={OPTIONS} />
     </div>
   )
 }
@@ -34,14 +26,15 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Underline-style navigation commonly used in dashboards. Toggle between three sections.',
+        component:
+          'Underline-style navigation commonly used in dashboards. Toggle between three sections.',
       },
     },
   },
   argTypes: {
     initialValue: {
       control: 'radio',
-      options: OPTIONS.map(option => option.value),
+      options: OPTIONS.map((option) => option.value),
     },
   },
   args: {

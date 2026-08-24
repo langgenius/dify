@@ -10,6 +10,18 @@ from flask import Flask
 from werkzeug.exceptions import BadRequest
 
 from controllers.console.app import statistic as statistic_module
+from models.account import Account
+from models.model import App
+
+
+def _account() -> Account:
+    account = Account(name="Statistics Tester", email="statistics-tester@example.com", timezone="UTC")
+    account.id = "account-1"
+    return account
+
+
+def _app_model() -> App:
+    return App(id="app-1", tenant_id="tenant-1", name="Statistics App")
 
 
 class _ConnContext:
@@ -53,7 +65,12 @@ def test_daily_message_statistic_returns_rows(app: Flask, monkeypatch: pytest.Mo
     _install_db(monkeypatch, rows)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     assert _json_payload(response) == {"data": [{"date": "2024-01-01", "message_count": 3}]}
 
@@ -67,7 +84,12 @@ def test_daily_conversation_statistic_returns_rows(app: Flask, monkeypatch: pyte
     _install_db(monkeypatch, rows)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-conversations", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     assert _json_payload(response) == {"data": [{"date": "2024-01-02", "conversation_count": 5}]}
 
@@ -81,7 +103,12 @@ def test_daily_token_cost_statistic_returns_rows(app: Flask, monkeypatch: pytest
     _install_db(monkeypatch, rows)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/token-costs", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     data = _json_payload(response)
     assert len(data["data"]) == 1
@@ -99,7 +126,12 @@ def test_daily_terminals_statistic_returns_rows(app: Flask, monkeypatch: pytest.
     _install_db(monkeypatch, rows)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-end-users", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     assert _json_payload(response) == {"data": [{"date": "2024-01-04", "terminal_count": 7}]}
 
@@ -126,7 +158,12 @@ def test_daily_message_statistic_with_invalid_time_range(app: Flask, monkeypatch
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
         with pytest.raises(BadRequest):
-            method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+            method(
+                api,
+                SimpleNamespace(start=None, end=None),
+                _account(),
+                app_model=_app_model(),
+            )
 
 
 def test_daily_message_statistic_multiple_rows(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,7 +179,12 @@ def test_daily_message_statistic_multiple_rows(app: Flask, monkeypatch: pytest.M
     _install_db(monkeypatch, rows)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     data = _json_payload(response)
     assert len(data["data"]) == 3
@@ -156,7 +198,12 @@ def test_daily_message_statistic_empty_result(app: Flask, monkeypatch: pytest.Mo
     _install_db(monkeypatch, [])
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-messages", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     assert _json_payload(response) == {"data": []}
 
@@ -175,7 +222,12 @@ def test_daily_conversation_statistic_with_time_range(app: Flask, monkeypatch: p
     monkeypatch.setattr(statistic_module, "convert_datetime_to_date", lambda field: field)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/daily-conversations", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     assert _json_payload(response) == {"data": [{"date": "2024-01-02", "conversation_count": 5}]}
 
@@ -192,7 +244,12 @@ def test_daily_token_cost_with_multiple_currencies(app: Flask, monkeypatch: pyte
     _install_db(monkeypatch, rows)
 
     with app.test_request_context("/console/api/apps/app-1/statistics/token-costs", method="GET"):
-        response = method(api, SimpleNamespace(timezone="UTC"), app_model=SimpleNamespace(id="app-1"))
+        response = method(
+            api,
+            SimpleNamespace(start=None, end=None),
+            _account(),
+            app_model=_app_model(),
+        )
 
     data = _json_payload(response)
     assert len(data["data"]) == 2

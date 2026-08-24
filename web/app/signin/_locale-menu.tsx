@@ -23,12 +23,7 @@ export default function LocaleMenu<T extends string>({
   value,
   onChange,
 }: LocaleMenuProps<T>) {
-  const selectedItem = items.find(item => item.value === value)
-  const handleValueChange = (nextValue: string) => {
-    const nextItem = items.find(item => item.value === nextValue)
-    if (nextItem)
-      onChange?.(nextItem.value)
-  }
+  const selectedItem = items.find((item) => item.value === value)
 
   return (
     <div className="w-56 text-right">
@@ -36,26 +31,25 @@ export default function LocaleMenu<T extends string>({
         <div className="relative inline-block text-left">
           <div>
             <DropdownMenuTrigger
-              render={(
+              render={
                 <button
                   type="button"
-                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-[10px] py-[6px] text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
+                  className="inline-flex w-full items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
                 />
-              )}
+              }
             >
               <span className="mr-1 i-heroicons-globe-alt size-5" aria-hidden="true" />
               {selectedItem?.name}
             </DropdownMenuTrigger>
           </div>
         </div>
-        <DropdownMenuContent
-          placement="bottom-end"
-          sideOffset={8}
-          popupClassName="w-[200px]"
-        >
-          <DropdownMenuRadioGroup value={value} onValueChange={handleValueChange}>
-            {items.map(item => (
-              <DropdownMenuRadioItem
+        <DropdownMenuContent placement="bottom-end" sideOffset={8} className="w-[200px]">
+          <DropdownMenuRadioGroup<T>
+            value={value}
+            onValueChange={(nextValue) => onChange?.(nextValue)}
+          >
+            {items.map((item) => (
+              <DropdownMenuRadioItem<T>
                 key={item.value}
                 value={item.value}
                 closeOnClick

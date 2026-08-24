@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { useTempConfigDir } from '@test/fixtures/config-dir'
 import { MemStore } from '@test/fixtures/mem-store'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Registry } from '@/auth/hosts'
 import { bufferStreams } from '@/sys/io/streams'
 import { runLogout } from './logout.js'
@@ -48,8 +48,8 @@ describe('runLogout', () => {
 
   it('throws NotLoggedIn when no active context', async () => {
     await Registry.empty('file').save()
-    await expect(runLogout({ io: bufferStreams(), reg: await Registry.load(), store: new MemStore() }))
-      .rejects
-      .toThrow(/not logged in/i)
+    await expect(
+      runLogout({ io: bufferStreams(), reg: await Registry.load(), store: new MemStore() }),
+    ).rejects.toThrow(/not logged in/i)
   })
 })

@@ -145,7 +145,7 @@ describe('CreateAppTemplateDialog', () => {
             show={true}
             onSuccess={vi.fn()}
             onClose={vi.fn()}
-          // onCreateFromBlank is undefined
+            // onCreateFromBlank is undefined
           />,
         )
       }).not.toThrow()

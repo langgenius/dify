@@ -10,15 +10,16 @@ export function createConsoleDynamicLink<TContext extends ClientContext>(
 
   function getRouterLink(path: readonly string[]) {
     const segment = path[0]
-    if (!segment)
-      throw new Error('Console contract path is empty.')
+    if (!segment) throw new Error('Console contract path is empty.')
 
     let routerLinkPromise = routerLinkPromises.get(segment)
     if (!routerLinkPromise) {
-      routerLinkPromise = loadConsoleContractForSegment(segment).then(createLink).catch((error) => {
-        routerLinkPromises.delete(segment)
-        throw error
-      })
+      routerLinkPromise = loadConsoleContractForSegment(segment)
+        .then(createLink)
+        .catch((error) => {
+          routerLinkPromises.delete(segment)
+          throw error
+        })
       routerLinkPromises.set(segment, routerLinkPromise)
     }
 

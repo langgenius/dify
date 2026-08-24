@@ -17,14 +17,16 @@ logger = logging.getLogger(__name__)
 
 creators_platform_api_url = URL(str(dify_config.CREATORS_PLATFORM_API_URL))
 
+_CREATORS_REQUEST_TIMEOUT: httpx.Timeout = httpx.Timeout(30.0, connect=5.0)
+
 
 def upload_dsl(dsl_file_bytes: bytes, filename: str = "template.yaml") -> str:
     url = str(creators_platform_api_url / "api/v1/templates/anonymous-upload")
-    response = httpx.post(url, files={"file": (filename, dsl_file_bytes)}, timeout=30)
+    response = httpx.post(url, files={"file": (filename, dsl_file_bytes)}, timeout=_CREATORS_REQUEST_TIMEOUT)
     response.raise_for_status()
     data = response.json()
     claim_code = data.get("data", {}).get("claim_code")
-    if not claim_code:
+    if not isinstance(claim_code, str) or not claim_code:
         raise ValueError("Creators Platform did not return a valid claim_code")
     return claim_code
 

@@ -1,8 +1,9 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { useCreateSnippetMutation } from '@/service/use-snippets'
@@ -11,15 +12,14 @@ import { canCreateAndModifySnippets } from '../utils/permission'
 export const useCreateSnippet = () => {
   const { t } = useTranslation()
   const { push } = useRouter()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const createSnippetMutation = useCreateSnippetMutation()
   const [isCreateSnippetDialogOpen, setIsCreateSnippetDialogOpen] = useState(false)
   const [isCreatingSnippet, setIsCreatingSnippet] = useState(false)
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
 
   const handleOpenCreateSnippetDialog = () => {
-    if (!canCreateAndModifySnippet)
-      return
+    if (!canCreateAndModifySnippet) return
 
     setIsCreateSnippetDialogOpen(true)
   }
@@ -34,8 +34,7 @@ export const useCreateSnippet = () => {
     graph,
     input_fields,
   }: CreateSnippetDialogPayload) => {
-    if (!canCreateAndModifySnippet)
-      return
+    if (!canCreateAndModifySnippet) return
 
     setIsCreatingSnippet(true)
 
@@ -57,14 +56,12 @@ export const useCreateSnippet = () => {
         },
       })
 
-      toast.success(t('snippet.createSuccess', { ns: 'workflow' }))
+      toast.success(t(($) => $['snippet.createSuccess'], { ns: 'workflow' }))
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
-    }
-    catch {
+    } catch {
       // The API client surfaces the response message. Avoid showing a second generic create-failed toast here.
-    }
-    finally {
+    } finally {
       setIsCreatingSnippet(false)
     }
   }

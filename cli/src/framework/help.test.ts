@@ -1,6 +1,6 @@
 import type { CommandConstructor } from './command'
 import type { CommandTree } from './registry'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { Args, Flags } from './flags'
 import { formatHelp, formatTopLevelHelp } from './help'
 
@@ -151,7 +151,9 @@ describe('formatHelp structured output', () => {
   it('emits a JSON descriptor under json format', () => {
     const ctor = makeCmd({
       description: 'Lists apps',
-      flags: { output: Flags.outputFormat({ options: ['json', 'yaml', 'name', 'wide'], default: '' }) },
+      flags: {
+        output: Flags.outputFormat({ options: ['json', 'yaml', 'name', 'wide'], default: '' }),
+      },
       args: { id: Args.string({ description: 'app id', required: true }) },
       examples: ['<%= config.bin %> get app'],
       agentGuide: 'WORKFLOW',

@@ -18,12 +18,12 @@ from tenacity import before_sleep_log, retry, retry_if_exception, stop_after_att
 
 from configs import dify_config
 from core.repositories.factory import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.node_execution_process_data import preserve_workflow_agent_binding_id
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowNodeExecution
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
-from libs.helper import extract_tenant_id
 from libs.uuid_utils import uuidv7
 from models import (
     Account,
@@ -63,6 +63,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
+        tenant_id: str,
         user: Account | EndUser,
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
@@ -72,7 +73,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
-            user: Account or EndUser object containing tenant_id, user ID, and role information
+            tenant_id: Tenant that owns the workflow node execution
+            user: Account or EndUser used for creator attribution
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
@@ -87,10 +89,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                     f"Invalid session_factory type {type(session_factory).__name__}; expected sessionmaker or Engine"
                 )
 
-        # Extract tenant_id from user
-        tenant_id = extract_tenant_id(user)
         if not tenant_id:
-            raise ValueError("User must have a tenant_id or current_tenant_id")
+            raise ValueError("tenant_id is required")
         self._tenant_id = tenant_id
 
         # Store app context
@@ -299,6 +299,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             content=value_json.encode("utf-8"),
             mimetype="application/json",
             user=self._user,
+            tenant_id=self._tenant_id,
         )
         offload = WorkflowNodeExecutionOffload(
             id=uuidv7(),
@@ -372,6 +373,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             logger.exception("Failed to save workflow node execution after all retries")
             raise
 
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Persist a caller row before an Agent v2 participant is materialized."""
+
+        self.save(execution)
+
     def _persist_to_database(self, db_model: WorkflowNodeExecutionModel):
         """
         Persist the database model to the database.
@@ -386,6 +393,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             existing = session.get(WorkflowNodeExecutionModel, db_model.id)
 
             if existing:
+                merged_process_data = preserve_workflow_agent_binding_id(
+                    existing.process_data_dict,
+                    db_model.process_data_dict,
+                )
+                db_model.process_data = (
+                    _deterministic_json_dump(merged_process_data) if merged_process_data is not None else None
+                )
                 # Update existing record by copying all non-private attributes
                 for key, value in db_model.__dict__.items():
                     if not key.startswith("_"):
@@ -442,18 +456,25 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             else:
                 db_model.outputs = self._json_encode(domain_model.outputs)
 
-        if domain_model.process_data is not None:
+        process_data = preserve_workflow_agent_binding_id(db_model.process_data_dict, domain_model.process_data)
+        if process_data is not None:
             result = self._truncate_and_upload(
-                domain_model.process_data,
+                process_data,
                 domain_model.id,
                 ExecutionOffLoadType.PROCESS_DATA,
             )
             if result is not None:
-                db_model.process_data = self._json_encode(result.truncated_value)
-                domain_model.set_truncated_process_data(result.truncated_value)
+                truncated_process_data = preserve_workflow_agent_binding_id(
+                    process_data,
+                    result.truncated_value,
+                )
+                if truncated_process_data is None:
+                    raise ValueError("truncated process data is unavailable")
+                db_model.process_data = self._json_encode(truncated_process_data)
+                domain_model.set_truncated_process_data(truncated_process_data)
                 offload_data = _replace_or_append_offload(offload_data, result.offload)
             else:
-                db_model.process_data = self._json_encode(domain_model.process_data)
+                db_model.process_data = self._json_encode(process_data)
 
         db_model.offload_data = offload_data
         with self._session_factory() as session, session.begin():

@@ -3,14 +3,28 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from core.entities.model_entities import ModelStatus
+from core.entities.provider_entities import CredentialConfiguration
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderBinding
+from enums import DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
-from models.provider import ProviderType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from models.provider import (
+    Provider,
+    ProviderCredential,
+    ProviderModel,
+    ProviderType,
+    TenantPreferredModelProvider,
+)
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
-from services.model_provider_service import ModelProviderService
+from services.model_provider_service import ModelProviderService, _ProviderSummaryState
 
 
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
@@ -59,6 +73,26 @@ def _build_provider_configuration(
     )
 
 
+def _build_model_provider_binding(
+    source: PluginInstallationSource,
+    *,
+    installation_id: str = "installation-1",
+    plugin_id: str = "langgenius/openai",
+    plugin_unique_identifier: str = "langgenius/openai:1.0.0@checksum",
+    verified: bool = True,
+) -> PluginModelProviderBinding:
+    return PluginModelProviderBinding(
+        provider="openai",
+        installation_id=installation_id,
+        plugin_id=plugin_id,
+        plugin_unique_identifier=plugin_unique_identifier,
+        runtime_type="remote" if source == PluginInstallationSource.Remote else "local",
+        source=source,
+        version="1.0.0",
+        verified=verified,
+    )
+
+
 class TestModelProviderServiceConfiguration:
     def test__get_provider_configuration_should_return_configuration_when_provider_exists(self) -> None:
         service, manager = _create_service_with_mocked_manager()
@@ -95,6 +129,391 @@ class TestModelProviderServiceConfiguration:
         assert len(result) == 1
         assert result[0].provider == "openai"
         assert result[0].custom_configuration.status.value == "no-configure"
+
+    def test_get_provider_summary_list_uses_lightweight_state_and_plugin_bindings(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        service = ModelProviderService()
+        provider = SimpleNamespace(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=I18nObject(en_US="OpenAI models"),
+            icon_small=I18nObject(en_US="icon.svg"),
+            icon_small_dark=I18nObject(en_US="icon-dark.svg"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        )
+        binding = SimpleNamespace(
+            provider="openai",
+            plugin_id="langgenius/openai",
+            installation_id="installation-1",
+            plugin_unique_identifier="langgenius/openai:1.2.3@checksum",
+            runtime_type="local",
+            source=PluginInstallationSource.Marketplace,
+            version="1.2.3",
+            verified=True,
+        )
+        state = _ProviderSummaryState(
+            has_custom_provider=True,
+            available_credentials=[
+                CredentialConfiguration(
+                    credential_id="credential-1",
+                    credential_name="Production",
+                ),
+                CredentialConfiguration(
+                    credential_id="credential-2",
+                    credential_name="Backup",
+                ),
+            ],
+            has_custom_models=True,
+            current_credential_id="credential-1",
+            current_credential_name="Production",
+            current_credential_usable=True,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        call_order: list[str] = []
+        manager_constructor = MagicMock(side_effect=AssertionError("summary must not construct ProviderManager"))
+        monkeypatch.setattr(service, "_get_provider_manager", manager_constructor)
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("bindings") or [binding]),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("providers") or [provider]),
+        )
+        monkeypatch.setattr(
+            service,
+            "_load_provider_summary_states",
+            MagicMock(return_value={provider.provider: state}),
+        )
+        monkeypatch.setattr(
+            service_module.ext_hosting_provider.hosting_configuration,
+            "provider_map",
+            {provider.provider: SimpleNamespace(enabled=True, quotas=[SimpleNamespace()])},
+        )
+
+        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
+
+        assert len(providers) == 1
+        assert providers[0].provider == provider.provider
+        assert providers[0].plugin_id == "langgenius/openai"
+        assert providers[0].is_configured is True
+        assert providers[0].custom_configuration.available_credentials == [
+            CredentialConfiguration(
+                credential_id="credential-1",
+                credential_name="Production",
+            ),
+            CredentialConfiguration(
+                credential_id="credential-2",
+                credential_name="Backup",
+            ),
+        ]
+        assert providers[0].custom_configuration.has_custom_models is True
+        assert providers[0].custom_configuration.current_credential_name == "Production"
+        assert providers[0].custom_configuration.current_credential_usable is True
+        assert providers[0].system_configuration.enabled is True
+        assert plugins["langgenius/openai"].installation_id == "installation-1"
+        assert plugins["langgenius/openai"].version == "1.2.3"
+        assert call_order == ["bindings", "providers"]
+        manager_constructor.assert_not_called()
+
+    def test_get_provider_summary_list_enables_system_only_for_verified_hosted_non_package_bindings(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        marketplace_binding = _build_model_provider_binding(PluginInstallationSource.Marketplace)
+        package_binding = _build_model_provider_binding(
+            PluginInstallationSource.Package,
+            installation_id="installation-package",
+            plugin_id="langgenius/package",
+            plugin_unique_identifier="langgenius/package:1.0.0@checksum",
+        )
+        unhosted_binding = _build_model_provider_binding(
+            PluginInstallationSource.Marketplace,
+            installation_id="installation-unhosted",
+            plugin_id="langgenius/unhosted",
+            plugin_unique_identifier="langgenius/unhosted:1.0.0@checksum",
+        )
+        remote_binding = _build_model_provider_binding(
+            PluginInstallationSource.Remote,
+            installation_id="installation-remote",
+            plugin_id="langgenius/remote",
+            plugin_unique_identifier="langgenius/remote:1.0.0@checksum",
+        )
+        unverified_binding = _build_model_provider_binding(
+            PluginInstallationSource.Marketplace,
+            installation_id="installation-unverified",
+            plugin_id="langgenius/unverified",
+            plugin_unique_identifier="langgenius/unverified:1.0.0@checksum",
+            verified=False,
+        )
+        bindings = [
+            marketplace_binding,
+            package_binding,
+            unhosted_binding,
+            remote_binding,
+            unverified_binding,
+        ]
+        provider_entities = [
+            SimpleNamespace(
+                provider=f"{binding.plugin_id}/openai",
+                label=I18nObject(en_US=binding.plugin_id),
+                description=None,
+                icon_small=None,
+                icon_small_dark=None,
+                supported_model_types=[ModelType.LLM],
+                configurate_methods=[],
+            )
+            for binding in bindings
+        ]
+        monkeypatch.setattr(
+            service_module.ext_hosting_provider.hosting_configuration,
+            "provider_map",
+            {
+                "langgenius/openai/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                "langgenius/package/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                "langgenius/remote/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+                "langgenius/unverified/openai": SimpleNamespace(enabled=True, quotas=[SimpleNamespace()]),
+            },
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(return_value=bindings),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(return_value=provider_entities),
+        )
+        monkeypatch.setattr(ModelProviderService, "_load_provider_summary_states", MagicMock(return_value={}))
+        monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
+
+        providers, _ = ModelProviderService().get_provider_summary_list("tenant-1")
+
+        assert {provider.provider: provider.system_configuration.enabled for provider in providers} == {
+            "langgenius/openai/openai": True,
+            "langgenius/package/openai": False,
+            "langgenius/unhosted/openai": False,
+            "langgenius/remote/openai": True,
+            "langgenius/unverified/openai": False,
+        }
+
+    def test_model_provider_binding_without_verified_field_fails_closed(self) -> None:
+        binding = PluginModelProviderBinding.model_validate(
+            {
+                "provider": "openai",
+                "installation_id": "installation-1",
+                "plugin_id": "langgenius/openai",
+                "plugin_unique_identifier": "langgenius/openai:1.0.0@checksum",
+                "runtime_type": "local",
+                "source": "marketplace",
+                "version": "1.0.0",
+            }
+        )
+
+        assert binding.verified is False
+
+    def test_get_provider_summary_list_returns_all_unique_provider_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        service = ModelProviderService()
+        llm_provider = SimpleNamespace(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=None,
+            icon_small=None,
+            icon_small_dark=None,
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+        )
+        embedding_provider = SimpleNamespace(
+            provider="langgenius/embedding/embedding",
+            label=I18nObject(en_US="Embedding"),
+            description=None,
+            icon_small=None,
+            icon_small_dark=None,
+            supported_model_types=[ModelType.TEXT_EMBEDDING],
+            configurate_methods=[],
+        )
+        llm_binding = SimpleNamespace(
+            provider="openai",
+            plugin_id="langgenius/openai",
+            installation_id="installation-openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+            runtime_type="local",
+            source=service_module.PluginInstallationSource.Marketplace,
+            version="1.0.0",
+            verified=False,
+        )
+        embedding_binding = SimpleNamespace(
+            provider="embedding",
+            plugin_id="langgenius/embedding",
+            installation_id="installation-embedding",
+            plugin_unique_identifier="langgenius/embedding:1.0.0@checksum",
+            runtime_type="local",
+            source=service_module.PluginInstallationSource.Marketplace,
+            version="1.0.0",
+            verified=False,
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(return_value=[llm_binding, embedding_binding]),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(return_value=[llm_provider, llm_provider, embedding_provider]),
+        )
+        monkeypatch.setattr(service, "_load_provider_summary_states", MagicMock(return_value={}))
+        monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
+
+        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1")
+
+        assert [provider.provider for provider in providers] == [
+            "langgenius/openai/openai",
+            "langgenius/embedding/embedding",
+        ]
+        assert providers[0].is_configured is False
+        assert providers[0].custom_configuration.status.value == "no-configure"
+        assert providers[0].custom_configuration.has_custom_models is False
+        assert providers[0].custom_configuration.available_credentials == []
+        assert set(plugins) == {"langgenius/openai", "langgenius/embedding"}
+
+    def test_preferred_provider_fallback_uses_custom_presence_not_configuration_status(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(service_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+        state = _ProviderSummaryState(has_custom_provider=True)
+
+        preferred_provider_type = ModelProviderService._get_preferred_provider_type(
+            state,
+            custom_present=True,
+            system_enabled=True,
+        )
+
+        assert preferred_provider_type == ProviderType.CUSTOM
+
+    def test_load_provider_summary_states_reads_only_lightweight_columns(
+        self,
+        sqlite_engine: Engine,
+        sqlite_session: Session,
+    ) -> None:
+        canonical_provider = "langgenius/openai/openai"
+        legacy_credential = ProviderCredential(
+            tenant_id="tenant-1",
+            provider_name="openai",
+            credential_name="Legacy",
+            encrypted_config="legacy-secret",
+        )
+        legacy_credential.id = "credential-legacy"
+        current_credential = ProviderCredential(
+            tenant_id="tenant-1",
+            provider_name=canonical_provider,
+            credential_name="Production",
+            encrypted_config="production-secret",
+        )
+        current_credential.id = "credential-current"
+        foreign_credential = ProviderCredential(
+            tenant_id="tenant-2",
+            provider_name=canonical_provider,
+            credential_name="Foreign",
+            encrypted_config="foreign-secret",
+        )
+        foreign_credential.id = "credential-foreign"
+        sqlite_session.add_all(
+            [
+                legacy_credential,
+                current_credential,
+                foreign_credential,
+                Provider(
+                    tenant_id="tenant-1",
+                    provider_name="openai",
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=legacy_credential.id,
+                ),
+                Provider(
+                    tenant_id="tenant-1",
+                    provider_name=canonical_provider,
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=current_credential.id,
+                ),
+                Provider(
+                    tenant_id="tenant-2",
+                    provider_name=canonical_provider,
+                    provider_type=ProviderType.CUSTOM,
+                    is_valid=True,
+                    credential_id=foreign_credential.id,
+                ),
+                ProviderModel(
+                    tenant_id="tenant-1",
+                    provider_name="openai",
+                    model_name="gpt-4o",
+                    model_type=ModelType.LLM,
+                    is_valid=True,
+                ),
+                ProviderModel(
+                    tenant_id="tenant-2",
+                    provider_name="langgenius/foreign/foreign",
+                    model_name="foreign-model",
+                    model_type=ModelType.LLM,
+                    is_valid=True,
+                ),
+                TenantPreferredModelProvider(
+                    tenant_id="tenant-1",
+                    provider_name=canonical_provider,
+                    preferred_provider_type=ProviderType.SYSTEM,
+                ),
+                TenantPreferredModelProvider(
+                    tenant_id="tenant-2",
+                    provider_name=canonical_provider,
+                    preferred_provider_type=ProviderType.CUSTOM,
+                ),
+            ]
+        )
+        sqlite_session.commit()
+        statements: list[str] = []
+
+        def capture_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+            statements.append(statement)
+
+        event.listen(sqlite_engine, "before_cursor_execute", capture_statement)
+        try:
+            states = ModelProviderService._load_provider_summary_states("tenant-1")
+        finally:
+            event.remove(sqlite_engine, "before_cursor_execute", capture_statement)
+
+        state = states[canonical_provider]
+        assert state.has_custom_provider is True
+        assert state.available_credentials == [
+            CredentialConfiguration(
+                credential_id="credential-legacy",
+                credential_name="Legacy",
+            ),
+            CredentialConfiguration(
+                credential_id="credential-current",
+                credential_name="Production",
+            ),
+        ]
+        assert state.has_custom_models is True
+        assert state.current_credential_id == "credential-current"
+        assert state.current_credential_name == "Production"
+        assert state.current_credential_usable is True
+        assert state.preferred_provider_type == ProviderType.SYSTEM
+
+        assert len(statements) == 4
+        assert all("encrypted_config" not in statement for statement in statements)
+        assert "count(" not in statements[1].lower()
+        assert "provider_credentials.id" in statements[1]
+        assert "provider_credentials.credential_name" in statements[1]
+        assert "ORDER BY provider_credentials.created_at DESC, provider_credentials.id DESC" in statements[1]
+        assert "provider_model_credentials" in statements[2]
 
     def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context(self) -> None:
         service, manager = _create_service_with_mocked_manager()
@@ -377,7 +796,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": "text-generation",
+                    "model_type": "llm",
                     "model": "gpt-4o",
                     "credential_id": "cred-1",
                 },
@@ -389,7 +808,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": "text-generation",
+                    "model_type": "llm",
                     "model": "gpt-4o",
                     "credentials": {"api_key": "x"},
                     "credential_name": "cred-a",
@@ -407,7 +826,7 @@ class TestModelProviderServiceDelegation:
                 {
                     "tenant_id": "tenant-1",
                     "provider": "openai",
-                    "model_type": "text-generation",
+                    "model_type": "llm",
                     "model": "gpt-4o",
                 },
                 "delete_custom_model",

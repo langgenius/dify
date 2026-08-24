@@ -5,11 +5,9 @@ import { getConfigurationStore } from '@/store/manager'
 import { runConfigGet } from './run'
 
 export default class ConfigGet extends DifyCommand {
-  static override description = 'Print one config key\'s value'
+  static override description = "Print one config key's value"
 
-  static override examples = [
-    '<%= config.bin %> config get defaults.format',
-  ]
+  static override examples = ['<%= config.bin %> config get defaults.format']
 
   static override args = {
     key: Args.string({ description: 'config key', required: true }),

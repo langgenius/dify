@@ -4,17 +4,20 @@ from collections.abc import Sequence
 from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import app_task_command_channel_key
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
+    StopFlagCommandChannel,
 )
+from core.app.apps.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
-from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
@@ -23,6 +26,7 @@ from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
 from graphon.enums import WorkflowType
+from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -51,6 +55,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
         graph_runtime_state: GraphRuntimeState | None = None,
+        response_stream_filter: ResponseStreamFilter | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -65,6 +70,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
         self._resume_graph_runtime_state = graph_runtime_state
+        self._response_stream_filter = response_stream_filter
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -150,14 +156,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         # RUN WORKFLOW
         # Create Redis command channel for this workflow execution
         task_id = self.application_generate_entity.task_id
-        channel_key = f"workflow:{task_id}:commands"
+        channel_key = app_task_command_channel_key(task_id)
         celery_signal_channel = CelerySignalCommandChannel(
             shutdown_state_getter=celery_warm_shutdown_started,
             abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
         )
+        attach_stop_aware_ready_queue(graph_runtime_state, task_id=task_id)
         command_channel = CombinedCommandChannel(
             (
                 RedisChannel(redis_client, channel_key),
+                StopFlagCommandChannel(task_id=task_id),
                 celery_signal_channel,
             )
         )
@@ -177,6 +185,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
+            response_stream_filter=self._response_stream_filter,
         )
 
         persistence_layer = WorkflowPersistenceLayer(
@@ -193,7 +202,18 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
+        workflow_entry.graph_engine.layer(
+            build_workflow_agent_workspace_retirement_layer(
+                dify_run_context=DifyRunContext(
+                    tenant_id=self._workflow.tenant_id,
+                    app_id=self._workflow.app_id,
+                    user_id=self.application_generate_entity.user_id,
+                    user_from=user_from,
+                    invoke_from=invoke_from,
+                    trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                )
+            )
+        )
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 

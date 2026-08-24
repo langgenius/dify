@@ -61,6 +61,11 @@ class RBACPermission(StrEnum):
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"
     API_EXTENSION_MANAGE = "api_extension_manage"
     CUSTOMIZATION_MANAGE = "customization_manage"
+    AGENT_MANAGE = "agent_manage"
+    SKILL_VIEW = "skill_view"
+    SKILL_EDIT = "skill_edit"
+    SKILL_PUBLISH = "skill_publish"
+    SKILL_DELETE = "skill_delete"
 
     SNIPPETS_CREATE_AND_MODIFY = "snippets_create_and_modify"
     SNIPPETS_MANAGE = "snippets_management"

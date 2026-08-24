@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -6,37 +7,44 @@ import { consoleQuery } from '@/service/client'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 
-export function useChangeProviderPriority(provider: ModelProvider | undefined) {
+export function useChangeProviderPriority(
+  provider: ModelProvider | ModelProviderSummaryResponse | undefined,
+) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const providerName = provider?.provider ?? ''
-  const modelProviderModelListQueryKey = consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
-    input: {
-      params: {
-        provider: providerName,
+  const modelProviderModelListQueryKey =
+    consoleQuery.workspaces.current.modelProviders.byProvider.models.get.queryKey({
+      input: {
+        params: {
+          provider: providerName,
+        },
       },
-    },
-  })
-  const { mutate: changePriority, isPending: isChangingPriority } = useMutation(consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions({
-    onSuccess: () => {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
-      queryClient.invalidateQueries({
-        queryKey: modelProviderModelListQueryKey,
-        exact: true,
-        refetchType: 'none',
-      })
-      updateModelProviders()
-      provider?.configurate_methods.forEach((method) => {
-        if (method === ConfigurationMethodEnum.predefinedModel)
-          provider?.supported_model_types.forEach(modelType => updateModelList(modelType))
-      })
-    },
-    onError: () => {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
-    },
-  }))
+    })
+  const { mutate: changePriority, isPending: isChangingPriority } = useMutation(
+    consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
+      {
+        onSuccess: () => {
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+          queryClient.invalidateQueries({
+            queryKey: modelProviderModelListQueryKey,
+            exact: true,
+            refetchType: 'none',
+          })
+          updateModelProviders()
+          provider?.configurate_methods.forEach((method) => {
+            if (method === ConfigurationMethodEnum.predefinedModel)
+              provider?.supported_model_types.forEach((modelType) => updateModelList(modelType))
+          })
+        },
+        onError: () => {
+          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        },
+      },
+    ),
+  )
   const handleChangePriority = (key: PreferredProviderTypeEnum) => {
     changePriority({
       params: { provider: providerName },

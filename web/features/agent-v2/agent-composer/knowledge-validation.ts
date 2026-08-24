@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { RETRIEVE_TYPE } from '@/types/app'
 
-export type KnowledgeValidationIssueCode
-  = | 'name_required'
-    | 'name_duplicate'
-    | 'datasets_required'
-    | 'custom_query_required'
-    | 'single_model_required'
-    | 'metadata_model_required'
-    | 'metadata_conditions_required'
+export type KnowledgeValidationIssueCode =
+  | 'name_required'
+  | 'name_duplicate'
+  | 'datasets_required'
+  | 'custom_query_required'
+  | 'single_model_required'
+  | 'metadata_model_required'
+  | 'metadata_conditions_required'
 
 type KnowledgeValidationField = 'name' | 'datasets' | 'query' | 'retrieval' | 'metadata'
 
@@ -26,7 +26,8 @@ export type KnowledgeValidationResult = {
   isValid: boolean
 }
 
-const getKnowledgeRetrievalConcreteName = (item: AgentKnowledgeRetrievalItem) => item.name?.trim() ?? ''
+const getKnowledgeRetrievalConcreteName = (item: AgentKnowledgeRetrievalItem) =>
+  item.name?.trim() ?? ''
 
 export const getKnowledgeRetrievalSetName = (item: AgentKnowledgeRetrievalItem) =>
   getKnowledgeRetrievalConcreteName(item) || item.id
@@ -40,29 +41,34 @@ export const useKnowledgeValidationMessage = () => {
   return (issueCode?: KnowledgeValidationIssueCode) => {
     switch (issueCode) {
       case 'name_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'),
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel']),
         })
       case 'name_duplicate':
-        return tAppDebug('varKeyError.keyAlreadyExists', {
-          key: t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel'),
+        return tAppDebug(($) => $['varKeyError.keyAlreadyExists'], {
+          key: t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.nameLabel']),
         })
       case 'datasets_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: t('agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label'),
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: t(($) => $['agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label']),
         })
       case 'custom_query_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: t('agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'),
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: t(
+            ($) => $['agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel'],
+          ),
         })
       case 'single_model_required':
-      case 'metadata_model_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: tCommon('modelProvider.systemReasoningModel.key'),
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: tCommon(($) => $['modelProvider.systemReasoningModel.key']),
         })
+      case 'metadata_model_required':
+        return t(
+          ($) => $['agentDetail.configure.knowledgeRetrieval.validation.metadataModelRequired'],
+        )
       case 'metadata_conditions_required':
-        return tCommon('errorMsg.fieldRequired', {
-          field: tWorkflow('nodes.knowledgeRetrieval.metadata.panel.conditions'),
+        return tCommon(($) => $['errorMsg.fieldRequired'], {
+          field: tWorkflow(($) => $['nodes.knowledgeRetrieval.metadata.panel.conditions']),
         })
       default:
         return undefined
@@ -73,7 +79,8 @@ export const useKnowledgeValidationMessage = () => {
 const getKnowledgeDatasetCount = (item: AgentKnowledgeRetrievalItem) =>
   item.selectedDatasets?.length ?? item.datasetRefs?.length ?? 0
 
-const getNormalizedKnowledgeName = (item: AgentKnowledgeRetrievalItem) => getKnowledgeRetrievalConcreteName(item).toLowerCase()
+const getNormalizedKnowledgeName = (item: AgentKnowledgeRetrievalItem) =>
+  getKnowledgeRetrievalConcreteName(item).toLowerCase()
 
 export const validateKnowledgeRetrievals = (
   retrievals: AgentKnowledgeRetrievalItem[],
@@ -84,8 +91,7 @@ export const validateKnowledgeRetrievals = (
 
   retrievals.forEach((item) => {
     const normalizedName = getNormalizedKnowledgeName(item)
-    if (!normalizedName)
-      return
+    if (!normalizedName) return
 
     nameCounts.set(normalizedName, (nameCounts.get(normalizedName) ?? 0) + 1)
   })
@@ -93,8 +99,7 @@ export const validateKnowledgeRetrievals = (
   const pushIssue = (issue: KnowledgeValidationIssue) => {
     byId[issue.itemId] ??= {}
     const itemIssues = byId[issue.itemId]
-    if (itemIssues)
-      itemIssues[issue.field] ??= issue.code
+    if (itemIssues) itemIssues[issue.field] ??= issue.code
     issues.push(issue)
   }
 
@@ -108,8 +113,7 @@ export const validateKnowledgeRetrievals = (
         code: 'name_required',
         field: 'name',
       })
-    }
-    else if ((nameCounts.get(normalizedName) ?? 0) > 1) {
+    } else if ((nameCounts.get(normalizedName) ?? 0) > 1) {
       pushIssue({
         itemId: item.id,
         code: 'name_duplicate',
@@ -134,8 +138,8 @@ export const validateKnowledgeRetrievals = (
     }
 
     if (
-      item.retrievalMode === RETRIEVE_TYPE.oneWay
-      && (!item.singleRetrievalConfig?.model?.provider || !item.singleRetrievalConfig.model.name)
+      item.retrievalMode === RETRIEVE_TYPE.oneWay &&
+      (!item.singleRetrievalConfig?.model?.provider || !item.singleRetrievalConfig.model.name)
     ) {
       pushIssue({
         itemId: item.id,
@@ -145,8 +149,8 @@ export const validateKnowledgeRetrievals = (
     }
 
     if (
-      item.metadataFilterMode === MetadataFilteringModeEnum.automatic
-      && (!item.metadataModelConfig?.provider || !item.metadataModelConfig.name)
+      item.metadataFilterMode === MetadataFilteringModeEnum.automatic &&
+      (!item.metadataModelConfig?.provider || !item.metadataModelConfig.name)
     ) {
       pushIssue({
         itemId: item.id,
@@ -156,8 +160,8 @@ export const validateKnowledgeRetrievals = (
     }
 
     if (
-      item.metadataFilterMode === MetadataFilteringModeEnum.manual
-      && !item.metadataFilteringConditions?.conditions.length
+      item.metadataFilterMode === MetadataFilteringModeEnum.manual &&
+      !item.metadataFilteringConditions?.conditions.length
     ) {
       pushIssue({
         itemId: item.id,

@@ -3,6 +3,7 @@ import queue
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
@@ -10,21 +11,27 @@ from typing import Any, cast, override
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import event as orm_event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
-from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.app.layers.pause_state_persist_layer import (
+    WorkflowResumptionContext,
+    _AdvancedChatAppGenerateEntityWrapper,
+    _WorkflowGenerateEntityWrapper,
+)
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
 from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.enums import CreatorUserRole
-from models.human_input import RecipientType
-from models.model import AppMode
+from libs.datetime_utils import to_utc_timestamp
+from models.enums import ConversationFromSource, CreatorUserRole
+from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.model import AppMode, Message
 from models.workflow import WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -137,8 +144,7 @@ def _build_resumption_context(task_id: str, *, select_options: list[str] | None 
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
     if select_options is not None:
         runtime_state.variable_pool.add(("start", "options"), select_options)
-    runtime_state.register_paused_node("node-1")
-    runtime_state.outputs = {"result": "value"}
+    runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -243,7 +249,7 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-    runtime_state.outputs = {"answer": "ok"}
+    runtime_state.set_output("answer", "ok")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -251,23 +257,85 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
     )
 
 
-class _SessionContext:
-    def __init__(self, session: Any) -> None:
-        self._session = session
+def _build_advanced_chat_resumption_context(conversation_id: str | None) -> WorkflowResumptionContext:
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_id="workflow-1",
+    )
+    generate_entity = AdvancedChatAppGenerateEntity(
+        task_id="task-ctx",
+        app_config=app_config,
+        inputs={},
+        files=[],
+        user_id="user-1",
+        stream=True,
+        invoke_from=InvokeFrom.EXPLORE,
+        call_depth=0,
+        conversation_id=conversation_id,
+        workflow_run_id="run-1",
+        query="hello",
+    )
+    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    wrapper = _AdvancedChatAppGenerateEntityWrapper(entity=generate_entity)
+    return WorkflowResumptionContext(
+        generate_entity=wrapper,
+        serialized_graph_runtime_state=runtime_state.dumps(),
+    )
 
-    def __enter__(self) -> Any:
-        return self._session
 
-    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
-        return False
+def _persist_message(
+    session_maker: sessionmaker[Session],
+    *,
+    message_id: str = "msg-1",
+    app_id: str = "app-1",
+    conversation_id: str = "conv-1",
+    workflow_run_id: str = "run-1",
+    answer: str = "answer",
+    created_at: datetime | None = None,
+) -> None:
+    message = Message(
+        id=message_id,
+        app_id=app_id,
+        conversation_id=conversation_id,
+        query="question",
+        message={"role": "user", "content": "question"},
+        answer=answer,
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        workflow_run_id=workflow_run_id,
+    )
+    message.inputs = {}
+    if created_at is not None:
+        message.created_at = created_at
+    with session_maker.begin() as session:
+        session.add(message)
 
 
-class _SessionMaker:
-    def __init__(self, session: Any) -> None:
-        self._session = session
-
-    def __call__(self) -> _SessionContext:
-        return _SessionContext(self._session)
+def _persist_human_input_form(
+    session_maker: sessionmaker[Session],
+    *,
+    recipients: Sequence[HumanInputFormRecipient] = (),
+) -> datetime:
+    expiration_time = datetime(2024, 1, 1)
+    form = HumanInputForm(
+        id="form-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        conversation_id=None,
+        node_id="node-1",
+        form_definition='{"display_in_ui": true}',
+        rendered_content="content",
+        expiration_time=expiration_time,
+    )
+    with session_maker.begin() as session:
+        session.add(form)
+        session.add_all(recipients)
+    return expiration_time
 
 
 class _SubscriptionContext:
@@ -327,31 +395,126 @@ class _PauseEntity(WorkflowPauseEntity):
         return []
 
 
-def test_get_message_context_should_return_none_when_no_message() -> None:
-    # Arrange
-    session = SimpleNamespace(scalar=MagicMock(return_value=None))
-    session_maker = _SessionMaker(session)
-
+def test_get_message_context_by_conversation_should_return_none_when_no_message(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     # Act
-    result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+    result = service_module._get_message_context_by_conversation(
+        sqlite_session_factory,
+        conversation_id="conv-1",
+        workflow_run_id="run-1",
+    )
 
     # Assert
     assert result is None
 
 
-def test_get_message_context_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
+def test_get_message_context_by_conversation_should_scope_and_bound_message_lookup(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     # Arrange
-    message = SimpleNamespace(
-        id="msg-1",
-        conversation_id="conv-1",
-        created_at=None,
-        answer="answer",
+    _persist_message(
+        sqlite_session_factory,
+        message_id="older-match",
+        created_at=datetime(2024, 1, 1),
     )
-    session = SimpleNamespace(scalar=MagicMock(return_value=message))
-    session_maker = _SessionMaker(session)
+    _persist_message(
+        sqlite_session_factory,
+        message_id="newest-match",
+        app_id="other-app",
+        answer="newest answer",
+        created_at=datetime(2024, 1, 2),
+    )
+    _persist_message(
+        sqlite_session_factory,
+        message_id="wrong-workflow",
+        workflow_run_id="run-2",
+        created_at=datetime(2024, 1, 3),
+    )
+    _persist_message(
+        sqlite_session_factory,
+        message_id="wrong-conversation",
+        conversation_id="conv-2",
+        created_at=datetime(2024, 1, 4),
+    )
 
     # Act
-    result = service_module._get_message_context(cast(sessionmaker[Session], session_maker), "run-1")
+    result = service_module._get_message_context_by_conversation(
+        sqlite_session_factory,
+        conversation_id="conv-1",
+        workflow_run_id="run-1",
+    )
+
+    # Assert
+    assert result is not None
+    assert result.message_id == "newest-match"
+    assert result.conversation_id == "conv-1"
+    assert result.answer == "newest answer"
+
+
+def test_get_message_context_by_app_should_scope_and_bound_compatibility_lookup(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    # Arrange
+    _persist_message(
+        sqlite_session_factory,
+        message_id="older-match",
+        created_at=datetime(2024, 1, 1),
+    )
+    _persist_message(
+        sqlite_session_factory,
+        message_id="newest-match",
+        conversation_id="conv-2",
+        answer="newest answer",
+        created_at=datetime(2024, 1, 2),
+    )
+    _persist_message(
+        sqlite_session_factory,
+        message_id="wrong-app",
+        app_id="app-2",
+        created_at=datetime(2024, 1, 3),
+    )
+    _persist_message(
+        sqlite_session_factory,
+        message_id="wrong-workflow",
+        workflow_run_id="run-2",
+        created_at=datetime(2024, 1, 4),
+    )
+
+    # Act
+    result = service_module._get_message_context_by_app(
+        sqlite_session_factory,
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
+
+    # Assert
+    assert result is not None
+    assert result.message_id == "newest-match"
+    assert result.conversation_id == "conv-2"
+    assert result.answer == "newest answer"
+
+
+def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    # Arrange
+    _persist_message(sqlite_session_factory)
+
+    def clear_created_at(message: Message, _context: Any) -> None:
+        # A load hook preserves coverage for legacy rows without replacing the real ORM query.
+        message.created_at = None
+
+    # Act
+    orm_event.listen(Message, "load", clear_created_at)
+    try:
+        result = service_module._get_message_context_by_conversation(
+            sqlite_session_factory,
+            conversation_id="conv-1",
+            workflow_run_id="run-1",
+        )
+    finally:
+        orm_event.remove(Message, "load", clear_created_at)
 
     # Assert
     assert result is not None
@@ -557,11 +720,17 @@ def test_start_buffering_should_set_done_event_when_subscription_raises() -> Non
 
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
     monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
 ) -> None:
     # Arrange
-    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
     topic = _Topic(_StaticSubscription())
-    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    pause_entity = _PauseEntity(state=b"state")
+    resumption_context = _build_advanced_chat_resumption_context(conversation_id="conv-1")
+    call_order: list[str] = []
+    workflow_run_repo = SimpleNamespace(
+        get_workflow_pause=MagicMock(side_effect=lambda _run_id: call_order.append("pause") or pause_entity)
+    )
     node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
     factory = SimpleNamespace(
         create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
@@ -569,12 +738,19 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
     )
     monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
     monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=topic))
+    message_context_lookup = MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("message") or None)
+    app_lookup = MagicMock(return_value=None)
     monkeypatch.setattr(
         service_module,
-        "_get_message_context",
-        MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000)),
+        "_get_message_context_by_conversation",
+        message_context_lookup,
     )
-    monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=None))
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
+    monkeypatch.setattr(
+        service_module,
+        "_load_resumption_context",
+        MagicMock(side_effect=lambda _pause_entity: call_order.append("state") or resumption_context),
+    )
     buffer_state = BufferState(
         queue=queue.Queue(),
         stop_event=Event(),
@@ -589,6 +765,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         "_build_snapshot_events",
         MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED, "task_id": "task-1"}]),
     )
+    session_maker = unbound_session_factory
 
     # Act
     events = list(
@@ -597,7 +774,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=session_maker,
         )
     )
 
@@ -609,10 +786,126 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
     node_repo.get_execution_snapshots_by_workflow_run.assert_called_once()
     called_kwargs = node_repo.get_execution_snapshots_by_workflow_run.call_args.kwargs
     assert called_kwargs["workflow_run_id"] == "run-1"
+    assert call_order == ["pause", "state", "message"]
+    message_context_lookup.assert_called_once_with(
+        session_maker,
+        conversation_id="conv-1",
+        workflow_run_id="run-1",
+    )
+    app_lookup.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("resumption_context", "expected_error"),
+    [
+        pytest.param(None, "WorkflowResumptionContext.*workflow_run_id=run-1", id="missing-state"),
+        pytest.param(
+            _build_resumption_context_additional(task_id="task-ctx"),
+            "AdvancedChatAppGenerateEntity.*workflow_run_id=run-1",
+            id="wrong-entity-type",
+        ),
+        pytest.param(
+            _build_advanced_chat_resumption_context(conversation_id=None),
+            "conversation_id.*workflow_run_id=run-1",
+            id="missing-conversation-id",
+        ),
+        pytest.param(
+            _build_advanced_chat_resumption_context(conversation_id=""),
+            "conversation_id.*workflow_run_id=run-1",
+            id="empty-conversation-id",
+        ),
+    ],
+)
+def test_build_advanced_chat_snapshot_requires_conversation_context(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+    resumption_context: WorkflowResumptionContext | None,
+    expected_error: str,
+) -> None:
+    # Arrange
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
+    pause_entity = _PauseEntity(state=b"state")
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    factory = SimpleNamespace(
+        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+    )
+    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
+    monkeypatch.setattr(service_module, "_load_resumption_context", MagicMock(return_value=resumption_context))
+    conversation_lookup = MagicMock(return_value=None)
+    app_lookup = MagicMock(return_value=None)
+    monkeypatch.setattr(
+        service_module,
+        "_get_message_context_by_conversation",
+        conversation_lookup,
+    )
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
+
+    # Act / Assert
+    with pytest.raises(AssertionError, match=expected_error):
+        build_workflow_event_stream(
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=unbound_session_factory,
+        )
+    conversation_lookup.assert_not_called()
+    app_lookup.assert_not_called()
+
+
+def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+    unbound_session_factory: sessionmaker[Session],
+) -> None:
+    # Arrange
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock())
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    factory = SimpleNamespace(
+        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+    )
+    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(service_module.MessageGenerator, "get_response_topic", MagicMock())
+    load_resumption_context = MagicMock(return_value=None)
+    monkeypatch.setattr(service_module, "_load_resumption_context", load_resumption_context)
+    conversation_lookup = MagicMock(return_value=None)
+    app_lookup = MagicMock(return_value=MessageContext("conv-1", "msg-1", 1700000000))
+    monkeypatch.setattr(
+        service_module,
+        "_get_message_context_by_conversation",
+        conversation_lookup,
+    )
+    monkeypatch.setattr(service_module, "_get_message_context_by_app", app_lookup)
+    session_maker = unbound_session_factory
+
+    # Act
+    event_stream = build_workflow_event_stream(
+        app_mode=AppMode.ADVANCED_CHAT,
+        workflow_run=workflow_run,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        session_maker=session_maker,
+    )
+
+    # Assert
+    assert event_stream is not None
+    workflow_run_repo.get_workflow_pause.assert_not_called()
+    load_resumption_context.assert_called_once_with(None)
+    conversation_lookup.assert_not_called()
+    app_lookup.assert_called_once_with(
+        session_maker,
+        app_id="app-1",
+        workflow_run_id="run-1",
+    )
 
 
 def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_idle_timeout(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
@@ -654,7 +947,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=sqlite_session_factory,
             idle_timeout=20.0,
             ping_interval=5.0,
         )
@@ -667,6 +960,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
 
 def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
@@ -699,7 +993,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=sqlite_session_factory,
         )
     )
 
@@ -710,6 +1004,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
 
 def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
@@ -742,7 +1037,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=sqlite_session_factory,
         )
     )
 
@@ -760,7 +1055,10 @@ def test_is_terminal_event_respects_close_on_pause_flag() -> None:
     assert _is_terminal_event(finish_event, close_on_pause=False) is True
 
 
-def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_snapshot_events_preserves_public_form_token(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx")
@@ -771,11 +1069,7 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
             "form-1": FormDisposition(form_token="wtok", approval_channels=[])
         },
     )
-    session_maker = _SessionMaker(
-        SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
-        )
-    )
+    expiration_time = _persist_human_input_form(sqlite_session_factory)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
@@ -798,34 +1092,30 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
         message_context=None,
         pause_entity=pause_entity,
         resumption_context=resumption_context,
-        session_maker=cast(sessionmaker[Session], session_maker),
+        session_maker=sqlite_session_factory,
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
     assert events[-2]["data"]["form_token"] == "wtok"
-    assert events[-2]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    assert events[-2]["data"]["expiration_time"] == to_utc_timestamp(expiration_time)
     pause_data = events[-1]["data"]
     assert pause_data["reasons"][0]["form_token"] == "wtok"
-    assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    assert pause_data["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
 
 
-def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[str, Any]]:
+def _build_recipient_snapshot_events(
+    session_maker: sessionmaker[Session],
+    recipients: Sequence[HumanInputFormRecipient],
+) -> list[Mapping[str, Any]]:
     """Drive the reconnect snapshot pause path for the OPENAPI surface.
 
-    Lets the real disposition loader run against a fake session whose ``scalars``
-    yields the given recipients, so the reconnect path derives the same token and
-    approval channels as the live path for the same recipient set.
+    Persisting the recipients lets the real disposition query derive the same token
+    and approval channels as the live path for the same recipient set.
     """
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx")
-    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session_maker = _SessionMaker(
-        SimpleNamespace(
-            execute=lambda _stmt: [("form-1", expiration_time, '{"display_in_ui": true}')],
-            scalars=lambda _stmt: list(recipients),
-        )
-    )
+    expiration_time = _persist_human_input_form(session_maker, recipients=recipients)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
@@ -847,16 +1137,31 @@ def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[
         message_context=None,
         pause_entity=pause_entity,
         resumption_context=resumption_context,
-        session_maker=cast(sessionmaker[Session], session_maker),
+        session_maker=session_maker,
         human_input_surface=HumanInputSurface.OPENAPI,
     )
 
 
-def test_reconnect_pause_without_web_app_recipient_emits_approval_channels() -> None:
+def test_reconnect_pause_without_web_app_recipient_emits_approval_channels(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     events = _build_recipient_snapshot_events(
+        sqlite_session_factory,
         recipients=[
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.EMAIL_MEMBER, access_token="email-token"),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id="delivery-1",
+                recipient_type=RecipientType.EMAIL_MEMBER,
+                recipient_payload="{}",
+                access_token="email-token",
+            ),
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id="delivery-2",
+                recipient_type=RecipientType.BACKSTAGE,
+                recipient_payload="{}",
+                access_token="backstage-token",
+            ),
         ],
     )
 
@@ -870,15 +1175,26 @@ def test_reconnect_pause_without_web_app_recipient_emits_approval_channels() -> 
     assert pause_data["reasons"][0]["approval_channels"] == ["console", "email"]
 
 
-def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels() -> None:
+def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     events = _build_recipient_snapshot_events(
+        sqlite_session_factory,
         recipients=[
-            SimpleNamespace(
+            HumanInputFormRecipient(
                 form_id="form-1",
+                delivery_id="delivery-1",
                 recipient_type=RecipientType.STANDALONE_WEB_APP,
+                recipient_payload="{}",
                 access_token="web-app-token",
             ),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id="delivery-2",
+                recipient_type=RecipientType.BACKSTAGE,
+                recipient_payload="{}",
+                access_token="backstage-token",
+            ),
         ],
     )
 
@@ -892,7 +1208,10 @@ def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels() -> Non
     assert pause_data["reasons"][0]["approval_channels"] == ["console"]
 
 
-def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_snapshot_events_resolves_pause_reason_select_options(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx", select_options=["approve", "reject"])
@@ -903,11 +1222,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
             "form-1": FormDisposition(form_token="wtok", approval_channels=[])
         },
     )
-    session_maker = _SessionMaker(
-        SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
-        )
-    )
+    _persist_human_input_form(sqlite_session_factory)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
@@ -939,7 +1254,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
         message_context=None,
         pause_entity=pause_entity,
         resumption_context=resumption_context,
-        session_maker=cast(sessionmaker[Session], session_maker),
+        session_maker=sqlite_session_factory,
     )
 
     human_input_event = events[-2]
@@ -951,6 +1266,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
 
 def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_context(
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
     topic = _Topic(_StaticSubscription())
@@ -986,11 +1302,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         },
     )
 
-    session = SimpleNamespace(
-        scalar=MagicMock(return_value=None),
-        execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
-    )
-    session_maker = _SessionMaker(session)
+    expiration_time = _persist_human_input_form(sqlite_session_factory)
 
     events = list(
         build_workflow_event_stream(
@@ -998,11 +1310,11 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=cast(sessionmaker[Session], session_maker),
+            session_maker=sqlite_session_factory,
         )
     )
 
     pause_event = cast(Mapping[str, Any], events[-1])
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
-    assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    assert pause_event["data"]["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)

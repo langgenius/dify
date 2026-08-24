@@ -1,6 +1,7 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
-import { render, screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import { TagFilter } from '../components/tag-filter'
 
 const { mockUseQueryData } = vi.hoisted(() => ({
@@ -15,11 +16,12 @@ vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     workspacePermissionKeys: mockWorkspacePermissionKeys.value,
-  }),
-}))
+  }))
+})
 
 const mockTags: Tag[] = [
   { id: 'tag-1', name: 'Frontend', type: 'app', binding_count: '' },
@@ -51,11 +53,6 @@ describe('TagFilter', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<TagFilter {...defaultProps} />)
-      expect(screen.getByText(i18n.placeholder)).toBeInTheDocument()
-    })
-
     it('should expose the trigger as a named combobox', () => {
       render(<TagFilter {...defaultProps} />)
       expect(screen.getByRole('combobox', { name: i18n.placeholder })).toBeInTheDocument()
@@ -93,11 +90,6 @@ describe('TagFilter', () => {
     it('should hide the leading tag icon when disabled', () => {
       const { container } = render(<TagFilter {...defaultProps} showLeadingIcon={false} />)
       expect(container.querySelector('svg')).not.toBeInTheDocument()
-    })
-
-    it('should apply custom trigger class names', () => {
-      render(<TagFilter {...defaultProps} triggerClassName="min-w-0" />)
-      expect(screen.getByRole('combobox', { name: i18n.placeholder })).toHaveClass('min-w-0')
     })
 
     it('should filter tags by type prop', async () => {
@@ -221,6 +213,24 @@ describe('TagFilter', () => {
       expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
     })
 
+    it('should expose popup actions after the combobox in keyboard order', async () => {
+      const user = userEvent.setup()
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+      const manageButton = screen.getByRole('button', { name: i18n.manageTags })
+      const listbox = screen.getByRole('listbox')
+
+      expect(screen.getByRole('dialog', { name: i18n.placeholder })).toBeInTheDocument()
+      expect(listbox).not.toContainElement(manageButton)
+      await waitFor(() => expect(input).toHaveFocus())
+
+      await user.tab()
+      expect(manageButton).toHaveFocus()
+    })
+
     it('should hide tag management action without tag management permission', async () => {
       const user = userEvent.setup()
       mockWorkspacePermissionKeys.value = []
@@ -235,6 +245,19 @@ describe('TagFilter', () => {
   })
 
   describe('Search', () => {
+    it('should filter tags without matching letter case', async () => {
+      const user = userEvent.setup()
+
+      render(<TagFilter {...defaultProps} />)
+
+      await user.click(screen.getByText(i18n.placeholder))
+
+      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
+      await user.type(searchInput, 'frontend')
+
+      expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
+    })
+
     it('should filter tags by search keywords', async () => {
       const user = userEvent.setup()
 
@@ -290,9 +313,11 @@ describe('TagFilter', () => {
       expect(screen.queryByText('Backend')).not.toBeInTheDocument()
 
       const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-      await user.click(clearButton)
+      clearButton.focus()
+      await user.keyboard('{Enter}')
 
       expect(searchInput).toHaveValue('')
+      expect(searchInput).toHaveFocus()
 
       expect(screen.getByText('Backend')).toBeInTheDocument()
       expect(screen.getByText('Frontend')).toBeInTheDocument()

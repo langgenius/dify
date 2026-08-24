@@ -33,11 +33,11 @@ from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
     DifyShellLayerConfig,
-    DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import OperationalError
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -48,7 +48,9 @@ from clients.agent_backend import (
 )
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
-from core.workflow.system_variables import SystemVariableKey, get_system_text
+from core.app.llm.model_access import resolve_model_context_window
+from core.plugin.provider_identity import normalize_plugin_daemon_provider_identity
+from core.workflow.system_variables import SystemVariableKey, get_system_text, get_system_value
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -64,9 +66,6 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
     WorkflowPreviousNodeOutputRef,
-)
-from models.agent_config_entities import (
-    effective_declared_outputs as _effective_declared_outputs,
 )
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import (
@@ -121,10 +120,6 @@ class VariablePoolReader(Protocol):
     def get_by_prefix(self, prefix: str, /) -> Mapping[str, object]: ...
 
 
-class CredentialsProvider(Protocol):
-    def fetch(self, provider_name: str, model_name: str) -> dict[str, Any]: ...
-
-
 @dataclass(frozen=True, slots=True)
 class WorkflowAgentRuntimeBuildContext:
     dify_context: DifyRunContext
@@ -136,6 +131,8 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    binding_id: str
+    backend_binding_ref: str
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
@@ -163,11 +160,9 @@ class WorkflowAgentRuntimeRequestBuilder:
     def __init__(
         self,
         *,
-        credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
         dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
-        self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
         self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
@@ -188,7 +183,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         workflow_context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
         workflow_job_prompt = workflow_task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK
         user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
-        credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
@@ -206,38 +200,49 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        config_layer_config: DifyConfigLayerConfig | None = None
-        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
-        if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(
-                agent_soul,
-                agent_id=context.agent.id,
-                config_version_id=context.snapshot.id,
-                config_version_kind="snapshot",
-            )
-            append_runtime_warnings(metadata, config_warnings)
-            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        runtime_config_skills = load_runtime_agent_skill_configs(
+            tenant_id=context.dify_context.tenant_id,
+            agent_id=context.agent.id,
+        )
+        config_layer_config, config_warnings = build_config_layer_config(
+            agent_soul,
+            agent_id=context.agent.id,
+            config_version_id=context.snapshot.id,
+            config_version_kind="snapshot",
+            runtime_config_skills=runtime_config_skills,
+        )
+        append_runtime_warnings(metadata, config_warnings)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(
+            agent_soul,
+            runtime_config_skills=runtime_config_skills,
+        )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
+        context_window_tokens = resolve_model_context_window(
+            run_context=context.dify_context,
+            provider_name=agent_soul.model.model_provider,
+            model_name=agent_soul.model.model,
+        )
+        model_plugin_id, model_provider = normalize_plugin_daemon_provider_identity(
+            ModelProviderID(agent_soul.model.model_provider),
+            agent_soul.model.plugin_id,
+        )
 
         request = self._request_builder.build_for_workflow_node(
             AgentBackendWorkflowNodeRunInput(
                 model=AgentBackendModelConfig(
-                    plugin_id=self._plugin_daemon_plugin_id(
-                        plugin_id=agent_soul.model.plugin_id,
-                        model_provider=agent_soul.model.model_provider,
-                    ),
-                    model_provider=self._plugin_daemon_provider_name(agent_soul.model.model_provider),
+                    plugin_id=model_plugin_id,
+                    model_provider=model_provider,
                     model=agent_soul.model.model,
-                    credentials=self._normalize_credentials(credentials),
                     model_settings=agent_soul.model.model_settings.model_dump(mode="json", exclude_none=True),
+                    context_window_tokens=context_window_tokens,
                 ),
                 # The execution-context layer is now the only public protocol
                 # carrier for Dify tenant/user/run identifiers. ``user_id`` and
                 # ``user_from`` must be forwarded here because downstream plugin-
-                # daemon provider/tool clients and knowledge-base layers read
-                # caller identity from this layer rather than from any parallel
-                # top-level request field.
+                # API model gateway, daemon tool clients, and knowledge-base
+                # layers read caller identity from this layer rather than from
+                # any parallel top-level request field.
                 execution_context=DifyExecutionContextLayerConfig(
                     tenant_id=context.dify_context.tenant_id,
                     user_id=context.dify_context.user_id,
@@ -254,6 +259,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
+                backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
@@ -307,20 +313,6 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "workflow_run"
 
     @staticmethod
-    def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
-        """Return the transport plugin id expected by plugin-daemon headers."""
-        if plugin_id.count("/") == 1:
-            return plugin_id.split(":", 1)[0].split("@", 1)[0]
-        if plugin_id:
-            return ModelProviderID(plugin_id).plugin_id
-        return ModelProviderID(model_provider).plugin_id
-
-    @staticmethod
-    def _plugin_daemon_provider_name(model_provider: str) -> str:
-        """Return the provider name expected by plugin-daemon dispatch payloads."""
-        return ModelProviderID(model_provider).provider_name
-
-    @staticmethod
     def _idempotency_key(context: WorkflowAgentRuntimeBuildContext) -> str:
         # Stage 4 §7 / D-4: retries get distinct keys (``...:retry-{attempt}``) so
         # the Agent backend's protocol-level dedup can't replay a previous run.
@@ -357,16 +349,21 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> str:
         lines: list[str] = []
         query = get_system_text(context.variable_pool, SystemVariableKey.QUERY)
+        uploaded_files = self._summarize_uploaded_workflow_files(context.variable_pool)
         resolved_outputs = self._resolve_previous_node_outputs(
             context.variable_pool,
             node_job.previous_node_output_refs,
         )
-        if not query and not resolved_outputs:
+        if not query and uploaded_files is None and not resolved_outputs:
             return ""
 
         lines.append("Workflow context loaded for this run:")
         if query:
             lines.append(f"- User query: {query}")
+
+        if uploaded_files is not None:
+            lines.append("- Uploaded workflow files:")
+            lines.append(f"  - sys.files: {uploaded_files}")
 
         if resolved_outputs:
             lines.append("- Previous node outputs:")
@@ -375,6 +372,14 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         lines.append("The above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory.")
         return "\n".join(lines)
+
+    def _summarize_uploaded_workflow_files(self, variable_pool: VariablePoolReader) -> str | None:
+        files = get_system_value(variable_pool, SystemVariableKey.FILES)
+        if files is None:
+            return None
+        if isinstance(files, list | tuple) and not files:
+            return None
+        return self._summarize_value(files)
 
     def _build_workflow_task_prompt(
         self,
@@ -444,7 +449,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _resolve_prompt_payload_value(cls, value: Any) -> tuple[Any, bool]:
         # File-valued workflow context must surface as Agent Stub download
         # mappings so the model can materialize those inputs with
-        # `dify-agent file download --mapping ...` inside the sandbox.
+        # `dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL` inside the sandbox.
         download_mapping = cls._agent_stub_download_mapping(value)
         if download_mapping is not None:
             return download_mapping, True
@@ -489,7 +494,21 @@ class WorkflowAgentRuntimeRequestBuilder:
                 return mapping.model_dump(mode="json", exclude_none=True)
 
             if isinstance(value, Mapping):
-                mapping = AgentStubFileMapping.model_validate(value)
+                transfer_method = value.get("transfer_method")
+                if not isinstance(transfer_method, str):
+                    return None
+                if transfer_method == "remote_url":
+                    mapping = AgentStubFileMapping(
+                        transfer_method="remote_url",
+                        url=value.get("url") or value.get("remote_url"),
+                    )
+                elif transfer_method in {"local_file", "tool_file", "datasource_file"}:
+                    mapping = AgentStubFileMapping(
+                        transfer_method=cast(AgentStubFileTransferMethod, transfer_method),
+                        reference=value.get("reference"),
+                    )
+                else:
+                    return None
                 return mapping.model_dump(mode="json", exclude_none=True)
         except ValidationError:
             return None
@@ -500,15 +519,15 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
         """Build the structured-output layer config sent to Agent backend.
 
-        Stage 4 §4.1 (D-3): when the user hasn't declared any outputs, inject the
-        PRD-mandated defaults (text / files / json) at runtime so the backend
-        always receives a stable schema and the downstream Inspector + nodes
-        have consistent output names. The defaults are NOT persisted.
+        Plain-output jobs omit this layer. Structured jobs prepend the optional,
+        system-owned ``text`` field to the persisted custom declarations.
         """
-        effective_outputs = WorkflowAgentRuntimeRequestBuilder.effective_declared_outputs(declared_outputs)
-        properties: dict[str, Any] = {}
+        if not declared_outputs:
+            return None
+
+        properties: dict[str, Any] = {"text": {"type": "string"}}
         required: list[str] = []
-        for output in effective_outputs:
+        for output in declared_outputs:
             properties[output.name] = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(output)
             if output.required:
                 required.append(output.name)
@@ -517,19 +536,8 @@ class WorkflowAgentRuntimeRequestBuilder:
             schema["required"] = required
         return AgentBackendOutputConfig(
             json_schema=schema,
-            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(effective_outputs),
+            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(declared_outputs),
         )
-
-    @staticmethod
-    def effective_declared_outputs(
-        declared_outputs: Sequence[DeclaredOutputConfig],
-    ) -> Sequence[DeclaredOutputConfig]:
-        """Alias for :func:`models.agent_config_entities.effective_declared_outputs`.
-
-        Kept as a static method on the builder so existing call sites
-        (``agent_node._run``, tests) don't need to change their import.
-        """
-        return _effective_declared_outputs(list(declared_outputs))
 
     @staticmethod
     def _schema_for_declared_output(output: DeclaredOutputConfig) -> dict[str, Any]:
@@ -590,11 +598,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         broad generated schema but fails API-side output type checking.
 
         For files produced inside an Agent run, the supported persisted shape is
-        narrower than every downloadable mapping: the sandbox must upload the
-        local artifact via ``dify-agent file upload <path>``, which returns a
-        ``tool_file`` mapping. ``local_file`` and ``datasource_file`` are valid
-        for existing file references in workflow context, not for newly produced
-        Agent output files.
+        narrower than the full CLI upload stdout: the sandbox must upload the
+        local artifact via ``dify-agent file upload <path>``, then use the
+        returned ``reference`` inside the accepted ``tool_file`` mapping shape
+        for structured ``final_output``. ``local_file`` and ``datasource_file``
+        are valid for existing file references in workflow context, not for
+        newly produced Agent output files.
         """
         return {
             "title": "AgentStubFileMapping",
@@ -649,9 +658,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             if output.type == DeclaredOutputType.FILE:
                 file_output_lines.append(
                     f"- `{output.name}`: create the file in the sandbox, run `dify-agent file upload <path>`, "
-                    f"and set `final_output.{output.name}` to the returned AgentStubFileMapping JSON object. "
-                    "Do not call `final_output` before the upload command succeeds. Do not use the local path, "
-                    "filename, URL, or a synthesized/base64-encoded value as the `reference`."
+                    f"then set `final_output.{output.name}` to a `tool_file` mapping using the returned "
+                    f"`reference`. Do not call `final_output` before the upload command succeeds. Do not use "
+                    "the local path, filename, URL, or a synthesized/base64-encoded value as the `reference`."
                 )
             elif (
                 output.type == DeclaredOutputType.ARRAY
@@ -660,9 +669,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             ):
                 file_output_lines.append(
                     f"- `{output.name}`: for every produced file, run `dify-agent file upload <path>` and set "
-                    f"`final_output.{output.name}` to an array of the returned AgentStubFileMapping JSON objects. "
-                    "Do not call `final_output` before all upload commands succeed. Do not use local paths, filenames, "
-                    "URLs, or synthesized/base64-encoded values as `reference` values."
+                    f"`final_output.{output.name}` to an array of `tool_file` mappings using the returned "
+                    f"`reference` values. Do not call `final_output` before all upload commands succeed. Do not use "
+                    "local paths, filenames, URLs, or synthesized/base64-encoded values as `reference` values."
                 )
         if not file_output_lines:
             return None
@@ -670,8 +679,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "\n".join(
             [
                 "When filling file outputs, do not return a local filesystem path directly.",
-                "Upload each sandbox-local file through the Agent Stub CLI first. Copy the JSON printed by "
-                "`dify-agent file upload <path>` verbatim into the final output; never invent the `reference` value.",
+                "Upload each sandbox-local file through the Agent Stub CLI first. For structured `final_output`, use "
+                "only the accepted file-mapping shape and the returned `reference`; never invent the `reference` "
+                "value.",
+                "If you are replying to the user in natural language and want them to open or download the produced "
+                "file, include the returned `public_download_url` in that reply instead of copying it into structured "
+                "`final_output` unless the schema explicitly asks for it.",
                 *file_output_lines,
             ]
         )
@@ -697,36 +710,19 @@ class WorkflowAgentRuntimeRequestBuilder:
         if required:
             schema["required"] = required
 
-    @staticmethod
-    def _normalize_credentials(credentials: Mapping[str, Any]) -> dict[str, str | int | float | bool | None]:
-        normalized: dict[str, str | int | float | bool | None] = {}
-        for key, value in credentials.items():
-            if isinstance(value, str | int | float | bool) or value is None:
-                normalized[key] = value
-            else:
-                normalized[key] = str(value)
-        return normalized
-
 
 def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
     """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
-    sandbox_config = _plain_mapping(agent_soul.sandbox.config)
     return DifyShellLayerConfig(
         cli_tools=[
             tool
             for tool in (_shell_cli_tool(item) for item in agent_soul.tools.cli_tools if _cli_tool_enabled(item))
             if tool is not None
         ],
-        env=[env for env in (_shell_env_var(item) for item in agent_soul.env.variables) if env is not None],
+        env=_shell_env_vars(agent_soul.env.variables, agent_soul.env.secret_refs),
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
         ],
-        sandbox=DifyShellSandboxConfig(
-            provider=agent_soul.sandbox.provider,
-            config=sandbox_config,
-        )
-        if agent_soul.sandbox.provider or sandbox_config
-        else None,
     )
 
 
@@ -769,6 +765,26 @@ def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBa
 
 
 def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
+    weights = None
+    if retrieval.weights is not None:
+        # The dify-agent runtime payload only consumes the nested vector/keyword
+        # settings; ``weight_type`` is an API-side authoring detail and must not
+        # leak into the inner request shape.
+        weights = (
+            cast(
+                dict[str, Any],
+                {
+                    key: value
+                    for key, value in {
+                        "vector_setting": retrieval.weights.vector_setting,
+                        "keyword_setting": retrieval.weights.keyword_setting,
+                    }.items()
+                    if value is not None
+                },
+            )
+            or None
+        )
+
     return DifyKnowledgeRetrievalConfig(
         mode=retrieval.mode,
         top_k=retrieval.top_k,
@@ -781,9 +797,7 @@ def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> Dif
         )
         if retrieval.reranking_model is not None
         else None,
-        weights=cast(dict[str, Any], retrieval.weights.model_dump(mode="json", exclude_none=True))
-        if retrieval.weights is not None
-        else None,
+        weights=weights,
         model=_knowledge_model_config(retrieval.model),
     )
 
@@ -794,7 +808,12 @@ def _knowledge_metadata_filtering_config(
     return DifyKnowledgeMetadataFilteringConfig(
         mode=metadata_filtering.mode,
         model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
-        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        conditions=cast(
+            Any,
+            metadata_filtering.conditions.model_dump(
+                mode="json", exclude={"conditions": {"__all__": {"id", "metadata_id"}}}
+            ),
+        )
         if metadata_filtering.conditions is not None
         else None,
     )
@@ -836,12 +855,17 @@ def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, s
             existing.extend(warnings)
 
 
-def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
+def build_config_aware_soul_mention_resolver(
+    agent_soul: AgentSoulConfig,
+    *,
+    runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
+):
     """Resolve config skill/file mentions and delegate the rest to Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
-    skill_names = {item.name for item in agent_soul.config_skills}
-    file_names = {item.name for item in agent_soul.config_files}
+    skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+    skill_names.update(item.name for item in runtime_config_skills)
+    file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
 
     def _resolve(mention: object) -> str | None:
         if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
@@ -858,14 +882,41 @@ def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
     return _resolve
 
 
+def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[DifyConfigSkillConfig]:
+    """Return workspace-bound Skills as prompt-safe runtime config skills."""
+    from services.skill_management_service import SkillManagementService
+
+    try:
+        runtime_skills = SkillManagementService().list_runtime_agent_skills(tenant_id=tenant_id, agent_id=agent_id)
+    except OperationalError as exc:
+        if "no such table: agent_skill_bindings" not in str(exc.orig):
+            raise
+        runtime_skills = []
+    return [
+        DifyConfigSkillConfig(
+            name=str(item["name"]),
+            description=str(item.get("description") or ""),
+            size=cast(int | None, item.get("size")),
+            mime_type=cast(str | None, item.get("mime_type")),
+        )
+        for item in runtime_skills
+    ]
+
+
 def build_config_layer_config(
     agent_soul: AgentSoulConfig,
     *,
     agent_id: str | None = None,
     config_version_id: str | None = None,
     config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
-) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
-    """Derive prompt-mentioned eager-pull names from Agent Soul."""
+    runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
+) -> tuple[DifyConfigLayerConfig, list[dict[str, str]]]:
+    """Build the always-present Agent config layer from Agent Soul state.
+
+    The ``dify.config`` layer must exist for every Agent v2 runtime request so
+    the backend can expose the config CLI/help surface even when the current
+    Agent Soul has no config assets, note, or prompt mentions.
+    """
 
     ordered_mentions = list(
         dict.fromkeys(
@@ -874,17 +925,35 @@ def build_config_layer_config(
             if mention.kind in {MentionKind.SKILL, MentionKind.FILE} and mention.ref_id
         )
     )
-    if (
-        not agent_soul.config_skills
-        and not agent_soul.config_files
-        and not agent_soul.config_note
-        and not ordered_mentions
-    ):
-        return None, []
-
-    skill_names = {skill.name for skill in agent_soul.config_skills}
-    file_names = {file_ref.name for file_ref in agent_soul.config_files}
-    warnings: list[dict[str, str]] = []
+    available_skills = [skill for skill in agent_soul.config_skills if not skill.is_missing]
+    skill_configs = [
+        DifyConfigSkillConfig(
+            name=skill.name,
+            description=skill.description,
+            size=skill.size,
+            mime_type=skill.mime_type,
+        )
+        for skill in available_skills
+    ]
+    seen_skill_names = {skill.name for skill in skill_configs}
+    for skill in runtime_config_skills:
+        if skill.name in seen_skill_names:
+            continue
+        seen_skill_names.add(skill.name)
+        skill_configs.append(skill)
+    available_files = [file_ref for file_ref in agent_soul.config_files if not file_ref.is_missing]
+    skill_names = {skill.name for skill in skill_configs}
+    file_names = {file_ref.name for file_ref in available_files}
+    warnings: list[dict[str, str]] = [
+        {
+            "section": "agent_soul.config",
+            "code": "config_asset_missing",
+            "message": f"config {kind} '{item.name}' is unavailable and was excluded from runtime.",
+        }
+        for kind, items in (("skill", agent_soul.config_skills), ("file", agent_soul.config_files))
+        for item in items
+        if item.is_missing
+    ]
     mentioned_skill_names: list[str] = []
     mentioned_file_names: list[str] = []
     for name in ordered_mentions:
@@ -910,22 +979,14 @@ def build_config_layer_config(
                 kind=config_version_kind,
                 writable=config_version_kind == "build_draft",
             ),
-            skills=[
-                DifyConfigSkillConfig(
-                    name=skill.name,
-                    description=skill.description,
-                    size=skill.size,
-                    mime_type=skill.mime_type,
-                )
-                for skill in agent_soul.config_skills
-            ],
+            skills=skill_configs,
             files=[
                 DifyConfigFileConfig(
                     name=file_ref.name,
                     size=file_ref.size,
                     mime_type=file_ref.mime_type,
                 )
-                for file_ref in agent_soul.config_files
+                for file_ref in available_files
             ],
             env_keys=_agent_soul_config_env_keys(agent_soul),
             note=agent_soul.config_note,
@@ -968,11 +1029,7 @@ def _shell_cli_tool(item: object) -> DifyShellCliToolConfig | None:
     if not commands and not isinstance(name, str):
         return None
     tool_env = data.get("env") if isinstance(data.get("env"), Mapping) else {}
-    env = [
-        env_var
-        for env_var in (_shell_env_var(item) for item in _env_entries(tool_env, "variables"))
-        if env_var is not None
-    ]
+    env = _shell_env_vars(_env_entries(tool_env, "variables"), _env_entries(tool_env, "secret_refs"))
     secret_refs = [
         secret_ref
         for secret_ref in (_shell_secret_ref(item) for item in _env_entries(tool_env, "secret_refs"))
@@ -995,6 +1052,12 @@ def _env_entries(env: object, key: str) -> list[object]:
     return entries
 
 
+def _shell_env_vars(variables: Sequence[object], secret_refs: Sequence[object]) -> list[DifyShellEnvVarConfig]:
+    env_vars = [_shell_env_var(item) for item in variables]
+    secret_env_vars = [_shell_env_var(item) for item in secret_refs if _has_secret_value(item)]
+    return [env for env in [*env_vars, *secret_env_vars] if env is not None]
+
+
 def _shell_env_var(item: object) -> DifyShellEnvVarConfig | None:
     data = _plain_mapping(item)
     name = _name_from_mapping(data)
@@ -1011,13 +1074,15 @@ def _shell_secret_ref(item: object) -> DifyShellSecretRefConfig | None:
     name = _name_from_mapping(data)
     if name is None:
         return None
-    ref = (
-        data.get("ref")
-        or data.get("value")
-        or data.get("id")
-        or data.get("credential_id")
-        or data.get("provider_credential_id")
-    )
+    # Inline Composer values are passed as env vars because the agent-backend
+    # secret ref schema only accepts short backend-managed reference IDs.
+    if _has_secret_value(item):
+        return None
+    ref = data.get("ref") or data.get("credential_id") or data.get("provider_credential_id")
+    if ref is None:
+        ref = data.get("id")
+    if ref is None:
+        return None
     return DifyShellSecretRefConfig(name=name, ref=str(ref) if ref is not None else None)
 
 
@@ -1027,6 +1092,12 @@ def _plain_mapping(item: object) -> dict[str, Any]:
     if isinstance(item, Mapping):
         return dict(item)
     return {}
+
+
+def _has_secret_value(item: object) -> bool:
+    data = _plain_mapping(item)
+    value = data.get("value")
+    return isinstance(value, str) and bool(value)
 
 
 def _name_from_mapping(item: Mapping[str, Any]) -> str | None:

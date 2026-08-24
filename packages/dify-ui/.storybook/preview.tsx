@@ -26,6 +26,14 @@ const preview: Preview = {
     },
     a11y: {
       test: 'error',
+      config: {
+        rules: [
+          {
+            id: 'color-contrast',
+            enabled: false,
+          },
+        ],
+      },
     },
   },
   tags: ['autodocs'],

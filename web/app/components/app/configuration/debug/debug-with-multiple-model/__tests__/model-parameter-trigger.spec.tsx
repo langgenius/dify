@@ -1,3 +1,4 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type {
@@ -19,14 +20,9 @@ import ModelParameterTrigger from '../model-parameter-trigger'
 
 const mockUseDebugConfigurationContext = vi.fn()
 const mockUseDebugWithMultipleModelContext = vi.fn()
-const mockUseProviderContext = vi.fn()
+const mockProvidersSummary = vi.fn()
 const mockUseCredentialPanelState = vi.fn()
-
-type RenderTriggerProps = {
-  open: boolean
-  currentProvider: { provider: string } | null
-  currentModel: { model: string, status: ModelStatusEnum } | null
-}
+const mockUseCurrentModel = vi.fn()
 
 let capturedModalProps: {
   isAdvancedMode: boolean
@@ -34,10 +30,10 @@ let capturedModalProps: {
   modelId: string
   completionParams: FormValue
   onCompletionParamsChange: (params: FormValue) => void
-  setModel: (model: { modelId: string, provider: string }) => void
+  setModel: (model: { modelId: string; provider: string }) => void
   debugWithMultipleModel: boolean
   onDebugWithMultipleModelChange: () => void
-  renderTrigger: (props: RenderTriggerProps) => ReactNode
+  trigger: ReactNode
 } | null = null
 
 vi.mock('@/context/debug-configuration', () => ({
@@ -48,33 +44,44 @@ vi.mock('../context', () => ({
   useDebugWithMultipleModelContext: () => mockUseDebugWithMultipleModelContext(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQuery: ({
+      select,
+    }: {
+      select?: (data: { data: ModelProviderSummaryResponse[] }) => unknown
+    }) => {
+      const data = { data: mockProvidersSummary() }
+      return { data: select ? select(data) : data }
+    },
+  }
+})
+
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state',
+  () => ({
+    useCredentialPanelState: () => mockUseCredentialPanelState(),
+  }),
+)
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useTextGenerationCurrentProviderAndModelAndModelList: () => mockUseCurrentModel(),
 }))
 
-vi.mock('@/app/components/header/account-setting/model-provider-page/provider-added-card/use-credential-panel-state', () => ({
-  useCredentialPanelState: () => mockUseCredentialPanelState(),
-}))
-
-vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  default: (props: typeof capturedModalProps) => {
-    capturedModalProps = props
-    // Render the trigger that the component passes
-    const triggerContent = props?.renderTrigger({
-      open: false,
-      currentProvider: null,
-      currentModel: null,
-    })
-    return (
-      <div data-testid="model-parameter-modal">
-        {triggerContent}
-      </div>
-    )
-  },
-}))
+vi.mock(
+  '@/app/components/header/account-setting/model-provider-page/model-parameter-modal',
+  () => ({
+    default: (props: typeof capturedModalProps) => {
+      capturedModalProps = props
+      return <div data-testid="model-parameter-modal">{props?.trigger}</div>
+    },
+  }),
+)
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-icon', () => ({
-  default: ({ provider, modelName }: { provider: { provider: string }, modelName?: string }) => (
+  default: ({ provider, modelName }: { provider: { provider: string }; modelName?: string }) => (
     <div data-testid="model-icon" data-provider={provider?.provider} data-model={modelName}>
       ModelIcon
     </div>
@@ -87,7 +94,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-name'
   ),
 }))
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: 'model-1',
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -152,9 +161,17 @@ describe('ModelParameterTrigger', () => {
       onMultipleModelConfigsChange: vi.fn(),
       onDebugWithMultipleModelChange: vi.fn(),
     })
-    mockUseProviderContext.mockReturnValue(createMockProviderContextValue({
-      modelProviders: [createModelProvider()],
-    }))
+    mockProvidersSummary.mockReturnValue(
+      createMockProviderContextValue({
+        modelProviders: [
+          {
+            ...createModelProvider(),
+            is_configured: true,
+            plugin_id: 'langgenius/openai',
+          } as unknown as ModelProviderSummaryResponse,
+        ],
+      }).modelProviders,
+    )
     mockUseCredentialPanelState.mockReturnValue({
       variant: 'api-active',
       priority: 'apiKey',
@@ -165,6 +182,7 @@ describe('ModelParameterTrigger', () => {
       credentialName: 'Primary Key',
       credits: 10,
     })
+    mockUseCurrentModel.mockReturnValue({ currentProvider: null, currentModel: null })
   })
 
   describe('rendering', () => {
@@ -361,10 +379,9 @@ describe('ModelParameterTrigger', () => {
   })
 
   describe('trigger rendering', () => {
-    it('should render trigger content from renderTrigger', () => {
+    it('should render the trigger element', () => {
       renderComponent()
 
-      // The trigger is rendered via renderTrigger callback
       expect(screen.getByTestId('model-parameter-modal')).toBeInTheDocument()
     })
 
@@ -385,52 +402,35 @@ describe('ModelParameterTrigger', () => {
 
       expect(screen.getByText('gpt-3.5-turbo')).toBeInTheDocument()
       await userEvent.hover(screen.getByLabelText('common.modelProvider.selector.incompatibleTip'))
-      expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
+      expect(
+        await screen.findByText('common.modelProvider.selector.incompatibleTip'),
+      ).toBeInTheDocument()
     })
 
     it('should render configure required tooltip for no-configure status', async () => {
-      const { unmount } = renderComponent()
-      const triggerContent = capturedModalProps?.renderTrigger({
-        open: false,
+      mockUseCurrentModel.mockReturnValue({
         currentProvider: { provider: 'openai' },
         currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
       })
+      renderComponent()
 
-      unmount()
-      render(<>{triggerContent}</>)
-
-      await userEvent.hover(screen.getByLabelText('common.modelProvider.selector.configureRequired'))
-      expect(await screen.findByText('common.modelProvider.selector.configureRequired')).toBeInTheDocument()
+      await userEvent.hover(
+        screen.getByLabelText('common.modelProvider.selector.configureRequired'),
+      )
+      expect(
+        await screen.findByText('common.modelProvider.selector.configureRequired'),
+      ).toBeInTheDocument()
     })
 
     it('should render disabled tooltip for disabled status', async () => {
-      const { unmount } = renderComponent()
-      const triggerContent = capturedModalProps?.renderTrigger({
-        open: false,
+      mockUseCurrentModel.mockReturnValue({
         currentProvider: { provider: 'openai' },
         currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.disabled },
       })
-
-      unmount()
-      render(<>{triggerContent}</>)
+      renderComponent()
 
       await userEvent.hover(screen.getByLabelText('common.modelProvider.selector.disabled'))
       expect(await screen.findByText('common.modelProvider.selector.disabled')).toBeInTheDocument()
-    })
-
-    it('should apply expanded and warning styles when the trigger is open for a non-active status', () => {
-      const { unmount } = renderComponent()
-      const triggerContent = capturedModalProps?.renderTrigger({
-        open: true,
-        currentProvider: { provider: 'openai' },
-        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.noConfigure },
-      })
-
-      unmount()
-      const { container } = render(<>{triggerContent}</>)
-
-      expect(container.firstChild).toHaveClass('bg-state-base-hover')
-      expect(container.firstChild).toHaveClass('bg-[#FFFAEB]!')
     })
   })
 
@@ -474,31 +474,18 @@ describe('ModelParameterTrigger', () => {
     })
   })
 
-  describe('renderTrigger with different states', () => {
-    it('should pass correct props to renderTrigger', () => {
+  describe('trigger element', () => {
+    it('should pass a trigger element to the modal', () => {
       renderComponent()
 
-      expect(capturedModalProps?.renderTrigger).toBeDefined()
-      expect(typeof capturedModalProps?.renderTrigger).toBe('function')
+      expect(capturedModalProps?.trigger).toBeDefined()
     })
 
     it('should render trigger with provider info when available', () => {
-      // Mock the modal to render trigger with provider
-      vi.doMock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-        default: (props: typeof capturedModalProps) => {
-          capturedModalProps = props
-          const triggerContent = props?.renderTrigger({
-            open: false,
-            currentProvider: { provider: 'openai' },
-            currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.active },
-          })
-          return (
-            <div data-testid="model-parameter-modal">
-              {triggerContent}
-            </div>
-          )
-        },
-      }))
+      mockUseCurrentModel.mockReturnValue({
+        currentProvider: { provider: 'openai' },
+        currentModel: { model: 'gpt-3.5-turbo', status: ModelStatusEnum.active },
+      })
 
       renderComponent()
 

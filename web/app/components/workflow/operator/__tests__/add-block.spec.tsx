@@ -1,28 +1,12 @@
-import type { ReactNode } from 'react'
-import { act, screen, waitFor } from '@testing-library/react'
+import type { NodeDefault } from '../../types'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FlowType } from '@/types/common'
 import { createNode } from '../../__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
+import { BlockClassification } from '../../block-selector/types'
 import { BlockEnum } from '../../types'
 import AddBlock from '../add-block'
-
-type BlockSelectorMockProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  disabled: boolean
-  onSelect: (type: BlockEnum, pluginDefaultValue?: Record<string, unknown>) => void
-  placement: string
-  offset: {
-    mainAxis: number
-    crossAxis: number
-  }
-  trigger: (open: boolean) => ReactNode
-  popupClassName: string
-  availableBlocksTypes: BlockEnum[]
-  showStartTab: boolean
-  isolateKeyboardEvents?: boolean
-  defaultActiveTab?: unknown
-}
 
 const {
   mockHandlePaneContextmenuCancel,
@@ -33,320 +17,184 @@ const {
 } = vi.hoisted(() => ({
   mockHandlePaneContextmenuCancel: vi.fn(),
   mockWorkflowStoreSetState: vi.fn(),
-  mockGenerateNewNode: vi.fn(({ type, data }: { type: string, data: Record<string, unknown> }) => ({
-    newNode: {
-      id: 'generated-node',
-      type,
-      data,
-      position: {
-        x: 0,
-        y: 0,
-      },
-    },
+  mockGenerateNewNode: vi.fn(({ type, data }: { type: string; data: Record<string, unknown> }) => ({
+    newNode: { id: 'generated-node', type, data, position: { x: 0, y: 0 } },
   })),
   mockGetNodeCustomTypeByNodeDataType: vi.fn((type: string) => `${type}-custom`),
-  mockGetNodesWithSameDefaultDataType: vi.fn((
-    nodes: Array<{ data: { agent_node_kind?: string, type?: BlockEnum, version?: string } }>,
-    type: BlockEnum,
-    defaultValue: { agent_node_kind?: string, type?: BlockEnum, version?: string },
-  ) => {
-    const dataType = defaultValue.type ?? type
-    if (dataType !== type && defaultValue.version) {
-      return nodes.filter(node =>
-        node.data.type === dataType
-        && node.data.version === defaultValue.version
-        && node.data.agent_node_kind === defaultValue.agent_node_kind,
-      )
-    }
-
-    return nodes.filter(node => node.data.type === dataType)
-  }),
+  mockGetNodesWithSameDefaultDataType: vi.fn(
+    (nodes: Array<{ data: { type?: BlockEnum } }>, type: BlockEnum) =>
+      nodes.filter((node) => node.data.type === type),
+  ),
 }))
 
-let latestBlockSelectorProps: BlockSelectorMockProps | null = null
 let mockNodesReadOnly = false
 let mockIsChatMode = false
 let mockFlowType: FlowType = FlowType.appFlow
 
-const mockAvailableNextBlocks = [BlockEnum.Answer, BlockEnum.Code]
-const mockNodesMetaDataMap: Partial<Record<BlockEnum, { defaultValue: Record<string, unknown> }>> = {
-  [BlockEnum.Answer]: {
-    defaultValue: {
-      title: 'Answer',
-      desc: '',
-      type: BlockEnum.Answer,
-    },
+const answerBlock: NodeDefault = {
+  metaData: {
+    classification: BlockClassification.Default,
+    sort: 0,
+    type: BlockEnum.Answer,
+    title: 'Answer',
+    author: 'Dify',
+    description: 'Answer description',
   },
+  defaultValue: {
+    title: 'Answer',
+    desc: '',
+    type: BlockEnum.Answer,
+  },
+  checkValid: () => ({ isValid: true }),
 }
 
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: (props: BlockSelectorMockProps) => {
-    latestBlockSelectorProps = props
-    return (
-      <div data-testid="block-selector">
-        {props.trigger(props.open)}
-      </div>
-    )
-  },
+vi.mock('../../hooks/use-available-blocks', () => ({
+  useAvailableBlocks: () => ({
+    availableNextBlocks: [BlockEnum.Answer],
+  }),
 }))
 
-vi.mock('../../hooks', () => ({
-  useAvailableBlocks: () => ({
-    availableNextBlocks: mockAvailableNextBlocks,
-  }),
+vi.mock('../../hooks/use-workflow', () => ({
   useIsChatMode: () => mockIsChatMode,
+  useNodesReadOnly: () => ({ nodesReadOnly: mockNodesReadOnly }),
+}))
+
+vi.mock('../../hooks/use-nodes-meta-data', () => ({
   useNodesMetaData: () => ({
-    nodesMap: mockNodesMetaDataMap,
+    nodesMap: { [BlockEnum.Answer]: answerBlock },
   }),
-  useNodesReadOnly: () => ({
-    nodesReadOnly: mockNodesReadOnly,
-  }),
+}))
+
+vi.mock('../../hooks/use-panel-interactions', () => ({
   usePanelInteractions: () => ({
     handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
   }),
 }))
 
 vi.mock('../../hooks-store', () => ({
-  useHooksStore: (selector: (state: { configsMap?: { flowType?: FlowType } }) => unknown) =>
-    selector({ configsMap: { flowType: mockFlowType } }),
+  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      configsMap: { flowType: mockFlowType },
+      availableNodesMetaData: { nodes: [answerBlock] },
+    }),
 }))
 
 vi.mock('../../store', () => ({
-  useWorkflowStore: () => ({
-    setState: mockWorkflowStoreSetState,
-  }),
+  useStore: (selector: (state: { dataSourceList: unknown[]; nodes: unknown[] }) => unknown) =>
+    selector({ dataSourceList: [], nodes: [] }),
+  useWorkflowStore: () => ({ setState: mockWorkflowStoreSetState }),
 }))
 
-vi.mock('../../utils', () => ({
-  generateNewNode: mockGenerateNewNode,
-  getNodeCustomTypeByNodeDataType: mockGetNodeCustomTypeByNodeDataType,
-  getNodesWithSameDefaultDataType: mockGetNodesWithSameDefaultDataType,
+vi.mock('../../utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils')>()
+  return {
+    ...actual,
+    generateNewNode: mockGenerateNewNode,
+    getNodeCustomTypeByNodeDataType: mockGetNodeCustomTypeByNodeDataType,
+    getNodesWithSameDefaultDataType: mockGetNodesWithSameDefaultDataType,
+  }
+})
+
+vi.mock('@/service/use-plugins', () => ({
+  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
+  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
 }))
 
-vi.mock('../tip-popup', () => ({
-  default: ({ children }: { children?: ReactNode }) => <>{children}</>,
+vi.mock('@/service/use-triggers', () => ({
+  useAllTriggerPlugins: () => ({ data: [] }),
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
 }))
 
-const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>>) =>
+vi.mock('@/service/use-tools', () => ({
+  useAllBuiltInTools: () => ({ data: [] }),
+  useAllCustomTools: () => ({ data: [] }),
+  useAllWorkflowTools: () => ({ data: [] }),
+  useAllMCPTools: () => ({ data: [] }),
+  useInvalidateAllBuiltInTools: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
+  useMarketplacePlugins: () => ({ data: undefined }),
+}))
+
+const renderWithReactFlow = (nodes: Array<ReturnType<typeof createNode>> = []) =>
   renderWorkflowFlowComponent(<AddBlock />, { nodes, edges: [] })
 
 describe('AddBlock', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    latestBlockSelectorProps = null
     mockNodesReadOnly = false
     mockIsChatMode = false
     mockFlowType = FlowType.appFlow
   })
 
-  // Rendering and selector configuration.
-  describe('Rendering', () => {
-    it('should pass the selector props for a writable app workflow', async () => {
-      renderWithReactFlow([])
+  it('opens the real selector and exposes its open state', async () => {
+    const user = userEvent.setup()
+    renderWithReactFlow()
 
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+    const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
+    expect(trigger).not.toHaveAttribute('data-block-selector-open')
 
-      expect(screen.getByTestId('block-selector')).toBeInTheDocument()
-      expect(latestBlockSelectorProps).toMatchObject({
-        disabled: false,
-        availableBlocksTypes: mockAvailableNextBlocks,
-        showStartTab: true,
-        placement: 'right-start',
-        popupClassName: 'min-w-[256px]!',
-        isolateKeyboardEvents: undefined,
-      })
-      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
-      expect(latestBlockSelectorProps?.offset).toEqual({
-        mainAxis: 4,
-        crossAxis: -8,
-      })
-    })
+    await user.hover(trigger)
+    await waitFor(() => expect(trigger).toHaveAttribute('data-popup-open', ''))
+    expect(trigger).not.toHaveAttribute('data-block-selector-open')
 
-    it('should hide the start tab for chat mode and rag pipeline flows', async () => {
-      mockIsChatMode = true
-      const { unmount } = renderWithReactFlow([])
+    await user.click(trigger)
 
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
-
-      expect(latestBlockSelectorProps?.showStartTab).toBe(false)
-
-      mockIsChatMode = false
-      mockFlowType = FlowType.ragPipeline
-      unmount()
-      renderWithReactFlow([])
-
-      expect(latestBlockSelectorProps?.showStartTab).toBe(false)
-    })
-
-    it.each([
-      BlockEnum.Start,
-      BlockEnum.TriggerWebhook,
-    ])('should keep the normal default tab when a %s node already exists', async (type) => {
-      renderWithReactFlow([
-        createNode({ id: 'entry-node', position: { x: 0, y: 0 }, data: { type } }),
-      ])
-
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
-
-      expect(latestBlockSelectorProps?.showStartTab).toBe(true)
-      expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
-    })
-
-    it('should pass keyboard isolation to the selector when requested by the caller', async () => {
-      renderWorkflowFlowComponent(<AddBlock isolateKeyboardEvents />, { nodes: [], edges: [] })
-
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
-
-      expect(latestBlockSelectorProps?.isolateKeyboardEvents).toBe(true)
-    })
+    expect(trigger).toHaveAttribute('data-block-selector-open', '')
+    expect(screen.getByRole('dialog', { name: 'workflow.common.addBlock' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Answer' })).toBeInTheDocument()
   })
 
-  // User interactions that bridge selector state and workflow state.
-  describe('User Interactions', () => {
-    it('should cancel the pane context menu when the selector closes', async () => {
-      renderWithReactFlow([])
+  it('keeps the disabled trigger focusable without opening the selector', async () => {
+    const user = userEvent.setup()
+    mockNodesReadOnly = true
+    renderWithReactFlow()
 
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+    const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
+    expect(trigger).toHaveAttribute('aria-disabled', 'true')
 
-      act(() => {
-        latestBlockSelectorProps?.onOpenChange(false)
-      })
+    trigger.focus()
+    expect(trigger).toHaveFocus()
+    await user.click(trigger)
+    expect(
+      screen.queryByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).not.toBeInTheDocument()
+  })
 
-      expect(mockHandlePaneContextmenuCancel).toHaveBeenCalledTimes(1)
+  it('closes the selector through the real trigger and cancels the pane menu', async () => {
+    const user = userEvent.setup()
+    renderWithReactFlow()
+
+    const trigger = screen.getByRole('button', { name: 'workflow.common.addBlock' })
+    await user.click(trigger)
+    await user.click(trigger)
+
+    expect(mockHandlePaneContextmenuCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('creates a candidate node after selecting a real block option', async () => {
+    const user = userEvent.setup()
+    renderWithReactFlow([
+      createNode({ id: 'node-1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Answer } }),
+      createNode({ id: 'node-2', position: { x: 80, y: 0 }, data: { type: BlockEnum.Answer } }),
+    ])
+
+    await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
+    await user.click(screen.getByRole('button', { name: 'Answer' }))
+
+    expect(mockGenerateNewNode).toHaveBeenCalledWith({
+      type: 'answer-custom',
+      data: {
+        title: 'Answer 3',
+        desc: '',
+        type: BlockEnum.Answer,
+        _isCandidate: true,
+      },
+      position: { x: 0, y: 0 },
     })
-
-    it('should create a candidate node with an incremented title when a block is selected', async () => {
-      renderWithReactFlow([
-        createNode({ id: 'node-1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Answer } }),
-        createNode({ id: 'node-2', position: { x: 80, y: 0 }, data: { type: BlockEnum.Answer } }),
-      ])
-
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
-
-      act(() => {
-        latestBlockSelectorProps?.onSelect(BlockEnum.Answer, { pluginId: 'plugin-1' })
-      })
-
-      expect(mockGetNodeCustomTypeByNodeDataType).toHaveBeenCalledWith(BlockEnum.Answer)
-      expect(mockGenerateNewNode).toHaveBeenCalledWith({
-        type: 'answer-custom',
-        data: {
-          title: 'Answer 3',
-          desc: '',
-          type: BlockEnum.Answer,
-          pluginId: 'plugin-1',
-          _isCandidate: true,
-        },
-        position: {
-          x: 0,
-          y: 0,
-        },
-      })
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        candidateNode: expect.objectContaining({
-          id: 'generated-node',
-          type: 'answer-custom',
-          data: {
-            title: 'Answer 3',
-            desc: '',
-            type: BlockEnum.Answer,
-            pluginId: 'plugin-1',
-            _isCandidate: true,
-          },
-        }),
-      })
-    })
-
-    it('should count Agent v2 nodes by the final default data type without counting legacy Agent nodes', async () => {
-      mockNodesMetaDataMap[BlockEnum.AgentV2] = {
-        defaultValue: {
-          title: 'Agent',
-          desc: '',
-          agent_node_kind: 'dify_agent',
-          type: BlockEnum.Agent,
-          version: '2',
-        },
-      }
-      renderWithReactFlow([
-        createNode({ id: 'old-agent', position: { x: 0, y: 0 }, data: { type: BlockEnum.Agent, version: '2' } }),
-        createNode({ id: 'agent-v2', position: { x: 80, y: 0 }, data: { agent_node_kind: 'dify_agent', type: BlockEnum.Agent, version: '2' } }),
-      ])
-
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
-
-      act(() => {
-        latestBlockSelectorProps?.onSelect(BlockEnum.AgentV2)
-      })
-
-      expect(mockGetNodesWithSameDefaultDataType).toHaveBeenCalledWith(
-        expect.any(Array),
-        BlockEnum.AgentV2,
-        {
-          title: 'Agent',
-          desc: '',
-          agent_node_kind: 'dify_agent',
-          type: BlockEnum.Agent,
-          version: '2',
-        },
-      )
-      expect(mockGenerateNewNode).toHaveBeenCalledWith({
-        type: 'agent-v2-custom',
-        data: {
-          title: 'Agent 2',
-          desc: '',
-          agent_node_kind: 'dify_agent',
-          type: BlockEnum.Agent,
-          version: '2',
-          _isCandidate: true,
-        },
-        position: {
-          x: 0,
-          y: 0,
-        },
-      })
-    })
-
-    it('should keep start-from-scratch Agent v2 as a candidate node before placement', async () => {
-      mockNodesMetaDataMap[BlockEnum.AgentV2] = {
-        defaultValue: {
-          title: 'Agent',
-          desc: '',
-          agent_node_kind: 'dify_agent',
-          type: BlockEnum.Agent,
-          version: '2',
-        },
-      }
-      renderWithReactFlow([])
-
-      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
-
-      act(() => {
-        latestBlockSelectorProps?.onSelect(BlockEnum.AgentV2, {
-          agent_binding: {
-            binding_type: 'inline_agent',
-          },
-          agent_node_kind: 'dify_agent',
-          version: '2',
-        })
-      })
-
-      expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
-        candidateNode: expect.objectContaining({
-          id: 'generated-node',
-          type: 'agent-v2-custom',
-          data: {
-            title: 'Agent',
-            desc: '',
-            agent_binding: {
-              binding_type: 'inline_agent',
-            },
-            agent_node_kind: 'dify_agent',
-            type: BlockEnum.Agent,
-            version: '2',
-            _isCandidate: true,
-          },
-        }),
-      })
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({
+      candidateNode: expect.objectContaining({ id: 'generated-node' }),
     })
   })
 })

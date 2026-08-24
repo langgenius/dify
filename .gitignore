@@ -140,6 +140,9 @@ dmypy.json
 pyrightconfig.json
 !api/pyrightconfig.json
 
+# import-linter
+.import_linter_cache/
+
 # Pyre type checker
 .pyre/
 .idea/'
@@ -214,6 +217,7 @@ sdks/python-client/dify_client.egg-info
 api/.vscode
 # vscode Code History Extension
 .history
+.eslintcache
 
 .idea/
 
@@ -258,7 +262,10 @@ scripts/stress-test/reports/
 # Code Agent Folder
 .qoder/*
 .context/
-.eslintcache
-
 # Vitest local reports
+web/.vitest-browser/
 web/.vitest-reports/
+
+# dify-agent-runtime
+dify-agent-runtime/bin/
+dify-agent-runtime/.integration-state

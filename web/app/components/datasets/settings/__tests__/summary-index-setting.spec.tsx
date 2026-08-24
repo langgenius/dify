@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import SummaryIndexSetting from '../summary-index-setting'
 
 // Mock useModelList to return a list of text generation models
@@ -19,12 +19,20 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Mock ModelSelector (external component from header module)
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ onSelect, readonly, defaultModel }: { onSelect?: (val: Record<string, string>) => void, readonly?: boolean, defaultModel?: { model?: string } }) => (
-    <div data-testid="model-selector" data-readonly={readonly}>
-      <span data-testid="current-model">{defaultModel?.model || 'none'}</span>
+  ModelSelector: ({
+    onValueChange,
+    disabled,
+    value,
+  }: {
+    onValueChange?: (val: Record<string, string>) => void
+    disabled?: boolean
+    value?: { model?: string }
+  }) => (
+    <div data-testid="model-selector" data-disabled={disabled}>
+      <span data-testid="current-model">{value?.model || 'none'}</span>
       <button
         data-testid="select-model-btn"
-        onClick={() => onSelect?.({ provider: 'openai', model: 'gpt-4' })}
+        onClick={() => onValueChange?.({ provider: 'openai', model: 'gpt-4' })}
       >
         Select
       </button>
@@ -118,20 +126,14 @@ describe('SummaryIndexSetting', () => {
 
     it('should show disabled text when not enabled', () => {
       render(
-        <SummaryIndexSetting
-          entry="dataset-settings"
-          summaryIndexSetting={{ enable: false }}
-        />,
+        <SummaryIndexSetting entry="dataset-settings" summaryIndexSetting={{ enable: false }} />,
       )
       expect(screen.getByText(`${ns}.form.summaryAutoGenEnableTip`)).toBeInTheDocument()
     })
 
     it('should show enabled tip when enabled', () => {
       render(
-        <SummaryIndexSetting
-          entry="dataset-settings"
-          summaryIndexSetting={{ enable: true }}
-        />,
+        <SummaryIndexSetting entry="dataset-settings" summaryIndexSetting={{ enable: true }} />,
       )
       expect(screen.getByText(`${ns}.form.summaryAutoGenTip`)).toBeInTheDocument()
     })
@@ -168,17 +170,14 @@ describe('SummaryIndexSetting', () => {
 
     it('should not show model selector when disabled', () => {
       render(
-        <SummaryIndexSetting
-          entry="create-document"
-          summaryIndexSetting={{ enable: false }}
-        />,
+        <SummaryIndexSetting entry="create-document" summaryIndexSetting={{ enable: false }} />,
       )
       expect(screen.queryByTestId('model-selector')).not.toBeInTheDocument()
     })
   })
 
   describe('readonly mode', () => {
-    it('should pass readonly to model selector in knowledge-base entry', () => {
+    it('should disable model selector in knowledge-base entry', () => {
       render(
         <SummaryIndexSetting
           entry="knowledge-base"
@@ -186,7 +185,7 @@ describe('SummaryIndexSetting', () => {
           readonly
         />,
       )
-      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-readonly', 'true')
+      expect(screen.getByTestId('model-selector')).toHaveAttribute('data-disabled', 'true')
     })
 
     it('should disable textarea in readonly mode', () => {
@@ -203,23 +202,22 @@ describe('SummaryIndexSetting', () => {
   })
 
   describe('model config derivation', () => {
-    it('should pass correct defaultModel when provider and model are set', () => {
+    it('should pass the selected value when provider and model are set', () => {
       render(
         <SummaryIndexSetting
           entry="knowledge-base"
-          summaryIndexSetting={{ enable: true, model_provider_name: 'anthropic', model_name: 'claude-3' }}
+          summaryIndexSetting={{
+            enable: true,
+            model_provider_name: 'anthropic',
+            model_name: 'claude-3',
+          }}
         />,
       )
       expect(screen.getByTestId('current-model')).toHaveTextContent('claude-3')
     })
 
-    it('should pass undefined defaultModel when provider is missing', () => {
-      render(
-        <SummaryIndexSetting
-          entry="knowledge-base"
-          summaryIndexSetting={{ enable: true }}
-        />,
-      )
+    it('should pass an undefined value when provider is missing', () => {
+      render(<SummaryIndexSetting entry="knowledge-base" summaryIndexSetting={{ enable: true }} />)
       expect(screen.getByTestId('current-model')).toHaveTextContent('none')
     })
   })

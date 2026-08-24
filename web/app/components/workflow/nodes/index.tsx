@@ -1,16 +1,10 @@
 import type { NodeProps } from 'reactflow'
 import type { Node } from '../types'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo, useMemo } from 'react'
 import { CUSTOM_NODE } from '../constants'
 import BasePanel from './_base/components/workflow-panel'
 import BaseNode from './_base/node'
-import {
-  NodeComponentMap,
-  PanelComponentMap,
-} from './components'
+import { NodeComponentMap, PanelComponentMap } from './components'
 
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
@@ -18,10 +12,7 @@ const CustomNode = (props: NodeProps) => {
 
   return (
     <>
-      <BaseNode
-        id={props.id}
-        data={props.data}
-      >
+      <BaseNode id={props.id} data={props.data}>
         <NodeComponent />
       </BaseNode>
     </>
@@ -38,18 +29,13 @@ export const Panel = memo((props: PanelProps) => {
   const nodeClass = props.type
   const nodeData = props.data
   const PanelComponent = useMemo(() => {
-    if (nodeClass === CUSTOM_NODE)
-      return PanelComponentMap[nodeData.type]
+    if (nodeClass === CUSTOM_NODE) return PanelComponentMap[nodeData.type]
     return () => null
   }, [nodeClass, nodeData.type])!
 
   if (nodeClass === CUSTOM_NODE) {
     return (
-      <BasePanel
-        key={`${props.id}-${nodeData.type}`}
-        id={props.id}
-        data={props.data}
-      >
+      <BasePanel key={`${props.id}-${nodeData.type}`} id={props.id} data={props.data}>
         <PanelComponent />
       </BasePanel>
     )

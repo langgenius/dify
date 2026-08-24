@@ -24,6 +24,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.workflow import Workflow
+from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ def clean_dataset_task(
     """
     logger.info(click.style(f"Start clean dataset when dataset deleted: {dataset_id}", fg="green"))
     start_at = time.perf_counter()
+    vector_cleanup_succeeded = False
 
     with session_factory.create_session() as session:
         try:
@@ -92,7 +94,8 @@ def clean_dataset_task(
             # This ensures Document/Segment deletion can continue even if vector database cleanup fails
             try:
                 index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True)
+                index_processor.clean(dataset, None, with_keywords=True, delete_child_chunks=True, session=session)
+                vector_cleanup_succeeded = True
                 logger.info(click.style(f"Successfully cleaned vector database for dataset: {dataset_id}", fg="green"))
             except Exception:
                 logger.exception(click.style(f"Failed to clean vector database for dataset {dataset_id}", fg="red"))
@@ -186,6 +189,8 @@ def clean_dataset_task(
                 session.execute(file_delete_stmt)
 
             session.commit()
+            if vector_cleanup_succeeded:
+                schedule_billing_vector_space_refresh(dataset.tenant_id)
             end_at = time.perf_counter()
             logger.info(
                 click.style(

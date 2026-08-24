@@ -6,9 +6,8 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
-from flask_login import current_user
 from sqlalchemy import select
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
@@ -16,27 +15,37 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
-from models.model import UploadFile
 from models.workflow import Workflow, WorkflowType
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
+from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
+from services.file_service import FileService
 from services.plugin.plugin_migration import PluginMigration
 
 logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
-    def transform_dataset(self, dataset_id: str, session: scoped_session):
-        dataset = session.get(Dataset, dataset_id)
-        if not dataset:
-            raise ValueError("Dataset not found")
+    def transform_dataset(self, dataset: Dataset, account_id: str, session: Session):
+        """Transform a vendor dataset within the caller-owned transaction.
+
+        The caller must resolve and authorize ``dataset`` before entering this service. Plugin provisioning is an
+        intentionally non-transactional prerequisite; database changes are committed only after the pipeline and
+        migrated document metadata have been persisted.
+        """
         if dataset.pipeline_id and dataset.runtime_mode == DatasetRuntimeMode.RAG_PIPELINE:
+            pipeline = session.scalar(
+                select(Pipeline)
+                .where(Pipeline.id == dataset.pipeline_id, Pipeline.tenant_id == dataset.tenant_id)
+                .limit(1)
+            )
+            if pipeline is None:
+                raise RagPipelineResourceNotFoundError("Pipeline not found")
             return {
-                "pipeline_id": dataset.pipeline_id,
-                "dataset_id": dataset_id,
+                "pipeline_id": pipeline.id,
+                "dataset_id": dataset.id,
                 "status": "success",
             }
         if dataset.provider != "vendor":
@@ -45,11 +54,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, account_id=account_id, session=session)
 
-        doc_form = dataset.doc_form
+        doc_form = dataset.get_doc_form(session=session)
         if not doc_form:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, account_id=account_id, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -70,8 +79,6 @@ class RagPipelineTransformService:
                 node = self._deal_file_extensions(node)
             if node.get("data", {}).get("type") == "knowledge-index":
                 knowledge_configuration = KnowledgeConfiguration.model_validate(node.get("data", {}))
-                if dataset.tenant_id != current_user.current_tenant_id:
-                    raise ValueError("Unauthorized")
                 node = self._deal_knowledge_index(
                     knowledge_configuration, dataset, indexing_technique, retrieval_model, node
                 )
@@ -81,7 +88,12 @@ class RagPipelineTransformService:
             workflow_data["graph"] = graph
             pipeline_yaml["workflow"] = workflow_data
         # create pipeline
-        pipeline = self._create_pipeline(pipeline_yaml)
+        pipeline = self._create_pipeline(
+            pipeline_yaml,
+            tenant_id=dataset.tenant_id,
+            account_id=account_id,
+            session=session,
+        )
 
         # save chunk structure to dataset
         if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -100,7 +112,7 @@ class RagPipelineTransformService:
         session.commit()
         return {
             "pipeline_id": pipeline.id,
-            "dataset_id": dataset_id,
+            "dataset_id": dataset.id,
             "status": "success",
         }
 
@@ -195,6 +207,10 @@ class RagPipelineTransformService:
     def _create_pipeline(
         self,
         data: dict[str, Any],
+        *,
+        tenant_id: str,
+        account_id: str,
+        session: Session,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
@@ -217,18 +233,18 @@ class RagPipelineTransformService:
 
         # Create new app
         pipeline = Pipeline(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=tenant_id,
             name=pipeline_data.get("name", ""),
             description=pipeline_data.get("description", ""),
-            created_by=current_user.id,
-            updated_by=current_user.id,
+            created_by=account_id,
+            updated_by=account_id,
             is_published=True,
             is_public=True,
         )
         pipeline.id = str(uuid4())
 
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
         # create draft workflow
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
@@ -237,7 +253,7 @@ class RagPipelineTransformService:
             type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
-            created_by=current_user.id,
+            created_by=account_id,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
             rag_pipeline_variables=rag_pipeline_variables_list,
@@ -249,16 +265,16 @@ class RagPipelineTransformService:
             type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
-            created_by=current_user.id,
+            created_by=account_id,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
             rag_pipeline_variables=rag_pipeline_variables_list,
         )
-        db.session.add(draft_workflow)
-        db.session.add(published_workflow)
-        db.session.flush()
+        session.add(draft_workflow)
+        session.add(published_workflow)
+        session.flush()
         pipeline.workflow_id = published_workflow.id
-        db.session.add(pipeline)
+        session.add(pipeline)
         return pipeline
 
     def _deal_dependencies(self, pipeline_yaml: dict[str, Any], tenant_id: str):
@@ -269,11 +285,13 @@ class RagPipelineTransformService:
 
         installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
         dependencies = pipeline_yaml.get("dependencies", [])
-        need_install_plugin_unique_identifiers = []
+        package_identifiers_to_install = []
         for dependency in dependencies:
             if dependency.get("type") == "marketplace":
-                plugin_unique_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
-                plugin_id = plugin_unique_identifier.split(":")[0]
+                package_identifier = dependency.get("value", {}).get("plugin_unique_identifier")
+                if not package_identifier:
+                    continue
+                plugin_id = package_identifier.split(":", 1)[0]
                 if plugin_id not in installed_plugins_ids:
                     if not dify_config.MARKETPLACE_ENABLED:
                         logger.warning(
@@ -282,53 +300,58 @@ class RagPipelineTransformService:
                             plugin_id,
                         )
                         continue
-                    plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(plugin_id)  # type: ignore
-                    if plugin_unique_identifier:
-                        need_install_plugin_unique_identifiers.append(plugin_unique_identifier)
-        if need_install_plugin_unique_identifiers:
-            logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
-            PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
+                    latest_package_identifier = plugin_migration._fetch_latest_package_identifier(plugin_id)  # type: ignore
+                    if latest_package_identifier:
+                        package_identifiers_to_install.append(latest_package_identifier)
+        if package_identifiers_to_install:
+            logger.debug("Installing missing pipeline plugins %s", package_identifiers_to_install)
+            PluginService.install_from_marketplace_pkg(tenant_id, package_identifiers_to_install)
 
-    def _transform_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset, *, account_id: str, session: Session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
             description=dataset.description,
-            created_by=current_user.id,
+            created_by=account_id,
         )
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
 
         dataset.pipeline_id = pipeline.id
         dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
-        dataset.updated_by = current_user.id
+        dataset.updated_by = account_id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
-        db.session.add(dataset)
-        db.session.commit()
+        session.add(dataset)
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,
             "status": "success",
         }
 
-    def _deal_document_data(self, dataset: Dataset, session: scoped_session):
+    def _deal_document_data(self, dataset: Dataset, session: Session):
         file_node_id = "1752479895761"
         notion_node_id = "1752489759475"
         jina_node_id = "1752491761974"
         firecrawl_node_id = "1752565402678"
 
-        documents = session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
+        documents = session.scalars(
+            select(Document).where(Document.dataset_id == dataset.id, Document.tenant_id == dataset.tenant_id)
+        ).all()
 
         for document in documents:
             data_source_info_dict = document.data_source_info_dict
             if not data_source_info_dict:
                 continue
             if document.data_source_type == DataSourceType.UPLOAD_FILE:
-                document.data_source_type = DataSourceType.LOCAL_FILE
                 file_id = data_source_info_dict.get("upload_file_id")
                 if file_id:
-                    file = session.get(UploadFile, file_id)
+                    file_id = str(file_id)
+                    file = FileService.get_upload_files_by_ids(dataset.tenant_id, [file_id], session=session).get(
+                        file_id
+                    )
                     if file:
+                        document.data_source_type = DataSourceType.LOCAL_FILE
                         data_source_info = json.dumps(
                             {
                                 "real_file_id": file_id,
