@@ -150,8 +150,14 @@ function evidenceFromValue(
   const documentRevision = firstNumber(
     record.document_revision,
     record.documentRevision,
+    record.document_version,
+    record.documentVersion,
     metadata.document_revision,
     metadata.documentRevision,
+    metadata.document_version,
+    metadata.documentVersion,
+    citation.document_version,
+    citation.documentVersion,
   )
   const page = firstNumber(
     record.page,

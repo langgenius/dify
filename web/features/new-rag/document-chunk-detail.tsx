@@ -24,6 +24,8 @@ import { DocumentMetadataCard } from './document-metadata-card'
 import { DocumentMultimodalAsset } from './document-multimodal-asset'
 
 const SELECTED_CHUNK_TOP_OFFSET = 8
+const SELECTED_CHUNK_ALIGNMENT_FRAMES = 12
+const SELECTED_CHUNK_ALIGNMENT_TOLERANCE = 1
 
 function formatBytes(bytes: number, locale: string) {
   const numberFormat = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
@@ -169,7 +171,11 @@ export function DocumentChunkDetail({
       : undefined
 
   useEffect(() => {
-    const animationFrame = globalThis.requestAnimationFrame(() => {
+    let alignedFrameCount = 0
+    let attemptedFrameCount = 0
+    let animationFrame: number
+
+    const alignSelectedChunk = () => {
       const contentScroll = contentScrollRef.current
       const selectedChunk = selectedChunkId
         ? globalThis.document?.getElementById(`document-chunk-${selectedChunkId}`)
@@ -178,12 +184,24 @@ export function DocumentChunkDetail({
 
       const contentRect = contentScroll.getBoundingClientRect()
       const chunkRect = selectedChunk.getBoundingClientRect()
-      const chunkTop = contentScroll.scrollTop + chunkRect.top - contentRect.top
-      contentScroll.scrollTo({
-        top: Math.max(0, chunkTop - SELECTED_CHUNK_TOP_OFFSET),
-        behavior: 'instant',
-      })
-    })
+      const alignmentDelta = chunkRect.top - contentRect.top - SELECTED_CHUNK_TOP_OFFSET
+      attemptedFrameCount += 1
+
+      if (Math.abs(alignmentDelta) <= SELECTED_CHUNK_ALIGNMENT_TOLERANCE) {
+        alignedFrameCount += 1
+      } else {
+        alignedFrameCount = 0
+        contentScroll.scrollTo({
+          top: Math.max(0, contentScroll.scrollTop + alignmentDelta),
+          behavior: 'instant',
+        })
+      }
+
+      if (alignedFrameCount < 2 && attemptedFrameCount < SELECTED_CHUNK_ALIGNMENT_FRAMES)
+        animationFrame = globalThis.requestAnimationFrame(alignSelectedChunk)
+    }
+
+    animationFrame = globalThis.requestAnimationFrame(alignSelectedChunk)
 
     return () => globalThis.cancelAnimationFrame(animationFrame)
   }, [contentBlocks, selectedChunkId])

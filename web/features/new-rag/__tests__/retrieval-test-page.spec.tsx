@@ -16,6 +16,8 @@ const apiMock = vi.hoisted(() => ({
   createResearch: vi.fn(),
   planResearch: vi.fn(),
   readinessRefetch: vi.fn(),
+  listLogicalDocuments: vi.fn(),
+  routerPush: vi.fn(),
   partials: [] as Array<Record<string, unknown>>,
   queryAdmission: vi.fn(),
   refetchPartials: vi.fn(),
@@ -79,7 +81,7 @@ vi.mock('../services/knowledge-query-events', () => ({
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/retrieval',
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push: apiMock.routerPush }),
   useSearchParams: () => new URLSearchParams(),
 }))
 
@@ -176,7 +178,7 @@ vi.mock('@/service/client', () => ({
       spaces: {
         byControlSpaceId: {
           queries: { admission: { post: apiMock.queryAdmission } },
-          logicalDocuments: { get: vi.fn() },
+          logicalDocuments: { get: apiMock.listLogicalDocuments },
           goldenQuestions: { post: apiMock.createGolden },
           quality: { badCases: { post: apiMock.createBadCase } },
           researchTasks: {
@@ -340,6 +342,7 @@ describe('RetrievalTestPage', () => {
     apiMock.createGolden.mockResolvedValue({ id: 'golden-1' })
     apiMock.evidence = undefined
     apiMock.getTraceEvidence.mockResolvedValue({ data: [] })
+    apiMock.listLogicalDocuments.mockResolvedValue({ data: [], next_cursor: null })
     apiMock.matchEvidence.mockResolvedValue({ candidates: [], evidence: '', matched: false })
     apiMock.partials = []
     apiMock.traceDetail = undefined
@@ -1815,6 +1818,119 @@ describe('RetrievalTestPage', () => {
     expect(
       screen.getByText('dataset.newKnowledge.retrievalTest.revision:{"revision":"2"}'),
     ).toBeInTheDocument()
+  })
+
+  it('shows the full chunk and opens its source when the revision is unavailable', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'How are issues tracked?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    const evidenceText =
+      'This is the complete issue tracking chunk, including the problem description, severity, resolution status, resolution time, and resolution details.'
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {
+            documentName: 'Issue Tracking Log',
+            logicalDocumentId: 'document-1',
+            score: 0.74,
+            text: evidenceText,
+          },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    const user = userEvent.setup()
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /How are issues tracked\?/ }))
+
+    expect(screen.getByText(evidenceText)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'share.chat.expand' })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'dataset.newKnowledge.retrievalTest.open' }),
+    ).toHaveAttribute('href', '/datasets/new/space-1/documents/document-1?chunk=chunk-1')
+  })
+
+  it('resolves an asset-only evidence source before opening it', async () => {
+    apiMock.traces = [
+      {
+        completed: true,
+        created_at: '2026-07-29T00:00:00.000Z',
+        id: 'trace-1',
+        mode: 'fast',
+        profile: {},
+        query: 'How are issues tracked?',
+        scores: {},
+        stages: [],
+      },
+    ]
+    apiMock.evidence = {
+      data: [
+        {
+          kind: 'resource',
+          metadata: {
+            documentId: 'asset-1',
+            documentName: 'Issue Tracking Log',
+            documentVersion: 1,
+            score: 0.74,
+            text: 'Issues are recorded in the tracking log.',
+          },
+          name: 'chunk-1',
+          path: '/queries/trace-1/evidence/chunk-1',
+          resourceType: 'node',
+          targetId: 'chunk-1',
+        },
+      ],
+    }
+    apiMock.listLogicalDocuments
+      .mockResolvedValueOnce({
+        data: [],
+        next_cursor: 'page-2',
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            active: { document_asset_id: 'asset-1' },
+            id: 'document-1',
+            title: 'Issue Tracking Log',
+          },
+        ],
+        next_cursor: null,
+      })
+    const user = userEvent.setup()
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: /How are issues tracked\?/ }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retrievalTest.open' }),
+    )
+
+    await waitFor(() =>
+      expect(apiMock.routerPush).toHaveBeenCalledWith(
+        '/datasets/new/space-1/documents/document-1?revision=1&chunk=chunk-1',
+      ),
+    )
+    expect(apiMock.listLogicalDocuments).toHaveBeenNthCalledWith(1, {
+      params: { control_space_id: 'space-1' },
+      query: {},
+    })
+    expect(apiMock.listLogicalDocuments).toHaveBeenNthCalledWith(2, {
+      params: { control_space_id: 'space-1' },
+      query: { cursor: 'page-2' },
+    })
   })
 
   it('keeps a failed run in Records and renders the failure inline', async () => {

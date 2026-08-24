@@ -2219,15 +2219,19 @@ describe('DocumentDetailPage', () => {
   })
 
   it('loads and selects a chunk targeted by the document deep link', async () => {
+    let targetMeasureCount = 0
     const getBoundingClientRect = vi
       .spyOn(Element.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: Element) {
-        const top =
-          this.id === 'document-chunk-target'
-            ? 500
-            : this.getAttribute('data-testid') === 'chunk-content-scroll'
-              ? 100
-              : 0
+        const contentScroll = document.querySelector<HTMLElement>(
+          '[data-testid="chunk-content-scroll"]',
+        )
+        let top = 0
+        if (this.id === 'document-chunk-target') {
+          targetMeasureCount += 1
+          const targetOffset = targetMeasureCount === 1 ? 400 : 600
+          top = 100 + targetOffset - (contentScroll?.scrollTop ?? 0)
+        } else if (this.getAttribute('data-testid') === 'chunk-content-scroll') top = 100
         return {
           bottom: top + 40,
           height: 40,
@@ -2271,7 +2275,7 @@ describe('DocumentDetailPage', () => {
       'aria-selected',
       'true',
     )
-    await waitFor(() => expect(contentScroll.scrollTop).toBe(392))
+    await waitFor(() => expect(contentScroll.scrollTop).toBe(592))
     getBoundingClientRect.mockRestore()
   })
 

@@ -65,6 +65,7 @@ describe('retrieval test model', () => {
       expect.objectContaining({
         chunkId: 'node-1',
         documentAssetId: 'document-1',
+        documentRevision: 3,
         id: 'node-1',
         revision: '3',
         text: 'Verification marker: OR-KFS-2026-07-28.',

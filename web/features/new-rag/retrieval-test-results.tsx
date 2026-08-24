@@ -11,11 +11,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useMemo } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { Link as MarkdownLink } from '@/app/components/base/markdown-blocks'
+import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
+import { consoleClient } from '@/service/client'
 import { newKnowledgeDocumentDetailPath } from './routes'
 
 export type QualityDecision = 'bad-case' | 'golden'
@@ -40,6 +44,115 @@ function ScorePill({ score }: { score: number }) {
   )
 }
 
+async function resolveLogicalDocumentId({
+  documentAssetId,
+  documentName,
+  knowledgeSpaceId,
+}: {
+  documentAssetId: string
+  documentName?: string
+  knowledgeSpaceId: string
+}) {
+  const matchingDocumentIds = new Set<string>()
+  const visitedCursors = new Set<string>()
+  let cursor: string | undefined
+
+  while (true) {
+    const page = await consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get({
+      params: { control_space_id: knowledgeSpaceId },
+      query: cursor ? { cursor } : {},
+    })
+
+    for (const document of page.data) {
+      if (document.active?.document_asset_id === documentAssetId) return document.id
+      if (documentName && document.title === documentName) matchingDocumentIds.add(document.id)
+    }
+
+    const nextCursor = page.next_cursor ?? undefined
+    if (!nextCursor || visitedCursors.has(nextCursor)) break
+    visitedCursors.add(nextCursor)
+    cursor = nextCursor
+  }
+
+  return matchingDocumentIds.size === 1 ? [...matchingDocumentIds][0] : undefined
+}
+
+function EvidenceOpenAction({
+  evidence,
+  knowledgeSpaceId,
+}: {
+  evidence: RetrievalEvidence
+  knowledgeSpaceId: string
+}) {
+  const { t } = useTranslation('dataset')
+  const router = useRouter()
+  const [isResolving, setIsResolving] = useState(false)
+  const actionClassName =
+    'flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-wait disabled:opacity-60'
+  const openHref = evidence.documentId
+    ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, evidence.documentId, {
+        chunkId: evidence.chunkId,
+        revision: evidence.documentRevision,
+      })
+    : undefined
+
+  if (openHref) {
+    return (
+      <Link href={openHref} className={actionClassName}>
+        {t(($) => $['newKnowledge.retrievalTest.open'])}
+        <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+      </Link>
+    )
+  }
+
+  const documentAssetId = evidence.documentAssetId
+  if (!documentAssetId) return null
+
+  const handleOpen = async () => {
+    setIsResolving(true)
+    try {
+      const documentId = await resolveLogicalDocumentId({
+        documentAssetId,
+        documentName: evidence.documentName,
+        knowledgeSpaceId,
+      })
+      if (!documentId) {
+        toast.error(t(($) => $['newKnowledge.documentNotFoundDescription']))
+        return
+      }
+      router.push(
+        newKnowledgeDocumentDetailPath(knowledgeSpaceId, documentId, {
+          chunkId: evidence.chunkId,
+          revision: evidence.documentRevision,
+        }),
+      )
+    } catch {
+      toast.error(t(($) => $['newKnowledge.documentLoadErrorDescription']))
+    } finally {
+      setIsResolving(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className={actionClassName}
+      disabled={isResolving}
+      aria-busy={isResolving}
+      onClick={handleOpen}
+    >
+      {t(($) => $['newKnowledge.retrievalTest.open'])}
+      <span
+        aria-hidden
+        className={cn(
+          'size-3.5',
+          isResolving ? 'i-ri-loader-2-line animate-spin' : 'i-ri-arrow-right-up-line',
+        )}
+      />
+    </button>
+  )
+}
+
 export function EvidenceCard({
   citationTargetId,
   citationTargeted,
@@ -54,13 +167,6 @@ export function EvidenceCard({
   knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
-  const openHref =
-    evidence.documentId && evidence.documentRevision
-      ? newKnowledgeDocumentDetailPath(knowledgeSpaceId, evidence.documentId, {
-          chunkId: evidence.chunkId,
-          revision: evidence.documentRevision,
-        })
-      : undefined
 
   return (
     <article
@@ -71,41 +177,42 @@ export function EvidenceCard({
         citationTargeted && 'ring-2 ring-state-accent-solid ring-inset',
       )}
     >
-      <div className="flex items-center gap-2 px-3 pt-3">
-        <h3 className="flex min-w-0 flex-1 items-center gap-0.5 truncate system-xs-medium text-text-tertiary">
-          <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
-          <span className="truncate">{evidence.title || `Chunk ${index + 1}`}</span>
-        </h3>
-        {evidence.score !== undefined && <ScorePill score={evidence.score} />}
-      </div>
-      <p className="px-3 pt-1 pb-2 body-md-regular tracking-[-0.07px] text-text-secondary">
-        <span className="line-clamp-2 whitespace-pre-wrap">{evidence.text}</span>
-      </p>
-      {evidence.images.length > 0 && (
-        <div className="flex gap-1 overflow-hidden px-3 py-1">
-          {evidence.images.slice(0, 4).map((image) => (
-            <span key={image} className="flex size-8 shrink-0 items-center justify-center p-0.5">
-              <img
-                src={image}
-                alt=""
-                className="size-7.5 border-2 border-effects-image-frame object-cover shadow-xs"
-              />
-            </span>
-          ))}
-          {evidence.images.length > 4 && (
-            <span className="flex h-8 shrink-0 items-center px-0.5 py-1">
-              <span className="flex size-7 items-center justify-center rounded-sm border-[1.5px] border-components-panel-bg bg-divider-regular system-xs-regular text-text-tertiary">
-                +{evidence.images.length - 4}
-              </span>
-            </span>
-          )}
+      <div className="flex flex-col gap-1 px-3 pt-3 pb-2">
+        <div className="flex items-center gap-2">
+          <h3 className="flex min-w-0 flex-1 items-center gap-0.5 truncate system-xs-medium text-text-tertiary">
+            <span aria-hidden className="i-custom-public-knowledge-selection-mod size-3 shrink-0" />
+            <span className="truncate">{evidence.title || `Chunk ${index + 1}`}</span>
+          </h3>
+          {evidence.score !== undefined && <ScorePill score={evidence.score} />}
         </div>
-      )}
+        <p className="body-md-regular tracking-[-0.07px] whitespace-pre-wrap text-text-secondary">
+          {evidence.text}
+        </p>
+        {evidence.images.length > 0 && (
+          <div className="flex gap-1 overflow-hidden py-1">
+            {evidence.images.slice(0, 4).map((image) => (
+              <span key={image} className="flex size-8 shrink-0 items-center justify-center p-0.5">
+                <img
+                  src={image}
+                  alt=""
+                  className="size-7.5 border-2 border-effects-image-frame object-cover shadow-xs"
+                />
+              </span>
+            ))}
+            {evidence.images.length > 4 && (
+              <span className="flex h-8 shrink-0 items-center px-0.5 py-1">
+                <span className="flex size-7 items-center justify-center rounded-sm border-[1.5px] border-components-panel-bg bg-divider-regular system-xs-regular text-text-tertiary">
+                  +{evidence.images.length - 4}
+                </span>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
       <footer className="flex h-10 items-center gap-1.5 border-t border-divider-subtle py-2 pr-2 pl-3">
-        <span
-          aria-hidden
-          className="i-ri-file-pdf-2-fill size-4 shrink-0 text-util-colors-red-red-500"
-        />
+        <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
+          <DocumentFileIcon name={evidence.documentName ?? evidence.title} size="sm" />
+        </span>
         <span className="min-w-0 truncate system-sm-regular text-text-secondary">
           {evidence.documentName ?? evidence.title}
         </span>
@@ -122,15 +229,7 @@ export function EvidenceCard({
           </span>
         )}
         <span className="min-w-0 flex-1" />
-        {openHref && (
-          <Link
-            href={openHref}
-            className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 system-xs-medium text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            {t(($) => $['newKnowledge.retrievalTest.open'])}
-            <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-          </Link>
-        )}
+        <EvidenceOpenAction evidence={evidence} knowledgeSpaceId={knowledgeSpaceId} />
       </footer>
     </article>
   )
