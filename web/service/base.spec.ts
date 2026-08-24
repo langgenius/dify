@@ -249,6 +249,87 @@ describe('handleStream', () => {
       expect(onCompleted).toHaveBeenCalledWith(true, payload.message)
     })
 
+    it('should preserve conversation and message ids on a workflow error event', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+      const payload = {
+        event: 'error',
+        message: 'Workflow run failed',
+        code: 'internal_server_error',
+        conversation_id: 'conv-123',
+        message_id: 'msg-456',
+      }
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n`),
+          })
+          .mockResolvedValueOnce({
+            done: true,
+            value: undefined,
+          }),
+      }
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      handleStream(mockResponse, onData, onCompleted)
+
+      await waitFor(() => {
+        expect(onData).toHaveBeenCalledWith('', false, {
+          conversationId: 'conv-123',
+          messageId: 'msg-456',
+          errorMessage: 'Workflow run failed',
+          errorCode: 'internal_server_error',
+        })
+      })
+      expect(onCompleted).toHaveBeenCalledWith(true, 'Workflow run failed')
+    })
+
+    it('should fall back to the error code when the error event has no message', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+      const payload = {
+        event: 'error',
+        code: 'internal_server_error',
+      }
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n`),
+          })
+          .mockResolvedValueOnce({
+            done: true,
+            value: undefined,
+          }),
+      }
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      handleStream(mockResponse, onData, onCompleted)
+
+      await waitFor(() => {
+        expect(onData).toHaveBeenCalledWith('', false, {
+          conversationId: undefined,
+          messageId: '',
+          errorMessage: 'internal_server_error',
+          errorCode: 'internal_server_error',
+        })
+      })
+      expect(onCompleted).toHaveBeenCalledWith(true, 'internal_server_error')
+    })
+
     it('should handle malformed JSON gracefully', async () => {
       const onData = vi.fn()
       const onCompleted = vi.fn()

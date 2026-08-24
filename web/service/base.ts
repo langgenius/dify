@@ -333,7 +333,7 @@ export const handleStream = (
   const completeWithError = (errorMessage: string, errorCode?: string) => {
     onData('', false, {
       conversationId: bufferObj?.conversation_id,
-      messageId: bufferObj?.message_id ?? '',
+      messageId: bufferObj?.message_id ?? bufferObj?.id ?? '',
       errorMessage,
       errorCode,
     })
@@ -377,14 +377,15 @@ export const handleStream = (
               }
               const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
               if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
-                onData('', false, {
-                  conversationId: undefined,
-                  messageId: '',
-                  errorMessage: bufferObj?.message,
-                  errorCode: bufferObj?.code,
-                })
+                const errorMessage =
+                  (typeof bufferObj.message === 'string' && bufferObj.message) ||
+                  (typeof bufferObj.code === 'string' && bufferObj.code) ||
+                  'Error'
                 hasError = true
-                onCompleted?.(true, bufferObj?.message)
+                completeWithError(
+                  errorMessage,
+                  typeof bufferObj.code === 'string' ? bufferObj.code : undefined,
+                )
                 return
               }
               if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
@@ -456,20 +457,6 @@ export const handleStream = (
                 onDataSourceNodeCompleted?.(bufferObj as DataSourceNodeCompletedResponse)
               } else if (bufferObj.event === 'datasource_error') {
                 onDataSourceNodeError?.(bufferObj as DataSourceNodeErrorResponse)
-              } else if (bufferObj.event === 'error') {
-                const errorMessage =
-                  (typeof bufferObj.message === 'string' && bufferObj.message) ||
-                  (typeof bufferObj.code === 'string' && bufferObj.code) ||
-                  'Error'
-                hasError = true
-                onData('', false, {
-                  conversationId: bufferObj.conversation_id,
-                  messageId: bufferObj.message_id ?? bufferObj.id ?? '',
-                  errorMessage,
-                  errorCode: bufferObj.code,
-                })
-                onCompleted?.(true, errorMessage)
-                return
               } else {
                 const unhandledEventError = onUnhandledEvent?.(bufferObj)
                 if (unhandledEventError) {
