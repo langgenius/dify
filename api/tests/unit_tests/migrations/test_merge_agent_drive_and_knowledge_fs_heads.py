@@ -20,4 +20,4 @@ def test_merge_migration_produces_a_single_head() -> None:
 
     assert migration.revision == "c4d8e2f7a1b6"
     assert migration.down_revision == ("89919253ca7a", "e6b4a2c9d731")
-    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["fbdfcf5f5a6e"]
+    assert ScriptDirectory(str(_MIGRATION_PATH.parents[1])).get_heads() == ["925e75620b69"]
