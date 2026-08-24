@@ -385,23 +385,10 @@ describe('AudioPlayer', () => {
       expect(player.isLoadData).toBe(true)
     })
 
-    it('should request playback in the first user gesture before switching to a WAV blob', async () => {
-      let resolveResponse: ((response: AudioResponse) => void) | undefined
-      mockTextToAudioStream.mockImplementationOnce(
-        () =>
-          new Promise<AudioResponse>((resolve) => {
-            resolveResponse = resolve
-          }),
-      )
-      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
-      const audio = testState.audios[0]
-
-      player.playAudio()
-
-      expect(audio!.play).toHaveBeenCalledTimes(1)
-      expect(mockTextToAudioStream).toHaveBeenCalledTimes(1)
-
-      resolveResponse?.(
+    it('should replace pending MP3 playback with WAV without reporting its abort', async () => {
+      let rejectInitialPlay: ((reason: DOMException) => void) | undefined
+      let resolveWavPlay: (() => void) | undefined
+      mockTextToAudioStream.mockResolvedValue(
         makeAudioResponse(
           200,
           [
@@ -411,15 +398,54 @@ describe('AudioPlayer', () => {
           'audio/wav; codecs=1',
         ),
       )
+      vi.mocked(globalThis.URL.createObjectURL)
+        .mockReturnValueOnce('blob:media-source')
+        .mockReturnValueOnce('blob:wav')
+      const callback = vi.fn()
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const audio = testState.audios[0]
+      audio!.play
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((_resolve, reject) => {
+              rejectInitialPlay = reject
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveWavPlay = resolve
+            }),
+        )
+
+      player.playAudio()
+
+      expect(audio!.play).toHaveBeenCalledTimes(1)
+      expect(mockTextToAudioStream).toHaveBeenCalledTimes(1)
 
       await waitFor(() => expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(2))
       expect(player.mediaSource).toBeNull()
       expect(testState.mediaSources).toHaveLength(1)
-      expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
+      expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:media-source')
       const audioBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[1]![0] as Blob
       expect(audioBlob).toMatchObject({ type: 'audio/wav', size: 4 })
       expect(new Uint8Array(await audioBlob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
-      expect(audio!.play).toHaveBeenCalledTimes(1)
+      expect(audio!.play).toHaveBeenCalledTimes(2)
+
+      rejectInitialPlay?.(new DOMException('Playback aborted', 'AbortError'))
+      await Promise.resolve()
+      await Promise.resolve()
+
+      expect(callback).not.toHaveBeenCalledWith('error')
+      player.playAudio()
+      expect(audio!.play).toHaveBeenCalledTimes(2)
+
+      resolveWavPlay?.()
+      await waitFor(() => expect(callback).toHaveBeenCalledWith('play'))
+      audio!.emit('ended')
+
+      expect(callback.mock.calls.map(([event]) => event)).toEqual(['play', 'ended'])
+      expect(mockTextToAudioStream).toHaveBeenCalledTimes(1)
     })
 
     it('should emit error callback and reset load flag when stream response status is not 200', async () => {

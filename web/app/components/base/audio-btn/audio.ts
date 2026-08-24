@@ -25,7 +25,7 @@ export class AudioPlayer {
   private streamEnded = false
   private endOfStreamCalled = false
   private destroyed = false
-  private playbackPending = false
+  private pendingPlaybackSource: string | null = null
   private playWhenReady = false
   private mediaSourceDisabled = false
   private sourceOpenListener?: () => void
@@ -158,38 +158,40 @@ export class AudioPlayer {
   }
 
   private requestPlayback(reportIfPlaying = false) {
-    if (this.destroyed || this.playbackPending) return
+    const playbackSource = this.objectUrl
+    if (this.destroyed || !playbackSource || this.pendingPlaybackSource === playbackSource) return
     if (!this.isAudioContextPaused() && !this.audio.paused && !this.audio.ended) {
       if (reportIfPlaying) this.callback?.('play')
       return
     }
 
-    this.playbackPending = true
-    void this.resumeAndPlay()
+    this.pendingPlaybackSource = playbackSource
+    void this.resumeAndPlay(playbackSource)
   }
 
   private isAudioContextPaused() {
     return this.audioContext.state === 'suspended' || this.audioContext.state === 'interrupted'
   }
 
-  private async resumeAndPlay() {
+  private async resumeAndPlay(playbackSource: string) {
     try {
       const pendingOperations: Promise<unknown>[] = []
       if (this.isAudioContextPaused()) pendingOperations.push(this.audioContext.resume())
       if (this.audio.paused || this.audio.ended) pendingOperations.push(this.audio.play())
 
       await Promise.all(pendingOperations)
-      if (this.destroyed) return
+      if (this.destroyed || !this.playWhenReady || playbackSource !== this.objectUrl) return
       if (this.isAudioContextPaused()) {
         this.callback?.('error')
         return
       }
 
-      if (!this.destroyed) this.callback?.('play')
+      this.callback?.('play')
     } catch {
-      if (!this.destroyed) this.callback?.('error')
+      if (!this.destroyed && this.playWhenReady && playbackSource === this.objectUrl)
+        this.callback?.('error')
     } finally {
-      this.playbackPending = false
+      if (this.pendingPlaybackSource === playbackSource) this.pendingPlaybackSource = null
     }
   }
 
@@ -287,16 +289,15 @@ export class AudioPlayer {
 
   // play audio
   public playAudio() {
+    this.playWhenReady = true
     if (this.isLoadData) {
       if (!this.mediaSource && !this.objectUrl) {
-        this.playWhenReady = true
         if (this.isAudioContextPaused()) void this.audioContext.resume().catch(() => {})
         return
       }
       this.requestPlayback(true)
     } else {
       this.isLoadData = true
-      this.playWhenReady = true
       if (this.mediaSource) this.requestPlayback(true)
       else if (this.isAudioContextPaused()) void this.audioContext.resume().catch(() => {})
       this.loadAudio()
