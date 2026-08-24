@@ -203,6 +203,13 @@ export function FileTree({
     refetchOnMount: 'always',
   })
   const referenceCount = referencesQuery.data?.data?.length ?? detail?.reference_count ?? 0
+  const referenceCountLabel = t(
+    ($) =>
+      referenceCount === 1
+        ? $['skillManagement.detail.referencedBy_one']
+        : $['skillManagement.detail.referencedBy_other'],
+    { count: referenceCount },
+  )
   const activeUploadXhrRef = useRef<XMLHttpRequest | undefined>(undefined)
   const cancelUploadRef = useRef(false)
   const stopSidebarResizeRef = useRef<() => void>(() => undefined)
@@ -1542,59 +1549,46 @@ export function FileTree({
             </AlertDialogContent>
           </AlertDialog>
           <div className="mx-3 border-t border-divider-subtle pt-2 pb-3">
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <button
-                    type="button"
-                    className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
-                  >
-                    <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate">
-                      {t(
-                        ($) =>
-                          referenceCount === 1
-                            ? $['skillManagement.detail.referencedBy_one']
-                            : $['skillManagement.detail.referencedBy_other'],
-                        { count: referenceCount },
-                      )}
-                    </span>
-                    <span
-                      aria-hidden
-                      className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
-                    />
-                  </button>
-                }
-              />
-              <PopoverContent
-                placement="top-start"
-                sideOffset={4}
-                className="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
-                aria-label={t(
-                  ($) =>
-                    referenceCount === 1
-                      ? $['skillManagement.detail.referencedBy_one']
-                      : $['skillManagement.detail.referencedBy_other'],
-                  { count: referenceCount },
-                )}
-              >
-                <div className="px-1 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
-                  {t(
-                    ($) =>
-                      referenceCount === 1
-                        ? $['skillManagement.detail.referencedBy_one']
-                        : $['skillManagement.detail.referencedBy_other'],
-                    { count: referenceCount },
-                  )}
-                </div>
-                <SkillReferencesPanel
-                  compact
-                  embedded
-                  maxHeight="max-h-[240px]"
-                  skillId={skillId}
+            {referenceCount > 0 ? (
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="-mx-2 flex h-6 w-[calc(100%+16px)] cursor-pointer items-center gap-2 rounded-md px-2.5 text-left system-xs-regular text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+                    >
+                      <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
+                      <span
+                        aria-hidden
+                        className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-quaternary"
+                      />
+                    </button>
+                  }
                 />
-              </PopoverContent>
-            </Popover>
+                <PopoverContent
+                  placement="top-start"
+                  sideOffset={4}
+                  className="w-(--anchor-width) max-w-(--available-width) bg-components-panel-bg-blur p-1 shadow-shadow-shadow-5 backdrop-blur-[5px]"
+                  aria-label={referenceCountLabel}
+                >
+                  <div className="px-1 pt-1.5 pb-1 system-xs-medium text-text-tertiary">
+                    {referenceCountLabel}
+                  </div>
+                  <SkillReferencesPanel
+                    compact
+                    embedded
+                    maxHeight="max-h-[240px]"
+                    skillId={skillId}
+                  />
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
+                <span aria-hidden className="i-ri-apps-2-line size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{referenceCountLabel}</span>
+              </div>
+            )}
             <div className="-mx-2 flex h-6 w-[calc(100%+16px)] items-center gap-2 px-2.5 system-xs-regular text-text-tertiary">
               <span aria-hidden className="i-ri-account-circle-line size-4 shrink-0" />
               <span className="min-w-0 truncate">
