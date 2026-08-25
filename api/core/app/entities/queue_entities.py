@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from enum import StrEnum, auto
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -493,10 +493,24 @@ class QueueStopEvent(AppQueueEvent):
         Stop by enum
         """
 
-        USER_MANUAL = auto()
-        ANNOTATION_REPLY = auto()
-        OUTPUT_MODERATION = auto()
-        INPUT_MODERATION = auto()
+        description: str
+
+        def __new__(cls, value: str, description: str):
+            obj = str.__new__(cls, value)
+            obj._value_ = value
+            obj.description = description
+            return obj
+
+        USER_MANUAL = ("user_manual", "Stopped by user.")
+        TIMEOUT = ("timeout", "Stopped by timeout.")
+        ANNOTATION_REPLY = ("annotation_reply", "Stopped by annotation reply.")
+        OUTPUT_MODERATION = ("output_moderation", "Stopped by output moderation.")
+        INPUT_MODERATION = ("input_moderation", "Stopped by input moderation.")
+        UNKNOWN = ("unknown", "Stopped by unknown reason.")
+
+        @classmethod
+        def from_value(cls, value: str | None) -> "QueueStopEvent.StopBy":
+            return next((member for member in cls if member.value == value), cls.UNKNOWN)
 
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy
@@ -506,17 +520,7 @@ class QueueStopEvent(AppQueueEvent):
         """
         To stop reason
         """
-        if self.reason:
-            return self.reason
-
-        reason_mapping = {
-            QueueStopEvent.StopBy.USER_MANUAL: "Stopped by user.",
-            QueueStopEvent.StopBy.ANNOTATION_REPLY: "Stopped by annotation reply.",
-            QueueStopEvent.StopBy.OUTPUT_MODERATION: "Stopped by output moderation.",
-            QueueStopEvent.StopBy.INPUT_MODERATION: "Stopped by input moderation.",
-        }
-
-        return reason_mapping.get(self.stopped_by, "Stopped by unknown reason.")
+        return self.reason or self.stopped_by.description
 
 
 class QueueHumanInputFormFilledEvent(AppQueueEvent):

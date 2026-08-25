@@ -437,6 +437,13 @@ export const zMessageMoreLikeThisQuery = z.object({
 })
 
 /**
+ * MessageStatus
+ *
+ * Message Status Enum
+ */
+export const zMessageStatus = z.enum(['error', 'normal', 'paused', 'stopped'])
+
+/**
  * PassportAccessTokenResponse
  */
 export const zPassportAccessTokenResponse = z.object({
@@ -835,7 +842,7 @@ export const zWebMessageListItem = z.object({
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
-  status: z.string(),
+  status: zMessageStatus,
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
@@ -963,7 +970,7 @@ export const zWebMessageListItemWritable = z.object({
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
-  status: z.string(),
+  status: zMessageStatus,
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)

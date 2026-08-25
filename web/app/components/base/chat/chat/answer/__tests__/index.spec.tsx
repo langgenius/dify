@@ -1,5 +1,6 @@
 import type { ChatItem } from '../../../types'
 import type { AppData } from '@/models/share'
+import { zMessageStatus } from '@dify/contracts/api/web/zod.gen'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import Answer from '../index'
 
@@ -149,6 +150,16 @@ describe('Answer Component', () => {
       )
       expect(screen.getByTestId('citation-title')).toBeInTheDocument()
     })
+  })
+
+  it('should mark an answer whose run was stopped', () => {
+    render(
+      <Answer
+        {...defaultProps}
+        item={{ ...defaultProps.item, status: zMessageStatus.enum.stopped }}
+      />,
+    )
+    expect(screen.getByText('share.chat.answerInterrupted')).toBeInTheDocument()
   })
 
   describe('Human Inputs Layout', () => {

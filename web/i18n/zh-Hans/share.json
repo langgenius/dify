@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "回复已中断",
   "chat.chatFormTip": "对话开始后，对话设置将无法修改。",
   "chat.chatSettingsTitle": "新对话设置",
   "chat.collapse": "折叠",

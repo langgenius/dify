@@ -131,6 +131,8 @@ class AgentObservabilityService:
             return "failed"
         if message.status == MessageStatus.PAUSED:
             return "paused"
+        if message.status == MessageStatus.STOPPED:
+            return "stopped"
         return "success"
 
     @staticmethod
@@ -275,6 +277,7 @@ class AgentObservabilityService:
                 func.sum(
                     sa.case((or_(Message.error.is_not(None), Message.status == MessageStatus.ERROR), 1), else_=0)
                 ).label("failed_count"),
+                func.sum(sa.case((Message.status == MessageStatus.STOPPED, 1), else_=0)).label("stopped_count"),
             )
             .join(Message, Message.conversation_id == Conversation.id)
             .where(Message.app_id == app.id, Conversation.app_id == app.id)
@@ -292,6 +295,7 @@ class AgentObservabilityService:
                 message_count=row.message_count,
                 paused_count=row.paused_count,
                 failed_count=row.failed_count,
+                stopped_count=row.stopped_count,
                 source=self._serialize_webapp_source(app),
                 created_at=row.created_at,
                 updated_at=row.updated_at,
@@ -604,6 +608,8 @@ class AgentObservabilityService:
                 conditions.append(or_(Message.error.is_not(None), Message.status == MessageStatus.ERROR))
             elif normalized == "paused":
                 conditions.append(Message.status == MessageStatus.PAUSED)
+            elif normalized == "stopped":
+                conditions.append(Message.status == MessageStatus.STOPPED)
             else:
                 raise ValueError(f"Unsupported status: {status}")
         if not conditions:
@@ -618,6 +624,7 @@ class AgentObservabilityService:
         message_count: int,
         paused_count: int,
         failed_count: int,
+        stopped_count: int,
         source: dict[str, Any],
         created_at: datetime | None,
         updated_at: datetime | None,
@@ -634,7 +641,9 @@ class AgentObservabilityService:
             "operation_rate": operation_rate,
             "unread": conversation.read_at is None,
             "source": source,
-            "status": cls._conversation_status(paused_count=paused_count, failed_count=failed_count),
+            "status": cls._conversation_status(
+                paused_count=paused_count, failed_count=failed_count, stopped_count=stopped_count
+            ),
             "created_at": to_timestamp(created_at or conversation.created_at),
             "updated_at": to_timestamp(updated_at or conversation.updated_at),
         }
@@ -792,11 +801,13 @@ class AgentObservabilityService:
         return "success"
 
     @staticmethod
-    def _conversation_status(*, paused_count: int, failed_count: int) -> str:
+    def _conversation_status(*, paused_count: int, failed_count: int, stopped_count: int) -> str:
         if paused_count:
             return "paused"
         if failed_count:
             return "failed"
+        if stopped_count:
+            return "stopped"
         return "success"
 
     @staticmethod

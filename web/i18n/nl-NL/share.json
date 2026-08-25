@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "Antwoord onderbroken",
   "chat.chatFormTip": "Chat settings cannot be modified after the chat has started.",
   "chat.chatSettingsTitle": "New chat setup",
   "chat.collapse": "Collapse",

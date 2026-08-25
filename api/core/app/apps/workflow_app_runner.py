@@ -426,10 +426,11 @@ class WorkflowBasedAppRunner:
                     QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count)
                 )
             case GraphRunAbortedEvent():
+                stopped_by = QueueStopEvent.StopBy.from_value(event.reason)
                 self._publish_event(
                     QueueStopEvent(
-                        stopped_by=QueueStopEvent.StopBy.USER_MANUAL,
-                        reason=event.reason or "Workflow execution aborted",
+                        stopped_by=stopped_by,
+                        reason=event.reason if stopped_by is QueueStopEvent.StopBy.UNKNOWN else None,
                     )
                 )
             case GraphRunPausedEvent():

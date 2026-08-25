@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "تم إيقاف الرد",
   "chat.chatFormTip": "لا يمكن تعديل إعدادات الدردشة بعد بدء الدردشة.",
   "chat.chatSettingsTitle": "إعداد الدردشة الجديدة",
   "chat.collapse": "طي",

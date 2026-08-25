@@ -28,6 +28,7 @@ import {
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   getProcessedUserVariablesFromUrlParams,
+  toMessageStatus,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -62,6 +63,7 @@ function getFormattedChatList(messages: any[]) {
         answerFiles.map((item: any) => ({ ...item, related_id: item.id })),
       ),
       parentMessageId: `question-${item.id}`,
+      status: toMessageStatus(item.status),
     })
   })
   return newChatList

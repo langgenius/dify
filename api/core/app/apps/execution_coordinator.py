@@ -7,6 +7,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 
 from configs import dify_config
+from core.app.entities.queue_entities import QueueStopEvent
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.command_channels import RedisChannel
 from graphon.graph_engine.manager import GraphEngineManager
@@ -166,7 +167,7 @@ class AppExecutionCoordinator:
             self._attempt_id,
         )
 
-    def request_abort(self, reason: str) -> bool:
+    def request_abort(self, stopped_by: QueueStopEvent.StopBy) -> bool:
         watchdog: threading.Timer | None = None
         with self._lock:
             if self._state is not AppExecutionState.RUNNING or self._abort_sent:
@@ -182,18 +183,17 @@ class AppExecutionCoordinator:
             "Aborting app execution task=%s attempt=%s reason=%s",
             self._task_id,
             self._attempt_id,
-            reason,
+            stopped_by.description,
         )
-        self._abort_execution(reason)
+        self._abort_execution(stopped_by)
         return True
 
     def _handle_timeout(self) -> None:
-        reason = f"App execution exceeded {self._timeout_seconds} seconds"
-        if not self.request_abort(reason):
+        if not self.request_abort(QueueStopEvent.StopBy.TIMEOUT):
             return
 
         try:
-            self._on_timeout(reason)
+            self._on_timeout(f"App execution exceeded {self._timeout_seconds} seconds")
         except Exception:
             logger.exception(
                 "Failed to publish timeout for app execution task=%s attempt=%s",
@@ -201,7 +201,7 @@ class AppExecutionCoordinator:
                 self._attempt_id,
             )
 
-    def _abort_execution(self, reason: str) -> None:
+    def _abort_execution(self, stopped_by: QueueStopEvent.StopBy) -> None:
         try:
             set_app_task_stop_flag(self._task_id)
         except Exception:
@@ -212,7 +212,7 @@ class AppExecutionCoordinator:
             )
 
         try:
-            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
+            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=stopped_by.value)
         except Exception:
             logger.exception(
                 "Failed to send stop command for app execution task=%s attempt=%s",

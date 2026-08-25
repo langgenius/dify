@@ -1255,6 +1255,13 @@ export const zMessageListQuery = z.object({
 })
 
 /**
+ * MessageStatus
+ *
+ * Message Status Enum
+ */
+export const zMessageStatus = z.enum(['error', 'normal', 'paused', 'stopped'])
+
+/**
  * MetadataArgs
  */
 export const zMetadataArgs = z.object({
@@ -1996,7 +2003,7 @@ export const zMessageListItem = z.object({
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
-  status: z.string(),
+  status: zMessageStatus,
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
@@ -2347,7 +2354,7 @@ export const zMessageListItemWritable = z.object({
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
-  status: z.string(),
+  status: zMessageStatus,
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)

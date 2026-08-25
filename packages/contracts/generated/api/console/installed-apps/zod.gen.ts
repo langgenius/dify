@@ -373,6 +373,13 @@ export const zRetrieverResource = z.object({
 })
 
 /**
+ * MessageStatus
+ *
+ * Message Status Enum
+ */
+export const zMessageStatus = z.enum(['error', 'normal', 'paused', 'stopped'])
+
+/**
  * ExecutionContentType
  */
 export const zExecutionContentType = z.enum(['human_input'])
@@ -551,7 +558,7 @@ export const zExploreMessageListItem = z.object({
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
-  status: z.string(),
+  status: zMessageStatus,
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
@@ -626,7 +633,7 @@ export const zExploreMessageListItemWritable = z.object({
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
-  status: z.string(),
+  status: zMessageStatus,
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)

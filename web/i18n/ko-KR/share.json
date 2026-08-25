@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "응답이 중단되었습니다",
   "chat.chatFormTip": "채팅이 시작된 후에는 채팅 설정을 수정할 수 없습니다.",
   "chat.chatSettingsTitle": "새 채팅 설정",
   "chat.collapse": "축소",

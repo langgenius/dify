@@ -1470,6 +1470,7 @@ class Conversation(Base):
             "failed": status_counts[WorkflowExecutionStatus.FAILED],
             "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
             "paused": status_counts[WorkflowExecutionStatus.PAUSED],
+            "stopped": status_counts[WorkflowExecutionStatus.STOPPED],
         }
 
     @property

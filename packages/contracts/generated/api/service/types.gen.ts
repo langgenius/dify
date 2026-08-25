@@ -1091,7 +1091,7 @@ export type MessageListItem = {
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
-  status: string
+  status: MessageStatus
   total_price?: string | null
   readonly total_tokens: number
 }
@@ -1101,6 +1101,8 @@ export type MessageListQuery = {
   first_id?: string | null
   limit?: number
 }
+
+export type MessageStatus = 'error' | 'normal' | 'paused' | 'stopped'
 
 export type MetadataArgs = {
   name: string
@@ -1726,7 +1728,7 @@ export type MessageListItemWritable = {
   provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
-  status: string
+  status: MessageStatus
   total_price?: string | null
 }
 

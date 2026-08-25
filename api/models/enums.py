@@ -45,6 +45,7 @@ class MessageStatus(StrEnum):
 
     NORMAL = "normal"
     PAUSED = "paused"
+    STOPPED = "stopped"
     ERROR = "error"
 
 

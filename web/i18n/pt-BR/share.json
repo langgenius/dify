@@ -1,4 +1,5 @@
 {
+  "chat.answerInterrupted": "Resposta interrompida",
   "chat.chatFormTip": "As configurações do chat não podem ser modificadas após o início do chat.",
   "chat.chatSettingsTitle": "Nova configuração de chat",
   "chat.collapse": "Contrair",

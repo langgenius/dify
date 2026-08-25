@@ -39,6 +39,7 @@ import {
   getProcessedSystemVariablesFromUrlParams,
   getRawInputsFromUrlParams,
   getRawUserVariablesFromUrlParams,
+  toMessageStatus,
 } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -123,6 +124,7 @@ function getFormattedChatList(messages: any[]) {
       humanInputFormDataList,
       humanInputFilledFormDataList,
       workflow_run_id: workflowRunId,
+      status: toMessageStatus(item.status),
       more,
     })
   })
