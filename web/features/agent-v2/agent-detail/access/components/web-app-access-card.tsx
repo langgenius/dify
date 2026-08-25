@@ -71,7 +71,7 @@ export function WebAppAccessCard({
   })
   const toggleSiteMutation = useMutation(
     consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
-      onSuccess: (_updatedApp, variables) => {
+      onSuccess: async (_updatedApp, variables) => {
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
           agentDetailQueryKey,
           (agentDetail) =>
@@ -82,6 +82,7 @@ export function WebAppAccessCard({
                 }
               : agentDetail,
         )
+        await queryClient.invalidateQueries({ queryKey: agentDetailQueryKey })
         toast.success(tCommon(($) => $['actionMsg.modifiedSuccessfully']))
       },
       onError: () => {
