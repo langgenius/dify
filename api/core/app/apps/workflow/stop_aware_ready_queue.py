@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import final
 
 from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
-from graphon.graph_engine.ready_queue import ReadyQueue, ReadyTask
-from graphon.runtime.graph_runtime_state import GraphExecutionProtocol, GraphRuntimeState
+from graphon.engine.ready_queue import ReadyTask
+from graphon.runtime import RuntimeState
+from graphon.runtime.execution import GraphExecution
+from graphon.runtime.ready_queue import ReadyQueue
 
 
 @final
@@ -22,7 +24,7 @@ class StopAwareReadyQueue:
         inner: ReadyQueue,
         *,
         task_id: str,
-        graph_execution: GraphExecutionProtocol,
+        graph_execution: GraphExecution,
     ) -> None:
         self._inner = inner
         self._task_id = task_id
@@ -55,7 +57,7 @@ class StopAwareReadyQueue:
         self._inner.loads(data)
 
 
-def attach_stop_aware_ready_queue(graph_runtime_state: GraphRuntimeState, *, task_id: str) -> None:
+def attach_stop_aware_ready_queue(graph_runtime_state: RuntimeState, *, task_id: str) -> None:
     """Install stop-aware enqueue policy on an existing runtime state."""
     current = graph_runtime_state.ready_queue
     if isinstance(current, StopAwareReadyQueue):
