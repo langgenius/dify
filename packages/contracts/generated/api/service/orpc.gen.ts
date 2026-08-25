@@ -1798,12 +1798,12 @@ export const datasource = {
 /**
  * Run Pipeline
  *
- * Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
+ * Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
  */
 export const post30 = oc
   .route({
     description:
-      'Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.',
+      'Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsByDatasetIdPipelineRun',

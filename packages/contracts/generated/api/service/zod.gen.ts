@@ -1596,6 +1596,30 @@ export const zOptionalServiceApiUserPayload = z.object({
 export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_members'])
 
 /**
+ * PipelineDataset
+ */
+export const zPipelineDataset = z.object({
+  chunk_structure: z.string(),
+  description: z.string().optional().default(''),
+  id: z.string(),
+  name: z.string(),
+})
+
+/**
+ * PipelineDocument
+ */
+export const zPipelineDocument = z.object({
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
+  data_source_type: z.string(),
+  enabled: z.boolean(),
+  error: z.string().nullish(),
+  id: z.string(),
+  indexing_status: z.string(),
+  name: z.string(),
+  position: z.int(),
+})
+
+/**
  * PipelineRunApiEntity
  */
 export const zPipelineRunApiEntity = z.object({
@@ -1699,6 +1723,15 @@ export const zProviderWithModelsResponse = z.object({
  */
 export const zProviderWithModelsListResponse = z.object({
   data: z.array(zProviderWithModelsResponse),
+})
+
+/**
+ * PublishedPipelineRunResponse
+ */
+export const zPublishedPipelineRunResponse = z.object({
+  batch: z.string(),
+  dataset: zPipelineDataset,
+  documents: z.array(zPipelineDocument),
 })
 
 /**
@@ -2849,6 +2882,16 @@ export const zWorkflowBlockingResponse = z.union([
 ])
 
 /**
+ * PipelineRunJsonResponse
+ *
+ * JSON responses returned by published and draft knowledge pipeline runs.
+ */
+export const zPipelineRunJsonResponse = z.union([
+  zPublishedPipelineRunResponse,
+  zWorkflowBlockingResponse,
+])
+
+/**
  * WorkflowRunForLogResponse
  */
 export const zWorkflowRunForLogResponse = z.object({
@@ -3165,7 +3208,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = zChatBlockingResponse
+export const zPostChatMessagesResponse = z.union([zChatBlockingResponse, z.string()])
 
 export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -3186,7 +3229,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = zCompletionBlockingResponse
+export const zPostCompletionMessagesResponse = z.union([zCompletionBlockingResponse, z.string()])
 
 export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -3829,9 +3872,12 @@ export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
 })
 
 /**
- * Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object.
+ * Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode.
  */
-export const zPostDatasetsByDatasetIdPipelineRunResponse = zWorkflowBlockingResponse
+export const zPostDatasetsByDatasetIdPipelineRunResponse = z.union([
+  zPipelineRunJsonResponse,
+  z.string(),
+])
 
 export const zPostDatasetsByDatasetIdRetrieveBody = zHitTestingPayload
 
@@ -4012,7 +4058,7 @@ export const zPostWorkflowsRunBody = zWorkflowRunPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsRunResponse = zWorkflowBlockingResponse
+export const zPostWorkflowsRunResponse = z.union([zWorkflowBlockingResponse, z.string()])
 
 export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
   workflow_run_id: z.string(),
@@ -4046,7 +4092,10 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsByWorkflowIdRunResponse = zWorkflowBlockingResponse
+export const zPostWorkflowsByWorkflowIdRunResponse = z.union([
+  zWorkflowBlockingResponse,
+  z.string(),
+])
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),

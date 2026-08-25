@@ -377,9 +377,15 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
 
     pipeline_success_content = pipeline_operation["responses"]["200"]["content"]
     assert pipeline_success_content["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/WorkflowBlockingResponse"
+        "$ref": "#/components/schemas/PipelineRunJsonResponse"
     }
     assert pipeline_success_content["text/event-stream"]["schema"] == {"type": "string"}
+    pipeline_json_refs = {branch["$ref"] for branch in schemas["PipelineRunJsonResponse"]["anyOf"]}
+    assert pipeline_json_refs == {
+        "#/components/schemas/PublishedPipelineRunResponse",
+        "#/components/schemas/WorkflowBlockingResponse",
+    }
+    assert schemas["PublishedPipelineRunResponse"]["required"] == ["batch", "dataset", "documents"]
 
     preview_content = payload["paths"]["/files/{file_id}/preview"]["get"]["responses"]["200"]["content"]
     assert preview_content == {"*/*": {"schema": {"format": "binary", "type": "string"}}}

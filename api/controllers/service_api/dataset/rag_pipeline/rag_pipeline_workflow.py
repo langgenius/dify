@@ -30,6 +30,7 @@ from controllers.service_api.schema import event_stream_response, json_or_event_
 from controllers.service_api.wraps import DatasetApiResource
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from fields.base import ResponseModel
 from libs import helper
 from libs.helper import dump_response
@@ -111,6 +112,16 @@ class PipelineUploadFileResponse(ResponseModel):
         return value
 
 
+class PublishedPipelineRunResponse(ResponseModel):
+    batch: str
+    dataset: PipelineDataset
+    documents: list[PipelineDocument]
+
+
+class PipelineRunJsonResponse(RootModel[PublishedPipelineRunResponse | WorkflowBlockingResponse]):
+    """JSON responses returned by published and draft knowledge pipeline runs."""
+
+
 register_schema_model(service_api_ns, DatasourceNodeRunPayload)
 register_schema_model(service_api_ns, DatasourcePluginsQuery)
 register_schema_model(service_api_ns, PipelineRunApiEntity)
@@ -121,6 +132,8 @@ register_response_schema_models(
     DatasourcePluginListResponse,
     PipelineUploadFileResponse,
     WorkflowBlockingResponse,
+    PublishedPipelineRunResponse,
+    PipelineRunJsonResponse,
 )
 
 
@@ -245,14 +258,15 @@ class PipelineRunApi(DatasetApiResource):
     @service_api_ns.doc(
         summary="Run Pipeline",
         description=(
-            "Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response "
-            "modes."
+            "Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch "
+            "metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events."
         ),
         tags=["Knowledge Pipeline"],
         responses={
             200: (
-                "Pipeline execution result. Format depends on `response_mode`: streaming returns a "
-                "`text/event-stream`, blocking returns a JSON object."
+                "Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and "
+                "`documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON "
+                "object for blocking mode."
             ),
             403: "`forbidden` : Forbidden.",
             404: "`not_found` : Dataset not found.",
@@ -274,7 +288,7 @@ class PipelineRunApi(DatasetApiResource):
     @service_api_ns.response(
         200,
         "Pipeline run successfully",
-        service_api_ns.models[WorkflowBlockingResponse.__name__],
+        service_api_ns.models[PipelineRunJsonResponse.__name__],
     )
     @with_session
     def post(self, session: Session, tenant_id: str, dataset_id: UUID):

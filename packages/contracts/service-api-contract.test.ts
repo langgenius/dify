@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test'
 import { zFileResponse } from './generated/api/console/files/zod.gen'
-import { zCompletionRequestPayloadWithUser, zParameters } from './generated/api/service/zod.gen'
+import {
+  zCompletionRequestPayloadWithUser,
+  zParameters,
+  zPostChatMessagesResponse,
+  zPostCompletionMessagesResponse,
+  zPostDatasetsByDatasetIdPipelineRunResponse,
+  zPostWorkflowsByWorkflowIdRunResponse,
+  zPostWorkflowsRunResponse,
+} from './generated/api/service/zod.gen'
 
 describe('generated Service API schemas', () => {
   it('keeps JSON int64 values as numbers', () => {
@@ -94,5 +102,34 @@ describe('generated Service API schemas', () => {
         ],
       }).success,
     ).toBe(false)
+  })
+
+  it('accepts SSE text for mixed JSON and event-stream responses', () => {
+    const eventStream = 'data: {"event":"ping"}\n\n'
+
+    for (const responseSchema of [
+      zPostChatMessagesResponse,
+      zPostCompletionMessagesResponse,
+      zPostDatasetsByDatasetIdPipelineRunResponse,
+      zPostWorkflowsByWorkflowIdRunResponse,
+      zPostWorkflowsRunResponse,
+    ]) {
+      expect(responseSchema.safeParse(eventStream).success).toBe(true)
+    }
+  })
+
+  it('accepts the published knowledge pipeline JSON response', () => {
+    expect(
+      zPostDatasetsByDatasetIdPipelineRunResponse.safeParse({
+        batch: '20260825123456123456',
+        dataset: {
+          chunk_structure: 'text_model',
+          description: '',
+          id: 'dataset-1',
+          name: 'Knowledge Base',
+        },
+        documents: [],
+      }).success,
+    ).toBe(true)
   })
 })

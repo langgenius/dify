@@ -1710,6 +1710,26 @@ export type Parameters = {
 
 export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
 
+export type PipelineDataset = {
+  chunk_structure: string
+  description?: string
+  id: string
+  name: string
+}
+
+export type PipelineDocument = {
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
+  data_source_type: string
+  enabled: boolean
+  error?: string | null
+  id: string
+  indexing_status: string
+  name: string
+  position: number
+}
+
 export type PipelineRunApiEntity = {
   datasource_info_list: Array<
     | {
@@ -1744,6 +1764,8 @@ export type PipelineRunApiEntity = {
   response_mode: 'blocking' | 'streaming'
   start_node_id: string
 }
+
+export type PipelineRunJsonResponse = PublishedPipelineRunResponse | WorkflowBlockingResponse
 
 export type PipelineUploadFileResponse = {
   created_at?: string | null
@@ -1794,6 +1816,12 @@ export type ProviderWithModelsResponse = {
   provider: string
   status: CustomConfigurationStatus
   tenant_id: string
+}
+
+export type PublishedPipelineRunResponse = {
+  batch: string
+  dataset: PipelineDataset
+  documents: Array<PipelineDocument>
 }
 
 export type RequiredServiceApiUserPayload = {
@@ -2598,7 +2626,7 @@ export type PostChatMessagesErrors = {
 }
 
 export type PostChatMessagesResponses = {
-  200: ChatBlockingResponse
+  200: ChatBlockingResponse | string
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -2643,7 +2671,7 @@ export type PostCompletionMessagesErrors = {
 }
 
 export type PostCompletionMessagesResponses = {
-  200: CompletionBlockingResponse
+  200: CompletionBlockingResponse | string
 }
 
 export type PostCompletionMessagesResponse =
@@ -3936,7 +3964,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: WorkflowBlockingResponse
+  200: PipelineRunJsonResponse | string
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse =
@@ -4347,7 +4375,7 @@ export type PostWorkflowsRunErrors = {
 }
 
 export type PostWorkflowsRunResponses = {
-  200: WorkflowBlockingResponse
+  200: WorkflowBlockingResponse | string
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -4417,7 +4445,7 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
 }
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: WorkflowBlockingResponse
+  200: WorkflowBlockingResponse | string
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse =

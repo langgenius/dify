@@ -996,7 +996,7 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
 
-Execute the full knowledge pipeline for a knowledge base. Supports both streaming and blocking response modes.
+Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
 
 #### Parameters
 
@@ -1014,7 +1014,7 @@ Execute the full knowledge pipeline for a knowledge base. Supports both streamin
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
+| 200 | Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode. | **application/json**: [PipelineRunJsonResponse](#pipelinerunjsonresponse)<br>**text/event-stream**: string<br> |
 | 400 | Bad request - invalid payload or pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Forbidden. |  |
@@ -3771,6 +3771,28 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | PermissionEnum | string | Shared permission levels for resources (datasets, credentials, etc.) |  |
 
+#### PipelineDataset
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chunk_structure | string |  | Yes |
+| description | string | knowledge dataset description | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### PipelineDocument
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data_source_info | object |  | No |
+| data_source_type | string |  | Yes |
+| enabled | boolean |  | Yes |
+| error | string |  | No |
+| id | string |  | Yes |
+| indexing_status | string |  | Yes |
+| name | string |  | Yes |
+| position | integer |  | Yes |
+
 #### PipelineRunApiEntity
 
 | Name | Type | Description | Required |
@@ -3779,8 +3801,16 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource. Determines which fields are expected in `datasource_info_list` items.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
 | inputs | object | Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has no input variables. | Yes |
 | is_published | boolean | Whether to run the published or draft version of the pipeline. `true` runs the latest published version; `false` runs the current draft (useful for testing unpublished changes). | Yes |
-| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `streaming` for SSE or `blocking` for JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode for draft runs. Use `streaming` for SSE or `blocking` for JSON. Published runs are queued and always return batch metadata as JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 | start_node_id | string | ID of the datasource node where the run starts. | Yes |
+
+#### PipelineRunJsonResponse
+
+JSON responses returned by published and draft knowledge pipeline runs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PipelineRunJsonResponse | [PublishedPipelineRunResponse](#publishedpipelinerunresponse)<br>[WorkflowBlockingResponse](#workflowblockingresponse) | JSON responses returned by published and draft knowledge pipeline runs. |  |
 
 #### PipelineUploadFileResponse
 
@@ -3852,6 +3882,14 @@ Model class for provider with models response.
 | provider | string |  | Yes |
 | status | [CustomConfigurationStatus](#customconfigurationstatus) |  | Yes |
 | tenant_id | string |  | Yes |
+
+#### PublishedPipelineRunResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| batch | string |  | Yes |
+| dataset | [PipelineDataset](#pipelinedataset) |  | Yes |
+| documents | [ [PipelineDocument](#pipelinedocument) ] |  | Yes |
 
 #### RequiredServiceApiUserPayload
 
