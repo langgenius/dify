@@ -2,10 +2,10 @@
 
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
-import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import {
@@ -121,25 +121,72 @@ function SelectSeparator({ className, ...props }: SelectSeparatorProps) {
   return <BaseSelect.Separator className={cn(floatingSeparatorClassName, className)} {...props} />
 }
 
-type SelectContentPositionerProps = Omit<
-  BaseSelect.Positioner.Props,
-  'children' | 'className' | 'side' | 'align' | 'sideOffset' | 'alignOffset'
->
-type SelectContentPopupProps = Omit<BaseSelect.Popup.Props, 'children' | 'className'>
-type SelectContentListProps = Omit<BaseSelect.List.Props, 'children' | 'className'>
+const SelectPortal = BaseSelect.Portal
+type SelectPortalProps = BaseSelect.Portal.Props
 
-type SelectContentProps = {
-  children: React.ReactNode
-  placement?: Placement
-  sideOffset?: number
-  alignOffset?: number
+type SelectPositionerProps = Omit<BaseSelect.Positioner.Props, 'className' | 'side' | 'align'> & {
   className?: string
-  popupClassName?: string
-  listClassName?: string
-  positionerProps?: SelectContentPositionerProps
-  popupProps?: SelectContentPopupProps
-  listProps?: SelectContentListProps
+  placement?: Placement
 }
+
+function SelectPositioner({
+  placement = 'bottom-start',
+  sideOffset = 4,
+  alignOffset = 0,
+  alignItemWithTrigger = false,
+  className,
+  ...props
+}: SelectPositionerProps) {
+  const { side, align } = parsePlacement(placement)
+
+  return (
+    <BaseSelect.Positioner
+      side={side}
+      align={align}
+      sideOffset={sideOffset}
+      alignOffset={alignOffset}
+      alignItemWithTrigger={alignItemWithTrigger}
+      className={cn('z-50 outline-hidden', className)}
+      {...props}
+    />
+  )
+}
+
+type SelectPopupProps = Omit<BaseSelect.Popup.Props, 'className'> & {
+  className?: string
+}
+
+function SelectPopup({ className, ...props }: SelectPopupProps) {
+  return (
+    <BaseSelect.Popup
+      className={cn(
+        'max-w-(--available-width) min-w-[min(var(--anchor-width),var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+        floatingPopupAnimationClassName,
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+type SelectListProps = Omit<BaseSelect.List.Props, 'className'> & {
+  className?: string
+}
+
+function SelectList({ className, ...props }: SelectListProps) {
+  return (
+    <BaseSelect.List
+      className={cn('max-h-80 overflow-auto p-1 outline-hidden', className)}
+      {...props}
+    />
+  )
+}
+
+type SelectContentProps = Omit<SelectPopupProps, 'children' | 'className'> &
+  Pick<SelectPositionerProps, 'alignOffset' | 'placement' | 'sideOffset'> & {
+    children: React.ReactNode
+    className?: string
+  }
 
 function SelectContent({
   children,
@@ -147,42 +194,16 @@ function SelectContent({
   sideOffset = 4,
   alignOffset = 0,
   className,
-  popupClassName,
-  listClassName,
-  positionerProps,
-  popupProps,
-  listProps,
+  ...props
 }: SelectContentProps) {
-  const { side, align } = parsePlacement(placement)
-
   return (
-    <BaseSelect.Portal>
-      <BaseSelect.Positioner
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
-        alignOffset={alignOffset}
-        alignItemWithTrigger={false}
-        className={cn('z-50 outline-hidden', className)}
-        {...positionerProps}
-      >
-        <BaseSelect.Popup
-          className={cn(
-            'max-w-(--available-width) min-w-[min(var(--anchor-width),var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
-            floatingPopupAnimationClassName,
-            popupClassName,
-          )}
-          {...popupProps}
-        >
-          <BaseSelect.List
-            className={cn('max-h-80 overflow-auto p-1 outline-hidden', listClassName)}
-            {...listProps}
-          >
-            {children}
-          </BaseSelect.List>
-        </BaseSelect.Popup>
-      </BaseSelect.Positioner>
-    </BaseSelect.Portal>
+    <SelectPortal>
+      <SelectPositioner placement={placement} sideOffset={sideOffset} alignOffset={alignOffset}>
+        <SelectPopup className={className} {...props}>
+          <SelectList>{children}</SelectList>
+        </SelectPopup>
+      </SelectPositioner>
+    </SelectPortal>
   )
 }
 
@@ -233,6 +254,10 @@ export {
   SelectItemIndicator,
   SelectItemText,
   SelectLabel,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
@@ -246,6 +271,10 @@ export type {
   SelectItemProps,
   SelectItemTextProps,
   SelectLabelProps,
+  SelectListProps,
+  SelectPopupProps,
+  SelectPortalProps,
+  SelectPositionerProps,
   SelectProps,
   SelectSeparatorProps,
   SelectTriggerProps,

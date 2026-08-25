@@ -45,7 +45,7 @@ const InputTypeSelectField = ({
         <SelectTrigger id={field.name} className="gap-x-0.5 px-2">
           <Trigger option={selected} />
         </SelectTrigger>
-        <SelectContent popupClassName="w-[368px] bg-components-panel-bg-blur shadow-shadow-shadow-5">
+        <SelectContent className="w-[368px] bg-components-panel-bg-blur shadow-shadow-shadow-5">
           {inputTypeOptions.map((option: FileTypeSelectOption) => (
             <SelectItem key={option.value} value={option.value} className="gap-x-1">
               <Option option={option} />

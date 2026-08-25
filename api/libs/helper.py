@@ -500,15 +500,12 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: "Account | None" = None,
+        account_id: str | None = None,
         email: str | None = None,
         additional_data: dict[str, Any] | None = None,
     ) -> str:
-        if account is None and email is None:
+        if account_id is None and email is None:
             raise ValueError("Account or email must be provided")
-
-        account_id = account.id if account else None
-        account_email = email if email is not None else account.email if account else None
 
         if account_id:
             old_token = cls._get_current_token_for_account(account_id, token_type)
@@ -518,7 +515,7 @@ class TokenManager:
                 cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 

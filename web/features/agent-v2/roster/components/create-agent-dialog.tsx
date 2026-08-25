@@ -1,17 +1,17 @@
 'use client'
-
 import type { AgentAppCreatePayload } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFormValues, AgentIconSelection } from './agent-form'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -103,7 +103,17 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
           </DialogTrigger>
         )}
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-130 flex-col overflow-hidden! p-0!">
-          <DialogCloseButton />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           <div className="shrink-0 pt-6 pr-14 pb-3 pl-6">
             <DialogTitle className="title-2xl-semi-bold text-text-primary">
               {t(($) => $['roster.createDialog.title'])}

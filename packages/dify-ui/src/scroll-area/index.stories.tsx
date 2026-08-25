@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type * as React from 'react'
+import * as React from 'react'
 import {
   ScrollArea,
   ScrollAreaContent,

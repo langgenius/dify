@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Iterator
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, patch
 
 import pytest
 from flask import Flask
@@ -58,8 +58,8 @@ class TestForgotPasswordSendEmailApi:
         mock_send_mail,
         app: Flask,
     ):
-        mock_account = MagicMock()
-        mock_get_account.return_value = mock_account
+        account = Account(name="User", email="user@example.com")
+        mock_get_account.return_value = account
         mock_send_mail.return_value = "token-123"
 
         with app.test_request_context(
@@ -71,7 +71,7 @@ class TestForgotPasswordSendEmailApi:
 
         assert response == {"result": "success", "data": "token-123"}
         mock_get_account.assert_called_once_with("User@Example.com", session=ANY)
-        mock_send_mail.assert_called_once_with(account=mock_account, email="user@example.com", language="zh-Hans")
+        mock_send_mail.assert_called_once_with(account=account, email="user@example.com", language="zh-Hans")
         mock_extract_ip.assert_called_once()
         mock_rate_limit.assert_called_once_with("127.0.0.1")
 

@@ -1,7 +1,7 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Radio } from '@langgenius/dify-ui/radio'
+import { Radio } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -90,7 +90,7 @@ const Item = ({
           </PopoverTrigger>
           <PopoverContent
             placement="top-end"
-            popupClassName="px-3 py-2 system-xs-regular text-text-tertiary"
+            className="px-3 py-2 system-xs-regular text-text-tertiary"
           >
             {disabledTip}
           </PopoverContent>

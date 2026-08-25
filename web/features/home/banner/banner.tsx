@@ -188,7 +188,6 @@ type BannerProps = {
 }
 
 export function Banner({ banners }: BannerProps) {
-  const { t } = useTranslation()
   const locale = useLocale()
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -213,16 +212,7 @@ export function Banner({ banners }: BannerProps) {
   const carouselLabel = firstBanner.content.category || firstBanner.content.title
 
   return (
-    <div className="relative flex w-full flex-col items-start gap-4 px-8 pt-6 pb-4">
-      <div className="flex w-full flex-col gap-1">
-        <p className="truncate title-3xl-semi-bold text-text-primary">
-          {t(($) => $['banner.greeting'], { name: userProfile.name, ns: 'explore' })}
-        </p>
-        <p className="truncate body-sm-regular text-text-secondary">
-          {t(($) => $['banner.tagline'], { ns: 'explore' })}
-        </p>
-      </div>
-
+    <div className="relative flex w-full flex-col items-start px-8 pb-4">
       <Carousel
         opts={CAROUSEL_OPTIONS}
         plugins={carouselPlugins}

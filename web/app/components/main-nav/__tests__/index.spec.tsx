@@ -24,7 +24,10 @@ import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/stor
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+import {
+  stepByStepTourSessionAtom,
+  stepByStepTourSkipRecoveryVisibleAtom,
+} from '@/app/components/step-by-step-tour/state'
 import { STEP_BY_STEP_TOUR_SHELL_MODE_STORAGE_KEY } from '@/app/components/step-by-step-tour/storage'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -216,6 +219,10 @@ vi.mock('react-i18next', async () => {
       'common.stepByStepTour.minimize': 'Minimize tour',
       'common.stepByStepTour.restore': 'Open step-by-step tour',
       'common.stepByStepTour.learnMore': 'Learn more',
+      'common.stepByStepTour.skipRecovery.label': 'Step-by-step Tour recovery tip',
+      'common.stepByStepTour.skipRecovery.message':
+        'Tour hidden. Turn it back on anytime in Help → Step-by-step Tour.',
+      'common.stepByStepTour.skipRecovery.dismiss': 'Got it',
       'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
       'common.stepByStepTour.tasks.home.description':
         'Open a hands-on lesson from Learn Dify to see Dify in action.',
@@ -532,6 +539,7 @@ const renderMainNav = (
     store?: ReturnType<typeof createStore>
     extra?: ReactNode
     educationStatus?: NonNullable<Parameters<typeof renderWithConsoleQuery>[1]>['educationStatus']
+    skipRecoveryVisible?: boolean
   } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
@@ -566,6 +574,8 @@ const renderMainNav = (
   seedRegisteredConsoleStateFixture(store)
   store.set(queryClientAtom, queryClient)
   store.set(stepByStepTourSessionAtom, mockStepByStepTour.uiState)
+  if (options.skipRecoveryVisible !== undefined)
+    store.set(stepByStepTourSkipRecoveryVisibleAtom, options.skipRecoveryVisible)
   const resolvedSystemFeatures = {
     ...defaultMainNavSystemFeatures,
     ...systemFeatures,
@@ -669,22 +679,32 @@ describe('MainNav', () => {
     expect(screen.getByRole('button', { name: 'common.account.account' })).not.toHaveTextContent(
       'team',
     )
-    expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
-    expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
+    const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
+    expect(homeLink).toHaveAttribute('href', '/')
+    expect(homeLink.querySelector('.i-custom-vender-main-nav-home')).toBeInTheDocument()
+    const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
+    expect(studioLink).toHaveAttribute('href', '/apps')
+    expect(studioLink.querySelector('.i-custom-vender-main-nav-studio')).toBeInTheDocument()
+    const agentsLink = screen.getByRole('link', { name: /Agents/ })
+    expect(agentsLink).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
-      'href',
-      '/datasets',
-    )
-    expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute(
-      'href',
-      '/integrations/model-provider',
-    )
-    expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute(
-      'href',
-      '/marketplace',
-    )
+    expect(agentsLink.querySelector('.i-custom-vender-main-nav-roster')).toBeInTheDocument()
+    const skillsLink = screen.getByRole('link', { name: /common.mainNav.skills/ })
+    expect(skillsLink).toHaveAttribute('href', '/skills')
+    expect(skillsLink.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
+    const knowledgeLink = screen.getByRole('link', { name: /common.menus.datasets/ })
+    expect(knowledgeLink).toHaveAttribute('href', '/datasets')
+    expect(knowledgeLink.querySelector('.i-custom-vender-main-nav-knowledge')).toBeInTheDocument()
+    const integrationsLink = screen.getByRole('link', { name: /common.mainNav.integrations/ })
+    expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
+    expect(
+      integrationsLink.querySelector('.i-custom-vender-main-nav-integrations'),
+    ).toBeInTheDocument()
+    const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
+    expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
+    expect(
+      marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace'),
+    ).toBeInTheDocument()
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {
@@ -693,6 +713,10 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.skills/ })).toHaveAttribute(
+      'href',
+      '/skills',
+    )
   })
 
   it('hides the roster entry when the user lacks agent.manage', () => {
@@ -793,6 +817,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',
@@ -975,6 +1000,26 @@ describe('MainNav', () => {
     })
     expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('keeps focus in the help menu when it dismisses the recovery prompt', async () => {
+    const user = userEvent.setup()
+    mockStepByStepTour.setState({ skipped: true })
+    renderMainNav(undefined, { skipRecoveryVisible: true })
+
+    expect(
+      await screen.findByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    ).toBeInTheDocument()
+
+    const helpTrigger = screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })
+    await user.click(helpTrigger)
+
+    expect(
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
+    ).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toHaveFocus()
+    })
   })
 
   it('shows Step-by-step Tour switch in help menu and stores the current workspace disable override', async () => {
@@ -1181,10 +1226,13 @@ describe('MainNav', () => {
   })
 
   it('hides the help menu when branding is enabled', () => {
-    renderMainNav({ branding: { enabled: true } })
+    renderMainNav({ branding: { enabled: true } }, { skipRecoveryVisible: true })
 
     expect(
       screen.queryByRole('button', { name: 'common.mainNav.help.openMenu' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).not.toBeInTheDocument()
   })
 

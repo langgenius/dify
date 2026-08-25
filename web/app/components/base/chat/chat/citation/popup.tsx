@@ -54,7 +54,7 @@ const Popup: FC<PopupProps> = ({ data, showHitInfo = false }) => {
         placement="top-start"
         sideOffset={8}
         alignOffset={-2}
-        popupClassName="border-none bg-transparent shadow-none"
+        className="border-none bg-transparent shadow-none"
       >
         <div
           data-testid="popup-content"
