@@ -1819,6 +1819,35 @@ describe("parser adapters", () => {
     expect(sleepCalls).toBe(0);
   });
 
+  it.each([0, 1])(
+    "uses the bounded default delay before retrying a transient provider failure (%d ms)",
+    async (retryDelayMs) => {
+      let fetchCalls = 0;
+      const parser = createUnstructuredParserClient({
+        endpoint: "https://unstructured.example.test",
+        fetch: async () => {
+          fetchCalls += 1;
+          return new Response(JSON.stringify([{ text: "Recovered", type: "NarrativeText" }]), {
+            status: fetchCalls === 1 ? 500 : 200,
+          });
+        },
+        maxRetries: 1,
+        retryDelayMs,
+      });
+
+      await expect(
+        parser.parse({
+          body: new Uint8Array([1]),
+          documentAssetId,
+          filename: "delayed-retry.pdf",
+          mimeType: "application/pdf",
+          version: 1,
+        }),
+      ).resolves.toMatchObject({ parser: "unstructured" });
+      expect(fetchCalls).toBe(2);
+    },
+  );
+
   it("preserves caller cancellation while an Unstructured request is active", async () => {
     const controller = new AbortController();
     let fetchStarted = false;
@@ -1845,6 +1874,102 @@ describe("parser adapters", () => {
 
     await waitForCondition(() => fetchStarted);
     controller.abort();
+
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("rejects an Unstructured request whose caller signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => new Response("[]"),
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "already-aborted.pdf",
+        mimeType: "application/pdf",
+        signal: controller.signal,
+        version: 1,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("aborts an active Unstructured request when its deadline expires", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        return await new Promise<Response>((_resolve, reject) => {
+          request.signal.addEventListener("abort", () => reject(request.signal.reason), {
+            once: true,
+          });
+        });
+      },
+      requestTimeoutMs: 1,
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "timeout.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).rejects.toThrow("Unstructured parser request timed out after requestTimeoutMs=1");
+  });
+
+  it("rejects a successful Unstructured response completed after its deadline", async () => {
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return new Response(JSON.stringify([{ text: "Too late", type: "NarrativeText" }]));
+      },
+      requestTimeoutMs: 1,
+    });
+
+    await expect(
+      parser.parse({
+        body: new Uint8Array([1]),
+        documentAssetId,
+        filename: "late-success.pdf",
+        mimeType: "application/pdf",
+        version: 1,
+      }),
+    ).rejects.toThrow("Unstructured parser request timed out after requestTimeoutMs=1");
+  });
+
+  it("uses the standard AbortError when an abort event has no signal reason", async () => {
+    const controller = new AbortController();
+    let fetchStarted = false;
+    const parser = createUnstructuredParserClient({
+      endpoint: "https://unstructured.example.test",
+      fetch: async (input) => {
+        const request = input instanceof Request ? input : new Request(input);
+        fetchStarted = true;
+        return await new Promise<Response>((_resolve, reject) => {
+          request.signal.addEventListener("abort", () => reject(request.signal.reason), {
+            once: true,
+          });
+        });
+      },
+    });
+    const pending = parser.parse({
+      body: new Uint8Array([1]),
+      documentAssetId,
+      filename: "abort-event.pdf",
+      mimeType: "application/pdf",
+      signal: controller.signal,
+      version: 1,
+    });
+
+    await waitForCondition(() => fetchStarted);
+    controller.signal.dispatchEvent(new Event("abort"));
 
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   });

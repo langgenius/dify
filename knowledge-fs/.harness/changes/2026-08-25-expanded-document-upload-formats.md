@@ -26,6 +26,8 @@
 - Added behavior tests for declared MIME types, octet-stream inference, native lightweight-text
   routing, and the browser file-picker contract. The new tests were observed failing before the
   implementation and passing afterward.
+- Added deadline and reasonless-abort coverage for the bounded Unstructured request lifecycle after
+  the CI branch-coverage gate exposed the remaining paths.
 
 ## Why
 
@@ -37,8 +39,8 @@ parser restores compatibility without adding a new parser, storage path, or netw
 
 - `pnpm --filter @knowledge/api exec vitest run src/document-upload-utils.test.ts` — passed (21 tests).
 - `pnpm --filter @knowledge/parsers exec vitest run src/parser.test.ts` — passed (55 tests).
-- `pnpm --filter @knowledge/parsers test:coverage` — passed with 95.69% statements/lines,
-  90.02% branches, and 97.52% functions.
+- `pnpm --filter @knowledge/parsers test:coverage` — passed with 95.99% statements/lines,
+  90.10% branches, and 98.34% functions (62 tests).
 - `pnpm --filter @knowledge/api-app exec vitest run src/parser-options.test.ts` — passed (5 tests).
 - `vp test run --project unit features/new-rag/__tests__/documents-page.spec.tsx` — passed (203 tests).
 - KnowledgeFS typechecks — passed; the full Turbo test pipeline passed (22 tasks), including the API
