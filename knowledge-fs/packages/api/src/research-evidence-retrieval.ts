@@ -831,9 +831,7 @@ function combineResearchMetrics({
     researchStrategyVersion: "research-evidence-v3",
     researchSufficiencyReached: sufficiencyReached,
     researchSupplementalSearches: supplementalSearches,
-    ...(scoreThresholdFilteredCandidates === undefined
-      ? {}
-      : { scoreThresholdFilteredCandidates }),
+    ...(scoreThresholdFilteredCandidates === undefined ? {} : { scoreThresholdFilteredCandidates }),
     totalMs,
   };
 }
