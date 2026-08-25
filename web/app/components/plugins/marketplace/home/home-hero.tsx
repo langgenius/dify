@@ -9,6 +9,7 @@ import plugFillIcon from './assets/plug-fill.svg'
 import puzzleFillIcon from './assets/puzzle-fill.svg'
 import sparklingFillIcon from './assets/sparkling-fill.svg'
 import voiceAiFillIcon from './assets/voice-ai-fill.svg'
+import { HERO_ICON_SIZE_PX } from './home-constants'
 import styles from './home-hero.module.css'
 
 type HomeHeroProps = {
@@ -43,10 +44,15 @@ const HeroDecorations = () => (
     {heroDecorationIcons.map((icon) => (
       <span
         key={icon.src}
-        className="absolute flex size-10 items-center justify-center overflow-hidden bg-state-accent-hover"
-        style={{ left: `calc(50% + ${icon.left}px)`, top: icon.top }}
+        className="absolute flex items-center justify-center overflow-hidden bg-state-accent-hover"
+        style={{
+          height: HERO_ICON_SIZE_PX,
+          left: `calc(50% + ${icon.left}px)`,
+          top: icon.top,
+          width: HERO_ICON_SIZE_PX,
+        }}
       >
-        <span className="relative size-6 overflow-hidden">
+        <span className="relative size-[24px] overflow-hidden">
           <img alt="" aria-hidden className="size-full" height={24} src={icon.src} width={24} />
         </span>
       </span>
@@ -60,12 +66,17 @@ const HomeHero = ({ isMarketplacePlatform, subtitle, title }: HomeHeroProps) => 
   return (
     <section
       className={cn(
-        'relative flex shrink-0 justify-center overflow-x-hidden bg-background-default px-4',
+        'relative flex shrink-0 justify-center overflow-hidden bg-background-default px-4',
         !isMarketplacePlatform && 'pt-6',
       )}
     >
       <HeroDecorations />
-      <div className="relative flex h-[162px] w-full max-w-[726px] flex-col items-center pt-[41px]">
+      <div
+        className={cn(
+          'relative flex w-full max-w-[726px] flex-col items-center pt-[41px]',
+          styles.frame,
+        )}
+      >
         <div
           className={cn('flex w-full flex-col items-center gap-2 text-center', styles.copyBlock)}
         >

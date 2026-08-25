@@ -4,10 +4,21 @@
   inset: 0;
 }
 
+/* 4 grid rows (0–163) so the 40px icons at y=123 sit fully inside the hero
+   without overflowing into a scrollbar. */
+.frame {
+  height: 163px;
+}
+
 /* 40px cells + 1px divider-subtle lines, matching Figma header/Variant2.
    Figma's vertical lines are inset 141px on a 1512px canvas (~9%) and sit
    under a white wash, so the grid fades out toward both edges instead of
-   meeting the viewport at full strength. */
+   meeting the viewport at full strength.
+
+   The 41px tile is odd-sized, so `background-position: center` places the
+   1px stroke on a half-pixel and leaves a 0.5px gap beside every icon.
+   +0.5px matches Figma (`left: calc(50% + 0.5px)`) so line starts sit on
+   the same pixels as `left: calc(50% + n * 41px)`. */
 .grid {
   position: absolute;
   inset: 0;
@@ -24,7 +35,7 @@
     41px 100%,
     100% 41px;
   background-position:
-    center top,
+    calc(50% + 0.5px) top,
     left 40px;
   -webkit-mask-image: linear-gradient(
     to right,
@@ -36,19 +47,20 @@
   mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
 }
 
+/* Figma Ellipse 5 (1159:70851): 555×245 white oval at (478, 63) on the
+   1512×257 header, layer-blur 60. Hero y is shifted −44px so the top icon
+   row sits at 0. The blur washes grid lines out under the title and search
+   while fading toward the decorative icons. */
 .glow {
   position: absolute;
-  top: 0;
+  top: 19px;
   left: 50%;
-  width: 640px;
-  height: 200px;
+  width: 555px;
+  height: 245px;
   transform: translateX(-50%);
-  background: radial-gradient(
-    ellipse 50% 45% at 50% 45%,
-    var(--color-background-default) 0%,
-    var(--color-background-default) 38%,
-    transparent 72%
-  );
+  border-radius: 50%;
+  background: var(--color-background-default);
+  filter: blur(30px);
 }
 
 @media (max-width: 879px) {
