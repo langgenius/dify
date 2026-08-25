@@ -5176,7 +5176,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/models/pipeline.ts": {
