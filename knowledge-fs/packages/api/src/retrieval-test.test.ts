@@ -231,6 +231,7 @@ describe("createRetrievalTestExecutor", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({
       denseProjectionModel: embeddingProfile.vectorSpaceId,
+      embeddingProfile,
       mode: "research",
       queryVector: [0.1, 0.2, 0.3],
     });

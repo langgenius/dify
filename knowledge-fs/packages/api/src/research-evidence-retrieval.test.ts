@@ -146,6 +146,68 @@ describe("Research evidence retrieval V3", () => {
     });
   });
 
+  it("reports the score-threshold stage when the frozen profile enables it", async () => {
+    const retrieve = vi.fn(async (input: RetrieveHybridInput) => ({
+      items: [
+        item(`keep-${slug(input.query)}`, input.query),
+        item(`drop-${slug(input.query)}`, input.query),
+      ],
+      metrics: {
+        denseCandidates: 2,
+        denseMs: 1,
+        ftsCandidates: 2,
+        ftsMs: 1,
+        fusedCandidates: 2,
+        fusionMs: 1,
+        totalMs: 3,
+      },
+    }));
+    const rerank = vi.fn(async (input: Parameters<RerankerProvider["rerank"]>[0]) => ({
+      items: input.documents.map((document, index) => ({
+        document: { ...document, metadata: { ...(document.metadata ?? {}) } },
+        index,
+        score: index === 0 ? 0.91 : 0.11,
+      })),
+      metadata: { model: input.model, provider: "static" as const },
+      model: input.model,
+    }));
+    const retriever = createResearchEvidenceRetrieval({
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      queryVectorizer: { vectorize: async () => [] },
+      reasoning: {
+        judge: async () => ({
+          coverage: 1,
+          coveredDimensions: ["renewal"],
+          missingDimensions: [],
+          sufficient: true,
+        }),
+        plan: async () => ({
+          evidenceDimensions: ["renewal"],
+          intent: "lookup" as const,
+          modelCalled: true,
+          subqueries: [],
+          useGraph: false,
+        }),
+      },
+      rerankerFactory: () => ({ kind: "static", models: async () => [], rerank }),
+      retriever: { retrieve },
+    });
+
+    const result = await retriever.retrieve({
+      ...researchInput(),
+      retrievalProfile: {
+        ...retrievalProfile(),
+        scoreThreshold: { enabled: true, stage: "rerank", value: 0.8 },
+      },
+    });
+
+    expect(result.metrics).toMatchObject({
+      researchStrategyVersion: "research-evidence-v3",
+      scoreThresholdFilteredCandidates: 1,
+    });
+    expect(result.items).toHaveLength(1);
+  });
+
   it("keeps the strongest query-specific rerank score for evidence shared across intents", async () => {
     const shared = item(
       "shared-node",

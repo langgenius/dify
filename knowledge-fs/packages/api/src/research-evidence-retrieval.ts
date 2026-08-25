@@ -188,27 +188,29 @@ export function createResearchEvidenceRetrieval({
         rerankerModel: undefined,
       });
       if (!rerankRuntime) throw new Error("Research retrieval reranker is unavailable");
+      const scoreThreshold = rerankRuntime.scoreThreshold;
       let rerankMs = restored?.result?.metrics?.rerankMs ?? 0;
       let rerankCandidates = restored?.result?.metrics?.rerankCandidates ?? 0;
+      let scoreThresholdFilteredCandidates =
+        restored?.result?.metrics?.scoreThresholdFilteredCandidates ?? 0;
       const rerankLists = async (lists: readonly ResearchQueryRerankList[]) => {
         const rerankStartedAt = now();
         rerankCandidates += lists.reduce((total, list) => total + list.items.length, 0);
         try {
           return await Promise.all(
-            lists.map(async (list) => ({
-              ...list,
-              items: thresholdItems(
-                await rerankHybridRetrievalItems({
-                  items: list.items,
-                  limit: list.items.length,
-                  model: rerankRuntime.model,
-                  query: list.query,
-                  reranker: rerankRuntime.provider,
-                  tenantId,
-                }),
-                rerankRuntime.scoreThreshold,
-              ),
-            })),
+            lists.map(async (list) => {
+              const rerankedItems = await rerankHybridRetrievalItems({
+                items: list.items,
+                limit: list.items.length,
+                model: rerankRuntime.model,
+                query: list.query,
+                reranker: rerankRuntime.provider,
+                tenantId,
+              });
+              const thresholded = thresholdItems(rerankedItems, scoreThreshold);
+              scoreThresholdFilteredCandidates += rerankedItems.length - thresholded.length;
+              return { ...list, items: thresholded };
+            }),
           );
         } finally {
           // Calls in one intent batch run concurrently, so this is user-visible wall time rather
@@ -416,6 +418,7 @@ export function createResearchEvidenceRetrieval({
         rerankCandidates,
         rerankMs,
         rounds: snapshot.rounds,
+        ...(scoreThreshold === undefined ? {} : { scoreThresholdFilteredCandidates }),
         sufficiencyReached: judgement.sufficient,
         supplementalSearches,
         totalMs: Math.max(0, now() - startedAt),
@@ -789,6 +792,7 @@ function combineResearchMetrics({
   rerankCandidates,
   rerankMs,
   rounds,
+  scoreThresholdFilteredCandidates,
   sufficiencyReached,
   supplementalSearches,
   totalMs,
@@ -802,6 +806,7 @@ function combineResearchMetrics({
   readonly rerankCandidates: number;
   readonly rerankMs: number;
   readonly rounds: number;
+  readonly scoreThresholdFilteredCandidates?: number | undefined;
   readonly sufficiencyReached: boolean;
   readonly supplementalSearches: number;
   readonly totalMs: number;
@@ -826,6 +831,9 @@ function combineResearchMetrics({
     researchStrategyVersion: "research-evidence-v3",
     researchSufficiencyReached: sufficiencyReached,
     researchSupplementalSearches: supplementalSearches,
+    ...(scoreThresholdFilteredCandidates === undefined
+      ? {}
+      : { scoreThresholdFilteredCandidates }),
     totalMs,
   };
 }

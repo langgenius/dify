@@ -214,7 +214,10 @@ export function createRetrievalTestExecutor({
         const embeddingMs = Math.max(0, Date.now() - embeddingStartedAt);
         const retrieval = await retriever.retrieve({
           ...(input.embeddingProfile
-            ? { denseProjectionModel: input.embeddingProfile.vectorSpaceId }
+            ? {
+                denseProjectionModel: input.embeddingProfile.vectorSpaceId,
+                embeddingProfile: input.embeddingProfile,
+              }
             : {}),
           knowledgeSpaceId: input.knowledgeSpaceId,
           ...(input.filters === undefined

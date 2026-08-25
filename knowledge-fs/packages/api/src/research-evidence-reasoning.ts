@@ -133,7 +133,7 @@ export function createResearchEvidenceReasoning({
   maxEvidenceCharsPerItem = 1_200,
   maxEvidenceItems = 20,
   maxOutputTokens,
-  maxResponseChars = 16_000,
+  maxResponseChars = maxOutputTokens * 8,
   modelRequestGate,
   providerFactory,
   timeoutMs,
@@ -443,13 +443,12 @@ function parseQueryPlan(text: string): z.infer<typeof QueryPlanSchema> {
   }
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
-    // Dify's structured-output compatibility layer represents JSON Schema booleans as strings
-    // for providers that do not accept native boolean fields. Normalize that transport detail
-    // before applying the strict domain schema, just as the evidence judge does below.
-    const useGraph = normalizeUseGraphValue(record.useGraph);
-    if (useGraph !== undefined) {
-      value = { ...record, useGraph };
-    }
+    value = {
+      evidenceDimensions: record.evidenceDimensions,
+      intent: record.intent,
+      subqueries: record.subqueries,
+      useGraph: normalizeUseGraphValue(record.useGraph) ?? record.useGraph,
+    };
   }
   try {
     return QueryPlanSchema.parse(value);
@@ -473,10 +472,13 @@ function parseEvidenceJudgement(text: string): z.infer<typeof EvidenceJudgementS
   }
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
-    const sufficient = normalizeBooleanValue(record.sufficient);
-    if (sufficient !== undefined) {
-      value = { ...record, sufficient };
-    }
+    value = {
+      coverage: record.coverage,
+      coveredDimensions: record.coveredDimensions,
+      missingDimensions: record.missingDimensions,
+      sufficient: normalizeBooleanValue(record.sufficient) ?? record.sufficient,
+      supplementalQuery: record.supplementalQuery,
+    };
   }
   try {
     return EvidenceJudgementSchema.parse(value);

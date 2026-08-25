@@ -331,6 +331,37 @@ describe("Research evidence reasoning", () => {
     expect(generate).toHaveBeenCalledOnce();
   });
 
+  it("keeps a valid judgement when the provider adds prose fields or fills the token budget", async () => {
+    const reasoning = createResearchEvidenceReasoning({
+      maxOutputTokens: 8_192,
+      providerFactory: () => ({
+        generate: async () => ({
+          metadata: { model: reasoningModel.model },
+          model: reasoningModel.model,
+          text: JSON.stringify({
+            coverage: 1,
+            coveredDimensions: ["materials"],
+            missingDimensions: [],
+            reasoning: "x".repeat(20_000),
+            sufficient: true,
+            supplementalQuery: null,
+          }),
+        }),
+      }),
+      timeoutMs: 1_000,
+    });
+
+    await expect(
+      reasoning.judge({
+        evidence: [researchEvidenceItem()],
+        evidenceDimensions: ["materials"],
+        query: "Which materials make up the mark?",
+        reasoningModel,
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ modelCalled: true, sufficient: true });
+  });
+
   it("normalizes a provider explanation in the boolean sufficient field", async () => {
     const reasoning = createResearchEvidenceReasoning({
       maxOutputTokens: 128,
