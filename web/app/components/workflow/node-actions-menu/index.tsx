@@ -58,10 +58,7 @@ export function NodeActionsDropdown({
           </button>
         }
       />
-      <DropdownMenuContent
-        placement="bottom-end"
-        popupClassName={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}
-      >
+      <DropdownMenuContent placement="bottom-end" className={NODE_ACTIONS_MENU_WIDTH_CLASS_NAME}>
         <NodeActionsDropdownContent
           id={id}
           data={data}

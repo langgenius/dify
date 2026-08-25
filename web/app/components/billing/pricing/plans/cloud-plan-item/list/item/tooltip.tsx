@@ -21,7 +21,7 @@ const Tooltip = ({ content }: TooltipProps) => {
       </PopoverTrigger>
       <PopoverContent
         placement="top-end"
-        popupClassName="w-[260px] rounded-none border-0 bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface shadow-none"
+        className="w-[260px] rounded-none border-0 bg-saas-dify-blue-static px-5 py-[18px] system-xs-regular text-text-primary-on-surface shadow-none"
       >
         {content}
       </PopoverContent>

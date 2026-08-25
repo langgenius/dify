@@ -1,5 +1,4 @@
 'use client'
-
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import {
   AlertDialog,
@@ -13,11 +12,12 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
-  DialogCloseButton,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -177,7 +177,17 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
               {t(($) => $['apiKeyModal.apiSecretKeyTips'], { ns: 'appApi' })}
             </DialogDescription>
           </div>
-          <DialogCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+          <DialogClose
+            render={
+              <IconButton
+                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                size="lg"
+                className="absolute inset-e-6 top-6"
+              >
+                <span aria-hidden className="i-ri-close-line size-4" />
+              </IconButton>
+            }
+          />
           {isLoading && (
             <div className="flex min-h-24 items-center border-y border-divider-subtle px-6">
               <Loading />

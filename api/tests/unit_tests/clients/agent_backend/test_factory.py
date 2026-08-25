@@ -31,6 +31,7 @@ def test_create_agent_backend_client_forwards_authentication(
     client_cls.assert_called_once_with(
         base_url="http://agent-backend",
         stream_timeout=30,
+        timeout=30.0,
         binding_file_download_timeout=240,
         headers=headers,
     )
@@ -54,8 +55,16 @@ def test_create_agent_backend_run_client_forwards_stream_read_timeout(create_cli
 @pytest.mark.parametrize(
     ("factory", "module", "extra_kwargs"),
     [
-        (home_snapshot_service.AgentHomeSnapshotService._client, home_snapshot_service, {}),
-        (workspace_service.AgentWorkspaceService._client, workspace_service, {}),
+        (
+            home_snapshot_service.AgentHomeSnapshotService._client,
+            home_snapshot_service,
+            {"timeout": dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS},
+        ),
+        (
+            workspace_service.AgentWorkspaceService._client,
+            workspace_service,
+            {"timeout": dify_config.AGENT_BACKEND_HOME_SNAPSHOT_TIMEOUT_SECONDS},
+        ),
         (
             agent_app_sandbox_service._default_client_factory,
             agent_app_sandbox_service,

@@ -36,6 +36,7 @@ function AgentTaskToolbar({ taskLength, onInsert }: { taskLength: number; onInse
         <button
           type="button"
           className="flex items-center gap-1 system-xs-medium hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          onMouseDown={(event) => event.preventDefault()}
           onClick={handleInsert}
         >
           <span aria-hidden className="i-ri-slash-commands-2 size-3.5" />

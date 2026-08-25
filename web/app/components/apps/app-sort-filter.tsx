@@ -54,7 +54,7 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
         </span>
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[220px]">
+      <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-[220px]">
         <DropdownMenuRadioGroup<AppListSortBy>
           value={value}
           onValueChange={(nextValue) => onChange(nextValue)}

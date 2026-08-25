@@ -243,8 +243,8 @@ class SummaryIndexService:
                 tokens_list = embedding_model.get_text_embedding_num_tokens([summary_content])
                 raw_embedding_tokens = tokens_list[0] if tokens_list else 0
                 embedding_tokens = raw_embedding_tokens if isinstance(raw_embedding_tokens, int) else 0
-        except Exception as e:
-            logger.warning("Failed to calculate embedding tokens for summary: %s", str(e))
+        except Exception:
+            logger.warning("Failed to calculate embedding tokens for summary", exc_info=True)
 
         # Create document with summary content and metadata
         summary_document = Document(
@@ -914,8 +914,8 @@ class SummaryIndexService:
                     try:
                         vector = Vector(dataset, session=session)
                         vector.delete_by_ids(summary_node_ids)
-                    except Exception as e:
-                        logger.warning("Failed to remove summary vectors: %s", str(e))
+                    except Exception:
+                        logger.warning("Failed to remove summary vectors", exc_info=True)
 
             # Disable summary records (don't delete)
             now = naive_utc_now()

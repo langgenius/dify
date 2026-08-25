@@ -31,6 +31,12 @@ class InvalidInvitationCodeError(BaseHTTPException):
     code = 400
 
 
+class MissingInvitationCodeRequestError(BaseHTTPException):
+    error_code = "missing_invitation_code"
+    description = "Invitation code is required."
+    code = 400
+
+
 class AccountAlreadyInitedError(BaseHTTPException):
     error_code = "account_already_inited"
     description = "The account has been initialized. Please refresh the page."

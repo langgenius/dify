@@ -55,7 +55,7 @@ export function EnvironmentDeployMenu({
         aria-busy={isLoading || isRetrying}
         placement="bottom-end"
         sideOffset={4}
-        popupClassName="w-42 rounded-xl p-1"
+        className="w-42 rounded-xl p-1"
       >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="px-2 py-1 system-xs-medium-uppercase text-text-tertiary">

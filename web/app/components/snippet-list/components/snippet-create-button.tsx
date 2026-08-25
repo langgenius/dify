@@ -38,7 +38,7 @@ const SnippetCreateButton = () => {
         <PopoverContent
           placement="bottom-end"
           sideOffset={6}
-          popupClassName="w-[228px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
+          className="w-[228px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-xs"
         >
           <div className="px-2 pt-2 pb-1 text-xs leading-4.5 font-medium text-text-tertiary">
             {t(($) => $.createFrom)}

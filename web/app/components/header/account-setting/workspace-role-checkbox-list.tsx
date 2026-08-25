@@ -3,7 +3,7 @@
 import type { Role } from '@/models/access-control'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio-group'
 import {
   ScrollArea,
   ScrollAreaContent,

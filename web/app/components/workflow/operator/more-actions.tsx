@@ -169,7 +169,7 @@ function MoreActions() {
             }
           />
         </TipPopup>
-        <DropdownMenuContent placement="right-end" popupClassName="min-w-[180px]">
+        <DropdownMenuContent placement="right-end" className="min-w-[180px]">
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
             <span aria-hidden className="i-ri-export-line size-3" />
             {t(($) => $['common.exportImage'], { ns: 'workflow' })}
