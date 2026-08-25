@@ -1358,6 +1358,14 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 
+#### MessageStatus
+
+Message Status Enum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| MessageStatus | string | Message Status Enum |  |
+
 #### ParagraphInputConfig
 
 Form input definition.
@@ -1696,7 +1704,7 @@ in form definition, or a variable while the workflow is running.
 | provider_response_latency | number |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
-| status | string |  | Yes |
+| status | [MessageStatus](#messagestatus) |  | Yes |
 | total_price | string |  | No |
 | total_tokens | integer |  | Yes |
 
