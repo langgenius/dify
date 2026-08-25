@@ -233,6 +233,18 @@ def build_application_services(
             education=AccountEducationService(
                 accounts=accounts,
                 education=BillingAccountEducationGateway(),
+                verification_rate_limiter=RateLimiter(
+                    prefix="edu_verification_rate_limit",
+                    max_attempts=10,
+                    time_window=60,
+                    redis_client=redis,
+                ),
+                activation_rate_limiter=RateLimiter(
+                    prefix="edu_activation_rate_limit",
+                    max_attempts=10,
+                    time_window=60,
+                    redis_client=redis,
+                ),
             ),
             initialization=AccountInitializationService(
                 accounts=accounts,

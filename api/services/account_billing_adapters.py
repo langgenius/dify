@@ -1,33 +1,23 @@
 """Billing adapters for account education and deletion-feedback use cases."""
 
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, cast, override
+from typing import override
 
 from services.account_deletion_feedback_service import AccountDeletionFeedbackGateway
 from services.account_education_service import AccountEducationGateway
 from services.billing_service import BillingService
 from services.entities.account_entities import (
+    AccountEducationActivation,
     AccountEducationAutocomplete,
     AccountEducationStatus,
     AccountEducationVerification,
 )
 
-if TYPE_CHECKING:
-    from models.account import Account
-
-
-@dataclass(frozen=True, slots=True)
-class _EducationAccount:
-    id: str
-    email: str
-    current_tenant_id: str
-
 
 class BillingAccountEducationGateway(AccountEducationGateway):
     @override
-    def verify(self, *, account_id: str, email: str) -> AccountEducationVerification:
-        result = BillingService.EducationIdentity.verify(account_id, email) or {}
+    def verify(self, *, account_id: str) -> AccountEducationVerification:
+        result = BillingService.EducationIdentity.verify(account_id=account_id) or {}
         return AccountEducationVerification(token=result.get("token"))
 
     @override
@@ -35,18 +25,23 @@ class BillingAccountEducationGateway(AccountEducationGateway):
         self,
         *,
         account_id: str,
-        email: str,
         tenant_id: str,
         token: str,
         institution: str,
         role: str,
-    ) -> dict[str, Any] | None:
-        account = cast("Account", _EducationAccount(id=account_id, email=email, current_tenant_id=tenant_id))
-        return BillingService.EducationIdentity.activate(account, token, institution, role)
+    ) -> AccountEducationActivation:
+        result = BillingService.EducationIdentity.activate(
+            account_id=account_id,
+            tenant_id=tenant_id,
+            token=token,
+            institution=institution,
+            role=role,
+        )
+        return AccountEducationActivation(message=result["message"])
 
     @override
     def status(self, account_id: str) -> AccountEducationStatus:
-        result: dict[str, Any] = BillingService.EducationIdentity.status(account_id) or {}
+        result = BillingService.EducationIdentity.status(account_id) or {}
         expire_at = result.get("expire_at")
         return AccountEducationStatus(
             result=result.get("result"),
@@ -57,7 +52,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
 
     @override
     def autocomplete(self, *, keywords: str, page: int, limit: int) -> AccountEducationAutocomplete:
-        result: dict[str, Any] = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
+        result = BillingService.EducationIdentity.autocomplete(keywords, page, limit) or {}
         return AccountEducationAutocomplete(
             data=tuple(result.get("data") or ()),
             curr_page=result.get("curr_page"),

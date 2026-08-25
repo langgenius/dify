@@ -8,7 +8,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.console.auth.error import InvalidTokenError
-from controllers.console.error import EmailDomainSuspendedError
+from controllers.console.error import EducationActivateLimitError, EducationVerifyLimitError, EmailDomainSuspendedError
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
     ChangeEmailCheckApi,
@@ -16,13 +16,14 @@ from controllers.console.workspace.account import (
     ChangeEmailSendEmailApi,
     CheckEmailUnique,
     EducationApi,
+    EducationVerifyApi,
 )
 from machinery.context import RequestContext
 from models import Account, AccountStatus, Tenant, TenantAccountJoin
 from models.account import TenantAccountRole
 from services import account_errors
 from services.account_service import AccountService
-from services.entities.account_entities import ChangeEmailVerification
+from services.entities.account_entities import AccountEducationActivation, ChangeEmailVerification
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
     ChangeEmailNewEmailVerifiedToken,
@@ -105,7 +106,7 @@ def _build_change_email_token(
 class TestEducationApi:
     def test_post_activates_education_discount(self, app: Flask):
         education = MagicMock()
-        education.activate.return_value = {"message": "success"}
+        education.activate.return_value = AccountEducationActivation(message="success")
         request_context = RequestContext(
             request_id="request-1",
             trace_id=None,
@@ -135,6 +136,52 @@ class TestEducationApi:
             institution="Dify University",
             role="Student",
         )
+
+    def test_verify_maps_rate_limit_error(self, app: Flask):
+        education = MagicMock()
+        education.verify.side_effect = account_errors.EducationRateLimitExceededError
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+
+        with (
+            app.test_request_context("/account/education/verify", method="GET"),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(education=education)),
+            ),
+        ):
+            api = EducationVerifyApi()
+            with pytest.raises(EducationVerifyLimitError):
+                inspect.unwrap(api.get)(api, request_context)
+
+    def test_post_maps_rate_limit_error(self, app: Flask):
+        education = MagicMock()
+        education.activate.side_effect = account_errors.EducationRateLimitExceededError
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
+
+        with (
+            app.test_request_context(
+                "/account/education",
+                method="POST",
+                json={"token": "education-token", "institution": "Dify University", "role": "Student"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(education=education)),
+            ),
+        ):
+            api = EducationApi()
+            with pytest.raises(EducationActivateLimitError):
+                inspect.unwrap(api.post)(api, request_context)
 
 
 def _change_email_context(account_id: str = "acc") -> RequestContext:
