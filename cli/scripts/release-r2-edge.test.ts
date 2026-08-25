@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
-import { FIXTURE_COMPAT, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
+import { FIXTURE_COMPAT, FIXTURE_TARGET_IDS, pkgManifestEnv } from '../test/fixtures/pkg-manifest'
 
 const SCRIPT = fileURLToPath(new URL('./release-r2-edge.mjs', import.meta.url))
 
@@ -30,8 +30,7 @@ function run(args: string[]): { code: number; stdout: string; stderr: string } {
 
 function writeChecksums(version: string): string {
   const dir = mkdtempSync(join(tmpdir(), 'difyctl-manifest-'))
-  const ids = ['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64', 'windows-x64']
-  const lines = ids.map((id, i) => {
+  const lines = FIXTURE_TARGET_IDS.map((id, i) => {
     const exe = id === 'windows-x64' ? '.exe' : ''
     const sha = String(i).repeat(64)
     return `${sha}  difyctl-v${version}-${id}${exe}`
@@ -53,7 +52,7 @@ type ManifestJson = {
   buildDate: string
   compat: { minDify: string; maxDify: string }
   baseUrl: string
-  targets: Record<string, { asset: string; sha256: string }>
+  targets: Record<(typeof FIXTURE_TARGET_IDS)[number], { asset: string; sha256: string }>
 }
 
 type IndexBuild = {
@@ -187,7 +186,7 @@ describe('release-r2-edge manifest', () => {
 
 function runIndex(
   currentContent: string | null,
-  build: Record<string, string>,
+  build: Omit<IndexBuild, 'dir'>,
   existingDirs?: string[],
 ) {
   let currentArg = '-'
