@@ -30,25 +30,29 @@ from core.human_input_v2.shared import (
     WorkspaceScope,
 )
 from libs.datetime_utils import naive_utc_now
+from services.human_input_v2.im_credential_codec import IMCredentialError
 
 from .locking import OrganizationIMWriteLockLostError, OrganizationIMWriteLockUnavailableError
 from .service import IMSyncRunNotFoundError
 
 logger = logging.getLogger(__name__)
 
+_CREDENTIAL_UNAVAILABLE_MESSAGE = "IM credential configuration is unavailable."
+
 
 class IMSyncRetryableError(RuntimeError):
     """A transient serialization failure requires worker redelivery."""
 
 
-class _IMContactSyncAdapter(Protocol):
+class IMContactSyncAdapter(Protocol):
     @property
     def directory(self) -> IMDirectory: ...
 
     def close(self) -> None: ...
 
 
-type _AdapterFactory = Callable[[IMIntegration], _IMContactSyncAdapter]
+class IMIntegrationAdapterFactory(Protocol):
+    def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter: ...
 
 
 class _ReconciliationPlanner(Protocol):
@@ -97,7 +101,7 @@ class IMContactSyncCoordinator:
     def __init__(
         self,
         repository: IMSyncRepository,
-        adapter_factory: _AdapterFactory,
+        adapter_factory: IMIntegrationAdapterFactory,
         unit_of_work_factory: _ReconciliationUnitOfWorkFactory,
         *,
         planner: _ReconciliationPlanner | None = None,
@@ -126,7 +130,22 @@ class IMContactSyncCoordinator:
                 "IM Integration revision changed before synchronization.",
             )
 
-        adapter = self._adapter_factory(integration)
+        adapter: IMContactSyncAdapter | None = None
+        try:
+            adapter = self._adapter_factory.create_for_integration(integration)
+        except IMCredentialError:
+            logger.warning(
+                "IM Contact credentials are unavailable, sync_run_id=%s, integration_id=%s",
+                run.id,
+                run.integration_revision.integration_id,
+            )
+        if adapter is None:
+            return self._persist_failure(
+                run.id,
+                organization_scope,
+                ApplyReconciliationStatus.DIRECTORY_READ_FAILED,
+                _CREDENTIAL_UNAVAILABLE_MESSAGE,
+            )
         try:
             try:
                 directory_result = adapter.directory.read_directory()
@@ -262,4 +281,9 @@ def _tenant_id(organization_scope: DirectoryScope) -> TenantId | None:
     raise TypeError("unsupported Organization scope")
 
 
-__all__ = ["IMContactSyncCoordinator", "IMSyncRetryableError"]
+__all__ = [
+    "IMContactSyncAdapter",
+    "IMContactSyncCoordinator",
+    "IMIntegrationAdapterFactory",
+    "IMSyncRetryableError",
+]

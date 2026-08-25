@@ -30,12 +30,12 @@ from core.human_input_v2.shared import (
 )
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
-    FeishuIMIntegrationEncryptedCredentials,
     HumanInputContact,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputIMSyncRun,
+    IMEncryptedCredentials,
 )
 from repositories.human_input_v2.contact_directory.mappers import contact_to_record
 from repositories.human_input_v2.im_integration.mappers import (
@@ -113,12 +113,10 @@ def _create_loader_context(
     with session_maker.begin() as session:
         integration = HumanInputIMIntegration(
             provider=IMProvider.FEISHU,
-            encrypted_credentials=FeishuIMIntegrationEncryptedCredentials(
-                app_id="app-1",
-                encrypted_app_secret="ciphertext",
-            ),
+            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
             tenant_id=owner_tenant_id,
             provider_tenant_id="provider-tenant-1",
+            app_identifier="app-1",
             status=IMIntegrationStatus.CONFIGURED,
             config_version=1,
         )

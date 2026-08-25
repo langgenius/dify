@@ -75,9 +75,8 @@ def _integration() -> IMIntegration:
         integration_id=IntegrationId("integration-1"),
         tenant_id=_TENANT_ID,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId("account-1"),
         callback_url=None,
         now=_NOW,
@@ -108,7 +107,8 @@ def test_configuration_run_and_delete_writes_reuse_the_explicit_organization_sco
     transition = current.reconfigure(
         expected_revision=current.revision,
         provider_tenant=current.provider_tenant,
-        encrypted_credentials=EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": "rotated"}),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId("account-2"),
         callback_url=None,
         now=_NOW,

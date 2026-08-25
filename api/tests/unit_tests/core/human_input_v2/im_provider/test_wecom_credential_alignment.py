@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from controllers.console.human_input_v2.providers import WeComCredentials as WeComCredentialUpdate
 from core.human_input_v2 import im_provider
 from core.human_input_v2.entities import IMProvider
-from models.human_input_v2 import WeComIMIntegrationEncryptedCredentials
 
 
 def test_wecom_credential_projections_are_field_aligned() -> None:
@@ -14,12 +13,6 @@ def test_wecom_credential_projections_are_field_aligned() -> None:
 
     assert set(WeComCredentialUpdate.model_fields) == {"provider", "corp_id", "agent_id", "secret"}
     assert set(resolved_credentials.model_fields) == {"provider", "corp_id", "agent_id", "secret"}
-    assert set(WeComIMIntegrationEncryptedCredentials.model_fields) == {
-        "provider",
-        "corp_id",
-        "agent_id",
-        "encrypted_secret",
-    }
 
 
 def test_wecom_credentials_are_strict_immutable_and_secret_safe() -> None:
@@ -36,18 +29,11 @@ def test_wecom_credentials_are_strict_immutable_and_secret_safe() -> None:
         agent_id="1000001",
         secret="fake-secret-001",
     )
-    encrypted = WeComIMIntegrationEncryptedCredentials(
-        corp_id="fake-corp-001",
-        agent_id="1000001",
-        encrypted_secret="fake-ciphertext-001",
-    )
-
     assert credentials.model_config["frozen"] is True
     assert credentials.model_config["extra"] == "forbid"
     assert credentials.model_config["strict"] is True
     assert "fake-secret-001" not in repr(credentials)
     assert "fake-secret-001" not in repr(update)
-    assert "fake-ciphertext-001" not in repr(encrypted)
 
     with pytest.raises(ValidationError):
         resolved_credentials.model_validate({**credentials.model_dump(), "unexpected": "fake-value"})

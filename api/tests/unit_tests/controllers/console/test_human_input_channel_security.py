@@ -126,6 +126,7 @@ class _PersistenceProviderPort:
             provider=credentials.provider,
             provider_tenant_id="provider-tenant-1",
             encrypted_credentials=_slack_encrypted_credentials(_PERSISTENCE_CREDENTIAL_MARKER),
+            app_identifier="client-id",
             callback_url=None,
             provider_tenant_display=None,
         )
@@ -175,15 +176,7 @@ class _WriteUnitOfWorkFactory:
 
 
 def _slack_encrypted_credentials(encrypted_secret: str) -> EncryptedCredentials:
-    return EncryptedCredentials.from_mapping(
-        {
-            "client_id": "client-id",
-            "encrypted_client_secret": encrypted_secret,
-            "encrypted_signing_secret": encrypted_secret,
-            "encrypted_bot_token": encrypted_secret,
-            "encrypted_app_token": encrypted_secret,
-        }
-    )
+    return EncryptedCredentials(ciphertext=encrypted_secret)
 
 
 def _current_integration() -> IMIntegration:
@@ -192,6 +185,7 @@ def _current_integration() -> IMIntegration:
         tenant_id=TenantId("workspace-1"),
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "provider-tenant-1"),
         encrypted_credentials=_slack_encrypted_credentials("existing-ciphertext"),
+        app_identifier="client-id",
         configured_by_account_id=AccountId("account-1"),
         callback_url=None,
         now=_NOW,

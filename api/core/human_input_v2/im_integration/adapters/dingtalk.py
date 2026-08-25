@@ -36,6 +36,7 @@ from core.human_input_v2.im_provider import (
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
+    IMCardEventDecoder,
     IMDirectory,
     IMDynamicCardMessaging,
     IMEventConsumer,
@@ -338,6 +339,10 @@ class _DingTalkMessaging(IMMessaging):
 
 class DingTalkIMProviderAdapter:
     """Externally serialized DingTalk capability composition root."""
+
+    @classmethod
+    def card_event_decoder(cls) -> IMCardEventDecoder | None:
+        return None
 
     def __init__(self, credentials: DingTalkIMIntegrationCredentials) -> None:
         if not isinstance(credentials, DingTalkIMIntegrationCredentials):

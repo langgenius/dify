@@ -46,14 +46,8 @@ class _StaticIMProviderPort:
         return ConfirmedIMConfiguration(
             provider=IMProvider.SLACK,
             provider_tenant_id="slack-tenant-1",
-            encrypted_credentials=EncryptedCredentials.from_mapping(
-                {
-                    "client_id": "slack-client-1",
-                    "encrypted_client_secret": "cipher-client-secret",
-                    "encrypted_signing_secret": "cipher-signing-secret",
-                    "encrypted_bot_token": "cipher-bot-token",
-                }
-            ),
+            encrypted_credentials=EncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
+            app_identifier="slack-client-1",
             callback_url=None,
             provider_tenant_display=None,
         )
@@ -76,7 +70,7 @@ def test_im_update_wires_opaque_version_through_real_service_and_postgresql_cas(
     account, tenant = create_console_account_and_tenant(db_session_with_containers)
     headers = authenticate_console_client(test_client_with_containers, account)
     provider_port = _StaticIMProviderPort()
-    monkeypatch.setattr(composition, "DifyIMProviderConfigurationService", lambda: provider_port)
+    monkeypatch.setattr(composition, "DifyIMProviderConfigurationService", lambda **_kwargs: provider_port)
 
     created_response = test_client_with_containers.post(
         _BASE_PATH,

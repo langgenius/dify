@@ -10,20 +10,22 @@ from flask.testing import FlaskClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.helper import encrypter
 from core.human_input_v2.entities import IMProvider, IMSyncRunStatus
 from core.human_input_v2.im_integration import (
-    EncryptedCredentials,
     IMIntegration,
     ProviderTenantIdentity,
 )
+from core.human_input_v2.im_provider import SlackIMIntegrationCredentials
 from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId, WorkspaceScope
+from extensions.ext_key_provider import key_provider_manager
 from libs.datetime_utils import naive_utc_now
 from libs.rsa import generate_key_pair
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputIMIdentity, HumanInputIMSyncResult
 from repositories.human_input_v2.im_integration.mappers import integration_to_record
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_worker
+from services.human_input_v2.im_credential_codec import IMCredentialCodec
+from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 from tasks.im_contact_sync_tasks import reconcile_im_contacts_task
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
@@ -144,21 +146,23 @@ def _persist_live_slack_integration(
     credentials: dict[str, str],
     now: datetime,
 ) -> IMIntegration:
+    plaintext_credentials = SlackIMIntegrationCredentials(
+        provider=IMProvider.SLACK,
+        client_id=credentials["SLACK_CLIENT_ID"],
+        client_secret=credentials["SLACK_CLIENT_SECRET"],
+        signing_secret=credentials["SLACK_SIGNING_SECRET"],
+        bot_token=credentials["SLACK_BOT_TOKEN"],
+        app_token=credentials["SLACK_APP_SOCKET_TOKEN"],
+    )
+    protected = IMCredentialCodec(TenantBoundCredentialCipher(key_provider_manager.provider, str(tenant_id))).seal(
+        plaintext_credentials
+    )
     integration = IMIntegration.create(
         integration_id=IntegrationId(str(uuidv7())),
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "live-slack-workspace"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {
-                "client_id": credentials["SLACK_CLIENT_ID"],
-                "encrypted_client_secret": encrypter.encrypt_token(str(tenant_id), credentials["SLACK_CLIENT_SECRET"]),
-                "encrypted_signing_secret": encrypter.encrypt_token(
-                    str(tenant_id), credentials["SLACK_SIGNING_SECRET"]
-                ),
-                "encrypted_bot_token": encrypter.encrypt_token(str(tenant_id), credentials["SLACK_BOT_TOKEN"]),
-                "encrypted_app_token": encrypter.encrypt_token(str(tenant_id), credentials["SLACK_APP_SOCKET_TOKEN"]),
-            }
-        ),
+        encrypted_credentials=protected,
+        app_identifier=plaintext_credentials.client_id,
         configured_by_account_id=actor_id,
         callback_url=None,
         now=now,

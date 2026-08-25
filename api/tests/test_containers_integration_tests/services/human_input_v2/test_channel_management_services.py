@@ -86,14 +86,8 @@ def _confirmed_slack_configuration() -> ConfirmedIMConfiguration:
     return ConfirmedIMConfiguration(
         provider=IMProvider.SLACK,
         provider_tenant_id="slack-tenant-1",
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {
-                "client_id": "slack-client-1",
-                "encrypted_client_secret": "cipher-client-secret",
-                "encrypted_signing_secret": "cipher-signing-secret",
-                "encrypted_bot_token": "cipher-bot-token",
-            }
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
+        app_identifier="slack-client-1",
         callback_url=None,
         provider_tenant_display=None,
     )

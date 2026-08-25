@@ -20,8 +20,10 @@ from core.human_input_v2.im_integration import (
     IMBinding,
     IMBindingCommandError,
     IMBindingCommandErrorCode,
+    IMControlPlanePersistenceError,
     IMIdentity,
     IMIntegration,
+    IMIntegrationAlreadyExistsError,
     IMProviderCredentials,
     IMProviderTestResult,
     IMSyncRun,
@@ -151,29 +153,13 @@ def _confirmed_configuration(
     *,
     app_identifier: str,
 ) -> ConfirmedIMConfiguration:
-    if provider is IMProvider.SLACK:
-        encrypted_credentials = EncryptedCredentials.from_mapping(
-            {
-                "client_id": app_identifier,
-                "encrypted_client_secret": "cipher-client-secret",
-                "encrypted_signing_secret": "cipher-signing-secret",
-                "encrypted_bot_token": "cipher-bot-token",
-                "encrypted_app_token": "cipher-app-token",
-            }
-        )
-    elif provider is IMProvider.FEISHU:
-        encrypted_credentials = EncryptedCredentials.from_mapping(
-            {
-                "app_id": app_identifier,
-                "encrypted_app_secret": "cipher-app-secret",
-            }
-        )
-    else:
+    if provider not in (IMProvider.SLACK, IMProvider.FEISHU):
         raise ValueError("unsupported test provider")
     return ConfirmedIMConfiguration(
         provider=provider,
         provider_tenant_id=provider_tenant_id,
-        encrypted_credentials=encrypted_credentials,
+        encrypted_credentials=EncryptedCredentials(ciphertext=f"opaque-{provider.value}-ciphertext"),
+        app_identifier=app_identifier,
         callback_url=f"https://example.test/callback/{provider.value}",
         provider_tenant_display=None,
     )
@@ -247,9 +233,8 @@ def _integration(tenant_id: TenantId | None, integration_id: IntegrationId = _IN
         integration_id=integration_id,
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=None,
         callback_url=None,
         now=_NOW,
@@ -287,7 +272,7 @@ def test_guarded_configuration_cas_and_active_run_matrix_use_postgresql(
         _ = unit_of_work.protected_repository
     with unit_of_work as repository:
         assert repository is unit_of_work.protected_repository
-        with pytest.raises(ValueError, match="already exists"):
+        with pytest.raises(IMIntegrationAlreadyExistsError):
             repository.create_integration(
                 _integration(tenant_id, _REPLACEMENT_INTEGRATION_ID), organization_scope=scope
             )
@@ -299,7 +284,8 @@ def test_guarded_configuration_cas_and_active_run_matrix_use_postgresql(
     rotation = current.reconfigure(
         expected_revision=current.revision,
         provider_tenant=current.provider_tenant,
-        encrypted_credentials=EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": "rotated"}),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId(account.id),
         callback_url=None,
         now=_LATER,
@@ -784,7 +770,7 @@ def test_failed_replacement_rolls_back_configuration_children_and_email(
         "feishu-tenant",
         app_identifier="feishu-app",
     )
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IMControlPlanePersistenceError) as captured:
         service.replace(
             scope,
             current.id,
@@ -792,6 +778,7 @@ def test_failed_replacement_rolls_back_configuration_children_and_email(
             account_id,
             _ProviderCredentials(IMProvider.FEISHU),
         )
+    assert isinstance(captured.value.__cause__, IntegrityError)
 
     persisted = repository.load_current_integration(tenant_id)
     assert persisted is not None

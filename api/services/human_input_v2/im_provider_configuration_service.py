@@ -5,47 +5,31 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Protocol
 
-from core.helper import encrypter
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ConfirmedIMConfiguration,
-    EncryptedCredentials,
     IMProviderConfigurationFailureKind,
     IMProviderCredentials,
     IMProviderTestResult,
 )
-from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
 from core.human_input_v2.im_provider import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
     DingTalkIMIntegrationCredentials,
+    FeishuIMIntegrationCredentials,
+    LarkIMIntegrationCredentials,
     MSTeamsIMIntegrationCredentials,
     SlackIMIntegrationCredentials,
     WeComIMIntegrationCredentials,
 )
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, WorkspaceScope
-from models.human_input_v2 import (
-    DingTalkIMIntegrationEncryptedCredentials,
-    FeishuIMIntegrationEncryptedCredentials,
-    IMIntegrationEncryptedCredentials,
-    LarkIMIntegrationEncryptedCredentials,
-    MSTeamsIMIntegrationEncryptedCredentials,
-    SlackIMIntegrationEncryptedCredentials,
-    WeComIMIntegrationEncryptedCredentials,
-)
+from libs.key_providers.base import BaseKeyProvider
 from services.human_input_v2.errors import IMProviderConfigurationError
+from services.human_input_v2.im_credential_codec import BoundCredentialCipher, IMCredentialCodec, IMCredentialError
+from services.human_input_v2.im_provider_adapter import build_im_provider_adapter
+from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
-_DEPLOYMENT_CREDENTIAL_OWNER_KEY = "human-input-im-deployment"
 _AVAILABLE_PROVIDERS = (
     IMProvider.SLACK,
     IMProvider.FEISHU,
@@ -54,16 +38,13 @@ _AVAILABLE_PROVIDERS = (
     IMProvider.MS_TEAMS,
     IMProvider.WE_COM,
 )
+_CREDENTIAL_UNAVAILABLE_MESSAGE = "IM credential configuration is unavailable"
 
 
-class _CredentialTestingAdapter(Protocol):
+class CredentialTestingAdapter(Protocol):
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure: ...
 
     def close(self) -> None: ...
-
-
-class _AdapterFactory(Protocol):
-    def __call__(self, credentials: IMProviderCredentials) -> _CredentialTestingAdapter: ...
 
 
 class DifyIMProviderConfigurationService:
@@ -72,11 +53,13 @@ class DifyIMProviderConfigurationService:
     def __init__(
         self,
         *,
-        adapter_factory: _AdapterFactory | None = None,
-        encrypt: Callable[[str, str], str] = encrypter.encrypt_token,
+        key_provider: BaseKeyProvider,
+        deployment_cipher: BoundCredentialCipher | None = None,
+        adapter_factory: Callable[[IMProviderCredentials], CredentialTestingAdapter] = build_im_provider_adapter,
     ) -> None:
-        self._adapter_factory = adapter_factory or self._build_adapter
-        self._encrypt = encrypt
+        self._adapter_factory = adapter_factory
+        self._key_provider = key_provider
+        self._deployment_cipher = deployment_cipher
 
     def available_providers(self) -> tuple[IMProvider, ...]:
         return _AVAILABLE_PROVIDERS
@@ -86,12 +69,15 @@ class DifyIMProviderConfigurationService:
         scope: DirectoryScope,
         credentials: IMProviderCredentials,
     ) -> ConfirmedIMConfiguration:
+        credential_codec = IMCredentialCodec(self._bounded_cipher(scope))
         tested = self._test_credentials(credentials)
-        protected = self._protect(scope, credentials)
+        app_identifier = self._app_identifier(credentials)
+        encrypted_credentials = credential_codec.seal(credentials)
         return ConfirmedIMConfiguration(
             provider=tested.provider,
             provider_tenant_id=tested.provider_tenant_id,
-            encrypted_credentials=protected,
+            encrypted_credentials=encrypted_credentials,
+            app_identifier=app_identifier,
             callback_url=None,
             provider_tenant_display=None,
         )
@@ -125,85 +111,32 @@ class DifyIMProviderConfigurationService:
             raise AssertionError("provider adapter returned a mismatched provider")
         return result
 
-    def _protect(
-        self,
-        scope: DirectoryScope,
-        credentials: IMProviderCredentials,
-    ) -> EncryptedCredentials:
-        owner_key = self._owner_key(scope)
-        protected: IMIntegrationEncryptedCredentials
-        if isinstance(credentials, FeishuIMIntegrationCredentials):
-            protected = FeishuIMIntegrationEncryptedCredentials(
-                app_id=credentials.app_id,
-                encrypted_app_secret=self._encrypt(owner_key, credentials.app_secret),
-                encrypted_verification_token=self._encrypt_optional(owner_key, credentials.verification_token),
-                encrypted_encrypt_key=self._encrypt_optional(owner_key, credentials.encrypt_key),
-            )
-        elif isinstance(credentials, LarkIMIntegrationCredentials):
-            protected = LarkIMIntegrationEncryptedCredentials(
-                app_id=credentials.app_id,
-                encrypted_app_secret=self._encrypt(owner_key, credentials.app_secret),
-                encrypted_verification_token=self._encrypt_optional(owner_key, credentials.verification_token),
-                encrypted_encrypt_key=self._encrypt_optional(owner_key, credentials.encrypt_key),
-            )
-        elif isinstance(credentials, SlackIMIntegrationCredentials):
-            protected = SlackIMIntegrationEncryptedCredentials(
-                client_id=credentials.client_id,
-                encrypted_client_secret=self._encrypt(owner_key, credentials.client_secret),
-                encrypted_signing_secret=self._encrypt(owner_key, credentials.signing_secret),
-                encrypted_bot_token=self._encrypt(owner_key, credentials.bot_token),
-                encrypted_app_token=self._encrypt_optional(owner_key, credentials.app_token),
-            )
-        elif isinstance(credentials, DingTalkIMIntegrationCredentials):
-            protected = DingTalkIMIntegrationEncryptedCredentials(
-                corp_id=credentials.corp_id,
-                client_id=credentials.client_id,
-                encrypted_client_secret=self._encrypt(owner_key, credentials.client_secret),
-            )
-        elif isinstance(credentials, MSTeamsIMIntegrationCredentials):
-            protected = MSTeamsIMIntegrationEncryptedCredentials(
-                tenant_id=credentials.tenant_id,
-                client_id=credentials.client_id,
-                encrypted_client_secret=self._encrypt(owner_key, credentials.client_secret),
-            )
-        elif isinstance(credentials, WeComIMIntegrationCredentials):
-            protected = WeComIMIntegrationEncryptedCredentials(
-                corp_id=credentials.corp_id,
-                agent_id=credentials.agent_id,
-                encrypted_secret=self._encrypt(owner_key, credentials.secret),
-            )
-        else:
-            raise TypeError("unsupported IM provider credentials")
-        values = protected.model_dump(mode="json", exclude_none=True)
-        values.pop("provider", None)
-        return EncryptedCredentials.from_mapping(values)
-
-    def _encrypt_optional(self, owner_key: str, secret: str | None) -> str | None:
-        return self._encrypt(owner_key, secret) if secret is not None else None
-
-    @staticmethod
-    def _owner_key(scope: DirectoryScope) -> str:
+    def _bounded_cipher(self, scope: DirectoryScope) -> BoundCredentialCipher:
         if isinstance(scope, WorkspaceScope):
-            return str(scope.id)
+            return TenantBoundCredentialCipher(self._key_provider, str(scope.id))
         if isinstance(scope, DeploymentScope):
-            return _DEPLOYMENT_CREDENTIAL_OWNER_KEY
+            if self._deployment_cipher is None:
+                raise IMCredentialError(_CREDENTIAL_UNAVAILABLE_MESSAGE)
+            return self._deployment_cipher
         raise TypeError("unsupported Directory scope")
 
     @staticmethod
-    def _build_adapter(credentials: IMProviderCredentials) -> _CredentialTestingAdapter:
-        if isinstance(credentials, FeishuIMIntegrationCredentials):
-            return FeishuIMProviderAdapter(credentials)
-        if isinstance(credentials, LarkIMIntegrationCredentials):
-            return LarkIMProviderAdapter(credentials)
-        if isinstance(credentials, SlackIMIntegrationCredentials):
-            return SlackIMProviderAdapter(credentials)
-        if isinstance(credentials, DingTalkIMIntegrationCredentials):
-            return DingTalkIMProviderAdapter(credentials)
-        if isinstance(credentials, MSTeamsIMIntegrationCredentials):
-            return MSTeamsIMProviderAdapter(credentials)
-        if isinstance(credentials, WeComIMIntegrationCredentials):
-            return WeComIMProviderAdapter(credentials)
-        raise TypeError("unsupported IM provider credentials")
+    def _app_identifier(credentials: IMProviderCredentials) -> str:
+        if isinstance(credentials, (FeishuIMIntegrationCredentials, LarkIMIntegrationCredentials)):
+            app_identifier = credentials.app_id
+        elif isinstance(
+            credentials,
+            (SlackIMIntegrationCredentials, DingTalkIMIntegrationCredentials, MSTeamsIMIntegrationCredentials),
+        ):
+            app_identifier = credentials.client_id
+        elif isinstance(credentials, WeComIMIntegrationCredentials):
+            app_identifier = credentials.agent_id
+        else:
+            raise TypeError("unsupported IM provider credentials")
+        app_identifier = app_identifier.strip()
+        if not app_identifier:
+            raise ValueError("app identifier must not be blank")
+        return app_identifier
 
 
-__all__ = ["DifyIMProviderConfigurationService"]
+__all__ = ["CredentialTestingAdapter", "DifyIMProviderConfigurationService"]

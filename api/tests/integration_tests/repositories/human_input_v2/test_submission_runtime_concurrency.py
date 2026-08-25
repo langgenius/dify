@@ -82,8 +82,8 @@ from models.human_input_v2 import (
     HumanInputV2FormAuditEvent,
     HumanInputV2FormDeliveryEndpoint,
     HumanInputV2FormSubmission,
+    IMEncryptedCredentials,
     IMIdentityRawPayload,
-    SlackIMIntegrationEncryptedCredentials,
 )
 from repositories.human_input_v2.form.mappers import endpoint_to_record, form_to_record, grant_to_record
 from repositories.human_input_v2.submission.repository import SQLAlchemySubmissionRepository
@@ -341,15 +341,10 @@ def _seed_scenario(session_maker: sessionmaker[Session]) -> _SeededScenario:
     _set_record_identity(contact, str(contact_id), now)
     integration = HumanInputIMIntegration(
         provider=IMProvider.SLACK,
-        encrypted_credentials=SlackIMIntegrationEncryptedCredentials(
-            client_id="client-1",
-            encrypted_client_secret="encrypted-client-secret",
-            encrypted_signing_secret="encrypted-signing-secret",
-            encrypted_bot_token="encrypted-bot-token",
-            encrypted_app_token="encrypted-app-token",
-        ),
+        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
         tenant_id=str(tenant_id),
         provider_tenant_id=provider_tenant_id,
+        app_identifier="client-1",
         status=IMIntegrationStatus.CONNECTED,
         config_version=1,
         configured_by_account_id=str(account_id),

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, WorkspaceScope
 from extensions.ext_database import db
+from extensions.ext_key_provider import key_provider_manager
 from extensions.ext_redis import redis_client
 from repositories.human_input_v2.im_integration import (
     SQLAlchemyIMControlPlaneRepository,
@@ -27,7 +28,7 @@ def build_human_input_im_integration_management_service() -> HumanInputIMIntegra
     )
     return HumanInputIMIntegrationManagementService(
         repository,
-        DifyIMProviderConfigurationService(),
+        DifyIMProviderConfigurationService(key_provider=key_provider_manager.provider),
     )
 
 

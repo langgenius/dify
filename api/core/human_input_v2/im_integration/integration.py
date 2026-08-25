@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
+from typing import Literal
 
-from pydantic import JsonValue, NaiveDatetime
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMIntegrationStatus, IMProvider
 from core.human_input_v2.shared import AccountId, IntegrationId, TenantId
@@ -15,21 +14,16 @@ from core.human_input_v2.shared import AccountId, IntegrationId, TenantId
 
 @dataclass(frozen=True, slots=True)
 class EncryptedCredentials:
-    """Immutable opaque encrypted configuration passed through the domain boundary."""
+    """Versioned opaque encrypted configuration passed through the domain boundary."""
 
-    _serialized: str = field(repr=False)
+    ciphertext: str = field(repr=False)
+    version: Literal[1] = 1
 
-    @classmethod
-    def from_mapping(cls, values: Mapping[str, JsonValue]) -> EncryptedCredentials:
-        if not values:
-            raise ValueError("encrypted credentials must not be empty")
-        return cls(json.dumps(dict(values), sort_keys=True, separators=(",", ":")))
-
-    def to_mapping(self) -> dict[str, JsonValue]:
-        value = json.loads(self._serialized)
-        if not isinstance(value, dict):
-            raise ValueError("encrypted credentials must be a JSON object")
-        return value
+    def __post_init__(self) -> None:
+        if self.version != 1:
+            raise ValueError("unsupported encrypted credential version")
+        if not self.ciphertext:
+            raise ValueError("encrypted credential ciphertext must not be empty")
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +122,7 @@ class IMIntegration:
     tenant_id: TenantId | None
     provider_tenant: ProviderTenantIdentity
     encrypted_credentials: EncryptedCredentials
+    app_identifier: str
     configured_by_account_id: AccountId | None
     callback_url: str | None
     config_version: int
@@ -140,6 +135,9 @@ class IMIntegration:
     def __post_init__(self) -> None:
         if self.config_version < 1:
             raise ValueError("config version must be positive")
+        if not self.app_identifier.strip():
+            raise ValueError("app identifier must not be blank")
+        object.__setattr__(self, "app_identifier", self.app_identifier.strip())
 
     @classmethod
     def create(
@@ -149,6 +147,7 @@ class IMIntegration:
         tenant_id: TenantId | None,
         provider_tenant: ProviderTenantIdentity,
         encrypted_credentials: EncryptedCredentials,
+        app_identifier: str,
         configured_by_account_id: AccountId | None,
         callback_url: str | None,
         now: NaiveDatetime,
@@ -158,6 +157,7 @@ class IMIntegration:
             tenant_id=tenant_id,
             provider_tenant=provider_tenant,
             encrypted_credentials=encrypted_credentials,
+            app_identifier=app_identifier,
             configured_by_account_id=configured_by_account_id,
             callback_url=callback_url,
             config_version=1,
@@ -178,6 +178,7 @@ class IMIntegration:
         expected_revision: IntegrationRevisionToken,
         provider_tenant: ProviderTenantIdentity,
         encrypted_credentials: EncryptedCredentials,
+        app_identifier: str,
         configured_by_account_id: AccountId | None,
         callback_url: str | None,
         now: NaiveDatetime,
@@ -194,6 +195,7 @@ class IMIntegration:
             updated = replace(
                 self,
                 encrypted_credentials=encrypted_credentials,
+                app_identifier=app_identifier,
                 configured_by_account_id=configured_by_account_id,
                 callback_url=callback_url,
                 config_version=self.config_version + 1,
@@ -216,6 +218,7 @@ class IMIntegration:
             replacement_integration_id=replacement_integration_id,
             provider_tenant=provider_tenant,
             encrypted_credentials=encrypted_credentials,
+            app_identifier=app_identifier,
             configured_by_account_id=configured_by_account_id,
             callback_url=callback_url,
             now=now,
@@ -228,6 +231,7 @@ class IMIntegration:
         replacement_integration_id: IntegrationId,
         provider_tenant: ProviderTenantIdentity,
         encrypted_credentials: EncryptedCredentials,
+        app_identifier: str,
         configured_by_account_id: AccountId | None,
         callback_url: str | None,
         now: NaiveDatetime,
@@ -243,6 +247,7 @@ class IMIntegration:
             tenant_id=self.tenant_id,
             provider_tenant=provider_tenant,
             encrypted_credentials=encrypted_credentials,
+            app_identifier=app_identifier,
             configured_by_account_id=configured_by_account_id,
             callback_url=callback_url,
             now=now,

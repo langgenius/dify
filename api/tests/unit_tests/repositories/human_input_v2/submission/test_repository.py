@@ -66,7 +66,6 @@ from core.human_input_v2.shared import (
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.enums import EndUserType
 from models.human_input_v2 import (
-    FeishuIMIntegrationEncryptedCredentials,
     HumanInputContact,
     HumanInputContactIdentitySource,
     HumanInputIMBinding,
@@ -78,8 +77,8 @@ from models.human_input_v2 import (
     HumanInputV2FormAuditEvent,
     HumanInputV2FormDeliveryEndpoint,
     HumanInputV2FormSubmission,
+    IMEncryptedCredentials,
     IMIdentityRawPayload,
-    SlackIMIntegrationEncryptedCredentials,
 )
 from models.model import EndUser
 from repositories.human_input_v2.form.mappers import endpoint_to_record, form_to_record, grant_to_record
@@ -262,15 +261,10 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
         _set_record_identity(contact, str(_CONTACT_ID))
         integration = HumanInputIMIntegration(
             provider=IMProvider.SLACK,
-            encrypted_credentials=SlackIMIntegrationEncryptedCredentials(
-                client_id="client-1",
-                encrypted_client_secret="encrypted-client-secret",
-                encrypted_signing_secret="encrypted-signing-secret",
-                encrypted_bot_token="encrypted-bot-token",
-                encrypted_app_token="encrypted-app-token",
-            ),
+            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
             tenant_id=str(_TENANT_ID),
             provider_tenant_id="provider-tenant-1",
+            app_identifier="client-1",
             status=IMIntegrationStatus.CONNECTED,
             config_version=1,
             configured_by_account_id=str(_ACCOUNT_ID),
@@ -328,12 +322,10 @@ def _seed_current_account_im_form(session_maker: sessionmaker[Session]) -> None:
 def _add_feishu_workspace_binding(session: Session, *, binding_id: str = "000-feishu-binding") -> None:
     integration = HumanInputIMIntegration(
         provider=IMProvider.FEISHU,
-        encrypted_credentials=FeishuIMIntegrationEncryptedCredentials(
-            app_id="feishu-app-1",
-            encrypted_app_secret="encrypted-feishu-secret",
-        ),
+        encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
         tenant_id=None,
         provider_tenant_id="feishu-provider-tenant-1",
+        app_identifier="feishu-app-1",
         status=IMIntegrationStatus.CONNECTED,
         config_version=1,
         configured_by_account_id=str(_ACCOUNT_ID),
@@ -770,15 +762,10 @@ def test_im_context_rejects_integration_owned_by_another_workspace_before_fallba
     with session_maker.begin() as session:
         integration = HumanInputIMIntegration(
             provider=IMProvider.SLACK,
-            encrypted_credentials=SlackIMIntegrationEncryptedCredentials(
-                client_id="client-cross-workspace",
-                encrypted_client_secret="encrypted-client-secret",
-                encrypted_signing_secret="encrypted-signing-secret",
-                encrypted_bot_token="encrypted-bot-token",
-                encrypted_app_token="encrypted-app-token",
-            ),
+            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-cross-workspace-ciphertext"),
             tenant_id="workspace-2",
             provider_tenant_id="provider-tenant-cross-workspace",
+            app_identifier="client-cross-workspace",
             status=IMIntegrationStatus.CONNECTED,
             config_version=1,
             configured_by_account_id=str(_ACCOUNT_ID),

@@ -4,9 +4,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Protocol
+from typing import Annotated, Protocol
+
+from pydantic import Field
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_provider import (
+    DingTalkIMIntegrationCredentials,
+    FeishuIMIntegrationCredentials,
+    LarkIMIntegrationCredentials,
+    MSTeamsIMIntegrationCredentials,
+    SlackIMIntegrationCredentials,
+    WeComIMIntegrationCredentials,
+)
 from core.human_input_v2.shared import DirectoryScope
 
 from .integration import EncryptedCredentials
@@ -21,11 +31,15 @@ class IMProviderConfigurationFailureKind(StrEnum):
     CONNECTION_FAILURE = "connection_failure"
 
 
-class IMProviderCredentials(Protocol):
-    """Structural owner input implemented by every resolved provider candidate."""
-
-    @property
-    def provider(self) -> IMProvider: ...
+type IMProviderCredentials = Annotated[
+    FeishuIMIntegrationCredentials
+    | LarkIMIntegrationCredentials
+    | SlackIMIntegrationCredentials
+    | DingTalkIMIntegrationCredentials
+    | MSTeamsIMIntegrationCredentials
+    | WeComIMIntegrationCredentials,
+    Field(discriminator="provider"),
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +49,7 @@ class ConfirmedIMConfiguration:
     provider: IMProvider
     provider_tenant_id: str
     encrypted_credentials: EncryptedCredentials = field(repr=False)
+    app_identifier: str
     callback_url: str | None
     provider_tenant_display: str | None
 

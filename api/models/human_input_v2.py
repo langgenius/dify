@@ -100,93 +100,17 @@ class _ImmutableJSONObject(RootModel[dict[str, JsonValue]]):
     model_config = ConfigDict(frozen=True, strict=True, validate_default=True)
 
 
-class _FeishuLarkIMIntegrationEncryptedCredentialsBase(_ImmutableJSONModel):
-    """Encrypted credential fields shared by Feishu and Lark integrations."""
+class IMEncryptedCredentials(BaseModel):
+    """Versioned opaque credential envelope persisted for one IM Integration."""
 
-    app_id: str = Field(description="Provider application identifier.")
-    encrypted_app_secret: str = Field(description="Encrypted provider application secret.")
-    encrypted_verification_token: str | None = Field(
-        default=None,
-        description="Encrypted callback verification token, when configured.",
-    )
-    encrypted_encrypt_key: str | None = Field(
-        default=None,
-        description="Encrypted callback encryption key, when configured.",
-    )
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
 
-
-class FeishuIMIntegrationEncryptedCredentials(_FeishuLarkIMIntegrationEncryptedCredentialsBase):
-    """Encrypted credentials persisted for a Feishu integration."""
-
-    provider: Literal[_IMProvider.FEISHU] = Field(
-        default=_IMProvider.FEISHU,
-        description="Discriminator for Feishu encrypted credentials.",
-    )
-
-
-class LarkIMIntegrationEncryptedCredentials(_FeishuLarkIMIntegrationEncryptedCredentialsBase):
-    """Encrypted credentials persisted for a Lark integration."""
-
-    provider: Literal[_IMProvider.LARK] = Field(
-        default=_IMProvider.LARK,
-        description="Discriminator for Lark encrypted credentials.",
-    )
-
-
-class SlackIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
-    """Encrypted credentials persisted for a Slack integration."""
-
-    provider: Literal[_IMProvider.SLACK] = Field(
-        default=_IMProvider.SLACK,
-        description="Discriminator for Slack encrypted credentials.",
-    )
-    client_id: str = Field(description="Slack OAuth client identifier.")
-    encrypted_client_secret: str = Field(description="Encrypted Slack OAuth client secret.")
-    encrypted_signing_secret: str = Field(description="Encrypted Slack callback signing secret.")
-    encrypted_bot_token: str = Field(description="Encrypted Slack bot token.")
-    encrypted_app_token: str | None = Field(
-        default=None,
-        description="Optional encrypted Slack app-level token required only for Socket Mode.",
-    )
-
-
-class DingTalkIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
-    """Encrypted credentials persisted for a DingTalk integration."""
-
-    provider: Literal[_IMProvider.DING_TALK] = Field(
-        default=_IMProvider.DING_TALK,
-        description="Discriminator for DingTalk encrypted credentials.",
-    )
-    corp_id: str = Field(description="DingTalk corporation identifier.")
-    client_id: str = Field(description="DingTalk application client identifier.")
-    encrypted_client_secret: str = Field(
+    version: Literal[1] = Field(default=1, description="Credential envelope format version.")
+    ciphertext: str = Field(
+        min_length=1,
         repr=False,
-        description="Encrypted DingTalk application client secret.",
+        description="Encrypted complete credential payload.",
     )
-
-
-class MSTeamsIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
-    """Encrypted credentials persisted for a Microsoft Teams integration."""
-
-    provider: Literal[_IMProvider.MS_TEAMS] = Field(
-        default=_IMProvider.MS_TEAMS,
-        description="Discriminator for Microsoft Teams encrypted credentials.",
-    )
-    tenant_id: str = Field(description="Microsoft Entra tenant identifier.")
-    client_id: str = Field(description="Microsoft Teams application client identifier.")
-    encrypted_client_secret: str = Field(description="Encrypted Microsoft Teams application client secret.")
-
-
-class WeComIMIntegrationEncryptedCredentials(_ImmutableJSONModel):
-    """Encrypted credentials persisted for a WeCom integration."""
-
-    provider: Literal[_IMProvider.WE_COM] = Field(
-        default=_IMProvider.WE_COM,
-        description="Discriminator for WeCom encrypted credentials.",
-    )
-    corp_id: str = Field(description="WeCom corporation identifier.")
-    agent_id: str = Field(description="WeCom agent identifier.")
-    encrypted_secret: str = Field(repr=False, description="Encrypted WeCom application secret.")
 
 
 class ResendEmailProviderEncryptedCredentials(_ImmutableJSONModel):
@@ -448,22 +372,6 @@ class FormAuditEventPayload(_ImmutableJSONObject):
     """Event-specific immutable audit context not used for primary queries."""
 
 
-type IMIntegrationEncryptedCredentials = Annotated[
-    FeishuIMIntegrationEncryptedCredentials
-    | LarkIMIntegrationEncryptedCredentials
-    | SlackIMIntegrationEncryptedCredentials
-    | DingTalkIMIntegrationEncryptedCredentials
-    | MSTeamsIMIntegrationEncryptedCredentials
-    | WeComIMIntegrationEncryptedCredentials,
-    Field(discriminator="provider"),
-]
-
-
-_IM_INTEGRATION_ENCRYPTED_CREDENTIALS_ADAPTER: TypeAdapter[IMIntegrationEncryptedCredentials] = TypeAdapter(
-    IMIntegrationEncryptedCredentials
-)
-
-
 class HumanInputContactIdentitySource(StrEnum):
     """Immutable persistence discriminator for Contact lifecycle ownership.
 
@@ -639,13 +547,14 @@ class HumanInputPlatformContactWorkspaceEntry(DefaultFieldsDCMixin, TypeBase):
 class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
     """Single organization-level IM control-plane configuration.
 
-    Credential values must be encrypted before persistence. CE/SaaS rows are
-    tenant-scoped. EE uses a null ``tenant_id`` because the deployment is the
-    conceptual Organization boundary; creation must lock the stable ``DifySetup``
-    owner before checking for an existing null-owned row. Configuration writes use
-    ``config_version`` for explicit compare-and-swap; connectivity diagnostics
-    do not advance that revision. Asynchronous work must capture the revision
-    that produced it and reject stale current-state writes.
+    The complete credential payload must be protected as one versioned opaque
+    envelope before persistence. CE/SaaS rows are tenant-scoped. EE uses a null
+    ``tenant_id`` because the deployment is the conceptual Organization boundary;
+    creation must lock the stable ``DifySetup`` owner before checking for an
+    existing null-owned row. Configuration writes use ``config_version`` for
+    explicit compare-and-swap; connectivity diagnostics do not advance that
+    revision. Asynchronous work must capture the revision that produced it and
+    reject stale current-state writes.
     """
 
     __tablename__ = "human_input_im_integrations"
@@ -658,23 +567,10 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
     provider: Mapped[_IMProvider] = mapped_column(
         EnumText(_IMProvider), nullable=False, comment="Configured IM provider discriminator."
     )
-    encrypted_credentials: Mapped[IMIntegrationEncryptedCredentials] = mapped_column(
-        FrozenPydanticModelColumn(
-            _IM_INTEGRATION_ENCRYPTED_CREDENTIALS_ADAPTER,
-            model_types=(
-                FeishuIMIntegrationEncryptedCredentials,
-                LarkIMIntegrationEncryptedCredentials,
-                SlackIMIntegrationEncryptedCredentials,
-                DingTalkIMIntegrationEncryptedCredentials,
-                MSTeamsIMIntegrationEncryptedCredentials,
-                WeComIMIntegrationEncryptedCredentials,
-            ),
-        ),
+    encrypted_credentials: Mapped[IMEncryptedCredentials] = mapped_column(
+        FrozenPydanticModelColumn(IMEncryptedCredentials),
         nullable=False,
-        comment=(
-            "Provider-specific encrypted credential Pydantic model stored as JSON; "
-            "its provider discriminator must match the provider column."
-        ),
+        comment="Versioned opaque encrypted IM credential envelope stored as JSON.",
     )
     tenant_id: Mapped[str | None] = mapped_column(
         StringUUID,
@@ -690,6 +586,12 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
             "Provider-side Organization or workspace identity. Credential rotation preserves current identities and "
             "bindings only when the provider adapter confirms this value is unchanged."
         ),
+    )
+    app_identifier: Mapped[str] = mapped_column(
+        sa.String(255),
+        nullable=False,
+        kw_only=True,
+        comment="Safe provider application identifier used by credential-free channel projections.",
     )
     status: Mapped[_IMIntegrationStatus] = mapped_column(
         EnumText(_IMIntegrationStatus),
@@ -2232,9 +2134,7 @@ class HumanInputV2FormUploadFile(DefaultFieldsDCMixin, TypeBase):
 
 __all__ = [
     "AccountSessionAuthorizationProof",
-    "DingTalkIMIntegrationEncryptedCredentials",
     "EmailOTPAuthorizationProof",
-    "FeishuIMIntegrationEncryptedCredentials",
     "FormApproverGrantMatchedSource",
     "FormApproverGrantMatchedSources",
     "FormApproverGrantSubjectSnapshot",
@@ -2262,14 +2162,12 @@ __all__ = [
     "HumanInputV2FormSubmission",
     "HumanInputV2FormUploadFile",
     "HumanInputV2FormUploadToken",
+    "IMEncryptedCredentials",
     "IMIdentityAuthorizationProof",
     "IMIdentityRawPayload",
-    "IMIntegrationEncryptedCredentials",
     "IMSyncContactSnapshot",
     "IMSyncDirectoryEntryPayload",
     "IMSyncIdentitySnapshot",
-    "LarkIMIntegrationEncryptedCredentials",
-    "MSTeamsIMIntegrationEncryptedCredentials",
     "ResendEmailProviderEncryptedCredentials",
     "ResolvedFormAction",
     "ResolvedFormBlock",
@@ -2278,7 +2176,5 @@ __all__ = [
     "ResolvedFormMarkdownText",
     "ResolvedFormParagraphInput",
     "ResolvedFormSelectInput",
-    "SlackIMIntegrationEncryptedCredentials",
     "TrustedEndUserAuthorizationProof",
-    "WeComIMIntegrationEncryptedCredentials",
 ]

@@ -54,6 +54,7 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
+    FeishuIMIntegrationCredentials,
     IMCardEvent,
     IMCardEventDecoder,
     IMCardEventDecodeResult,
@@ -66,6 +67,7 @@ from core.human_input_v2.im_provider import (
     IMStreamStartError,
     IMStreamStopError,
     IMWebhookHandler,
+    LarkIMIntegrationCredentials,
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
@@ -78,6 +80,7 @@ from core.human_input_v2.im_provider import (
     WebhookRequest,
     WebhookResponse,
 )
+from core.human_input_v2.im_provider.contracts import _FeishuLarkIMIntegrationCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -113,43 +116,6 @@ def _log_safe_error(message: str, *, extra: Mapping[str, object] | None = None) 
     """Log only static diagnostics, never the active Provider exception."""
 
     logger.error(message, extra=extra)
-
-
-class _FeishuLarkIMIntegrationCredentials(BaseModel):
-    """Strict immutable resolved credentials bound to one adapter lifetime."""
-
-    model_config = ConfigDict(
-        extra="forbid",
-        frozen=True,
-        hide_input_in_errors=True,
-    )
-
-    app_id: str = Field(min_length=1, description="Provider application identifier.")
-    app_secret: str = Field(min_length=1, repr=False, description="Resolved application secret.")
-    verification_token: str | None = Field(
-        default=None,
-        min_length=1,
-        repr=False,
-        description="Resolved callback verification token.",
-    )
-    encrypt_key: str | None = Field(
-        default=None,
-        min_length=1,
-        repr=False,
-        description="Resolved callback encryption key.",
-    )
-
-
-class FeishuIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentials):
-    """Resolved Feishu credentials; intentionally not package-exported."""
-
-    provider: Literal[IMProvider.FEISHU] = Field(description="Feishu credential discriminator.")
-
-
-class LarkIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentials):
-    """Resolved Lark credentials; intentionally not package-exported."""
-
-    provider: Literal[IMProvider.LARK] = Field(description="Lark credential discriminator.")
 
 
 class _SDKGateway(Protocol):

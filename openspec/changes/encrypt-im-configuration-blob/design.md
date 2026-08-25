@@ -2,7 +2,7 @@
 
 `HumanInputIMIntegration` 当前在 JSON 列中保存 6 个 provider-specific `*IMIntegrationEncryptedCredentials` model 的其中一个。写入路径逐字段调用 `encrypter.encrypt_token`，repository mapper 依据 provider 验证该 JSON，运行时 composition 再依据 provider 逐字段解密。`ChannelSummary.display_identifier` 直接从该 JSON 的明文标识符读取。
 
-IM Channel create、update 与 replacement 都提交完整凭据并通过 Integration 的整体 CAS 写入。配置生命周期不支持单个 secret 的独立持久化更新。凭据 owner key 仍按现有规则选择：workspace-owned Integration 使用 workspace key，deployment-owned Integration 使用 deployment key。
+IM Channel create、update 与 replacement 都提交完整凭据并通过 Integration 的整体 CAS 写入。配置生命周期不支持单个 secret 的独立持久化更新。workspace-owned Integration 通过 tenant-bound cipher 使用现有 workspace key。deployment cipher 的 provisioning、storage 与 rotation 不在本次范围内；production 默认不提供 deployment cipher，仅保留显式注入边界。
 
 当前 IM control-plane 尚未上线，因此不存在必须兼容的已部署字段级密文记录。实现可以直接替换未发布的 persistence schema 和 migration 定义。
 
@@ -12,7 +12,7 @@ IM Channel create、update 与 replacement 都提交完整凭据并通过 Integr
 
 - 每个 IM Integration 只保存一个版本化的完整凭据密文，而不是 provider-specific 的字段级密文 JSON。
 - 将凭据字段结构和 secret 分类限制在 Console DTO、resolved credential model 与 provider adapter 附近；domain、ORM 和 repository mapper 只处理 opaque envelope。
-- 保持 ChannelSummary 的读取不解密凭据，并保持现有的 Console API、CAS、provider replacement 与 key owner 规则。
+- 保持 ChannelSummary 的读取不解密凭据，并保持现有的 Console API、CAS、provider replacement 与 workspace key owner 规则。
 
 **Non-Goals:**
 
@@ -21,12 +21,13 @@ IM Channel create、update 与 replacement 都提交完整凭据并通过 Integr
 - 不新增凭据读取 API、部分凭据更新或可按字段查询的持久化配置。
 - 不在 Channel list/detail 请求中解密凭据。
 - 不支持旧字段级密文的双读、回填或已上线数据迁移。
+- 不实现 deployment credential key 的 provisioning、storage、rotation 或默认 production wiring。
 
 ## Decisions
 
 ### 保存单个 versioned ciphertext envelope
 
-IM credential owner 在 provider-specific resolved credential model 已完成本地校验后，将包含 provider discriminator 和所有配置字段的 JSON 作为一个值调用现有 `encrypter.encrypt_token`。`HumanInputIMIntegration.encrypted_credentials` 保存 provider-independent envelope，例如 `version` 与 `ciphertext`，而不保存任何 credential field name 或 field value。
+IM credential owner 在 provider-specific resolved credential model 已完成本地校验后，将包含 provider discriminator 和所有配置字段的 JSON 交给一个 owner-bounded cipher，并只调用一次 `encrypt`。`HumanInputIMIntegration.encrypted_credentials` 保存 provider-independent envelope，例如 `version` 与 `ciphertext`，而不保存任何 credential field name 或 field value。
 
 `EncryptedCredentials` 从“包含字段级密文的 opaque JSON”改为真正的 opaque envelope value。IM domain、ORM record 和 repository mapper 只复制、比较和持久化该值；它们不得按 provider 解析 credential payload。
 
@@ -62,9 +63,11 @@ encrypted_credentials: Mapped[IMEncryptedCredentials] = mapped_column(
 
 ### 在一个 credential loader 中恢复并校验运行时凭据
 
-新增一个只在 application/infrastructure composition 使用的 credential loader。它根据 Integration owner key 解密 envelope，解析 JSON，并用该 Integration provider 的 resolved credential model 校验 payload。loader 返回 typed credential model 或安全的配置读取失败；调用者在失败时不得构造 adapter 或执行 provider I/O。
+新增一个只在 application/infrastructure composition 使用的 credential loader。codec 只依赖已经绑定 owner 的 `BoundCredentialCipher`，不接收或解析 tenant/owner ID。它解密 envelope，并用 resolved credential discriminated union 校验 payload，再显式比较恢复出的 provider 与 Integration provider。loader 返回 typed credential model 或带固定安全消息的配置读取失败；调用者在失败时不得构造 adapter 或执行 provider I/O。
 
-provider-specific schema 仍由 adapter credential model 定义。配置写入和 loader 共享同一 provider-to-model mapping，避免 repository、ORM 与多个 runtime composition 分别维护加解密字段映射。
+provider-specific schema 仍由 adapter credential model 定义。一个 Pydantic `TypeAdapter` 集中负责 runtime union 解析；该 runtime union 不进入 ORM persistence column。codec 保留加密、解密和 Pydantic 失败的异常链供内部诊断，presentation 与 logging 边界负责脱敏。
+
+workspace configuration 与 runtime composition 使用最小 `TenantBoundCredentialCipher`，它捕获 Integration tenant ID 并直接转发到现有 `BaseKeyProvider`。tenant-less Integration 只有在调用方显式注入 deployment-bounded cipher 时才能继续；默认 production composition 在 credential test、decryption、adapter construction 与 provider I/O 前安全失败。
 
 ### 直接替换未发布的字段级格式
 
@@ -72,14 +75,15 @@ provider-specific schema 仍由 adapter credential model 定义。配置写入�
 
 ## Risks / Trade-offs
 
-- [单个密文损坏会使整份配置不可用] → loader 在任何 provider I/O 前拒绝无效 version、无法解密、非对象 JSON、provider mismatch 或 resolved-model validation failure，并只暴露安全诊断。
+- [单个密文损坏会使整份配置不可用] → loader 在任何 provider I/O 前拒绝无效 version、无法解密、非对象 JSON、provider mismatch 或 resolved-model validation failure；对外异常消息固定且不含敏感数据，内部异常链保留用于安全诊断。
 - [列表查询失去明文 client/app ID] → `app_identifier` 在配置确认时单独保存，并作为 ChannelSummary 的安全展示来源。
 - [加密 envelope 的格式未来变化] → version 是强制字段；未知版本直接拒绝，不猜测或降级解析。
+- [deployment credential cipher 尚未实现] → 默认 production composition 对 DeploymentScope 与 tenant-less Integration fail fast；未来通过同一个 `BoundCredentialCipher` injection seam 接入完整 key lifecycle。
 
 ## Migration Plan
 
 1. 直接将未发布的 `HumanInputIMIntegration` schema/migration 定义改为 envelope 与 `app_identifier`。
-2. 将 create、update、replacement 与 runtime adapter composition 切换到 envelope；HTTP contract 和 Integration revision 行为保持不变。
+2. 将 workspace create、update、replacement 与 runtime adapter composition 切换到 tenant-bound envelope；deployment 默认 fail fast；HTTP contract 和 Integration revision 行为保持不变。
 3. 删除 6 个 provider-specific encrypted persistence model、union、mapper 分支和逐字段解密代码。
 
 在发布前回滚时，回退未发布的 schema/migration 定义与代码即可；不需要反向解密或转换已上线数据。

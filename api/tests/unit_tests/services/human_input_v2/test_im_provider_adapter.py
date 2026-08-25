@@ -1,0 +1,113 @@
+"""Contracts for the shared IM provider adapter builder."""
+
+from __future__ import annotations
+
+import inspect
+
+import pytest
+
+from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration import IMProviderCredentials
+from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
+    LarkIMProviderAdapter,
+)
+from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
+from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
+from core.human_input_v2.im_provider import (
+    DingTalkIMIntegrationCredentials,
+    FeishuIMIntegrationCredentials,
+    LarkIMIntegrationCredentials,
+    MSTeamsIMIntegrationCredentials,
+    SlackIMIntegrationCredentials,
+    WeComIMIntegrationCredentials,
+)
+from services.human_input_v2.im_provider_adapter import build_im_provider_adapter
+
+_CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
+    (
+        SlackIMIntegrationCredentials(
+            provider=IMProvider.SLACK,
+            client_id="slack-client",
+            client_secret="slack-client-secret",
+            signing_secret="slack-signing-secret",
+            bot_token="xoxb-slack-bot-token",
+            app_token="xapp-slack-app-token",
+        ),
+        SlackIMProviderAdapter,
+    ),
+    (
+        FeishuIMIntegrationCredentials(
+            provider=IMProvider.FEISHU,
+            app_id="feishu-app",
+            app_secret="feishu-secret",
+            verification_token="feishu-verification",
+            encrypt_key="feishu-encrypt-key",
+        ),
+        FeishuIMProviderAdapter,
+    ),
+    (
+        LarkIMIntegrationCredentials(
+            provider=IMProvider.LARK,
+            app_id="lark-app",
+            app_secret="lark-secret",
+            verification_token=None,
+            encrypt_key=None,
+        ),
+        LarkIMProviderAdapter,
+    ),
+    (
+        DingTalkIMIntegrationCredentials(
+            provider=IMProvider.DING_TALK,
+            corp_id="dingtalk-corp",
+            client_id="dingtalk-client",
+            client_secret="dingtalk-secret",
+        ),
+        DingTalkIMProviderAdapter,
+    ),
+    (
+        MSTeamsIMIntegrationCredentials(
+            provider=IMProvider.MS_TEAMS,
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            client_id="00000000-0000-0000-0000-000000000002",
+            client_secret="ms-teams-secret",
+        ),
+        MSTeamsIMProviderAdapter,
+    ),
+    (
+        WeComIMIntegrationCredentials(
+            provider=IMProvider.WE_COM,
+            corp_id="wecom-corp",
+            agent_id="1001",
+            secret="wecom-secret",
+        ),
+        WeComIMProviderAdapter,
+    ),
+)
+
+
+@pytest.mark.parametrize(("credentials", "expected_type"), _CASES, ids=lambda value: str(value))
+def test_builder_dispatches_each_resolved_credential_to_its_exact_adapter(
+    credentials: IMProviderCredentials,
+    expected_type: type[object],
+) -> None:
+    adapter = build_im_provider_adapter(credentials)
+
+    try:
+        assert type(adapter) is expected_type
+    finally:
+        adapter.close()
+
+
+def test_builder_rejects_an_unsupported_object() -> None:
+    with pytest.raises(TypeError, match="unsupported IM provider credentials"):
+        build_im_provider_adapter(object())  # type: ignore[arg-type]
+
+
+def test_builder_accepts_only_already_resolved_credentials() -> None:
+    signature = inspect.signature(build_im_provider_adapter)
+
+    assert tuple(signature.parameters) == ("credentials",)
+    assert signature.parameters["credentials"].default is inspect.Parameter.empty

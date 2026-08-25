@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Never
 
-from pydantic import JsonValue, NaiveDatetime
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
@@ -45,14 +45,6 @@ from services.human_input_v2.errors import (
 
 _INVALID_CREDENTIALS_DESCRIPTION = "The submitted credentials are invalid."
 _CONNECTION_FAILURE_DESCRIPTION = "The provider connection could not be established."
-_SAFE_IDENTIFIER_FIELDS: dict[IMProvider, tuple[str, ...]] = {
-    IMProvider.FEISHU: ("app_id",),
-    IMProvider.LARK: ("app_id",),
-    IMProvider.SLACK: ("client_id",),
-    IMProvider.DING_TALK: ("client_id", "corp_id"),
-    IMProvider.MS_TEAMS: ("client_id", "tenant_id"),
-    IMProvider.WE_COM: ("agent_id", "corp_id"),
-}
 
 
 class HumanInputIMIntegrationManagementService:
@@ -103,6 +95,7 @@ class HumanInputIMIntegrationManagementService:
             tenant_id=owner_tenant_id,
             provider_tenant=ProviderTenantIdentity(confirmed.provider, confirmed.provider_tenant_id),
             encrypted_credentials=confirmed.encrypted_credentials,
+            app_identifier=confirmed.app_identifier,
             configured_by_account_id=actor_account_id,
             callback_url=confirmed.callback_url,
             now=self._clock(),
@@ -135,6 +128,7 @@ class HumanInputIMIntegrationManagementService:
             expected_revision=expected_revision,
             provider_tenant=self._provider_tenant(confirmed),
             encrypted_credentials=confirmed.encrypted_credentials,
+            app_identifier=confirmed.app_identifier,
             configured_by_account_id=actor_account_id,
             callback_url=confirmed.callback_url,
             now=self._clock(),
@@ -158,6 +152,7 @@ class HumanInputIMIntegrationManagementService:
             replacement_integration_id=IntegrationId(self._id_factory()),
             provider_tenant=self._provider_tenant(confirmed),
             encrypted_credentials=confirmed.encrypted_credentials,
+            app_identifier=confirmed.app_identifier,
             configured_by_account_id=actor_account_id,
             callback_url=confirmed.callback_url,
             now=self._clock(),
@@ -268,20 +263,11 @@ class HumanInputIMIntegrationManagementService:
             updated_at=integration.updated_at,
             status=integration.status,
             safe_status_reason=integration.safe_status_reason,
-            app_identifier=HumanInputIMIntegrationManagementService._safe_app_identifier(integration),
+            app_identifier=integration.app_identifier or integration.provider_tenant.provider_tenant_id,
             provider_tenant_display=None,
             webhook_url=integration.callback_url,
             revision=integration.revision,
         )
-
-    @staticmethod
-    def _safe_app_identifier(integration: IMIntegration) -> str:
-        credential_values = integration.encrypted_credentials.to_mapping()
-        for field_name in _SAFE_IDENTIFIER_FIELDS[integration.provider_tenant.provider]:
-            field_value: JsonValue | None = credential_values.get(field_name)
-            if isinstance(field_value, str) and field_value.strip():
-                return field_value.strip()
-        return integration.provider_tenant.provider_tenant_id
 
 
 __all__ = ["HumanInputIMIntegrationManagementService"]

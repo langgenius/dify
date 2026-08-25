@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from controllers.console.human_input_v2.providers import MSTeamsCredentials as MSTeamsCredentialUpdate
 from core.human_input_v2.im_provider import contracts
-from models.human_input_v2 import MSTeamsIMIntegrationEncryptedCredentials
 
 
 def test_ms_teams_resolved_credential_projection_is_registered() -> None:
@@ -13,12 +12,6 @@ def test_ms_teams_credential_projections_are_field_complete_and_secret_safe() ->
     resolved_type = contracts.MSTeamsIMIntegrationCredentials
     assert set(resolved_type.model_fields) == {"provider", "tenant_id", "client_id", "client_secret"}
     assert set(MSTeamsCredentialUpdate.model_fields) == {"provider", "tenant_id", "client_id", "client_secret"}
-    assert set(MSTeamsIMIntegrationEncryptedCredentials.model_fields) == {
-        "provider",
-        "tenant_id",
-        "client_id",
-        "encrypted_client_secret",
-    }
 
     credentials = resolved_type(
         provider="ms_teams",

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import NaiveDatetime, TypeAdapter
+from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMBindingScope, IMSyncRemovalReason
 from core.human_input_v2.im_integration import (
@@ -44,15 +44,13 @@ from models.human_input_v2 import (
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
     IMBindingReconciliationSnapshot,
+    IMEncryptedCredentials,
     IMIdentityRawPayload,
     IMIdentityReconciliationSnapshot,
-    IMIntegrationEncryptedCredentials,
     IMSyncContactSnapshot,
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
 )
-
-_CREDENTIAL_ADAPTER: TypeAdapter[IMIntegrationEncryptedCredentials] = TypeAdapter(IMIntegrationEncryptedCredentials)
 
 
 def _timestamp(value: datetime) -> NaiveDatetime:
@@ -66,13 +64,15 @@ def integration_from_record(record: HumanInputIMIntegration) -> IMIntegration:
 
     if record.provider_tenant_id is None:
         raise ValueError("integration record is missing provider_tenant_id")
-    credential_values = record.encrypted_credentials.model_dump(mode="json", exclude_none=True)
-    credential_values.pop("provider", None)
     return IMIntegration(
         id=IntegrationId(record.id),
         tenant_id=TenantId(record.tenant_id) if record.tenant_id is not None else None,
         provider_tenant=ProviderTenantIdentity(record.provider, record.provider_tenant_id),
-        encrypted_credentials=EncryptedCredentials.from_mapping(credential_values),
+        encrypted_credentials=EncryptedCredentials(
+            version=record.encrypted_credentials.version,
+            ciphertext=record.encrypted_credentials.ciphertext,
+        ),
+        app_identifier=record.app_identifier,
         configured_by_account_id=(
             AccountId(record.configured_by_account_id) if record.configured_by_account_id is not None else None
         ),
@@ -89,14 +89,15 @@ def integration_from_record(record: HumanInputIMIntegration) -> IMIntegration:
 def integration_to_record(integration: IMIntegration) -> HumanInputIMIntegration:
     """Map one Integration aggregate into a detached persistence record."""
 
-    credential_values = integration.encrypted_credentials.to_mapping()
-    credential_values["provider"] = integration.provider_tenant.provider.value
-    credentials = _CREDENTIAL_ADAPTER.validate_python(credential_values)
     record = HumanInputIMIntegration(
         provider=integration.provider_tenant.provider,
-        encrypted_credentials=credentials,
+        encrypted_credentials=IMEncryptedCredentials(
+            version=integration.encrypted_credentials.version,
+            ciphertext=integration.encrypted_credentials.ciphertext,
+        ),
         tenant_id=str(integration.tenant_id) if integration.tenant_id is not None else None,
         provider_tenant_id=integration.provider_tenant.provider_tenant_id,
+        app_identifier=integration.app_identifier,
         status=integration.status,
         config_version=integration.config_version,
         configured_by_account_id=(

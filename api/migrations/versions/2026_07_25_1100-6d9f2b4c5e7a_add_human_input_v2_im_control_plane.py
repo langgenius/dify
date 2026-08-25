@@ -35,7 +35,7 @@ def upgrade() -> None:
             "encrypted_credentials",
             models.types.LongText(),
             nullable=False,
-            comment="Provider-specific encrypted credential model serialized as JSON text.",
+            comment="Versioned opaque encrypted IM credential envelope serialized as JSON text.",
         ),
         sa.Column(
             "tenant_id",
@@ -48,6 +48,12 @@ def upgrade() -> None:
             sa.String(length=255),
             nullable=False,
             comment="Confirmed provider-side organization or workspace identity.",
+        ),
+        sa.Column(
+            "app_identifier",
+            sa.String(length=255),
+            nullable=False,
+            comment="Safe provider application identifier used by credential-free channel projections.",
         ),
         sa.Column("status", sa.String(length=20), nullable=False, comment="Last connectivity diagnostic status."),
         sa.Column(

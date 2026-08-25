@@ -65,23 +65,11 @@ def _confirmed(
     provider_tenant_id: str = "provider-tenant-1",
     app_identifier: str = "client-id",
 ) -> ConfirmedIMConfiguration:
-    credential_fields = {
-        IMProvider.SLACK: {
-            "client_id": app_identifier,
-            "encrypted_client_secret": "cipher-client-secret",
-            "encrypted_signing_secret": "cipher-signing-secret",
-            "encrypted_bot_token": "cipher-bot-token",
-            "encrypted_app_token": "cipher-app-token",
-        },
-        IMProvider.FEISHU: {
-            "app_id": app_identifier,
-            "encrypted_app_secret": "cipher-app-secret",
-        },
-    }
     return ConfirmedIMConfiguration(
         provider=provider,
         provider_tenant_id=provider_tenant_id,
-        encrypted_credentials=EncryptedCredentials.from_mapping(credential_fields[provider]),
+        encrypted_credentials=EncryptedCredentials(ciphertext=f"opaque-{provider.value}-ciphertext"),
+        app_identifier=app_identifier,
         callback_url=f"https://example.test/callback/{provider.value}",
         provider_tenant_display=None,
     )
@@ -97,14 +85,16 @@ def _integration(
     status: IMIntegrationStatus = IMIntegrationStatus.CONFIGURED,
     safe_status_reason: str | None = None,
 ) -> IMIntegration:
+    confirmed = _confirmed(
+        provider=provider,
+        provider_tenant_id=provider_tenant_id,
+    )
     created = IMIntegration.create(
         integration_id=IntegrationId(integration_id),
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(provider, provider_tenant_id),
-        encrypted_credentials=_confirmed(
-            provider=provider,
-            provider_tenant_id=provider_tenant_id,
-        ).encrypted_credentials,
+        encrypted_credentials=confirmed.encrypted_credentials,
+        app_identifier=confirmed.app_identifier,
         configured_by_account_id=_ACTOR_ID,
         callback_url=f"https://example.test/callback/{provider.value}",
         now=_NOW,
@@ -114,6 +104,7 @@ def _integration(
         tenant_id=created.tenant_id,
         provider_tenant=created.provider_tenant,
         encrypted_credentials=created.encrypted_credentials,
+        app_identifier=created.app_identifier,
         configured_by_account_id=created.configured_by_account_id,
         callback_url=created.callback_url,
         config_version=config_version,

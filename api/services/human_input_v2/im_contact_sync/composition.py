@@ -4,63 +4,32 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.helper import encrypter
-from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import IMIntegration
-from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
-from core.human_input_v2.im_provider import (
-    DingTalkIMIntegrationCredentials,
-    IMDirectory,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
-)
+from core.human_input_v2.im_provider import IMProviderAdapter
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, WorkspaceScope
 from extensions.ext_database import db
+from extensions.ext_key_provider import key_provider_manager
 from extensions.ext_redis import redis_client
-from models.human_input_v2 import (
-    DingTalkIMIntegrationEncryptedCredentials,
-    FeishuIMIntegrationEncryptedCredentials,
-    LarkIMIntegrationEncryptedCredentials,
-    MSTeamsIMIntegrationEncryptedCredentials,
-    SlackIMIntegrationEncryptedCredentials,
-    WeComIMIntegrationEncryptedCredentials,
-)
-from models.model import DifySetup
 from repositories.human_input_v2.im_integration import (
     SQLAlchemyIMControlPlaneRepository,
     SQLAlchemyOrganizationIMWriteUnitOfWork,
 )
+from services.human_input_v2.im_credential_codec import BoundCredentialCipher, IMCredentialCodec, IMCredentialError
+from services.human_input_v2.im_provider_adapter import ProviderAdapterFactory, build_im_provider_adapter
+from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 from .binding_service import ContactIMBindingService
-from .coordinator import IMContactSyncCoordinator
+from .coordinator import IMContactSyncCoordinator, IMIntegrationAdapterFactory
 from .locking import OrganizationIMWriteLock, OrganizationIMWriteScope
 from .service import IMSyncService
 from .worker import IMContactSyncWorker
 
 _IM_WRITE_LOCK_ACQUISITION_TIMEOUT_SECONDS = 5.0
 _IM_WRITE_LOCK_LEASE_SECONDS = 30.0
-
-
-class _IMContactSyncAdapter(Protocol):
-    @property
-    def directory(self) -> IMDirectory: ...
-
-    def close(self) -> None: ...
+_CREDENTIAL_UNAVAILABLE_MESSAGE = "IM credential configuration is unavailable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,142 +41,41 @@ class IMContactSyncApplication:
     worker: IMContactSyncWorker
 
 
-class DifyIMProviderAdapterFactory:
-    """Reveal owner-bound credentials and construct the captured Provider adapter."""
+class DifyIMIntegrationAdapterFactory:
+    """Recover one Integration's credentials and construct its Provider adapter."""
 
     def __init__(
         self,
         *,
-        decrypt_token: Callable[[str, str], str] = encrypter.decrypt_token,
-        deployment_owner_key_loader: Callable[[], str],
-        slack_adapter_factory: Callable[[SlackIMIntegrationCredentials], _IMContactSyncAdapter] = (
-            SlackIMProviderAdapter
-        ),
-        feishu_adapter_factory: Callable[[FeishuIMIntegrationCredentials], _IMContactSyncAdapter] = (
-            FeishuIMProviderAdapter
-        ),
-        lark_adapter_factory: Callable[[LarkIMIntegrationCredentials], _IMContactSyncAdapter] = LarkIMProviderAdapter,
-        dingtalk_adapter_factory: Callable[[DingTalkIMIntegrationCredentials], _IMContactSyncAdapter] = (
-            DingTalkIMProviderAdapter
-        ),
-        ms_teams_adapter_factory: Callable[[MSTeamsIMIntegrationCredentials], _IMContactSyncAdapter] = (
-            MSTeamsIMProviderAdapter
-        ),
-        wecom_adapter_factory: Callable[[WeComIMIntegrationCredentials], _IMContactSyncAdapter] = (
-            WeComIMProviderAdapter
-        ),
+        cipher_resolver: Callable[[IMIntegration], BoundCredentialCipher],
+        provider_adapter_factory: ProviderAdapterFactory = build_im_provider_adapter,
     ) -> None:
-        self._decrypt_token = decrypt_token
-        self._deployment_owner_key_loader = deployment_owner_key_loader
-        self._slack_adapter_factory = slack_adapter_factory
-        self._feishu_adapter_factory = feishu_adapter_factory
-        self._lark_adapter_factory = lark_adapter_factory
-        self._dingtalk_adapter_factory = dingtalk_adapter_factory
-        self._ms_teams_adapter_factory = ms_teams_adapter_factory
-        self._wecom_adapter_factory = wecom_adapter_factory
+        self._cipher_resolver = cipher_resolver
+        self._provider_adapter_factory = provider_adapter_factory
 
-    def __call__(self, integration: IMIntegration) -> _IMContactSyncAdapter:
-        owner_key = (
-            str(integration.tenant_id) if integration.tenant_id is not None else self._deployment_owner_key_loader()
-        )
+    def create_for_integration(self, integration: IMIntegration) -> IMProviderAdapter:
+        cipher = self._cipher_resolver(integration)
         provider = integration.provider_tenant.provider
-        encrypted_values = integration.encrypted_credentials.to_mapping()
-        if provider is IMProvider.SLACK:
-            slack_credentials = SlackIMIntegrationEncryptedCredentials.model_validate(
-                {"provider": provider, **encrypted_values}
-            )
-            return self._slack_adapter_factory(
-                SlackIMIntegrationCredentials(
-                    provider=provider,
-                    client_id=slack_credentials.client_id,
-                    client_secret=self._decrypt_token(owner_key, slack_credentials.encrypted_client_secret),
-                    signing_secret=self._decrypt_token(owner_key, slack_credentials.encrypted_signing_secret),
-                    bot_token=self._decrypt_token(owner_key, slack_credentials.encrypted_bot_token),
-                    app_token=self._decrypt_optional(owner_key, slack_credentials.encrypted_app_token),
-                )
-            )
-        if provider is IMProvider.FEISHU:
-            feishu_credentials = FeishuIMIntegrationEncryptedCredentials.model_validate(
-                {"provider": provider, **encrypted_values}
-            )
-            return self._feishu_adapter_factory(
-                FeishuIMIntegrationCredentials(
-                    provider=provider,
-                    app_id=feishu_credentials.app_id,
-                    app_secret=self._decrypt_token(owner_key, feishu_credentials.encrypted_app_secret),
-                    verification_token=self._decrypt_optional(
-                        owner_key, feishu_credentials.encrypted_verification_token
-                    ),
-                    encrypt_key=self._decrypt_optional(owner_key, feishu_credentials.encrypted_encrypt_key),
-                )
-            )
-        if provider is IMProvider.LARK:
-            lark_credentials = LarkIMIntegrationEncryptedCredentials.model_validate(
-                {"provider": provider, **encrypted_values}
-            )
-            return self._lark_adapter_factory(
-                LarkIMIntegrationCredentials(
-                    provider=provider,
-                    app_id=lark_credentials.app_id,
-                    app_secret=self._decrypt_token(owner_key, lark_credentials.encrypted_app_secret),
-                    verification_token=self._decrypt_optional(owner_key, lark_credentials.encrypted_verification_token),
-                    encrypt_key=self._decrypt_optional(owner_key, lark_credentials.encrypted_encrypt_key),
-                )
-            )
-        if provider is IMProvider.DING_TALK:
-            dingtalk_credentials = DingTalkIMIntegrationEncryptedCredentials.model_validate(
-                {"provider": provider, **encrypted_values}
-            )
-            return self._dingtalk_adapter_factory(
-                DingTalkIMIntegrationCredentials(
-                    provider=provider,
-                    corp_id=dingtalk_credentials.corp_id,
-                    client_id=dingtalk_credentials.client_id,
-                    client_secret=self._decrypt_token(owner_key, dingtalk_credentials.encrypted_client_secret),
-                )
-            )
-        if provider is IMProvider.MS_TEAMS:
-            ms_teams_credentials = MSTeamsIMIntegrationEncryptedCredentials.model_validate(
-                {"provider": provider, **encrypted_values}
-            )
-            return self._ms_teams_adapter_factory(
-                MSTeamsIMIntegrationCredentials(
-                    provider=provider,
-                    tenant_id=ms_teams_credentials.tenant_id,
-                    client_id=ms_teams_credentials.client_id,
-                    client_secret=self._decrypt_token(owner_key, ms_teams_credentials.encrypted_client_secret),
-                )
-            )
-        if provider is IMProvider.WE_COM:
-            wecom_credentials = WeComIMIntegrationEncryptedCredentials.model_validate(
-                {"provider": provider, **encrypted_values}
-            )
-            return self._wecom_adapter_factory(
-                WeComIMIntegrationCredentials(
-                    provider=provider,
-                    corp_id=wecom_credentials.corp_id,
-                    agent_id=wecom_credentials.agent_id,
-                    secret=self._decrypt_token(owner_key, wecom_credentials.encrypted_secret),
-                )
-            )
-        raise ValueError("unsupported IM Provider adapter")
+        credentials = IMCredentialCodec(cipher).load(provider, integration.encrypted_credentials)
+        return self._provider_adapter_factory(credentials)
 
-    def _decrypt_optional(self, owner_key: str, encrypted_value: str | None) -> str | None:
-        if encrypted_value is None:
-            return None
-        return self._decrypt_token(owner_key, encrypted_value)
+
+def _resolve_default_cipher(integration: IMIntegration) -> BoundCredentialCipher:
+    if integration.tenant_id is None:
+        raise IMCredentialError(_CREDENTIAL_UNAVAILABLE_MESSAGE)
+    return TenantBoundCredentialCipher(key_provider_manager.provider, str(integration.tenant_id))
 
 
 def build_im_contact_sync_worker(
     *,
     session_maker: sessionmaker[Session] | None = None,
-    adapter_factory: Callable[[IMIntegration], _IMContactSyncAdapter] | None = None,
+    adapter_factory: IMIntegrationAdapterFactory | None = None,
 ) -> IMContactSyncWorker:
     sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
     write_unit_of_work_factory = _write_unit_of_work_factory(sessions)
     repository = SQLAlchemyIMControlPlaneRepository(sessions, write_unit_of_work_factory)
-    resolved_adapter_factory = adapter_factory or DifyIMProviderAdapterFactory(
-        deployment_owner_key_loader=lambda: _load_deployment_owner_key(sessions)
+    resolved_adapter_factory = adapter_factory or DifyIMIntegrationAdapterFactory(
+        cipher_resolver=_resolve_default_cipher
     )
     coordinator = IMContactSyncCoordinator(repository, resolved_adapter_factory, write_unit_of_work_factory)
     return IMContactSyncWorker(repository, coordinator)
@@ -216,15 +84,15 @@ def build_im_contact_sync_worker(
 def build_im_contact_sync_application(
     *,
     session_maker: sessionmaker[Session] | None = None,
-    adapter_factory: Callable[[IMIntegration], _IMContactSyncAdapter] | None = None,
+    adapter_factory: IMIntegrationAdapterFactory | None = None,
 ) -> IMContactSyncApplication:
     """Compose commands, queries, and worker orchestration without transport dependencies."""
 
     sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
     write_unit_of_work_factory = _write_unit_of_work_factory(sessions)
     repository = SQLAlchemyIMControlPlaneRepository(sessions, write_unit_of_work_factory)
-    resolved_adapter_factory = adapter_factory or DifyIMProviderAdapterFactory(
-        deployment_owner_key_loader=lambda: _load_deployment_owner_key(sessions)
+    resolved_adapter_factory = adapter_factory or DifyIMIntegrationAdapterFactory(
+        cipher_resolver=_resolve_default_cipher
     )
     coordinator = IMContactSyncCoordinator(repository, resolved_adapter_factory, write_unit_of_work_factory)
 
@@ -284,19 +152,6 @@ def _write_unit_of_work_factory(
     return create
 
 
-def _load_deployment_owner_key(sessions: sessionmaker[Session]) -> str:
-    with sessions() as session:
-        instance_id = session.scalar(
-            select(DifySetup.instance_id)
-            .where(DifySetup.instance_id.is_not(None))
-            .order_by(DifySetup.setup_at, DifySetup.version)
-            .limit(1)
-        )
-    if instance_id is None:
-        raise RuntimeError("deployment owner identity is unavailable")
-    return instance_id
-
-
 def _scope_payload(scope: DirectoryScope) -> tuple[str, str | None]:
     if isinstance(scope, WorkspaceScope):
         return "workspace", str(scope.id)
@@ -306,7 +161,7 @@ def _scope_payload(scope: DirectoryScope) -> tuple[str, str | None]:
 
 
 __all__ = [
-    "DifyIMProviderAdapterFactory",
+    "DifyIMIntegrationAdapterFactory",
     "IMContactSyncApplication",
     "build_im_contact_sync_application",
     "build_im_contact_sync_worker",

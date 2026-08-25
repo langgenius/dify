@@ -53,7 +53,6 @@ from core.human_input_v2.shared import (
 )
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import (
-    FeishuIMIntegrationEncryptedCredentials,
     HumanInputContact,
     HumanInputIMBinding,
     HumanInputIMIdentity,
@@ -61,6 +60,7 @@ from models.human_input_v2 import (
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
+    IMEncryptedCredentials,
 )
 from repositories.human_input_v2.contact_directory.mappers import contact_to_record
 from repositories.human_input_v2.im_integration.mappers import (
@@ -118,11 +118,10 @@ def write_context(sqlite_engine: Engine) -> tuple[sessionmaker[Session], _OwnedW
         tenant.id = str(_TENANT_ID)
         integration = HumanInputIMIntegration(
             provider=IMProvider.FEISHU,
-            encrypted_credentials=FeishuIMIntegrationEncryptedCredentials(
-                app_id="app-1", encrypted_app_secret="ciphertext"
-            ),
+            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
             tenant_id=str(_TENANT_ID),
             provider_tenant_id="provider-tenant-1",
+            app_identifier="app-1",
             status=IMIntegrationStatus.CONFIGURED,
             config_version=1,
         )
@@ -270,7 +269,8 @@ def test_configuration_rotation_is_available_only_through_guarded_repository(wri
     transition = current.reconfigure(
         expected_revision=current.revision,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": "rotated"}),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId("account-2"),
         callback_url=None,
         now=_LATER,
@@ -323,15 +323,8 @@ def test_provider_replacement_invalidates_current_children_inside_guarded_transa
     transition = current.reconfigure(
         expected_revision=current.revision,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "slack-workspace"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {
-                "client_id": "client-1",
-                "encrypted_client_secret": "secret",
-                "encrypted_signing_secret": "signing",
-                "encrypted_bot_token": "bot-token",
-                "encrypted_app_token": "app-token",
-            }
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
+        app_identifier="client-1",
         configured_by_account_id=AccountId("account-2"),
         callback_url=None,
         now=_LATER,
@@ -362,9 +355,8 @@ def test_integration_creation_is_available_only_through_guarded_repository(write
         integration_id=IntegrationId("integration-created"),
         tenant_id=_TENANT_ID,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-created"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-created", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-created-ciphertext"),
+        app_identifier="app-created",
         configured_by_account_id=AccountId("account-1"),
         callback_url=None,
         now=_NOW,

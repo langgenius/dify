@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Annotated, get_args, get_origin
 
 import pytest
 from pydantic import SecretStr, TypeAdapter, ValidationError
@@ -10,21 +11,22 @@ from controllers.console.human_input_v2.providers import (
     DingTalkCredentials,
     EmailProviderCredentials,
     FeishuCredentials,
-    IMProviderCredentials,
     LarkCredentials,
     MSTeamsCredentials,
     ResendCredentials,
     SlackCredentials,
     WeComCredentials,
 )
+from controllers.console.human_input_v2.providers import (
+    IMProviderCredentials as ConsoleIMProviderCredentials,
+)
 from core.human_input_v2.email_channel import ResendCandidate
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-)
+from core.human_input_v2.im_integration import IMProviderCredentials as ProviderIMProviderCredentials
 from core.human_input_v2.im_provider import (
     DingTalkIMIntegrationCredentials,
+    FeishuIMIntegrationCredentials,
+    LarkIMIntegrationCredentials,
     MSTeamsIMIntegrationCredentials,
     SlackIMIntegrationCredentials,
     WeComIMIntegrationCredentials,
@@ -117,23 +119,36 @@ type _IMCredentialsDTO = (
 )
 
 
+def test_console_union_is_a_distinct_six_dto_transport_boundary() -> None:
+    console_value = ConsoleIMProviderCredentials.__value__
+
+    assert ConsoleIMProviderCredentials is not ProviderIMProviderCredentials
+    assert get_origin(console_value) is Annotated
+    console_union, field = get_args(console_value)
+    assert get_args(console_union) == tuple(case[0] for case in _IM_CASES)
+    assert field.discriminator == "provider"
+    assert all(dto_type is not owner_type for dto_type, owner_type, _payload in _IM_CASES)
+
+
 @pytest.mark.parametrize(("dto_type", "owner_type", "payload"), _IM_CASES)
 def test_im_provider_dto_constructs_complete_owner_credentials(
     dto_type: type[_IMCredentialsDTO],
     owner_type: type[object],
     payload: dict[str, str],
 ) -> None:
-    credentials = TypeAdapter(IMProviderCredentials).validate_python(payload)
+    credentials = TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)
+    owner_credentials = credentials.to_owner_credentials()
 
-    assert isinstance(credentials, dto_type)
-    assert isinstance(credentials.to_owner_credentials(), owner_type)
+    assert type(credentials) is dto_type
+    assert type(owner_credentials) is owner_type
+    assert type(owner_credentials) in get_args(get_args(ProviderIMProviderCredentials.__value__)[0])
 
 
 def test_slack_app_token_is_optional_and_documented_for_socket_mode() -> None:
     payload = dict(_IM_CASES[2][2])
     del payload["app_token"]
 
-    credentials = TypeAdapter(IMProviderCredentials).validate_python(payload)
+    credentials = TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)
 
     assert isinstance(credentials, SlackCredentials)
     assert credentials.app_token is None
@@ -163,7 +178,7 @@ def test_every_secret_uses_secret_str_and_is_absent_from_repr_and_logs(
     payload: dict[str, str],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    credentials = TypeAdapter(IMProviderCredentials).validate_python(payload)
+    credentials = TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)
     secret_values = {value for name, value in payload.items() if name in _SECRET_FIELD_NAMES}
 
     for name in credentials.__class__.model_fields:
@@ -199,12 +214,12 @@ def test_provider_dto_rejects_extra_fields(forbidden_field: str) -> None:
     payload[forbidden_field] = "socket"
 
     with pytest.raises(ValidationError):
-        TypeAdapter(IMProviderCredentials).validate_python(payload)
+        TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)
 
 
 def test_validation_diagnostics_hide_submitted_secrets() -> None:
     class IMCredentialsEnvelope(StrictModel):
-        credentials: IMProviderCredentials
+        credentials: ConsoleIMProviderCredentials
 
     payload = dict(_IM_CASES[2][2])
     payload["unexpected"] = "raw-provider-payload"
@@ -243,4 +258,4 @@ def test_missing_required_secret_is_rejected(provider: IMProvider) -> None:
     del payload[secret_name]
 
     with pytest.raises(ValidationError):
-        TypeAdapter(IMProviderCredentials).validate_python(payload)
+        TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)

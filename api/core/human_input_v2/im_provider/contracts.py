@@ -19,13 +19,50 @@ from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
 
 
-class _ResolvedIMIntegrationCredentials(BaseModel):
+class _IMIntegrationCredentials(BaseModel):
     """Strict immutable credentials after controller update resolution."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class SlackIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+class _FeishuLarkIMIntegrationCredentials(BaseModel):
+    """Strict immutable resolved credentials bound to one adapter lifetime."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        hide_input_in_errors=True,
+    )
+
+    app_id: str = Field(min_length=1, description="Provider application identifier.")
+    app_secret: str = Field(min_length=1, repr=False, description="Resolved application secret.")
+    verification_token: str | None = Field(
+        default=None,
+        min_length=1,
+        repr=False,
+        description="Resolved callback verification token.",
+    )
+    encrypt_key: str | None = Field(
+        default=None,
+        min_length=1,
+        repr=False,
+        description="Resolved callback encryption key.",
+    )
+
+
+class FeishuIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentials):
+    """Resolved Feishu credentials bound for one adapter lifetime."""
+
+    provider: Literal[IMProvider.FEISHU] = Field(description="Feishu credential discriminator.")
+
+
+class LarkIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentials):
+    """Resolved Lark credentials bound for one adapter lifetime."""
+
+    provider: Literal[IMProvider.LARK] = Field(description="Lark credential discriminator.")
+
+
+class SlackIMIntegrationCredentials(_IMIntegrationCredentials):
     """Resolved Slack credentials bound for one adapter lifetime."""
 
     provider: Literal[IMProvider.SLACK] = Field(description="Slack credential discriminator.")
@@ -47,7 +84,7 @@ class SlackIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
     )
 
 
-class DingTalkIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+class DingTalkIMIntegrationCredentials(_IMIntegrationCredentials):
     """Resolved DingTalk credentials bound for one adapter lifetime."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
@@ -63,7 +100,7 @@ class DingTalkIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
     )
 
 
-class MSTeamsIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+class MSTeamsIMIntegrationCredentials(_IMIntegrationCredentials):
     """Resolved Microsoft Teams credentials bound for one adapter lifetime."""
 
     provider: Literal[IMProvider.MS_TEAMS] = Field(description="Microsoft Teams credential discriminator.")
@@ -84,7 +121,7 @@ class MSTeamsIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
     )
 
 
-class WeComIMIntegrationCredentials(_ResolvedIMIntegrationCredentials):
+class WeComIMIntegrationCredentials(_IMIntegrationCredentials):
     """Resolved WeCom credentials bound for one adapter lifetime."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
@@ -436,6 +473,7 @@ __all__ = [
     "DirectoryReadFailure",
     "DynamicCardMessagingError",
     "EventAcceptance",
+    "FeishuIMIntegrationCredentials",
     "IMCardEvent",
     "IMCardEventDecodeResult",
     "IMCardEventDecoder",
@@ -450,6 +488,7 @@ __all__ = [
     "IMStreamStartError",
     "IMStreamStopError",
     "IMWebhookHandler",
+    "LarkIMIntegrationCredentials",
     "MSTeamsIMIntegrationCredentials",
     "MessageAccepted",
     "MessageLocator",

@@ -86,9 +86,8 @@ def _integration(
         integration_id=integration_id,
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, f"provider-tenant:{integration_id}"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId("account-1"),
         callback_url=None,
         now=_NOW,

@@ -345,6 +345,7 @@ class _SQLAlchemyProtectedIMRepository:
         record.encrypted_credentials = mapped.encrypted_credentials
         record.tenant_id = mapped.tenant_id
         record.provider_tenant_id = mapped.provider_tenant_id
+        record.app_identifier = mapped.app_identifier
         record.status = mapped.status
         record.config_version = mapped.config_version
         record.configured_by_account_id = mapped.configured_by_account_id

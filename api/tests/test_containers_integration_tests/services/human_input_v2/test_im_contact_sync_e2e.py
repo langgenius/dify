@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 
@@ -40,6 +41,7 @@ from core.human_input_v2.im_provider import Directory, DirectoryEntry, ProviderU
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
+    DirectoryScope,
     IMBindingId,
     IMIdentityId,
     IMSyncResultId,
@@ -70,6 +72,7 @@ from repositories.human_input_v2.im_integration.mappers import (
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
+from services.human_input_v2.im_contact_sync.coordinator import IMContactSyncAdapter
 from services.human_input_v2.im_contact_sync.locking import (
     OrganizationIMWriteLock,
     OrganizationIMWriteLockLostError,
@@ -117,6 +120,20 @@ class _Adapter:
     def close(self) -> None:
         self.closed = True
 
+
+class _AdapterFactory:
+    def __init__(
+        self,
+        build_adapter: Callable[[], IMContactSyncAdapter],
+        integration_ids: list[IntegrationId] | None = None,
+    ) -> None:
+        self._build_adapter = build_adapter
+        self._integration_ids = integration_ids
+
+    def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
+        if self._integration_ids is not None:
+            self._integration_ids.append(integration.id)
+        return self._build_adapter()
 
 def _account(name: str, email: str) -> Account:
     return Account(
@@ -172,9 +189,8 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
         integration_id=_INTEGRATION_ID,
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId(existing_account.id),
         callback_url=None,
         now=_HISTORICAL_AT,
@@ -273,26 +289,22 @@ def _seed_historical_state(session: Session) -> tuple[WorkspaceScope, AccountId]
 
 def test_existing_state_remains_readable_and_new_run_starts_forward_only_history(
     db_session_with_containers: Session,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scope, actor_id = _seed_historical_state(db_session_with_containers)
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     adapter = _Adapter()
     adapter_factory_calls: list[IntegrationId] = []
 
-    def adapter_factory(integration: IMIntegration) -> _Adapter:
-        adapter_factory_calls.append(integration.id)
-        return adapter
-
     dispatched: list[tuple[tuple[str, str, str | None], str]] = []
 
-    def capture_dispatch(*, args, queue: str) -> None:
+    def capture_dispatch(*, args: tuple[str, str, str | None], queue: str) -> None:
         dispatched.append((args, queue))
 
     monkeypatch.setattr(reconcile_im_contacts_task, "apply_async", capture_dispatch)
     application = build_im_contact_sync_application(
         session_maker=sessions,
-        adapter_factory=adapter_factory,
+        adapter_factory=_AdapterFactory(lambda: adapter, adapter_factory_calls),
     )
 
     historical_page = application.sync_service.list_latest_results(
@@ -312,7 +324,7 @@ def test_existing_state_remains_readable_and_new_run_starts_forward_only_history
 
     executed_statements: list[str] = []
 
-    def capture_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def capture_statement(_connection, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         executed_statements.append(statement)
 
     engine = db_session_with_containers.get_bind()
@@ -402,7 +414,7 @@ def test_malformed_provider_email_persists_as_unmatched_without_rolling_back_val
     monkeypatch.setattr(reconcile_im_contacts_task, "apply_async", lambda **_kwargs: None)
     application = build_im_contact_sync_application(
         session_maker=sessions,
-        adapter_factory=lambda _integration: AdapterWithMalformedEmail(),
+        adapter_factory=_AdapterFactory(AdapterWithMalformedEmail),
     )
 
     active_run = application.sync_service.create_or_get_active_run(scope, actor_id)
@@ -508,7 +520,7 @@ def test_apply_rejects_a_changed_automatic_contact_target(
 
 
 def test_real_redis_lock_has_bounded_acquisition_and_explicit_ttl_extension(
-    flask_app_with_containers,
+    flask_app_with_containers: object,
 ) -> None:
     del flask_app_with_containers
     lock_scope = OrganizationIMWriteScope.for_workspace(TenantId("lock-contract-workspace"))
@@ -642,15 +654,8 @@ def test_repository_replaces_and_deletes_integration_through_the_organization_lo
     transition = current.reconfigure(
         expected_revision=current.revision,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "slack-workspace"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {
-                "client_id": "client-id",
-                "encrypted_client_secret": "client-secret",
-                "encrypted_signing_secret": "signing-secret",
-                "encrypted_bot_token": "bot-token",
-                "encrypted_app_token": "app-token",
-            }
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-slack-ciphertext"),
+        app_identifier="client-id",
         configured_by_account_id=actor_id,
         callback_url=None,
         now=_HISTORICAL_AT,
@@ -675,14 +680,14 @@ def test_repository_replaces_and_deletes_integration_through_the_organization_lo
 
 def test_concurrent_workers_commit_one_reconciliation_fact_set(
     db_session_with_containers: Session,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     scope, actor_id = _seed_historical_state(db_session_with_containers)
     sessions = sessionmaker(bind=db_session_with_containers.get_bind(), expire_on_commit=False)
     monkeypatch.setattr(reconcile_im_contacts_task, "apply_async", lambda **_kwargs: None)
     application = build_im_contact_sync_application(
         session_maker=sessions,
-        adapter_factory=lambda _integration: _Adapter(),
+        adapter_factory=_AdapterFactory(_Adapter),
     )
     active_run = application.sync_service.create_or_get_active_run(scope, actor_id)
     assert active_run.id != _HISTORICAL_RUN_ID
@@ -722,9 +727,8 @@ def _replacement_transition(scope: WorkspaceScope, actor_id: AccountId) -> Confi
         integration_id=_INTEGRATION_ID,
         tenant_id=scope.id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=actor_id,
         callback_url=None,
         now=_HISTORICAL_AT,
@@ -732,9 +736,8 @@ def _replacement_transition(scope: WorkspaceScope, actor_id: AccountId) -> Confi
     transition = current.reconfigure(
         expected_revision=current.revision,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-2"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-2", "encrypted_app_secret": "ciphertext-2"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-replacement-ciphertext"),
+        app_identifier="app-2",
         configured_by_account_id=actor_id,
         callback_url=None,
         replacement_integration_id=_REPLACEMENT_INTEGRATION_ID,
@@ -746,8 +749,9 @@ def _replacement_transition(scope: WorkspaceScope, actor_id: AccountId) -> Confi
 
 def _write_unit_of_work(
     sessions: sessionmaker[Session],
-    scope: WorkspaceScope,
+    scope: DirectoryScope,
 ) -> SQLAlchemyOrganizationIMWriteUnitOfWork:
+    assert isinstance(scope, WorkspaceScope)
     return SQLAlchemyOrganizationIMWriteUnitOfWork(
         sessions,
         OrganizationIMWriteLock(

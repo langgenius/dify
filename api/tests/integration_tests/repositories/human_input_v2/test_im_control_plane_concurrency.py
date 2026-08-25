@@ -48,9 +48,8 @@ def _integration(integration_id: str, tenant_id: str | None) -> IMIntegration:
         integration_id=IntegrationId(integration_id),
         tenant_id=TenantId(tenant_id) if tenant_id is not None else None,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, f"provider-{tenant_id or 'deployment'}"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId(str(uuidv7())),
         callback_url=None,
         now=naive_utc_now(),
@@ -128,9 +127,8 @@ def test_concurrent_configuration_cas_has_exactly_one_winner(flask_req_ctx) -> N
         decision = integration.reconfigure(
             expected_revision=integration.revision,
             provider_tenant=integration.provider_tenant,
-            encrypted_credentials=EncryptedCredentials.from_mapping(
-                {"app_id": "app-1", "encrypted_app_secret": secret}
-            ),
+            encrypted_credentials=EncryptedCredentials(ciphertext=secret),
+            app_identifier="app-1",
             configured_by_account_id=None,
             callback_url=None,
             now=naive_utc_now(),
@@ -286,7 +284,8 @@ def test_stale_reconciliation_records_diagnostic_without_current_mutation(flask_
     rotation = integration.reconfigure(
         expected_revision=integration.revision,
         provider_tenant=integration.provider_tenant,
-        encrypted_credentials=EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": "rotated"}),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-rotated-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=None,
         callback_url=None,
         now=naive_utc_now(),

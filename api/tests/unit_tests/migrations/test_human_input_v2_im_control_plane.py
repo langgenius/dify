@@ -13,13 +13,13 @@ from sqlalchemy.orm import Session
 
 from core.human_input_v2.entities import IMIntegrationStatus, IMProvider, IMSyncResultType
 from models.human_input_v2 import (
-    FeishuIMIntegrationEncryptedCredentials,
     HumanInputIMBinding,
     HumanInputIMIdentity,
     HumanInputIMIntegration,
     HumanInputIMReconciliationChange,
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
+    IMEncryptedCredentials,
     IMSyncDirectoryEntryPayload,
 )
 
@@ -124,12 +124,10 @@ def test_upgrade_persists_and_loads_structured_json_values() -> None:
     with Session(engine) as session, session.begin():
         integration = HumanInputIMIntegration(
             provider=IMProvider.FEISHU,
-            encrypted_credentials=FeishuIMIntegrationEncryptedCredentials(
-                app_id="app-1",
-                encrypted_app_secret="ciphertext",
-            ),
+            encrypted_credentials=IMEncryptedCredentials(ciphertext="opaque-ciphertext"),
             tenant_id="workspace-1",
             provider_tenant_id="provider-tenant-1",
+            app_identifier="app-1",
             status=IMIntegrationStatus.CONFIGURED,
             config_version=1,
         )
@@ -147,9 +145,11 @@ def test_upgrade_persists_and_loads_structured_json_values() -> None:
     with Session(engine) as session:
         stored_integration = session.get_one(HumanInputIMIntegration, "integration-1")
         stored_result = session.get_one(HumanInputIMSyncResult, "result-1")
-        assert stored_integration.encrypted_credentials == FeishuIMIntegrationEncryptedCredentials(
-            app_id="app-1", encrypted_app_secret="ciphertext"
+        assert stored_integration.encrypted_credentials == IMEncryptedCredentials(
+            version=1,
+            ciphertext="opaque-ciphertext",
         )
+        assert stored_integration.app_identifier == "app-1"
         assert stored_result.directory_entry_payload == IMSyncDirectoryEntryPayload({"provider": "value"})
 
 
@@ -208,9 +208,11 @@ def test_upgrade_enforces_positive_revision_and_scoped_binding_owner() -> None:
             connection.execute(
                 sa.text(
                     "INSERT INTO human_input_im_integrations "
-                    "(id, provider, encrypted_credentials, tenant_id, provider_tenant_id, status, config_version) "
-                    "VALUES ('integration-1', 'feishu', '{}', 'workspace-1', 'provider-tenant-1', 'configured', 0)"
-                )
+                    "(id, provider, encrypted_credentials, tenant_id, provider_tenant_id, app_identifier, status, "
+                    "config_version) VALUES ('integration-1', 'feishu', :encrypted_credentials, 'workspace-1', "
+                    "'provider-tenant-1', 'app-1', 'configured', 0)"
+                ),
+                {"encrypted_credentials": '{"version":1,"ciphertext":"opaque"}'},
             )
 
 

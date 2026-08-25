@@ -75,9 +75,8 @@ def _seed_control_plane(session: Session):
         integration_id=_INTEGRATION_ID,
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId(account.id),
         callback_url=None,
         now=_NOW,
@@ -390,9 +389,8 @@ def test_missing_control_plane_state_returns_stable_http_errors(
         integration_id=_INTEGRATION_ID,
         tenant_id=TenantId(tenant.id),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-feishu-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId(account.id),
         callback_url=None,
         now=_NOW,

@@ -56,14 +56,6 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     WebhookRequest,
 )
-from models.human_input_v2 import (
-    FeishuIMIntegrationEncryptedCredentials,
-    LarkIMIntegrationEncryptedCredentials,
-)
-from services.human_input_v2.feishu_lark_channel import (
-    resolve_feishu_encrypted_credentials,
-    resolve_lark_encrypted_credentials,
-)
 
 
 @dataclass(slots=True)
@@ -873,7 +865,7 @@ def test_full_adapter_over_official_http_sdk_preserves_wrapper_parity(
     assert message_requests[1].body["msg_type"] == "interactive"
 
 
-def test_controller_and_service_projections_feed_typed_adapter_construction(
+def test_controller_projections_feed_typed_adapter_construction(
     monkeypatch: pytest.MonkeyPatch,
     sdk_server: _RunningServer,
 ) -> None:
@@ -882,17 +874,6 @@ def test_controller_and_service_projections_feed_typed_adapter_construction(
         "_create_sdk_gateway",
         lambda credentials, _domain: _OfficialSDKGateway(credentials, sdk_server.domain),
     )
-    feishu_current = FeishuIMIntegrationEncryptedCredentials(
-        app_id="cli_old_app",
-        encrypted_app_secret="cipher-app-secret",
-        encrypted_verification_token="cipher-verification-token",
-        encrypted_encrypt_key="cipher-encrypt-key",
-    )
-    decrypted = {
-        "cipher-app-secret": "sanitized-app-secret",
-        "cipher-verification-token": "sanitized-verification-token",
-        "cipher-encrypt-key": "sanitized-encrypt-key",
-    }
     feishu_request = FeishuCredentialRequest(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
@@ -905,20 +886,6 @@ def test_controller_and_service_projections_feed_typed_adapter_construction(
         IMProvider.FEISHU,
         "tenant_sanitized",
     )
-    assert (
-        resolve_feishu_encrypted_credentials(
-            feishu_current,
-            decrypt=decrypted.__getitem__,
-        ).provider
-        is IMProvider.FEISHU
-    )
-
-    lark_current = LarkIMIntegrationEncryptedCredentials(
-        app_id="cli_sanitized_app",
-        encrypted_app_secret="cipher-app-secret",
-        encrypted_verification_token=None,
-        encrypted_encrypt_key=None,
-    )
     lark_request = LarkCredentialRequest(
         provider=IMProvider.LARK,
         app_id="cli_sanitized_app",
@@ -928,13 +895,6 @@ def test_controller_and_service_projections_feed_typed_adapter_construction(
     )
     lark_resolved = lark_request.to_owner_credentials()
     assert LarkIMProviderAdapter(lark_resolved).provider is IMProvider.LARK
-    assert (
-        resolve_lark_encrypted_credentials(
-            lark_current,
-            decrypt=decrypted.__getitem__,
-        ).provider
-        is IMProvider.LARK
-    )
 
 
 def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(

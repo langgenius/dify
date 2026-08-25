@@ -510,9 +510,8 @@ def test_organization_binding_controller_uses_sqlite_backed_guarded_service(
         integration_id=IntegrationId("integration-1"),
         tenant_id=tenant_id,
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {"app_id": "app-1", "encrypted_app_secret": "ciphertext"}
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="opaque-ciphertext"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId("account-1"),
         callback_url=None,
         now=_NOW,

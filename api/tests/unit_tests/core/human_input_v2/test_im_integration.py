@@ -7,7 +7,9 @@ import pytest
 
 from core.human_input_v2.entities import IMBindingScope, IMIntegrationStatus, IMProvider
 from core.human_input_v2.im_integration import (
+    ConfigurationTransition,
     ConfigurationTransitionKind,
+    ConfirmedIMConfiguration,
     EncryptedCredentials,
     IMBinding,
     IMIdentity,
@@ -31,7 +33,7 @@ _LATER = datetime(2026, 7, 25, 9)
 
 
 def _credentials(secret: str) -> EncryptedCredentials:
-    return EncryptedCredentials.from_mapping({"app_id": "app-1", "encrypted_app_secret": secret})
+    return EncryptedCredentials(ciphertext=secret)
 
 
 def _integration() -> IMIntegration:
@@ -40,6 +42,7 @@ def _integration() -> IMIntegration:
         tenant_id=TenantId("workspace-1"),
         provider_tenant=ProviderTenantIdentity(IMProvider.FEISHU, "provider-tenant-1"),
         encrypted_credentials=_credentials("ciphertext-1"),
+        app_identifier="app-1",
         configured_by_account_id=AccountId("account-1"),
         callback_url="https://example.com/callback",
         now=_NOW,
@@ -51,7 +54,8 @@ def test_first_creation_owns_complete_revision_token() -> None:
 
     assert integration.revision == IntegrationRevisionToken(IntegrationId("integration-1"), 1)
     assert integration.status is IMIntegrationStatus.CONFIGURED
-    assert integration.encrypted_credentials.to_mapping()["encrypted_app_secret"] == "ciphertext-1"
+    assert integration.encrypted_credentials == EncryptedCredentials(version=1, ciphertext="ciphertext-1")
+    assert integration.app_identifier == "app-1"
 
 
 @pytest.mark.parametrize("config_version", [0, -1])
@@ -60,11 +64,9 @@ def test_revision_token_requires_positive_version(config_version: int) -> None:
         IntegrationRevisionToken(IntegrationId("integration-1"), config_version)
 
 
-def test_opaque_values_reject_empty_or_non_object_payloads() -> None:
+def test_opaque_values_reject_empty_envelopes_or_non_object_provider_payloads() -> None:
     with pytest.raises(ValueError, match="must not be empty"):
-        EncryptedCredentials.from_mapping({})
-    with pytest.raises(ValueError, match="JSON object"):
-        EncryptedCredentials("[]").to_mapping()
+        EncryptedCredentials(ciphertext="")
     with pytest.raises(ValueError, match="JSON object"):
         OpaqueProviderPayload("[]").to_mapping()
 
@@ -74,6 +76,35 @@ def test_provider_tenant_and_integration_require_valid_persisted_values() -> Non
         ProviderTenantIdentity(IMProvider.FEISHU, " ")
     with pytest.raises(ValueError, match="positive"):
         replace(_integration(), config_version=0)
+    with pytest.raises(ValueError, match="must not be blank"):
+        replace(_integration(), app_identifier=" ")
+
+
+@pytest.mark.parametrize("app_identifier", ["", "   ", "  supplied-app  "])
+def test_confirmed_configuration_preserves_supplied_app_identifier_exactly(app_identifier: str) -> None:
+    confirmed = ConfirmedIMConfiguration(
+        provider=IMProvider.FEISHU,
+        provider_tenant_id="  provider-tenant-1  ",
+        encrypted_credentials=_credentials("opaque-ciphertext"),
+        app_identifier=app_identifier,
+        callback_url=None,
+        provider_tenant_display=None,
+    )
+
+    assert confirmed.app_identifier == app_identifier
+    assert confirmed.provider_tenant_id == "provider-tenant-1"
+
+
+def test_confirmed_configuration_rejects_blank_provider_tenant_id() -> None:
+    with pytest.raises(ValueError, match="provider tenant id must not be blank"):
+        ConfirmedIMConfiguration(
+            provider=IMProvider.FEISHU,
+            provider_tenant_id="   ",
+            encrypted_credentials=_credentials("opaque-ciphertext"),
+            app_identifier="",
+            callback_url=None,
+            provider_tenant_display=None,
+        )
 
 
 def test_identity_and_binding_reject_invalid_current_state() -> None:
@@ -123,14 +154,17 @@ def test_confirmed_credential_rotation_advances_once_and_preserves_current_state
         expected_revision=integration.revision,
         provider_tenant=integration.provider_tenant,
         encrypted_credentials=_credentials("ciphertext-2"),
+        app_identifier="app-2",
         configured_by_account_id=AccountId("account-2"),
         callback_url="https://example.com/new-callback",
         now=_LATER,
     )
 
+    assert isinstance(decision, ConfigurationTransition)
     assert decision.kind is ConfigurationTransitionKind.CREDENTIAL_ROTATION
     assert decision.integration.id == integration.id
     assert decision.integration.revision.config_version == 2
+    assert decision.integration.app_identifier == "app-2"
     assert decision.invalidation.invalidate_identities is False
     assert decision.invalidation.invalidate_bindings is False
 
@@ -143,6 +177,7 @@ def test_credential_rotation_rejects_replacement_identity() -> None:
             expected_revision=integration.revision,
             provider_tenant=integration.provider_tenant,
             encrypted_credentials=_credentials("ciphertext-2"),
+            app_identifier="app-2",
             configured_by_account_id=None,
             callback_url=None,
             now=_LATER,
@@ -156,24 +191,19 @@ def test_provider_tenant_replacement_gets_new_identity_and_invalidates_current_s
     decision = integration.reconfigure(
         expected_revision=integration.revision,
         provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "provider-tenant-2"),
-        encrypted_credentials=EncryptedCredentials.from_mapping(
-            {
-                "client_id": "client-1",
-                "encrypted_client_secret": "ciphertext-2",
-                "encrypted_signing_secret": "ciphertext-3",
-                "encrypted_bot_token": "ciphertext-4",
-                "encrypted_app_token": "ciphertext-5",
-            }
-        ),
+        encrypted_credentials=EncryptedCredentials(ciphertext="ciphertext-2"),
+        app_identifier="client-1",
         configured_by_account_id=AccountId("account-2"),
         callback_url=None,
         now=_LATER,
         replacement_integration_id=IntegrationId("integration-2"),
     )
 
+    assert isinstance(decision, ConfigurationTransition)
     assert decision.kind is ConfigurationTransitionKind.PROVIDER_REPLACEMENT
     assert decision.integration.id == IntegrationId("integration-2")
     assert decision.integration.revision.config_version == 1
+    assert decision.integration.app_identifier == "client-1"
     assert decision.invalidation.invalidate_identities is True
     assert decision.invalidation.invalidate_bindings is True
 
@@ -181,6 +211,7 @@ def test_provider_tenant_replacement_gets_new_identity_and_invalidates_current_s
         expected_revision=integration.revision,
         provider_tenant=decision.integration.provider_tenant,
         encrypted_credentials=decision.integration.encrypted_credentials,
+        app_identifier=decision.integration.app_identifier,
         configured_by_account_id=AccountId("account-2"),
         callback_url=None,
         now=_LATER,
@@ -195,15 +226,8 @@ def test_provider_replacement_requires_new_integration_identity() -> None:
         integration.reconfigure(
             expected_revision=integration.revision,
             provider_tenant=ProviderTenantIdentity(IMProvider.SLACK, "provider-tenant-2"),
-            encrypted_credentials=EncryptedCredentials.from_mapping(
-                {
-                    "client_id": "client-1",
-                    "encrypted_client_secret": "ciphertext-2",
-                    "encrypted_signing_secret": "ciphertext-3",
-                    "encrypted_bot_token": "ciphertext-4",
-                    "encrypted_app_token": "ciphertext-5",
-                }
-            ),
+            encrypted_credentials=EncryptedCredentials(ciphertext="ciphertext-2"),
+            app_identifier="client-1",
             configured_by_account_id=None,
             callback_url=None,
             now=_LATER,
@@ -218,6 +242,7 @@ def test_stale_update_and_delete_return_stable_results() -> None:
         expected_revision=stale_token,
         provider_tenant=integration.provider_tenant,
         encrypted_credentials=_credentials("ciphertext-2"),
+        app_identifier="app-2",
         configured_by_account_id=AccountId("account-2"),
         callback_url=None,
         now=_LATER,

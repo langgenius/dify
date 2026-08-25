@@ -8,12 +8,10 @@ from pydantic import Field, SecretStr, field_validator
 
 from core.human_input_v2.email_channel import ResendCandidate
 from core.human_input_v2.entities import EmailProviderType, IMProvider
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-)
 from core.human_input_v2.im_provider import (
     DingTalkIMIntegrationCredentials,
+    FeishuIMIntegrationCredentials,
+    LarkIMIntegrationCredentials,
     MSTeamsIMIntegrationCredentials,
     SlackIMIntegrationCredentials,
     WeComIMIntegrationCredentials,
