@@ -949,6 +949,59 @@ describe('KnowledgeSettingsForm', () => {
     expect(thresholdSwitch).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('keeps a rejected score threshold draft and explains permission failures', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchSettings.mockRejectedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: 'knowledge_fs_access_denied',
+          message: 'You do not have permission to perform this KnowledgeFS operation.',
+          status: 403,
+        }),
+        { status: 403 },
+      ),
+    )
+    renderForm({
+      settings: {
+        ...settings,
+        retrieval: {
+          ...settings.retrieval,
+          score_threshold: {
+            ...settings.retrieval.score_threshold,
+            enabled: true,
+          },
+        },
+      },
+    })
+
+    const thresholdInput = screen.getByRole('spinbutton', {
+      name: 'appDebug.datasetConfig.score_threshold',
+    })
+    await user.clear(thresholdInput)
+    await user.type(thresholdInput, '0.72')
+    await user.tab()
+
+    expect(await screen.findByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.settings.saveFailed')).not.toBeInTheDocument()
+    expect(thresholdInput).toHaveValue(0.72)
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(serviceMock.patchSettings).toHaveBeenCalledTimes(2))
+    expect(serviceMock.patchSettings).toHaveBeenLastCalledWith(
+      {
+        body: {
+          expectedRevision: 5,
+          retrieval: expect.objectContaining({
+            scoreThreshold: expect.objectContaining({ value: 0.72 }),
+          }),
+        },
+        params: { control_space_id: 'space-1' },
+      },
+      expect.anything(),
+    )
+  })
+
   it('requires a rerank model for a legacy knowledge base and saves it as enabled', async () => {
     const user = userEvent.setup()
     const onDraftFinish = vi.fn()

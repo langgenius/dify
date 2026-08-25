@@ -64,6 +64,10 @@ const RERANK_MODEL_ERROR_ID = 'knowledge-rerank-model-error'
 
 type BasicSaveSlice = 'members' | 'space'
 type SaveErrorSlice = 'basic' | 'externalAccess' | 'settings'
+type SaveError = {
+  kind: 'generic' | 'permission'
+  slice: SaveErrorSlice
+}
 
 type ExternalAccessDraft = {
   apiEnabled: boolean
@@ -286,7 +290,7 @@ export function KnowledgeSettingsForm({
     }),
   )
   const [nameTouched, setNameTouched] = useState(false)
-  const [saveErrorSlice, setSaveErrorSlice] = useState<SaveErrorSlice>()
+  const [saveError, setSaveError] = useState<SaveError>()
   const [isBasicRefreshing, setIsBasicRefreshing] = useState(false)
   const [pendingMigrationId, setPendingMigrationId] = useState<string>()
   const [pendingEmbeddingModel, setPendingEmbeddingModel] = useState<DefaultModel>()
@@ -408,7 +412,9 @@ export function KnowledgeSettingsForm({
     consoleQuery.knowledgeFs.spaces.byControlSpaceId.externalAccess.put.mutationOptions(),
   )
   const settingsMutation = useMutation(
-    consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.patch.mutationOptions(),
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.patch.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const migrationQuery = useQuery({
     ...consoleQuery.knowledgeFs.spaces.byControlSpaceId.settings.migrations.byMigrationId.get.queryOptions(
@@ -463,7 +469,7 @@ export function KnowledgeSettingsForm({
     setVisibility(space.visibility)
     setSelectedMemberIds(initialSelectedMemberIds)
     setNameTouched(false)
-    if (saveErrorSlice === 'basic') setSaveErrorSlice(undefined)
+    if (saveError?.slice === 'basic') setSaveError(undefined)
     onDraftFinish?.()
   }
 
@@ -537,7 +543,7 @@ export function KnowledgeSettingsForm({
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- A terminal remote migration retires the local polling guard.
       setPendingMigrationId(undefined)
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- The authoritative failed migration transitions the save UI to its retry state.
-      setSaveErrorSlice('settings')
+      setSaveError({ kind: 'generic', slice: 'settings' })
     }
   }, [
     invalidateSettingsQueries,
@@ -550,7 +556,7 @@ export function KnowledgeSettingsForm({
   const performBasicSave = async () => {
     if (saveDisabled || !canEdit) return
 
-    setSaveErrorSlice(undefined)
+    setSaveError(undefined)
 
     try {
       const saveSlice = async (
@@ -605,7 +611,7 @@ export function KnowledgeSettingsForm({
         () => setIsBasicRefreshing(false),
       )
     } catch {
-      setSaveErrorSlice('basic')
+      setSaveError({ kind: 'generic', slice: 'basic' })
     }
   }
 
@@ -621,7 +627,7 @@ export function KnowledgeSettingsForm({
     let nextDraft: ExternalAccessDraft | undefined = draft
     while (nextDraft) {
       queuedExternalAccessDraftRef.current = undefined
-      setSaveErrorSlice(undefined)
+      setSaveError(undefined)
       try {
         await externalAccessMutation.mutateAsync({
           body: {
@@ -639,7 +645,7 @@ export function KnowledgeSettingsForm({
         externalAccessSaveInFlightRef.current = false
         setApiEnabled(externalAccessBaselineRef.current.apiEnabled)
         setWorkflowEnabled(externalAccessBaselineRef.current.workflowEnabled)
-        setSaveErrorSlice('externalAccess')
+        setSaveError({ kind: 'generic', slice: 'externalAccess' })
         return
       }
     }
@@ -691,7 +697,7 @@ export function KnowledgeSettingsForm({
       }
     }
 
-    setSaveErrorSlice(undefined)
+    setSaveError(undefined)
     try {
       const result = await settingsMutation.mutateAsync({
         body,
@@ -714,8 +720,11 @@ export function KnowledgeSettingsForm({
       }
       await invalidateSettingsQueries()
       return 'saved' as const
-    } catch {
-      setSaveErrorSlice('settings')
+    } catch (error) {
+      setSaveError({
+        kind: error instanceof Response && error.status === 403 ? 'permission' : 'generic',
+        slice: 'settings',
+      })
       return 'failed' as const
     }
   }
@@ -799,11 +808,11 @@ export function KnowledgeSettingsForm({
   }
 
   const retrySave = () => {
-    if (saveErrorSlice === 'externalAccess') {
+    if (saveError?.slice === 'externalAccess') {
       void performExternalAccessSave(pendingExternalAccessRef.current)
       return
     }
-    if (saveErrorSlice === 'settings') {
+    if (saveError?.slice === 'settings') {
       void performSettingsSave(pendingSettingsDraftRef.current ?? liveSettingsDraftRef.current)
       return
     }
@@ -976,14 +985,16 @@ export function KnowledgeSettingsForm({
           />
         )}
 
-      {saveErrorSlice && (
+      {saveError && (
         <div
           className="mb-3 flex items-center gap-2 rounded-lg border border-text-destructive/20 bg-background-default-subtle px-3 py-2"
           role="alert"
         >
           <span aria-hidden className="i-ri-error-warning-fill size-4 text-text-destructive" />
           <span className="min-w-0 flex-1 system-xs-regular text-text-destructive">
-            {t(($) => $['newKnowledge.settings.saveFailed'])}
+            {saveError.kind === 'permission'
+              ? t(($) => $['newKnowledge.permissionRestricted'])
+              : t(($) => $['newKnowledge.settings.saveFailed'])}
           </span>
           <Button type="button" size="small" variant="ghost" onClick={retrySave}>
             {tCommon(($) => $['operation.retry'])}
