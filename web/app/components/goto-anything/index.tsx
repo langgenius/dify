@@ -2,7 +2,7 @@
 
 import type { AutocompleteChangeEventDetails } from '@langgenius/dify-ui/autocomplete'
 import type { Plugin } from '../plugins/types'
-import type { ActionItem, RecentSearchResult, SearchResult } from './actions/types'
+import type { ActionItem, SearchResult } from './actions/types'
 import {
   Autocomplete,
   AutocompleteCollection,
@@ -33,21 +33,27 @@ import {
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
+import { useAtomValue } from 'jotai'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MAIN_NAV_ROUTES } from '@/app/components/main-nav/routes'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
+import { isCurrentWorkspaceDatasetOperatorAtom } from '@/context/workspace-state'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { usePathname, useRouter } from '@/next/navigation'
 import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
 import { createActions, getActionSearchTerm, matchAction } from './actions'
+import { agentSearchQueryOptions } from './actions/agent'
 import { appSearchQueryOptions } from './actions/app'
 import { slashCommandRegistry } from './actions/commands/registry'
 import { SlashCommandProvider } from './actions/commands/slash-provider'
 import { knowledgeSearchQueryOptions } from './actions/knowledge'
 import { pluginSearchQueryOptions } from './actions/plugin'
-import { addRecentItem, getRecentItems } from './actions/recent-store'
+import { skillSearchQueryOptions } from './actions/skill'
 import { EmptyState } from './components/empty-state'
 import { Footer } from './components/footer'
 import { gotoAnythingDialogHandle } from './dialog-handle'
@@ -61,6 +67,7 @@ type CommandOption = {
   kind: 'command-option'
   shortcut: string
   description: string
+  icon: string
 }
 
 type GotoAnythingOption = CommandOption | SearchResult
@@ -71,9 +78,8 @@ const slashCommandDescriptionKeys = {
   '/theme': 'gotoAnything.actions.themeCategoryDesc',
   '/language': 'gotoAnything.actions.languageChangeDesc',
   '/account': 'gotoAnything.actions.accountDesc',
-  '/feedback': 'gotoAnything.actions.feedbackDesc',
   '/docs': 'gotoAnything.actions.docDesc',
-  '/community': 'gotoAnything.actions.communityDesc',
+  '/discord': 'gotoAnything.actions.discordDesc',
 } as const
 
 const actionDescriptionKeys = {
@@ -89,8 +95,24 @@ const groupLabelKeys = {
   knowledge: 'gotoAnything.groups.knowledgeBases',
   'workflow-node': 'gotoAnything.groups.workflowNodes',
   command: 'gotoAnything.groups.commands',
-  recent: 'gotoAnything.groups.recent',
 } as const
+
+type MainNavRouteKey = (typeof MAIN_NAV_ROUTES)[number]['key']
+
+const scopeMainNavRouteKeys = {
+  '@app': 'apps',
+  '@knowledge': 'datasets',
+  '@plugin': 'marketplace',
+  '@skill': 'skills',
+  '@agents': 'roster',
+} as const satisfies Partial<Record<ActionItem['key'], MainNavRouteKey>>
+
+function getScopeCardIcon(action: ActionItem) {
+  const routeKey = scopeMainNavRouteKeys[action.key as keyof typeof scopeMainNavRouteKeys]
+  if (!routeKey) return 'i-ri-node-tree'
+
+  return MAIN_NAV_ROUTES.find((route) => route.key === routeKey)?.icon ?? 'i-ri-node-tree'
+}
 
 function getCommandOptions(actions: Record<string, ActionItem>, query: string): CommandOption[] {
   const trimmedQuery = query.trim()
@@ -104,6 +126,7 @@ function getCommandOptions(actions: Record<string, ActionItem>, query: string): 
         kind: 'command-option',
         shortcut: `/${command.name}`,
         description: command.description,
+        icon: 'i-ri-terminal-box-line',
       }))
   }
 
@@ -114,6 +137,7 @@ function getCommandOptions(actions: Record<string, ActionItem>, query: string): 
       kind: 'command-option',
       shortcut: action.shortcut,
       description: action.description,
+      icon: getScopeCardIcon(action),
     }))
 }
 
@@ -142,7 +166,7 @@ function getSearchMode(
   isCommandsMode: boolean,
   actions: Record<string, ActionItem>,
 ) {
-  if (isCommandsMode) return searchQuery.trim().startsWith('@') ? 'scopes' : 'commands'
+  if (isCommandsMode) return searchQuery.trim().startsWith('/') ? 'commands' : 'scopes'
 
   const action = matchAction(searchQuery.trim().toLowerCase(), actions)
   if (!action) return 'general'
@@ -152,29 +176,12 @@ function getSearchMode(
 
 function isCommandSelectionQuery(query: string, actions: Record<string, ActionItem>) {
   const trimmedQuery = query.trim()
-  if (trimmedQuery === '@' || trimmedQuery === '/') return true
+  if (!trimmedQuery || trimmedQuery === '@' || trimmedQuery === '/') return true
 
   return (
     (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/')) &&
     !matchAction(trimmedQuery, actions)
   )
-}
-
-function getRecentSearchResults(): RecentSearchResult[] {
-  return getRecentItems().map((item) => ({
-    id: `recent-${item.id}`,
-    title: item.title,
-    description: item.description,
-    type: 'recent',
-    originalType: item.originalType,
-    path: item.path,
-    icon: (
-      <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
-        <span aria-hidden className="i-ri-time-line size-4 text-text-tertiary" />
-      </div>
-    ),
-    data: { path: item.path },
-  }))
 }
 
 function dedupeSearchResults(results: SearchResult[]) {
@@ -202,6 +209,10 @@ function GotoAnythingDialog() {
   const pathname = usePathname()
   const router = useRouter()
   const defaultLocale = useGetLanguage()
+  const canManageAgents = useCanManageAgents()
+  const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const agentsAvailable = isAgentV2Enabled() && canManageAgents
+  const skillsAvailable = !isCurrentWorkspaceDatasetOperator
   const isWorkflowPage =
     appWorkflowPathPattern.test(pathname) || sharedWorkflowPathPattern.test(pathname)
   const isRagPipelinePage = ragPipelinePathPattern.test(pathname)
@@ -210,8 +221,12 @@ function GotoAnythingDialog() {
   const [activePlugin, setActivePlugin] = useState<Plugin>()
   const inputRef = useRef<HTMLInputElement>(null)
   const actions = useMemo(
-    () => createActions(isWorkflowPage, isRagPipelinePage),
-    [isWorkflowPage, isRagPipelinePage],
+    () =>
+      createActions(isWorkflowPage, isRagPipelinePage, {
+        agents: agentsAvailable,
+        skills: skillsAvailable,
+      }),
+    [agentsAvailable, isWorkflowPage, isRagPipelinePage, skillsAvailable],
   )
   const trimmedSearchQuery = searchQuery.trim()
   const isCommandsMode = isCommandSelectionQuery(searchQuery, actions)
@@ -230,6 +245,12 @@ function GotoAnythingDialog() {
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@knowledge')
   const pluginSearchEnabled =
     remoteSearchEnabled && (!debouncedAction || debouncedAction.key === '@plugin')
+  const skillSearchEnabled =
+    remoteSearchEnabled && skillsAvailable && (!debouncedAction || debouncedAction.key === '@skill')
+  const agentSearchEnabled =
+    remoteSearchEnabled &&
+    agentsAvailable &&
+    (!debouncedAction || debouncedAction.key === '@agents')
   const appSearchQuery = useQuery({
     ...appSearchQueryOptions(debouncedSearchTerm, debouncedAction?.key === '@app'),
     enabled: appSearchEnabled,
@@ -241,6 +262,14 @@ function GotoAnythingDialog() {
   const pluginSearchQuery = useQuery({
     ...pluginSearchQueryOptions(debouncedSearchTerm, defaultLocale),
     enabled: pluginSearchEnabled,
+  })
+  const skillSearchQuery = useQuery({
+    ...skillSearchQueryOptions(debouncedSearchTerm),
+    enabled: skillSearchEnabled,
+  })
+  const agentSearchQuery = useQuery({
+    ...agentSearchQueryOptions(debouncedSearchTerm),
+    enabled: agentSearchEnabled,
   })
   const localSearchResults = useMemo(() => {
     if (!trimmedSearchQuery || isCommandsMode) return []
@@ -265,6 +294,8 @@ function GotoAnythingDialog() {
     appSearchEnabled ? appSearchQuery : undefined,
     knowledgeSearchEnabled ? knowledgeSearchQuery : undefined,
     pluginSearchEnabled ? pluginSearchQuery : undefined,
+    skillSearchEnabled ? skillSearchQuery : undefined,
+    agentSearchEnabled ? agentSearchQuery : undefined,
   ].filter((query) => query !== undefined)
   const isDebouncing = remoteSearchEnabled && searchQuery.trim() !== debouncedSearchQuery.trim()
   const isLoading = isDebouncing || activeRemoteQueries.some((query) => query.isLoading)
@@ -278,8 +309,7 @@ function GotoAnythingDialog() {
     ? []
     : activeRemoteQueries.flatMap((query) => query.data ?? [])
   const searchResults = [...localSearchResults, ...remoteSearchResults]
-  const recentResults = trimmedSearchQuery || isCommandsMode ? [] : getRecentSearchResults()
-  const dedupedResults = dedupeSearchResults(recentResults.length ? recentResults : searchResults)
+  const dedupedResults = dedupeSearchResults(searchResults)
   const groupedResults = groupSearchResults(dedupedResults)
 
   function resetSearch() {
@@ -330,19 +360,7 @@ function GotoAnythingDialog() {
       case 'workflow-node':
         if (result.metadata?.nodeId) selectWorkflowNode(result.metadata.nodeId, true)
         break
-      case 'recent':
-        if (result.path) router.push(result.path)
-        break
       default:
-        if ((result.type === 'app' || result.type === 'knowledge') && result.path) {
-          addRecentItem({
-            id: result.id,
-            title: result.title,
-            description: result.description,
-            path: result.path,
-            originalType: result.type,
-          })
-        }
         if (result.path) router.push(result.path)
     }
   }
@@ -366,11 +384,34 @@ function GotoAnythingDialog() {
     else handleNavigate(option)
   }
 
+  const isSlashMode = searchQuery.trim().startsWith('/')
+
+  function getCommandOptionDescription(option: CommandOption) {
+    if (option.shortcut === '/models')
+      return t(($) => $['modelProvider.systemModelSettingsDesc'], { ns: 'common' })
+
+    const descriptionKey = isSlashMode
+      ? slashCommandDescriptionKeys[option.shortcut as keyof typeof slashCommandDescriptionKeys]
+      : actionDescriptionKeys[option.shortcut as keyof typeof actionDescriptionKeys]
+
+    if (!descriptionKey) return option.description
+
+    return t(($) => $[descriptionKey], { ns: 'app' })
+  }
+
+  function getGroupLabel(type: string) {
+    if (type === 'skill') return t(($) => $['skillManagement.title'], { ns: 'skill' })
+    if (type === 'agent') return t(($) => $['roster.title'], { ns: 'agentV2' })
+
+    return t(($) => $[groupLabelKeys[type as keyof typeof groupLabelKeys] || `${type}s`], {
+      ns: 'app',
+    })
+  }
+
   const commandOptions = getCommandOptions(actions, searchQuery)
   const autocompleteOptions: GotoAnythingOption[] = isCommandsMode ? commandOptions : dedupedResults
   const visibleOptions = isLoading || isError ? [] : autocompleteOptions
   const autocompleteResultCount = visibleOptions.length
-  const isSlashMode = searchQuery.trim().startsWith('/')
 
   let autocompleteStatus: string | null = null
   if (isLoading) autocompleteStatus = t(($) => $['gotoAnything.searching'], { ns: 'app' })
@@ -397,8 +438,16 @@ function GotoAnythingDialog() {
           <DialogBackdrop />
           <DialogPopup
             initialFocus={inputRef}
-            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120! max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden p-0!"
+            className="fixed top-1/2 left-1/2 isolate max-h-[80dvh] w-160! max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden p-0!"
           >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[url('/marketplace/hero-gradient-noise.svg')] bg-cover bg-center opacity-18 dark:opacity-28"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-linear-to-b from-components-panel-bg/20 via-components-panel-bg/70 to-components-panel-bg"
+            />
             <DialogTitle className="sr-only">
               {t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })}
             </DialogTitle>
@@ -443,7 +492,7 @@ function GotoAnythingDialog() {
 
               <AutocompleteStatus className="sr-only">{autocompleteStatus}</AutocompleteStatus>
 
-              <ScrollArea className="relative h-60 min-h-0 overflow-hidden">
+              <ScrollArea className="relative h-88 min-h-0 overflow-hidden">
                 <ScrollAreaViewport
                   aria-busy={isLoading || undefined}
                   className="scroll-py-1 overscroll-contain"
@@ -472,46 +521,35 @@ function GotoAnythingDialog() {
                     {!isLoading && !isError && isCommandsMode && autocompleteResultCount > 0 && (
                       <AutocompleteList className="max-h-none overflow-visible p-0">
                         <AutocompleteGroup items={commandOptions}>
-                          <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-left text-sm font-medium text-text-secondary">
+                          <AutocompleteGroupLabel className="px-4 pt-4 pb-2 text-left font-mono text-[11px] font-medium tracking-[0.12em] text-text-tertiary uppercase">
                             {isSlashMode
                               ? t(($) => $['gotoAnything.groups.commands'], { ns: 'app' })
                               : t(($) => $['gotoAnything.selectSearchType'], { ns: 'app' })}
                           </AutocompleteGroupLabel>
-                          <AutocompleteCollection<CommandOption>>
-                            {(option) => (
-                              <AutocompleteItem
-                                key={option.shortcut}
-                                value={option}
-                                className="mx-4 p-2"
-                                onClick={() => selectOption(option)}
-                              >
-                                <span className="min-w-18 text-left font-mono text-xs text-text-tertiary">
-                                  {option.shortcut}
-                                </span>
-                                <span className="ml-3 text-sm text-text-secondary">
-                                  {isSlashMode
-                                    ? t(
-                                        ($) =>
-                                          $[
-                                            slashCommandDescriptionKeys[
-                                              option.shortcut as keyof typeof slashCommandDescriptionKeys
-                                            ] || option.description
-                                          ],
-                                        { ns: 'app' },
-                                      )
-                                    : t(
-                                        ($) =>
-                                          $[
-                                            actionDescriptionKeys[
-                                              option.shortcut as keyof typeof actionDescriptionKeys
-                                            ]
-                                          ],
-                                        { ns: 'app' },
-                                      )}
-                                </span>
-                              </AutocompleteItem>
-                            )}
-                          </AutocompleteCollection>
+                          <div className="grid grid-cols-1 gap-2 px-4 pb-4 sm:grid-cols-2">
+                            <AutocompleteCollection<CommandOption>>
+                              {(option) => (
+                                <AutocompleteItem
+                                  key={option.shortcut}
+                                  value={option}
+                                  className="group m-0 min-h-18 items-start gap-3 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg/90 p-3 shadow-xs shadow-shadow-shadow-3 backdrop-blur-sm hover:border-divider-regular hover:bg-state-base-hover-alt data-highlighted:border-state-accent-solid data-highlighted:bg-state-base-hover"
+                                  onClick={() => selectOption(option)}
+                                >
+                                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default text-text-tertiary group-data-highlighted:text-text-accent">
+                                    <span aria-hidden className={`${option.icon} size-4`} />
+                                  </span>
+                                  <span className="min-w-0 flex-1 text-left">
+                                    <span className="block truncate font-mono text-xs font-semibold tracking-[-0.01em] text-text-primary">
+                                      {option.shortcut}
+                                    </span>
+                                    <span className="mt-1 line-clamp-2 block text-xs leading-4 text-text-tertiary">
+                                      {getCommandOptionDescription(option)}
+                                    </span>
+                                  </span>
+                                </AutocompleteItem>
+                              )}
+                            </AutocompleteCollection>
+                          </div>
                         </AutocompleteGroup>
                       </AutocompleteList>
                     )}
@@ -533,14 +571,7 @@ function GotoAnythingDialog() {
                           {Object.entries(groupedResults).map(([type, results]) => (
                             <AutocompleteGroup key={type} items={results}>
                               <AutocompleteGroupLabel className="px-4 pt-3 pb-2 text-text-secondary capitalize">
-                                {t(
-                                  ($) =>
-                                    $[
-                                      groupLabelKeys[type as keyof typeof groupLabelKeys] ||
-                                        `${type}s`
-                                    ],
-                                  { ns: 'app' },
-                                )}
+                                {getGroupLabel(type)}
                               </AutocompleteGroupLabel>
                               <AutocompleteCollection<SearchResult>>
                                 {(result) => (

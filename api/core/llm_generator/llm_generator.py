@@ -945,7 +945,7 @@ class LLMGenerator:
                 )
             ),
         ]
-        model_parameters = {"temperature": 0.4}
+        model_parameters, stop = _normalize_completion_params(model_config.completion_params)
 
         response: LLMResult | None = None
         error: str | None = None
@@ -954,7 +954,10 @@ class LLMGenerator:
         with measure_time() as timer:
             try:
                 response = model_instance.invoke_llm(
-                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                    prompt_messages=list(prompt_messages),
+                    model_parameters=model_parameters,
+                    stop=stop,
+                    stream=False,
                 )
                 generated_raw = response.message.get_text_content()
                 first_brace = generated_raw.find("{")

@@ -16,7 +16,7 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { UserProfileWithMeta } from '@/features/account-profile/client'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -681,30 +681,45 @@ describe('MainNav', () => {
     )
     const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
     expect(homeLink).toHaveAttribute('href', '/')
-    expect(homeLink.querySelector('.i-custom-vender-main-nav-home')).toBeInTheDocument()
+    expect(homeLink.querySelector('.i-custom-vender-main-nav-home-v2')).toBeInTheDocument()
     const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
     expect(studioLink).toHaveAttribute('href', '/apps')
-    expect(studioLink.querySelector('.i-custom-vender-main-nav-studio')).toBeInTheDocument()
+    expect(studioLink.querySelector('.i-custom-vender-main-nav-studio-v2')).toBeInTheDocument()
     const agentsLink = screen.getByRole('link', { name: /Agents/ })
     expect(agentsLink).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
-    expect(agentsLink.querySelector('.i-custom-vender-main-nav-roster')).toBeInTheDocument()
+    expect(agentsLink.querySelector('.i-custom-vender-main-nav-agent')).toBeInTheDocument()
     const skillsLink = screen.getByRole('link', { name: /common.mainNav.skills/ })
     expect(skillsLink).toHaveAttribute('href', '/skills')
     expect(skillsLink.querySelector('.i-custom-vender-main-nav-skill')).toBeInTheDocument()
     const knowledgeLink = screen.getByRole('link', { name: /common.menus.datasets/ })
     expect(knowledgeLink).toHaveAttribute('href', '/datasets')
-    expect(knowledgeLink.querySelector('.i-custom-vender-main-nav-knowledge')).toBeInTheDocument()
+    expect(
+      knowledgeLink.querySelector('.i-custom-vender-main-nav-knowledge-v2'),
+    ).toBeInTheDocument()
     const integrationsLink = screen.getByRole('link', { name: /common.mainNav.integrations/ })
     expect(integrationsLink).toHaveAttribute('href', '/integrations/model-provider')
     expect(
-      integrationsLink.querySelector('.i-custom-vender-main-nav-integrations'),
+      integrationsLink.querySelector('.i-custom-vender-main-nav-integrations-v2'),
     ).toBeInTheDocument()
     const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveAttribute('href', '/marketplace')
     expect(
-      marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace'),
+      marketplaceLink.querySelector('.i-custom-vender-main-nav-marketplace-v2'),
     ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation'))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/',
+      '/apps',
+      '/agents',
+      '/datasets',
+      '/skills',
+      '/integrations/model-provider',
+      '/marketplace',
+    ])
   })
 
   it('hides the roster entry when Agent v2 is disabled', () => {

@@ -1,3 +1,5 @@
+"""Unit coverage for datasource event-stream accumulation."""
+
 from collections.abc import Generator
 
 from pytest_mock import MockerFixture
@@ -21,7 +23,7 @@ def _gen_var_stream() -> Generator[DatasourceMessage, None, None]:
     )
 
 
-def test_stream_node_events_accumulates_variables(mocker: MockerFixture):
+def test_stream_node_events_accumulates_variables(mocker: MockerFixture) -> None:
     mocker.patch.object(DatasourceManager, "stream_online_results", return_value=_gen_var_stream())
     events = list(
         DatasourceManager.stream_node_events(
