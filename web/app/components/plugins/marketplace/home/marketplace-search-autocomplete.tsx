@@ -187,10 +187,7 @@ export function MarketplaceSearchAutocomplete({
       submitOnItemClick={Boolean(inputName)}
       value={value}
     >
-      <AutocompleteInputGroup
-        size="large"
-        className="border-[0.5px] border-components-input-border-active"
-      >
+      <AutocompleteInputGroup size="large">
         <span
           aria-hidden
           className="ml-3 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"

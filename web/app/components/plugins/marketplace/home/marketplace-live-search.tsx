@@ -76,7 +76,7 @@ export default function MarketplaceLiveSearch({
         value={value}
         onChange={(event) => setValue(event.target.value)}
         placeholder={placeholder}
-        className="h-9 w-full rounded-[10px] border-[0.5px] border-components-input-border-active bg-components-input-bg-normal py-2 pr-3 pl-9 text-sm text-text-primary outline-none placeholder:text-text-quaternary focus:border-state-accent-solid"
+        className="h-9 w-full rounded-[10px] border border-transparent bg-components-input-bg-normal py-2 pr-3 pl-9 text-sm text-text-primary outline-none placeholder:text-text-quaternary hover:border-components-input-border-hover focus:border-components-input-border-active"
       />
       {language && <input type="hidden" name="language" value={language} />}
     </form>
