@@ -56,8 +56,9 @@
    * Reordering does not help — what matters is that they are named at all.
    * Real emoji still render through per-character fallback.
    */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', 'Noto Sans', Arial, sans-serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', Arial,
+    sans-serif;
 }
 
 /* Background-image / gradient utilities. Values resolve at runtime from
