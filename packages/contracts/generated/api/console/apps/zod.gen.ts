@@ -191,15 +191,7 @@ export const zCreateAnnotationPayload = z.object({
  */
 export const zAnnotation = z.object({
   answer: z.string().nullish(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid(),
   question: z.string().nullish(),

@@ -61,7 +61,7 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
-const strictZodSchemaNames = new Set(['AccountProfilePatchPayload'])
+const strictZodSchemaNames = new Set(['AccountProfilePatchPayload', 'Parameters'])
 const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
 const fastOpenApiConsoleSpecFilename = 'fastopenapi-console-openapi.json'
@@ -262,7 +262,7 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
-const stripNullSchemaDefaults = (document: SwaggerDocument) => {
+const normalizeCodegenSchemas = (document: SwaggerDocument) => {
   const visitedSchemas = new WeakSet<object>()
 
   const visitSchema = (value: unknown) => {
@@ -270,6 +270,11 @@ const stripNullSchemaDefaults = (document: SwaggerDocument) => {
 
     visitedSchemas.add(value)
     if (value.default === null) delete value.default
+    // Dify serializes int64 fields as JSON numbers. hey-api maps int64 to
+    // bigint in Zod, which disagrees with both the wire value and its own
+    // generated TypeScript type. Keep int64 in the published OpenAPI specs,
+    // but generate number-based client validators from this in-memory copy.
+    if (value.type === 'integer' && value.format === 'int64') delete value.format
 
     for (const key of [
       'additionalProperties',
@@ -337,7 +342,7 @@ const normalizeApiSwagger = (document: SwaggerDocument) => {
   // but do not let Zod synthesize omitted transport fields during client-side
   // request or response validation. Non-null defaults remain useful for query
   // parameter ergonomics and preserve the existing generated contract behavior.
-  stripNullSchemaDefaults(document)
+  normalizeCodegenSchemas(document)
 
   return document
 }

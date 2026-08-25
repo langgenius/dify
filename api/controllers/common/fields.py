@@ -116,10 +116,15 @@ UserInputFormList = Annotated[
             "type": "array",
             "items": {
                 "type": "object",
-                "minProperties": 1,
-                "maxProperties": 1,
-                "oneOf": [{"required": [form_type]} for form_type in USER_INPUT_FORM_TYPES],
-                "additionalProperties": USER_INPUT_FORM_ITEM_CONFIG_SCHEMA,
+                "oneOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {form_type: USER_INPUT_FORM_ITEM_CONFIG_SCHEMA},
+                        "required": [form_type],
+                    }
+                    for form_type in USER_INPUT_FORM_TYPES
+                ],
             },
         }
     ),

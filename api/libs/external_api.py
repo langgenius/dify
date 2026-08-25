@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from typing import Any, Protocol, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
+from flask.typing import ResponseReturnValue
 from flask_restx import Api
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
@@ -186,7 +187,12 @@ class ExternalApi(Api):
         # Api.base_path resolves the ``root`` endpoint. A caller that disables
         # Flask-RESTX's 404 root must register its own resource with that endpoint.
         if self._register_default_root:
-            app_or_blueprint.add_url_rule(self.prefix or "/", "root", self.render_root)
+
+            def render_default_root() -> ResponseReturnValue:
+                self.render_root()
+                return "", 404
+
+            app_or_blueprint.add_url_rule(self.prefix or "/", "root", render_default_root)
 
     @override
     def _should_use_fr_error_handler(self):

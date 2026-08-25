@@ -254,15 +254,7 @@ export const zEventStreamResponse = z.string()
  */
 export const zFileResponse = z.object({
   conversation_id: z.uuid().nullish(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),

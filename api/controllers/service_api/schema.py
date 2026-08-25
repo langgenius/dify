@@ -40,63 +40,55 @@ USER_FETCH_FROM_ATTR = "_dify_service_api_user_fetch_from"
 USER_REQUIRED_ATTR = "_dify_service_api_user_required"
 JSON_USER_FETCH_FROM = "JSON"
 
+
+def _input_file_variant(transfer_method: str, source: str) -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "type": {
+                "description": "File type.",
+                "enum": ["document", "image", "audio", "video", "custom"],
+                "type": "string",
+            },
+            "transfer_method": {
+                "description": (
+                    "Transfer method: `remote_url` for a file URL or persisted uploaded-file reference, "
+                    "`local_file` for an uploaded file."
+                ),
+                "enum": [transfer_method],
+                "type": "string",
+            },
+            "url": {
+                "description": "File URL when `transfer_method` is `remote_url`.",
+                "format": "url",
+                "type": "string",
+            },
+            "remote_url": {
+                "description": "Legacy alias of `url` when `transfer_method` is `remote_url`.",
+                "format": "url",
+                "type": "string",
+            },
+            "upload_file_id": {
+                "description": (
+                    "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API. "
+                    "Required for `local_file`; also accepted with `remote_url` for compatibility with persisted "
+                    "file references."
+                ),
+                "type": "string",
+            },
+        },
+        "required": ["type", "transfer_method", source],
+    }
+
+
 INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
     "type": "object",
-    "required": ["type", "transfer_method"],
     "anyOf": [
-        {
-            "properties": {
-                "transfer_method": {"enum": ["remote_url"]},
-                "url": {"format": "url", "type": "string"},
-                "remote_url": {"format": "url", "type": "string"},
-            },
-            "anyOf": [
-                {"required": ["url"]},
-                {"required": ["remote_url"]},
-                {"required": ["upload_file_id"]},
-            ],
-        },
-        {
-            "properties": {
-                "transfer_method": {"enum": ["local_file"]},
-                "upload_file_id": {"type": "string"},
-            },
-            "required": ["upload_file_id"],
-        },
+        _input_file_variant("remote_url", "url"),
+        _input_file_variant("remote_url", "remote_url"),
+        _input_file_variant("remote_url", "upload_file_id"),
+        _input_file_variant("local_file", "upload_file_id"),
     ],
-    "properties": {
-        "type": {
-            "description": "File type.",
-            "enum": ["document", "image", "audio", "video", "custom"],
-            "type": "string",
-        },
-        "transfer_method": {
-            "description": (
-                "Transfer method: `remote_url` for a file URL or persisted uploaded-file reference, "
-                "`local_file` for an uploaded file."
-            ),
-            "enum": ["remote_url", "local_file"],
-            "type": "string",
-        },
-        "url": {
-            "description": "File URL when `transfer_method` is `remote_url`.",
-            "format": "url",
-            "type": "string",
-        },
-        "remote_url": {
-            "description": "Legacy alias of `url` when `transfer_method` is `remote_url`.",
-            "format": "url",
-            "type": "string",
-        },
-        "upload_file_id": {
-            "description": (
-                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API. "
-                "Required for `local_file`; also accepted with `remote_url` for compatibility with persisted "
-                "file references."
-            ),
-            "type": "string",
-        },
-    },
 }
 INPUT_FILE_LIST_SCHEMA: dict[str, object] = {
     "anyOf": [{"items": INPUT_FILE_ITEM_SCHEMA, "type": "array"}, {"type": "null"}]

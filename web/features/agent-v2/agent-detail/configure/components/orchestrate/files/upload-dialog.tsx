@@ -4,6 +4,7 @@ import type {
   AgentConfigFileItemResponse,
   AgentConfigFileUploadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { ChangeEvent, DragEvent } from 'react'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
@@ -237,7 +238,7 @@ export function AgentFileUploadDialog({
     commitWorkflowAgentFileMutation.isPending
 
   const commitUploadedFile = (
-    uploadedFile: { readonly id: string },
+    uploadedFile: FileResponse,
     options: {
       onSuccess: (committedFile: AgentConfigFileUploadResponse) => void
       onError: () => void

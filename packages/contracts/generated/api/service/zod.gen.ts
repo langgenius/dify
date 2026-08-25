@@ -7,15 +7,7 @@ import * as z from 'zod'
  */
 export const zAnnotation = z.object({
   answer: z.string().nullish(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid(),
   question: z.string().nullish(),
@@ -136,15 +128,7 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
  */
 export const zBlockingRetrieverResourceResponse = z.object({
   content: z.string().nullish(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   data_source_type: z.string().nullish(),
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
@@ -201,14 +185,7 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 export const zChatMessageBlockingResponse = z.object({
   answer: z.string(),
   conversation_id: z.uuid(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    }),
+  created_at: z.int(),
   event: z.literal('message'),
   id: z.uuid(),
   message_id: z.uuid(),
@@ -225,29 +202,36 @@ export const zChatRequestPayload = z.object({
   conversation_id: z.string().nullish(),
   files: z
     .array(
-      z.intersection(
-        z.union([
-          z.intersection(
-            z.unknown(),
-            z.object({
-              remote_url: z.string().optional(),
-              transfer_method: z.enum(['remote_url']).optional(),
-              url: z.string().optional(),
-            }),
-          ),
-          z.object({
-            transfer_method: z.enum(['local_file']).optional(),
-            upload_file_id: z.string(),
-          }),
-        ]),
+      z.union([
         z.object({
           remote_url: z.string().optional(),
-          transfer_method: z.enum(['local_file', 'remote_url']),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
           type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
           upload_file_id: z.string().optional(),
           url: z.string().optional(),
         }),
-      ),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -264,29 +248,36 @@ export const zChatRequestPayloadWithUser = z.object({
   conversation_id: z.string().nullish(),
   files: z
     .array(
-      z.intersection(
-        z.union([
-          z.intersection(
-            z.unknown(),
-            z.object({
-              remote_url: z.string().optional(),
-              transfer_method: z.enum(['remote_url']).optional(),
-              url: z.string().optional(),
-            }),
-          ),
-          z.object({
-            transfer_method: z.enum(['local_file']).optional(),
-            upload_file_id: z.string(),
-          }),
-        ]),
+      z.union([
         z.object({
           remote_url: z.string().optional(),
-          transfer_method: z.enum(['local_file', 'remote_url']),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
           type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
           upload_file_id: z.string().optional(),
           url: z.string().optional(),
         }),
-      ),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -356,14 +347,7 @@ export const zChildChunkUpdatePayload = z.object({
  */
 export const zCompletionBlockingResponse = z.object({
   answer: z.string(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    }),
+  created_at: z.int(),
   event: z.string(),
   id: z.uuid(),
   message_id: z.uuid(),
@@ -378,29 +362,36 @@ export const zCompletionBlockingResponse = z.object({
 export const zCompletionRequestPayload = z.object({
   files: z
     .array(
-      z.intersection(
-        z.union([
-          z.intersection(
-            z.unknown(),
-            z.object({
-              remote_url: z.string().optional(),
-              transfer_method: z.enum(['remote_url']).optional(),
-              url: z.string().optional(),
-            }),
-          ),
-          z.object({
-            transfer_method: z.enum(['local_file']).optional(),
-            upload_file_id: z.string(),
-          }),
-        ]),
+      z.union([
         z.object({
           remote_url: z.string().optional(),
-          transfer_method: z.enum(['local_file', 'remote_url']),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
           type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
           upload_file_id: z.string().optional(),
           url: z.string().optional(),
         }),
-      ),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -414,29 +405,36 @@ export const zCompletionRequestPayload = z.object({
 export const zCompletionRequestPayloadWithUser = z.object({
   files: z
     .array(
-      z.intersection(
-        z.union([
-          z.intersection(
-            z.unknown(),
-            z.object({
-              remote_url: z.string().optional(),
-              transfer_method: z.enum(['remote_url']).optional(),
-              url: z.string().optional(),
-            }),
-          ),
-          z.object({
-            transfer_method: z.enum(['local_file']).optional(),
-            upload_file_id: z.string(),
-          }),
-        ]),
+      z.union([
         z.object({
           remote_url: z.string().optional(),
-          transfer_method: z.enum(['local_file', 'remote_url']),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
           type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
           upload_file_id: z.string().optional(),
           url: z.string().optional(),
         }),
-      ),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -528,27 +526,11 @@ export const zConversationRenamePayloadWithUser = z.intersection(
  * ConversationVariableResponse
  */
 export const zConversationVariableResponse = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   description: z.string().nullish(),
   id: z.uuid(),
   name: z.string(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  updated_at: z.int().nullish(),
   value: z.string().nullish(),
   value_type: z.string(),
 })
@@ -1136,15 +1118,7 @@ export const zFilePreviewQuery = z.object({
  */
 export const zFileResponse = z.object({
   conversation_id: z.uuid().nullish(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   created_by: z.uuid().nullish(),
   extension: z.string().nullish(),
   file_key: z.string().nullish(),
@@ -1323,15 +1297,7 @@ export const zChatPauseReasonResponse = z.object({
   actions: z.array(zJsonObject).optional(),
   approval_channels: z.array(z.string()).optional(),
   display_in_ui: z.boolean().nullish(),
-  expiration_time: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  expiration_time: z.int().nullish(),
   form_content: z.string().nullish(),
   form_id: z.uuid().nullish(),
   form_token: z.string().nullish(),
@@ -1348,14 +1314,7 @@ export const zChatPauseReasonResponse = z.object({
 export const zChatPausedBlockingDataResponse = z.object({
   answer: z.string(),
   conversation_id: z.uuid(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    }),
+  created_at: z.int(),
   elapsed_time: z.number(),
   id: z.uuid(),
   message_id: z.uuid(),
@@ -1375,14 +1334,7 @@ export const zChatPausedBlockingDataResponse = z.object({
 export const zChatPausedBlockingResponse = z.object({
   answer: z.string(),
   conversation_id: z.uuid(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    }),
+  created_at: z.int(),
   data: zChatPausedBlockingDataResponse,
   event: z.literal('workflow_paused'),
   id: z.uuid(),
@@ -1786,15 +1738,7 @@ export const zRetrievalMethod = z.enum([
  */
 export const zRetrieverResource = z.object({
   content: z.string().nullish(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   data_source_type: z.string().nullish(),
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
@@ -1972,29 +1916,13 @@ export const zSimpleAccountResponse = z.object({
  * SimpleConversation
  */
 export const zSimpleConversation = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   id: z.uuid(),
   inputs: z.record(z.string(), zJsonValue),
   introduction: z.string().nullish(),
   name: z.string(),
   status: z.string(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  updated_at: z.int().nullish(),
 })
 
 /**
@@ -2118,7 +2046,298 @@ export const zParameters = z.object({
     language: z.string().optional(),
     voice: z.string().optional(),
   }),
-  user_input_form: z.array(z.unknown()),
+  user_input_form: z.array(
+    z.union([
+      z
+        .object({
+          'text-input': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          select: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          paragraph: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          number: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          external_data_tool: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          file: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          'file-list': z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          checkbox: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+      z
+        .object({
+          json_object: z.object({
+            allowed_file_extensions: z.array(z.string()).nullish(),
+            allowed_file_types: z.array(z.string()).nullish(),
+            allowed_file_upload_methods: z.array(z.string()).nullish(),
+            config: z.record(z.string(), z.unknown()).optional(),
+            default: z.unknown().optional(),
+            description: z.string().optional(),
+            hide: z.boolean().optional(),
+            json_schema: z.record(z.string(), z.unknown()).nullish(),
+            label: z.string(),
+            max_length: z.int().nullish(),
+            options: z.array(z.string()).optional(),
+            required: z.boolean().optional(),
+            type: z
+              .enum([
+                'checkbox',
+                'external_data_tool',
+                'file',
+                'file-list',
+                'json_object',
+                'number',
+                'paragraph',
+                'select',
+                'text-input',
+              ])
+              .optional(),
+            variable: z.string(),
+          }),
+        })
+        .strict(),
+    ]),
+  ),
 })
 
 /**
@@ -2312,15 +2531,7 @@ export const zHumanInputContent = z.object({
  * HumanInputFormDefinitionResponse
  */
 export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  expiration_time: z.int().nullish(),
   form_content: z.string(),
   inputs: z.array(zFormInputConfig),
   resolved_default_values: z.record(z.string(), z.string()),
@@ -2335,15 +2546,7 @@ export const zMessageListItem = z.object({
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
   conversation_id: z.uuid(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
@@ -2552,25 +2755,10 @@ export const zWorkflowEventsQuery = z.object({
  * WorkflowFinishedBlockingDataResponse
  */
 export const zWorkflowFinishedBlockingDataResponse = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    }),
+  created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullable(),
-  finished_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullable(),
+  finished_at: z.int().nullable(),
   id: z.uuid(),
   outputs: z.record(z.string(), z.unknown()).nullable(),
   status: z.enum(['failed', 'partial-succeeded', 'stopped', 'succeeded']),
@@ -2612,15 +2800,7 @@ export const zWorkflowPauseReasonResponse = z.object({
   actions: z.array(zJsonObject).optional(),
   approval_channels: z.array(z.string()).optional(),
   display_in_ui: z.boolean().nullish(),
-  expiration_time: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  expiration_time: z.int().nullish(),
   form_content: z.string().nullish(),
   form_id: z.uuid().nullish(),
   form_token: z.string().nullish(),
@@ -2635,25 +2815,10 @@ export const zWorkflowPauseReasonResponse = z.object({
  * WorkflowPausedBlockingDataResponse
  */
 export const zWorkflowPausedBlockingDataResponse = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    }),
+  created_at: z.int(),
   elapsed_time: z.number(),
   error: z.string().nullable(),
-  finished_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullable(),
+  finished_at: z.int().nullable(),
   id: z.uuid(),
   outputs: z.record(z.string(), z.unknown()).nullable(),
   paused_nodes: z.array(z.string()),
@@ -2687,27 +2852,11 @@ export const zWorkflowBlockingResponse = z.union([
  * WorkflowRunForLogResponse
  */
 export const zWorkflowRunForLogResponse = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   elapsed_time: z.union([z.number(), z.int()]).nullish(),
   error: z.string().nullish(),
   exceptions_count: z.int().nullish(),
-  finished_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  finished_at: z.int().nullish(),
   id: z.uuid(),
   status: z.string().nullish(),
   total_steps: z.int().nullish(),
@@ -2720,15 +2869,7 @@ export const zWorkflowRunForLogResponse = z.object({
  * WorkflowAppLogPartialResponse
  */
 export const zWorkflowAppLogPartialResponse = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   created_by_account: zSimpleAccountResponse.nullish(),
   created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
@@ -2764,29 +2905,36 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 export const zWorkflowRunPayload = z.object({
   files: z
     .array(
-      z.intersection(
-        z.union([
-          z.intersection(
-            z.unknown(),
-            z.object({
-              remote_url: z.string().optional(),
-              transfer_method: z.enum(['remote_url']).optional(),
-              url: z.string().optional(),
-            }),
-          ),
-          z.object({
-            transfer_method: z.enum(['local_file']).optional(),
-            upload_file_id: z.string(),
-          }),
-        ]),
+      z.union([
         z.object({
           remote_url: z.string().optional(),
-          transfer_method: z.enum(['local_file', 'remote_url']),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
           type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
           upload_file_id: z.string().optional(),
           url: z.string().optional(),
         }),
-      ),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -2799,29 +2947,36 @@ export const zWorkflowRunPayload = z.object({
 export const zWorkflowRunPayloadWithUser = z.object({
   files: z
     .array(
-      z.intersection(
-        z.union([
-          z.intersection(
-            z.unknown(),
-            z.object({
-              remote_url: z.string().optional(),
-              transfer_method: z.enum(['remote_url']).optional(),
-              url: z.string().optional(),
-            }),
-          ),
-          z.object({
-            transfer_method: z.enum(['local_file']).optional(),
-            upload_file_id: z.string(),
-          }),
-        ]),
+      z.union([
         z.object({
           remote_url: z.string().optional(),
-          transfer_method: z.enum(['local_file', 'remote_url']),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string(),
+        }),
+        z.object({
+          remote_url: z.string(),
+          transfer_method: z.enum(['remote_url']),
           type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
           upload_file_id: z.string().optional(),
           url: z.string().optional(),
         }),
-      ),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string(),
+          url: z.string().optional(),
+        }),
+      ]),
     )
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
@@ -2833,26 +2988,10 @@ export const zWorkflowRunPayloadWithUser = z.object({
  * WorkflowRunResponse
  */
 export const zWorkflowRunResponse = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   elapsed_time: z.union([z.number(), z.int()]).nullish(),
   error: z.string().nullish(),
-  finished_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  finished_at: z.int().nullish(),
   id: z.uuid(),
   inputs: z
     .union([
@@ -2884,15 +3023,7 @@ export const zMessageListItemWritable = z.object({
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
   conversation_id: z.uuid(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .nullish(),
+  created_at: z.int().nullish(),
   currency: z.string().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent),
