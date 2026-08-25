@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+from io import StringIO
 from pathlib import Path
 from types import ModuleType
 
+import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
@@ -70,3 +72,27 @@ def test_upgrade_backfills_normalized_emails_without_enforcing_uniqueness() -> N
         ("account-2", "user@gmail.com"),
         ("account-3", "user@gmail.com"),
     ]
+
+
+@pytest.mark.parametrize(
+    ("dialect_name", "dialect_marker"),
+    [("postgresql", "regexp_replace"), ("mysql", "SUBSTRING_INDEX"), ("sqlite", "instr")],
+)
+def test_backfill_emits_dialect_specific_offline_sql(dialect_name: str, dialect_marker: str) -> None:
+    module = _load_migration_module()
+    output = StringIO()
+    migration_context = MigrationContext.configure(
+        dialect_name=dialect_name,
+        opts={"as_sql": True, "output_buffer": output},
+    )
+    operations = Operations(migration_context)
+    original_op = module.__dict__["op"]
+    module.__dict__["op"] = operations
+    try:
+        module._backfill_normalized_emails()
+    finally:
+        module.__dict__["op"] = original_op
+
+    generated_sql = output.getvalue()
+    assert "UPDATE accounts" in generated_sql
+    assert dialect_marker in generated_sql
