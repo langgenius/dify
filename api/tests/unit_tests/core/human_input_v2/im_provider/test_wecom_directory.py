@@ -7,12 +7,12 @@ import pytest
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
     ProviderUserId,
-    WeComIMIntegrationCredentials,
+    WeComCredentials,
 )
 
 
@@ -117,8 +117,8 @@ class _DirectoryClient:
         self.tag = _TagAPI(tag_route)
 
 
-def _credentials() -> WeComIMIntegrationCredentials:
-    return WeComIMIntegrationCredentials(
+def _credentials() -> WeComCredentials:
+    return WeComCredentials(
         provider=IMProvider.WE_COM,
         corp_id="fake-corp-001",
         agent_id="1000001",
@@ -151,7 +151,7 @@ def _install_clients(
     calls: list[tuple[str | None, object]] = []
 
     def new_client(
-        credentials: WeComIMIntegrationCredentials,
+        credentials: WeComCredentials,
         *,
         access_token: str | None = None,
     ) -> object:

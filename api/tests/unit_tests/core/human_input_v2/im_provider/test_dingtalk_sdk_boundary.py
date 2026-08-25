@@ -22,13 +22,11 @@ from alibabacloud_dingtalk.robot_1_0.models import (
 from alibabacloud_tea_util.models import RuntimeOptions
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
-from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
+    DingTalkCredentials,
     Directory,
     DirectoryReadFailure,
     EventAcceptance,
@@ -36,6 +34,8 @@ from core.human_input_v2.im_provider import (
     MessageSendingError,
     ProviderUserId,
 )
+from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
+from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
 
 _FIXTURE_PATH = Path(__file__).parents[4] / "fixtures" / "im_provider" / "dingtalk" / "sanitized_protocol.json"
 
@@ -123,8 +123,8 @@ def _credentials(
     corp_id: str = "fake-corp-001",
     client_id: str = "fake-client-001",
     client_secret: str = "fake-client-secret-001",
-) -> DingTalkIMIntegrationCredentials:
-    return DingTalkIMIntegrationCredentials(
+) -> DingTalkCredentials:
+    return DingTalkCredentials(
         provider=IMProvider.DING_TALK,
         corp_id=corp_id,
         client_id=client_id,
@@ -199,7 +199,7 @@ def _adapter(
     provider: _OAuthSequence | None = None,
     robot: _RobotSequence | None = None,
     http: _FixtureHTTPClient | None = None,
-    credentials: DingTalkIMIntegrationCredentials | None = None,
+    credentials: DingTalkCredentials | None = None,
 ) -> tuple[DingTalkIMProviderAdapter, _OAuthSequence, _RobotSequence, _FixtureHTTPClient]:
     provider = provider or _OAuthSequence()
     robot = robot or _RobotSequence()

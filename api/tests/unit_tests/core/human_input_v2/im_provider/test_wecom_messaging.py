@@ -6,12 +6,12 @@ import pytest
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
     ProviderUserId,
-    WeComIMIntegrationCredentials,
+    WeComCredentials,
 )
 
 
@@ -52,8 +52,8 @@ class _MessagingClient:
         self.message = _MessageAPI(response)
 
 
-def _credentials() -> WeComIMIntegrationCredentials:
-    return WeComIMIntegrationCredentials(
+def _credentials() -> WeComCredentials:
+    return WeComCredentials(
         provider=IMProvider.WE_COM,
         corp_id="fake-corp-001",
         agent_id="1000001",
@@ -96,7 +96,7 @@ def _install_clients(
     access_tokens: list[str | None] = []
 
     def new_client(
-        credentials: WeComIMIntegrationCredentials,
+        credentials: WeComCredentials,
         *,
         access_token: str | None = None,
     ) -> object:
@@ -126,13 +126,10 @@ def test_messaging_calls_sdk_once_with_the_directory_user_id_and_exact_body(
     assert isinstance(result.locator, str)
     assert type(result.locator) is str
     assert MessageLocator(str(result.locator)) == result.locator
-    assert (
-        wecom_module._WeComLocatorPayload.decode(str(result.locator))
-        == wecom_module._WeComLocatorPayload(
-            v=1,
-            p=IMProvider.WE_COM,
-            message_id="fake-message-id-001",
-        )
+    assert wecom_module._WeComLocatorPayload.decode(str(result.locator)) == wecom_module._WeComLocatorPayload(
+        v=1,
+        p=IMProvider.WE_COM,
+        message_id="fake-message-id-001",
     )
     assert token_client.fetch_calls == 1
     assert access_tokens == [None, "fake-access-token-001"]

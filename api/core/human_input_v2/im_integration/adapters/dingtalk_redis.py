@@ -8,12 +8,12 @@ from typing import Protocol
 
 from redis import RedisError
 
+from core.human_input_v2.im_integration.adapters.credentials import DingTalkCredentials
 from core.human_input_v2.im_integration.adapters.dingtalk import (
     _new_oauth_client,
     _OAuthClient,
     _request_access_token,
 )
-from core.human_input_v2.im_provider import DingTalkIMIntegrationCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ class _RedisCacheClient(Protocol):
 class RedisCacheAccessTokenProvider:
     """Provide DingTalk access tokens with a shared Redis optimization."""
 
-    def __init__(self, credentials: DingTalkIMIntegrationCredentials, cache: _RedisCacheClient) -> None:
-        if not isinstance(credentials, DingTalkIMIntegrationCredentials):
+    def __init__(self, credentials: DingTalkCredentials, cache: _RedisCacheClient) -> None:
+        if not isinstance(credentials, DingTalkCredentials):
             raise TypeError("DingTalk token provider requires resolved DingTalk credentials")
         self._credentials = credentials
         self._cache = cache

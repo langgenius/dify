@@ -19,9 +19,7 @@ from slack_sdk.web import WebClient
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import slack as slack_module
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     CredentialTestFailure,
@@ -37,11 +35,13 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageSendingError,
     ProviderUserId,
-    SlackIMIntegrationCredentials,
+    SlackCredentials,
     StaticCardIntent,
     UnrecognizedIMEvent,
     WebhookRequest,
 )
+from core.human_input_v2.im_integration.adapters import slack as slack_module
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 
 _SLACK_DIRECTORY_REFERENCE_PAGE_SIZE = 1
 _MINIMUM_EXPECTED_SLACK_DIRECTORY_USERS = 2
@@ -127,7 +127,7 @@ def _non_empty_environment_value(name: str) -> str | None:
 
 
 @pytest.fixture
-def slack_credentials() -> SlackIMIntegrationCredentials:
+def slack_credentials() -> SlackCredentials:
     client_id = _non_empty_environment_value("SLACK_CLIENT_ID")
     client_secret = _non_empty_environment_value("SLACK_CLIENT_SECRET")
     signing_secret = _non_empty_environment_value("SLACK_SIGNING_SECRET")
@@ -154,7 +154,7 @@ def slack_credentials() -> SlackIMIntegrationCredentials:
     assert bot_token is not None
     assert app_token is not None
     try:
-        return SlackIMIntegrationCredentials(
+        return SlackCredentials(
             provider=IMProvider.SLACK,
             client_id=client_id,
             client_secret=client_secret,
@@ -167,7 +167,7 @@ def slack_credentials() -> SlackIMIntegrationCredentials:
 
 
 @pytest.fixture
-def slack_adapter(slack_credentials: SlackIMIntegrationCredentials) -> Generator[SlackIMProviderAdapter, None, None]:
+def slack_adapter(slack_credentials: SlackCredentials) -> Generator[SlackIMProviderAdapter, None, None]:
     adapter = SlackIMProviderAdapter(slack_credentials)
     try:
         yield adapter
@@ -176,7 +176,7 @@ def slack_adapter(slack_credentials: SlackIMIntegrationCredentials) -> Generator
 
 
 @pytest.fixture
-def slack_web_client(slack_credentials: SlackIMIntegrationCredentials) -> WebClient:
+def slack_web_client(slack_credentials: SlackCredentials) -> WebClient:
     return WebClient(token=slack_credentials.bot_token, retry_handlers=[])
 
 
@@ -329,9 +329,9 @@ def test_slack_credentials_validate_real_web_and_socket_tokens(
 
 
 def test_slack_credential_test_translates_documented_provider_rejections(
-    slack_credentials: SlackIMIntegrationCredentials,
+    slack_credentials: SlackCredentials,
 ) -> None:
-    invalid_bot_credentials = SlackIMIntegrationCredentials(
+    invalid_bot_credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id=slack_credentials.client_id,
         client_secret=slack_credentials.client_secret,
@@ -348,7 +348,7 @@ def test_slack_credential_test_translates_documented_provider_rejections(
     assert isinstance(invalid_bot_result, CredentialTestFailure)
     assert invalid_bot_result.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
 
-    invalid_app_credentials = SlackIMIntegrationCredentials(
+    invalid_app_credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id=slack_credentials.client_id,
         client_secret=slack_credentials.client_secret,
@@ -372,7 +372,7 @@ def test_slack_credential_test_translates_documented_provider_rejections(
 
 def test_slack_webhook_hmac_reconstructs_json_and_form_callbacks(
     slack_adapter: SlackIMProviderAdapter,
-    slack_credentials: SlackIMIntegrationCredentials,
+    slack_credentials: SlackCredentials,
 ) -> None:
     consumer = _RecordingConsumer()
     handler = slack_adapter.create_webhook_handler(consumer)
@@ -421,7 +421,7 @@ def test_slack_webhook_hmac_reconstructs_json_and_form_callbacks(
 
 def test_slack_webhook_rejects_unauthenticated_and_authenticated_malformed_requests(
     slack_adapter: SlackIMProviderAdapter,
-    slack_credentials: SlackIMIntegrationCredentials,
+    slack_credentials: SlackCredentials,
 ) -> None:
     consumer = _RecordingConsumer(EventAcceptance.NOT_ACCEPTED)
     handler = slack_adapter.create_webhook_handler(consumer)
@@ -507,7 +507,7 @@ def test_slack_webhook_rejects_unauthenticated_and_authenticated_malformed_reque
 
 def test_slack_webhook_completes_signed_url_verification(
     slack_adapter: SlackIMProviderAdapter,
-    slack_credentials: SlackIMIntegrationCredentials,
+    slack_credentials: SlackCredentials,
 ) -> None:
     handler = slack_adapter.create_webhook_handler(_RecordingConsumer())
     body = b'{"type":"url_verification","challenge":"sanitized-challenge"}'

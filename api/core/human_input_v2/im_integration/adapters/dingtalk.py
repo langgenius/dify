@@ -27,15 +27,21 @@ from alibabacloud_tea_util.models import RuntimeOptions
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters.credentials import DingTalkCredentials
+from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
+    MessageAccepted,
+    MessageSendingError,
+    MessageSendingResult,
+    ProviderUserId,
+)
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator, _Base64JSONLocatorPayload
+from core.human_input_v2.im_integration.adapters.protocols import (
     IMCardEventDecoder,
     IMDirectory,
     IMDynamicCardMessaging,
@@ -43,11 +49,6 @@ from core.human_input_v2.im_provider import (
     IMEventStream,
     IMMessaging,
     IMWebhookHandler,
-    MessageAccepted,
-    MessageLocator,
-    MessageSendingError,
-    MessageSendingResult,
-    ProviderUserId,
 )
 
 _DEPARTMENT_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/department/listsub"
@@ -186,7 +187,7 @@ class _DingTalkLocatorPayload(_Base64JSONLocatorPayload):
 
 
 class _SDKAccessTokenProvider(AccessTokenProvider):
-    def __init__(self, credentials: DingTalkIMIntegrationCredentials, client: _OAuthClient) -> None:
+    def __init__(self, credentials: DingTalkCredentials, client: _OAuthClient) -> None:
         self._credentials = credentials
         self._client = client
 
@@ -344,8 +345,8 @@ class DingTalkIMProviderAdapter:
     def card_event_decoder(cls) -> IMCardEventDecoder | None:
         return None
 
-    def __init__(self, credentials: DingTalkIMIntegrationCredentials) -> None:
-        if not isinstance(credentials, DingTalkIMIntegrationCredentials):
+    def __init__(self, credentials: DingTalkCredentials) -> None:
+        if not isinstance(credentials, DingTalkCredentials):
             raise TypeError("DingTalk adapter requires resolved DingTalk credentials")
         self._credentials = credentials
         self._credential_test_client = _new_oauth_client()
@@ -429,11 +430,11 @@ def _sdk_config() -> Config:
     )
 
 
-def _get_access_token(client: _OAuthClient, credentials: DingTalkIMIntegrationCredentials) -> str:
+def _get_access_token(client: _OAuthClient, credentials: DingTalkCredentials) -> str:
     return _request_access_token(client, credentials).value
 
 
-def _request_access_token(client: _OAuthClient, credentials: DingTalkIMIntegrationCredentials) -> _AccessToken:
+def _request_access_token(client: _OAuthClient, credentials: DingTalkCredentials) -> _AccessToken:
     try:
         response = client.get_token(
             credentials.corp_id,

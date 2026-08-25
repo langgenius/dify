@@ -12,14 +12,21 @@ from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters.credentials import WeComCredentials
+from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
     Directory,
     DirectoryEntry,
     DirectoryReadFailure,
+    MessageAccepted,
+    MessageSendingError,
+    MessageSendingResult,
+    ProviderUserId,
+)
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator, _Base64JSONLocatorPayload
+from core.human_input_v2.im_integration.adapters.protocols import (
     IMCardEventDecoder,
     IMDirectory,
     IMDynamicCardMessaging,
@@ -27,12 +34,6 @@ from core.human_input_v2.im_provider import (
     IMEventStream,
     IMMessaging,
     IMWebhookHandler,
-    MessageAccepted,
-    MessageLocator,
-    MessageSendingError,
-    MessageSendingResult,
-    ProviderUserId,
-    WeComIMIntegrationCredentials,
 )
 
 _SDK_TIMEOUT_SECONDS = 5.0
@@ -247,7 +248,7 @@ class _WeComLocatorPayload(_Base64JSONLocatorPayload):
 
 
 class _SDKAccessTokenProvider(AccessTokenProvider):
-    def __init__(self, credentials: WeComIMIntegrationCredentials) -> None:
+    def __init__(self, credentials: WeComCredentials) -> None:
         self._credentials = credentials
 
     @override
@@ -258,7 +259,7 @@ class _SDKAccessTokenProvider(AccessTokenProvider):
 class _WeComDirectory(IMDirectory):
     def __init__(
         self,
-        credentials: WeComIMIntegrationCredentials,
+        credentials: WeComCredentials,
         token_provider: AccessTokenProvider,
     ) -> None:
         self._credentials = credentials
@@ -317,7 +318,7 @@ class _WeComDirectory(IMDirectory):
 class _WeComMessaging(IMMessaging):
     def __init__(
         self,
-        credentials: WeComIMIntegrationCredentials,
+        credentials: WeComCredentials,
         token_provider: AccessTokenProvider,
     ) -> None:
         self._credentials = credentials
@@ -364,8 +365,8 @@ class WeComIMProviderAdapter:
     def card_event_decoder(cls) -> IMCardEventDecoder | None:
         return None
 
-    def __init__(self, credentials: WeComIMIntegrationCredentials) -> None:
-        if not isinstance(credentials, WeComIMIntegrationCredentials):
+    def __init__(self, credentials: WeComCredentials) -> None:
+        if not isinstance(credentials, WeComCredentials):
             raise TypeError("WeCom adapter requires resolved WeCom credentials")
         self._credentials = credentials
         token_provider = _SDKAccessTokenProvider(credentials)
@@ -438,7 +439,7 @@ class WeComIMProviderAdapter:
 
 
 def _new_client(
-    credentials: WeComIMIntegrationCredentials,
+    credentials: WeComCredentials,
     *,
     access_token: str | None = None,
 ) -> _WeComClient:

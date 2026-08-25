@@ -18,15 +18,15 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
+    EventAcceptance,
+    SlackCredentials,
+    WebhookRequest,
+)
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxProcessingPolicy
-from core.human_input_v2.im_provider import (
-    AuthenticatedIMEvent,
-    EventAcceptance,
-    SlackIMIntegrationCredentials,
-    WebhookRequest,
-)
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
@@ -81,8 +81,8 @@ class _DelegatingConsumer:
         return self._sink.accept(event)
 
 
-def _credentials() -> SlackIMIntegrationCredentials:
-    return SlackIMIntegrationCredentials(
+def _credentials() -> SlackCredentials:
+    return SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="sanitized-client-id",
         client_secret="sanitized-client-secret",

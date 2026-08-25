@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input_v2.im_integration.adapters.entities import AuthenticatedIMEvent
 from core.human_input_v2.im_message_inbox import (
     AcceptanceKind,
     ClaimToken,
@@ -37,7 +38,6 @@ from core.human_input_v2.im_message_inbox import (
     canonicalize_inbox_event,
     validate_inbox_event,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent
 from core.human_input_v2.shared import IntegrationId
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import IMMessageInbox

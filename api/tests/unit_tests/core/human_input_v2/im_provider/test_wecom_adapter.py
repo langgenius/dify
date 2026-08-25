@@ -10,12 +10,12 @@ from wechatpy.enterprise import WeChatClient
 from wechatpy.exceptions import WeChatClientException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
     EventAcceptance,
-    WeComIMIntegrationCredentials,
+    WeComCredentials,
 )
 
 
@@ -55,8 +55,8 @@ class _FakeClient:
         return self.token_response
 
 
-def _credentials() -> WeComIMIntegrationCredentials:
-    return WeComIMIntegrationCredentials(
+def _credentials() -> WeComCredentials:
+    return WeComCredentials(
         provider=IMProvider.WE_COM,
         corp_id="fake-corp-001",
         agent_id="1000001",
@@ -202,10 +202,10 @@ def test_credential_test_calls_the_sdk_directly_for_every_invocation(
         _FakeClient(_token_response(token="fake-direct-token-001"), _agent_response()),
         _FakeClient(_token_response(token="fake-direct-token-002"), _agent_response()),
     ]
-    factory_calls: list[tuple[WeComIMIntegrationCredentials, str | None]] = []
+    factory_calls: list[tuple[WeComCredentials, str | None]] = []
 
     def new_client(
-        credentials: WeComIMIntegrationCredentials,
+        credentials: WeComCredentials,
         *,
         access_token: str | None = None,
     ) -> _FakeClient:

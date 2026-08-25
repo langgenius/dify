@@ -39,10 +39,10 @@ from core.human_input_v2.im_integration import (
     EncryptedCredentials,
     IMControlPlaneRepository,
     IMIntegration,
-    IMProviderCredentials,
     IMProviderTestResult,
     ProviderTenantIdentity,
 )
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import (
     AccountId,
     DirectoryScope,

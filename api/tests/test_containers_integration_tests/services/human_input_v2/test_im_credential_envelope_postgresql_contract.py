@@ -14,18 +14,19 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import IMIntegration, IMProviderCredentials, ProviderTenantIdentity
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration import IMIntegration, ProviderTenantIdentity
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
+    DingTalkCredentials,
+    FeishuCredentials,
     IMDirectory,
     IMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
+    LarkCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
 )
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
@@ -64,7 +65,7 @@ class _CredentialCase:
 
 _CASES = (
     _CredentialCase(
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="feishu-app",
             app_secret="feishu-secret",
@@ -76,7 +77,7 @@ _CASES = (
         TenantId("00000000-0000-0000-0000-000000000821"),
     ),
     _CredentialCase(
-        LarkIMIntegrationCredentials(
+        LarkCredentials(
             provider=IMProvider.LARK,
             app_id="lark-app",
             app_secret="lark-secret",
@@ -88,7 +89,7 @@ _CASES = (
         TenantId("00000000-0000-0000-0000-000000000822"),
     ),
     _CredentialCase(
-        SlackIMIntegrationCredentials(
+        SlackCredentials(
             provider=IMProvider.SLACK,
             client_id="slack-client",
             client_secret="slack-client-secret",
@@ -101,7 +102,7 @@ _CASES = (
         TenantId("00000000-0000-0000-0000-000000000823"),
     ),
     _CredentialCase(
-        DingTalkIMIntegrationCredentials(
+        DingTalkCredentials(
             provider=IMProvider.DING_TALK,
             corp_id="ding-corp",
             client_id="ding-client",
@@ -112,7 +113,7 @@ _CASES = (
         TenantId("00000000-0000-0000-0000-000000000824"),
     ),
     _CredentialCase(
-        MSTeamsIMIntegrationCredentials(
+        MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="00000000-0000-0000-0000-000000000831",
             client_id="00000000-0000-0000-0000-000000000832",
@@ -123,7 +124,7 @@ _CASES = (
         TenantId("00000000-0000-0000-0000-000000000825"),
     ),
     _CredentialCase(
-        WeComIMIntegrationCredentials(
+        WeComCredentials(
             provider=IMProvider.WE_COM,
             corp_id="wecom-corp",
             agent_id="1001",
@@ -272,7 +273,7 @@ def test_default_deployment_configuration_fails_before_provider_or_key_io(
     db_session_with_containers: Session,
 ) -> None:
     integration_id = IntegrationId("00000000-0000-0000-0000-000000000818")
-    credentials = SlackIMIntegrationCredentials(
+    credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="slack-client",
         client_secret="slack-client-secret",
@@ -314,7 +315,7 @@ def test_explicit_deployment_bounded_cipher_round_trips_only_as_an_interface_sea
     db_session_with_containers: Session,
 ) -> None:
     integration_id = IntegrationId("00000000-0000-0000-0000-000000000818")
-    credentials = SlackIMIntegrationCredentials(
+    credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="slack-client",
         client_secret="slack-client-secret",
@@ -384,7 +385,7 @@ def test_explicit_deployment_bounded_cipher_round_trips_only_as_an_interface_sea
     captured_credentials: list[IMProviderCredentials] = []
 
     def capture_adapter(candidate: IMProviderCredentials) -> IMProviderAdapter:
-        assert isinstance(candidate, SlackIMIntegrationCredentials)
+        assert isinstance(candidate, SlackCredentials)
         captured_credentials.append(candidate)
         return cast(IMProviderAdapter, _CapturedAdapter())
 
@@ -397,7 +398,7 @@ def test_explicit_deployment_bounded_cipher_round_trips_only_as_an_interface_sea
 
     assert decrypt_calls == [persisted_ciphertext]
     assert captured_credentials == [credentials]
-    assert type(captured_credentials[0]) is SlackIMIntegrationCredentials
+    assert type(captured_credentials[0]) is SlackCredentials
 
 
 @pytest.mark.parametrize("case", _CASES, ids=lambda case: case.credentials.provider.value)
@@ -458,12 +459,12 @@ def test_postgresql_persists_one_envelope_and_recovers_the_exact_typed_model(
         assert isinstance(
             credentials,
             (
-                SlackIMIntegrationCredentials,
-                FeishuIMIntegrationCredentials,
-                LarkIMIntegrationCredentials,
-                DingTalkIMIntegrationCredentials,
-                MSTeamsIMIntegrationCredentials,
-                WeComIMIntegrationCredentials,
+                SlackCredentials,
+                FeishuCredentials,
+                LarkCredentials,
+                DingTalkCredentials,
+                MSTeamsCredentials,
+                WeComCredentials,
             ),
         )
         adapter_credentials.append(credentials)
@@ -485,7 +486,7 @@ def test_postgresql_persists_one_envelope_and_recovers_the_exact_typed_model(
     "recovered_payload",
     [
         "not-json",
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="feishu-app",
             app_secret="plaintext-secret",

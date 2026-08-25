@@ -3,8 +3,8 @@
 from datetime import UTC, datetime
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.entities import AuthenticatedIMEvent
 from core.human_input_v2.im_message_inbox import ClaimToken, IMInboxDelivery, IMInboxRecordId, InboxClaimOrigin
-from core.human_input_v2.im_provider import AuthenticatedIMEvent
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 

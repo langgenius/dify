@@ -39,7 +39,6 @@ from .management import (
     IMIntegrationAlreadyExistsError,
     IMProviderConfigurationFailureKind,
     IMProviderConfigurationPort,
-    IMProviderCredentials,
     IMProviderTestResult,
 )
 from .ports import (
@@ -131,7 +130,6 @@ __all__ = [
     "IMIntegrationView",
     "IMProviderConfigurationFailureKind",
     "IMProviderConfigurationPort",
-    "IMProviderCredentials",
     "IMProviderTestResult",
     "IMReconciliationChange",
     "IMReconciliationOperation",

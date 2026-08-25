@@ -8,13 +8,13 @@ from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.im_message_inbox import (
     ConsumerDecision,
     IMInboxDelivery,
     IMInboxRecordId,
     InboxProcessingPolicy,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 from dify_app import DifyApp
 from extensions.ext_celery import init_app as init_celery_app

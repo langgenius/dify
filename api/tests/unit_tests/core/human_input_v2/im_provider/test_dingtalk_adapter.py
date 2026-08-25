@@ -20,23 +20,23 @@ from alibabacloud_dingtalk.robot_1_0.models import (
 from alibabacloud_tea_util.models import RuntimeOptions
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
-from core.human_input_v2.im_integration.adapters.dingtalk import (
-    DingTalkIMProviderAdapter,
-    _DingTalkDirectory,
-    _DingTalkMessaging,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
+    DingTalkCredentials,
     Directory,
     DirectoryReadFailure,
     EventAcceptance,
     MessageAccepted,
     MessageSendingError,
     ProviderUserId,
+)
+from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
+from core.human_input_v2.im_integration.adapters.dingtalk import (
+    DingTalkIMProviderAdapter,
+    _DingTalkDirectory,
+    _DingTalkMessaging,
 )
 
 
@@ -188,8 +188,8 @@ def _credentials(
     corp_id: str = "sanitized-corp-id",
     client_id: str = "sanitized-client-id",
     client_secret: str = "sanitized-client-secret",
-) -> DingTalkIMIntegrationCredentials:
-    return DingTalkIMIntegrationCredentials(
+) -> DingTalkCredentials:
+    return DingTalkCredentials(
         provider=IMProvider.DING_TALK,
         corp_id=corp_id,
         client_id=client_id,
@@ -742,13 +742,12 @@ def test_messaging_calls_sdk_once_and_returns_opaque_process_reference() -> None
     assert runtime.max_attempts == 1
     assert isinstance(result.locator, str)
     assert type(result.locator) is str
-    assert (
-        dingtalk_module._DingTalkLocatorPayload.decode(str(result.locator))
-        == dingtalk_module._DingTalkLocatorPayload(
-            v=1,
-            p=IMProvider.DING_TALK,
-            process_query_key="sanitized-process-key",
-        )
+    assert dingtalk_module._DingTalkLocatorPayload.decode(
+        str(result.locator)
+    ) == dingtalk_module._DingTalkLocatorPayload(
+        v=1,
+        p=IMProvider.DING_TALK,
+        process_query_key="sanitized-process-key",
     )
 
 

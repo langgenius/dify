@@ -39,8 +39,7 @@ from core.human_input_v2 import (
     SelectInput,
 )
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import ms_teams
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     CredentialTestFailure,
@@ -53,12 +52,13 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
-    MSTeamsIMIntegrationCredentials,
+    MSTeamsCredentials,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
     StaticCardIntent,
     WebhookRequest,
+    ms_teams,
 )
 
 _PUBLIC_SERVICE_URL = "https://smba.trafficmanager.net/teams/"
@@ -230,8 +230,8 @@ def _unsigned_token(claims: Mapping[str, object]) -> str:
     return f"{header}.{payload}."
 
 
-def _credentials() -> MSTeamsIMIntegrationCredentials:
-    return MSTeamsIMIntegrationCredentials(
+def _credentials() -> MSTeamsCredentials:
+    return MSTeamsCredentials(
         provider=IMProvider.MS_TEAMS,
         tenant_id="11111111-1111-1111-1111-111111111111",
         client_id="22222222-2222-2222-2222-222222222222",
@@ -281,7 +281,7 @@ def _adapter(
     bot_token: str | None = None,
     bot_error: Exception | None = None,
     connector_factory: Callable[..., ConnectorClient] | None = None,
-    credentials: MSTeamsIMIntegrationCredentials | None = None,
+    credentials: MSTeamsCredentials | None = None,
 ) -> tuple[ms_teams.MSTeamsIMProviderAdapter, _GraphCredential, _GraphBoundary]:
     selected_credentials = credentials or _credentials()
     graph_credential = _GraphCredential(graph_token or _graph_token(), graph_error)

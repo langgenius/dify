@@ -8,34 +8,36 @@ from pydantic import SecretStr, TypeAdapter, ValidationError
 
 from controllers.console.human_input_v2._common import StrictModel
 from controllers.console.human_input_v2.providers import (
-    DingTalkCredentials,
+    DingTalkCredentialsInput,
     EmailProviderCredentials,
-    FeishuCredentials,
-    LarkCredentials,
-    MSTeamsCredentials,
+    FeishuCredentialsInput,
+    LarkCredentialsInput,
+    MSTeamsCredentialsInput,
     ResendCredentials,
-    SlackCredentials,
-    WeComCredentials,
+    SlackCredentialsInput,
+    WeComCredentialsInput,
 )
 from controllers.console.human_input_v2.providers import (
-    IMProviderCredentials as ConsoleIMProviderCredentials,
+    IMProviderCredentialsInput as ConsoleIMProviderCredentials,
 )
 from core.human_input_v2.email_channel import ResendCandidate
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import IMProviderCredentials as ProviderIMProviderCredentials
-from core.human_input_v2.im_provider import (
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
+from core.human_input_v2.im_integration.adapters import (
+    DingTalkCredentials,
+    FeishuCredentials,
+    LarkCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
+)
+from core.human_input_v2.im_integration.adapters.credentials import (
+    IMProviderCredentials as ProviderIMProviderCredentials,
 )
 
 _IM_CASES = (
     (
+        FeishuCredentialsInput,
         FeishuCredentials,
-        FeishuIMIntegrationCredentials,
         {
             "provider": "feishu",
             "app_id": "app-id",
@@ -45,8 +47,8 @@ _IM_CASES = (
         },
     ),
     (
+        LarkCredentialsInput,
         LarkCredentials,
-        LarkIMIntegrationCredentials,
         {
             "provider": "lark",
             "app_id": "app-id",
@@ -56,8 +58,8 @@ _IM_CASES = (
         },
     ),
     (
+        SlackCredentialsInput,
         SlackCredentials,
-        SlackIMIntegrationCredentials,
         {
             "provider": "slack",
             "client_id": "client-id",
@@ -68,8 +70,8 @@ _IM_CASES = (
         },
     ),
     (
+        DingTalkCredentialsInput,
         DingTalkCredentials,
-        DingTalkIMIntegrationCredentials,
         {
             "provider": "ding_talk",
             "corp_id": "corp-id",
@@ -78,8 +80,8 @@ _IM_CASES = (
         },
     ),
     (
+        MSTeamsCredentialsInput,
         MSTeamsCredentials,
-        MSTeamsIMIntegrationCredentials,
         {
             "provider": "ms_teams",
             "tenant_id": "11111111-1111-4111-8111-111111111111",
@@ -88,8 +90,8 @@ _IM_CASES = (
         },
     ),
     (
+        WeComCredentialsInput,
         WeComCredentials,
-        WeComIMIntegrationCredentials,
         {
             "provider": "we_com",
             "corp_id": "corp-id",
@@ -115,7 +117,12 @@ _SECRET_FIELD_NAMES = {
     "secret",
 }
 type _IMCredentialsDTO = (
-    FeishuCredentials | LarkCredentials | SlackCredentials | DingTalkCredentials | MSTeamsCredentials | WeComCredentials
+    FeishuCredentialsInput
+    | LarkCredentialsInput
+    | SlackCredentialsInput
+    | DingTalkCredentialsInput
+    | MSTeamsCredentialsInput
+    | WeComCredentialsInput
 )
 
 
@@ -150,10 +157,10 @@ def test_slack_app_token_is_optional_and_documented_for_socket_mode() -> None:
 
     credentials = TypeAdapter(ConsoleIMProviderCredentials).validate_python(payload)
 
-    assert isinstance(credentials, SlackCredentials)
+    assert isinstance(credentials, SlackCredentialsInput)
     assert credentials.app_token is None
     assert credentials.to_owner_credentials().app_token is None
-    schema = SlackCredentials.model_json_schema()
+    schema = SlackCredentialsInput.model_json_schema()
     assert "app_token" not in schema["required"]
     assert schema["properties"]["app_token"]["description"] == (
         "Optional Slack app-level token required only for Socket Mode."

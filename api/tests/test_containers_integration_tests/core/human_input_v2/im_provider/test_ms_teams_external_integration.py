@@ -18,13 +18,13 @@ from azure.identity import ClientSecretCredential
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     Directory,
     MessageAccepted,
-    MSTeamsIMIntegrationCredentials,
+    MSTeamsCredentials,
     ProviderUserId,
 )
+from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
 
 _GRAPH_SCOPE = "https://graph.microsoft.com/.default"
 _GRAPH_USERS_URL = "https://graph.microsoft.com/v1.0/users"
@@ -57,9 +57,9 @@ class _MSTeamsTestEnvironment:
     client_secret: str
     recipient_id: str | None
 
-    def credentials(self) -> MSTeamsIMIntegrationCredentials:
+    def credentials(self) -> MSTeamsCredentials:
         try:
-            return MSTeamsIMIntegrationCredentials(
+            return MSTeamsCredentials(
                 provider=IMProvider.MS_TEAMS,
                 tenant_id=self.tenant_id,
                 client_id=self.client_id,

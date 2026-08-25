@@ -1,9 +1,8 @@
 """Shared Feishu/Lark adapter implementation.
 
-The module deliberately keeps Provider credentials and the start/stop stream
-contract outside the public ``im_provider`` package. Feishu and Lark wrappers
-share every behavior except their typed credential, Provider discriminator,
-and official SDK domain.
+Provider credentials and capability protocols live beside this implementation
+under the adapter-owned package. Feishu and Lark wrappers share every behavior
+except their typed credential, provider discriminator, and official SDK domain.
 """
 
 from __future__ import annotations
@@ -41,8 +40,12 @@ from websockets.asyncio.client import ClientConnection
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters.credentials import (
+    FeishuCredentials,
+    LarkCredentials,
+    _FeishuLarkCredentials,
+)
+from core.human_input_v2.im_integration.adapters.entities import (
     AuthenticatedIMEvent,
     CardAssessment,
     CorrelationToken,
@@ -54,22 +57,13 @@ from core.human_input_v2.im_provider import (
     DirectoryReadFailure,
     DynamicCardMessagingError,
     EventAcceptance,
-    FeishuIMIntegrationCredentials,
     IMCardEvent,
-    IMCardEventDecoder,
     IMCardEventDecodeResult,
     IMCardEventDecodingError,
-    IMDirectory,
-    IMDynamicCardMessaging,
-    IMEventConsumer,
     IMEventIngressKind,
-    IMMessaging,
     IMStreamStartError,
     IMStreamStopError,
-    IMWebhookHandler,
-    LarkIMIntegrationCredentials,
     MessageAccepted,
-    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     ProviderUserId,
@@ -80,7 +74,15 @@ from core.human_input_v2.im_provider import (
     WebhookRequest,
     WebhookResponse,
 )
-from core.human_input_v2.im_provider.contracts import _FeishuLarkIMIntegrationCredentials
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator, _Base64JSONLocatorPayload
+from core.human_input_v2.im_integration.adapters.protocols import (
+    IMCardEventDecoder,
+    IMDirectory,
+    IMDynamicCardMessaging,
+    IMEventConsumer,
+    IMMessaging,
+    IMWebhookHandler,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +156,7 @@ class _SDKWireWriter(Protocol):
 class _OfficialSDKGateway(_SDKGateway):
     """Translate official SDK response objects into validation-local mappings."""
 
-    def __init__(self, credentials: _FeishuLarkIMIntegrationCredentials, domain: str) -> None:
+    def __init__(self, credentials: _FeishuLarkCredentials, domain: str) -> None:
         client = (
             lark.Client.builder()
             .app_id(credentials.app_id)
@@ -233,7 +235,7 @@ class _OfficialSDKGateway(_SDKGateway):
 
 
 def _create_sdk_gateway(
-    credentials: _FeishuLarkIMIntegrationCredentials,
+    credentials: _FeishuLarkCredentials,
     domain: str,
 ) -> _SDKGateway:
     return _OfficialSDKGateway(credentials, domain)
@@ -255,7 +257,7 @@ class _PerClientSDKWSClient(sdk_ws_client_module.Client):
     def __init__(
         self,
         *,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         domain: str,
         event_handler: lark.EventDispatcherHandler,
     ) -> None:
@@ -379,7 +381,7 @@ class _SynchronousEventChannel(FeishuChannel):
     def __init__(
         self,
         *,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         domain: str,
         callback: _StreamDeliveryCallback,
     ) -> None:
@@ -523,7 +525,7 @@ class _SynchronousEventChannel(FeishuChannel):
 class _OfficialSDKStreamClient:
     def __init__(
         self,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         domain: str,
         callback: _StreamDeliveryCallback,
     ) -> None:
@@ -597,7 +599,7 @@ class _OfficialSDKStreamClient:
 
 
 def _create_sdk_stream_client(
-    credentials: _FeishuLarkIMIntegrationCredentials,
+    credentials: _FeishuLarkCredentials,
     domain: str,
     callback: _StreamDeliveryCallback,
 ) -> _OfficialSDKStreamClient:
@@ -1147,7 +1149,7 @@ class _FeishuLarkMessaging(IMMessaging):
     def __init__(
         self,
         gateway: _SDKGateway,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         provider: _FeishuLarkProvider,
     ) -> None:
         self._gateway = gateway
@@ -1184,7 +1186,7 @@ class _FeishuLarkDynamicCardMessaging(IMDynamicCardMessaging):
     def __init__(
         self,
         gateway: _SDKGateway,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         provider: _FeishuLarkProvider,
     ) -> None:
         self._gateway = gateway
@@ -1293,7 +1295,7 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
     def __init__(
         self,
         gateway: _SDKGateway,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         provider: _FeishuLarkProvider,
         consumer: IMEventConsumer,
     ) -> None:
@@ -1424,7 +1426,7 @@ class _FeishuLarkEventStream:
     def __init__(
         self,
         *,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         provider: _FeishuLarkProvider,
         domain: str,
         consumer: IMEventConsumer,
@@ -1582,7 +1584,7 @@ class _FeishuLarkIMProviderAdapter:
 
     def __init__(
         self,
-        credentials: _FeishuLarkIMIntegrationCredentials,
+        credentials: _FeishuLarkCredentials,
         provider: _FeishuLarkProvider,
         domain: str,
     ) -> None:
@@ -1700,8 +1702,8 @@ class _FeishuLarkIMProviderAdapter:
 class FeishuIMProviderAdapter(_FeishuLarkIMProviderAdapter):
     """Thin typed Feishu wrapper over the shared implementation."""
 
-    def __init__(self, credentials: FeishuIMIntegrationCredentials) -> None:
-        if not isinstance(credentials, FeishuIMIntegrationCredentials):
+    def __init__(self, credentials: FeishuCredentials) -> None:
+        if not isinstance(credentials, FeishuCredentials):
             raise TypeError("Feishu adapter requires resolved Feishu credentials")
         super().__init__(credentials, IMProvider.FEISHU, _FEISHU_DOMAIN)
 
@@ -1709,8 +1711,8 @@ class FeishuIMProviderAdapter(_FeishuLarkIMProviderAdapter):
 class LarkIMProviderAdapter(_FeishuLarkIMProviderAdapter):
     """Thin typed Lark wrapper over the shared implementation."""
 
-    def __init__(self, credentials: LarkIMIntegrationCredentials) -> None:
-        if not isinstance(credentials, LarkIMIntegrationCredentials):
+    def __init__(self, credentials: LarkCredentials) -> None:
+        if not isinstance(credentials, LarkCredentials):
             raise TypeError("Lark adapter requires resolved Lark credentials")
         super().__init__(credentials, IMProvider.LARK, _LARK_DOMAIN)
 

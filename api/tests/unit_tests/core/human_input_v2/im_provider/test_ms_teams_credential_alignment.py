@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from controllers.console.human_input_v2.providers import MSTeamsCredentials as MSTeamsCredentialUpdate
-from core.human_input_v2.im_provider import contracts
+from controllers.console.human_input_v2.providers import MSTeamsCredentialsInput as MSTeamsCredentialUpdate
+from core.human_input_v2.im_integration.adapters import credentials as provider_credentials
 
 
 def test_ms_teams_resolved_credential_projection_is_registered() -> None:
-    assert hasattr(contracts, "MSTeamsIMIntegrationCredentials")
+    assert hasattr(provider_credentials, "MSTeamsCredentials")
 
 
 def test_ms_teams_credential_projections_are_field_complete_and_secret_safe() -> None:
-    resolved_type = contracts.MSTeamsIMIntegrationCredentials
+    resolved_type = provider_credentials.MSTeamsCredentials
     assert set(resolved_type.model_fields) == {"provider", "tenant_id", "client_id", "client_secret"}
     assert set(MSTeamsCredentialUpdate.model_fields) == {"provider", "tenant_id", "client_id", "client_secret"}
 

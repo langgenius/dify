@@ -8,7 +8,7 @@ from enum import StrEnum
 from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import ProviderUserId
+from core.human_input_v2.im_integration.adapters.entities import ProviderUserId
 from core.human_input_v2.shared import (
     ContactId,
     IMBindingId,

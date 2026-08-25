@@ -21,19 +21,18 @@ from core.human_input_v2 import (
 )
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import adapters as adapters_package
-from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CorrelationToken,
     IMStreamStartError,
     IMStreamStopError,
     MessageLocator,
     WebhookRequest,
+)
+from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
+    LarkIMProviderAdapter,
 )
 
 
@@ -97,8 +96,8 @@ class _ClientBuilder:
         return self.client
 
 
-def _credentials() -> FeishuIMIntegrationCredentials:
-    return FeishuIMIntegrationCredentials(
+def _credentials() -> FeishuCredentials:
+    return FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -283,7 +282,7 @@ def test_headerless_resolved_paragraph_renders_without_default() -> None:
 def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(adapter_module, "_create_sdk_gateway", lambda _credentials, _domain: object())
     feishu = _credentials()
-    lark = LarkIMIntegrationCredentials(
+    lark = LarkCredentials(
         provider=IMProvider.LARK,
         app_id=feishu.app_id,
         app_secret=feishu.app_secret,
@@ -291,9 +290,9 @@ def test_wrong_wrapper_credentials_and_invalid_reference_are_rejected(monkeypatc
         encrypt_key=feishu.encrypt_key,
     )
     with pytest.raises(TypeError, match="Feishu adapter"):
-        FeishuIMProviderAdapter(cast(FeishuIMIntegrationCredentials, lark))
+        FeishuIMProviderAdapter(cast(FeishuCredentials, lark))
     with pytest.raises(TypeError, match="Lark adapter"):
-        LarkIMProviderAdapter(cast(LarkIMIntegrationCredentials, feishu))
+        LarkIMProviderAdapter(cast(LarkCredentials, feishu))
 
     with pytest.raises(ValueError):
         adapter_module._FeishuLarkLocatorPayload.decode(str(MessageLocator("invalid.")))

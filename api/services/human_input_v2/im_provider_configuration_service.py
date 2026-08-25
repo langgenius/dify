@@ -9,19 +9,21 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ConfirmedIMConfiguration,
     IMProviderConfigurationFailureKind,
-    IMProviderCredentials,
     IMProviderTestResult,
 )
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters.credentials import (
+    DingTalkCredentials,
+    FeishuCredentials,
+    IMProviderCredentials,
+    LarkCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
+)
+from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
 )
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, WorkspaceScope
 from libs.key_providers.base import BaseKeyProvider
@@ -122,14 +124,14 @@ class DifyIMProviderConfigurationService:
 
     @staticmethod
     def _app_identifier(credentials: IMProviderCredentials) -> str:
-        if isinstance(credentials, (FeishuIMIntegrationCredentials, LarkIMIntegrationCredentials)):
+        if isinstance(credentials, (FeishuCredentials, LarkCredentials)):
             app_identifier = credentials.app_id
         elif isinstance(
             credentials,
-            (SlackIMIntegrationCredentials, DingTalkIMIntegrationCredentials, MSTeamsIMIntegrationCredentials),
+            (SlackCredentials, DingTalkCredentials, MSTeamsCredentials),
         ):
             app_identifier = credentials.client_id
-        elif isinstance(credentials, WeComIMIntegrationCredentials):
+        elif isinstance(credentials, WeComCredentials):
             app_identifier = credentials.agent_id
         else:
             raise TypeError("unsupported IM provider credentials")

@@ -7,9 +7,10 @@ from typing import get_type_hints
 import pytest
 from pydantic import ValidationError
 
-from core.human_input_v2 import ResolvedForm, im_provider
+from core.human_input_v2 import ResolvedForm
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration import adapters as im_adapters
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     CredentialTestSuccess,
@@ -26,13 +27,13 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageLocator,
     ProviderUserId,
-    SlackIMIntegrationCredentials,
+    SlackCredentials,
     UnrecognizedIMEvent,
 )
 
 
-def _credentials() -> SlackIMIntegrationCredentials:
-    return SlackIMIntegrationCredentials(
+def _credentials() -> SlackCredentials:
+    return SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="client-id",
         client_secret="client-secret",
@@ -52,15 +53,15 @@ def test_resolved_slack_credentials_are_strict_immutable_and_secret_safe() -> No
     assert "xapp-test-app-token" not in repr(credentials)
 
     with pytest.raises(ValidationError):
-        SlackIMIntegrationCredentials.model_validate({**credentials.model_dump(), "unexpected": "value"})
+        SlackCredentials.model_validate({**credentials.model_dump(), "unexpected": "value"})
     with pytest.raises(ValidationError):
-        SlackIMIntegrationCredentials.model_validate({**credentials.model_dump(), "provider": IMProvider.FEISHU})
+        SlackCredentials.model_validate({**credentials.model_dump(), "provider": IMProvider.FEISHU})
     with pytest.raises(ValidationError):
         credentials.client_id = "changed"
 
 
 def test_resolved_slack_credentials_require_app_token_only_for_socket_mode() -> None:
-    credentials = SlackIMIntegrationCredentials(
+    credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="client-id",
         client_secret="client-secret",
@@ -69,7 +70,7 @@ def test_resolved_slack_credentials_require_app_token_only_for_socket_mode() -> 
     )
 
     assert credentials.app_token is None
-    schema = SlackIMIntegrationCredentials.model_json_schema()
+    schema = SlackCredentials.model_json_schema()
     assert "app_token" not in schema["required"]
     assert schema["properties"]["app_token"]["description"] == (
         "Optional resolved Slack app-level token required only for Socket Mode."
@@ -162,7 +163,7 @@ def test_authenticated_event_preserves_provider_payload_verbatim() -> None:
         event_type="card.action",
         occurred_at=datetime(2026, 8, 2, 8),
         received_at=datetime(2026, 8, 2, 8, 0, 1),
-        ingress_kind=im_provider.IMEventIngressKind.WEBHOOK,
+        ingress_kind=im_adapters.IMEventIngressKind.WEBHOOK,
         payload=payload,
     )
 
@@ -180,11 +181,11 @@ def test_authenticated_event_preserves_provider_payload_verbatim() -> None:
 
 
 def test_authenticated_event_requires_exported_closed_ingress_kind() -> None:
-    assert hasattr(im_provider, "IMEventIngressKind")
-    ingress_kind_type = im_provider.IMEventIngressKind
+    assert hasattr(im_adapters, "IMEventIngressKind")
+    ingress_kind_type = im_adapters.IMEventIngressKind
 
     assert {kind.value for kind in ingress_kind_type} == {"webhook", "stream"}
-    assert "IMEventIngressKind" in im_provider.__all__
+    assert "IMEventIngressKind" in im_adapters.__all__
 
     event = AuthenticatedIMEvent(
         provider=IMProvider.SLACK,
@@ -220,14 +221,14 @@ def test_authenticated_event_requires_exported_closed_ingress_kind() -> None:
 
 
 def test_provider_contract_does_not_export_superseded_inbox_types() -> None:
-    assert not hasattr(im_provider, "ProviderNativePayload")
-    assert not hasattr(im_provider, "IMEventSink")
+    assert not hasattr(im_adapters, "ProviderNativePayload")
+    assert not hasattr(im_adapters, "IMEventSink")
 
 
 def test_dynamic_card_contract_consumes_resolved_form_without_runtime_wrapper() -> None:
     assert get_type_hints(IMDynamicCardMessaging.assess)["intent"] is ResolvedForm
     assert get_type_hints(IMDynamicCardMessaging.send_card)["intent"] is ResolvedForm
-    assert not hasattr(im_provider, "NormalizedCardIntent")
+    assert not hasattr(im_adapters, "NormalizedCardIntent")
 
 
 def test_message_locator_contract_is_a_nominal_runtime_string() -> None:
@@ -244,8 +245,8 @@ def test_message_locator_contract_is_a_nominal_runtime_string() -> None:
 def test_provider_contract_exports_message_locator_without_legacy_reference_shape() -> None:
     accepted = MessageAccepted(locator=MessageLocator("opaque-locator-value"))
 
-    assert "MessageLocator" in im_provider.__all__
-    assert not hasattr(im_provider, "MessageReference")
+    assert "MessageLocator" in im_adapters.__all__
+    assert not hasattr(im_adapters, "MessageReference")
     assert accepted.locator == "opaque-locator-value"
     assert not hasattr(accepted, "reference")
     assert get_type_hints(IMDynamicCardMessaging.replace_with_static)["locator"] is MessageLocator

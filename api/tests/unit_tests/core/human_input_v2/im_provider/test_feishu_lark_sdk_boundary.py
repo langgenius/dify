@@ -18,23 +18,13 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from controllers.console.human_input_v2.providers import (
-    FeishuCredentials as FeishuCredentialRequest,
+    FeishuCredentialsInput as FeishuCredentialRequest,
 )
-from controllers.console.human_input_v2.providers import LarkCredentials as LarkCredentialRequest
+from controllers.console.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-    _FeishuLarkDirectory,
-    _OfficialSDKGateway,
-    _SynchronousEventChannel,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     CredentialTestFailure,
@@ -55,6 +45,15 @@ from core.human_input_v2.im_provider import (
     ReplacementErrorKind,
     StaticCardIntent,
     WebhookRequest,
+)
+from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
+    LarkIMProviderAdapter,
+    _FeishuLarkDirectory,
+    _OfficialSDKGateway,
+    _SynchronousEventChannel,
 )
 
 
@@ -377,8 +376,8 @@ class _RunningServer:
     state: _ServerState
 
 
-def _credentials() -> FeishuIMIntegrationCredentials:
-    return FeishuIMIntegrationCredentials(
+def _credentials() -> FeishuCredentials:
+    return FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -387,8 +386,8 @@ def _credentials() -> FeishuIMIntegrationCredentials:
     )
 
 
-def _secure_credentials() -> FeishuIMIntegrationCredentials:
-    return FeishuIMIntegrationCredentials(
+def _secure_credentials() -> FeishuCredentials:
+    return FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -695,7 +694,7 @@ def test_live_readiness_minimal_shapes_preserve_official_sdk_department_identity
         adapter = FeishuIMProviderAdapter(_secure_credentials())
     else:
         adapter = LarkIMProviderAdapter(
-            LarkIMIntegrationCredentials(
+            LarkCredentials(
                 provider=IMProvider.LARK,
                 app_id="cli_sanitized_app",
                 app_secret="sanitized-app-secret",
@@ -759,7 +758,7 @@ def test_official_sdk_directory_accepts_omitted_items_on_empty_terminal_pages(
         adapter = FeishuIMProviderAdapter(_secure_credentials())
     else:
         adapter = LarkIMProviderAdapter(
-            LarkIMIntegrationCredentials(
+            LarkCredentials(
                 provider=IMProvider.LARK,
                 app_id="cli_sanitized_app",
                 app_secret="sanitized-app-secret",
@@ -800,7 +799,7 @@ def test_full_adapter_over_official_http_sdk_preserves_wrapper_parity(
         adapter = FeishuIMProviderAdapter(credentials)
         expected_domain = "https://open.feishu.cn"
     else:
-        credentials = LarkIMIntegrationCredentials(
+        credentials = LarkCredentials(
             provider=IMProvider.LARK,
             app_id="cli_sanitized_app",
             app_secret="sanitized-app-secret",
@@ -923,7 +922,7 @@ def test_webhook_crypto_challenge_replay_and_ack_over_official_tenant_boundary(
     assert json.loads(consumer.events[0].payload) == json.loads(plaintext)
 
     challenge_consumer = _Consumer()
-    challenge_credentials = FeishuIMIntegrationCredentials(
+    challenge_credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -1167,7 +1166,7 @@ def test_card_reference_update_failures_preserve_exact_mutation_semantics(
 
 
 def test_webhook_failure_ack_matrix_covers_auth_tenant_and_consumer_boundaries() -> None:
-    plaintext_credentials = FeishuIMIntegrationCredentials(
+    plaintext_credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -1431,7 +1430,7 @@ def test_official_stream_clients_own_independent_sdk_event_loops(
     monkeypatch.setattr(sdk_ws_client_module.Client, "_get_conn_url", connection_url)
     monkeypatch.setattr(sdk_ws_client_module.websockets, "connect", connect)
     credentials = [
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id=f"cli_sanitized_app_{index}",
             app_secret="sanitized-app-secret",

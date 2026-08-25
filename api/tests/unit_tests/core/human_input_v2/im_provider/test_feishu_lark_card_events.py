@@ -19,8 +19,7 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import (
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import feishu_lark
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CardAssessment,
     CorrelationToken,
@@ -32,6 +31,7 @@ from core.human_input_v2.im_provider import (
     ProviderUserId,
     UnrecognizedIMEvent,
     WebhookRequest,
+    feishu_lark,
 )
 
 _FIXTURE_DIRECTORY = Path(__file__).with_name("fixtures")
@@ -62,7 +62,7 @@ class _WebhookConsumer:
 class _FixtureSDKObjectStreamClient:
     def __init__(
         self,
-        credentials: feishu_lark.FeishuIMIntegrationCredentials,
+        credentials: feishu_lark.FeishuCredentials,
         domain: str,
         callback: Callable[[feishu_lark._SDKEventEnvelope, Callable[[], None]], None],
         sdk_event: P2CardActionTrigger,
@@ -108,7 +108,7 @@ def _replay_sanitized_webhook(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     gateway = _WebhookGateway()
     monkeypatch.setattr(feishu_lark, "_create_sdk_gateway", lambda _credentials, _domain: gateway)
     adapter = feishu_lark.FeishuIMProviderAdapter(
-        feishu_lark.FeishuIMIntegrationCredentials(
+        feishu_lark.FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="cli_test_only",
             app_secret="app_secret_test_only",
@@ -187,7 +187,7 @@ def _deliver_sanitized_stream(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     stream_clients: list[_FixtureSDKObjectStreamClient] = []
 
     def create_stream_client(
-        credentials: feishu_lark.FeishuIMIntegrationCredentials,
+        credentials: feishu_lark.FeishuCredentials,
         domain: str,
         callback: Callable[[feishu_lark._SDKEventEnvelope, Callable[[], None]], None],
     ) -> _FixtureSDKObjectStreamClient:
@@ -198,7 +198,7 @@ def _deliver_sanitized_stream(monkeypatch: pytest.MonkeyPatch) -> AuthenticatedI
     monkeypatch.setattr(feishu_lark, "_create_sdk_gateway", lambda _credentials, _domain: gateway)
     monkeypatch.setattr(feishu_lark, "_create_sdk_stream_client", create_stream_client)
     adapter = feishu_lark.FeishuIMProviderAdapter(
-        feishu_lark.FeishuIMIntegrationCredentials(
+        feishu_lark.FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="cli_test_only",
             app_secret="app_secret_test_only",
@@ -964,7 +964,7 @@ def test_decoder_remains_usable_after_differently_credentialed_root_adapters_clo
     monkeypatch.setattr(feishu_lark, "_create_sdk_gateway", record_gateway)
     decoder = feishu_lark.FeishuIMProviderAdapter.card_event_decoder()
     feishu_root = feishu_lark.FeishuIMProviderAdapter(
-        feishu_lark.FeishuIMIntegrationCredentials(
+        feishu_lark.FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="first-credential-set",
             app_secret="first-secret",
@@ -973,7 +973,7 @@ def test_decoder_remains_usable_after_differently_credentialed_root_adapters_clo
         )
     )
     rotated_feishu_root = feishu_lark.FeishuIMProviderAdapter(
-        feishu_lark.FeishuIMIntegrationCredentials(
+        feishu_lark.FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="rotated-credential-set",
             app_secret="rotated-secret",
@@ -982,7 +982,7 @@ def test_decoder_remains_usable_after_differently_credentialed_root_adapters_clo
         )
     )
     lark_root = feishu_lark.LarkIMProviderAdapter(
-        feishu_lark.LarkIMIntegrationCredentials(
+        feishu_lark.LarkCredentials(
             provider=IMProvider.LARK,
             app_id="lark-credential-set",
             app_secret="lark-secret",
@@ -1018,9 +1018,9 @@ def test_decoder_discovery_and_decode_do_not_cross_runtime_dependency_boundaries
         raise AssertionError("decoder path crossed a credential or Provider client boundary")
 
     dependency_seam_names = {
-        "FeishuIMIntegrationCredentials",
-        "LarkIMIntegrationCredentials",
-        "_FeishuLarkIMIntegrationCredentials",
+        "FeishuCredentials",
+        "LarkCredentials",
+        "_FeishuLarkCredentials",
         "_OfficialSDKGateway",
         "_OfficialSDKStreamClient",
         "_PerClientSDKWSClient",

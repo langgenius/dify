@@ -9,9 +9,8 @@ from alibabacloud_dingtalk.oauth2_1_0.models import GetTokenRequest, GetTokenRes
 from redis import RedisError
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import DingTalkCredentials, dingtalk_redis
 from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
-from core.human_input_v2.im_integration.adapters import dingtalk_redis
-from core.human_input_v2.im_provider import DingTalkIMIntegrationCredentials
 
 
 class _NoIOCache:
@@ -98,8 +97,8 @@ def _credentials(
     corp_id: str = "sanitized-corp-id",
     client_id: str = "sanitized-client-id",
     client_secret: str = "sanitized-client-secret",
-) -> DingTalkIMIntegrationCredentials:
-    return DingTalkIMIntegrationCredentials(
+) -> DingTalkCredentials:
+    return DingTalkCredentials(
         provider=IMProvider.DING_TALK,
         corp_id=corp_id,
         client_id=client_id,
@@ -118,7 +117,7 @@ def _provider(
     monkeypatch: pytest.MonkeyPatch,
     cache: _FakeCache,
     *responses: object,
-    credentials: DingTalkIMIntegrationCredentials | None = None,
+    credentials: DingTalkCredentials | None = None,
 ) -> tuple[dingtalk_redis.RedisCacheAccessTokenProvider, _FakeOAuthClient]:
     client = _FakeOAuthClient(*responses)
     monkeypatch.setattr(dingtalk_redis, "_new_oauth_client", lambda: client)

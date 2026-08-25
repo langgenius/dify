@@ -16,6 +16,12 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
+    IMEventIngressKind,
+    SlackCredentials,
+    WebhookRequest,
+)
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_message_inbox import (
     AcceptanceKind,
@@ -30,12 +36,6 @@ from core.human_input_v2.im_message_inbox import (
     LostLease,
     RetryScheduled,
     TransitionApplied,
-)
-from core.human_input_v2.im_provider import (
-    AuthenticatedIMEvent,
-    IMEventIngressKind,
-    SlackIMIntegrationCredentials,
-    WebhookRequest,
 )
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
@@ -124,8 +124,8 @@ def _event(
     )
 
 
-def _slack_credentials() -> SlackIMIntegrationCredentials:
-    return SlackIMIntegrationCredentials(
+def _slack_credentials() -> SlackCredentials:
+    return SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="sanitized-client-id",
         client_secret="sanitized-client-secret",

@@ -10,19 +10,19 @@ from typing import override
 import pytest
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import IMProviderCredentials
-from core.human_input_v2.im_integration.management import IMProviderConfigurationFailureKind
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestFailure,
     CredentialTestFailureKind,
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
+    DingTalkCredentials,
+    FeishuCredentials,
+    LarkCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
 )
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
+from core.human_input_v2.im_integration.management import IMProviderConfigurationFailureKind
 from core.human_input_v2.shared import DeploymentScope, TenantId, WorkspaceScope
 from libs.key_providers.base import BaseKeyProvider
 from services.human_input_v2.errors import IMProviderConfigurationError
@@ -41,7 +41,7 @@ class _CredentialCase:
 
 _CASES = (
     _CredentialCase(
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="feishu-app",
             app_secret="feishu-secret",
@@ -51,7 +51,7 @@ _CASES = (
         "feishu-app",
     ),
     _CredentialCase(
-        LarkIMIntegrationCredentials(
+        LarkCredentials(
             provider=IMProvider.LARK,
             app_id="lark-app",
             app_secret="lark-secret",
@@ -61,7 +61,7 @@ _CASES = (
         "lark-app",
     ),
     _CredentialCase(
-        SlackIMIntegrationCredentials(
+        SlackCredentials(
             provider=IMProvider.SLACK,
             client_id="slack-client",
             client_secret="slack-client-secret",
@@ -72,7 +72,7 @@ _CASES = (
         "slack-client",
     ),
     _CredentialCase(
-        DingTalkIMIntegrationCredentials(
+        DingTalkCredentials(
             provider=IMProvider.DING_TALK,
             corp_id="ding-corp",
             client_id="ding-client",
@@ -81,7 +81,7 @@ _CASES = (
         "ding-client",
     ),
     _CredentialCase(
-        MSTeamsIMIntegrationCredentials(
+        MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="00000000-0000-0000-0000-000000000001",
             client_id="00000000-0000-0000-0000-000000000002",
@@ -90,7 +90,7 @@ _CASES = (
         "00000000-0000-0000-0000-000000000002",
     ),
     _CredentialCase(
-        WeComIMIntegrationCredentials(
+        WeComCredentials(
             provider=IMProvider.WE_COM,
             corp_id="wecom-corp",
             agent_id="1001",
@@ -212,7 +212,7 @@ def test_prepare_slack_without_app_token_preserves_the_complete_validated_payloa
     events: list[str] = []
     factory = FakeAdapterFactory(events)
     encrypted_values: list[str] = []
-    credentials = SlackIMIntegrationCredentials(
+    credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="slack-client",
         client_secret="slack-client-secret",

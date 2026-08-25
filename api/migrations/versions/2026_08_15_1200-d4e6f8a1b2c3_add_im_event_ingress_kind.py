@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 import models.types
-from core.human_input_v2.im_provider import IMEventIngressKind
+from core.human_input_v2.im_integration.adapters.entities import IMEventIngressKind
 
 revision: str = "d4e6f8a1b2c3"
 down_revision: str | None = "c9e4f7a2b6d1"

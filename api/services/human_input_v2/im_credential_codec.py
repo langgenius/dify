@@ -1,12 +1,13 @@
 from base64 import b64decode, b64encode
 from typing import Protocol
 
-from pydantic import TypeAdapter
-
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import EncryptedCredentials, IMProviderCredentials
+from core.human_input_v2.im_integration import EncryptedCredentials
+from core.human_input_v2.im_integration.adapters.credentials import (
+    IMProviderCredentials,
+    IMProviderCredentialsAdapter,
+)
 
-_CREDENTIAL_ADAPTER: TypeAdapter[IMProviderCredentials] = TypeAdapter(IMProviderCredentials)
 _SAFE_ERROR = "IM credential configuration is unavailable"
 
 
@@ -40,7 +41,7 @@ class IMCredentialCodec:
             raise IMCredentialError(_SAFE_ERROR)
         try:
             decrypted = self._cipher.decrypt(b64decode(envelope.ciphertext))
-            credentials = _CREDENTIAL_ADAPTER.validate_json(decrypted)
+            credentials = IMProviderCredentialsAdapter.validate_json(decrypted)
         except Exception as exc:
             raise IMCredentialError(_SAFE_ERROR) from exc
         if credentials.provider is not provider:

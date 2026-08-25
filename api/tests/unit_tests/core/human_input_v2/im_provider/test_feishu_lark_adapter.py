@@ -19,14 +19,7 @@ from core.human_input_v2 import (
     SelectInput,
 )
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CorrelationToken,
     CredentialTestFailure,
     CredentialTestFailureKind,
@@ -42,6 +35,12 @@ from core.human_input_v2.im_provider import (
     ReplacementError,
     ReplacementErrorKind,
     StaticCardIntent,
+)
+from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
+    LarkIMProviderAdapter,
 )
 
 
@@ -108,16 +107,16 @@ class IdentityAwareFakeSDKGateway(FakeSDKGateway):
 
 
 @overload
-def _credentials(provider: Literal[IMProvider.FEISHU]) -> FeishuIMIntegrationCredentials: ...
+def _credentials(provider: Literal[IMProvider.FEISHU]) -> FeishuCredentials: ...
 
 
 @overload
-def _credentials(provider: Literal[IMProvider.LARK]) -> LarkIMIntegrationCredentials: ...
+def _credentials(provider: Literal[IMProvider.LARK]) -> LarkCredentials: ...
 
 
 def _credentials(
     provider: Literal[IMProvider.FEISHU, IMProvider.LARK],
-) -> FeishuIMIntegrationCredentials | LarkIMIntegrationCredentials:
+) -> FeishuCredentials | LarkCredentials:
     values = {
         "provider": provider,
         "app_id": "cli_sanitized_app",
@@ -126,8 +125,8 @@ def _credentials(
         "encrypt_key": "sanitized-encrypt-key",
     }
     if provider is IMProvider.FEISHU:
-        return FeishuIMIntegrationCredentials.model_validate(values)
-    return LarkIMIntegrationCredentials.model_validate(values)
+        return FeishuCredentials.model_validate(values)
+    return LarkCredentials.model_validate(values)
 
 
 def _adapter(
@@ -1174,7 +1173,7 @@ def test_reference_survives_provider_app_secret_rotation(
     )
     replacement = (
         FeishuIMProviderAdapter(rotated_credentials)
-        if isinstance(rotated_credentials, FeishuIMIntegrationCredentials)
+        if isinstance(rotated_credentials, FeishuCredentials)
         else LarkIMProviderAdapter(rotated_credentials)
     )
 

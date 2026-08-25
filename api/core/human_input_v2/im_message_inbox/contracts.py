@@ -8,7 +8,7 @@ from enum import StrEnum
 from typing import NewType, Protocol
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import AuthenticatedIMEvent
+from core.human_input_v2.im_integration.adapters.entities import AuthenticatedIMEvent
 from core.human_input_v2.shared import IntegrationId
 
 IM_INBOX_PROVIDER_METADATA_MAX_LENGTH = 128

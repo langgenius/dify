@@ -13,8 +13,7 @@ import pytest
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import ms_teams
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CardAssessment,
     CorrelationToken,
@@ -23,6 +22,7 @@ from core.human_input_v2.im_provider import (
     IMEventIngressKind,
     ProviderUserId,
     UnrecognizedIMEvent,
+    ms_teams,
 )
 
 _CALLBACK_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "ms_teams_card_submit.json"
@@ -430,7 +430,7 @@ def test_class_level_decoder_discovery_constructs_no_credential_or_provider_clie
         "ClientSecretCredential",
         "MicrosoftAppCredentials",
         "ConnectorClient",
-        "MSTeamsIMIntegrationCredentials",
+        "MSTeamsCredentials",
         "Contact",
         "VerifiedIMIdentityProof",
         "SubmissionService",
@@ -499,7 +499,7 @@ def test_decoder_remains_usable_across_credential_rotation_and_root_close(
     monkeypatch.setattr(ms_teams, "MicrosoftAppCredentials", bot_credential_factory)
     decoder = ms_teams.MSTeamsIMProviderAdapter.card_event_decoder()
     first_adapter = ms_teams.MSTeamsIMProviderAdapter(
-        ms_teams.MSTeamsIMIntegrationCredentials(
+        ms_teams.MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="11111111-1111-1111-1111-111111111111",
             client_id="22222222-2222-2222-2222-222222222222",
@@ -507,7 +507,7 @@ def test_decoder_remains_usable_across_credential_rotation_and_root_close(
         )
     )
     second_adapter = ms_teams.MSTeamsIMProviderAdapter(
-        ms_teams.MSTeamsIMIntegrationCredentials(
+        ms_teams.MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="33333333-3333-3333-3333-333333333333",
             client_id="44444444-4444-4444-4444-444444444444",

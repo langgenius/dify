@@ -13,18 +13,17 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     EventAcceptance,
     IMEventIngressKind,
     WebhookRequest,
+)
+from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
+    LarkIMProviderAdapter,
 )
 
 _RECEIVED_AT = datetime(2026, 8, 6, 10, 0, 0)
@@ -91,8 +90,8 @@ def _adapter(
         "encrypt_key": encrypt_key,
     }
     if provider is IMProvider.FEISHU:
-        return FeishuIMProviderAdapter(FeishuIMIntegrationCredentials.model_validate(values))
-    return LarkIMProviderAdapter(LarkIMIntegrationCredentials.model_validate(values))
+        return FeishuIMProviderAdapter(FeishuCredentials.model_validate(values))
+    return LarkIMProviderAdapter(LarkCredentials.model_validate(values))
 
 
 def _event_body(

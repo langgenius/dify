@@ -9,19 +9,22 @@ from inspect import getsource, signature
 from typing import Annotated, Protocol, get_args, get_origin, get_type_hints, override
 
 import pytest
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import EncryptedCredentials, IMProviderCredentials
-from core.human_input_v2.im_integration import management as management_module
-from core.human_input_v2.im_provider import (
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
+from core.human_input_v2.im_integration import EncryptedCredentials
+from core.human_input_v2.im_integration.adapters import (
+    DingTalkCredentials,
+    FeishuCredentials,
+    LarkCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
+)
+from core.human_input_v2.im_integration.adapters.credentials import (
+    IMProviderCredentials,
+    IMProviderCredentialsAdapter,
 )
 from models.human_input_v2 import HumanInputIMIntegration, IMEncryptedCredentials
 from models.types import FrozenPydanticModelColumn
@@ -34,12 +37,12 @@ from services.human_input_v2.im_credential_codec import (
 
 _SAFE_ERROR = "IM credential configuration is unavailable"
 _CREDENTIAL_TYPES = (
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    DingTalkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
+    FeishuCredentials,
+    LarkCredentials,
+    SlackCredentials,
+    DingTalkCredentials,
+    MSTeamsCredentials,
+    WeComCredentials,
 )
 
 
@@ -50,7 +53,7 @@ class _CredentialCase:
 
 _CASES = (
     _CredentialCase(
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="feishu-app",
             app_secret="feishu-secret",
@@ -59,7 +62,7 @@ _CASES = (
         )
     ),
     _CredentialCase(
-        LarkIMIntegrationCredentials(
+        LarkCredentials(
             provider=IMProvider.LARK,
             app_id="lark-app",
             app_secret="lark-secret",
@@ -68,7 +71,7 @@ _CASES = (
         )
     ),
     _CredentialCase(
-        SlackIMIntegrationCredentials(
+        SlackCredentials(
             provider=IMProvider.SLACK,
             client_id="slack-client",
             client_secret="slack-client-secret",
@@ -78,7 +81,7 @@ _CASES = (
         )
     ),
     _CredentialCase(
-        DingTalkIMIntegrationCredentials(
+        DingTalkCredentials(
             provider=IMProvider.DING_TALK,
             corp_id="ding-corp",
             client_id="ding-client",
@@ -86,7 +89,7 @@ _CASES = (
         )
     ),
     _CredentialCase(
-        MSTeamsIMIntegrationCredentials(
+        MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="00000000-0000-0000-0000-000000000001",
             client_id="00000000-0000-0000-0000-000000000002",
@@ -94,7 +97,7 @@ _CASES = (
         )
     ),
     _CredentialCase(
-        WeComIMIntegrationCredentials(
+        WeComCredentials(
             provider=IMProvider.WE_COM,
             corp_id="wecom-corp",
             agent_id="1001",
@@ -128,22 +131,20 @@ def test_bound_cipher_protocol_is_exactly_owner_free() -> None:
     assert get_type_hints(BoundCredentialCipher.decrypt) == {"ciphertext": bytes, "return": str}
 
 
-def test_canonical_provider_union_is_exported_discriminated_and_bound_to_the_sole_adapter() -> None:
+def test_canonical_provider_union_is_discriminated_and_bound_to_the_named_adapter() -> None:
     canonical_value = IMProviderCredentials.__value__
 
-    assert IMProviderCredentials is management_module.IMProviderCredentials
     assert get_origin(canonical_value) is Annotated
     union, field = get_args(canonical_value)
     assert get_args(union) == _CREDENTIAL_TYPES
     assert isinstance(field, FieldInfo)
     assert field.discriminator == "provider"
-    adapters = [value for value in vars(codec_module).values() if isinstance(value, TypeAdapter)]
-    assert adapters == [codec_module._CREDENTIAL_ADAPTER]
-    assert codec_module._CREDENTIAL_ADAPTER._type is IMProviderCredentials
+    assert codec_module.IMProviderCredentialsAdapter is IMProviderCredentialsAdapter
+    assert IMProviderCredentialsAdapter._type is IMProviderCredentials
     assert get_type_hints(IMCredentialCodec.load)["return"] is IMProviderCredentials
 
     for case in _CASES:
-        recovered = codec_module._CREDENTIAL_ADAPTER.validate_json(case.credentials.model_dump_json())
+        recovered = IMProviderCredentialsAdapter.validate_json(case.credentials.model_dump_json())
         assert recovered == case.credentials
         assert type(recovered) is type(case.credentials)
 
@@ -159,7 +160,7 @@ def test_canonical_provider_union_is_exported_discriminated_and_bound_to_the_sol
 )
 def test_canonical_provider_union_rejects_invalid_discriminators_and_variants(payload: dict[str, str]) -> None:
     with pytest.raises(ValidationError):
-        codec_module._CREDENTIAL_ADAPTER.validate_python(payload)
+        IMProviderCredentialsAdapter.validate_python(payload)
 
 
 def test_runtime_codec_has_none_of_the_superseded_mapping_or_wrapper_design() -> None:
@@ -283,7 +284,7 @@ def test_codec_rejects_invalid_recovered_payload_with_safe_outer_error_and_diagn
 
 
 def test_codec_rejects_recovered_provider_mismatch_before_provider_io() -> None:
-    mismatched_credentials = FeishuIMIntegrationCredentials(
+    mismatched_credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="feishu-app",
         app_secret="plaintext-secret",

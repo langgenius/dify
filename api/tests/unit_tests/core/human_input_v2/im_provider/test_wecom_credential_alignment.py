@@ -3,20 +3,20 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from controllers.console.human_input_v2.providers import WeComCredentials as WeComCredentialUpdate
-from core.human_input_v2 import im_provider
+from controllers.console.human_input_v2.providers import WeComCredentialsInput as WeComCredentialUpdate
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration import adapters as im_adapters
 
 
 def test_wecom_credential_projections_are_field_aligned() -> None:
-    resolved_credentials = im_provider.WeComIMIntegrationCredentials
+    resolved_credentials = im_adapters.WeComCredentials
 
     assert set(WeComCredentialUpdate.model_fields) == {"provider", "corp_id", "agent_id", "secret"}
     assert set(resolved_credentials.model_fields) == {"provider", "corp_id", "agent_id", "secret"}
 
 
 def test_wecom_credentials_are_strict_immutable_and_secret_safe() -> None:
-    resolved_credentials = im_provider.WeComIMIntegrationCredentials
+    resolved_credentials = im_adapters.WeComCredentials
     credentials = resolved_credentials(
         provider=IMProvider.WE_COM,
         corp_id="fake-corp-001",
@@ -45,7 +45,7 @@ def test_wecom_credentials_are_strict_immutable_and_secret_safe() -> None:
 
 @pytest.mark.parametrize("field_name", ["corp_id", "agent_id", "secret"])
 def test_wecom_resolved_credentials_reject_blank_fields(field_name: str) -> None:
-    resolved_credentials = im_provider.WeComIMIntegrationCredentials
+    resolved_credentials = im_adapters.WeComCredentials
     values = {
         "provider": IMProvider.WE_COM,
         "corp_id": "fake-corp-001",
@@ -59,7 +59,7 @@ def test_wecom_resolved_credentials_reject_blank_fields(field_name: str) -> None
 
 
 def test_wecom_resolved_credentials_require_a_positive_decimal_agent_id() -> None:
-    resolved_credentials = im_provider.WeComIMIntegrationCredentials
+    resolved_credentials = im_adapters.WeComCredentials
 
     with pytest.raises(ValidationError):
         resolved_credentials(
@@ -71,7 +71,7 @@ def test_wecom_resolved_credentials_require_a_positive_decimal_agent_id() -> Non
 
 
 def test_preserve_original_value_never_enters_wecom_resolved_credentials() -> None:
-    resolved_credentials = im_provider.WeComIMIntegrationCredentials
+    resolved_credentials = im_adapters.WeComCredentials
 
     with pytest.raises(ValidationError):
         WeComCredentialUpdate.model_validate(

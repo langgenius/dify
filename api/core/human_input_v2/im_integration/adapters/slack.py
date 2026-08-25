@@ -43,8 +43,8 @@ from slack_sdk.web.slack_response import SlackResponse
 from core.human_input import ButtonStyle
 from core.human_input_v2 import FileInput, FileListInput, MarkdownText, ParagraphInput, ResolvedForm, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters.credentials import SlackCredentials
+from core.human_input_v2.im_integration.adapters.entities import (
     AuthenticatedIMEvent,
     CardAssessment,
     CorrelationToken,
@@ -57,30 +57,31 @@ from core.human_input_v2.im_provider import (
     DynamicCardMessagingError,
     EventAcceptance,
     IMCardEvent,
-    IMCardEventDecoder,
     IMCardEventDecodeResult,
     IMCardEventDecodingError,
-    IMDirectory,
-    IMDynamicCardMessaging,
-    IMEventConsumer,
     IMEventIngressKind,
-    IMEventStream,
-    IMMessaging,
     IMStreamStartError,
     IMStreamStopError,
-    IMWebhookHandler,
     MessageAccepted,
-    MessageLocator,
     MessageSendingError,
     MessageSendingResult,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
-    SlackIMIntegrationCredentials,
     StaticCardIntent,
     UnrecognizedIMEvent,
     WebhookRequest,
     WebhookResponse,
+)
+from core.human_input_v2.im_integration.adapters.message_locator import MessageLocator, _Base64JSONLocatorPayload
+from core.human_input_v2.im_integration.adapters.protocols import (
+    IMCardEventDecoder,
+    IMDirectory,
+    IMDynamicCardMessaging,
+    IMEventConsumer,
+    IMEventStream,
+    IMMessaging,
+    IMWebhookHandler,
 )
 
 logger = logging.getLogger(__name__)
@@ -1079,8 +1080,8 @@ class SlackIMProviderAdapter:
         """Return a credential-free decoder independent from root adapter instances."""
         return _SlackCardCodec()
 
-    def __init__(self, credentials: SlackIMIntegrationCredentials) -> None:
-        if not isinstance(credentials, SlackIMIntegrationCredentials):
+    def __init__(self, credentials: SlackCredentials) -> None:
+        if not isinstance(credentials, SlackCredentials):
             raise TypeError("Slack adapter requires resolved Slack credentials")
         self._credentials = credentials
         self._client = WebClient(token=credentials.bot_token, retry_handlers=[])

@@ -17,11 +17,11 @@ from core.human_input_v2.im_integration import (
     IMIntegrationView,
     IMProviderConfigurationFailureKind,
     IMProviderConfigurationPort,
-    IMProviderCredentials,
     IntegrationRevisionToken,
     ProviderTenantIdentity,
     StaleRevision,
 )
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import (
     AccountId,
     DeploymentScope,

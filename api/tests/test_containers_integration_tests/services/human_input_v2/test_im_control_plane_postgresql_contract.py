@@ -24,7 +24,6 @@ from core.human_input_v2.im_integration import (
     IMIdentity,
     IMIntegration,
     IMIntegrationAlreadyExistsError,
-    IMProviderCredentials,
     IMProviderTestResult,
     IMSyncRun,
     IntegrationDeletion,
@@ -33,7 +32,8 @@ from core.human_input_v2.im_integration import (
     ReconciliationRunRef,
     StaleRevision,
 )
-from core.human_input_v2.im_provider import DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.adapters import DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,

@@ -4,21 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Annotated, Protocol
-
-from pydantic import Field
+from typing import Protocol
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_provider import (
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
-)
 from core.human_input_v2.shared import DirectoryScope
 
+from .adapters import credentials as adapter_credentials
 from .integration import EncryptedCredentials
 
 
@@ -29,17 +20,6 @@ class IMIntegrationAlreadyExistsError(RuntimeError):
 class IMProviderConfigurationFailureKind(StrEnum):
     INVALID_CREDENTIALS = "invalid_credentials"
     CONNECTION_FAILURE = "connection_failure"
-
-
-type IMProviderCredentials = Annotated[
-    FeishuIMIntegrationCredentials
-    | LarkIMIntegrationCredentials
-    | SlackIMIntegrationCredentials
-    | DingTalkIMIntegrationCredentials
-    | MSTeamsIMIntegrationCredentials
-    | WeComIMIntegrationCredentials,
-    Field(discriminator="provider"),
-]
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +55,7 @@ class IMProviderConfigurationPort(Protocol):
     def prepare(
         self,
         scope: DirectoryScope,
-        credentials: IMProviderCredentials,
+        credentials: adapter_credentials.IMProviderCredentials,
     ) -> ConfirmedIMConfiguration:
         """Authenticate, resolve tenant, validate scopes, then protect credentials."""
         ...
@@ -83,7 +63,7 @@ class IMProviderConfigurationPort(Protocol):
     def test(
         self,
         scope: DirectoryScope,
-        credentials: IMProviderCredentials,
+        credentials: adapter_credentials.IMProviderCredentials,
     ) -> IMProviderTestResult:
         """Validate only the submitted candidate without persistence."""
         ...
@@ -94,6 +74,5 @@ __all__ = [
     "IMIntegrationAlreadyExistsError",
     "IMProviderConfigurationFailureKind",
     "IMProviderConfigurationPort",
-    "IMProviderCredentials",
     "IMProviderTestResult",
 ]

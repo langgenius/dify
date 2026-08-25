@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.im_integration import IMIntegration
-from core.human_input_v2.im_provider import IMProviderAdapter
+from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, WorkspaceScope
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager

@@ -72,6 +72,7 @@ from core.human_input_v2.entities import (
 from core.human_input_v2.entities import (
     IMSyncRunStatus as _IMSyncRunStatus,
 )
+from core.human_input_v2.im_integration.adapters.entities import IMEventIngressKind as _IMEventIngressKind
 from core.human_input_v2.im_integration.change_log import (
     IMReconciliationOperation as _IMReconciliationOperation,
 )
@@ -79,7 +80,6 @@ from core.human_input_v2.im_integration.change_log import (
     IMReconciliationSubjectKind as _IMReconciliationSubjectKind,
 )
 from core.human_input_v2.im_message_inbox import IM_INBOX_PROVIDER_METADATA_MAX_LENGTH, InboxProcessingStatus
-from core.human_input_v2.im_provider import IMEventIngressKind as _IMEventIngressKind
 from graphon.file.enums import FileTransferMethod, FileType
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7

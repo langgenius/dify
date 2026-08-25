@@ -15,7 +15,7 @@ from core.human_input_v2.im_integration import (
     IMIntegration,
     ProviderTenantIdentity,
 )
-from core.human_input_v2.im_provider import SlackIMIntegrationCredentials
+from core.human_input_v2.im_integration.adapters import SlackCredentials
 from core.human_input_v2.shared import AccountId, IMSyncRunId, IntegrationId, TenantId, WorkspaceScope
 from extensions.ext_key_provider import key_provider_manager
 from libs.datetime_utils import naive_utc_now
@@ -146,7 +146,7 @@ def _persist_live_slack_integration(
     credentials: dict[str, str],
     now: datetime,
 ) -> IMIntegration:
-    plaintext_credentials = SlackIMIntegrationCredentials(
+    plaintext_credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id=credentials["SLACK_CLIENT_ID"],
         client_secret=credentials["SLACK_CLIENT_SECRET"],

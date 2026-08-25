@@ -13,15 +13,14 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
-from core.human_input_v2 import im_provider
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import MessageLocator
 from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
 from core.human_input_v2.im_integration.adapters import feishu_lark as feishu_lark_module
 from core.human_input_v2.im_integration.adapters import ms_teams as ms_teams_module
 from core.human_input_v2.im_integration.adapters import slack as slack_module
 from core.human_input_v2.im_integration.adapters import wecom as wecom_module
-from core.human_input_v2.im_integration.adapters._message_locator_codec import _Base64JSONLocatorPayload
-from core.human_input_v2.im_provider import MessageLocator
+from core.human_input_v2.im_integration.adapters.message_locator import _Base64JSONLocatorPayload
 
 _URLSAFE_BASE64_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 _ASCII_TEXT = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:/.@"
@@ -163,25 +162,6 @@ def _is_scalar_like(annotation: object) -> bool:
     return False
 
 
-def test_provider_neutral_package_hides_private_locator_implementation_details() -> None:
-    assert "MessageLocator" in im_provider.__all__
-    for private_name in (
-        "_Base64JSONLocatorPayload",
-        "_SlackLocatorPayload",
-        "_FeishuLarkLocatorPayload",
-        "_DingTalkLocatorPayload",
-        "_WeComLocatorPayload",
-        "_MSTeamsLocatorPayload",
-    ):
-        assert private_name not in im_provider.__all__
-        assert not hasattr(im_provider, private_name)
-
-    package_source = Path(im_provider.__file__).resolve().read_text(encoding="utf-8")
-    contracts_source = Path(inspect.getsourcefile(im_provider.MessageAccepted) or "").read_text(encoding="utf-8")
-    assert "im_integration.adapters" not in package_source
-    assert "im_integration.adapters" not in contracts_source
-
-
 @pytest.mark.parametrize("case", _payload_cases(), ids=lambda case: case.payload_cls.__name__)
 def test_private_locator_payload_models_are_strict_frozen_scalar_only_and_provider_typed(
     case: _PayloadCase,
@@ -195,7 +175,7 @@ def test_private_locator_payload_models_are_strict_frozen_scalar_only_and_provid
     assert payload_cls.model_config.get("extra") == "forbid"
     assert payload_cls.model_fields["v"].is_required()
     assert payload_cls.model_fields["p"].is_required()
-    assert get_type_hints(payload_cls.encode)["return"] is str
+    assert get_type_hints(payload_cls.encode)["return"] is MessageLocator
     assert get_type_hints(payload_cls.decode)["return"] in {Self, payload_cls}
 
     mutable_field = next(field_name for field_name in case.example if field_name not in {"v", "p"})
@@ -242,9 +222,7 @@ def test_locator_json_shape_is_exact_and_round_trips_through_public_scalar_bound
     encoded = payload.encode()
     recovered_locator = _json_text_round_trip(MessageLocator(encoded))
     decoded_payload = case.payload_cls.decode(str(recovered_locator))
-    serialized_payload = base64.urlsafe_b64decode(
-        str(recovered_locator) + ("=" * (-len(str(recovered_locator)) % 4))
-    )
+    serialized_payload = base64.urlsafe_b64decode(str(recovered_locator) + ("=" * (-len(str(recovered_locator)) % 4)))
     decoded_json = json.loads(serialized_payload)
 
     assert decoded_payload == payload
@@ -295,7 +273,7 @@ def test_locator_decoder_rejects_invalid_public_scalar_forms(
 def test_locator_codec_helper_owns_model_json_and_base64_conversion_without_json_dumps_loads() -> None:
     helper_source = Path(inspect.getsourcefile(_Base64JSONLocatorPayload) or "").read_text(encoding="utf-8")
 
-    assert "self.model_dump_json().encode(\"utf-8\")" in helper_source
+    assert 'self.model_dump_json().encode("utf-8")' in helper_source
     assert "return cls.model_validate_json(serialized_payload)" in helper_source
     assert helper_source.count("urlsafe_b64encode") == 1
     assert "json.dumps" not in helper_source

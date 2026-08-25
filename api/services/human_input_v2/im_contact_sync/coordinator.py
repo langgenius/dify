@@ -21,7 +21,8 @@ from core.human_input_v2.im_integration import (
     ReconciliationRunRef,
     SyncReconciler,
 )
-from core.human_input_v2.im_provider import Directory, DirectoryEntry, DirectoryReadFailure, IMDirectory
+from core.human_input_v2.im_integration.adapters.entities import Directory, DirectoryEntry, DirectoryReadFailure
+from core.human_input_v2.im_integration.adapters.protocols import IMDirectory
 from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,

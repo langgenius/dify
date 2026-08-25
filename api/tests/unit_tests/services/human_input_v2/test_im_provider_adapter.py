@@ -7,7 +7,15 @@ import inspect
 import pytest
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration import IMProviderCredentials
+from core.human_input_v2.im_integration.adapters import (
+    DingTalkCredentials,
+    FeishuCredentials,
+    LarkCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
+)
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
     FeishuIMProviderAdapter,
@@ -16,19 +24,11 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
 from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
-from core.human_input_v2.im_provider import (
-    DingTalkIMIntegrationCredentials,
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
-)
 from services.human_input_v2.im_provider_adapter import build_im_provider_adapter
 
 _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
     (
-        SlackIMIntegrationCredentials(
+        SlackCredentials(
             provider=IMProvider.SLACK,
             client_id="slack-client",
             client_secret="slack-client-secret",
@@ -39,7 +39,7 @@ _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
         SlackIMProviderAdapter,
     ),
     (
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="feishu-app",
             app_secret="feishu-secret",
@@ -49,7 +49,7 @@ _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
         FeishuIMProviderAdapter,
     ),
     (
-        LarkIMIntegrationCredentials(
+        LarkCredentials(
             provider=IMProvider.LARK,
             app_id="lark-app",
             app_secret="lark-secret",
@@ -59,7 +59,7 @@ _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
         LarkIMProviderAdapter,
     ),
     (
-        DingTalkIMIntegrationCredentials(
+        DingTalkCredentials(
             provider=IMProvider.DING_TALK,
             corp_id="dingtalk-corp",
             client_id="dingtalk-client",
@@ -68,7 +68,7 @@ _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
         DingTalkIMProviderAdapter,
     ),
     (
-        MSTeamsIMIntegrationCredentials(
+        MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="00000000-0000-0000-0000-000000000001",
             client_id="00000000-0000-0000-0000-000000000002",
@@ -77,7 +77,7 @@ _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
         MSTeamsIMProviderAdapter,
     ),
     (
-        WeComIMIntegrationCredentials(
+        WeComCredentials(
             provider=IMProvider.WE_COM,
             corp_id="wecom-corp",
             agent_id="1001",

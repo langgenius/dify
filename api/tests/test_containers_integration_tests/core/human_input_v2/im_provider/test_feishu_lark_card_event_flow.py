@@ -16,12 +16,7 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import (
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import feishu_lark
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     DynamicCardMessagingError,
@@ -34,6 +29,11 @@ from core.human_input_v2.im_provider import (
     StaticCardIntent,
     UnrecognizedIMEvent,
     WebhookRequest,
+    feishu_lark,
+)
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
 )
 
 _FIXTURE_DIRECTORY = Path(__file__).resolve().parents[4] / "unit_tests/core/human_input_v2/im_provider/fixtures"
@@ -127,7 +127,7 @@ class _EventConsumer:
 class _FixtureSDKObjectStreamClient:
     def __init__(
         self,
-        credentials: FeishuIMIntegrationCredentials,
+        credentials: FeishuCredentials,
         domain: str,
         callback: Callable[[feishu_lark._SDKEventEnvelope, Callable[[], None]], None],
         sdk_event: P2CardActionTrigger,
@@ -160,8 +160,8 @@ def _intent(marker: str = "test-only") -> ResolvedForm:
     )
 
 
-def _credentials() -> FeishuIMIntegrationCredentials:
-    return FeishuIMIntegrationCredentials(
+def _credentials() -> FeishuCredentials:
+    return FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_test_only",
         app_secret="secret_test_only",
@@ -282,7 +282,7 @@ def _replay_stream(
     clients: list[_FixtureSDKObjectStreamClient] = []
 
     def create_stream_client(
-        credentials: FeishuIMIntegrationCredentials,
+        credentials: FeishuCredentials,
         domain: str,
         callback: Callable[[feishu_lark._SDKEventEnvelope, Callable[[], None]], None],
     ) -> _FixtureSDKObjectStreamClient:
@@ -642,7 +642,7 @@ def test_live_feishu_sender_is_accepted_and_replaced_without_callback_synthesis(
     assert encrypt_key is not None
     assert recipient_id is not None
 
-    credentials = FeishuIMIntegrationCredentials(
+    credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id=app_id,
         app_secret=app_secret,

@@ -12,19 +12,18 @@ from lark_oapi.core.exception import EventException
 from lark_oapi.event.callback.model.p2_card_action_trigger import P2CardActionTrigger
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     EventAcceptance,
     IMEventIngressKind,
     IMStreamStartError,
     IMStreamStopError,
+)
+from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
+from core.human_input_v2.im_integration.adapters.feishu_lark import (
+    FeishuIMProviderAdapter,
+    LarkIMProviderAdapter,
 )
 
 _LEGACY_STREAM_PAYLOAD_KEY = "__dify_feishu_lark.stream"
@@ -140,7 +139,7 @@ class _FakeStreamClient:
 class _DispatcherStreamClient:
     def __init__(
         self,
-        credentials: FeishuIMIntegrationCredentials,
+        credentials: FeishuCredentials,
         domain: str,
         callback: Callable[[adapter_module._SDKEventEnvelope, Callable[[], None]], None],
         payload: bytes,
@@ -335,8 +334,8 @@ def _adapter(
         "encrypt_key": "sanitized-encrypt-key",
     }
     if provider is IMProvider.FEISHU:
-        return FeishuIMProviderAdapter(FeishuIMIntegrationCredentials.model_validate(values))
-    return LarkIMProviderAdapter(LarkIMIntegrationCredentials.model_validate(values))
+        return FeishuIMProviderAdapter(FeishuCredentials.model_validate(values))
+    return LarkIMProviderAdapter(LarkCredentials.model_validate(values))
 
 
 def test_per_client_sdk_transport_owns_and_closes_its_loop(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -369,7 +368,7 @@ def test_per_client_sdk_transport_owns_and_closes_its_loop(monkeypatch: pytest.M
     )
     monkeypatch.setattr(sdk_ws_client_module.websockets, "connect", connect)
     client = adapter_module._PerClientSDKWSClient(
-        credentials=FeishuIMIntegrationCredentials(
+        credentials=FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="cli_sanitized_app",
             app_secret="sanitized-app-secret",
@@ -456,7 +455,7 @@ def test_official_stream_client_start_returns_after_channel_readiness(
     channels: list[LoopBoundReadyChannel] = []
     monkeypatch.setattr(adapter_module, "_SynchronousEventChannel", LoopBoundReadyChannel)
     client = adapter_module._OfficialSDKStreamClient(
-        FeishuIMIntegrationCredentials(
+        FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="cli_sanitized_app",
             app_secret="sanitized-app-secret",
@@ -483,7 +482,7 @@ def test_official_stream_client_start_returns_after_channel_readiness(
 
 def test_private_sdk_dispatcher_seam_keeps_consumer_acceptance_as_ack_boundary() -> None:
     observed: list[adapter_module._SDKEventEnvelope] = []
-    credentials = FeishuIMIntegrationCredentials(
+    credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -600,7 +599,7 @@ def test_card_dispatcher_preserves_native_payload_without_event_stream_parsing(
 
 def test_message_dispatcher_rejects_unregistered_message_event() -> None:
     observed: list[adapter_module._SDKEventEnvelope] = []
-    credentials = FeishuIMIntegrationCredentials(
+    credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",
@@ -627,7 +626,7 @@ def test_message_dispatcher_rejects_unregistered_message_event() -> None:
 
 
 def test_private_sdk_write_seam_tracks_wire_ack_completion() -> None:
-    credentials = FeishuIMIntegrationCredentials(
+    credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_sanitized_app",
         app_secret="sanitized-app-secret",

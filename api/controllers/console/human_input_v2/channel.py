@@ -68,7 +68,7 @@ from .errors import (
     ChannelProviderConfigurationUpdatedHttpError,
     ChannelReplacementRequiredHttpError,
 )
-from .providers import EmailProviderCredentials, IMProviderCredentials
+from .providers import EmailProviderCredentials, IMProviderCredentialsInput
 
 type ChannelId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 type ConfigVersion = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -165,11 +165,11 @@ class ChannelDeleteQuery(StrictModel):
 
 
 class IMChannelTestPayload(StrictModel):
-    credentials: IMProviderCredentials
+    credentials: IMProviderCredentialsInput
 
 
 class IMChannelCreatePayload(StrictModel):
-    credentials: IMProviderCredentials
+    credentials: IMProviderCredentialsInput
 
 
 class IMChannelMutationResponse(ResponseModel):
@@ -181,12 +181,12 @@ class IMChannelDetailResponse(ResponseModel):
 
 
 class IMChannelUpdatePayload(StrictModel):
-    credentials: IMProviderCredentials
+    credentials: IMProviderCredentialsInput
     expected_config_version: ConfigVersion
 
 
 class IMChannelReplacementPayload(StrictModel):
-    credentials: IMProviderCredentials
+    credentials: IMProviderCredentialsInput
     expected_config_version: ConfigVersion
 
 

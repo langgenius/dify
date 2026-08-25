@@ -9,8 +9,7 @@ import pytest
 from core.human_input import ButtonStyle
 from core.human_input_v2 import MarkdownText, ParagraphInput, ResolvedForm, ResolvedFormAction, SelectInput
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter, _MSTeamsCardCodec
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     DynamicCardMessagingError,
@@ -20,6 +19,7 @@ from core.human_input_v2.im_provider import (
     ProviderUserId,
     UnrecognizedIMEvent,
 )
+from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter, _MSTeamsCardCodec
 
 _RECEIVED_AT = datetime(2026, 8, 12, 2, 26, 40)
 

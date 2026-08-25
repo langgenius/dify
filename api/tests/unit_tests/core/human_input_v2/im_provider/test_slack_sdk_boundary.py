@@ -29,9 +29,7 @@ from core.human_input_v2 import (
     SelectInput,
 )
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     AuthenticatedIMEvent,
     CorrelationToken,
     CredentialTestFailure,
@@ -49,10 +47,12 @@ from core.human_input_v2.im_provider import (
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
-    SlackIMIntegrationCredentials,
+    SlackCredentials,
     StaticCardIntent,
     WebhookRequest,
 )
+from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 
 _SIGNING_SECRET = "sanitized-signing-material"
 _RECEIVED_AT = datetime(2026, 8, 6, 8)
@@ -181,8 +181,8 @@ class _RecordingConsumer:
         return self.acceptance
 
 
-def _credentials() -> SlackIMIntegrationCredentials:
-    return SlackIMIntegrationCredentials(
+def _credentials() -> SlackCredentials:
+    return SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="sanitized-client-id",
         client_secret="sanitized-client-secret",

@@ -23,7 +23,7 @@ _FORBIDDEN_PREFIXES = (
 )
 _RESOLVED_FORM_FORBIDDEN_PREFIXES = _FORBIDDEN_PREFIXES + (
     "core.workflow",
-    "core.human_input_v2.im_provider",
+    "core.human_input_v2.im_integration.adapters",
     "core.human_input_v2.im_integration",
     "slack_sdk",
     "lark_oapi",

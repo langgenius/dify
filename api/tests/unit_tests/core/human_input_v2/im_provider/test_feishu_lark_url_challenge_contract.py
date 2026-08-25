@@ -11,14 +11,13 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, EventAcceptance, WebhookRequest
 from core.human_input_v2.im_integration.adapters import feishu_lark as adapter_module
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
 from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
     FeishuIMProviderAdapter,
-    LarkIMIntegrationCredentials,
     LarkIMProviderAdapter,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, WebhookRequest
 
 _RECEIVED_AT = datetime(2026, 8, 6, 10, 0, 0)
 _VERIFICATION_TOKEN = "test-only-verification-token"
@@ -74,10 +73,10 @@ def _create_handler(
     }
     adapter: FeishuIMProviderAdapter | LarkIMProviderAdapter
     if provider is IMProvider.FEISHU:
-        credentials = FeishuIMIntegrationCredentials.model_validate(credential_values)
+        credentials = FeishuCredentials.model_validate(credential_values)
         adapter = FeishuIMProviderAdapter(credentials)
     else:
-        credentials = LarkIMIntegrationCredentials.model_validate(credential_values)
+        credentials = LarkCredentials.model_validate(credential_values)
         adapter = LarkIMProviderAdapter(credentials)
     return adapter.create_webhook_handler(consumer)
 

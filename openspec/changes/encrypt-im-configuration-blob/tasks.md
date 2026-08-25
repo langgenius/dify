@@ -22,5 +22,5 @@
 
 - [x] 4.1 Update IM Channel snapshots and summaries to read `app_identifier` metadata and add a test that collection/item projection performs no credential decryption.
 - [x] 4.2 Add regression tests that malformed ciphertext and provider mismatch do not construct an adapter, invoke provider I/O, expose secret material or violate existing CAS/replacement behavior.
-- [ ] 4.3 Run focused API unit tests with `uv run --project api pytest api/tests/unit_tests/services/test_human_input_im_provider_configuration_service.py api/tests/unit_tests/services/test_human_input_im_integration_management_service.py api/tests/unit_tests/repositories/human_input_v2/im_integration`; run the affected CI-only repository integration contract suite in CI.
+- [x] 4.3 Run focused API unit tests with `uv run --project api pytest api/tests/unit_tests/services/test_human_input_im_provider_configuration_service.py api/tests/unit_tests/services/test_human_input_im_integration_management_service.py api/tests/unit_tests/repositories/human_input_v2/im_integration`; run the affected CI-only repository integration contract suite in CI.
 - [x] 4.4 Run `openspec validate encrypt-im-configuration-blob --strict` and update the change artifacts if validation reports an inconsistency.

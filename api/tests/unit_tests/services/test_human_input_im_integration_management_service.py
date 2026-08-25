@@ -15,13 +15,13 @@ from core.human_input_v2.im_integration import (
     ProviderTenantIdentity,
     StaleRevision,
 )
+from core.human_input_v2.im_integration.adapters import SlackCredentials
 from core.human_input_v2.im_integration.management import (
     ConfirmedIMConfiguration,
     IMIntegrationAlreadyExistsError,
     IMProviderConfigurationFailureKind,
     IMProviderTestResult,
 )
-from core.human_input_v2.im_provider import SlackIMIntegrationCredentials
 from core.human_input_v2.shared import (
     AccountId,
     DeploymentScope,
@@ -48,8 +48,8 @@ _SCOPE = WorkspaceScope(TenantId("workspace-1"))
 _ACTOR_ID = AccountId("account-1")
 
 
-def _slack_credentials() -> SlackIMIntegrationCredentials:
-    return SlackIMIntegrationCredentials(
+def _slack_credentials() -> SlackCredentials:
+    return SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="client-id",
         client_secret="client-secret",

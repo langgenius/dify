@@ -37,7 +37,7 @@ from core.human_input_v2.im_integration import (
     SyncReconciler,
     SyncResultFact,
 )
-from core.human_input_v2.im_provider import Directory, DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.adapters import Directory, DirectoryEntry, ProviderUserId
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -134,6 +134,7 @@ class _AdapterFactory:
         if self._integration_ids is not None:
             self._integration_ids.append(integration.id)
         return self._build_adapter()
+
 
 def _account(name: str, email: str) -> Account:
     return Account(

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from core.human_input_v2.entities import IMProvider, IMSyncRemovalReason, IMSyncResultType
-from core.human_input_v2.im_provider import DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.adapters.entities import DirectoryEntry, ProviderUserId
 from core.human_input_v2.shared import (
     ContactId,
     IMBindingId,

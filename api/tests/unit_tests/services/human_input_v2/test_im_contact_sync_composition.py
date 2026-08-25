@@ -15,20 +15,20 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     EncryptedCredentials,
     IMIntegration,
-    IMProviderCredentials,
     ProviderTenantIdentity,
 )
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-)
-from core.human_input_v2.im_provider import (
-    DingTalkIMIntegrationCredentials,
+from core.human_input_v2.im_integration.adapters import (
+    DingTalkCredentials,
     IMDirectory,
     IMProviderAdapter,
-    MSTeamsIMIntegrationCredentials,
-    SlackIMIntegrationCredentials,
-    WeComIMIntegrationCredentials,
+    MSTeamsCredentials,
+    SlackCredentials,
+    WeComCredentials,
+)
+from core.human_input_v2.im_integration.adapters.credentials import (
+    FeishuCredentials,
+    IMProviderCredentials,
+    LarkCredentials,
 )
 from core.human_input_v2.shared import DeploymentScope, IntegrationId, TenantId, WorkspaceScope
 from repositories.human_input_v2.im_integration import SQLAlchemyOrganizationIMWriteUnitOfWork
@@ -79,7 +79,7 @@ def _envelope(ciphertext: bytes) -> EncryptedCredentials:
 
 
 def test_integration_factory_resolves_cipher_then_decrypts_then_builds_provider_adapter() -> None:
-    plaintext_credentials = SlackIMIntegrationCredentials(
+    plaintext_credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="client-1",
         client_secret="plain-client",
@@ -99,7 +99,7 @@ def test_integration_factory_resolves_cipher_then_decrypts_then_builds_provider_
     )
     events: list[str] = []
     decryptions: list[bytes] = []
-    captured_credentials: list[SlackIMIntegrationCredentials] = []
+    captured_credentials: list[SlackCredentials] = []
 
     def decrypt(ciphertext: bytes) -> str:
         events.append("decrypt")
@@ -113,7 +113,7 @@ def test_integration_factory_resolves_cipher_then_decrypts_then_builds_provider_
 
     def build_adapter(credentials: IMProviderCredentials) -> IMProviderAdapter:
         events.append("build_adapter")
-        assert isinstance(credentials, SlackIMIntegrationCredentials)
+        assert isinstance(credentials, SlackCredentials)
         captured_credentials.append(credentials)
         return cast(IMProviderAdapter, _SlackAdapter())
 
@@ -132,7 +132,7 @@ def test_integration_factory_resolves_cipher_then_decrypts_then_builds_provider_
 
 
 def test_slack_adapter_factory_preserves_missing_optional_app_token() -> None:
-    plaintext_credentials = SlackIMIntegrationCredentials(
+    plaintext_credentials = SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="client-1",
         client_secret="plain-client",
@@ -151,14 +151,14 @@ def test_slack_adapter_factory_preserves_missing_optional_app_token() -> None:
         now=_NOW,
     )
     decryptions: list[bytes] = []
-    captured_credentials: list[SlackIMIntegrationCredentials] = []
+    captured_credentials: list[SlackCredentials] = []
 
     def decrypt(ciphertext: bytes) -> str:
         decryptions.append(ciphertext)
         return plaintext_credentials.model_dump_json()
 
     def build_adapter(credentials: IMProviderCredentials) -> IMProviderAdapter:
-        assert isinstance(credentials, SlackIMIntegrationCredentials)
+        assert isinstance(credentials, SlackCredentials)
         captured_credentials.append(credentials)
         return cast(IMProviderAdapter, _SlackAdapter())
 
@@ -205,7 +205,7 @@ def test_tenant_less_default_cipher_fails_before_decrypt_or_adapter_construction
 
 def test_explicit_deployment_cipher_recovers_every_provider_through_one_builder() -> None:
     credentials_by_provider = {
-        IMProvider.SLACK: SlackIMIntegrationCredentials(
+        IMProvider.SLACK: SlackCredentials(
             provider=IMProvider.SLACK,
             client_id="slack-client",
             client_secret="slack-secret",
@@ -213,33 +213,33 @@ def test_explicit_deployment_cipher_recovers_every_provider_through_one_builder(
             bot_token="xoxb-slack-bot",
             app_token=None,
         ),
-        IMProvider.FEISHU: FeishuIMIntegrationCredentials(
+        IMProvider.FEISHU: FeishuCredentials(
             provider=IMProvider.FEISHU,
             app_id="feishu-app",
             app_secret="feishu-secret",
             verification_token="feishu-verification",
             encrypt_key=None,
         ),
-        IMProvider.LARK: LarkIMIntegrationCredentials(
+        IMProvider.LARK: LarkCredentials(
             provider=IMProvider.LARK,
             app_id="lark-app",
             app_secret="lark-secret",
             verification_token=None,
             encrypt_key="lark-encrypt-key",
         ),
-        IMProvider.DING_TALK: DingTalkIMIntegrationCredentials(
+        IMProvider.DING_TALK: DingTalkCredentials(
             provider=IMProvider.DING_TALK,
             corp_id="ding-corp",
             client_id="ding-client",
             client_secret="ding-secret",
         ),
-        IMProvider.MS_TEAMS: MSTeamsIMIntegrationCredentials(
+        IMProvider.MS_TEAMS: MSTeamsCredentials(
             provider=IMProvider.MS_TEAMS,
             tenant_id="00000000-0000-0000-0000-000000000701",
             client_id="00000000-0000-0000-0000-000000000702",
             client_secret="teams-secret",
         ),
-        IMProvider.WE_COM: WeComIMIntegrationCredentials(
+        IMProvider.WE_COM: WeComCredentials(
             provider=IMProvider.WE_COM,
             corp_id="wecom-corp",
             agent_id="1000001",
@@ -258,12 +258,12 @@ def test_explicit_deployment_cipher_recovers_every_provider_through_one_builder(
         assert isinstance(
             credentials,
             (
-                SlackIMIntegrationCredentials,
-                FeishuIMIntegrationCredentials,
-                LarkIMIntegrationCredentials,
-                DingTalkIMIntegrationCredentials,
-                MSTeamsIMIntegrationCredentials,
-                WeComIMIntegrationCredentials,
+                SlackCredentials,
+                FeishuCredentials,
+                LarkCredentials,
+                DingTalkCredentials,
+                MSTeamsCredentials,
+                WeComCredentials,
             ),
         )
         captured_credentials[credentials.provider] = credentials
@@ -292,7 +292,7 @@ def test_explicit_deployment_cipher_recovers_every_provider_through_one_builder(
 
 
 def test_adapter_factory_rejects_provider_mismatch_before_adapter_construction() -> None:
-    mismatched_credentials = FeishuIMIntegrationCredentials(
+    mismatched_credentials = FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="feishu-app",
         app_secret="plaintext-secret",

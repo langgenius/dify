@@ -8,8 +8,7 @@ from alibabacloud_dingtalk.oauth2_1_0.models import GetTokenRequest, GetTokenRes
 from redis import Redis
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import dingtalk_redis
-from core.human_input_v2.im_provider import DingTalkIMIntegrationCredentials
+from core.human_input_v2.im_integration.adapters import DingTalkCredentials, dingtalk_redis
 
 
 class _FakeOAuthClient:
@@ -39,7 +38,7 @@ def test_real_redis_reuses_tokens_for_the_same_client_id(
         pytest.skip("REDIS_URL is unavailable")
 
     identity = uuid4().hex
-    credentials = DingTalkIMIntegrationCredentials(
+    credentials = DingTalkCredentials(
         provider=IMProvider.DING_TALK,
         corp_id=f"fake-corp-{identity}",
         client_id=f"fake-client-{identity}",

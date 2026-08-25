@@ -27,7 +27,7 @@ from core.human_input_v2.im_integration import (
     ReplaceIMBinding,
     SyncReconciler,
 )
-from core.human_input_v2.im_provider import DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.adapters import DirectoryEntry, ProviderUserId
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,

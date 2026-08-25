@@ -14,10 +14,10 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ConfirmedIMConfiguration,
     EncryptedCredentials,
-    IMProviderCredentials,
     IMProviderTestResult,
     IntegrationRevisionToken,
 )
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import (
     AccountId,
     DirectoryScope,

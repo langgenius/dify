@@ -12,8 +12,13 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters import (
+    AuthenticatedIMEvent,
+    EventAcceptance,
+    IMEventConsumer,
+    IMEventIngressKind,
+)
 from core.human_input_v2.im_message_inbox import IMInboxRecordId, InboxEventValidationError, InboxProcessingPolicy
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer, IMEventIngressKind
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository

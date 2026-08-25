@@ -19,7 +19,6 @@ from core.human_input_v2.im_integration import (
     BlockedReconciliation,
     EncryptedCredentials,
     IMIntegration,
-    IMProviderCredentials,
     IMSyncRepository,
     IMSyncRun,
     IntegrationRevisionToken,
@@ -34,7 +33,13 @@ from core.human_input_v2.im_integration import (
     SynchronizedIMIdentityPage,
     SyncResultPage,
 )
-from core.human_input_v2.im_provider import Directory, DirectoryEntry, DirectoryReadFailure, IMProviderAdapter
+from core.human_input_v2.im_integration.adapters import (
+    Directory,
+    DirectoryEntry,
+    DirectoryReadFailure,
+    IMProviderAdapter,
+)
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -176,6 +181,7 @@ class _DirectoryAdapterFactory:
     def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
         del integration
         return _DirectoryAdapter(self._directory_result, self._events)
+
 
 class _ProtectedRepository:
     def __init__(self, read_repository: _ReadRepository, events: list[str]) -> None:

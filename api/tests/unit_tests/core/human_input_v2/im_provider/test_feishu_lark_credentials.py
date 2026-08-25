@@ -2,25 +2,22 @@ import pytest
 from pydantic import ValidationError
 
 from controllers.console.human_input_v2.providers import (
-    FeishuCredentials as FeishuCredentialRequest,
+    FeishuCredentialsInput as FeishuCredentialRequest,
 )
-from controllers.console.human_input_v2.providers import LarkCredentials as LarkCredentialRequest
+from controllers.console.human_input_v2.providers import LarkCredentialsInput as LarkCredentialRequest
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMIntegrationCredentials,
-    LarkIMIntegrationCredentials,
-)
+from core.human_input_v2.im_integration.adapters.credentials import FeishuCredentials, LarkCredentials
 
 
 @pytest.mark.parametrize(
     ("resolved_type", "provider"),
     [
-        (FeishuIMIntegrationCredentials, IMProvider.FEISHU),
-        (LarkIMIntegrationCredentials, IMProvider.LARK),
+        (FeishuCredentials, IMProvider.FEISHU),
+        (LarkCredentials, IMProvider.LARK),
     ],
 )
 def test_resolved_credentials_are_strict_frozen_and_secret_safe(
-    resolved_type: type[FeishuIMIntegrationCredentials] | type[LarkIMIntegrationCredentials],
+    resolved_type: type[FeishuCredentials] | type[LarkCredentials],
     provider: IMProvider,
 ) -> None:
     credentials = resolved_type(
@@ -62,7 +59,7 @@ def test_feishu_request_projection_requires_and_maps_complete_credentials() -> N
 
     resolved = request.to_owner_credentials()
 
-    assert resolved == FeishuIMIntegrationCredentials(
+    assert resolved == FeishuCredentials(
         provider=IMProvider.FEISHU,
         app_id="cli_new_app",
         app_secret="new-app-secret",
@@ -82,7 +79,7 @@ def test_lark_request_projection_applies_new_and_cleared_secrets() -> None:
 
     resolved = request.to_owner_credentials()
 
-    assert resolved == LarkIMIntegrationCredentials(
+    assert resolved == LarkCredentials(
         provider=IMProvider.LARK,
         app_id="cli_new_app",
         app_secret="new-app-secret",
@@ -109,5 +106,5 @@ def test_credential_schemas_remain_explicitly_aligned() -> None:
 
     assert set(FeishuCredentialRequest.model_fields) == logical_fields
     assert set(LarkCredentialRequest.model_fields) == logical_fields
-    assert set(FeishuIMIntegrationCredentials.model_fields) == logical_fields
-    assert set(LarkIMIntegrationCredentials.model_fields) == logical_fields
+    assert set(FeishuCredentials.model_fields) == logical_fields
+    assert set(LarkCredentials.model_fields) == logical_fields

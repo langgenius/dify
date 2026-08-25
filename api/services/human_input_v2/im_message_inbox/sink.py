@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Protocol, override
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration.adapters.entities import AuthenticatedIMEvent, EventAcceptance
+from core.human_input_v2.im_integration.adapters.protocols import IMEventConsumer
 from core.human_input_v2.im_message_inbox import (
     AcceptanceKind,
     IMMessageInboxRepository,
@@ -22,7 +24,6 @@ from core.human_input_v2.im_message_inbox import (
     validate_inbox_event,
     validate_inbox_provider_tenant_id,
 )
-from core.human_input_v2.im_provider import AuthenticatedIMEvent, EventAcceptance, IMEventConsumer
 from core.human_input_v2.shared import IntegrationId
 
 from . import wakeup

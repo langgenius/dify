@@ -33,8 +33,7 @@ from core.human_input_v2 import (
     SelectInput,
 )
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import ms_teams
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CardAssessment,
     CorrelationToken,
     CredentialTestFailure,
@@ -48,12 +47,13 @@ from core.human_input_v2.im_provider import (
     MessageAccepted,
     MessageLocator,
     MessageSendingError,
-    MSTeamsIMIntegrationCredentials,
+    MSTeamsCredentials,
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
     StaticCardIntent,
     WebhookRequest,
+    ms_teams,
 )
 
 _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
@@ -61,8 +61,8 @@ _WEBHOOK_FIXTURE_PATH = Path(__file__).parents[4] / "fixtures" / "im_provider" /
 _UUID_PATTERN = re.compile(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b")
 
 
-def _credentials() -> MSTeamsIMIntegrationCredentials:
-    return MSTeamsIMIntegrationCredentials(
+def _credentials() -> MSTeamsCredentials:
+    return MSTeamsCredentials(
         provider="ms_teams",
         tenant_id="11111111-1111-1111-1111-111111111111",
         client_id="22222222-2222-2222-2222-222222222222",
@@ -363,7 +363,7 @@ def test_credential_test_treats_transient_bot_auth_failure_as_unknown(mocker) ->
 
 
 def test_credential_test_compares_guid_claims_case_insensitively(mocker) -> None:
-    credentials = MSTeamsIMIntegrationCredentials(
+    credentials = MSTeamsCredentials(
         provider="ms_teams",
         tenant_id="AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
         client_id="BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",

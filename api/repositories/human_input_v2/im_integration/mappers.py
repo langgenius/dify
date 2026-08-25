@@ -22,7 +22,7 @@ from core.human_input_v2.im_integration import (
     SyncIdentitySnapshot,
     SyncResultFact,
 )
-from core.human_input_v2.im_provider import ProviderUserId
+from core.human_input_v2.im_integration.adapters.entities import ProviderUserId
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,

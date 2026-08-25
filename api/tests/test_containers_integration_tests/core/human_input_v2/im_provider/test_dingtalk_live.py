@@ -21,15 +21,15 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from Tea.exceptions import RetryError, TeaException, UnretryableException, ValidateException
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
-from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestSuccess,
-    DingTalkIMIntegrationCredentials,
+    DingTalkCredentials,
     Directory,
     MessageAccepted,
     ProviderUserId,
 )
+from core.human_input_v2.im_integration.adapters import dingtalk as dingtalk_module
+from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
 
 _DEPARTMENT_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/department/listsub"
 _USER_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/user/list"
@@ -95,13 +95,13 @@ class _LiveDirectorySnapshot:
 
 
 @pytest.fixture(scope="module")
-def dingtalk_credentials() -> DingTalkIMIntegrationCredentials:
+def dingtalk_credentials() -> DingTalkCredentials:
     corp_id = os.getenv("DINGTALK_CORP_ID")
     client_id = os.getenv("DINGTALK_CLIENT_ID")
     client_secret = os.getenv("DINGTALK_CLIENT_SECRET")
     if not corp_id or not client_id or not client_secret:
         pytest.skip("DingTalk live credentials are not configured")
-    return DingTalkIMIntegrationCredentials(
+    return DingTalkCredentials(
         provider=IMProvider.DING_TALK,
         corp_id=corp_id,
         client_id=client_id,
@@ -118,7 +118,7 @@ def dingtalk_test_recipient_id() -> ProviderUserId:
 
 
 def test_live_credentials_verify_complete_member_authorization(
-    dingtalk_credentials: DingTalkIMIntegrationCredentials,
+    dingtalk_credentials: DingTalkCredentials,
 ) -> None:
     adapter = DingTalkIMProviderAdapter(dingtalk_credentials)
     try:
@@ -134,7 +134,7 @@ def test_live_credentials_verify_complete_member_authorization(
 
 
 def test_live_directory_reads_complete_non_empty_entries_across_real_pages(
-    dingtalk_credentials: DingTalkIMIntegrationCredentials,
+    dingtalk_credentials: DingTalkCredentials,
 ) -> None:
     expected_snapshot = _read_live_directory_with_forced_pagination(dingtalk_credentials)
     adapter = DingTalkIMProviderAdapter(dingtalk_credentials)
@@ -171,7 +171,7 @@ def test_live_directory_reads_complete_non_empty_entries_across_real_pages(
 
 
 def test_live_messaging_reports_provider_send_success(
-    dingtalk_credentials: DingTalkIMIntegrationCredentials,
+    dingtalk_credentials: DingTalkCredentials,
     dingtalk_test_recipient_id: ProviderUserId,
 ) -> None:
     message_body = f"Dify DingTalk live integration {uuid4()}"
@@ -200,7 +200,7 @@ def test_live_messaging_reports_provider_send_success(
 
 
 def _read_live_directory_with_forced_pagination(
-    credentials: DingTalkIMIntegrationCredentials,
+    credentials: DingTalkCredentials,
 ) -> _LiveDirectorySnapshot:
     access_token = dingtalk_module._get_access_token(dingtalk_module._new_oauth_client(), credentials)
     http_client = dingtalk_module._UrllibDirectoryHTTPClient()
@@ -278,7 +278,7 @@ def _parse_wire_response[ResponseT: _WireProviderResponse](
 
 
 def _wait_for_message_send_success(
-    credentials: DingTalkIMIntegrationCredentials,
+    credentials: DingTalkCredentials,
     recipient_id: ProviderUserId,
     process_query_key: str,
 ) -> None:

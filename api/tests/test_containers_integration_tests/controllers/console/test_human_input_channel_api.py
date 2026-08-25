@@ -10,10 +10,10 @@ from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
     ConfirmedIMConfiguration,
     EncryptedCredentials,
-    IMProviderCredentials,
     IMProviderTestResult,
     IntegrationRevisionToken,
 )
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import DirectoryScope, IntegrationId, TenantId, WorkspaceScope
 from services.human_input_v2 import im_integration_management_composition as composition
 from tests.test_containers_integration_tests.controllers.console.helpers import (

@@ -26,9 +26,7 @@ from core.human_input_v2 import (
     SelectInput,
 )
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters import slack as slack_module
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CorrelationToken,
     CredentialTestFailure,
     CredentialTestFailureKind,
@@ -46,10 +44,12 @@ from core.human_input_v2.im_provider import (
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
-    SlackIMIntegrationCredentials,
+    SlackCredentials,
     StaticCardIntent,
     WebhookRequest,
 )
+from core.human_input_v2.im_integration.adapters import slack as slack_module
+from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 
 _RECEIVED_AT = datetime(2026, 8, 6, 8, 0, 0)
 _REQUEST_TIMESTAMP = str(int(_RECEIVED_AT.replace(tzinfo=UTC).timestamp()))
@@ -121,8 +121,8 @@ def _credentials(
     *,
     signing_secret: str = "signing-secret",
     app_token: str | None = "xapp-test-app-token",
-) -> SlackIMIntegrationCredentials:
-    return SlackIMIntegrationCredentials(
+) -> SlackCredentials:
+    return SlackCredentials(
         provider=IMProvider.SLACK,
         client_id="client-id",
         client_secret="client-secret",
@@ -142,7 +142,7 @@ def _successful_auth_response(team_id: str = "team-1") -> SlackResponse:
 def _adapter(
     mocker,
     client: FakeWebClient,
-    credentials: SlackIMIntegrationCredentials | None = None,
+    credentials: SlackCredentials | None = None,
 ) -> SlackIMProviderAdapter:
     web_client = mocker.patch("core.human_input_v2.im_integration.adapters.slack.WebClient")
     web_client.return_value = client

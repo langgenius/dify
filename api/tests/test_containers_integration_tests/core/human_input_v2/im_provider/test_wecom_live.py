@@ -12,14 +12,14 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, Validat
 from wechatpy.enterprise import WeChatClient
 
 from core.human_input_v2.entities import IMProvider
-from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
-from core.human_input_v2.im_provider import (
+from core.human_input_v2.im_integration.adapters import (
     CredentialTestSuccess,
     Directory,
     MessageAccepted,
     ProviderUserId,
-    WeComIMIntegrationCredentials,
+    WeComCredentials,
 )
+from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
 
 _SDK_TIMEOUT_SECONDS = 5.0
 
@@ -91,7 +91,7 @@ class _ExpectedDirectoryEntry:
 
 @dataclass(frozen=True, slots=True)
 class _LiveCredentials:
-    value: WeComIMIntegrationCredentials = field(repr=False)
+    value: WeComCredentials = field(repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +108,7 @@ def wecom_credentials() -> _LiveCredentials:
         pytest.skip("WeCom live credentials are not configured")
     try:
         return _LiveCredentials(
-            WeComIMIntegrationCredentials(
+            WeComCredentials(
                 provider=IMProvider.WE_COM,
                 corp_id=corp_id,
                 agent_id=agent_id,
