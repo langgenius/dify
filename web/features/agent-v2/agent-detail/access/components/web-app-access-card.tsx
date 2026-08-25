@@ -4,8 +4,9 @@ import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/t
 import type { AppSiteUpdatePayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { ConfigParams, SettingsAppInfo } from '@/app/components/app/overview/settings'
 import type { AppIconType } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,58 @@ import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { AccessSurfaceCard } from './access-surface-card'
 import { WebAppAccessControlButton } from './web-app-access-control-button'
-import { WebAppLaunchAction } from './web-app-launch-action'
+
+function WebAppLaunchAction({
+  href,
+  label,
+  disabledReason,
+}: {
+  href?: string
+  label: string
+  disabledReason?: string
+}) {
+  const content = (
+    <>
+      <span aria-hidden className="i-ri-external-link-line size-4" />
+      {label}
+    </>
+  )
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={label}
+        className={buttonVariants({ variant: 'secondary', size: 'medium' })}
+      >
+        {content}
+      </a>
+    )
+  }
+
+  const disabledButton = (
+    <Button
+      variant="secondary"
+      size="medium"
+      className="data-disabled:inset-ring-components-button-secondary-border"
+      disabled
+      focusableWhenDisabled={Boolean(disabledReason)}
+    >
+      {content}
+    </Button>
+  )
+
+  if (!disabledReason) return disabledButton
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={disabledButton} />
+      <TooltipContent role="tooltip">{disabledReason}</TooltipContent>
+    </Tooltip>
+  )
+}
 
 export function WebAppAccessCard({
   agent,
