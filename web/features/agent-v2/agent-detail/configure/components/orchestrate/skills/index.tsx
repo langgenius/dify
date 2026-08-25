@@ -49,10 +49,7 @@ import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigApiContext } from '../config-context'
-import {
-  useAgentOrchestrateReadOnly,
-  useAgentOrchestrateViewingVersion,
-} from '../read-only-context'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
@@ -463,7 +460,7 @@ export function AgentSkills() {
   const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
-  const isViewingVersion = useAgentOrchestrateViewingVersion()
+  const readOnly = useAgentOrchestrateReadOnly()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuView, setAddMenuView] = useState<'menu' | 'workspace-selector'>('menu')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -511,7 +508,7 @@ export function AgentSkills() {
 
   const replaceWorkspaceSkillBindings = useCallback(
     (skillIds: string[], onSuccess?: () => void) => {
-      if (isViewingVersion || !hasLoadedAgentSkillBindings) return
+      if (readOnly || !hasLoadedAgentSkillBindings) return
 
       replaceAgentSkillBindings(
         {
@@ -563,8 +560,8 @@ export function AgentSkills() {
       apiContext.agentId,
       hasLoadedAgentSkillBindings,
       invalidateAgentSkillBindings,
-      isViewingVersion,
       queryClient,
+      readOnly,
       replaceAgentSkillBindings,
       t,
       tSkill,
@@ -709,7 +706,7 @@ export function AgentSkills() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={
-          !isViewingVersion && (
+          !readOnly && (
             <Popover open={addMenuOpen} onOpenChange={handleAddMenuOpenChange}>
               <PopoverTrigger
                 render={
@@ -775,7 +772,7 @@ export function AgentSkills() {
             {workspaceSkills.map((skill) => (
               <WorkspaceAgentSkillItem
                 key={skill.id}
-                canRemove={!isViewingVersion}
+                canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveWorkspaceSkill}
               />
@@ -784,7 +781,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
-                canRemove={!isViewingVersion}
+                canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveSkill}
               />
