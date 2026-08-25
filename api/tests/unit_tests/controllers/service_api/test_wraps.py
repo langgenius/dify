@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound, ServiceUnavailable, Unauthorized
 
+from controllers.service_api import wraps as wraps_module
 from controllers.service_api.wraps import (
     DatasetApiResource,
     FetchUserArg,
@@ -34,6 +35,20 @@ from models.model import ApiToken, App, AppMode, IconType
 def _configure_current_app_mock(mock_current_app):
     mock_current_app.login_manager = Mock()
     mock_current_app._get_current_object = Mock(return_value=Mock())
+
+
+@pytest.fixture(autouse=True)
+def _application_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FeatureQueries:
+        @staticmethod
+        def get_workspace_vector_space(workspace_id: str):
+            return wraps_module.FeatureService.get_vector_space(workspace_id)
+
+    monkeypatch.setattr(
+        wraps_module,
+        "application_services",
+        lambda: SimpleNamespace(feature_queries=FeatureQueries()),
+    )
 
 
 def _session_proxy(session: Session) -> scoped_session[Session]:

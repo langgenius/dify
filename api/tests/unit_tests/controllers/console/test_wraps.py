@@ -13,6 +13,7 @@ from werkzeug.exceptions import HTTPException
 from controllers.common.wraps import _extract_resource_id
 from controllers.console import api as console_api
 from controllers.console import flask_admission
+from controllers.console import wraps as wraps_module
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from controllers.console.wraps import (
@@ -50,6 +51,24 @@ from services.entities.feature_entities import LicenseStatus
 def reset_setup_required_cache():
     """Keep setup_required's process cache isolated across unit tests."""
     _is_setup_completed.reset_success()
+
+
+@pytest.fixture(autouse=True)
+def _application_services(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FeatureQueries:
+        @staticmethod
+        def get_workspace_features(workspace_id: str):
+            return wraps_module.FeatureService.get_features(workspace_id, exclude_vector_space=True)
+
+        @staticmethod
+        def get_workspace_vector_space(workspace_id: str):
+            return wraps_module.FeatureService.get_vector_space(workspace_id)
+
+    monkeypatch.setattr(
+        wraps_module,
+        "application_services",
+        lambda: SimpleNamespace(feature_queries=FeatureQueries()),
+    )
 
 
 class MockUser(UserMixin):

@@ -19,6 +19,7 @@ from controllers.common.wraps import (
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
@@ -184,7 +185,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
                 if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
                     return view(*args, **kwargs)
 
-                vector_space = FeatureService.get_vector_space(current_tenant_id)
+                vector_space = application_services().feature_queries.get_workspace_vector_space(current_tenant_id)
                 if 0 < vector_space.limit <= vector_space.size:
                     abort(
                         403,
@@ -386,7 +387,11 @@ def is_allow_transfer_owner[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
         _, current_tenant_id = current_account_with_tenant()
         # Check both billing/plan level and workspace policy level permissions
-        check_workspace_owner_transfer_permission(current_tenant_id)
+        features = application_services().feature_queries.get_workspace_features(current_tenant_id)
+        check_workspace_owner_transfer_permission(
+            current_tenant_id,
+            owner_transfer_allowed=features.is_allow_transfer_workspace,
+        )
         return view(*args, **kwargs)
 
     return decorated

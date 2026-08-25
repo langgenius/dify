@@ -36,10 +36,16 @@ class FeatureQueryService:
         self._app_dsl_version = app_dsl_version
 
     def get_features(self, context: RequestContext) -> FeatureModel:
-        return self._features.get_workspace_features(self._require_active_workspace(context))
+        return self.get_workspace_features(self._require_active_workspace(context))
+
+    def get_workspace_features(self, workspace_id: str) -> FeatureModel:
+        return self._features.get_workspace_features(workspace_id)
 
     def get_vector_space(self, context: RequestContext) -> VectorSpaceLimitationModel:
-        return self._features.get_vector_space(self._require_active_workspace(context))
+        return self.get_workspace_vector_space(self._require_active_workspace(context))
+
+    def get_workspace_vector_space(self, workspace_id: str) -> VectorSpaceLimitationModel:
+        return self._features.get_vector_space(workspace_id)
 
     def get_trial_models(self, context: RequestContext) -> list[str]:
         return self._features.get_trial_models(self._require_active_workspace(context))
