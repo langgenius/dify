@@ -280,6 +280,7 @@ describe("document upload utilities", () => {
       "application/x-ndjson",
       "application/jsonl",
       "application/ndjson",
+      "application/json",
       "application/octet-stream",
     ]) {
       const result = await readBulkDocumentUploadWithAdmission(
@@ -300,6 +301,50 @@ describe("document upload utilities", () => {
         type === "application/octet-stream" ? "application/x-ndjson" : type,
       );
     }
+  });
+
+  it.each([
+    ["README.markdown", "text/markdown"],
+    ["component.mdx", "text/mdx"],
+    ["captions.vtt", "text/vtt"],
+    ["application.properties", "text/x-java-properties"],
+    ["formatted.rtf", "text/rtf"],
+    ["feed.xml", "application/xml"],
+    ["manual.odt", "application/vnd.oasis.opendocument.text"],
+    ["message.eml", "message/rfc822"],
+    ["message.msg", "application/vnd.ms-outlook"],
+  ])("accepts legacy-compatible document upload %s", async (filename, declaredMimeType) => {
+    for (const type of [declaredMimeType, "application/octet-stream"]) {
+      const result = await readBulkDocumentUploadWithAdmission(
+        {
+          parseBody: async () => ({
+            files: [new File(["content"], filename, { type })],
+          }),
+        },
+        {
+          maxAcceptedBytesByQuota: null,
+          maxBulkUploadBytes: 100,
+          maxBulkUploadFiles: 20,
+          maxUploadBytes: 100,
+        },
+      );
+
+      expect(result.accepted).toHaveLength(1);
+      expect(result.accepted[0]?.filename).toBe(filename);
+    }
+  });
+
+  it("rejects a supported extension paired with an unrelated MIME type", async () => {
+    await expect(
+      readDocumentUpload(
+        {
+          parseBody: async () => ({
+            file: new File(["%PDF-1.7"], "report.pdf", { type: "text/plain" }),
+          }),
+        },
+        100,
+      ),
+    ).rejects.toThrow(DocumentUploadValidationError);
   });
 
   it("reports quota, aggregate-byte, and count exclusions without discarding earlier files", async () => {

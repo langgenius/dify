@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "ワークスペースのクォータを超えています",
   "newKnowledge.documentUploadExclusion.target": "ドキュメントの対象が無効になっています",
   "newKnowledge.documentUploadFailed": "これらの書類をアップロードできませんでした。もう一度やり直してください。",
-  "newKnowledge.documentUploadFormats": "TXT、Markdown、PDF、HTML、XLSX、CSV、JSONL に対応 · 1ファイル最大15 MB",
+  "newKnowledge.documentUploadFormats": "テキスト、Markdown、HTML、PDF、Office、EPUB、メール、構造化データ（CSV、JSON/JSONL、XML）に対応 · 複雑な形式にはドキュメントパーサーが必要 · 1ファイル最大15 MB",
   "newKnowledge.documentUploadPartial": "{{accepted}} 件のドキュメントの処理を開始しました。{{excluded}} 件は追加できませんでした：{{details}}",
   "newKnowledge.documentUploadRejected": "ドキュメントを受け付けられませんでした：{{details}}",
   "newKnowledge.documentUploadStarted": "文書処理が開始されました。",

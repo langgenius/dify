@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "cota spațiului de lucru a fost depășită",
   "newKnowledge.documentUploadExclusion.target": "destinația documentului nu mai este validă",
   "newKnowledge.documentUploadFailed": "Nu am putut încărca aceste documente. Încearcă din nou.",
-  "newKnowledge.documentUploadFormats": "Acceptă TXT, Markdown, PDF, HTML, XLSX, CSV și JSONL · maximum 15 MB fiecare",
+  "newKnowledge.documentUploadFormats": "Acceptă text, Markdown, HTML, PDF, Office, EPUB, e-mail și date structurate (CSV, JSON/JSONL, XML) · formatele complexe necesită un analizor de documente · maximum 15 MB per fișier",
   "newKnowledge.documentUploadPartial": "Procesarea a {{accepted}} documente a început; {{excluded}} nu au putut fi adăugate: {{details}}",
   "newKnowledge.documentUploadRejected": "Nu a fost acceptat niciun document: {{details}}",
   "newKnowledge.documentUploadStarted": "Procesarea documentelor a început.",

@@ -55,7 +55,7 @@ class FileService:
         mimetype: str,
         user: Account | EndUser,
         tenant_id: str | None = None,
-        source: Literal["datasets"] | None = None,
+        source: Literal["datasets", "knowledge_fs"] | None = None,
         source_url: str = "",
         default_file_size_limit: int | None = None,
     ) -> UploadFile:

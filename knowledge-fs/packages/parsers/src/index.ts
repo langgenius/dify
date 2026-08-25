@@ -191,6 +191,20 @@ const defaultMaxRows = 20_000;
 const defaultRetryDelayMs = 100;
 const defaultNow = () => new Date().toISOString();
 const defaultGenerateId = () => crypto.randomUUID();
+const unstructuredDocumentExtensions = new Set([
+  "doc",
+  "docx",
+  "eml",
+  "epub",
+  "msg",
+  "odt",
+  "pdf",
+  "ppt",
+  "pptx",
+  "rtf",
+  "xls",
+  "xlsx",
+]);
 
 const UnstructuredElementSchema = z.object({
   element_id: z.string().min(1).max(512).optional(),
@@ -209,11 +223,12 @@ export function createNativeMarkdownParser(options: NativeParserOptions = {}): P
   return {
     kind: "native-markdown",
     parse: async (input) => {
-      const parserVersion = options.parserVersion ?? "native-markdown@1";
+      const isMdx = isMdxInput(input);
+      const parserVersion = options.parserVersion ?? (isMdx ? "native-mdx@1" : "native-markdown@1");
       assertInputBounds(input.body, options.maxInputBytes ?? defaultMaxInputBytes);
       const text = decodeUtf8(input.body);
       const tokens = marked.lexer(text, { gfm: true });
-      const elements = markdownTokensToElements(tokens);
+      const elements = markdownTokensToElements(tokens, { preserveHtmlText: isMdx });
 
       return createParseArtifact({
         elements,
@@ -237,7 +252,7 @@ export function createNativeHtmlParser(options: NativeParserOptions = {}): Parse
         lowerCaseAttributeNames: true,
         lowerCaseTags: true,
       });
-      const nodes = (document.children ?? []) as HtmlNode[];
+      const nodes = document.children as HtmlNode[];
       const elements = htmlNodesToElements(nodes);
       const documentTitle = htmlDocumentTitle(nodes);
 
@@ -742,6 +757,10 @@ function selectParser(
     return { parser: unstructured, reason: "unsupported-native-language" };
   }
 
+  if (unstructuredDocumentExtensions.has(filename.split(".").at(-1) ?? "")) {
+    return { parser: unstructured, reason: "complex-file-type" };
+  }
+
   const structuredFormat = structuredDataFormat(input);
 
   if (structuredFormat && input.body.byteLength > maxNativeInputBytes) {
@@ -754,10 +773,15 @@ function selectParser(
 
   const nativeParser =
     mimeType === "text/markdown" ||
+    mimeType === "text/mdx" ||
     mimeType === "text/plain" ||
+    mimeType === "text/vtt" ||
+    mimeType === "text/x-java-properties" ||
     filename.endsWith(".md") ||
     filename.endsWith(".markdown") ||
-    filename.endsWith(".mdx")
+    filename.endsWith(".mdx") ||
+    filename.endsWith(".properties") ||
+    filename.endsWith(".vtt")
       ? markdown
       : mimeType === "text/html" ||
           mimeType === "application/xhtml+xml" ||
@@ -841,21 +865,20 @@ function structuredDataFormat({
     return "csv";
   }
 
-  if (
-    normalizedMime === "application/json" ||
-    normalizedMime === "text/json" ||
-    normalizedFilename.endsWith(".json")
-  ) {
+  if (normalizedFilename.endsWith(".jsonl") || normalizedFilename.endsWith(".ndjson")) {
+    return "jsonl";
+  }
+
+  if (normalizedFilename.endsWith(".json")) {
     return "json";
   }
 
-  if (
-    normalizedMime === "application/x-ndjson" ||
-    normalizedMime === "application/jsonl" ||
-    normalizedFilename.endsWith(".jsonl") ||
-    normalizedFilename.endsWith(".ndjson")
-  ) {
+  if (normalizedMime === "application/x-ndjson" || normalizedMime === "application/jsonl") {
     return "jsonl";
+  }
+
+  if (normalizedMime === "application/json" || normalizedMime === "text/json") {
+    return "json";
   }
 
   if (
@@ -1024,7 +1047,10 @@ function uniqueStrings(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
 
-function markdownTokensToElements(tokens: readonly Token[]): ParseElementInput[] {
+function markdownTokensToElements(
+  tokens: readonly Token[],
+  { preserveHtmlText }: { readonly preserveHtmlText: boolean },
+): ParseElementInput[] {
   const elements: ParseElementInput[] = [];
   const sectionPath: string[] = [];
 
@@ -1078,6 +1104,12 @@ function markdownTokensToElements(tokens: readonly Token[]): ParseElementInput[]
       continue;
     }
 
+    if (token.type === "html" && preserveHtmlText) {
+      const html = token as Tokens.HTML;
+      pushTextElement(elements, "paragraph", markdownHtmlBlockText(html.text), sectionPath);
+      continue;
+    }
+
     if (token.type === "list") {
       const list = token as Tokens.List;
       pushTextElement(
@@ -1104,6 +1136,38 @@ function markdownTokensToElements(tokens: readonly Token[]): ParseElementInput[]
   }
 
   return elements;
+}
+
+function isMdxInput({
+  filename,
+  mimeType,
+}: Pick<ParseDocumentInput, "filename" | "mimeType">): boolean {
+  return (
+    mimeType.trim().toLowerCase() === "text/mdx" || filename.trim().toLowerCase().endsWith(".mdx")
+  );
+}
+
+function markdownHtmlBlockText(source: string): string {
+  const document = parseDocument(source, {
+    lowerCaseAttributeNames: true,
+    lowerCaseTags: true,
+  });
+  const nodes = document.children as HtmlNode[];
+
+  return nodes.map(searchableMarkdownHtmlText).join("\n");
+}
+
+function searchableMarkdownHtmlText(node: HtmlNode): string {
+  const name = node.name?.toLowerCase();
+  if (name && ["script", "style", "noscript"].includes(name)) {
+    return "";
+  }
+
+  if (!node.children?.length) {
+    return htmlText(node);
+  }
+
+  return node.children.map(searchableMarkdownHtmlText).join("\n");
 }
 
 function htmlNodesToElements(nodes: readonly HtmlNode[]): ParseElementInput[] {

@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "kvota delovnega prostora je presežena",
   "newKnowledge.documentUploadExclusion.target": "cilj dokumenta ni več veljaven",
   "newKnowledge.documentUploadFailed": "Teh dokumentov nismo mogli naložiti. poskusi ponovno",
-  "newKnowledge.documentUploadFormats": "Podpira TXT, Markdown, PDF, HTML, XLSX, CSV in JSONL · do 15 MB na datoteko",
+  "newKnowledge.documentUploadFormats": "Podpira besedilo, Markdown, HTML, PDF, Office, EPUB, e-pošto in strukturirane podatke (CSV, JSON/JSONL, XML) · zapletene oblike zahtevajo razčlenjevalnik dokumentov · do 15 MB na datoteko",
   "newKnowledge.documentUploadPartial": "Obdelava {{accepted}} dokumentov se je začela; {{excluded}} jih ni bilo mogoče dodati: {{details}}",
   "newKnowledge.documentUploadRejected": "Noben dokument ni bil sprejet: {{details}}",
   "newKnowledge.documentUploadStarted": "Začela se je obdelava dokumentov.",

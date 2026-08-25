@@ -2106,7 +2106,7 @@ describe('DocumentsPage', () => {
     expect(input).toHaveAttribute('tabindex', '-1')
     expect(input).toHaveAttribute(
       'accept',
-      '.csv,.doc,.docx,.epub,.htm,.html,.json,.jsonl,.md,.pdf,.ppt,.pptx,.rtf,.text,.txt,.xls,.xlsx',
+      '.csv,.doc,.docx,.eml,.epub,.htm,.html,.json,.jsonl,.markdown,.md,.mdx,.msg,.odt,.pdf,.ppt,.pptx,.properties,.rtf,.text,.txt,.vtt,.xls,.xlsx,.xml',
     )
 
     await user.upload(input, new File(['one'], 'one.md', { type: 'text/markdown' }))

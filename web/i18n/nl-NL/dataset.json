@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "werkruimtequotum overschreden",
   "newKnowledge.documentUploadExclusion.target": "documentdoel is niet meer geldig",
   "newKnowledge.documentUploadFailed": "We konden deze documenten niet uploaden. Probeer het opnieuw.",
-  "newKnowledge.documentUploadFormats": "Ondersteunt TXT, Markdown, PDF, HTML, XLSX, CSV en JSONL · maximaal 15 MB per bestand",
+  "newKnowledge.documentUploadFormats": "Ondersteunt tekst, Markdown, HTML, PDF, Office, EPUB, e-mail en gestructureerde gegevens (CSV, JSON/JSONL, XML) · complexe indelingen vereisen een documentparser · maximaal 15 MB per bestand",
   "newKnowledge.documentUploadPartial": "Verwerking van {{accepted}} documenten gestart; {{excluded}} konden niet worden toegevoegd: {{details}}",
   "newKnowledge.documentUploadRejected": "Er zijn geen documenten geaccepteerd: {{details}}",
   "newKnowledge.documentUploadStarted": "Documentverwerking gestart.",

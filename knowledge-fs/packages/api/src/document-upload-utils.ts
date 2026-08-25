@@ -20,25 +20,42 @@ export interface BulkDocumentRevisionTarget {
   readonly expectedDocumentRowVersion: number;
 }
 
-export const SUPPORTED_DOCUMENT_UPLOAD_MIME_TYPES = new Set([
-  "application/jsonl",
-  "application/ndjson",
-  "application/epub+zip",
-  "application/json",
-  "application/msword",
-  "application/pdf",
-  "application/rtf",
-  "application/vnd.ms-excel",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/x-ndjson",
-  "text/csv",
-  "text/html",
-  "text/markdown",
-  "text/plain",
-]);
+const DOCUMENT_UPLOAD_MIME_TYPES_BY_EXTENSION = {
+  csv: ["text/csv", "application/vnd.ms-excel"],
+  doc: ["application/msword"],
+  docx: ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  eml: ["message/rfc822"],
+  epub: ["application/epub+zip"],
+  htm: ["text/html"],
+  html: ["text/html"],
+  json: ["application/json"],
+  jsonl: ["application/x-ndjson", "application/jsonl", "application/ndjson", "application/json"],
+  markdown: ["text/markdown", "text/x-markdown", "text/plain"],
+  md: ["text/markdown", "text/x-markdown", "text/plain"],
+  mdx: ["text/mdx", "text/markdown", "text/plain"],
+  msg: ["application/vnd.ms-outlook", "application/x-msg"],
+  odt: ["application/vnd.oasis.opendocument.text"],
+  pdf: ["application/pdf"],
+  ppt: ["application/vnd.ms-powerpoint", "application/mspowerpoint", "application/x-mspowerpoint"],
+  pptx: ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  properties: ["text/x-java-properties", "text/plain"],
+  rtf: ["application/rtf", "text/rtf", "application/x-rtf"],
+  text: ["text/plain"],
+  txt: ["text/plain"],
+  vtt: ["text/vtt", "text/plain"],
+  xls: [
+    "application/vnd.ms-excel",
+    "application/excel",
+    "application/x-excel",
+    "application/x-msexcel",
+  ],
+  xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  xml: ["application/xml", "text/xml"],
+} as const satisfies Readonly<Record<string, readonly string[]>>;
+
+export const SUPPORTED_DOCUMENT_UPLOAD_MIME_TYPES = new Set(
+  Object.values(DOCUMENT_UPLOAD_MIME_TYPES_BY_EXTENSION).flat(),
+);
 
 export const DEFAULT_DOCUMENT_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
 export const DEFAULT_BULK_DOCUMENT_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
@@ -48,25 +65,9 @@ export const HARD_BULK_DOCUMENT_UPLOAD_MAX_FILES = 25;
 export const HARD_BULK_DOCUMENT_UPLOAD_MAX_BYTES =
   HARD_DOCUMENT_UPLOAD_MAX_BYTES * HARD_BULK_DOCUMENT_UPLOAD_MAX_FILES;
 
-export const SUPPORTED_DOCUMENT_UPLOAD_EXTENSIONS = new Set([
-  "csv",
-  "doc",
-  "docx",
-  "epub",
-  "htm",
-  "html",
-  "json",
-  "jsonl",
-  "md",
-  "pdf",
-  "ppt",
-  "pptx",
-  "rtf",
-  "text",
-  "txt",
-  "xls",
-  "xlsx",
-]);
+export const SUPPORTED_DOCUMENT_UPLOAD_EXTENSIONS = new Set(
+  Object.keys(DOCUMENT_UPLOAD_MIME_TYPES_BY_EXTENSION),
+);
 
 export type DocumentUploadExclusionReason =
   | "batch_byte_limit_exceeded"
@@ -539,27 +540,11 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 export function normalizeDocumentMimeType(file: File): string {
   const declared = file.type.trim().toLocaleLowerCase();
   const extension = documentExtension(file.name);
-  const inferred = (
-    {
-      csv: "text/csv",
-      doc: "application/msword",
-      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      epub: "application/epub+zip",
-      html: "text/html",
-      htm: "text/html",
-      json: "application/json",
-      jsonl: "application/x-ndjson",
-      md: "text/markdown",
-      pdf: "application/pdf",
-      ppt: "application/vnd.ms-powerpoint",
-      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      rtf: "application/rtf",
-      text: "text/plain",
-      txt: "text/plain",
-      xls: "application/vnd.ms-excel",
-      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    } as Readonly<Record<string, string>>
-  )[extension ?? ""];
+  const inferred = extension
+    ? (DOCUMENT_UPLOAD_MIME_TYPES_BY_EXTENSION as Readonly<Record<string, readonly string[]>>)[
+        extension
+      ]?.[0]
+    : undefined;
   return !declared || declared === "application/octet-stream"
     ? (inferred ?? "application/octet-stream")
     : declared;
@@ -567,11 +552,11 @@ export function normalizeDocumentMimeType(file: File): string {
 
 function isSupportedDocumentUpload(file: File, mimeType: string): boolean {
   const extension = documentExtension(file.name);
-  return (
-    SUPPORTED_DOCUMENT_UPLOAD_MIME_TYPES.has(mimeType) &&
-    extension !== undefined &&
-    SUPPORTED_DOCUMENT_UPLOAD_EXTENSIONS.has(extension)
-  );
+  if (extension === undefined) return false;
+  const allowedMimeTypes = (
+    DOCUMENT_UPLOAD_MIME_TYPES_BY_EXTENSION as Readonly<Record<string, readonly string[]>>
+  )[extension];
+  return allowedMimeTypes?.includes(mimeType) === true;
 }
 
 function documentExtension(filename: string): string | undefined {

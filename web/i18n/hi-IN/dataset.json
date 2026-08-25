@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "कार्यस्थान कोटा पार हो गया",
   "newKnowledge.documentUploadExclusion.target": "दस्तावेज़ लक्ष्य अब मान्य नहीं है",
   "newKnowledge.documentUploadFailed": "हम ये दस्तावेज़ अपलोड नहीं कर सके. पुनः प्रयास करें।",
-  "newKnowledge.documentUploadFormats": "TXT, Markdown, PDF, HTML, XLSX, CSV और JSONL समर्थित · प्रत्येक फ़ाइल अधिकतम 15 MB",
+  "newKnowledge.documentUploadFormats": "टेक्स्ट, Markdown, HTML, PDF, Office, EPUB, ईमेल और संरचित डेटा (CSV, JSON/JSONL, XML) समर्थित · जटिल फ़ॉर्मैट के लिए दस्तावेज़ पार्सर आवश्यक है · प्रत्येक फ़ाइल अधिकतम 15 MB",
   "newKnowledge.documentUploadPartial": "{{accepted}} दस्तावेज़ों की प्रोसेसिंग शुरू हुई; {{excluded}} जोड़े नहीं जा सके: {{details}}",
   "newKnowledge.documentUploadRejected": "कोई दस्तावेज़ स्वीकार नहीं किया गया: {{details}}",
   "newKnowledge.documentUploadStarted": "दस्तावेज़ प्रसंस्करण शुरू हुआ.",

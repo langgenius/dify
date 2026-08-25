@@ -67,7 +67,7 @@ describe("createApiDocumentParser", () => {
     expect(requestedUrl).toBe("https://unstructured.example.test/general/v0/general");
     expect(artifact).toMatchObject({
       metadata: {
-        routeReason: "unsupported-file-type",
+        routeReason: "complex-file-type",
         routedParser: "unstructured",
       },
       parser: "unstructured",

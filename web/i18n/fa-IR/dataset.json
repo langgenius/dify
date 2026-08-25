@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "سهمیه فضای کاری رد شده است",
   "newKnowledge.documentUploadExclusion.target": "هدف سند دیگر معتبر نیست",
   "newKnowledge.documentUploadFailed": "ما نتوانستیم این اسناد را آپلود کنیم. دوباره امتحان کنید.",
-  "newKnowledge.documentUploadFormats": "پشتیبانی از TXT، Markdown، PDF، HTML، XLSX، CSV و JSONL · هر فایل تا ۱۵ مگابایت",
+  "newKnowledge.documentUploadFormats": "پشتیبانی از متن، Markdown، HTML، PDF، Office، EPUB، ایمیل و داده‌های ساخت‌یافته (CSV، JSON/JSONL، XML) · قالب‌های پیچیده به تجزیه‌گر سند نیاز دارند · هر فایل تا ۱۵ مگابایت",
   "newKnowledge.documentUploadPartial": "پردازش {{accepted}} سند آغاز شد؛ {{excluded}} سند افزوده نشد: {{details}}",
   "newKnowledge.documentUploadRejected": "هیچ سندی پذیرفته نشد: {{details}}",
   "newKnowledge.documentUploadStarted": "پردازش اسناد آغاز شد.",

@@ -260,7 +260,7 @@
   "newKnowledge.documentUploadExclusion.quota": "đã vượt quá hạn mức không gian làm việc",
   "newKnowledge.documentUploadExclusion.target": "đích tài liệu không còn hợp lệ",
   "newKnowledge.documentUploadFailed": "Chúng tôi không thể tải lên những tài liệu này. Hãy thử lại.",
-  "newKnowledge.documentUploadFormats": "Hỗ trợ TXT, Markdown, PDF, HTML, XLSX, CSV và JSONL · tối đa 15 MB mỗi tệp",
+  "newKnowledge.documentUploadFormats": "Hỗ trợ văn bản, Markdown, HTML, PDF, Office, EPUB, email và dữ liệu có cấu trúc (CSV, JSON/JSONL, XML) · định dạng phức tạp cần trình phân tích tài liệu · tối đa 15 MB mỗi tệp",
   "newKnowledge.documentUploadPartial": "Đã bắt đầu xử lý {{accepted}} tài liệu; không thể thêm {{excluded}} tài liệu: {{details}}",
   "newKnowledge.documentUploadRejected": "Không có tài liệu nào được chấp nhận: {{details}}",
   "newKnowledge.documentUploadStarted": "Quá trình xử lý tài liệu bắt đầu.",
