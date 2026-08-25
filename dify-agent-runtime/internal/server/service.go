@@ -349,14 +349,23 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 		lastGrowthAt = &now
 	}
 
-	// Output files and completion artifacts are local and cheap to inspect.
-	// Probe them frequently for short jobs, while keeping tmux subprocess
-	// probes at the coarser lifecycle interval as a failure-detection fallback.
+	// Output files and completion artifacts are local and cheap to inspect, so
+	// probe them frequently. Keep tmux subprocess probes on a separate
+	// exponential backoff: short jobs still get a prompt liveness check, while
+	// long or idle waits stop spawning a tmux process every few milliseconds.
 	view, err := s.GetJobStatus(jobID)
 	if err != nil {
 		return nil, err
 	}
-	nextRuntimeProbe := time.Now().Add(s.config.PollInterval)
+	runtimePollInterval := s.config.PollInterval
+	if runtimePollInterval <= 0 {
+		runtimePollInterval = DefaultPollInterval
+	}
+	maxRuntimePollInterval := s.config.MaxPollInterval
+	if maxRuntimePollInterval < runtimePollInterval {
+		maxRuntimePollInterval = runtimePollInterval
+	}
+	nextRuntimeProbe := time.Now().Add(runtimePollInterval)
 	outputPollInterval := s.config.OutputPollInterval
 	if outputPollInterval <= 0 {
 		outputPollInterval = DefaultOutputPollInterval
@@ -367,8 +376,9 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 		if !view.Done {
 			if exit := s.completedExitMetadata(row); exit != nil {
 				if err := s.db.RecordRunnerExit(jobID, exit.exitCode, exit.endedAt); err == nil {
-					if row, getErr := s.db.GetJob(jobID); getErr == nil {
-						view = s.statusViewFromRow(row)
+					if refreshedRow, getErr := s.db.GetJob(jobID); getErr == nil {
+						row = refreshedRow
+						view = s.statusViewFromRow(refreshedRow)
 					}
 				}
 			} else if !now.Before(nextRuntimeProbe) {
@@ -376,7 +386,8 @@ func (s *Service) WaitJob(jobID string, req *WaitJobRequest) (*JobResult, error)
 				if err != nil {
 					return nil, err
 				}
-				nextRuntimeProbe = now.Add(s.config.PollInterval)
+				runtimePollInterval = min(runtimePollInterval*2, maxRuntimePollInterval)
+				nextRuntimeProbe = now.Add(runtimePollInterval)
 			}
 		}
 

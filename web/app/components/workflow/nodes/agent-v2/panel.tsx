@@ -9,7 +9,7 @@ import type { AgentV2NodeType } from './types'
 import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -140,7 +140,11 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(
     null,
   )
-  const declaredOutputs = localDeclaredOutputs ?? getAgentV2DeclaredOutputs(inputs)
+  const normalizedDeclaredOutputs = useMemo(
+    () => normalizeAgentV2DeclaredOutputs(inputs.agent_declared_outputs ?? []),
+    [inputs.agent_declared_outputs],
+  )
+  const declaredOutputs = localDeclaredOutputs ?? normalizedDeclaredOutputs
   const rosterAgentId =
     inputs.agent_binding?.binding_type === 'roster_agent'
       ? inputs.agent_binding.agent_id

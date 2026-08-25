@@ -146,9 +146,9 @@ Deprecated. Use PATCH /account/profile instead.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -4998,6 +4998,9 @@ Restore a published workflow version into the draft workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
+| 403 | Forbidden |  |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [PUT] /billing/partners/{partner_key}/tenants
 Sync partner tenants bindings
@@ -5034,6 +5037,10 @@ Sync partner tenants bindings
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
+| 403 | Forbidden |  |
+| 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -9264,7 +9271,7 @@ Remove one or more tag bindings from a target.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | keyword | query | Search keyword | No | string |
-| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "snippet" |
+| type | query | Tag type filter | Yes | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" |
 
 #### Responses
 
@@ -9559,9 +9566,9 @@ Returns the site configuration for the application including theme, icons, and t
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /trial-models
-**Get hosted trial model provider configuration for model-provider pages**
+**Get hosted credit provider configuration for the current workspace**
 
-Get hosted trial model provider configuration
+Get hosted credit model provider configuration for the current workspace
 
 #### Responses
 
@@ -9777,6 +9784,38 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AgentProviderListResponse](#agentproviderlistresponse)<br> |
+
+### [GET] /workspaces/current/agents/{agent_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Skill bindings | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
+
+### [PUT] /workspaces/current/agents/{agent_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentSkillBindingsPayload](#agentskillbindingspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent Skill bindings replaced | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
 **List customized snippets with pagination and search**
@@ -10290,7 +10329,10 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
 
-### [GET] /workspaces/current/model-providers/{provider}/checkout-url
+### ~~[GET] /workspaces/current/model-providers/{provider}/checkout-url~~
+
+***DEPRECATED***
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -11709,6 +11751,360 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
+### [GET] /workspaces/current/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Search keyword matching skill name or description. | No | string |
+| limit | query | Number of items per page. | No | integer, <br>**Default:** 20 |
+| page | query | Page number. | No | integer, <br>**Default:** 1 |
+| tag | query | Skill tag filters. Repeat the parameter for multiple tags. | No | [ string ] |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace skills | **application/json**: [SkillListResponse](#skilllistresponse)<br> |
+
+### [POST] /workspaces/current/skills
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillCreatePayload](#skillcreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill created | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [POST] /workspaces/current/skills/files/upload
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill draft file uploaded | **application/json**: [SkillFileUploadResponse](#skillfileuploadresponse)<br> |
+
+### [POST] /workspaces/current/skills/import
+Import a Skill zip package from multipart form field `file`.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill imported | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [GET] /workspaces/current/skills/tags
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace Skill tags | **application/json**: [SkillTagListResponse](#skilltaglistresponse)<br> |
+
+### [DELETE] /workspaces/current/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDeletePayload](#skilldeletepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill deleted | **application/json**: [SkillDeleteResponse](#skilldeleteresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill detail | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [PATCH] /workspaces/current/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillMetadataPayload](#skillmetadatapayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill updated | **application/json**: [SkillResponse](#skillresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/assist/messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillAssistMessagePayload](#skillassistmessagepayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Skill Authoring assistant event stream |
+
+### [POST] /workspaces/current/skills/{skill_id}/duplicate
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Skill duplicated | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/export
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 200 | Published Skill zip archive |
+
+### [PATCH] /workspaces/current/skills/{skill_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftFileOperationPayload](#skilldraftfileoperationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft file operation applied | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [PUT] /workspaces/current/skills/{skill_id}/files
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftTreePayload](#skilldrafttreepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft files replaced | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/files/check
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillDraftFileCheckPayload](#skilldraftfilecheckpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft files checked | **application/json**: [SkillFileCheckResponse](#skillfilecheckresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/files/content
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| download | query | Return as an attachment when 1. | No | string |
+| path | query | Skill file path relative to the Skill root. | Yes | string |
+| version_id | query | Optional published version ID. Omit for current draft. | No | string |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill file content | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/files/preview
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| path | query | Skill file path relative to the Skill root. | Yes | string |
+| version_id | query | Optional published version ID. Omit for current draft. | No | string |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill file text preview | **application/json**: [SkillFilePreviewResponse](#skillfilepreviewresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillPublishPayload](#skillpublishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill published | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/references
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill references | **application/json**: [SkillReferenceListResponse](#skillreferencelistresponse)<br> |
+
+### [POST] /workspaces/current/skills/{skill_id}/restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillRestorePayload](#skillrestorepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version restored to draft | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill versions | **application/json**: [SkillVersionListResponse](#skillversionlistresponse)<br> |
+
+### [DELETE] /workspaces/current/skills/{skill_id}/versions/{version_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version deleted | **application/json**: [SkillVersionDeleteResponse](#skillversiondeleteresponse)<br> |
+
+### [GET] /workspaces/current/skills/{skill_id}/versions/{version_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version detail | **application/json**: [SkillVersionDetailResponse](#skillversiondetailresponse)<br> |
+
+### [PATCH] /workspaces/current/skills/{skill_id}/versions/{version_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| version_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillVersionUpdatePayload](#skillversionupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill version updated | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
 
 ### [GET] /workspaces/current/summary
 #### Responses
@@ -14336,6 +14732,37 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
+#### AgentSkillBindingItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| file_count | integer |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_at | integer |  | No |
+| latest_published_version_id | string |  | No |
+| name | string |  | Yes |
+| priority | integer |  | Yes |
+| status | string |  | Yes |
+| tags | [ string ] |  | No |
+| updated_at | integer |  | Yes |
+
+#### AgentSkillBindingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| skill_ids | [ string ] | Ordered Skill IDs bound to the Agent. | No |
+
+#### AgentSkillBindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string |  | Yes |
+| data | [ [AgentSkillBindingItemResponse](#agentskillbindingitemresponse) ] |  | No |
+| skill_ids | [ string ] |  | No |
+
 #### AgentSoulAppFeaturesConfig
 
 | Name | Type | Description | Required |
@@ -15452,6 +15879,14 @@ ExporleBanner status
 | enabled | boolean | Deprecated. Use system features deployment_edition to determine the product edition. | Yes |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
+#### BillingOperationFailedErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
 #### BillingResponse
 
 | Name | Type | Description | Required |
@@ -15463,6 +15898,22 @@ ExporleBanner status
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string |  | Yes |
+
+#### BillingUnavailableErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### BillingUnprocessableEntityErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
 
 #### BinaryFileResponse
 
@@ -17229,6 +17680,12 @@ Portable DSL reference that could not be restored in the target workspace.
 | institution | string |  | Yes |
 | role | string |  | Yes |
 | token | string |  | Yes |
+
+#### EducationActivateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| message | string |  | Yes |
 
 #### EducationAutocompleteQuery
 
@@ -21378,6 +21835,379 @@ Simple provider entity response.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
+#### SkillAssistAttachmentPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| size | integer |  | No |
+| tool_file_id | string |  | Yes |
+
+#### SkillAssistHistoryMessagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| role | string, <br>**Available values:** "assistant", "user" | *Enum:* `"assistant"`, `"user"` | Yes |
+| suggested_display_name | string |  | No |
+| suggested_name | string |  | No |
+
+#### SkillAssistMessagePayload
+
+One user message and optional uploaded context for the Skill Authoring assistant.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ [SkillAssistAttachmentPayload](#skillassistattachmentpayload) ] |  | No |
+| history | [ [SkillAssistHistoryMessagePayload](#skillassisthistorymessagepayload) ] |  | No |
+| message | string |  | Yes |
+| model | [SkillAssistModelPayload](#skillassistmodelpayload) |  | No |
+| target_path | string |  | No |
+
+#### SkillAssistModelPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model | string |  | Yes |
+| model_settings | object |  | No |
+| plugin_id | string |  | No |
+| provider | string |  | Yes |
+
+#### SkillCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| display_name | string |  | No |
+| icon | string, <br>**Default:** 📄 |  | No |
+| name | string |  | No |
+| tags | [ string ] |  | No |
+
+#### SkillDeletePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| confirmation_name | string | Required when deleting a referenced Skill. Must match the Skill display name. | No |
+
+#### SkillDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+| id | string |  | Yes |
+
+#### SkillDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string |  | No |
+| created_by_name | string |  | No |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| files | [ [SkillFileResponse](#skillfileresponse) ] |  | No |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_at | integer |  | No |
+| latest_published_version_id | string |  | No |
+| latest_published_version_number | integer |  | No |
+| name | string |  | Yes |
+| name_manually_edited | boolean |  | No |
+| reference_count | integer |  | No |
+| tags | [ string ] |  | No |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | No |
+| updated_by_name | string |  | No |
+| visibility | string |  | Yes |
+
+#### SkillDraftFileCheckItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| filename | string |  | Yes |
+| mime_type | string |  | No |
+| path | string | Target draft path. Defaults to filename. | No |
+| size | integer |  | Yes |
+
+#### SkillDraftFileCheckPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| files | [ [SkillDraftFileCheckItemPayload](#skilldraftfilecheckitempayload) ] |  | No |
+
+#### SkillDraftFileOperation
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SkillDraftFileOperation | string |  |  |
+
+#### SkillDraftFileOperationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| expected_updated_at | integer |  | No |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| operation | [SkillDraftFileOperation](#skilldraftfileoperation) |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| target_path | string |  | No |
+| tool_file_id | string |  | No |
+
+#### SkillDraftTreeItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| hash | string |  | No |
+| kind | [SkillFileKind](#skillfilekind) |  | No |
+| mime_type | string |  | No |
+| path | string |  | Yes |
+| size | integer |  | No |
+| storage | [SkillFileStorage](#skillfilestorage) |  | No |
+| tool_file_id | string |  | No |
+
+#### SkillDraftTreePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_updated_at | integer |  | No |
+| files | [ [SkillDraftTreeItemPayload](#skilldrafttreeitempayload) ] |  | No |
+
+#### SkillFileCheckErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+
+#### SkillFileCheckItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| errors | [ [SkillFileCheckErrorResponse](#skillfilecheckerrorresponse) ] |  | No |
+| extension | string |  | Yes |
+| filename | string |  | Yes |
+| mime_type | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | Yes |
+
+#### SkillFileCheckResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | object |  | No |
+
+#### SkillFileKind
+
+Draft file entry kind.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SkillFileKind | string | Draft file entry kind. |  |
+
+#### SkillFilePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+| hash | string |  | Yes |
+| mime_type | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | Yes |
+
+#### SkillFileQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| path | string | Skill file path relative to the Skill root. | Yes |
+| version_id | string | Optional published version ID. Omit for current draft. | No |
+
+#### SkillFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| hash | string |  | No |
+| id | string |  | No |
+| kind | string |  | Yes |
+| mime_type | string |  | No |
+| path | string |  | Yes |
+| size | integer |  | No |
+| storage | string |  | No |
+| tool_file_id | string |  | No |
+
+#### SkillFileStorage
+
+How a draft file's content is stored.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SkillFileStorage | string | How a draft file's content is stored. |  |
+
+#### SkillFileUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+
+#### SkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillResponse](#skillresponse) ] |  | No |
+| has_more | boolean |  | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| total | integer |  | No |
+
+#### SkillMetadataPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| display_name | string |  | No |
+| expected_updated_at | integer |  | No |
+| icon | string |  | No |
+| tags | [ string ] |  | No |
+
+#### SkillPublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string |  | No |
+| version_name | string |  | No |
+
+#### SkillReferenceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillReferenceResponse](#skillreferenceresponse) ] |  | No |
+
+#### SkillReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_icon | string |  | No |
+| agent_icon_background | string |  | No |
+| agent_icon_type | string |  | No |
+| agent_id | string |  | Yes |
+| app_id | string |  | No |
+| display_name | string |  | Yes |
+| name | string |  | Yes |
+| node_id | string |  | No |
+| node_name | string |  | No |
+| type | string |  | Yes |
+| workflow_icon | string |  | No |
+| workflow_icon_background | string |  | No |
+| workflow_icon_type | string |  | No |
+| workflow_id | string |  | No |
+| workflow_name | string |  | No |
+| workflow_version | string |  | No |
+
+#### SkillResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string |  | No |
+| created_by_name | string |  | No |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_at | integer |  | No |
+| latest_published_version_id | string |  | No |
+| latest_published_version_number | integer |  | No |
+| name | string |  | Yes |
+| name_manually_edited | boolean |  | No |
+| reference_count | integer |  | No |
+| tags | [ string ] |  | No |
+| updated_at | integer |  | Yes |
+| updated_by | string |  | No |
+| updated_by_name | string |  | No |
+| visibility | string |  | Yes |
+
+#### SkillRestorePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string |  | No |
+| version_id | string |  | Yes |
+| version_name | string |  | No |
+
+#### SkillTagListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillTagResponse](#skilltagresponse) ] |  | No |
+
+#### SkillTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| count | integer |  | Yes |
+| tag | string |  | Yes |
+
+#### SkillVersionDeleteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deleted | boolean |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string |  | No |
+
+#### SkillVersionDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_size | integer |  | Yes |
+| created_at | integer |  | Yes |
+| files | [ [SkillFileResponse](#skillfileresponse) ] |  | No |
+| hash_code | string |  | Yes |
+| id | string |  | Yes |
+| is_latest | boolean |  | No |
+| publish_note | string |  | Yes |
+| published_by | string |  | No |
+| published_by_name | string |  | No |
+| skill_id | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillVersionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillVersionResponse](#skillversionresponse) ] |  | No |
+
+#### SkillVersionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_size | integer |  | Yes |
+| created_at | integer |  | Yes |
+| hash_code | string |  | Yes |
+| id | string |  | Yes |
+| is_latest | boolean |  | No |
+| publish_note | string |  | Yes |
+| published_by | string |  | No |
+| published_by_name | string |  | No |
+| skill_id | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillVersionUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string |  | No |
+| version_name | string |  | No |
+
 #### SnippetDependencyCheckResponse
 
 | Name | Type | Description | Required |
@@ -21862,7 +22692,7 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | keyword | string | Search keyword | No |
-| type | string, <br>**Available values:** "app", "knowledge", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"snippet"` | Yes |
+| type | string, <br>**Available values:** "app", "knowledge", "skill", "snippet" | Tag type filter<br>*Enum:* `"app"`, `"knowledge"`, `"skill"`, `"snippet"` | Yes |
 
 #### TagListResponse
 
@@ -24064,6 +24894,15 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
+
+#### WorkspaceSkillsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Search keyword matching skill name or description. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. | No |
+| page | integer, <br>**Default:** 1 | Page number. | No |
+| tag | [ string ] | Skill tag filters. Repeat the parameter for multiple tags. | No |
 
 #### WorkspaceTenantResultResponse
 

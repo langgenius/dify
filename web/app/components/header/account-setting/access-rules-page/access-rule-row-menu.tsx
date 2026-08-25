@@ -85,7 +85,7 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
             </IconButton>
           }
         />
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[140px]">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-[140px]">
           {isBuiltIn ? (
             <DropdownMenuItem
               className="system-sm-semibold text-text-secondary"

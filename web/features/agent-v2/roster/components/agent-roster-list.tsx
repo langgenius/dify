@@ -2,6 +2,7 @@
 
 import type { AgentAppPartial, AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -224,7 +225,12 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
           </div>
         </div>
       </div>
-      <div className="pointer-events-none absolute top-2 right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
+      <div
+        className={cn(
+          'pointer-events-none absolute right-2 z-20 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 opacity-0 shadow-lg backdrop-blur-xs transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100',
+          isDraft ? 'top-7' : 'top-2',
+        )}
+      >
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
@@ -235,7 +241,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
             </span>
             <span aria-hidden className="i-ri-more-fill size-4.5 text-text-tertiary" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
+          <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-40">
             <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span>{t(($) => $['roster.editInfo'])}</span>

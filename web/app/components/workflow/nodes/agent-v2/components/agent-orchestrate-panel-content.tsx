@@ -835,7 +835,7 @@ function WorkflowInlineAgentConfigureMoreAction({
           </button>
         }
       />
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-44 w-max">
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-max min-w-44">
         <DropdownMenuItem className="gap-2 whitespace-nowrap" onClick={onSaveInlineToRoster}>
           <span
             aria-hidden

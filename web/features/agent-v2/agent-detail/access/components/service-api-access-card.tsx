@@ -49,6 +49,8 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   )
   const accessReady = Boolean(apiAccess?.access_ready)
   const isBusy = apiAccessQuery.isPending || toggleServiceApiMutation.isPending
+  const showPublishRequiredMessage =
+    !apiAccessQuery.isPending && !apiAccessQuery.isError && !accessReady
 
   function handleEnabledChange(enabled: boolean) {
     toggleServiceApiMutation.mutate({
@@ -73,6 +75,9 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
         onEnabledChange={handleEnabledChange}
         copyLabel={t(($) => $['agentDetail.access.copyServiceEndpoint'])}
         disabled={apiAccessQuery.isPending || apiAccessQuery.isError || !accessReady}
+        disabledReason={
+          showPublishRequiredMessage ? t(($) => $['agentDetail.access.publishRequired']) : undefined
+        }
         busy={toggleServiceApiMutation.isPending}
       >
         <Button

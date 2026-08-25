@@ -23,7 +23,8 @@ const (
 	DefaultTerminateGraceSeconds         = 10.0
 	DefaultGCIntervalSeconds             = 60.0
 	DefaultGCFinishedJobRetentionSeconds = 300.0
-	DefaultPollInterval                  = 50 * time.Millisecond
+	DefaultPollInterval                  = 5 * time.Millisecond
+	DefaultMaxPollInterval               = 50 * time.Millisecond
 	DefaultOutputPollInterval            = 5 * time.Millisecond
 	DefaultPipeMonitorInterval           = 1 * time.Second
 	DefaultPipeReadyTimeout              = 10 * time.Second
@@ -54,6 +55,7 @@ type Config struct {
 	MaxOutputLimitBytes          int
 	DefaultTerminateGraceSeconds float64
 	PollInterval                 time.Duration
+	MaxPollInterval              time.Duration
 	OutputPollInterval           time.Duration
 	PipeMonitorInterval          time.Duration
 	PipeReadyTimeout             time.Duration
@@ -92,6 +94,7 @@ func DefaultConfig() (*Config, error) {
 		MaxOutputLimitBytes:          MaxOutputLimitBytes,
 		DefaultTerminateGraceSeconds: DefaultTerminateGraceSeconds,
 		PollInterval:                 DefaultPollInterval,
+		MaxPollInterval:              DefaultMaxPollInterval,
 		OutputPollInterval:           DefaultOutputPollInterval,
 		PipeMonitorInterval:          DefaultPipeMonitorInterval,
 		PipeReadyTimeout:             DefaultPipeReadyTimeout,

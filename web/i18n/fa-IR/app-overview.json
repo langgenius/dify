@@ -68,7 +68,6 @@
   "overview.appInfo.preUseReminder": "لطفاً قبل از ادامه، web app را فعال کنید.",
   "overview.appInfo.preview": "پیش‌نمایش",
   "overview.appInfo.qrcode.download": "دانلود کد QR",
-  "overview.appInfo.qrcode.scan": "اسکن برای اشتراک‌گذاری",
   "overview.appInfo.qrcode.title": "کد QR لینک",
   "overview.appInfo.regenerate": "تولید مجدد",
   "overview.appInfo.regenerateNotice": "آیا می‌خواهید آدرس عمومی را دوباره تولید کنید؟ آدرس فعلی بلافاصله از کار خواهد افتاد.",

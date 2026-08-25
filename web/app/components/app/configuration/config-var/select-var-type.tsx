@@ -55,7 +55,7 @@ const SelectVarType: FC<Props> = ({ onChange }) => {
         placement="bottom-end"
         sideOffset={8}
         alignOffset={-2}
-        popupClassName="min-w-[192px] rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"
+        className="min-w-[192px] rounded-lg border bg-components-panel-bg-blur p-0 backdrop-blur-xs"
       >
         <div className="p-1">
           <SelectItem
