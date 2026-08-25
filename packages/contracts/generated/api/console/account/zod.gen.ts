@@ -194,11 +194,11 @@ export const zAccountPasswordPayload = z.object({
  */
 export const zAccountProfilePatchPayload = z
   .object({
-    avatar: z.string().optional().default(null),
-    interface_language: z.string().optional().default(null),
-    interface_theme: z.enum(['dark', 'light']).optional().default(null),
-    name: z.string().min(3).max(30).optional().default(null),
-    timezone: z.string().optional().default(null),
+    avatar: z.string().optional(),
+    interface_language: z.string().optional(),
+    interface_theme: z.enum(['dark', 'light']).optional(),
+    name: z.string().min(3).max(30).optional(),
+    timezone: z.string().optional(),
   })
   .strict()
 

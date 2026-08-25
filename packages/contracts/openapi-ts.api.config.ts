@@ -262,10 +262,80 @@ const filterContractOperations = (document: SwaggerDocument) => {
   }
 }
 
+const schemaAcceptsNull = (
+  schema: SwaggerSchema,
+  schemas: Record<string, SwaggerSchema>,
+  visitedRefs = new Set<string>(),
+): boolean => {
+  let acceptsNull = true
+
+  if ('const' in schema) acceptsNull &&= schema.const === null
+  if (Array.isArray(schema.enum)) acceptsNull &&= schema.enum.includes(null)
+
+  const schemaType = schema.type
+  if (typeof schemaType === 'string') acceptsNull &&= schemaType === 'null'
+  else if (Array.isArray(schemaType)) acceptsNull &&= schemaType.includes('null')
+
+  const ref = schema.$ref
+  if (typeof ref === 'string') {
+    const refName = schemaNameFromRef(ref)
+    if (refName && !visitedRefs.has(refName)) {
+      const referencedSchema = schemas[refName]
+      if (referencedSchema) {
+        const nextVisitedRefs = new Set(visitedRefs)
+        nextVisitedRefs.add(refName)
+        acceptsNull &&= schemaAcceptsNull(referencedSchema, schemas, nextVisitedRefs)
+      }
+    }
+  }
+
+  if (Array.isArray(schema.allOf)) {
+    acceptsNull &&= schema.allOf.every(
+      (variant) => isObject(variant) && schemaAcceptsNull(variant, schemas, visitedRefs),
+    )
+  }
+  if (Array.isArray(schema.anyOf)) {
+    acceptsNull &&= schema.anyOf.some(
+      (variant) => isObject(variant) && schemaAcceptsNull(variant, schemas, visitedRefs),
+    )
+  }
+  if (Array.isArray(schema.oneOf)) {
+    acceptsNull &&=
+      schema.oneOf.filter(
+        (variant) => isObject(variant) && schemaAcceptsNull(variant, schemas, visitedRefs),
+      ).length === 1
+  }
+  if (isObject(schema.not)) acceptsNull &&= !schemaAcceptsNull(schema.not, schemas, visitedRefs)
+
+  return acceptsNull
+}
+
+const stripIncompatibleNullDefaults = (document: SwaggerDocument) => {
+  const schemas = getDocumentSchemas(document)
+  const visited = new WeakSet<object>()
+
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== 'object' || visited.has(value)) return
+
+    visited.add(value)
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    const schema = value as SwaggerSchema
+    if (schema.default === null && !schemaAcceptsNull(schema, schemas)) delete schema.default
+    Object.values(schema).forEach(visit)
+  }
+
+  visit(document)
+}
+
 const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
+  stripIncompatibleNullDefaults(document)
 
   return document
 }

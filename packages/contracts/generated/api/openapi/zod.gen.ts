@@ -32,7 +32,7 @@ export const zAppDescribeInfo = z.object({
  * Empty / omitted → all blocks. Unknown member → ValidationError → 422.
  */
 export const zAppDescribeQuery = z.object({
-  fields: z.string().optional().default(null),
+  fields: z.string().optional(),
 })
 
 /**
