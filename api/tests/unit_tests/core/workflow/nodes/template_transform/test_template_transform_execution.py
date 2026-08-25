@@ -1,5 +1,8 @@
+"""Unit coverage for in-process template-transform execution."""
+
 import time
 import uuid
+from typing import cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.node_factory import DifyNodeFactory
@@ -9,7 +12,7 @@ from graphon.graph import Graph
 from graphon.nodes.template_transform.entities import TemplateTransformNodeData
 from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
 from graphon.runtime import GraphRuntimeState, VariablePool
-from graphon.template_rendering import TemplateRenderError
+from graphon.template_rendering import Jinja2TemplateRenderer, TemplateRenderError
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -26,7 +29,7 @@ class _SimpleJinja2Renderer:
             raise TemplateRenderError(str(exc)) from exc
 
 
-def test_execute_template_transform():
+def test_execute_template_transform() -> None:
     code = """{{args2}}"""
     config = {
         "id": "1",
@@ -92,7 +95,7 @@ def test_execute_template_transform():
         data=TemplateTransformNodeData.model_validate(config["data"]),
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        jinja2_template_renderer=_SimpleJinja2Renderer(),
+        jinja2_template_renderer=cast(Jinja2TemplateRenderer, _SimpleJinja2Renderer()),
     )
 
     # execute node
