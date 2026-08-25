@@ -103,7 +103,6 @@ function Splash({ children }: PropsWithChildren) {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
       const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(
         effectiveShareCode,
-        webAppAccessMode,
         embeddedUserId || undefined,
       )
       if (userLoggedIn && appLoggedIn) {

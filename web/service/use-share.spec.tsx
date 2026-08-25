@@ -9,6 +9,7 @@ import {
   generationConversationName,
 } from './share'
 import {
+  AppDeployConversationNotFoundError,
   shareQueryKeys,
   useInvalidateShareConversations,
   useShareChatList,
@@ -39,6 +40,7 @@ const createQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
+        retryDelay: 0,
       },
     },
   })
@@ -152,6 +154,7 @@ describe('useShareConversations', () => {
 describe('useShareChatList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
   })
 
   it('should fetch chat list when conversationId is provided', async () => {
@@ -198,6 +201,64 @@ describe('useShareChatList', () => {
       expect(result.current.fetchStatus).toBe('idle')
     })
     expect(mockFetchChatList).not.toHaveBeenCalled()
+  })
+
+  it('should not retry a missing Environment conversation', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-code')
+    const params = {
+      conversationId: 'stale-conversation',
+      appId: 'app-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    mockFetchChatList.mockRejectedValue(
+      new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+        status: 404,
+      }),
+    )
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(AppDeployConversationNotFoundError)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+  })
+
+  it('should preserve retries for other Environment errors', async () => {
+    window.history.replaceState({}, '', '/environment/workflow/environment-code')
+    const params = {
+      conversationId: 'conversation-1',
+      appId: 'app-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'OTHER_ERROR' }), { status: 404 })
+    mockFetchChatList.mockRejectedValue(response)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(response)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(4)
+  })
+
+  it('should preserve ordinary WebApp handling for the same 404 reason', async () => {
+    window.history.replaceState({}, '', '/chatbot/webapp-code')
+    const params = {
+      conversationId: 'conversation-1',
+      appSourceType: AppSourceType.webApp,
+    }
+    const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+      status: 404,
+    })
+    mockFetchChatList.mockRejectedValue(response)
+
+    const { result } = renderShareHook(() => useShareChatList(params))
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(response)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })
 
   it('should always consider data stale to ensure fresh data on conversation switch (GitHub #30378)', async () => {

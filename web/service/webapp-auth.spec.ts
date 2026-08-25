@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { AccessMode } from '@/models/access-control'
-
 const getPublicMock = vi.hoisted(() => vi.fn())
 
 vi.mock('./base', () => ({
@@ -36,20 +34,20 @@ describe('webAppLoginStatus', () => {
     expect(localStorage.getItem('passport-workflow-app')).toBe('passport')
   })
 
-  it('does not send an environment code to Dify login status', async () => {
+  it('does not add an app code query to environment login status', async () => {
     window.history.replaceState({}, '', '/environment/workflow/workflow-app')
 
-    await webAppLoginStatus('workflow-app', AccessMode.PUBLIC, 'user-1')
+    await webAppLoginStatus('workflow-app', 'user-1')
 
     expect(getPublicMock).toHaveBeenCalledWith('/login/status?user_id=user-1')
   })
 
-  it('treats a public environment as logged in before its first passport', async () => {
+  it('uses the authoritative environment login state', async () => {
     window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     getPublicMock.mockResolvedValue({ logged_in: false, app_logged_in: false })
 
-    await expect(webAppLoginStatus('workflow-app', AccessMode.PUBLIC)).resolves.toEqual({
-      userLoggedIn: true,
+    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
+      userLoggedIn: false,
       appLoggedIn: false,
     })
   })
@@ -58,20 +56,8 @@ describe('webAppLoginStatus', () => {
     window.history.replaceState({}, '', '/environment/workflow/workflow-app')
     getPublicMock.mockResolvedValue({ logged_in: true, app_logged_in: false })
 
-    await expect(webAppLoginStatus('workflow-app', AccessMode.EXTERNAL_MEMBERS)).resolves.toEqual({
+    await expect(webAppLoginStatus('workflow-app')).resolves.toEqual({
       userLoggedIn: true,
-      appLoggedIn: false,
-    })
-  })
-
-  it('requires a Dify login for a private environment', async () => {
-    window.history.replaceState({}, '', '/environment/workflow/workflow-app')
-    getPublicMock.mockResolvedValue({ logged_in: false, app_logged_in: false })
-
-    await expect(
-      webAppLoginStatus('workflow-app', AccessMode.SPECIFIC_GROUPS_MEMBERS),
-    ).resolves.toEqual({
-      userLoggedIn: false,
       appLoggedIn: false,
     })
   })
@@ -79,7 +65,7 @@ describe('webAppLoginStatus', () => {
   it('keeps the app code for ordinary webapps', async () => {
     window.history.replaceState({}, '', '/workflow/workflow-app')
 
-    await webAppLoginStatus('workflow-app', AccessMode.PUBLIC)
+    await webAppLoginStatus('workflow-app')
 
     expect(getPublicMock).toHaveBeenCalledWith('/login/status?app_code=workflow-app')
   })

@@ -60,7 +60,6 @@ const isDifyWebAppAuthPath = (path: string) => {
   return (
     pathname === '/login' ||
     pathname === '/logout' ||
-    pathname === '/login/status' ||
     pathname.startsWith('/email-code-login') ||
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/enterprise/sso/')

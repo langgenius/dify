@@ -90,6 +90,7 @@ const createQueryClient = () =>
     defaultOptions: {
       queries: {
         retry: false,
+        retryDelay: 0,
       },
     },
   })
@@ -150,6 +151,7 @@ const setConversationIdInfo = (appId: string, conversationId: string) => {
 describe('useChatWithHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
     localStorage.removeItem(CONVERSATION_ID_INFO)
     sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
     localStorage.removeItem('webappSidebarCollapse')
@@ -296,6 +298,45 @@ describe('useChatWithHistory', () => {
         expect(result!.current.chatShouldReloadKey).toBe('')
       })
       expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+    })
+
+    it('should clear a stale Environment conversation and enter New Chat', async () => {
+      window.history.replaceState({}, '', '/environment/workflow/environment-code')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockRejectedValue(
+        new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+          status: 404,
+        }),
+      )
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.currentConversationId).toBe('')
+      })
+      expect(result!.current.clearChatList).toBe(true)
+      expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+
+      const lastSelection = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) ?? '{}')
+      const tabSelection = JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO) ?? '{}')
+      expect(lastSelection['app-1']).toBeUndefined()
+      expect(Object.values(tabSelection['app-1'] ?? {})).not.toContain('conversation-1')
+    })
+
+    it('should keep the selected Environment conversation for other errors', async () => {
+      window.history.replaceState({}, '', '/environment/workflow/environment-code')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      const response = new Response(JSON.stringify({ reason: 'OTHER_ERROR' }), { status: 404 })
+      mockFetchChatList.mockRejectedValue(response)
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(mockFetchChatList).toHaveBeenCalledTimes(4)
+      })
+      expect(result!.current.currentConversationId).toBe('conversation-1')
+      expect(result!.current.clearChatList).toBe(false)
+      expect(localStorage.getItem(CONVERSATION_ID_INFO)).toContain('conversation-1')
     })
   })
 

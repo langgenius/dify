@@ -1,6 +1,5 @@
 import type { WebAppAddress } from './webapp-address'
 import { ACCESS_TOKEN_LOCAL_STORAGE_NAME, PASSPORT_LOCAL_STORAGE_NAME } from '@/config'
-import { AccessMode } from '@/models/access-control'
 import { getPublic, postPublic } from './base'
 import { getWebAppPassportKey, resolveWebAppAddress } from './webapp-address'
 
@@ -35,11 +34,7 @@ type isWebAppLogin = {
   app_logged_in: boolean
 }
 
-export async function webAppLoginStatus(
-  shareCode: string,
-  accessMode: AccessMode,
-  userId?: string,
-) {
+export async function webAppLoginStatus(shareCode: string, userId?: string) {
   // always need to check login to prevent passport from being outdated
   // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
   const address = resolveWebAppAddress()
@@ -50,8 +45,7 @@ export async function webAppLoginStatus(
     `/login/status?${params.toString()}`,
   )
   return {
-    userLoggedIn:
-      address?.kind === 'environment' && accessMode === AccessMode.PUBLIC ? true : logged_in,
+    userLoggedIn: logged_in,
     appLoggedIn: app_logged_in,
   }
 }

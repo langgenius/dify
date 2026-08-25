@@ -75,7 +75,6 @@ describe('base', () => {
     )
 
     it.each([
-      '/login/status',
       '/email-code-login/validity',
       '/forgot-password',
       '/forgot-password/validity',
@@ -91,6 +90,19 @@ describe('base', () => {
       const [request] = fetchSpy.mock.calls[0]!
       if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
       expect(request.url).toBe(`${PUBLIC_API_PREFIX}${path}`)
+    })
+
+    it('should route environment login status to the environment API', async () => {
+      window.history.replaceState({}, '', '/environment/workflow/workflow-app')
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(new Response(JSON.stringify({ logged_in: true, app_logged_in: false })))
+
+      await base('/login/status', {}, { isPublicAPI: true })
+
+      const [request] = fetchSpy.mock.calls[0]!
+      if (!(request instanceof Request)) throw new TypeError('Expected fetch to receive a Request')
+      expect(request.url).toBe(`${PUBLIC_API_PREFIX}/environment/workflow-app/login/status`)
     })
   })
 
