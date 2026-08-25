@@ -1,4 +1,4 @@
-.PHONY: build clean test lint gen-cli-help integration integration-up integration-test integration-down sync-e2b-template-dev sync-e2b-template-prod sync-e2b-template-dry-run
+.PHONY: build clean test lint gen-cli-help integration integration-up integration-test integration-down profile sync-e2b-template-dev sync-e2b-template-prod sync-e2b-template-dry-run
 BIN_DIR := bin
 AGENT_CLI_HELP_JSON := ../dify-agent/src/dify_agent/layers/_agent_cli_help.json
 
@@ -143,3 +143,6 @@ sync-e2b-template-dev:
 
 sync-e2b-template-prod:
 	E2B_API_KEY=$(E2B_API_KEY_PROD) ./docker/sync-e2b-template.sh
+
+benchmark:
+	go test ./benchmarks/ -bench . -run '^$$' -benchtime 40x
