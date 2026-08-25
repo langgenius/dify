@@ -210,7 +210,7 @@ class UserActionConfig(BaseModel):
     # It also serves as the identifiers of output handle.
     #
     # The id must be a valid identifier (satisfy the _IDENTIFIER_PATTERN above.)
-    id: str = Field(max_length=20)
+    id: str = Field(max_length=20, pattern=_IDENTIFIER_PATTERN.pattern)
     title: str = Field(max_length=100)
     button_style: ButtonStyle = ButtonStyle.DEFAULT
 

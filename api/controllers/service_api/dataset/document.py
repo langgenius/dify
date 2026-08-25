@@ -903,8 +903,8 @@ def _update_document_by_file(
 
 @service_api_ns.route(
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file",
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file",
 )
+@service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file")
 class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
     """Deprecated resource aliases for file document updates."""
 
@@ -945,6 +945,7 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             404: "Document not found",
             413: "File too large",
+            415: "Unsupported file type",
         }
     )
     @service_api_ns.response(
@@ -1425,6 +1426,7 @@ class DocumentApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
             404: "Document not found",
             413: "File too large",
+            415: "Unsupported file type",
         }
     )
     @service_api_ns.response(
