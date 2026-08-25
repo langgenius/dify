@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Para materiais de referência longos demais para colar no Prompt: especificações, modelos, diretrizes. <docLink>Saiba mais</docLink>\n\nNo modo Build, o agente pode configurar isso para você.",
+  "agentDetail.configure.prompt.richTip": "Defina o papel do agente e como ele deve trabalhar. <docLink>Saiba mais</docLink>"
 }

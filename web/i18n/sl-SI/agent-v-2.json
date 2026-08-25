@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Za referenčno gradivo, ki je predolgo za lepljenje v Prompt: specifikacije, predloge, smernice. <docLink>Več o tem</docLink>\n\nV načinu Build jih lahko agent nastavi namesto vas.",
+  "agentDetail.configure.prompt.richTip": "Določite vlogo agenta in način njegovega delovanja. <docLink>Več o tem</docLink>"
 }

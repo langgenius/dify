@@ -41,7 +41,6 @@ from models.agent import (
 )
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.skill import AgentSkillBinding
-from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
@@ -1042,9 +1041,9 @@ class AppService:
                     WorkflowAgentNodeBinding.app_id == app.id,
                 )
             )
-        agent_ids_to_unbind = [*workflow_agent_ids]
+        agent_ids_to_unbind = set(workflow_agent_ids)
         if backing_agent is not None:
-            agent_ids_to_unbind.append(backing_agent.id)
+            agent_ids_to_unbind.add(backing_agent.id)
         if agent_ids_to_unbind:
             session.execute(
                 delete(AgentSkillBinding).where(

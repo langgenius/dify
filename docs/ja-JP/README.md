@@ -108,7 +108,7 @@ LLM Function CallingやReActに基づくエージェントの定義が可能で�
 
 GitHub上でDifyにスターを付けることで、Difyに関する新しいニュースを受け取れます。
 
-![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
+<img width="1344" height="720" alt="star" src="https://github.com/user-attachments/assets/dcd086d1-af0f-471b-ae52-1ad2fa040595" />
 
 ## クイックスタート
 
@@ -133,82 +133,31 @@ docker compose up -d
 
 ## 次のステップ
 
-設定をカスタマイズする必要がある場合は、[.env.example](../../docker/.env.example) ファイルのコメントを参照し、`.env` ファイルの対応する値を更新してください。さらに、デプロイ環境や要件に応じて、`docker-compose.yaml` ファイル自体を調整する必要がある場合があります。たとえば、イメージのバージョン、ポートのマッピング、ボリュームのマウントなどを変更します。変更を加えた後は、`docker-compose up -d` を再実行してください。利用可能な環境変数の全一覧は、[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)で確認できます。
-
-### Grafanaを使用したメトリクス監視
-
-Grafanaにダッシュボードをインポートし、DifyのPostgreSQLデータベースをデータソースとして使用して、アプリ、テナント、メッセージなどの粒度でメトリクスを監視します。
-
-- [@bowenliang123によるGrafanaダッシュボード](https://github.com/bowenliang123/dify-grafana-dashboard)
-
-### Kubernetesでのデプロイ
-
-高可用性設定を設定する必要がある場合、コミュニティは[Helm Charts](https://helm.sh/)とYAMLファイルにより、DifyをKubernetesにデプロイすることができます。
-
-- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
-- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
-- [Helm Chart by @magicsong](https://github.com/magicsong/ai-charts)
-- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
-- [YAML file by @wyy-holding](https://github.com/wyy-holding/dify-k8s)
-- [🚀 新着！YAML ファイル（Dify v1.6.0 対応）by @Zhoneym](https://github.com/Zhoneym/DifyAI-Kubernetes)
-
-#### Terraformを使用したデプロイ
-
-[terraform](https://www.terraform.io/) を使用して、ワンクリックでDifyをクラウドプラットフォームにデプロイします
-
-##### Azure Global
-
-- [@nikawangによるAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
-
-##### Google Cloud
-
-- [@sotazumによるGoogle Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
-
-#### AWS CDK を使用したデプロイ
-
-[CDK](https://aws.amazon.com/cdk/) を使用して、DifyをAWSにデプロイします
-
-##### AWS
-
-- [@KevinZhaoによるAWS CDK (EKS based)](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
-- [@tmokmssによるAWS CDK (ECS based)](https://github.com/aws-samples/dify-self-hosted-on-aws)
-
-#### Alibaba Cloud
-
-[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
-
-#### Alibaba Cloud Data Management
-
-[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) を利用して、DifyをAlibaba Cloudへワンクリックでデプロイできます
-
-#### AKSへのデプロイにAzure Devops Pipelineを使用
-
-[Azure Devops Pipeline Helm Chart by @LeoZhang](https://github.com/Ruiruiz30/Dify-helm-chart-AKS)を使用してDifyをAKSにワンクリックでデプロイ
-
-#### Sealosを使用したデプロイ
-
-[Sealos App Store](https://sealos.io/products/app-store/dify/)を使用してDifyをワンクリックでデプロイできます
+カスタム構成、オブザーバビリティ、デプロイのオプションについては、[高度なセットアップ](ADVANCED_SETUP.md)を参照してください。
 
 ## 貢献
 
-コードに貢献したい方は、[Contribution Guide](./CONTRIBUTING.md)を参照してください。
-同時に、DifyをSNSやイベント、カンファレンスで共有してサポートしていただけると幸いです。
+Difyでは、あらゆる形の貢献を歓迎しています。
 
-> Difyを英語または中国語以外の言語に翻訳してくれる貢献者を募集しています。興味がある場合は、詳細については[i18n README](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)を参照してください。また、[Discordコミュニティサーバー](https://discord.gg/8Tpq4AcN9c)の`global-users`チャンネルにコメントを残してください。
+- **コード**：[コントリビューションガイド](./CONTRIBUTING.md)を読み、[good first issue](https://github.com/langgenius/dify/issues?q=is%3Aissue%20state%3Aopen%20label%3A%22good%20first%20issue%22)を確認してください。
+- **アイデアとフィードバック**：[GitHub Discussions](https://github.com/langgenius/dify/discussions)で新しい議論を始めるか、既存の議論に参加してください。
+- **翻訳**：言語の追加や更新については、[国際化ガイド](https://github.com/langgenius/dify/blob/main/web/i18n-config/README.md)に従ってください。
+- **コミュニティ**：作成したアプリを共有し、他のユーザーを支援し、Difyを広めてください。
 
-**貢献者**
+### 貢献者
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+  <img alt="Dify contributors" src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
 ## コミュニティ & お問い合わせ
 
-- [GitHub Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
-- [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIを使用する際に発生するエラーや問題については、[貢献ガイド](./CONTRIBUTING.md)を参照してください
-- [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
-- [X(Twitter)](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
+目的に合った窓口を選んでください。
 
+- [GitHub Discussions](https://github.com/langgenius/dify/discussions)：質問、フィードバックの共有、アイデアの提案にご利用ください。
+- [GitHub Issues](https://github.com/langgenius/dify/issues)：再現可能なバグの報告と開発作業の追跡にご利用ください。Issueを作成する前に[コントリビューションガイド](./CONTRIBUTING.md)をお読みください。
+- [Discord](https://discord.gg/FngNHpbcY7)：リアルタイムで会話し、アプリを共有し、他のDifyユーザーと交流できます。
+- [X](https://x.com/dify_ai)：リリース情報やプロジェクトの最新情報を確認できます。
 ## ライセンス
 
 このリポジトリは、Dify Open Source License にいくつかの追加制限を加えた[Difyオープンソースライセンス](../../LICENSE)の下で利用可能です。

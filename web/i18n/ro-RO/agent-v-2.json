@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Pentru materiale de referință prea lungi pentru a fi lipite în Prompt: specificații, șabloane, ghiduri. <docLink>Aflați mai multe</docLink>\n\nÎn modul Build, agentul le poate configura pentru dvs.",
+  "agentDetail.configure.prompt.richTip": "Definiți rolul agentului și modul în care ar trebui să lucreze. <docLink>Aflați mai multe</docLink>"
 }

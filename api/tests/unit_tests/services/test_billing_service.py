@@ -697,7 +697,7 @@ class TestBillingServiceUsageCalculation:
     """Unit tests for usage calculation and credit management.
 
     Tests cover:
-    - Feature plan usage information retrieval
+    - Quota information retrieval
     - Credit addition (positive delta)
     - Credit consumption (negative delta)
     - Usage refunds
@@ -709,20 +709,6 @@ class TestBillingServiceUsageCalculation:
         """Mock _send_request method."""
         with patch.object(BillingService, "_send_request") as mock:
             yield mock
-
-    def test_get_tenant_feature_plan_usage_info(self, mock_send_request):
-        """Test retrieval of tenant feature plan usage information (legacy endpoint)."""
-        # Arrange
-        tenant_id = "tenant-123"
-        expected_response = {"features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}}
-        mock_send_request.return_value = expected_response
-
-        # Act
-        result = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
-
-        # Assert
-        assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
 
     def test_get_quota_info(self):
         """Test retrieval of quota info from new endpoint."""
@@ -1043,15 +1029,7 @@ class TestBillingServiceQuotaOperations:
 
 
 class TestBillingServiceRateLimitEnforcement:
-    """Unit tests for rate limit enforcement mechanisms.
-
-    Tests cover:
-    - Compliance download rate limiting (4 requests per 60 seconds)
-    - Education verification rate limiting (10 requests per 60 seconds)
-    - Education activation rate limiting (10 requests per 60 seconds)
-    - Rate limit increment after successful operations
-    - Proper exception raising when limits are exceeded
-    """
+    """Unit tests for compliance download rate-limit enforcement."""
 
     @pytest.fixture
     def mock_send_request(self):
@@ -1121,109 +1099,6 @@ class TestBillingServiceRateLimitEnforcement:
             mock_is_limited.assert_called_once_with(f"{account_id}:{tenant_id}")
             mock_send_request.assert_not_called()
 
-    def test_education_verify_rate_limit_not_exceeded(self, mock_send_request):
-        """Test education verification when rate limit is not exceeded."""
-        # Arrange
-        account_id = "account-123"
-        account_email = "student@university.edu"
-        expected_response = {"verified": True, "institution": "University"}
-
-        # Mock the rate limiter to return False (not limited)
-        with (
-            patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
-            ) as mock_is_limited,
-            patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"
-            ) as mock_increment,
-        ):
-            mock_send_request.return_value = expected_response
-
-            # Act
-            result = BillingService.EducationIdentity.verify(account_id, account_email)
-
-            # Assert
-            assert result == expected_response
-            mock_is_limited.assert_called_once_with(account_email)
-            mock_send_request.assert_called_once_with("GET", "/education/verify", params={"account_id": account_id})
-            mock_increment.assert_called_once_with(account_email)
-
-    def test_education_verify_rate_limit_exceeded(self, mock_send_request):
-        """Test education verification when rate limit is exceeded."""
-        # Arrange
-        account_id = "account-123"
-        account_email = "student@university.edu"
-
-        # Import the error class to properly catch it
-        from controllers.console.error import EducationVerifyLimitError
-
-        # Mock the rate limiter to return True (rate limited)
-        with patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=True
-        ) as mock_is_limited:
-            # Act & Assert
-            with pytest.raises(EducationVerifyLimitError):
-                BillingService.EducationIdentity.verify(account_id, account_email)
-
-            mock_is_limited.assert_called_once_with(account_email)
-            mock_send_request.assert_not_called()
-
-    def test_education_activate_rate_limit_not_exceeded(self, mock_send_request):
-        """Test education activation when rate limit is not exceeded."""
-        # Arrange
-        account = _account(email="student@university.edu")
-        token = "verification-token"
-        institution = "MIT"
-        role = "student"
-        expected_response = {"result": "success", "activated": True}
-
-        # Mock the rate limiter to return False (not limited)
-        with (
-            patch.object(
-                BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False
-            ) as mock_is_limited,
-            patch.object(
-                BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"
-            ) as mock_increment,
-        ):
-            mock_send_request.return_value = expected_response
-
-            # Act
-            result = BillingService.EducationIdentity.activate(account, token, institution, role)
-
-            # Assert
-            assert result == expected_response
-            mock_is_limited.assert_called_once_with(account.email)
-            mock_send_request.assert_called_once_with(
-                "POST",
-                "/education/",
-                json={"institution": institution, "token": token, "role": role},
-                params={"account_id": account.id, "curr_tenant_id": account.current_tenant_id},
-            )
-            mock_increment.assert_called_once_with(account.email)
-
-    def test_education_activate_rate_limit_exceeded(self, mock_send_request):
-        """Test education activation when rate limit is exceeded."""
-        # Arrange
-        account = _account(email="student@university.edu")
-        token = "verification-token"
-        institution = "MIT"
-        role = "student"
-
-        # Import the error class to properly catch it
-        from controllers.console.error import EducationActivateLimitError
-
-        # Mock the rate limiter to return True (rate limited)
-        with patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=True
-        ) as mock_is_limited:
-            # Act & Assert
-            with pytest.raises(EducationActivateLimitError):
-                BillingService.EducationIdentity.activate(account, token, institution, role)
-
-            mock_is_limited.assert_called_once_with(account.email)
-            mock_send_request.assert_not_called()
-
 
 class TestBillingServiceEducationIdentity:
     """Unit tests for education identity verification and management.
@@ -1240,11 +1115,46 @@ class TestBillingServiceEducationIdentity:
         with patch.object(BillingService, "_send_request") as mock:
             yield mock
 
+    def test_education_verify(self, mock_send_request):
+        account_id = "account-123"
+        expected_response = {"token": "education-token"}
+        mock_send_request.return_value = expected_response
+
+        result = BillingService.EducationIdentity.verify(account_id)
+
+        assert result == expected_response
+        mock_send_request.assert_called_once_with("GET", "/education/verify", params={"account_id": account_id})
+
+    def test_education_activate(self, mock_send_request):
+        expected_response = {"message": "success"}
+        mock_send_request.return_value = expected_response
+
+        result = BillingService.EducationIdentity.activate(
+            account_id="account-123",
+            tenant_id="tenant-456",
+            token="verification-token",
+            institution="MIT",
+            role="student",
+        )
+
+        assert result == expected_response
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/education/",
+            json={"institution": "MIT", "token": "verification-token", "role": "student"},
+            params={"account_id": "account-123", "curr_tenant_id": "tenant-456"},
+        )
+
     def test_education_status(self, mock_send_request):
         """Test checking education verification status."""
         # Arrange
         account_id = "account-123"
-        expected_response = {"verified": True, "institution": "MIT", "role": "student"}
+        expected_response = {
+            "result": True,
+            "is_student": True,
+            "expire_at": "2027-01-01T00:00:00Z",
+            "allow_refresh": False,
+        }
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1261,10 +1171,9 @@ class TestBillingServiceEducationIdentity:
         page = 0
         limit = 20
         expected_response = {
-            "institutions": [
-                {"name": "Massachusetts Institute of Technology", "domain": "mit.edu"},
-                {"name": "University of Massachusetts", "domain": "umass.edu"},
-            ]
+            "data": ["Massachusetts Institute of Technology", "University of Massachusetts"],
+            "curr_page": 0,
+            "has_next": False,
         }
         mock_send_request.return_value = expected_response
 
@@ -1281,7 +1190,7 @@ class TestBillingServiceEducationIdentity:
         """Test education institution autocomplete with default parameters."""
         # Arrange
         keywords = "Stanford"
-        expected_response = {"institutions": [{"name": "Stanford University", "domain": "stanford.edu"}]}
+        expected_response = {"data": ["Stanford University"], "curr_page": 0, "has_next": False}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1315,7 +1224,7 @@ class TestBillingServiceAccountManagement:
         """Test account deletion."""
         # Arrange
         account_id = "account-123"
-        expected_response = {"result": "success", "deleted": True}
+        expected_response = {"message": "Account deleted successfully."}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1377,7 +1286,7 @@ class TestBillingServiceAccountManagement:
         # Arrange
         email = "user@example.com"
         feedback = "Service was too expensive"
-        expected_response = {"result": "success"}
+        expected_response = {"message": "Reason added successfully."}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1437,7 +1346,7 @@ class TestBillingServicePartnerIntegration:
         account_id = "account-123"
         partner_key = "partner-xyz"
         click_id = "click-789"
-        expected_response = {"result": "success", "synced": True}
+        expected_response = {"message": "Successfully synced partner tenants"}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -1932,49 +1841,6 @@ class TestBillingServiceIntegrationScenarios:
             # Assert - All 3 requests succeeded
             assert mock_is_limited.call_count == 3
             assert mock_increment.call_count == 3
-
-    def test_education_verification_and_activation_flow(self, mock_send_request):
-        """Test complete education verification and activation flow."""
-        # Arrange
-        account = _account(email="student@mit.edu")
-
-        # Step 1: Search for institution
-        with (
-            patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
-            ),
-            patch.object(BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"),
-        ):
-            mock_send_request.return_value = {
-                "institutions": [{"name": "Massachusetts Institute of Technology", "domain": "mit.edu"}]
-            }
-            institutions = BillingService.EducationIdentity.autocomplete("MIT")
-            assert len(institutions["institutions"]) > 0
-
-        # Step 2: Verify email
-        with (
-            patch.object(
-                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
-            ),
-            patch.object(BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"),
-        ):
-            mock_send_request.return_value = {"verified": True, "institution": "MIT"}
-            verify_result = BillingService.EducationIdentity.verify(account.id, account.email)
-            assert verify_result["verified"] is True
-
-        # Step 3: Check status
-        mock_send_request.return_value = {"verified": True, "institution": "MIT", "role": "student"}
-        status = BillingService.EducationIdentity.status(account.id)
-        assert status["verified"] is True
-
-        # Step 4: Activate education benefits
-        with (
-            patch.object(BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False),
-            patch.object(BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"),
-        ):
-            mock_send_request.return_value = {"result": "success", "activated": True}
-            activate_result = BillingService.EducationIdentity.activate(account, "token-123", "MIT", "student")
-            assert activate_result["activated"] is True
 
 
 class TestBillingServiceSubscriptionInfoDataType:

@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Prompt içine yapıştırmak için fazla uzun olan referans materyalleri için: teknik özellikler, şablonlar, yönergeler. <docLink>Daha fazla bilgi</docLink>\n\nBuild mode'da agent bunları sizin için ayarlayabilir.",
+  "agentDetail.configure.prompt.richTip": "Agent'ın rolünü ve nasıl çalışması gerektiğini tanımlayın. <docLink>Daha fazla bilgi</docLink>"
 }

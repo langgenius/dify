@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "للمواد المرجعية الأطول من أن تُلصق في Prompt: المواصفات، القوالب، الإرشادات. <docLink>تعرّف على المزيد</docLink>\n\nفي وضع Build، يمكن للوكيل إعدادها لك.",
+  "agentDetail.configure.prompt.richTip": "حدّد دور الوكيل وكيفية عمله. <docLink>تعرّف على المزيد</docLink>"
 }

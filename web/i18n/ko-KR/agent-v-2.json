@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Prompt에 붙여넣기에는 너무 긴 참고 자료용입니다: 사양, 템플릿, 가이드라인. <docLink>자세히 알아보기</docLink>\n\nBuild mode에서는 에이전트가 이를 대신 설정할 수 있습니다.",
+  "agentDetail.configure.prompt.richTip": "에이전트의 역할과 작업 방식을 정의합니다. <docLink>자세히 알아보기</docLink>"
 }

@@ -42,6 +42,21 @@ from models.agent_config_entities import (
 
 
 @pytest.fixture(autouse=True)
+def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda **_kwargs: [],
+    )
+
+
+class FakeCredentialsProvider:
+    def fetch(self, provider_name: str, model_name: str) -> dict[str, object]:
+        assert provider_name == "openai"
+        assert model_name == "gpt-test"
+        return {"api_key": "secret-key"}
+
+
+@pytest.fixture(autouse=True)
 def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
     calls: list[tuple[object, str, str]] = []
 

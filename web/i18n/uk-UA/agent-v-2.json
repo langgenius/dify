@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Для довідкових матеріалів, які занадто довгі для вставлення в Prompt: специфікації, шаблони, інструкції. <docLink>Докладніше</docLink>\n\nУ режимі Build агент може налаштувати це за вас.",
+  "agentDetail.configure.prompt.richTip": "Визначте роль агента та спосіб його роботи. <docLink>Докладніше</docLink>"
 }

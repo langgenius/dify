@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "搜尋 Skill",
   "skillManagement.searchPlaceholder": "搜索",
   "skillManagement.tags": "標籤",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "上傳過長、不適合放入提示詞的參考資料：規格、範本、指南。<docLink>了解更多</docLink>\n\n在建置模式中，Agent 可幫你完成這些設定。",
+  "agentDetail.configure.prompt.richTip": "設定 Agent 的角色和工作方式。<docLink>了解更多</docLink>"
 }

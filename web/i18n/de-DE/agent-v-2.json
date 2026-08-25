@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Für Referenzmaterial, das zu lang zum Einfügen in den Prompt ist: Spezifikationen, Vorlagen, Richtlinien. <docLink>Mehr erfahren</docLink>\n\nIm Build-Modus kann der Agent diese Einrichtung für Sie übernehmen.",
+  "agentDetail.configure.prompt.richTip": "Definieren Sie die Rolle des Agenten und wie er arbeiten soll. <docLink>Mehr erfahren</docLink>"
 }

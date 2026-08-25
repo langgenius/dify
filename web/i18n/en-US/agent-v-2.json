@@ -623,5 +623,8 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "For reference material too long to paste into the Prompt: specs, templates, guidelines. <docLink>Learn more</docLink>\n\nIn Build mode, the agent can set these up for you.",
+  "agentDetail.configure.prompt.richTip": "Define the agent's role and how it should work. <docLink>Learn more</docLink>",
+  "agentDetail.configure.skills.workspaceSelector.limitReached": "An agent can use up to 20 library skills. Remove one to add another."
 }

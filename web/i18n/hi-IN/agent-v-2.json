@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Prompt में चिपकाने के लिए बहुत लंबी संदर्भ सामग्री के लिए: स्पेक्स, टेम्पलेट, दिशानिर्देश। <docLink>ज़्यादा जानें</docLink>\n\nBuild mode में, एजेंट इन्हें आपके लिए सेट कर सकता है।",
+  "agentDetail.configure.prompt.richTip": "एजेंट की भूमिका और उसके काम करने के तरीके को तय करें। <docLink>ज़्यादा जानें</docLink>"
 }

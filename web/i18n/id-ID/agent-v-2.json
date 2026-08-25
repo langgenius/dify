@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Untuk materi referensi yang terlalu panjang untuk ditempel ke Prompt: spesifikasi, templat, panduan. <docLink>Pelajari selengkapnya</docLink>\n\nDalam mode Build, agen dapat menyiapkannya untuk Anda.",
+  "agentDetail.configure.prompt.richTip": "Tentukan peran agen dan cara kerjanya. <docLink>Pelajari selengkapnya</docLink>"
 }

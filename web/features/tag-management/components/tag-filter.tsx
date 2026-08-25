@@ -38,10 +38,10 @@ export const TagFilter = ({
   value,
   onChange,
   onOpenTagManagement = () => {},
-  portalProps,
   showTagManagement = true,
   showLeadingIcon = true,
   triggerClassName,
+  portalProps,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)

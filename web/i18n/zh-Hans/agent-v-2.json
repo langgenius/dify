@@ -623,5 +623,8 @@
   "skillManagement.searchLabel": "搜索 Skill",
   "skillManagement.searchPlaceholder": "搜索",
   "skillManagement.tags": "标签",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "上传过长、不适合放入提示词的参考资料：规格、模板、指南。<docLink>了解更多</docLink>\n\n在构建模式中，Agent 可帮你完成这些设置。",
+  "agentDetail.configure.prompt.richTip": "设定 Agent 的角色和工作方式。<docLink>了解更多</docLink>",
+  "agentDetail.configure.skills.workspaceSelector.limitReached": "每个 Agent 最多可从 Skill 库添加 20 个 Skill。请先移除一个 Skill，再添加新 Skill。"
 }

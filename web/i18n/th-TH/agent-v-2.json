@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "สำหรับเอกสารอ้างอิงที่ยาวเกินกว่าจะวางใน Prompt: สเปก เทมเพลต แนวทาง <docLink>ดูข้อมูลเพิ่มเติม</docLink>\n\nในโหมด Build agent สามารถตั้งค่าสิ่งเหล่านี้ให้คุณได้",
+  "agentDetail.configure.prompt.richTip": "กำหนดบทบาทของเอเจนต์และวิธีการทำงาน <docLink>ดูข้อมูลเพิ่มเติม</docLink>"
 }

@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "برای منابع مرجعی که برای چسباندن در Prompt بیش از حد طولانی‌اند: مشخصات، قالب‌ها، دستورالعمل‌ها. <docLink>بیشتر بدانید</docLink>\n\nدر حالت Build، عامل می‌تواند این موارد را برای شما تنظیم کند.",
+  "agentDetail.configure.prompt.richTip": "نقش عامل و نحوه کار آن را تعریف کنید. <docLink>بیشتر بدانید</docLink>"
 }

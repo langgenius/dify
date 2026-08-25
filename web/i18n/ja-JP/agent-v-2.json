@@ -548,5 +548,9 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Prompt に貼り付けるには長すぎる参考資料向けです: 仕様、テンプレート、ガイドライン。<docLink>詳細を見る</docLink>\n\nBuild モードでは、エージェントがこれらを設定できます。",
+  "agentDetail.configure.prompt.richTip": "Agent のロールと仕事の進め方を設定します。<docLink>詳細を見る</docLink>",
+  "agentDetail.configure.skills.workspaceSelector.empty": "スキルライブラリに一致するスキルはありません。",
+  "agentDetail.configure.skills.workspaceSelector.limitReached": "各 Agent には、スキルライブラリから最大 20 個のスキルを追加できます。スキルを 1 つ外してから、新しいスキルを追加してください。"
 }

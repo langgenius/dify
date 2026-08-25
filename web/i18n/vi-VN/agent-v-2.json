@@ -548,5 +548,7 @@
   "skillManagement.searchLabel": "Search skills",
   "skillManagement.searchPlaceholder": "Search",
   "skillManagement.tags": "Tags",
-  "skillManagement.title": "Skills"
+  "skillManagement.title": "Skills",
+  "agentDetail.configure.files.richTip": "Dành cho tài liệu tham khảo quá dài để dán vào Prompt: thông số, mẫu, hướng dẫn. <docLink>Tìm hiểu thêm</docLink>\n\nỞ chế độ Build, tác nhân có thể thiết lập những mục này cho bạn.",
+  "agentDetail.configure.prompt.richTip": "Xác định vai trò của tác nhân và cách tác nhân hoạt động. <docLink>Tìm hiểu thêm</docLink>"
 }
