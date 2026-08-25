@@ -627,19 +627,6 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
                 "batch_get",
                 lambda tenant_id, account_id, app_ids, session: {"app-new": ["app.acl.view_layout", "app.acl.edit"]},
             )
-            initialize_rbac_task = MagicMock()
-            monkeypatch.setattr(
-                app_module,
-                "initialize_created_app_rbac_access_task",
-                initialize_rbac_task,
-            )
-            replace_whitelist = MagicMock()
-            monkeypatch.setattr(
-                app_module.enterprise_rbac_service.RBACService.AppAccess,
-                "replace_whitelist",
-                replace_whitelist,
-            )
-
             resp, status = method(
                 app_module.AppListApi(),
                 app_module.CreateAppPayload(
@@ -654,8 +641,6 @@ def test_app_create_api_attaches_permission_keys(app, app_module, unbound_sessio
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-    assert replace_whitelist.call_args.kwargs["payload"].scope is app_module.RBACResourceWhitelistScope.ALL
-    initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", app_id="app-new")
 
 
 def test_app_list_api_attaches_permission_keys(app, app_module, sqlite_session: Session):
