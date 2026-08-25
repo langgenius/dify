@@ -239,7 +239,7 @@ function formatTopLevelHelpText(tree: CommandTree): string {
     `GUIDES\n${renderTopicRows()}`,
     `LEARN MORE\n` +
       `  Use \`${BIN} <command> --help\` for details on a command.\n` +
-      `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} --help -o json\`.`,
+      `  New here? Run \`${BIN} help account\`.  Agents: \`${BIN} help agent\` or \`${BIN} help -o json --compact\`.`,
   ]
 
   return `${sections.join('\n\n')}\n`
