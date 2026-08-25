@@ -9,22 +9,20 @@ from unittest.mock import MagicMock
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from sqlalchemy.orm import Session, sessionmaker
 
 from libs.archive_storage import ArchiveStorage
-from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_bundle_index import ARCHIVE_BUNDLE_ROOT_PREFIX, ArchiveBundleManifest
 from services.retention.workflow_run.archive_download_preparation import (
     WorkflowRunArchiveDownloadPreparer,
     build_archive_download_storage_key,
 )
-from services.retention.workflow_run.archive_download_task_cache import (
+from services.retention.workflow_run.archive_download_task import (
     WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
-    WorkflowRunArchiveDownloadTaskCache,
     build_archive_download_id,
     build_pending_archive_download_task,
 )
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveBundleRecord
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
@@ -74,6 +72,25 @@ class FakeTaskCache:
         self.saved_tasks.append(task)
 
 
+class FakeBundleQuery:
+    def __init__(self, records: tuple[WorkflowRunArchiveBundleRecord, ...]) -> None:
+        self.records = records
+
+    def list_for_tenant(self, tenant_id: str) -> tuple[WorkflowRunArchiveBundleRecord, ...]:
+        assert tenant_id == TENANT_ID
+        return self.records
+
+    def list_for_tenant_month(
+        self,
+        tenant_id: str,
+        *,
+        year: int,
+        month: int,
+    ) -> tuple[WorkflowRunArchiveBundleRecord, ...]:
+        assert tenant_id == TENANT_ID
+        return tuple(record for record in self.records if record.year == year and record.month == month)
+
+
 def _object_prefix(bundle_id: str = BUNDLE_ID) -> str:
     return (
         f"{ARCHIVE_BUNDLE_ROOT_PREFIX}tenant_prefix=1/tenant_id={TENANT_ID}/"
@@ -81,9 +98,8 @@ def _object_prefix(bundle_id: str = BUNDLE_ID) -> str:
     )
 
 
-def _bundle(bundle_id: str = BUNDLE_ID) -> WorkflowRunArchiveBundle:
-    return WorkflowRunArchiveBundle(
-        tenant_id=TENANT_ID,
+def _bundle(bundle_id: str = BUNDLE_ID) -> WorkflowRunArchiveBundleRecord:
+    return WorkflowRunArchiveBundleRecord(
         year=2025,
         month=3,
         shard=SHARD,
@@ -154,21 +170,17 @@ def _preparer(
     archive_storage: FakeArchiveStorage | None = None,
     download_storage: FakeArchiveStorage | None = None,
     cache: FakeTaskCache,
-    session_factory: sessionmaker[Session],
-    bundles: list[WorkflowRunArchiveBundle] | None = None,
+    bundles: list[WorkflowRunArchiveBundleRecord] | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
     source_storage = archive_storage or storage
     target_storage = download_storage or storage
     assert source_storage is not None
     assert target_storage is not None
-    with session_factory() as session:
-        session.add_all([_bundle()] if bundles is None else bundles)
-        session.commit()
     return WorkflowRunArchiveDownloadPreparer(
         archive_storage=cast(ArchiveStorage, source_storage),
         download_storage=cast(ArchiveStorage, target_storage),
-        cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
-        session_factory=cast(sessionmaker[Session], session_factory),
+        bundles=FakeBundleQuery(tuple([_bundle()] if bundles is None else bundles)),
+        cache=cache,
     )
 
 
@@ -178,9 +190,7 @@ def _parquet_bytes(records: list[dict[str, object]]) -> bytes:
     return buffer.getvalue()
 
 
-def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
+def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() -> None:
     bundle_refs = [(SHARD, "bundle-a"), (SHARD, "bundle-b")]
     task = _task(bundle_refs)
     first_bundle_payloads = {
@@ -217,7 +227,6 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
         archive_storage=archive_storage,
         download_storage=download_storage,
         cache=cache,
-        session_factory=sqlite_session_factory,
         bundles=[_bundle("bundle-a"), _bundle("bundle-b")],
     )
 
@@ -244,9 +253,7 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
         assert '"run-b","failed","safe"' in workflow_runs_csv
 
 
-def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
+def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch() -> None:
     task = _task()
     table_payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a", "status": "succeeded"}])}
     manifest_data = json.loads(_manifest_bytes(table_payloads).decode("utf-8"))
@@ -258,7 +265,7 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
         }
     )
     cache = FakeTaskCache(task)
-    preparer = _preparer(storage=storage, cache=cache, session_factory=sqlite_session_factory)
+    preparer = _preparer(storage=storage, cache=cache)
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
 
@@ -268,16 +275,13 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
     assert storage.put_objects == {}
 
 
-def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
+def test_prepare_workflow_run_archive_download_skips_duplicate_worker() -> None:
     task = _task().model_copy(update={"celery_task_id": "celery-task-1"})
     storage = FakeArchiveStorage({})
     cache = FakeTaskCache(task)
     preparer = _preparer(
         storage=storage,
         cache=cache,
-        session_factory=sqlite_session_factory,
         bundles=[],
     )
     nested_results: list[WorkflowRunArchiveDownloadTask | None] = []
@@ -298,15 +302,13 @@ def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
     preparer._build_zip_payload.assert_called_once()
 
 
-def test_failed_worker_cannot_overwrite_ready_task(
-    sqlite_session_factory: sessionmaker[Session],
-) -> None:
+def test_failed_worker_cannot_overwrite_ready_task() -> None:
     processing_task = _task().model_copy(
         update={"status": WorkflowRunArchiveDownloadStatus.PROCESSING, "celery_task_id": "celery-task-1"}
     )
     ready_task = processing_task.model_copy(update={"status": WorkflowRunArchiveDownloadStatus.READY})
     cache = FakeTaskCache(ready_task)
-    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache, session_factory=sqlite_session_factory)
+    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache)
 
     result = preparer._mark_failed(processing_task, error="late failure")
 

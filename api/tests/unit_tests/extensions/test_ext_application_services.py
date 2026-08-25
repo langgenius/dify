@@ -21,6 +21,7 @@ from models.model import AccountTrialAppRecord, DifySetup
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from services import recommended_app_catalog_gateway
 from services.account_activation_adapters import (
     BillingAccountActivationEligibility,
@@ -36,6 +37,8 @@ from services.enterprise.enterprise_service import WebAppSettings
 from services.errors.enterprise import EnterpriseAPIError, EnterpriseAPINotFoundError
 from services.init_validation_service import InvalidInitializationPasswordError
 from services.partner_tenant_binding_service import PartnerTenantBindingService
+from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
+from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
 from services.tag_application_service import TagApplicationService
 from services.webapp_access_query_service import WebAppAccessUnavailableError
 
@@ -174,6 +177,28 @@ def test_build_application_services_wires_tag_boundary(
     )
 
     assert isinstance(services.tags, TagApplicationService)
+
+
+def test_build_application_services_wires_workflow_run_archives(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+
+    workflow_run_archives = services.workflow_run_archives
+    assert isinstance(workflow_run_archives, WorkflowRunArchiveService)
+    assert isinstance(workflow_run_archives._bundles, WorkflowRunArchiveBundleQueryRepository)
+    assert workflow_run_archives._bundles._session_factory is sqlite_session_factory
+    assert isinstance(workflow_run_archives._tasks, WorkflowRunArchiveDownloadTaskCache)
+    assert workflow_run_archives._tasks._redis is redis
+    assert workflow_run_archives._dispatcher is ext_application_services.dispatch_workflow_run_archive_download_task
+    assert workflow_run_archives._sign_download_url is ext_application_services.sign_workflow_run_archive_download_url
 
 
 def test_build_application_services_wires_billing_service(
