@@ -2,9 +2,9 @@
 # allocations use Rust by default; Go remains the preflight fallback and keeps
 # ownership of existing unprefixed resources.
 #
-# Go remains available as local_sandbox. The two services intentionally share
-# no state volume: SQLite, tmux sessions, Homes, and Workspaces must never be
-# mutated concurrently by different runtime implementations.
+# Go remains available as local_sandbox. The two services intentionally use
+# separate state volumes: SQLite, tmux sessions, Homes, and Workspaces must
+# never be mutated concurrently by different runtime implementations.
 services:
   local_sandbox_rust:
     image: ${DIFY_AGENT_LOCAL_SANDBOX_RUST_IMAGE:-dify-agent-local-sandbox-rust:local}
@@ -20,6 +20,9 @@ services:
       - HTTP_PROXY=http://agent_ssrf_proxy:3128
       - HTTPS_PROXY=http://agent_ssrf_proxy:3128
       - NO_PROXY=localhost,127.0.0.1
+    volumes:
+      - dify_agent_local_sandbox_rust_home:/home/dify
+      - dify_agent_local_sandbox_rust_workspace:/workspace
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/healthz"]
       interval: 30s
@@ -36,3 +39,7 @@ services:
       DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_RUST_AUTH_TOKEN:-${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}}
       DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT: ${DIFY_AGENT_LOCAL_SANDBOX_RUST_CANARY_PERCENT:-100}
       DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS: ${DIFY_AGENT_LOCAL_SANDBOX_PREFLIGHT_TIMEOUT_SECONDS:-1}
+
+volumes:
+  dify_agent_local_sandbox_rust_home:
+  dify_agent_local_sandbox_rust_workspace:
