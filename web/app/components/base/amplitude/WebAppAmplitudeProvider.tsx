@@ -2,11 +2,7 @@
 
 import { useEffect } from 'react'
 import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import {
-  ensureWebAppAmplitudeInitialized,
-  sendWebAppAmplitudeEvent,
-  setWebAppAmplitudeOptOut,
-} from './web-app-client'
+import { sendWebAppAmplitudeEvent, setWebAppAmplitudeOptOut } from './web-app-client'
 import { registerWebAppEventTracker } from './web-app-event'
 
 export function WebAppAmplitudeProvider() {
@@ -20,7 +16,6 @@ export function WebAppAmplitudeProvider() {
 
     setWebAppAmplitudeOptOut(false)
     const unregisterTracker = registerWebAppEventTracker(sendWebAppAmplitudeEvent)
-    void ensureWebAppAmplitudeInitialized()
 
     return () => {
       unregisterTracker()

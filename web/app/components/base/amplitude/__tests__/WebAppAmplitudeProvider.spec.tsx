@@ -41,9 +41,11 @@ describe('WebAppAmplitudeProvider', () => {
     mockClient.ensureInitialized.mockReturnValue(new Promise(() => {}))
     mockConsent.value = 'granted'
     rerender(<WebAppAmplitudeProvider />)
+
+    expect(mockClient.ensureInitialized).not.toHaveBeenCalled()
+
     trackWebAppEvent('webapp_run', { app_mode: 'agent-v2' })
 
-    expect(mockClient.ensureInitialized).toHaveBeenCalledTimes(1)
     expect(mockClient.setOptOut).toHaveBeenLastCalledWith(false)
     expect(mockClient.sendEvent).toHaveBeenCalledWith('webapp_run', {
       app_mode: 'agent-v2',
