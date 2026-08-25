@@ -4,7 +4,10 @@
   inset: 0;
 }
 
-/* 40px cells + 1px divider-subtle lines, matching Figma header/Variant2. */
+/* 40px cells + 1px divider-subtle lines, matching Figma header/Variant2.
+   Figma's vertical lines are inset 141px on a 1512px canvas (~9%) and sit
+   under a white wash, so the grid fades out toward both edges instead of
+   meeting the viewport at full strength. */
 .grid {
   position: absolute;
   inset: 0;
@@ -23,6 +26,14 @@
   background-position:
     center top,
     left 40px;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 12%,
+    #000 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(to right, transparent 0%, #000 12%, #000 88%, transparent 100%);
 }
 
 .glow {
