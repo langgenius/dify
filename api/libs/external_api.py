@@ -156,9 +156,11 @@ class ExternalApi(Api):
         app: Blueprint | Flask,
         *args,
         error_body_formatter: ErrorBodyFormatter | None = None,
+        register_default_root: bool = True,
         **kwargs,
     ):
         self._error_body_formatter = error_body_formatter
+        self._register_default_root = register_default_root
         install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
         kwargs.setdefault("security", "Bearer")
@@ -176,6 +178,15 @@ class ExternalApi(Api):
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
+
+    @override
+    def _register_doc(self, app_or_blueprint: Blueprint | Flask) -> None:
+        if self._add_specs and self._doc:
+            app_or_blueprint.add_url_rule(self._doc, "doc", self.render_doc)
+        # Api.base_path resolves the ``root`` endpoint. A caller that disables
+        # Flask-RESTX's 404 root must register its own resource with that endpoint.
+        if self._register_default_root:
+            app_or_blueprint.add_url_rule(self.prefix or "/", "root", self.render_root)
 
     @override
     def _should_use_fr_error_handler(self):

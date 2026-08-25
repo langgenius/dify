@@ -16,7 +16,7 @@ from controllers.common.errors import (
     NoFileUploadedError,
     TooManyFilesError,
 )
-from controllers.common.fields import GeneratedAppResponse
+from controllers.common.fields import WorkflowBlockingResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -120,6 +120,7 @@ register_response_schema_models(
     DatasourcePluginResponse,
     DatasourcePluginListResponse,
     PipelineUploadFileResponse,
+    WorkflowBlockingResponse,
 )
 
 
@@ -146,6 +147,7 @@ class DatasourcePluginsApi(DatasetApiResource):
     @service_api_ns.doc(
         responses={
             200: "Datasource plugins retrieved successfully",
+            400: "Bad request - pipeline is not configured",
             401: "Unauthorized - invalid API token",
         }
     )
@@ -189,12 +191,13 @@ class DatasourceNodeRunApi(DatasetApiResource):
         },
     )
     @event_stream_response(service_api_ns)
-    @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
+    @service_api_ns.doc(shortcut="run_datasource_node")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
     @service_api_ns.doc(params={"dataset_id": "Knowledge base ID.", "node_id": "ID of the datasource node to execute."})
     @service_api_ns.doc(
         responses={
             200: "Datasource node run successfully",
+            400: "Bad request - invalid payload or pipeline is not configured",
             401: "Unauthorized - invalid API token",
         }
     )
@@ -257,12 +260,13 @@ class PipelineRunApi(DatasetApiResource):
         },
     )
     @json_or_event_stream_response(service_api_ns)
-    @service_api_ns.doc(shortcut="pipeline_datasource_node_run")
+    @service_api_ns.doc(shortcut="run_pipeline")
     @service_api_ns.doc(description="Run a datasource node for a rag pipeline")
     @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Pipeline run successfully",
+            400: "Bad request - invalid payload or pipeline is not configured",
             401: "Unauthorized - invalid API token",
         }
     )
@@ -270,7 +274,7 @@ class PipelineRunApi(DatasetApiResource):
     @service_api_ns.response(
         200,
         "Pipeline run successfully",
-        service_api_ns.models[GeneratedAppResponse.__name__],
+        service_api_ns.models[WorkflowBlockingResponse.__name__],
     )
     @with_session
     def post(self, session: Session, tenant_id: str, dataset_id: UUID):

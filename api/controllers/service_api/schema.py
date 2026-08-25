@@ -13,6 +13,8 @@ from typing import Annotated, Any, cast
 from flask_restx import Namespace
 from pydantic import BaseModel, WithJsonSchema
 
+from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
+
 USER_DESCRIPTION = (
     "User identifier, unique within the application. This identifier scopes data access; resources created with "
     "one `user` value are only visible when queried with the same `user` value."
@@ -41,6 +43,27 @@ JSON_USER_FETCH_FROM = "JSON"
 INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
     "type": "object",
     "required": ["type", "transfer_method"],
+    "anyOf": [
+        {
+            "properties": {
+                "transfer_method": {"enum": ["remote_url"]},
+                "url": {"format": "url", "type": "string"},
+                "remote_url": {"format": "url", "type": "string"},
+            },
+            "anyOf": [
+                {"required": ["url"]},
+                {"required": ["remote_url"]},
+                {"required": ["upload_file_id"]},
+            ],
+        },
+        {
+            "properties": {
+                "transfer_method": {"enum": ["local_file"]},
+                "upload_file_id": {"type": "string"},
+            },
+            "required": ["upload_file_id"],
+        },
+    ],
     "properties": {
         "type": {
             "description": "File type.",
@@ -48,7 +71,10 @@ INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
             "type": "string",
         },
         "transfer_method": {
-            "description": "Transfer method: `remote_url` for file URL, `local_file` for uploaded file.",
+            "description": (
+                "Transfer method: `remote_url` for a file URL or persisted uploaded-file reference, "
+                "`local_file` for an uploaded file."
+            ),
             "enum": ["remote_url", "local_file"],
             "type": "string",
         },
@@ -57,10 +83,16 @@ INPUT_FILE_ITEM_SCHEMA: dict[str, object] = {
             "format": "url",
             "type": "string",
         },
+        "remote_url": {
+            "description": "Legacy alias of `url` when `transfer_method` is `remote_url`.",
+            "format": "url",
+            "type": "string",
+        },
         "upload_file_id": {
             "description": (
-                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API when "
-                "`transfer_method` is `local_file`."
+                "Uploaded file ID obtained from the [Upload File](/api-reference/files/upload-file) API. "
+                "Required for `local_file`; also accepted with `remote_url` for compatibility with persisted "
+                "file references."
             ),
             "type": "string",
         },
@@ -125,7 +157,10 @@ def event_stream_response(namespace: Namespace):
 
 def binary_response(namespace: Namespace, media_type: str | Sequence[str]):
     media_types = [media_type] if isinstance(media_type, str) else list(media_type)
-    return namespace.doc(produces=media_types)
+    return namespace.doc(
+        produces=media_types,
+        vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: media_types},
+    )
 
 
 def _json_user_required(view_func) -> bool:

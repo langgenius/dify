@@ -13,6 +13,8 @@ Bearer format: API_KEY
 Service operations
 
 ### [GET] /
+**Return public Service API metadata without requiring an API key**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -119,6 +121,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
+| 400 | Bad request - invalid feedback payload |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Message does not exist. |  |
@@ -298,13 +301,13 @@ Convert text to speech.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ---
 ## default
@@ -322,15 +325,15 @@ Send a request to the chat application.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |
-| 404 | `not_found` : Conversation does not exist. |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
+| 404 | `not_found` : Conversation does not exist. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -382,7 +385,7 @@ Get next questions suggestions for the current message.
 | 404 | `not_found` : Message does not exist. |  |
 | 500 | `internal_server_error` : Internal server error. |  |
 
-### [GET] /workflow/{task_id}/events
+### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
 
 Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
@@ -391,7 +394,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
+| workflow_run_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
 | continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
@@ -400,7 +403,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
 | 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -429,6 +432,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
+| 400 | Bad request - invalid query parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
@@ -469,15 +473,15 @@ Send a request to the chat application.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |
-| 404 | `not_found` : Conversation does not exist. |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
+| 404 | `not_found` : Conversation does not exist. |  |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The upstream model provider rate limit was exceeded. |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -545,15 +549,15 @@ Send a request to the text generation application.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 404 | Conversation not found |
-| 429 | `too_many_requests` : Too many concurrent requests for this app. |
-| 500 | `internal_server_error` : Internal server error. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. | **application/json**: [CompletionBlockingResponse](#completionblockingresponse)<br>**text/event-stream**: string<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | Conversation not found |  |
+| 429 | `too_many_requests` : Too many concurrent requests for this app. |  |
+| 500 | `internal_server_error` : Internal server error. |  |
 
 ### [POST] /completion-messages/{task_id}/stop
 **Stop Completion Message Generation**
@@ -609,7 +613,7 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Last conversation does not exist (invalid `last_id`). |  |
 
-### [DELETE] /conversations/{c_id}
+### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
 
 Delete a conversation.
@@ -618,7 +622,7 @@ Delete a conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -636,7 +640,7 @@ Delete a conversation.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |
 | 404 | `not_found` : Conversation does not exist. |
 
-### [POST] /conversations/{c_id}/name
+### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**
 
 Rename a conversation or auto-generate a name. The conversation name is used for display on clients that support multiple conversations.
@@ -645,7 +649,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -663,7 +667,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Conversation does not exist. |  |
 
-### [GET] /conversations/{c_id}/variables
+### [GET] /conversations/{conversation_id}/variables
 **List Conversation Variables**
 
 Retrieve variables from a specific conversation.
@@ -672,7 +676,7 @@ Retrieve variables from a specific conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 | last_id | query | The ID of the last record on the current page. Used to fetch the next page. | No | string |
 | limit | query | Number of records to return. | No | integer, <br>**Default:** 20 |
 | user | query | User identifier, used for end-user context. | No | string |
@@ -688,7 +692,7 @@ Retrieve variables from a specific conversation.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 | 404 | `not_found` : Conversation does not exist. |  |
 
-### [PUT] /conversations/{c_id}/variables/{variable_id}
+### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
 
 Update the value of a specific conversation variable. The value must match the expected type.
@@ -697,7 +701,7 @@ Update the value of a specific conversation variable. The value must match the e
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID. | Yes | string (uuid) |
+| conversation_id | path | Conversation ID. | Yes | string (uuid) |
 | variable_id | path | Variable ID. | Yes | string (uuid) |
 
 #### Request Body
@@ -850,11 +854,15 @@ Update the name, description, permissions, or retrieval settings of an existing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base updated successfully. | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
+| 400 | Bad request - invalid embedding or reranking model configuration |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Insufficient permissions to access this knowledge base. |  |
 | 404 | `not_found` : Dataset not found. |  |
 
-### [POST] /datasets/{dataset_id}/hit-testing
+### ~~[POST] /datasets/{dataset_id}/hit-testing~~
+
+***DEPRECATED***
+
 **Retrieve Chunks from a Knowledge Base / Test Retrieval**
 
 Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
@@ -952,6 +960,7 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of datasource nodes configured in the pipeline. | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
+| 400 | Bad request - pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | `not_found` : Dataset not found. |  |
@@ -976,12 +985,13 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Streaming response with node execution events. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | `not_found` : Dataset not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Streaming response with node execution events. | **text/event-stream**: string<br> |
+| 400 | Bad request - invalid payload or pipeline is not configured |  |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | Forbidden - dataset API access or workspace access denied |  |
+| 404 | `not_found` : Dataset not found. |  |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
@@ -1004,7 +1014,8 @@ Execute the full knowledge pipeline for a knowledge base. Supports both streamin
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
+| 400 | Bad request - invalid payload or pipeline is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `forbidden` : Forbidden. |  |
 | 404 | `not_found` : Dataset not found. |  |
@@ -1031,6 +1042,7 @@ Permanently delete a knowledge base tag. Does not delete the knowledge bases tha
 | 204 | Success. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - insufficient permissions |
+| 404 | Tag not found |
 
 ### [GET] /datasets/tags
 **List Knowledge Tags**
@@ -1061,8 +1073,10 @@ Rename an existing knowledge base tag.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag updated successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
+| 400 | Bad request - tag name already exists |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - insufficient permissions |  |
+| 404 | Tag not found |  |
 
 ### [POST] /datasets/tags
 **Create Knowledge Tag**
@@ -1080,6 +1094,7 @@ Create a new tag for organizing knowledge bases.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag created successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
+| 400 | Bad request - tag name already exists |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - insufficient permissions |  |
 
@@ -1101,6 +1116,7 @@ Bind one or more tags to a knowledge base. A knowledge base can have multiple ta
 | 204 | Success. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - insufficient permissions |
+| 404 | Dataset not found |
 
 ### [POST] /datasets/tags/unbinding
 **Delete Tag Binding**
@@ -1120,6 +1136,7 @@ Remove one or more tags from a knowledge base.
 | 204 | Success. |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - insufficient permissions |
+| 404 | Dataset not found |
 
 ### [GET] /datasets/{dataset_id}/tags
 **Get Knowledge Base Tags**
@@ -1269,12 +1286,12 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | ZIP archive containing the requested documents. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Insufficient permissions. |
-| 404 | `not_found` : Document or dataset not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | ZIP archive containing the requested documents. | **application/zip**: binary<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `forbidden` : Insufficient permissions. |  |
+| 404 | `not_found` : Document or dataset not found. |  |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
 **Update Document Status in Batch**
@@ -1398,6 +1415,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 | 413 | `file_too_large` : File size exceeded. |  |
+| 415 | Unsupported file type |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1451,6 +1469,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 | 413 | `file_too_large` : File size exceeded. |  |
+| 415 | Unsupported file type |  |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1511,6 +1530,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Document not found |  |
 | 413 | `file_too_large` : File size exceeded. |  |
+| 415 | Unsupported file type |  |
 
 ---
 ## default
@@ -1537,6 +1557,7 @@ Update metadata values for multiple documents at once. Each document in the requ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document metadata updated successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
+| 400 | Bad request - invalid or conflicting document metadata operation |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or metadata not found |  |
@@ -1583,6 +1604,7 @@ Create a custom metadata field for the knowledge base. Metadata fields can be us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Metadata field created successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
+| 400 | Bad request - invalid or duplicate metadata name |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset not found |  |
@@ -1671,6 +1693,7 @@ Rename a custom metadata field.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata field updated successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
+| 400 | Bad request - invalid or duplicate metadata name |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or metadata not found |  |
@@ -1699,6 +1722,7 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of chunks. | **application/json**: [SegmentListResponse](#segmentlistresponse)<br> |
+| 400 | Bad request - embedding model is not configured |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset or document not found |  |
@@ -1749,6 +1773,7 @@ Permanently delete a chunk from the document.
 | Code | Description |
 | ---- | ----------- |
 | 204 | Success. |
+| 400 | Bad request - invalid dataset model state or concurrent deletion |
 | 401 | Unauthorized - invalid API token |
 | 403 | Forbidden - dataset API access or workspace access denied |
 | 404 | Dataset, document, or segment not found |
@@ -1771,6 +1796,7 @@ Retrieve detailed information about a specific chunk, including its content, key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk details. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
+| 400 | Bad request - invalid dataset model configuration |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
@@ -1799,6 +1825,7 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk updated successfully. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
+| 400 | Bad request - invalid segment or embedding model configuration |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - dataset API access or workspace access denied |  |
 | 404 | Dataset, document, or segment not found |  |
@@ -1974,12 +2001,12 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `file_access_denied` : Access to the requested file is denied. |
-| 404 | `file_not_found` : The requested file was not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. | `*/*`: binary<br> |
+| 401 | Unauthorized - invalid API token |  |
+| 403 | `file_access_denied` : Access to the requested file is denied. |  |
+| 404 | `file_not_found` : The requested file was not found. |  |
 
 ---
 ## default
@@ -2095,7 +2122,7 @@ Retrieve the WebApp settings of this application, including site configuration, 
 ---
 ## default
 
-### [GET] /workflow/{task_id}/events
+### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
 
 Resume the Server-Sent Events stream for a workflow run after a pause or a dropped SSE connection. For runs that have already finished, the stream emits a single `workflow_finished` event and closes.
@@ -2104,7 +2131,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
+| workflow_run_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
 | continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
 | include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
 | user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
@@ -2113,7 +2140,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
 | 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -2142,6 +2169,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
+| 400 | Bad request - invalid query parameters |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
 
@@ -2160,7 +2188,7 @@ Execute a workflow. Cannot be executed without a published workflow.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
@@ -2237,7 +2265,7 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br>**text/event-stream**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. |  |
 | 401 | Unauthorized - invalid API token |  |
 | 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
@@ -2293,7 +2321,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | answer | string |  | No |
 | created_at | integer |  | No |
 | hit_count | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | question | string |  | No |
 
 #### AnnotationCreatePayload
@@ -2308,15 +2336,15 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | error_msg | string |  | No |
-| job_id | string |  | Yes |
-| job_status | string<br>string |  | Yes |
+| job_id | string (uuid) |  | Yes |
+| job_status | string |  | Yes |
 
 #### AnnotationJobStatusResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| job_id | string |  | Yes |
-| job_status | string<br>string |  | Yes |
+| job_id | string (uuid) |  | Yes |
+| job_status | string |  | Yes |
 
 #### AnnotationList
 
@@ -2354,15 +2382,15 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_id | string |  | Yes |
+| app_id | string (uuid) |  | Yes |
 | content | string |  | No |
-| conversation_id | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | string |  | Yes |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
-| id | string |  | Yes |
-| message_id | string |  | Yes |
+| id | string (uuid) |  | Yes |
+| message_id | string (uuid) |  | Yes |
 | rating | string |  | Yes |
 | updated_at | string |  | Yes |
 
@@ -2400,6 +2428,52 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | BinaryFileResponse | string |  |  |
 
+#### BlockingMetadataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| retriever_resources | [ [BlockingRetrieverResourceResponse](#blockingretrieverresourceresponse) ] |  | No |
+| usage | [BlockingUsageResponse](#blockingusageresponse) |  | No |
+
+#### BlockingRetrieverResourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| created_at | integer |  | No |
+| data_source_type | string |  | No |
+| dataset_id | string |  | No |
+| dataset_name | string |  | No |
+| document_id | string |  | No |
+| document_name | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | No |
+| index_node_hash | string |  | No |
+| message_id | string |  | No |
+| position | integer |  | Yes |
+| score | number |  | No |
+| segment_id | string |  | No |
+| segment_position | integer |  | No |
+| summary | string |  | No |
+| word_count | integer |  | No |
+
+#### BlockingUsageResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completion_price | string |  | No |
+| completion_price_unit | string |  | No |
+| completion_tokens | integer |  | No |
+| completion_unit_price | string |  | No |
+| currency | string |  | No |
+| latency | number |  | No |
+| prompt_price | string |  | No |
+| prompt_price_unit | string |  | No |
+| prompt_tokens | integer |  | No |
+| prompt_unit_price | string |  | No |
+| total_price | string |  | No |
+| total_tokens | integer |  | No |
+
 #### ButtonStyle
 
 Button styles for user actions.
@@ -2407,6 +2481,83 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ButtonStyle | string | Button styles for user actions. |  |
+
+#### ChatBlockingResponse
+
+Blocking chat response for a completed message or paused Chatflow.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ChatBlockingResponse | [ChatMessageBlockingResponse](#chatmessageblockingresponse)<br>[ChatPausedBlockingResponse](#chatpausedblockingresponse) | Blocking chat response for a completed message or paused Chatflow. |  |
+
+#### ChatMessageBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | Yes |
+| event | string |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| mode | string |  | Yes |
+| task_id | string |  | Yes |
+
+#### ChatPauseReasonResponse
+
+Public pause reason emitted by a blocking Chatflow execution.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TYPE | string |  | Yes |
+| actions | [ [JSONObject](#jsonobject) ] |  | No |
+| approval_channels | [ string ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | No |
+| form_content | string |  | No |
+| form_id | string |  | No |
+| form_token | string |  | No |
+| inputs | [ [JSONObject](#jsonobject) ] |  | No |
+| message | string |  | No |
+| node_id | string |  | No |
+| node_title | string |  | No |
+| resolved_default_values | object |  | No |
+
+#### ChatPausedBlockingDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
+| created_at | long |  | Yes |
+| elapsed_time | float |  | Yes |
+| id | string (uuid) |  | Yes |
+| message_id | string (uuid) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| mode | string |  | Yes |
+| paused_nodes | [ string ] |  | Yes |
+| reasons | [ [ChatPauseReasonResponse](#chatpausereasonresponse) ] |  | Yes |
+| status | string |  | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_run_id | string (uuid) |  | Yes |
+
+#### ChatPausedBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | Yes |
+| data | [ChatPausedBlockingDataResponse](#chatpausedblockingdataresponse) |  | Yes |
+| event | string |  | Yes |
+| id | string |  | Yes |
+| message_id | string |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| mode | string |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
 
 #### ChatRequestPayload
 
@@ -2482,6 +2633,19 @@ Button styles for user actions.
 | ---- | ---- | ----------- | -------- |
 | content | string | Child chunk text content. | Yes |
 
+#### CompletionBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| created_at | long |  | Yes |
+| event | string |  | Yes |
+| id | string (uuid) |  | Yes |
+| message_id | string (uuid) |  | Yes |
+| metadata | [BlockingMetadataResponse](#blockingmetadataresponse) |  | Yes |
+| mode | string |  | Yes |
+| task_id | string (uuid) |  | Yes |
+
 #### CompletionRequestPayload
 
 | Name | Type | Description | Required |
@@ -2556,7 +2720,7 @@ Condition detail
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
 | description | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | name | string |  | Yes |
 | updated_at | integer |  | No |
 | value | string |  | No |
@@ -3021,8 +3185,8 @@ Request payload for bulk downloading documents as a zip archive.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | created_from | string |  | No |
-| data_source_detail_dict |  |  | No |
-| data_source_info |  |  | No |
+| data_source_detail_dict | object |  | Yes |
+| data_source_info | object |  | No |
 | data_source_type | string |  | No |
 | dataset_process_rule_id | string |  | No |
 | disabled_at | integer |  | No |
@@ -3113,11 +3277,11 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 | app_id | string |  | No |
 | created_at | dateTime |  | Yes |
 | external_user_id | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | is_anonymous | boolean |  | Yes |
 | name | string |  | No |
 | session_id | string |  | Yes |
-| tenant_id | string |  | Yes |
+| tenant_id | string (uuid) |  | Yes |
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
 
@@ -3184,7 +3348,7 @@ Enum class for fetch from.
 | created_by | string |  | No |
 | extension | string |  | No |
 | file_key | string |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | name | string |  | Yes |
 | original_url | string |  | No |
@@ -3212,12 +3376,6 @@ Enum class for fetch from.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
-
-#### GeneratedAppResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| GeneratedAppResponse |  |  |  |
 
 #### HitTestingChildChunk
 
@@ -3341,9 +3499,9 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | expiration_time | integer |  | No |
 | form_content | string |  | Yes |
-| inputs | [ object ] |  | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] |  | Yes |
 | resolved_default_values | object |  | Yes |
-| user_actions | [ object ] |  | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
 #### HumanInputFormSubmissionData
 
@@ -3403,7 +3561,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+| JSONValue |  |  |  |
 
 #### JSONValueType
 
@@ -3453,7 +3611,7 @@ Model class for i18n object.
 | ---- | ---- | ----------- | -------- |
 | belongs_to | string |  | No |
 | filename | string |  | Yes |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
 | transfer_method | string |  | Yes |
@@ -3476,18 +3634,18 @@ Model class for i18n object.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
 | answer_tokens | integer |  | No |
-| conversation_id | string |  | Yes |
+| conversation_id | string (uuid) |  | Yes |
 | created_at | integer |  | No |
 | currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
 | message_tokens | integer |  | No |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
+| provider_response_latency | float |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
@@ -3592,18 +3750,18 @@ Form input definition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| annotation_reply | [JSONObject](#jsonobject) |  | Yes |
-| file_upload | [JSONObject](#jsonobject) |  | Yes |
-| more_like_this | [JSONObject](#jsonobject) |  | Yes |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement |  |  | No |
-| retriever_resource | [JSONObject](#jsonobject) |  | Yes |
-| sensitive_word_avoidance | [JSONObject](#jsonobject) |  | Yes |
-| speech_to_text | [JSONObject](#jsonobject) |  | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
 | suggested_questions | [ string ] |  | Yes |
-| suggested_questions_after_answer | [JSONObject](#jsonobject) |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
 | system_parameters | [SystemParameters](#systemparameters) |  | Yes |
-| text_to_speech | [JSONObject](#jsonobject) |  | Yes |
-| user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object ] |  | Yes |
 
 #### PermissionEnum
 
@@ -3746,9 +3904,9 @@ Model class for provider with models response.
 | document_id | string |  | No |
 | document_name | string |  | No |
 | hit_count | integer |  | No |
-| id | string |  | No |
+| id | string (uuid) |  | No |
 | index_node_hash | string |  | No |
-| message_id | string |  | No |
+| message_id | string (uuid) |  | No |
 | position | integer |  | Yes |
 | score | number |  | No |
 | segment_id | string |  | No |
@@ -3905,7 +4063,7 @@ Model class for provider with models response.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object |  | Yes |
 | introduction | string |  | No |
 | name | string |  | Yes |
@@ -4041,6 +4199,13 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### ToolIcon
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
+
 #### UrlResponse
 
 | Name | Type | Description | Required |
@@ -4108,8 +4273,16 @@ in form definition, or a variable while the workflow is running.
 | created_by_role | string |  | No |
 | created_from | string |  | No |
 | details | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
+
+#### WorkflowBlockingResponse
+
+Blocking workflow response for a finished or paused execution.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowBlockingResponse | [WorkflowFinishedBlockingResponse](#workflowfinishedblockingresponse)<br>[WorkflowPausedBlockingResponse](#workflowpausedblockingresponse) | Blocking workflow response for a finished or paused execution. |  |
 
 #### WorkflowEventsQuery
 
@@ -4118,6 +4291,29 @@ in form definition, or a variable while the workflow is running.
 | continue_on_pause | boolean | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No |
 | include_state_snapshot | boolean | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No |
 | user | string | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes |
+
+#### WorkflowFinishedBlockingDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | Yes |
+| elapsed_time | float |  | Yes |
+| error | string |  | Yes |
+| finished_at | integer |  | Yes |
+| id | string (uuid) |  | Yes |
+| outputs | object |  | Yes |
+| status | string, <br>**Available values:** "failed", "partial-succeeded", "stopped", "succeeded" | *Enum:* `"failed"`, `"partial-succeeded"`, `"stopped"`, `"succeeded"` | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### WorkflowFinishedBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowFinishedBlockingDataResponse](#workflowfinishedblockingdataresponse) |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
 
 #### WorkflowLogQuery
 
@@ -4132,6 +4328,51 @@ in form definition, or a variable while the workflow is running.
 | page | integer, <br>**Default:** 1 | Page number for pagination. | No |
 | status | string | Filter by execution status. | No |
 
+#### WorkflowPauseReasonResponse
+
+Public pause reason emitted by a blocking Workflow execution.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TYPE | string |  | Yes |
+| actions | [ [JSONObject](#jsonobject) ] |  | No |
+| approval_channels | [ string ] |  | No |
+| display_in_ui | boolean |  | No |
+| expiration_time | integer |  | No |
+| form_content | string |  | No |
+| form_id | string |  | No |
+| form_token | string |  | No |
+| inputs | [ [JSONObject](#jsonobject) ] |  | No |
+| message | string |  | No |
+| node_id | string |  | No |
+| node_title | string |  | No |
+| resolved_default_values | object |  | No |
+
+#### WorkflowPausedBlockingDataResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | Yes |
+| elapsed_time | float |  | Yes |
+| error | string |  | Yes |
+| finished_at | integer |  | Yes |
+| id | string (uuid) |  | Yes |
+| outputs | object |  | Yes |
+| paused_nodes | [ string ] |  | Yes |
+| reasons | [ [WorkflowPauseReasonResponse](#workflowpausereasonresponse) ] |  | Yes |
+| status | string |  | Yes |
+| total_steps | integer |  | Yes |
+| total_tokens | integer |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
+
+#### WorkflowPausedBlockingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [WorkflowPausedBlockingDataResponse](#workflowpausedblockingdataresponse) |  | Yes |
+| task_id | string |  | Yes |
+| workflow_run_id | string |  | Yes |
+
 #### WorkflowRunForLogResponse
 
 | Name | Type | Description | Required |
@@ -4141,7 +4382,7 @@ in form definition, or a variable while the workflow is running.
 | error | string |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | status | string |  | No |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
@@ -4173,10 +4414,10 @@ in form definition, or a variable while the workflow is running.
 | elapsed_time | number<br>integer |  | No |
 | error | string |  | No |
 | finished_at | integer |  | No |
-| id | string |  | Yes |
+| id | string (uuid) |  | Yes |
 | inputs | object<br>[ object ]<br>string<br>integer<br>number<br>boolean |  | No |
 | outputs | object |  | No |
 | status | string |  | Yes |
 | total_steps | integer |  | No |
 | total_tokens | integer |  | No |
-| workflow_id | string |  | Yes |
+| workflow_id | string (uuid) |  | Yes |
