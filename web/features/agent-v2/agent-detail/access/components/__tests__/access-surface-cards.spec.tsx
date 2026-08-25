@@ -1,5 +1,6 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type React from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -237,6 +238,17 @@ function createConsoleQueryClient(webAppAuthEnabled = true) {
   return queryClient
 }
 
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, reject, resolve }
+}
+
 describe('Agent access surface cards', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -245,7 +257,10 @@ describe('Agent access surface cards', () => {
   describe('Web app access', () => {
     it('should render the backend web app URL and toggle site status through the backing app id', async () => {
       const user = userEvent.setup()
-      mocks.siteEnableMutation.mockResolvedValueOnce({ enable_site: false })
+      const firstToggle = createDeferredPromise<{ enable_site: boolean }>()
+      mocks.siteEnableMutation
+        .mockReturnValueOnce(firstToggle.promise)
+        .mockResolvedValueOnce({ enable_site: true })
 
       renderWithQueryClient(
         <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
@@ -257,22 +272,88 @@ describe('Agent access surface cards', () => {
       ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
       expect(screen.getByText('agentV2.agentDetail.access.webApp.ssoEnabled')).toBeInTheDocument()
 
-      await user.click(
-        screen.getByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
-        }),
-      )
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      expect(accessSwitch).toBeEnabled()
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).toBeDisabled()
+      expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+        params: {
+          app_id: 'app-1',
+        },
+        body: {
+          enable_site: false,
+        },
+      })
+
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      expect(
+        screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).toBeDisabled()
+      expect(mocks.siteEnableMutation).toHaveBeenCalledTimes(1)
+
+      firstToggle.resolve({ enable_site: false })
 
       await waitFor(() => {
-        expect(mocks.siteEnableMutation.mock.calls[0]?.[0]).toEqual({
+        expect(mocks.siteEnableMutation.mock.calls[1]?.[0]).toEqual({
           params: {
             app_id: 'app-1',
           },
           body: {
-            enable_site: false,
+            enable_site: true,
           },
         })
       })
+      expect(
+        await screen.findByRole('link', {
+          name: 'agentV2.agentDetail.access.webApp.actions.launch',
+        }),
+      ).toHaveAttribute('href', 'https://chat.example.test/agent/site-token')
+      expect(toast.success).not.toHaveBeenCalled()
+    })
+
+    it('should keep launch disabled while enabling is pending and roll back after failure', async () => {
+      const user = userEvent.setup()
+      const toggle = createDeferredPromise<{ enable_site: boolean }>()
+      mocks.siteEnableMutation.mockReturnValueOnce(toggle.promise)
+
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({ enable_site: false })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      const launchButton = screen.getByRole('button', {
+        name: 'agentV2.agentDetail.access.webApp.actions.launch',
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
+      expect(accessSwitch).toBeEnabled()
+      expect(launchButton).toBeDisabled()
+      expect(
+        screen.queryByRole('link', { name: 'agentV2.agentDetail.access.webApp.actions.launch' }),
+      ).not.toBeInTheDocument()
+
+      toggle.reject(new Error('request failed'))
+
+      await waitFor(() => {
+        expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      })
+      expect(launchButton).toBeDisabled()
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
     })
 
     it('should open the customize dialog with the backing app id and API base URL', async () => {
@@ -616,40 +697,52 @@ describe('Agent access surface cards', () => {
   describe('Service API access', () => {
     it('should render service API data and toggle Agent API status through the generated Agent endpoint', async () => {
       const user = userEvent.setup()
+      const toggle = createDeferredPromise<{
+        access_ready: boolean
+        api_key_count: number
+        enabled: boolean
+        service_api_base_url: string
+      }>()
       mocks.apiAccessQueryFn.mockResolvedValueOnce({
         access_ready: true,
         api_key_count: 2,
         enabled: true,
         service_api_base_url: 'https://api.example.test/v1',
       })
-      mocks.apiEnableMutation.mockResolvedValueOnce({
-        access_ready: true,
-        api_key_count: 2,
-        enabled: false,
-        service_api_base_url: 'https://api.example.test/v1',
-      })
+      mocks.apiEnableMutation.mockReturnValueOnce(toggle.promise)
 
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
       expect(await screen.findByText('https://api.example.test/v1')).toBeInTheDocument()
       expect(screen.getByText('2')).toBeInTheDocument()
 
-      await user.click(
-        screen.getByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
-        }),
-      )
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+      })
+      const apiKeyButton = screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
+      })
+      await user.click(accessSwitch)
+
+      expect(accessSwitch).toHaveAttribute('aria-checked', 'false')
+      expect(accessSwitch).toBeEnabled()
+      expect(apiKeyButton).toBeEnabled()
+      expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          enable_api: false,
+        },
+      })
+
+      toggle.reject(new Error('request failed'))
 
       await waitFor(() => {
-        expect(mocks.apiEnableMutation.mock.calls[0]?.[0]).toEqual({
-          params: {
-            agent_id: 'agent-1',
-          },
-          body: {
-            enable_api: false,
-          },
-        })
+        expect(accessSwitch).toHaveAttribute('aria-checked', 'true')
       })
+      expect(toast.error).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+      expect(toast.success).not.toHaveBeenCalled()
     })
 
     it('should manage API keys with the Agent API key endpoints', async () => {
