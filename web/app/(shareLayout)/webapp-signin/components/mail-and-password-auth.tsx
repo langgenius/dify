@@ -63,7 +63,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       toast.error(t(($) => $['error.passwordEmpty'], { ns: 'login' }))
       return
     }
-
     try {
       setIsLoading(true)
       const loginData = {
@@ -87,7 +86,12 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           userId: embeddedUserId || undefined,
         })
         setWebAppPassport(loginRedirect.address, access_token)
-        replaceLoginRedirect(loginRedirect.target, router.replace, basePath)
+        replaceLoginRedirect(
+          loginRedirect.target,
+          (href) => globalThis.location.replace(`${basePath}${href}`),
+          basePath,
+        )
+        return
       } else {
         toast.error(res.data)
       }
@@ -98,9 +102,9 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         typeof authenticationError.message === 'string'
       )
         toast.error(authenticationError.message)
-    } finally {
-      setIsLoading(false)
     }
+
+    setIsLoading(false)
   }
 
   return (

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import MailAndPasswordAuth from '../mail-and-password-auth'
 
 const replaceMock = vi.fn()
+const locationReplaceMock = vi.fn()
 const webAppLoginMock = vi.fn()
 const fetchAccessTokenMock = vi.fn()
 const searchParams = new URLSearchParams({
@@ -39,11 +40,20 @@ vi.mock('@/service/webapp-auth', () => ({
 describe('MailAndPasswordAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('location', {
+      ...window.location,
+      origin: 'https://self-hosted.example.com',
+      replace: locationReplaceMock,
+    } as unknown as Location)
     webAppLoginMock.mockResolvedValue({
       result: 'success',
       data: { access_token: 'login-token' },
     })
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('submits from the password field through the native form', async () => {
@@ -71,7 +81,10 @@ describe('MailAndPasswordAuth', () => {
 
     await waitFor(() => {
       expect(webAppLoginMock).toHaveBeenCalledTimes(1)
+      expect(locationReplaceMock).toHaveBeenCalledWith('/chatbot/test-app')
     })
+    expect(replaceMock).not.toHaveBeenCalled()
+    expect(submitButton).toBeDisabled()
   })
 
   it('keeps the password field name separate from the recovery link', () => {
