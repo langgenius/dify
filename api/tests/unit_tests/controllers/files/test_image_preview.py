@@ -152,7 +152,7 @@ class TestFilePreviewApi:
         )
 
         generator = iter([b"\x89PNG\r\n\x1a\n"])
-        upload_file = DummyUploadFile(mime_type="image/png", size=64, name="logo.png", extension="png")
+        upload_file = _upload_file(mime_type="image/png", size=64, name="logo.png", extension="png")
 
         mock_file_service.return_value.get_file_generator_by_file_id.return_value = (
             generator,
