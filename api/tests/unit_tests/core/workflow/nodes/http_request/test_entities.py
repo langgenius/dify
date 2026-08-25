@@ -231,3 +231,46 @@ def test_text_property_with_escaped_unicode(mock_response, json_content, descrip
     # The text should be valid JSON that can be parsed back to proper Unicode
     parsed = json.loads(response.text)
     assert isinstance(parsed, dict), f"Invalid JSON for {description}"
+
+
+# Content-Type charset precedence tests
+def test_text_property_prefers_content_type_charset_over_detection(mock_response):
+    """The charset declared in Content-Type must win over charset_normalizer detection."""
+    mock_response.headers = {"content-type": "application/json; charset=utf-8"}
+    type(mock_response).content = PropertyMock(return_value="你好世界".encode())
+    mock_response.text = "incorrect-fallback-text"
+
+    with patch("dify_graph.nodes.http_request.entities.charset_normalizer.from_bytes") as detected_mock:
+        response = Response(mock_response)
+        assert response.text == "你好世界"
+        detected_mock.assert_not_called()
+
+
+def test_text_property_uses_declared_gbk_charset(mock_response):
+    """GBK-encoded body with a declared charset must not be misdetected/garbled."""
+    mock_response.headers = {"content-type": "text/plain; charset=gbk"}
+    type(mock_response).content = PropertyMock(return_value="中文乱码测试".encode("gbk"))
+    mock_response.text = "garbled"
+
+    response = Response(mock_response)
+    assert response.text == "中文乱码测试"
+
+
+def test_text_property_declared_charset_uses_replacement_on_invalid_bytes(mock_response):
+    """When bytes do not match the declared charset, decode with errors='replace'."""
+    mock_response.headers = {"content-type": "text/plain; charset=utf-8"}
+    type(mock_response).content = PropertyMock(return_value=b"\xffabc")
+    mock_response.text = "garbled"
+
+    response = Response(mock_response)
+    assert response.text == "\ufffdabc"
+
+
+def test_text_property_ignores_charset_inside_quoted_parameters(mock_response):
+    """Only the real charset parameter is honored, not one nested in a quoted value."""
+    mock_response.headers = {"content-type": 'text/plain; foo="a; charset=latin-1"; charset=utf-8'}
+    type(mock_response).content = PropertyMock(return_value="你好世界".encode())
+    mock_response.text = "garbled"
+
+    response = Response(mock_response)
+    assert response.text == "你好世界"
