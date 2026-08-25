@@ -21,8 +21,8 @@ from core.human_input_v2.im_integration import (
     ReconciliationRunRef,
     SyncReconciler,
 )
+from core.human_input_v2.im_integration.adapters import IMProviderAdapter
 from core.human_input_v2.im_integration.adapters.entities import Directory, DirectoryEntry, DirectoryReadFailure
-from core.human_input_v2.im_integration.adapters.protocols import IMDirectory
 from core.human_input_v2.shared import (
     DeploymentScope,
     DirectoryScope,
@@ -43,17 +43,6 @@ _CREDENTIAL_UNAVAILABLE_MESSAGE = "IM credential configuration is unavailable."
 
 class IMSyncRetryableError(RuntimeError):
     """A transient serialization failure requires worker redelivery."""
-
-
-class IMContactSyncAdapter(Protocol):
-    @property
-    def directory(self) -> IMDirectory: ...
-
-    def close(self) -> None: ...
-
-
-class IMIntegrationAdapterFactory(Protocol):
-    def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter: ...
 
 
 class _ReconciliationPlanner(Protocol):
@@ -102,7 +91,7 @@ class IMContactSyncCoordinator:
     def __init__(
         self,
         repository: IMSyncRepository,
-        adapter_factory: IMIntegrationAdapterFactory,
+        adapter_factory: Callable[[IMIntegration], IMProviderAdapter],
         unit_of_work_factory: _ReconciliationUnitOfWorkFactory,
         *,
         planner: _ReconciliationPlanner | None = None,
@@ -131,9 +120,9 @@ class IMContactSyncCoordinator:
                 "IM Integration revision changed before synchronization.",
             )
 
-        adapter: IMContactSyncAdapter | None = None
+        adapter: IMProviderAdapter | None = None
         try:
-            adapter = self._adapter_factory.create_for_integration(integration)
+            adapter = self._adapter_factory(integration)
         except IMCredentialError:
             logger.warning(
                 "IM Contact credentials are unavailable, sync_run_id=%s, integration_id=%s",
@@ -283,8 +272,6 @@ def _tenant_id(organization_scope: DirectoryScope) -> TenantId | None:
 
 
 __all__ = [
-    "IMContactSyncAdapter",
     "IMContactSyncCoordinator",
-    "IMIntegrationAdapterFactory",
     "IMSyncRetryableError",
 ]

@@ -8,7 +8,8 @@ from dataclasses import dataclass
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.im_integration import IMIntegration
-from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
+from core.human_input_v2.im_integration.adapters import IMProviderAdapter, build_im_provider_adapter
+from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, WorkspaceScope
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
@@ -18,11 +19,10 @@ from repositories.human_input_v2.im_integration import (
     SQLAlchemyOrganizationIMWriteUnitOfWork,
 )
 from services.human_input_v2.im_credential_codec import BoundCredentialCipher, IMCredentialCodec, IMCredentialError
-from services.human_input_v2.im_provider_adapter import ProviderAdapterFactory, build_im_provider_adapter
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 from .binding_service import ContactIMBindingService
-from .coordinator import IMContactSyncCoordinator, IMIntegrationAdapterFactory
+from .coordinator import IMContactSyncCoordinator
 from .locking import OrganizationIMWriteLock, OrganizationIMWriteScope
 from .service import IMSyncService
 from .worker import IMContactSyncWorker
@@ -48,12 +48,12 @@ class DifyIMIntegrationAdapterFactory:
         self,
         *,
         cipher_resolver: Callable[[IMIntegration], BoundCredentialCipher],
-        provider_adapter_factory: ProviderAdapterFactory = build_im_provider_adapter,
+        provider_adapter_factory: Callable[[IMProviderCredentials], IMProviderAdapter] = build_im_provider_adapter,
     ) -> None:
         self._cipher_resolver = cipher_resolver
         self._provider_adapter_factory = provider_adapter_factory
 
-    def create_for_integration(self, integration: IMIntegration) -> IMProviderAdapter:
+    def __call__(self, integration: IMIntegration) -> IMProviderAdapter:
         cipher = self._cipher_resolver(integration)
         provider = integration.provider_tenant.provider
         credentials = IMCredentialCodec(cipher).load(provider, integration.encrypted_credentials)
@@ -69,7 +69,7 @@ def _resolve_default_cipher(integration: IMIntegration) -> BoundCredentialCipher
 def build_im_contact_sync_worker(
     *,
     session_maker: sessionmaker[Session] | None = None,
-    adapter_factory: IMIntegrationAdapterFactory | None = None,
+    adapter_factory: Callable[[IMIntegration], IMProviderAdapter] | None = None,
 ) -> IMContactSyncWorker:
     sessions = session_maker or sessionmaker(bind=db.engine, expire_on_commit=False)
     write_unit_of_work_factory = _write_unit_of_work_factory(sessions)
@@ -84,7 +84,7 @@ def build_im_contact_sync_worker(
 def build_im_contact_sync_application(
     *,
     session_maker: sessionmaker[Session] | None = None,
-    adapter_factory: IMIntegrationAdapterFactory | None = None,
+    adapter_factory: Callable[[IMIntegration], IMProviderAdapter] | None = None,
 ) -> IMContactSyncApplication:
     """Compose commands, queries, and worker orchestration without transport dependencies."""
 

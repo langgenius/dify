@@ -394,7 +394,7 @@ def test_explicit_deployment_bounded_cipher_round_trips_only_as_an_interface_sea
         provider_adapter_factory=capture_adapter,
     )
 
-    runtime_factory.create_for_integration(persisted)
+    runtime_factory(persisted)
 
     assert decrypt_calls == [persisted_ciphertext]
     assert captured_credentials == [credentials]
@@ -475,7 +475,7 @@ def test_postgresql_persists_one_envelope_and_recovers_the_exact_typed_model(
         provider_adapter_factory=capture_adapter,
     )
 
-    factory.create_for_integration(loaded_integration)
+    factory(loaded_integration)
 
     assert adapter_credentials == [case.credentials]
     assert type(adapter_credentials[0]) is type(case.credentials)
@@ -534,7 +534,7 @@ def test_postgresql_recovered_payload_is_rejected_before_adapter_io(
     )
 
     with pytest.raises(IMCredentialError) as captured:
-        factory.create_for_integration(loaded)
+        factory(loaded)
 
     assert adapter_calls == []
     assert "sensitive-ciphertext" not in repr(captured.value)

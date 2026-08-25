@@ -54,7 +54,6 @@ from core.human_input_v2.shared import (
 from services.human_input_v2.im_contact_sync import composition
 from services.human_input_v2.im_contact_sync.composition import DifyIMIntegrationAdapterFactory
 from services.human_input_v2.im_contact_sync.coordinator import (
-    IMContactSyncAdapter,
     IMContactSyncCoordinator,
     IMSyncRetryableError,
 )
@@ -178,7 +177,7 @@ class _DirectoryAdapterFactory:
         self._directory_result = directory_result
         self._events = events
 
-    def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
+    def __call__(self, integration: IMIntegration) -> IMProviderAdapter:
         del integration
         return _DirectoryAdapter(self._directory_result, self._events)
 
@@ -521,7 +520,7 @@ def test_credential_failure_stops_before_provider_io_and_persists_only_safe_term
     raw_detail = "raw-decryptor-plaintext-secret"
 
     class _CredentialFailureFactory:
-        def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
+        def __call__(self, integration: IMIntegration) -> IMProviderAdapter:
             del integration
             events.append("load_credentials")
             raise _preserved_credential_error(raw_detail)
@@ -569,7 +568,7 @@ def test_credential_failure_lock_retry_traceback_does_not_chain_credential_cause
     raw_detail = "raw-decryptor-plaintext-secret"
 
     class _CredentialFailureFactory:
-        def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
+        def __call__(self, integration: IMIntegration) -> IMProviderAdapter:
             del integration
             raise _preserved_credential_error(raw_detail)
 

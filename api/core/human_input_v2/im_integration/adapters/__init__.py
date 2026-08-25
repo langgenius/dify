@@ -56,13 +56,14 @@ from .protocols import (
 if TYPE_CHECKING:
     from .dingtalk import DingTalkIMProviderAdapter
     from .dingtalk_redis import RedisCacheAccessTokenProvider
+    from .factory import build_im_provider_adapter
     from .ms_teams import MSTeamsIMProviderAdapter
     from .slack import SlackIMProviderAdapter
     from .wecom import WeComIMProviderAdapter
 
 
 def __getattr__(name: str) -> object:
-    """Load concrete SDK adapters only when callers request their package export."""
+    """Load SDK-bound adapter exports only when callers request them."""
 
     match name:
         case "DingTalkIMProviderAdapter":
@@ -73,6 +74,10 @@ def __getattr__(name: str) -> object:
             from .dingtalk_redis import RedisCacheAccessTokenProvider
 
             return RedisCacheAccessTokenProvider
+        case "build_im_provider_adapter":
+            from .factory import build_im_provider_adapter
+
+            return build_im_provider_adapter
         case "MSTeamsIMProviderAdapter":
             from .ms_teams import MSTeamsIMProviderAdapter
 
@@ -139,4 +144,5 @@ __all__ = [
     "WeComIMProviderAdapter",
     "WebhookRequest",
     "WebhookResponse",
+    "build_im_provider_adapter",
 ]

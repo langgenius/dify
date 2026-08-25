@@ -39,7 +39,6 @@ from services.human_input_v2.im_contact_sync import (
     composition,
 )
 from services.human_input_v2.im_contact_sync.composition import DifyIMIntegrationAdapterFactory
-from services.human_input_v2.im_contact_sync.coordinator import IMContactSyncAdapter
 from services.human_input_v2.im_credential_codec import IMCredentialError
 
 _NOW = datetime(2026, 8, 11, 8)
@@ -57,7 +56,7 @@ class _SlackAdapter:
 
 
 class _StaticIntegrationAdapterFactory:
-    def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
+    def __call__(self, integration: IMIntegration) -> IMProviderAdapter:
         del integration
         return _SlackAdapter()
 
@@ -122,7 +121,7 @@ def test_integration_factory_resolves_cipher_then_decrypts_then_builds_provider_
         provider_adapter_factory=build_adapter,
     )
 
-    adapter = factory.create_for_integration(integration)
+    adapter = factory(integration)
 
     assert isinstance(adapter, _SlackAdapter)
     assert adapter.provider is IMProvider.SLACK
@@ -167,7 +166,7 @@ def test_slack_adapter_factory_preserves_missing_optional_app_token() -> None:
         provider_adapter_factory=build_adapter,
     )
 
-    factory.create_for_integration(integration)
+    factory(integration)
 
     assert captured_credentials[0].app_token is None
     assert decryptions == [b"opaque-slack-ciphertext"]
@@ -196,7 +195,7 @@ def test_tenant_less_default_cipher_fails_before_decrypt_or_adapter_construction
     )
 
     with pytest.raises(IMCredentialError, match="IM credential configuration is unavailable") as captured:
-        factory.create_for_integration(integration)
+        factory(integration)
 
     assert events == []
     assert captured.value.__cause__ is None
@@ -285,7 +284,7 @@ def test_explicit_deployment_cipher_recovers_every_provider_through_one_builder(
             callback_url=None,
             now=_NOW,
         )
-        factory.create_for_integration(integration)
+        factory(integration)
 
     assert decryptions == [f"opaque-{provider.value}".encode() for provider in credentials_by_provider]
     assert captured_credentials == credentials_by_provider
@@ -323,7 +322,7 @@ def test_adapter_factory_rejects_provider_mismatch_before_adapter_construction()
     )
 
     with pytest.raises(IMCredentialError) as captured:
-        factory.create_for_integration(integration)
+        factory(integration)
 
     assert adapter_calls == []
     assert "plaintext-secret" not in repr(captured.value)
@@ -356,7 +355,7 @@ def test_decrypt_failure_stops_before_unified_adapter_construction() -> None:
     )
 
     with pytest.raises(IMCredentialError) as captured:
-        factory.create_for_integration(integration)
+        factory(integration)
 
     assert adapter_calls == []
     assert "plaintext-secret" not in repr(captured.value)
@@ -373,7 +372,7 @@ def test_default_worker_composition_injects_the_named_default_cipher_resolver(
         def __init__(self, *, cipher_resolver: object) -> None:
             captured["cipher_resolver"] = cipher_resolver
 
-        def create_for_integration(self, _integration: IMIntegration) -> _SlackAdapter:
+        def __call__(self, _integration: IMIntegration) -> _SlackAdapter:
             return _SlackAdapter()
 
     monkeypatch.setattr(composition, "DifyIMIntegrationAdapterFactory", _CapturedFactory)

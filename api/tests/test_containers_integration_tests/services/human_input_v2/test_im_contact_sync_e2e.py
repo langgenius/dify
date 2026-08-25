@@ -37,7 +37,12 @@ from core.human_input_v2.im_integration import (
     SyncReconciler,
     SyncResultFact,
 )
-from core.human_input_v2.im_integration.adapters import Directory, DirectoryEntry, ProviderUserId
+from core.human_input_v2.im_integration.adapters import (
+    Directory,
+    DirectoryEntry,
+    IMProviderAdapter,
+    ProviderUserId,
+)
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -72,7 +77,6 @@ from repositories.human_input_v2.im_integration.mappers import (
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
 from repositories.human_input_v2.im_integration.unit_of_work import SQLAlchemyOrganizationIMWriteUnitOfWork
 from services.human_input_v2.im_contact_sync.composition import build_im_contact_sync_application
-from services.human_input_v2.im_contact_sync.coordinator import IMContactSyncAdapter
 from services.human_input_v2.im_contact_sync.locking import (
     OrganizationIMWriteLock,
     OrganizationIMWriteLockLostError,
@@ -124,13 +128,13 @@ class _Adapter:
 class _AdapterFactory:
     def __init__(
         self,
-        build_adapter: Callable[[], IMContactSyncAdapter],
+        build_adapter: Callable[[], IMProviderAdapter],
         integration_ids: list[IntegrationId] | None = None,
     ) -> None:
         self._build_adapter = build_adapter
         self._integration_ids = integration_ids
 
-    def create_for_integration(self, integration: IMIntegration) -> IMContactSyncAdapter:
+    def __call__(self, integration: IMIntegration) -> IMProviderAdapter:
         if self._integration_ids is not None:
             self._integration_ids.append(integration.id)
         return self._build_adapter()

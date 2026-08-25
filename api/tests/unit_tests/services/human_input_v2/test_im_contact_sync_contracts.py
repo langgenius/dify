@@ -1,34 +1,34 @@
-"""Source-level ownership contracts for IM Contact synchronization ports."""
+"""Ownership contracts for IM provider adapter consumers."""
 
 from __future__ import annotations
 
-import ast
-from pathlib import Path
-from typing import get_type_hints
+from collections.abc import Callable
+from typing import get_args, get_origin, get_type_hints
 
+from core.human_input_v2.im_integration.adapters import IMProviderAdapter
+from services.human_input_v2 import im_provider_configuration_service
 from services.human_input_v2.im_contact_sync import composition, coordinator
 
 
-def test_contact_sync_adapter_protocol_has_one_owner_and_one_shape() -> None:
-    package_root = Path(coordinator.__file__).parent
-    definitions: list[tuple[Path, ast.ClassDef]] = []
-
-    for source_path in package_root.glob("*.py"):
-        module = ast.parse(source_path.read_text())
-        definitions.extend(
-            (source_path, node)
-            for node in ast.walk(module)
-            if isinstance(node, ast.ClassDef) and node.name == "IMContactSyncAdapter"
-        )
-
-    assert [(source_path.name, node.name) for source_path, node in definitions] == [
-        ("coordinator.py", "IMContactSyncAdapter")
-    ]
-    method_names = {node.name for node in definitions[0][1].body if isinstance(node, ast.FunctionDef)}
-    assert method_names == {"directory", "close"}
+def _callable_return_type(annotation: object) -> object:
+    assert get_origin(annotation) is Callable
+    _, return_type = get_args(annotation)
+    return return_type
 
 
-def test_composition_and_coordinator_share_the_named_integration_factory_protocol() -> None:
-    assert composition.IMIntegrationAdapterFactory is coordinator.IMIntegrationAdapterFactory
-    return_type = get_type_hints(coordinator.IMIntegrationAdapterFactory.create_for_integration)["return"]
-    assert return_type is coordinator.IMContactSyncAdapter
+def test_external_adapter_factories_return_the_complete_adapter_contract() -> None:
+    integration_factory_return = get_type_hints(composition.DifyIMIntegrationAdapterFactory.__call__)["return"]
+    coordinator_factory = get_type_hints(coordinator.IMContactSyncCoordinator.__init__)["adapter_factory"]
+    configuration_factory = get_type_hints(
+        im_provider_configuration_service.DifyIMProviderConfigurationService.__init__
+    )["adapter_factory"]
+
+    assert integration_factory_return is IMProviderAdapter
+    assert _callable_return_type(coordinator_factory) is IMProviderAdapter
+    assert _callable_return_type(configuration_factory) is IMProviderAdapter
+
+
+def test_external_modules_do_not_define_narrow_im_provider_adapter_protocols() -> None:
+    assert not hasattr(coordinator, "IMContactSyncAdapter")
+    assert not hasattr(coordinator, "IMIntegrationAdapterFactory")
+    assert not hasattr(im_provider_configuration_service, "CredentialTestingAdapter")

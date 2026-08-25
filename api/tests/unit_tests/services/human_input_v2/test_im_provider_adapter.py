@@ -7,6 +7,7 @@ import inspect
 import pytest
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.im_integration import adapters
 from core.human_input_v2.im_integration.adapters import (
     DingTalkCredentials,
     FeishuCredentials,
@@ -14,6 +15,7 @@ from core.human_input_v2.im_integration.adapters import (
     MSTeamsCredentials,
     SlackCredentials,
     WeComCredentials,
+    build_im_provider_adapter,
 )
 from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
@@ -24,7 +26,6 @@ from core.human_input_v2.im_integration.adapters.feishu_lark import (
 from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
 from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
-from services.human_input_v2.im_provider_adapter import build_im_provider_adapter
 
 _CASES: tuple[tuple[IMProviderCredentials, type[object]], ...] = (
     (
@@ -111,3 +112,8 @@ def test_builder_accepts_only_already_resolved_credentials() -> None:
 
     assert tuple(signature.parameters) == ("credentials",)
     assert signature.parameters["credentials"].default is inspect.Parameter.empty
+
+
+def test_builder_is_exported_by_the_adapter_boundary() -> None:
+    assert adapters.build_im_provider_adapter is build_im_provider_adapter
+    assert "build_im_provider_adapter" in adapters.__all__

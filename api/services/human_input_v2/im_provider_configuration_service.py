@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import (
@@ -11,6 +10,7 @@ from core.human_input_v2.im_integration import (
     IMProviderConfigurationFailureKind,
     IMProviderTestResult,
 )
+from core.human_input_v2.im_integration.adapters import IMProviderAdapter, build_im_provider_adapter
 from core.human_input_v2.im_integration.adapters.credentials import (
     DingTalkCredentials,
     FeishuCredentials,
@@ -29,7 +29,6 @@ from core.human_input_v2.shared import DeploymentScope, DirectoryScope, Workspac
 from libs.key_providers.base import BaseKeyProvider
 from services.human_input_v2.errors import IMProviderConfigurationError
 from services.human_input_v2.im_credential_codec import BoundCredentialCipher, IMCredentialCodec, IMCredentialError
-from services.human_input_v2.im_provider_adapter import build_im_provider_adapter
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 _AVAILABLE_PROVIDERS = (
@@ -43,12 +42,6 @@ _AVAILABLE_PROVIDERS = (
 _CREDENTIAL_UNAVAILABLE_MESSAGE = "IM credential configuration is unavailable"
 
 
-class CredentialTestingAdapter(Protocol):
-    def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure: ...
-
-    def close(self) -> None: ...
-
-
 class DifyIMProviderConfigurationService:
     """Validate complete credentials and protect them before owner persistence."""
 
@@ -57,7 +50,7 @@ class DifyIMProviderConfigurationService:
         *,
         key_provider: BaseKeyProvider,
         deployment_cipher: BoundCredentialCipher | None = None,
-        adapter_factory: Callable[[IMProviderCredentials], CredentialTestingAdapter] = build_im_provider_adapter,
+        adapter_factory: Callable[[IMProviderCredentials], IMProviderAdapter] = build_im_provider_adapter,
     ) -> None:
         self._adapter_factory = adapter_factory
         self._key_provider = key_provider
@@ -141,4 +134,4 @@ class DifyIMProviderConfigurationService:
         return app_identifier
 
 
-__all__ = ["CredentialTestingAdapter", "DifyIMProviderConfigurationService"]
+__all__ = ["DifyIMProviderConfigurationService"]

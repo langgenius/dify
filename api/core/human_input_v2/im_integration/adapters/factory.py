@@ -1,8 +1,6 @@
-"""Unified construction of complete IM provider adapters."""
+"""Construction of complete IM provider adapters from canonical credentials."""
 
-from collections.abc import Callable
-
-from core.human_input_v2.im_integration.adapters.credentials import (
+from .credentials import (
     DingTalkCredentials,
     FeishuCredentials,
     IMProviderCredentials,
@@ -11,17 +9,12 @@ from core.human_input_v2.im_integration.adapters.credentials import (
     SlackCredentials,
     WeComCredentials,
 )
-from core.human_input_v2.im_integration.adapters.dingtalk import DingTalkIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.feishu_lark import (
-    FeishuIMProviderAdapter,
-    LarkIMProviderAdapter,
-)
-from core.human_input_v2.im_integration.adapters.ms_teams import MSTeamsIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.protocols import IMProviderAdapter
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
-from core.human_input_v2.im_integration.adapters.wecom import WeComIMProviderAdapter
-
-type ProviderAdapterFactory = Callable[[IMProviderCredentials], IMProviderAdapter]
+from .dingtalk import DingTalkIMProviderAdapter
+from .feishu_lark import FeishuIMProviderAdapter, LarkIMProviderAdapter
+from .ms_teams import MSTeamsIMProviderAdapter
+from .protocols import IMProviderAdapter
+from .slack import SlackIMProviderAdapter
+from .wecom import WeComIMProviderAdapter
 
 
 def build_im_provider_adapter(credentials: IMProviderCredentials) -> IMProviderAdapter:
@@ -42,4 +35,4 @@ def build_im_provider_adapter(credentials: IMProviderCredentials) -> IMProviderA
             raise TypeError("unsupported IM provider credentials")
 
 
-__all__ = ["ProviderAdapterFactory", "build_im_provider_adapter"]
+__all__ = ["build_im_provider_adapter"]

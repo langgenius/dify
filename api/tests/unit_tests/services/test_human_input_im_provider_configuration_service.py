@@ -20,6 +20,7 @@ from core.human_input_v2.im_integration.adapters import (
     MSTeamsCredentials,
     SlackCredentials,
     WeComCredentials,
+    build_im_provider_adapter,
 )
 from core.human_input_v2.im_integration.adapters.credentials import IMProviderCredentials
 from core.human_input_v2.im_integration.management import IMProviderConfigurationFailureKind
@@ -27,7 +28,6 @@ from core.human_input_v2.shared import DeploymentScope, TenantId, WorkspaceScope
 from libs.key_providers.base import BaseKeyProvider
 from services.human_input_v2.errors import IMProviderConfigurationError
 from services.human_input_v2.im_credential_codec import IMCredentialError
-from services.human_input_v2.im_provider_adapter import build_im_provider_adapter
 from services.human_input_v2.im_provider_configuration_service import DifyIMProviderConfigurationService
 
 _SCOPE = WorkspaceScope(TenantId("workspace-1"))
