@@ -187,14 +187,27 @@ class Response:
         """
         Get response text with robust encoding detection.
 
-        Uses charset_normalizer for better encoding detection than httpx's default,
-        which helps handle Chinese and other non-ASCII characters properly.
+        Honors the charset declared in the Content-Type response header first,
+        because charset_normalizer auto-detection can misjudge UTF-8 as another
+        encoding. Falls back to charset_normalizer and finally to httpx's
+        built-in detection when the server does not declare a charset.
         """
         # Check cache first
         if hasattr(self, "_cached_text") and self._cached_text is not None:
             return self._cached_text
 
-        # Try charset_normalizer for robust encoding detection first
+        # Honor the charset declared in the Content-Type header before guessing
+        charset = self._extract_charset_from_content_type()
+        if charset:
+            try:
+                text = self.response.content.decode(charset, errors="replace")
+            except (TypeError, LookupError):
+                pass
+            else:
+                self._cached_text = text
+                return text
+
+        # Try charset_normalizer for robust encoding detection next
         detected_encoding = charset_normalizer.from_bytes(self.response.content).best()
         if detected_encoding and detected_encoding.encoding:
             try:
@@ -209,6 +222,15 @@ class Response:
         text = self.response.text
         self._cached_text = text
         return text
+
+    def _extract_charset_from_content_type(self) -> str | None:
+        content_type = self.headers.get("content-type", "")
+        if not content_type:
+            return None
+
+        message = Message()
+        message["content-type"] = content_type
+        return message.get_content_charset(failobj=None)
 
     @property
     def content(self) -> bytes:
