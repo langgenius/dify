@@ -302,6 +302,7 @@ describe('useChatWithHistory', () => {
 
     it('should clear a stale Environment conversation and enter New Chat', async () => {
       window.history.replaceState({}, '', '/environment/workflow/environment-code')
+      setConversationIdInfo('environment:environment-code', 'conversation-1')
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockRejectedValue(
         new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
@@ -319,12 +320,15 @@ describe('useChatWithHistory', () => {
 
       const lastSelection = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) ?? '{}')
       const tabSelection = JSON.parse(sessionStorage.getItem(TAB_CONVERSATION_ID_INFO) ?? '{}')
-      expect(lastSelection['app-1']).toBeUndefined()
-      expect(Object.values(tabSelection['app-1'] ?? {})).not.toContain('conversation-1')
+      expect(lastSelection['environment:environment-code']).toBeUndefined()
+      expect(Object.values(tabSelection['environment:environment-code'] ?? {})).not.toContain(
+        'conversation-1',
+      )
     })
 
     it('should keep the selected Environment conversation for other errors', async () => {
       window.history.replaceState({}, '', '/environment/workflow/environment-code')
+      setConversationIdInfo('environment:environment-code', 'conversation-1')
       mockFetchConversations.mockResolvedValue(createConversationData())
       const response = new Response(JSON.stringify({ reason: 'OTHER_ERROR' }), { status: 404 })
       mockFetchChatList.mockRejectedValue(response)

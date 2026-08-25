@@ -50,9 +50,17 @@ export const getWebAppApiPath = (address: WebAppAddress | null, path: string) =>
   return `/environment/${address.code}${normalizedPath}`
 }
 
-export const getWebAppPassportKey = (address: WebAppAddress) => {
+export const getWebAppScopeKey = (address: WebAppAddress) => {
   if (address.kind === 'default') return address.code
   return `environment:${address.code}`
+}
+
+export const getWebAppPassportKey = (address: WebAppAddress) => getWebAppScopeKey(address)
+
+export const getWebAppConversationScopeId = (address: WebAppAddress | null, appId?: string) => {
+  if (!appId) return ''
+  if (address?.kind === 'environment') return getWebAppScopeKey(address)
+  return appId
 }
 
 const isDifyWebAppAuthPath = (path: string) => {

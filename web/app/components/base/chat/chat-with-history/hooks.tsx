@@ -32,6 +32,7 @@ import {
   useShareConversationName,
   useShareConversations,
 } from '@/service/use-share'
+import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
@@ -165,6 +166,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     return appInfo
   }, [isInstalledApp, installedAppInfo, appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
+  const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const [userId, setUserId] = useState<string>()
   useEffect(() => {
     getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
@@ -187,7 +189,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     [appId, setStoredSidebarCollapseState],
   )
   const { currentConversationId, handleConversationIdInfoChange, removeConversationIdInfo } =
-    useConversationSelection({ appId, userId })
+    useConversationSelection({ scopeId: conversationScopeId, userId })
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId) return ''
@@ -493,7 +495,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     if (!(appChatListError instanceof AppDeployConversationNotFoundError) || !appId) return
 
     handleNewConversation()
-    removeConversationIdInfo(appId)
+    removeConversationIdInfo()
   }, [appChatListError, appId, handleNewConversation, removeConversationIdInfo])
   const handleUpdateConversationList = useCallback(() => {
     invalidateShareConversations()
