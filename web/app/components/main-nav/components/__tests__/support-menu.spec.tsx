@@ -104,14 +104,15 @@ describe('SupportMenu', () => {
     renderSupportMenu()
 
     expect(screen.getByText('common.userProfile.contactUs')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.community')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.community')).not.toBeInTheDocument()
     expect(
       screen
         .getByText('common.userProfile.contactUs')
-        .compareDocumentPosition(screen.getByText('common.userProfile.forum')),
+        .compareDocumentPosition(screen.getByText('common.userProfile.discord')),
     ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.getByRole('menuitem', { name: 'common.userProfile.forum' })).toHaveClass(
+    expect(screen.getByRole('menuitem', { name: 'common.userProfile.discord' })).toHaveClass(
       'mx-0',
       'px-3',
     )
@@ -160,7 +161,7 @@ describe('SupportMenu', () => {
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
   })
 
   it('keeps Zendesk contact us for Cloud sandbox plan with support email and Zendesk configured', () => {
@@ -212,7 +213,7 @@ describe('SupportMenu', () => {
 
     expect(screen.queryByText('common.userProfile.contactUs')).not.toBeInTheDocument()
     expect(screen.queryByText('common.userProfile.emailSupport')).not.toBeInTheDocument()
-    expect(screen.getByText('common.userProfile.forum')).toBeInTheDocument()
+    expect(screen.getByText('common.userProfile.discord')).toBeInTheDocument()
   })
 
   it('renders email support when Zendesk is not configured for a dedicated support channel', () => {
@@ -228,12 +229,12 @@ describe('SupportMenu', () => {
     ).toHaveAttribute('href', 'mailto:support@example.com')
   })
 
-  it('has correct forum and community links', () => {
+  it('has the Discord link and no Forum entry', () => {
     renderSupportMenu()
 
-    const forumLink = screen.getByText('common.userProfile.forum').closest('a')
-    const communityLink = screen.getByText('common.userProfile.community').closest('a')
-    expect(forumLink).toHaveAttribute('href', 'https://forum.dify.ai/')
-    expect(communityLink).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+    const discordLink = screen.getByText('common.userProfile.discord').closest('a')
+    expect(discordLink).toHaveAttribute('href', 'https://discord.gg/5AEfbxcd9k')
+    expect(screen.queryByText('common.userProfile.forum')).not.toBeInTheDocument()
+    expect(screen.queryByText('common.userProfile.community')).not.toBeInTheDocument()
   })
 })

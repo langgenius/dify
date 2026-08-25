@@ -98,25 +98,13 @@ export default function SupportMenu() {
       )}
       <DropdownMenuLinkItem
         className="mx-0 h-8 gap-1 px-3 py-1"
-        href="https://forum.dify.ai/"
-        rel="noopener noreferrer"
-        target="_blank"
-      >
-        <MenuItemContent
-          iconClassName="i-ri-discuss-line"
-          label={t(($) => $['userProfile.forum'], { ns: 'common' })}
-          trailing={<ExternalLinkIndicator />}
-        />
-      </DropdownMenuLinkItem>
-      <DropdownMenuLinkItem
-        className="mx-0 h-8 gap-1 px-3 py-1"
         href="https://discord.gg/5AEfbxcd9k"
         rel="noopener noreferrer"
         target="_blank"
       >
         <MenuItemContent
           iconClassName="i-ri-discord-line"
-          label={t(($) => $['userProfile.community'], { ns: 'common' })}
+          label={t(($) => $['userProfile.discord'], { ns: 'common' })}
           trailing={<ExternalLinkIndicator />}
         />
       </DropdownMenuLinkItem>
