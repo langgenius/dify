@@ -56,6 +56,8 @@ const getInputFormContent = (item: Record<string, unknown>) => {
 
   if (isRecord(item.checkbox)) return { type: 'boolean', content: item.checkbox }
 
+  if (isRecord(item['multi-select'])) return { type: 'multi-select', content: item['multi-select'] }
+
   if (isRecord(item.file)) return { type: 'file', content: item.file }
 
   if (isRecord(item['file-list'])) return { type: 'file-list', content: item['file-list'] }
@@ -121,6 +123,16 @@ export const userInputsFormToPromptVariables = (
         is_context_var,
         hide: getBoolean(content.hide),
         default: getDefaultValue(content.default),
+      })
+    } else if (type === 'multi-select') {
+      promptVariables.push({
+        key: variable,
+        name: getString(content.label),
+        required: getBoolean(content.required, true),
+        type,
+        options: getStringArray(content.options),
+        is_context_var,
+        hide: getBoolean(content.hide),
       })
     } else if (type === 'file') {
       promptVariables.push({
@@ -231,6 +243,16 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
             required: item.required !== false, // default true
             options: item.options,
             default: getString(item.default),
+            hide: item.hide,
+          },
+        })
+      } else if (item.type === 'multi-select') {
+        userInputs.push({
+          'multi-select': {
+            label: item.name,
+            variable: item.key,
+            required: item.required !== false,
+            options: item.options,
             hide: item.hide,
           },
         })

@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Numero massimo di caricamenti",
   "variableConfig.maxNumberTip": "Documento < {{docLimit}}, immagine < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "Elenco file",
+  "variableConfig.multi-select": "Selezione multipla",
   "variableConfig.noDefaultSelected": "Non selezionare",
   "variableConfig.noDefaultValue": "Nessun valore predefinito",
   "variableConfig.notSet": "Non impostato, prova a scrivere {{input}} nel prompt di prefisso",

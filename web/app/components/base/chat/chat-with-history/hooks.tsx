@@ -34,6 +34,7 @@ import {
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
+import { isInputValueEmpty } from '../input-form-utils'
 import {
   buildChatItemTree,
   getProcessedSystemVariablesFromUrlParams,
@@ -287,6 +288,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
             type: 'checkbox',
           }
         }
+        if (item['multi-select']) {
+          return {
+            ...item['multi-select'],
+            type: InputVarType.multiSelect,
+          }
+        }
         if (item.select) {
           const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
           return {
@@ -340,7 +347,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] =
+        item.type === InputVarType.multiSelect ? [] : item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -416,7 +424,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         requiredVars.forEach(({ variable, label, type }) => {
           if (hasEmptyInput) return
           if (fileIsUploading) return
-          if (!newConversationInputsRef.current[variable] && !silent)
+          if (isInputValueEmpty(type, newConversationInputsRef.current[variable]) && !silent)
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -475,7 +483,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     handleChangeConversation('')
     const conversationInputs: Record<string, any> = {}
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || null
+      conversationInputs[item.variable] =
+        item.type === InputVarType.multiSelect ? [] : item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
     setClearChatList(true)

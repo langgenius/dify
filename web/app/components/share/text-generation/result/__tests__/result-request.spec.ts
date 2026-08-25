@@ -131,6 +131,94 @@ describe('result-request', () => {
     })
   })
 
+  it('should reject required multi-select inputs when no options are selected', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        machines: [],
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'machines', name: 'Machines', type: 'multi-select', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({
+      canSend: false,
+      notification: {
+        type: 'error',
+        message: 'errorMessage.valueOfVarRequired',
+      },
+    })
+  })
+
+  it('should allow required multi-select inputs with selected options', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        machines: ['A'],
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'machines', name: 'Machines', type: 'multi-select', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({ canSend: true })
+  })
+
+  it('should allow optional multi-select inputs with no options selected', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        machines: [],
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'machines', name: 'Machines', type: 'multi-select', required: false },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({ canSend: true })
+  })
+
+  it('should reject malformed non-array required multi-select inputs', () => {
+    const result = validateResultRequest({
+      completionFiles: [],
+      inputs: {
+        machines: 'A',
+      },
+      isCallBatchAPI: false,
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          { key: 'machines', name: 'Machines', type: 'multi-select', required: true },
+        ],
+      },
+      t: createTranslator(),
+    })
+
+    expect(result).toEqual({
+      canSend: false,
+      notification: {
+        type: 'error',
+        message: 'errorMessage.valueOfVarRequired',
+      },
+    })
+  })
+
   it('should allow required file inputs when a file is selected', () => {
     const result = validateResultRequest({
       completionFiles: [],
@@ -276,5 +364,31 @@ describe('result-request', () => {
         name: 'Alice',
       },
     })
+  })
+
+  it('should preserve multi-select values as native arrays in request data', () => {
+    const selectedMachines = ['Machine A', 'Machine C']
+    const result = buildResultRequestData({
+      completionFiles: [],
+      inputs: {
+        machines: selectedMachines,
+      },
+      promptConfig: {
+        prompt_template: 'template',
+        prompt_variables: [
+          {
+            key: 'machines',
+            name: 'Machines',
+            type: 'multi-select',
+            required: true,
+            options: selectedMachines,
+          },
+        ],
+      },
+      visionConfig,
+    })
+
+    expect(result.inputs.machines).toBe(selectedMachines)
+    expect(result.inputs.machines).toEqual(['Machine A', 'Machine C'])
   })
 })

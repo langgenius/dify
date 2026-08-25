@@ -97,6 +97,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({ id, data }) => {
         <ConfigVarModal
           isCreate
           supportFile
+          supportMultiSelect
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}

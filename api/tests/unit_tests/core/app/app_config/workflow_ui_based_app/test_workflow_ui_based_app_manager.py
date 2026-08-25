@@ -6,6 +6,7 @@ from pytest_mock import MockerFixture
 from core.app.app_config.workflow_ui_based_app.variables.manager import (
     WorkflowVariablesConfigManager,
 )
+from graphon.variables.input_entities import VariableEntityType
 from models.workflow import Workflow, WorkflowType
 
 
@@ -176,6 +177,23 @@ class TestWorkflowVariablesConfigManagerConvert:
 
         # Assert — string left as-is
         assert result[0]["json_schema"] == "{invalid-json"
+
+    def test_convert_accepts_multi_select_variable(self, mock_workflow):
+        mock_workflow.user_input_form.return_value = [
+            {
+                "variable": "machines",
+                "label": "Machines",
+                "type": "multi-select",
+                "required": True,
+                "options": ["A", "B", "C"],
+            }
+        ]
+
+        result = WorkflowVariablesConfigManager.convert(mock_workflow)
+
+        assert result[0].type == VariableEntityType.MULTI_SELECT
+        assert list(result[0].options) == ["A", "B", "C"]
+        assert result[0].required is True
 
 
 # =============================

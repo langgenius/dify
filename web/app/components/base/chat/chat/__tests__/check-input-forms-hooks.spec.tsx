@@ -65,6 +65,31 @@ describe('useCheckInputsForms', () => {
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
+  it('should treat an empty multi-select array as missing only when required', () => {
+    const { result } = renderHook(() => useCheckInputsForms())
+    const requiredForm = [
+      {
+        variable: 'choices',
+        label: 'Choices',
+        required: true,
+        type: InputVarType.multiSelect as string,
+      },
+    ]
+
+    expect(result.current.checkInputsForm({ choices: [] }, requiredForm as InputForm[])).toBe(false)
+
+    vi.clearAllMocks()
+    expect(
+      result.current.checkInputsForm({ choices: [] }, [
+        { ...requiredForm[0], required: false },
+      ] as InputForm[]),
+    ).toBe(true)
+
+    expect(
+      result.current.checkInputsForm({ choices: ['A', 'C'] }, requiredForm as InputForm[]),
+    ).toBe(true)
+  })
+
   it('should notify and return undefined when a file is still uploading (singleFile)', () => {
     const { result } = renderHook(() => useCheckInputsForms())
     const inputsForm = [

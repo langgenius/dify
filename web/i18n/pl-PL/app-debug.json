@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Maksymalna liczba przesyłanych plików",
   "variableConfig.maxNumberTip": "Dokument < {{docLimit}}, obraz < {{imgLimit}}, audio < {{audioLimit}}, wideo < {{videoLimit}}",
   "variableConfig.multi-files": "Lista plików",
+  "variableConfig.multi-select": "Wybór wielokrotny",
   "variableConfig.noDefaultSelected": "Nie wybieraj",
   "variableConfig.noDefaultValue": "Brak wartości domyślnej",
   "variableConfig.notSet": "Nie ustawione, spróbuj wpisać {{input}} w monicie wstępnym",

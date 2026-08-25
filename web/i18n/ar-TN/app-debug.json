@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "الحد الأقصى لعدد التحميلات",
   "variableConfig.maxNumberTip": "وثيقة < {{docLimit}}، صورة < {{imgLimit}}، صوت < {{audioLimit}}، فيديو < {{videoLimit}}",
   "variableConfig.multi-files": "قائمة ملفات",
+  "variableConfig.multi-select": "تحديد متعدد",
   "variableConfig.noDefaultSelected": "لا تحدد",
   "variableConfig.noDefaultValue": "لا توجد قيمة افتراضية",
   "variableConfig.notSet": "لم يتم التعيين، حاول كتابة {{input}} في بادئة المطالبة",

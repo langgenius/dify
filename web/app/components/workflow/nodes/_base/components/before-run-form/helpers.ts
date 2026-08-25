@@ -62,7 +62,8 @@ export const getFormErrorMessage = (
           value === null ||
           ((input.type === InputVarType.files ||
             input.type === InputVarType.multiFiles ||
-            input.type === InputVarType.singleFile) &&
+            input.type === InputVarType.singleFile ||
+            input.type === InputVarType.multiSelect) &&
             Array.isArray(value) &&
             value.length === 0))
 

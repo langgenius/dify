@@ -20,7 +20,11 @@ from core.workflow.node_factory import get_default_root_node_id
 from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.snippet_start import get_compatible_start_aliases
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.variable_pool_initializer import (
+    add_node_inputs_to_pool,
+    add_variables_to_pool,
+    build_input_segment_types,
+)
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
 from extensions.otel import WorkflowAppRunnerHandler, trace_span
@@ -130,6 +134,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 ),
             )
             root_node_id = self._root_node_id or get_default_root_node_id(self._workflow.graph_dict)
+            input_types = build_input_segment_types(app_config.variables)
             add_node_inputs_to_pool(
                 variable_pool,
                 node_id=root_node_id,
@@ -138,6 +143,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                     workflow_kind=getattr(self._workflow, "kind_or_standard", None),
                     root_node_id=root_node_id,
                 ),
+                **({"input_types": input_types} if input_types else {}),
             )
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())

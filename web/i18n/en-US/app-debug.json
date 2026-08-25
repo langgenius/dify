@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Max number of uploads",
   "variableConfig.maxNumberTip": "Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "File List",
+  "variableConfig.multi-select": "Multi-select",
   "variableConfig.noDefaultSelected": "Don't select",
   "variableConfig.noDefaultValue": "No default value",
   "variableConfig.notSet": "Not set, try typing {{input}} in the prefix prompt",

@@ -32,6 +32,7 @@ import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../typ
 import { CodeLanguage } from '../../../code/types'
 import CodeEditor from '../editor/code-editor'
 import TextEditor from '../editor/text-editor'
+import { MultiSelectField } from '../form-input-item.sections'
 import BoolInput from './bool-input'
 
 type Props = Readonly<{
@@ -126,6 +127,9 @@ const FormItem: FC<Props> = ({
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   const isIteratorItemFile = isIterator && payload.isFileItem
+  const multiSelectValue = Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : []
   const singleFileValue = useMemo(() => {
     if (payload.variable === '#files#') return value || []
 
@@ -210,6 +214,17 @@ const FormItem: FC<Props> = ({
               ))}
             </SelectContent>
           </Select>
+        )}
+
+        {type === InputVarType.multiSelect && (
+          <MultiSelectField
+            disabled={false}
+            items={(payload.options || []).map((option) => ({ name: option, value: option }))}
+            onChange={onChange}
+            placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
+            selectedLabel={multiSelectValue.join(', ')}
+            value={multiSelectValue}
+          />
         )}
 
         {isBooleanType && (

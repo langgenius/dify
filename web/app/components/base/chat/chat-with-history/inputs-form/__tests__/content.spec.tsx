@@ -322,6 +322,38 @@ describe('InputsFormContent', () => {
     )
   })
 
+  it('handles multi-select input with native string-array values', async () => {
+    const user = userEvent.setup()
+    const context = createMockContext({
+      inputsForms: [
+        {
+          variable: 'multi',
+          type: InputVarType.multiSelect,
+          label: 'Multi',
+          options: ['A', 'B', 'C'],
+          required: true,
+        },
+      ],
+      currentConversationInputs: { multi: [] },
+      newConversationInputs: { multi: [] },
+    })
+
+    renderWithContext(<InputsFormContent />, context)
+    await user.click(screen.getByRole('combobox', { name: 'Multi' }))
+    await user.click(await screen.findByRole('option', { name: 'A' }))
+    await user.click(await screen.findByRole('option', { name: 'C' }))
+
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ multi: ['A', 'C'] }),
+    )
+
+    await user.click(await screen.findByRole('option', { name: 'A' }))
+    await user.click(await screen.findByRole('option', { name: 'C' }))
+    expect(mockSetCurrentConversationInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ multi: [] }),
+    )
+  })
+
   it('renders select dropdown on the shared dify-ui overlay layer', async () => {
     const user = userEvent.setup()
     const context = createMockContext({

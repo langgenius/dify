@@ -190,12 +190,12 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </Field>
       )}
 
-      {type === InputVarType.select && (
+      {[InputVarType.select, InputVarType.multiSelect].includes(type) && (
         <>
           <Field title={t(($) => $['variableConfig.options'], { ns: 'appDebug' })}>
             <ConfigSelect options={options || []} onChange={onPayloadChange('options')} />
           </Field>
-          {options && options.length > 0 && (
+          {type === InputVarType.select && options && options.length > 0 && (
             <Field title={t(($) => $['variableConfig.defaultValue'], { ns: 'appDebug' })}>
               <Select<string>
                 key={`default-select-${options.join('-')}`}
@@ -294,7 +294,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       <label className="mt-5! flex h-6 items-center space-x-2">
         <Checkbox
           checked={tempPayload.required}
-          disabled={!isFileInput && tempPayload.hide}
+          disabled={!isFileInput && type !== InputVarType.multiSelect && tempPayload.hide}
           onCheckedChange={(checked) => onPayloadChange('required')(checked)}
         />
         <span className="system-sm-semibold text-text-secondary">
@@ -302,7 +302,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
         </span>
       </label>
 
-      {showHiddenField && !isFileInput && (
+      {showHiddenField && !isFileInput && type !== InputVarType.multiSelect && (
         <div className="mt-5! flex h-6 items-center gap-2">
           <label className="flex items-center gap-2">
             <Checkbox

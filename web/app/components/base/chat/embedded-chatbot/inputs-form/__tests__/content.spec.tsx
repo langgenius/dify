@@ -212,6 +212,35 @@ describe('InputsFormContent', () => {
     expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenCalled()
   })
 
+  it('should handle multi-select input as a string array without using a default', async () => {
+    const context = {
+      ...mockContextValue,
+      inputsForms: [
+        {
+          variable: 'multi_var',
+          label: 'Multi Label',
+          type: InputVarType.multiSelect,
+          options: ['Option A', 'Option B'],
+          required: true,
+        },
+      ],
+      currentConversationInputs: {},
+      newConversationInputs: {},
+    }
+    vi.mocked(useEmbeddedChatbotContext).mockReturnValue(context as unknown as any)
+
+    render(<InputsFormContent />)
+    await user.click(screen.getByRole('combobox', { name: 'Multi Label' }))
+    await user.click(await screen.findByRole('option', { name: 'Option A' }))
+
+    expect(mockContextValue.setCurrentConversationInputs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ multi_var: ['Option A'] }),
+    )
+    expect(mockContextValue.handleNewConversationInputsChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ multi_var: ['Option A'] }),
+    )
+  })
+
   it('should render select dropdown on the shared dify-ui overlay layer', async () => {
     render(<InputsFormContent />)
     const selectTrigger = screen.getAllByText(/Select Label/i).find((el) => el.tagName === 'SPAN')

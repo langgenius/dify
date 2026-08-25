@@ -512,6 +512,30 @@ describe('useEmbeddedChatbot', () => {
       expect(forms.find((f: InputForm) => f.variable === 'f1')?.type).toBe('file')
       expect(forms.find((f: InputForm) => f.variable === 'j1')?.type).toBe('json_object')
     })
+
+    it('should map multi-select inputs to array-valued forms initialized with an empty array', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          {
+            'multi-select': {
+              variable: 'choices',
+              label: 'Choices',
+              required: true,
+              options: ['A', 'B'],
+            },
+          },
+        ],
+      } as unknown as ChatConfig
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(result.current.inputsForms[0]?.type).toBe(InputVarType.multiSelect)
+      })
+      expect(result.current.inputsForms[0]?.options).toEqual(['A', 'B'])
+      expect(result.current.inputsForms[0]?.default).toBeUndefined()
+      expect(result.current.newConversationInputs.choices).toEqual([])
+    })
   })
 
   // Scenario: checkInputsRequired validates empty fields and pending multi-file uploads
@@ -562,6 +586,36 @@ describe('useEmbeddedChatbot', () => {
       })
 
       expect(onStart).not.toHaveBeenCalled()
+    })
+
+    it('should reject an empty required multi-select and accept selected values', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [
+          {
+            'multi-select': {
+              variable: 'choices',
+              required: true,
+              label: 'Choices',
+              options: ['A', 'B'],
+            },
+          },
+        ],
+      } as unknown as ChatConfig
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      const onStart = vi.fn()
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({ choices: [] })
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).not.toHaveBeenCalled()
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({ choices: ['A', 'B'] })
+        result.current.handleStartChat(onStart)
+      })
+      expect(onStart).toHaveBeenCalledTimes(1)
     })
 
     it('should pass checkInputsRequired when allInputsHidden is true', async () => {

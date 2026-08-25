@@ -3,6 +3,7 @@ import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -174,6 +175,39 @@ describe('RunOnce', () => {
     })
 
     expect(screen.getByText('common.imageUploader.imageUpload'))!.toBeInTheDocument()
+  })
+
+  it('should initialize, update, and clear multi-select values as string arrays', async () => {
+    const promptConfig: PromptConfig = {
+      prompt_template: 'template',
+      prompt_variables: [
+        createPromptVariable({
+          key: 'regions',
+          name: 'Regions',
+          type: 'multi-select',
+          required: true,
+          options: ['Asia', 'Europe', 'Americas'],
+        }),
+      ],
+    }
+    const { onInputsChange } = setup({ promptConfig })
+
+    await waitFor(() => {
+      expect(onInputsChange).toHaveBeenCalledWith({ regions: [] })
+    })
+    onInputsChange.mockClear()
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('combobox', { name: 'Regions' }))
+    await user.click(await screen.findByRole('option', { name: 'Asia' }))
+    await user.click(await screen.findByRole('option', { name: 'Americas' }))
+
+    expect(onInputsChange).toHaveBeenLastCalledWith({ regions: ['Asia', 'Americas'] })
+
+    onInputsChange.mockClear()
+    await user.click(await screen.findByRole('option', { name: 'Asia' }))
+    await user.click(await screen.findByRole('option', { name: 'Americas' }))
+    expect(onInputsChange).toHaveBeenCalledWith({ regions: [] })
   })
 
   it('should update inputs when user edits fields', async () => {

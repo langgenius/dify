@@ -22,7 +22,11 @@ from core.workflow.system_variables import (
     inject_default_system_variable_mappings,
     preload_node_creation_variables,
 )
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.variable_pool_initializer import (
+    add_node_inputs_to_pool,
+    add_variables_to_pool,
+    build_input_segment_types,
+)
 from core.workflow.variable_prefixes import ENVIRONMENT_VARIABLE_NODE_ID
 from extensions.otel.runtime import is_instrument_flag_enabled
 from factories import file_factory
@@ -38,6 +42,7 @@ from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, GraphRunF
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest
+from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from models.workflow import Workflow
@@ -242,7 +247,20 @@ class WorkflowEntry:
         )
 
         if is_start_node_type(node_type):
-            add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
+            if node_type == BuiltinNodeTypes.START:
+                start_node_data = StartNodeData.model_validate(node_config_data.model_dump(mode="python"))
+                input_types = build_input_segment_types(start_node_data.variables)
+                if input_types:
+                    add_node_inputs_to_pool(
+                        variable_pool,
+                        node_id=node_id,
+                        inputs=user_inputs,
+                        input_types=input_types,
+                    )
+                else:
+                    add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
+            else:
+                add_node_inputs_to_pool(variable_pool, node_id=node_id, inputs=user_inputs)
 
         preload_node_creation_variables(
             variable_loader=variable_loader,

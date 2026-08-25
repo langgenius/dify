@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Maksimum yükleme sayısı",
   "variableConfig.maxNumberTip": "Belge < {{docLimit}}, resim < {{imgLimit}}, ses < {{audioLimit}}, video < {{videoLimit}}",
   "variableConfig.multi-files": "Dosya Listesi",
+  "variableConfig.multi-select": "Çoklu seçim",
   "variableConfig.noDefaultSelected": "Seçmeyin",
   "variableConfig.noDefaultValue": "Varsayılan değer yok",
   "variableConfig.notSet": "Ayarlanmamış, ön promptta {{input}} yazmayı deneyin",

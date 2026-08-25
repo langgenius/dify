@@ -329,6 +329,71 @@ def test_validate_inputs_with_default_value():
     assert result == [{"id": "file1", "name": "doc1.pdf"}, {"id": "file2", "name": "doc2.pdf"}]
 
 
+@pytest.mark.parametrize(
+    ("value", "required", "expected"),
+    [
+        (["A", "C"], True, ["A", "C"]),
+        ([], False, []),
+        (None, False, None),
+        (["C", "A"], True, ["C", "A"]),
+    ],
+)
+def test_validate_inputs_multi_select_accepts_valid_values(value, required, expected):
+    base_app_generator = BaseAppGenerator()
+    variable = VariableEntity(
+        variable="machines",
+        label="Machines",
+        type=VariableEntityType.MULTI_SELECT,
+        required=required,
+        options=["A", "B", "C"],
+    )
+
+    result = base_app_generator._validate_inputs(variable_entity=variable, value=value)
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "A",
+        1,
+        {},
+        ["A", 1],
+        ["A", None],
+        ["UNKNOWN"],
+        ["A", "A"],
+    ],
+)
+def test_validate_inputs_multi_select_rejects_invalid_values(value):
+    base_app_generator = BaseAppGenerator()
+    variable = VariableEntity(
+        variable="machines",
+        label="Machines",
+        type=VariableEntityType.MULTI_SELECT,
+        required=False,
+        options=["A", "B", "C"],
+    )
+
+    with pytest.raises(ValueError):
+        base_app_generator._validate_inputs(variable_entity=variable, value=value)
+
+
+@pytest.mark.parametrize("value", [[], None])
+def test_validate_inputs_multi_select_rejects_empty_or_missing_required_value(value):
+    base_app_generator = BaseAppGenerator()
+    variable = VariableEntity(
+        variable="machines",
+        label="Machines",
+        type=VariableEntityType.MULTI_SELECT,
+        required=True,
+        options=["A", "B", "C"],
+    )
+
+    with pytest.raises(ValueError, match="machines is required"):
+        base_app_generator._validate_inputs(variable_entity=variable, value=value)
+
+
 def test_validate_inputs_optional_file_with_empty_string():
     """Test that optional FILE variable with empty string returns None"""
     base_app_generator = BaseAppGenerator()
@@ -573,6 +638,26 @@ class TestBaseAppGeneratorExtras:
                 variables=variables,
                 tenant_id="tenant-id",
             )
+
+    def test_prepare_user_inputs_preserves_multi_select_list(self):
+        base_app_generator = BaseAppGenerator()
+        variables = [
+            VariableEntity(
+                variable="machines",
+                label="machines",
+                type=VariableEntityType.MULTI_SELECT,
+                required=False,
+                options=["A", "B", "C"],
+            )
+        ]
+
+        prepared = base_app_generator._prepare_user_inputs(
+            user_inputs={"machines": ["A", "C"]},
+            variables=variables,
+            tenant_id="tenant-id",
+        )
+
+        assert prepared == {"machines": ["A", "C"]}
 
     def test_convert_to_event_stream(self):
         base_app_generator = BaseAppGenerator()

@@ -35,6 +35,8 @@ describe('before-run-form helpers', () => {
     expect(formatValue('12.5', InputVarType.number)).toBe(12.5)
     expect(formatValue('{"foo":1}', InputVarType.json)).toEqual({ foo: 1 })
     expect(formatValue('', InputVarType.checkbox)).toBe(false)
+    const selectedOptions = ['Option A', 'Option C']
+    expect(formatValue(selectedOptions, InputVarType.multiSelect)).toBe(selectedOptions)
     expect(formatValue(['{"foo":1}'], InputVarType.contexts)).toEqual([{ foo: 1 }])
     expect(formatValue(null, InputVarType.singleFile)).toBeNull()
     expect(
@@ -78,6 +80,52 @@ describe('before-run-form helpers', () => {
         t,
       ),
     ).toContain('errorMsg.fieldRequired')
+
+    expect(
+      getFormErrorMessage(
+        [
+          createForm({
+            inputs: [
+              createInput({
+                variable: 'choices',
+                label: 'Choices',
+                type: InputVarType.multiSelect,
+                required: true,
+              }),
+            ],
+            values: createValues({ choices: [] }),
+          }),
+        ],
+        [{}],
+        t,
+      ),
+    ).toContain('errorMsg.fieldRequired')
+
+    expect(
+      getFormErrorMessage(
+        [
+          createForm({
+            inputs: [createInput({ type: InputVarType.multiSelect, required: true })],
+            values: createValues({ field: ['Option A'] }),
+          }),
+        ],
+        [{}],
+        t,
+      ),
+    ).toBe('')
+
+    expect(
+      getFormErrorMessage(
+        [
+          createForm({
+            inputs: [createInput({ type: InputVarType.multiSelect, required: false })],
+            values: createValues({ field: [] }),
+          }),
+        ],
+        [{}],
+        t,
+      ),
+    ).toBe('')
 
     expect(
       getFormErrorMessage(
@@ -210,6 +258,18 @@ describe('before-run-form helpers', () => {
         file: expect.any(Object),
       }),
     )
+
+    expect(
+      buildSubmitData([
+        createForm({
+          inputs: [createInput({ variable: 'choices', type: InputVarType.multiSelect })],
+          values: createValues({ choices: ['Option A', 'Option C'] }),
+        }),
+      ]),
+    ).toEqual({
+      submitData: { choices: ['Option A', 'Option C'] },
+      parseErrorJsonField: '',
+    })
   })
 
   it('should derive the zero-form auto behaviors', () => {

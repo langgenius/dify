@@ -5,7 +5,11 @@ from collections import defaultdict
 import pytest
 
 from core.workflow.system_variables import build_system_variables, system_variables_to_mapping
-from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
+from core.workflow.variable_pool_initializer import (
+    add_node_inputs_to_pool,
+    add_variables_to_pool,
+    build_input_segment_types,
+)
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
@@ -15,6 +19,7 @@ from factories.variable_factory import build_segment, segment_to_variable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.runtime import VariablePool
 from graphon.variables import FileSegment, StringSegment
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from graphon.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
@@ -26,6 +31,7 @@ from graphon.variables.segments import (
     NoneSegment,
     ObjectSegment,
 )
+from graphon.variables.types import SegmentType
 from graphon.variables.variables import (
     ArrayNumberVariable,
     ArrayObjectVariable,
@@ -97,6 +103,46 @@ def test_add_node_inputs_to_pool_stores_inputs_under_aliases():
     assert primary_value.value == "hello"
     assert alias_value is not None
     assert alias_value.value == "hello"
+
+
+def test_build_input_segment_types_only_declares_multi_select():
+    variables = [
+        VariableEntity(variable="name", label="name", type=VariableEntityType.TEXT_INPUT),
+        VariableEntity(variable="machines", label="machines", type=VariableEntityType.MULTI_SELECT),
+    ]
+
+    assert build_input_segment_types(variables) == {"machines": SegmentType.ARRAY_STRING}
+
+
+@pytest.mark.parametrize("value", [["A", "C"], []])
+def test_add_node_inputs_to_pool_preserves_declared_multi_select_type(value):
+    pool = VariablePool()
+
+    add_node_inputs_to_pool(
+        pool,
+        node_id="start",
+        inputs={"machines": value},
+        input_types={"machines": SegmentType.ARRAY_STRING},
+    )
+
+    segment = pool.get(["start", "machines"])
+    assert isinstance(segment, ArrayStringSegment)
+    assert segment.value == value
+    assert segment.value_type == SegmentType.ARRAY_STRING
+
+
+def test_add_node_inputs_to_pool_keeps_optional_multi_select_none_unset():
+    pool = VariablePool()
+
+    add_node_inputs_to_pool(
+        pool,
+        node_id="start",
+        inputs={"machines": None},
+        input_types={"machines": SegmentType.ARRAY_STRING},
+    )
+
+    segment = pool.get(["start", "machines"])
+    assert isinstance(segment, NoneSegment)
 
 
 class TestVariablePool:

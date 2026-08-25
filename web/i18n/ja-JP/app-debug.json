@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "アップロードの最大数",
   "variableConfig.maxNumberTip": "ドキュメント < {{docLimit}}, 画像 < {{imgLimit}}, 音声 < {{audioLimit}}, 映像 < {{videoLimit}}",
   "variableConfig.multi-files": "ファイルリスト",
+  "variableConfig.multi-select": "複数選択",
   "variableConfig.noDefaultSelected": "選ばないでください",
   "variableConfig.noDefaultValue": "デフォルト値なし",
   "variableConfig.notSet": "設定されていません。プレフィックスのプロンプトで {{input}} を入力してみてください。",

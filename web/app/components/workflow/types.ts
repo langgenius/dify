@@ -218,6 +218,7 @@ export enum InputVarType {
   multiFiles = 'file-list',
   loop = 'loop', // loop input
   checkbox = 'checkbox',
+  multiSelect = 'multi-select',
 }
 
 export type InputVar = {

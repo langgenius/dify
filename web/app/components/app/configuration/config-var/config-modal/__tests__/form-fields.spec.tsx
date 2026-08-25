@@ -214,6 +214,31 @@ describe('ConfigModalFormFields', () => {
     expect(selectProps.payloadChangeHandlers.default).toHaveBeenCalledWith('beta')
   })
 
+  it('should reuse select options for multi-select without default or hidden controls', () => {
+    const multiSelectProps = createBaseProps()
+    multiSelectProps.tempPayload = {
+      ...multiSelectProps.tempPayload,
+      type: InputVarType.multiSelect,
+      default: 'legacy-default',
+      hide: true,
+    }
+    multiSelectProps.options = ['alpha', 'beta']
+
+    render(<ConfigModalFormFields {...multiSelectProps} />)
+
+    expect(screen.getByText('config-select')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'variableConfig.required' })).not.toHaveAttribute(
+      'aria-disabled',
+    )
+    expect(screen.queryByText('variableConfig.defaultValue')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('checkbox', { name: 'variableConfig.hidden' }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('config-select'))
+    expect(multiSelectProps.payloadChangeHandlers.options).toHaveBeenCalledWith(['alpha', 'beta'])
+  })
+
   it('should wire file, json schema, and visibility controls', async () => {
     const textInputProps = createBaseProps()
     const textInputView = render(<ConfigModalFormFields {...textInputProps} />)

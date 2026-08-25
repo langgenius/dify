@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "ຈຳນວນອັບໂຫຼດສູງສຸດ",
   "variableConfig.maxNumberTip": "ເອກະສານ < {{docLimit}}, ຮູບພາບ < {{imgLimit}}, ສຽງ < {{audioLimit}}, ວິດີໂອ < {{videoLimit}}",
   "variableConfig.multi-files": "ລາຍການໄຟລ໌",
+  "variableConfig.multi-select": "ເລືອກຫຼາຍລາຍການ",
   "variableConfig.noDefaultSelected": "ບໍ່ເລືອກ",
   "variableConfig.noDefaultValue": "ບໍ່ມີຄ່າເລີ່ມຕົ້ນ",
   "variableConfig.notSet": "ບໍ່ໄດ້ຕັ້ງຄ່າ, ລອງພິມ {{input}} ໃນ Prefix prompt",

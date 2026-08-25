@@ -31,6 +31,13 @@ const getSelectInput = (item: UserInputFormItem | undefined) => {
   return item.select
 }
 
+const getMultiSelectInput = (item: UserInputFormItem | undefined) => {
+  if (!item || !('multi-select' in item))
+    throw new Error('Expected multi-select user input form item')
+
+  return item['multi-select']
+}
+
 describe('Model Config Utilities', () => {
   describe('userInputsFormToPromptVariables', () => {
     /**
@@ -199,6 +206,33 @@ describe('Model Config Utilities', () => {
         hide: false,
         default: 'USA',
       })
+    })
+
+    it('should convert multi-select input without a default value', () => {
+      const userInputs: UserInputFormItem[] = [
+        {
+          'multi-select': {
+            label: 'Regions',
+            variable: 'regions',
+            required: true,
+            options: ['Asia', 'Europe'],
+            hide: false,
+          },
+        },
+      ]
+
+      const result = userInputsFormToPromptVariables(userInputs)
+
+      expect(result[0]).toEqual({
+        key: 'regions',
+        name: 'Regions',
+        required: true,
+        type: 'multi-select',
+        options: ['Asia', 'Europe'],
+        is_context_var: false,
+        hide: false,
+      })
+      expect(result[0]).not.toHaveProperty('default')
     })
 
     /**
@@ -525,6 +559,31 @@ describe('Model Config Utilities', () => {
           hide: undefined,
         },
       })
+    })
+
+    it('should convert multi-select prompt variable without adding a default', () => {
+      const promptVariables: PromptVariable[] = [
+        {
+          key: 'regions',
+          name: 'Regions',
+          required: false,
+          type: 'multi-select',
+          options: ['Asia', 'Europe'],
+        },
+      ]
+
+      const result = promptVariablesToUserInputsForm(promptVariables)
+
+      expect(result[0]).toEqual({
+        'multi-select': {
+          label: 'Regions',
+          variable: 'regions',
+          required: false,
+          options: ['Asia', 'Europe'],
+          hide: undefined,
+        },
+      })
+      expect(getMultiSelectInput(result[0])).not.toHaveProperty('default')
     })
 
     /**

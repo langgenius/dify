@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "Максимальное количество загрузок",
   "variableConfig.maxNumberTip": "Документ < {{docLimit}}, изображение < {{imgLimit}}, аудио < {{audioLimit}}, видео < {{videoLimit}}",
   "variableConfig.multi-files": "Список файлов",
+  "variableConfig.multi-select": "Множественный выбор",
   "variableConfig.noDefaultSelected": "Не выбирайте",
   "variableConfig.noDefaultValue": "Без значения по умолчанию",
   "variableConfig.notSet": "Не задано, попробуйте ввести {{input}} в префикс промпта",

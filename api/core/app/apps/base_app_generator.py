@@ -262,6 +262,24 @@ class BaseAppGenerator:
                         f"{variable_entity.variable} in input form must be one of the following: "
                         f"{variable_entity.options}"
                     )
+            case VariableEntityType.MULTI_SELECT:
+                if not isinstance(value, list):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a list of strings")
+
+                if variable_entity.required and not value:
+                    raise ValueError(f"{variable_entity.variable} is required in input form")
+
+                if not all(isinstance(item, str) for item in value):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a list of strings")
+
+                if len(value) != len(set(value)):
+                    raise ValueError(f"{variable_entity.variable} in input form must not contain duplicate values")
+
+                if invalid_options := [item for item in value if item not in variable_entity.options]:
+                    raise ValueError(
+                        f"{variable_entity.variable} in input form must be one of the following: "
+                        f"{variable_entity.options}; invalid values: {invalid_options}"
+                    )
             case VariableEntityType.TEXT_INPUT | VariableEntityType.PARAGRAPH:
                 if variable_entity.max_length and len(value) > variable_entity.max_length:
                     raise ValueError(

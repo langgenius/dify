@@ -440,6 +440,43 @@ describe('EmbeddedChatbot chat-wrapper', () => {
       expect(screen.getByRole('button', { name: 'send message' })).toBeDisabled()
     })
 
+    it('should validate required multi-select arrays as values, not truthiness', () => {
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+        createContextValue({
+          inputsForms: [
+            {
+              variable: 'choices',
+              label: 'Choices',
+              required: true,
+              type: InputVarType.multiSelect,
+            },
+          ],
+          newConversationInputsRef: { current: { choices: [] } },
+        }),
+      )
+
+      render(<ChatWrapper />)
+      expect(screen.getByRole('button', { name: 'send message' })).toBeDisabled()
+
+      cleanup()
+      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+        createContextValue({
+          inputsForms: [
+            {
+              variable: 'choices',
+              label: 'Choices',
+              required: true,
+              type: InputVarType.multiSelect,
+            },
+          ],
+          newConversationInputsRef: { current: { choices: ['A', 'C'] } },
+        }),
+      )
+
+      render(<ChatWrapper />)
+      expect(screen.getByRole('button', { name: 'send message' })).not.toBeDisabled()
+    })
+
     it('should show the user avatar fallback when avatar data is provided', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
         createContextValue({

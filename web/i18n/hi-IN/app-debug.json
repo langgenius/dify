@@ -352,6 +352,7 @@
   "variableConfig.maxNumberOfUploads": "अधिकतम अपलोड संख्या",
   "variableConfig.maxNumberTip": "दस्तावेज़ < {{docLimit}}, छवि < {{imgLimit}}, ऑडियो < {{audioLimit}}, वीडियो < {{videoLimit}}",
   "variableConfig.multi-files": "फ़ाइल सूची",
+  "variableConfig.multi-select": "बहु-चयन",
   "variableConfig.noDefaultSelected": "चुनें मत",
   "variableConfig.noDefaultValue": "कोई डिफ़ॉल्ट मान नहीं",
   "variableConfig.notSet": "सेट नहीं किया गया, प्रारंभिक प्रॉम्प्ट में {{input}} टाइप करने का प्रयास करें",

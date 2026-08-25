@@ -131,6 +131,7 @@ const VarItem: FC<Props> = ({
         <ConfigVarModal
           isShow
           supportFile
+          supportMultiSelect
           payload={payload}
           onClose={() => setIsShowEditVarModal(false)}
           onConfirm={handlePayloadChange}
