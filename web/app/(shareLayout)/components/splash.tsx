@@ -9,6 +9,7 @@ import {
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'
+import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
@@ -80,7 +81,21 @@ function Splash({ children }: PropsWithChildren) {
       else setIsLoading(false)
     }
 
-    const proceedToAuth = () => {
+    const proceedToAuth = (authenticationRequired: boolean) => {
+      if (
+        authenticationRequired &&
+        address.kind === 'environment' &&
+        webAppAccessMode !== AccessMode.PUBLIC &&
+        !isSigninRoute
+      ) {
+        const redirectSearchParams = new URLSearchParams(searchParams)
+        redirectSearchParams.delete('web_sso_token')
+        const redirectSearch = redirectSearchParams.toString()
+        const redirectTarget = redirectSearch ? `${pathname}?${redirectSearch}` : pathname
+        const signinSearchParams = new URLSearchParams({ redirect_url: redirectTarget })
+        router.replace(`/webapp-signin?${signinSearchParams.toString()}`)
+        return
+      }
       setIsLoading(false)
     }
 
@@ -94,7 +109,7 @@ function Splash({ children }: PropsWithChildren) {
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       } else if (!userLoggedIn && !appLoggedIn) {
-        proceedToAuth()
+        proceedToAuth(true)
       } else if (!userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       } else if (userLoggedIn && !appLoggedIn) {
@@ -112,7 +127,7 @@ function Splash({ children }: PropsWithChildren) {
             return
           }
           await webAppLogout(address)
-          proceedToAuth()
+          proceedToAuth(error instanceof Response && error.status === 401)
         }
       }
     })()
