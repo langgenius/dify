@@ -452,7 +452,7 @@ describe('useEmbeddedChatbot', () => {
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       act(() => {
-        result.current.removeConversationIdInfo('app-1')
+        result.current.removeConversationIdInfo()
       })
 
       await waitFor(() => {
@@ -697,17 +697,13 @@ describe('useEmbeddedChatbot', () => {
 
   describe('Language settings', () => {
     it('should set language from URL parameters', async () => {
-      const originalSearch = window.location.search
-      Object.defineProperty(window, 'location', {
-        writable: true,
-        value: { search: '?locale=zh-Hans' },
-      })
+      window.history.replaceState({}, '', '/?locale=zh-Hans')
       const { changeLanguage } = await import('@/i18n-config/client')
 
       await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       expect(changeLanguage).toHaveBeenCalledWith('zh-Hans')
-      Object.defineProperty(window, 'location', { value: { search: originalSearch } })
+      window.history.replaceState({}, '', '/')
     })
 
     it('should set language from system variables when URL param is missing', async () => {

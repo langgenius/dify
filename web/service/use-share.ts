@@ -52,11 +52,12 @@ export const shareQueryKeys = {
   appParams: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appParams'] as const,
   appMeta: (address: WebAppAddress | null) => [NAME_SPACE, address, 'appMeta'] as const,
   conversations: [NAME_SPACE, 'conversations'] as const,
-  conversationList: (params: ShareConversationsParams) =>
-    [NAME_SPACE, 'conversations', params] as const,
-  chatList: (params: ShareChatListParams) => [NAME_SPACE, 'chatList', params] as const,
-  conversationName: (params: ShareConversationNameParams) =>
-    [NAME_SPACE, 'conversationName', params] as const,
+  conversationList: (address: WebAppAddress | null, params: ShareConversationsParams) =>
+    [NAME_SPACE, 'conversations', address, params] as const,
+  chatList: (address: WebAppAddress | null, params: ShareChatListParams) =>
+    [NAME_SPACE, 'chatList', address, params] as const,
+  conversationName: (address: WebAppAddress | null, params: ShareConversationNameParams) =>
+    [NAME_SPACE, 'conversationName', address, params] as const,
   humanInputForm: (token: string) => [NAME_SPACE, 'humanInputForm', token] as const,
 }
 
@@ -105,13 +106,14 @@ export const useShareConversations = (
   params: ShareConversationsParams,
   options: ShareQueryOptions = {},
 ) => {
+  const address = resolveWebAppAddress()
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
   const isEnabled =
     enabled &&
     params.appSourceType !== AppSourceType.tryApp &&
     (params.appSourceType !== AppSourceType.installedApp || !!params.appId)
   return useQuery<AppConversationData>({
-    queryKey: shareQueryKeys.conversationList(params),
+    queryKey: shareQueryKeys.conversationList(address, params),
     queryFn: () =>
       fetchConversations(
         params.appSourceType,
@@ -137,7 +139,7 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
     !!params.conversationId
   return useQuery({
-    queryKey: [...shareQueryKeys.chatList(params), isEnvironmentWebApp],
+    queryKey: [...shareQueryKeys.chatList(address, params), isEnvironmentWebApp],
     queryFn: async () => {
       try {
         return await fetchChatList(params.conversationId, params.appSourceType, params.appId)
@@ -183,13 +185,14 @@ export const useShareConversationName = (
   params: ShareConversationNameParams,
   options: ShareQueryOptions = {},
 ) => {
+  const address = resolveWebAppAddress()
   const { enabled = true, refetchOnReconnect, refetchOnWindowFocus } = options
   const isEnabled =
     enabled &&
     (params.appSourceType !== AppSourceType.installedApp || !!params.appId) &&
     !!params.conversationId
   return useQuery<ConversationItem>({
-    queryKey: shareQueryKeys.conversationName(params),
+    queryKey: shareQueryKeys.conversationName(address, params),
     queryFn: () =>
       generationConversationName(params.appSourceType, params.appId, params.conversationId),
     enabled: isEnabled,

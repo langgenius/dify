@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   getWebAppApiPath,
+  getWebAppConversationScopeId,
   getWebAppPublicApiPath,
   parseWebAppAddress,
   resolveWebAppAddress,
@@ -68,5 +69,15 @@ describe('WebAppAddress', () => {
     vi.stubGlobal('location', undefined)
 
     expect(resolveWebAppAddress()).toBeNull()
+  })
+
+  it('isolates Environment conversations without changing ordinary webapp storage', () => {
+    expect(getWebAppConversationScopeId({ kind: 'default', code: 'webapp' }, 'app-1')).toBe('app-1')
+    expect(
+      getWebAppConversationScopeId({ kind: 'environment', code: 'environment-1' }, 'app-1'),
+    ).toBe('environment:environment-1')
+    expect(
+      getWebAppConversationScopeId({ kind: 'environment', code: 'environment-2' }, 'app-1'),
+    ).toBe('environment:environment-2')
   })
 })

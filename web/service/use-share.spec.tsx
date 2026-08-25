@@ -89,6 +89,11 @@ describe('shareQueryKeys', () => {
       shareQueryKeys.appParams(secondAddress),
     )
     expect(shareQueryKeys.appMeta(firstAddress)).not.toEqual(shareQueryKeys.appMeta(secondAddress))
+
+    const params = { appSourceType: AppSourceType.webApp, appId: 'app-1' }
+    expect(shareQueryKeys.conversationList(firstAddress, params)).not.toEqual(
+      shareQueryKeys.conversationList(secondAddress, params),
+    )
   })
 })
 
@@ -127,7 +132,7 @@ describe('useShareConversations', () => {
       expect(result.current.data).toEqual(response)
     })
     expect(
-      queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(params) }),
+      queryClient.getQueryCache().find({ queryKey: shareQueryKeys.conversationList(null, params) }),
     ).toBeDefined()
   })
 
