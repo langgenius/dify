@@ -21,6 +21,7 @@ from repositories.account_activation_repository import SQLAlchemyAccountActivati
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
+from repositories.app_site_command_repository import AppSiteCommandRepository
 from repositories.data_source_api_key_auth_repository import SQLAlchemyDataSourceApiKeyAuthBindingRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
@@ -68,6 +69,7 @@ from services.account_password_hasher import LegacyAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
 from services.app_definition_query_service import AppDefinitionQueryService
+from services.app_site_service import AppSiteService
 from services.auth.data_source_api_key_auth_gateways import (
     ProviderApiKeyAuthCredentialValidator,
     TenantApiKeyAuthCredentialEncryptor,
@@ -144,6 +146,7 @@ class ApplicationServices:
     accounts: AccountServices
     account_activation: AccountActivationService
     app_definitions: AppDefinitionQueryService
+    app_sites: AppSiteService
     billing_portal: BillingPortalService
     data_source_api_key_auth: DataSourceApiKeyAuthService
     webapp_access: WebAppAccessQueryService
@@ -262,6 +265,9 @@ def build_application_services(
             builtin_icon_url_prefix=(
                 dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/builtin/"
             ),
+        ),
+        app_sites=AppSiteService(
+            sites=AppSiteCommandRepository(session_factory=database_client),
         ),
         billing_portal=BillingPortalService(
             accounts=accounts,
