@@ -1190,9 +1190,17 @@ export type PublishWorkflowPayload = {
   marked_name?: string | null
 }
 
+export type WorkflowVariableReferenceWarningResponse = {
+  node_id: string
+  node_title: string
+  referenced_node_id: string
+  referenced_node_title: string
+}
+
 export type WorkflowPublishResponse = {
   created_at: number
   result: string
+  variable_reference_warnings?: Array<WorkflowVariableReferenceWarningResponse> | null
 }
 
 export type WebhookTriggerResponse = {

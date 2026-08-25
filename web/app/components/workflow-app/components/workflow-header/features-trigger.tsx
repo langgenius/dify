@@ -36,7 +36,6 @@ import {
 } from '@/service/use-workflow'
 import { formatVariableReferenceWarningPairs } from './format-variable-reference-warning'
 
-
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
   const { theme } = useTheme()

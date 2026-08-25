@@ -1,9 +1,9 @@
-import type { WorkflowVariableReferenceWarning } from '@/service/use-workflow'
+import type { WorkflowVariableReferenceWarningResponse } from '@dify/contracts/api/console/apps/types.gen'
 
 export const MAX_REPORTED_VARIABLE_REFERENCE_ISSUES = 10
 
 export const formatVariableReferenceWarningPairs = (
-  issues: WorkflowVariableReferenceWarning[],
+  issues: WorkflowVariableReferenceWarningResponse[],
   moreLabel: (overflow: number) => string,
 ): string => {
   const shown = issues.slice(0, MAX_REPORTED_VARIABLE_REFERENCE_ISSUES)

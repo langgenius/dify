@@ -156,6 +156,7 @@ from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader,
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 _file_access_controller = DatabaseFileAccessController()
+logger = logging.getLogger(__name__)
 
 
 def _merge_environment_variable_patch(
@@ -1829,7 +1830,11 @@ class WorkflowService:
         """Return unsafe cross-branch variable references for advisory publish warnings."""
         from services.workflow_variable_reference_validator import validate_variable_references
 
-        return validate_variable_references(graph)
+        try:
+            return validate_variable_references(graph)
+        except Exception:
+            logger.exception("Variable reference warning check failed")
+            return []
 
     def validate_features_structure(self, app_model: App, features: dict[str, Any]):
         match app_model.mode:
