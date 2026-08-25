@@ -26,6 +26,8 @@ vi.mock('../web-app-client', () => ({
 describe('WebAppAmplitudeProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockClient.ensureInitialized.mockReset()
+    mockClient.ensureInitialized.mockReturnValue(Promise.resolve())
     mockConsent.value = 'unknown'
   })
 
@@ -36,6 +38,7 @@ describe('WebAppAmplitudeProvider', () => {
     expect(mockClient.ensureInitialized).not.toHaveBeenCalled()
     expect(mockClient.sendEvent).not.toHaveBeenCalled()
 
+    mockClient.ensureInitialized.mockReturnValue(new Promise(() => {}))
     mockConsent.value = 'granted'
     rerender(<WebAppAmplitudeProvider />)
     trackWebAppEvent('webapp_run', { app_mode: 'agent-v2' })

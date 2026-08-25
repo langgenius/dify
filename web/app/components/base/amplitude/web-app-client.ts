@@ -1,37 +1,56 @@
 import type { WebAppEventName, WebAppEventProperties } from './web-app-event'
-import * as amplitude from '@amplitude/analytics-browser'
 import { AMPLITUDE_API_KEY } from '@/config'
 
-const webAppAmplitude = amplitude.createInstance()
-let isWebAppAmplitudeInitialized = false
+type WebAppAmplitudeClient = ReturnType<
+  (typeof import('@amplitude/analytics-browser'))['createInstance']
+>
 
-export function ensureWebAppAmplitudeInitialized() {
-  if (!AMPLITUDE_API_KEY || isWebAppAmplitudeInitialized) return
+let webAppAmplitude: WebAppAmplitudeClient | null = null
+let webAppAmplitudeInitialization: Promise<WebAppAmplitudeClient | null> | null = null
+let shouldWebAppAmplitudeOptOut = true
 
-  isWebAppAmplitudeInitialized = true
-
+async function initializeWebAppAmplitude(): Promise<WebAppAmplitudeClient | null> {
   try {
-    webAppAmplitude.init(AMPLITUDE_API_KEY, {
+    const { createInstance } = await import('@amplitude/analytics-browser')
+    const client = createInstance()
+
+    client.init(AMPLITUDE_API_KEY, {
       autocapture: false,
       defaultTracking: false,
       fetchRemoteConfig: false,
       instanceName: 'webapp',
     })
-  } catch (error) {
-    isWebAppAmplitudeInitialized = false
-    throw error
+    client.setOptOut(shouldWebAppAmplitudeOptOut)
+    webAppAmplitude = client
+
+    return client
+  } catch {
+    webAppAmplitudeInitialization = null
+    return null
   }
 }
 
-export function setWebAppAmplitudeOptOut(optOut: boolean) {
-  if (!AMPLITUDE_API_KEY || !isWebAppAmplitudeInitialized) return
-  webAppAmplitude.setOptOut(optOut)
+export function ensureWebAppAmplitudeInitialized() {
+  if (!AMPLITUDE_API_KEY) return Promise.resolve(null)
+
+  if (!webAppAmplitudeInitialization) webAppAmplitudeInitialization = initializeWebAppAmplitude()
+
+  return webAppAmplitudeInitialization
 }
 
-export function sendWebAppAmplitudeEvent<EventName extends WebAppEventName>(
+export function setWebAppAmplitudeOptOut(optOut: boolean) {
+  shouldWebAppAmplitudeOptOut = optOut
+  webAppAmplitude?.setOptOut(optOut)
+}
+
+export async function sendWebAppAmplitudeEvent<EventName extends WebAppEventName>(
   eventName: EventName,
   properties: WebAppEventProperties[EventName],
 ) {
-  if (!AMPLITUDE_API_KEY || !isWebAppAmplitudeInitialized) return
-  webAppAmplitude.track(eventName, properties)
+  if (shouldWebAppAmplitudeOptOut) return
+
+  const client = await ensureWebAppAmplitudeInitialized()
+  if (!client || shouldWebAppAmplitudeOptOut) return
+
+  client.track(eventName, properties)
 }

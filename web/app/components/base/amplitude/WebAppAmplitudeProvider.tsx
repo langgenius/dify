@@ -18,9 +18,9 @@ export function WebAppAmplitudeProvider() {
       return
     }
 
-    ensureWebAppAmplitudeInitialized()
     setWebAppAmplitudeOptOut(false)
     const unregisterTracker = registerWebAppEventTracker(sendWebAppAmplitudeEvent)
+    void ensureWebAppAmplitudeInitialized()
 
     return () => {
       unregisterTracker()

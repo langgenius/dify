@@ -1,15 +1,18 @@
-import * as amplitude from '@amplitude/analytics-browser'
-
-const { mockConfig, mockWebAppClient } = vi.hoisted(() => ({
-  mockConfig: {
-    AMPLITUDE_API_KEY: 'test-api-key',
-  },
-  mockWebAppClient: {
+const { mockConfig, mockCreateInstance, mockWebAppClient } = vi.hoisted(() => {
+  const mockWebAppClient = {
     init: vi.fn(),
     setOptOut: vi.fn(),
     track: vi.fn(),
-  },
-}))
+  }
+
+  return {
+    mockConfig: {
+      AMPLITUDE_API_KEY: 'test-api-key',
+    },
+    mockCreateInstance: vi.fn(() => mockWebAppClient),
+    mockWebAppClient,
+  }
+})
 
 let ensureWebAppAmplitudeInitialized: typeof import('../web-app-client').ensureWebAppAmplitudeInitialized
 let sendWebAppAmplitudeEvent: typeof import('../web-app-client').sendWebAppAmplitudeEvent
@@ -22,7 +25,7 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('@amplitude/analytics-browser', () => ({
-  createInstance: vi.fn(() => mockWebAppClient),
+  createInstance: mockCreateInstance,
 }))
 
 describe('WebApp Amplitude client', () => {
@@ -34,11 +37,12 @@ describe('WebApp Amplitude client', () => {
       await import('../web-app-client'))
   })
 
-  it('initializes a dedicated instance with all automatic tracking disabled', () => {
-    ensureWebAppAmplitudeInitialized()
-    ensureWebAppAmplitudeInitialized()
+  it('loads the SDK lazily and initializes one dedicated instance', async () => {
+    expect(mockCreateInstance).not.toHaveBeenCalled()
 
-    expect(amplitude.createInstance).toHaveBeenCalledTimes(1)
+    await Promise.all([ensureWebAppAmplitudeInitialized(), ensureWebAppAmplitudeInitialized()])
+
+    expect(mockCreateInstance).toHaveBeenCalledTimes(1)
     expect(mockWebAppClient.init).toHaveBeenCalledTimes(1)
     expect(mockWebAppClient.init).toHaveBeenCalledWith('test-api-key', {
       autocapture: false,
@@ -48,15 +52,12 @@ describe('WebApp Amplitude client', () => {
     })
   })
 
-  it('sends explicit events and opt-out updates only after initialization', () => {
-    sendWebAppAmplitudeEvent('webapp_run', { app_mode: 'agent-v2' })
-    setWebAppAmplitudeOptOut(true)
-    expect(mockWebAppClient.track).not.toHaveBeenCalled()
-    expect(mockWebAppClient.setOptOut).not.toHaveBeenCalled()
-
-    ensureWebAppAmplitudeInitialized()
+  it('preserves the first consented event while the SDK initializes', async () => {
     setWebAppAmplitudeOptOut(false)
-    sendWebAppAmplitudeEvent('webapp_run', { app_mode: 'agent-v2' })
+    const pendingEvent = sendWebAppAmplitudeEvent('webapp_run', { app_mode: 'agent-v2' })
+
+    expect(mockWebAppClient.track).not.toHaveBeenCalled()
+    await pendingEvent
 
     expect(mockWebAppClient.setOptOut).toHaveBeenCalledWith(false)
     expect(mockWebAppClient.track).toHaveBeenCalledWith('webapp_run', {
@@ -64,11 +65,22 @@ describe('WebApp Amplitude client', () => {
     })
   })
 
-  it('does not initialize when Amplitude is disabled', () => {
+  it('drops a pending event when consent is withdrawn before initialization completes', async () => {
+    setWebAppAmplitudeOptOut(false)
+    const pendingEvent = sendWebAppAmplitudeEvent('webapp_run', { app_mode: 'workflow' })
+    setWebAppAmplitudeOptOut(true)
+
+    await pendingEvent
+
+    expect(mockWebAppClient.setOptOut).toHaveBeenLastCalledWith(true)
+    expect(mockWebAppClient.track).not.toHaveBeenCalled()
+  })
+
+  it('does not initialize when Amplitude is disabled', async () => {
     mockConfig.AMPLITUDE_API_KEY = ''
 
-    ensureWebAppAmplitudeInitialized()
-    sendWebAppAmplitudeEvent('webapp_run', { app_mode: 'chatflow' })
+    await ensureWebAppAmplitudeInitialized()
+    await sendWebAppAmplitudeEvent('webapp_run', { app_mode: 'chatflow' })
 
     expect(mockWebAppClient.init).not.toHaveBeenCalled()
     expect(mockWebAppClient.track).not.toHaveBeenCalled()
