@@ -2,7 +2,11 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 from services.account_billing_adapters import BillingAccountEducationGateway
-from services.entities.account_entities import AccountEducationAutocomplete, AccountEducationStatus
+from services.entities.account_entities import (
+    AccountEducationActivation,
+    AccountEducationAutocomplete,
+    AccountEducationStatus,
+)
 
 
 def test_education_gateway_normalizes_billing_status_timestamp() -> None:
@@ -36,19 +40,20 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
     ) as activate:
         result = gateway.activate(
             account_id="account-1",
-            email="student@example.edu",
             tenant_id="workspace-1",
             token="education-token",
             institution="Dify University",
             role="Student",
         )
 
-    assert result == {"message": "success"}
-    account = activate.call_args.args[0]
-    assert account.id == "account-1"
-    assert account.email == "student@example.edu"
-    assert account.current_tenant_id == "workspace-1"
-    assert activate.call_args.args[1:] == ("education-token", "Dify University", "Student")
+    assert result == AccountEducationActivation(message="success")
+    activate.assert_called_once_with(
+        account_id="account-1",
+        tenant_id="workspace-1",
+        token="education-token",
+        institution="Dify University",
+        role="Student",
+    )
 
 
 def test_education_gateway_normalizes_autocomplete_defaults() -> None:

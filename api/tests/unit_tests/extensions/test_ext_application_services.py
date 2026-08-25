@@ -233,6 +233,32 @@ def test_build_application_services_wires_billing_service(
     sync_partner_tenants_bindings.assert_called_once_with("account-1", "partner-key", "click-1")
 
 
+def test_build_application_services_wires_education_rate_limiters(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    redis = MagicMock(spec=RedisClientWrapper)
+    with patch("extensions.ext_application_services.RateLimiter") as rate_limiter_type:
+        ext_application_services.build_application_services(
+            database_client=sqlite_session_factory,
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            initialization_password="",
+            redis=redis,
+        )
+
+    rate_limiter_type.assert_any_call(
+        prefix="edu_verification_rate_limit",
+        max_attempts=10,
+        time_window=60,
+        redis_client=redis,
+    )
+    rate_limiter_type.assert_any_call(
+        prefix="edu_activation_rate_limit",
+        max_attempts=10,
+        time_window=60,
+        redis_client=redis,
+    )
+
+
 def test_build_application_services_wires_account_profile_repository(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:

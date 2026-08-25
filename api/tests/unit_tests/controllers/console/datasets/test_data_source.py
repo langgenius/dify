@@ -16,7 +16,9 @@ from werkzeug.exceptions import NotFound
 from controllers.console.datasets import data_source as module
 from controllers.console.datasets.data_source import DataSourceApi, DataSourceNotionListApi, DataSourceNotionListQuery
 from models import Account, DataSourceOauthBinding
+from models.dataset import Dataset
 from models.engine import db
+from models.enums import DataSourceType
 
 ControllerMethod = Callable[..., tuple[dict[str, object], int]]
 
@@ -274,7 +276,12 @@ def test_notion_pre_import_pages_rejects_non_notion_dataset(
     current_user: Account,
     sqlite_session: Session,
 ) -> None:
-    dataset = MagicMock(data_source_type="other_type")
+    dataset = Dataset(
+        tenant_id=TENANT_ID,
+        name="Non-Notion dataset",
+        created_by=current_user.id,
+        data_source_type=DataSourceType.WEBSITE_CRAWL,
+    )
 
     with (
         flask_app.test_request_context("/?credential_id=credential-1&dataset_id=dataset-1"),

@@ -1106,6 +1106,19 @@ class AgentRosterService:
             target_app_id=target_app.id,
             account_id=account.id,
         )
+        from services.skill_management_service import SkillManagementService
+
+        target_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=target_app.id)
+        if target_agent is None:
+            raise AgentNotFoundError()
+        SkillManagementService(session=self._session).copy_agent_bindings(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            source_snapshot_id=source_agent.active_config_snapshot_id or "",
+            target_agent_id=target_agent.id,
+            user_id=account.id,
+            source_include_draft=not source_agent.active_config_is_published,
+        )
         self._session.commit()
         if FeatureService.get_system_features().webapp_auth.enabled:
             try:

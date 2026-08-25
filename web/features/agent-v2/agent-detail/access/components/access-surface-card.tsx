@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +24,7 @@ export type AccessSurfaceCardProps = {
   badge?: ReactNode
   endpointActions?: ReactNode
   disabled?: boolean
+  disabledReason?: string
   busy?: boolean
 }
 
@@ -42,6 +44,7 @@ export function AccessSurfaceCard({
   badge,
   endpointActions,
   disabled = false,
+  disabledReason,
   busy = false,
 }: AccessSurfaceCardProps) {
   const { t } = useTranslation('agentV2')
@@ -54,7 +57,21 @@ export function AccessSurfaceCard({
     },
   })
   const canCopyEndpoint = Boolean(endpoint)
-  const switchDisabled = disabled || busy
+  const hasDisabledReason = disabled && Boolean(disabledReason)
+  const switchControl = (
+    <Switch
+      size="md"
+      checked={enabled}
+      disabled={busy || (disabled && !hasDisabledReason)}
+      readOnly={hasDisabledReason}
+      aria-disabled={hasDisabledReason || undefined}
+      data-disabled={hasDisabledReason ? '' : undefined}
+      aria-label={t(($) => $['agentDetail.access.toggleSurface'], { name: title })}
+      onCheckedChange={(nextEnabled) => {
+        if (!disabled && !busy) onEnabledChange(nextEnabled)
+      }}
+    />
+  )
 
   const handleCopyEndpoint = () => {
     if (!canCopyEndpoint) return
@@ -101,13 +118,14 @@ export function AccessSurfaceCard({
                   ],
               )}
             </span>
-            <Switch
-              size="md"
-              checked={enabled}
-              disabled={switchDisabled}
-              aria-label={t(($) => $['agentDetail.access.toggleSurface'], { name: title })}
-              onCheckedChange={onEnabledChange}
-            />
+            {disabled && disabledReason ? (
+              <Tooltip>
+                <TooltipTrigger render={switchControl} />
+                <TooltipContent role="tooltip">{disabledReason}</TooltipContent>
+              </Tooltip>
+            ) : (
+              switchControl
+            )}
           </div>
         </div>
 
