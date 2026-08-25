@@ -16,7 +16,7 @@ from core.db.session_factory import session_factory
 from enums import DeploymentEdition
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
-from models import Account, App, Dataset
+from models import Account
 from services.enterprise import rbac_service as svc
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -169,18 +169,6 @@ def _hydrate_resource_user_account_names(items: list[svc.ResourceUserAccessPolic
             item.account.account_name = account_names.get(account_id, {}).get("name", "")
             item.account.avatar = account_names.get(account_id, {}).get("avatar", "")
             item.account.email = account_names.get(account_id, {}).get("email", "")
-
-
-def _app_maintainer_id(tenant_id: str, app_id: str) -> str | None:
-    with session_factory.create_session() as session:
-        return session.scalar(select(App.maintainer).where(App.id == app_id, App.tenant_id == tenant_id))
-
-
-def _dataset_maintainer_id(tenant_id: str, dataset_id: str) -> str | None:
-    with session_factory.create_session() as session:
-        return session.scalar(
-            select(Dataset.maintainer).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id)
-        )
 
 
 def _move_resource_maintainer_first(items: list[svc.ResourceUserAccessPolicies], maintainer_id: str | None) -> None:
@@ -683,7 +671,7 @@ class RBACAppUserAccessPoliciesApi(Resource):
         tenant_id, account_id = _current_ids()
         options = _pagination_options()
         result = svc.RBACService.AppAccess.user_access_policies(tenant_id, account_id, str(app_id), options=options)
-        _move_resource_maintainer_first(result.data, _app_maintainer_id(tenant_id, str(app_id)))
+        _move_resource_maintainer_first(result.data, svc.app_maintainer_id(tenant_id, str(app_id)))
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 
@@ -804,7 +792,7 @@ class RBACDatasetUserAccessPoliciesApi(Resource):
         result = svc.RBACService.DatasetAccess.user_access_policies(
             tenant_id, account_id, str(dataset_id), options=options
         )
-        _move_resource_maintainer_first(result.data, _dataset_maintainer_id(tenant_id, str(dataset_id)))
+        _move_resource_maintainer_first(result.data, svc.dataset_maintainer_id(tenant_id, str(dataset_id)))
         _hydrate_resource_user_account_names(result.data)
         return _dump(result)
 

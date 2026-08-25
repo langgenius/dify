@@ -12,11 +12,24 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from models import TenantAccountJoin, TenantAccountRole
+from core.db.session_factory import session_factory
+from models import App, Dataset, TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)
+
+
+def app_maintainer_id(tenant_id: str, app_id: str) -> str | None:
+    with session_factory.create_session() as session:
+        return session.scalar(select(App.maintainer).where(App.id == app_id, App.tenant_id == tenant_id))
+
+
+def dataset_maintainer_id(tenant_id: str, dataset_id: str) -> str | None:
+    with session_factory.create_session() as session:
+        return session.scalar(
+            select(Dataset.maintainer).where(Dataset.id == dataset_id, Dataset.tenant_id == tenant_id)
+        )
 
 
 class _RBACModel(BaseModel):
