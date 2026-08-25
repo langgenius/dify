@@ -1130,7 +1130,7 @@ export function AgentPromptEditor() {
               aria-labelledby="agent-configure-prompt-label"
               compact
               wrapperClassName="min-h-[104px]"
-              className="min-h-26 text-text-primary"
+              className={cn('min-h-26 text-text-primary', readOnly && 'cursor-not-allowed')}
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}
