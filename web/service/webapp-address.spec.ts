@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { getWebAppApiPath, parseWebAppAddress, resolveWebAppAddress } from './webapp-address'
+import {
+  getWebAppApiPath,
+  getWebAppPublicApiPath,
+  parseWebAppAddress,
+  resolveWebAppAddress,
+} from './webapp-address'
 
 describe('WebAppAddress', () => {
   afterEach(() => {
@@ -31,10 +36,31 @@ describe('WebAppAddress', () => {
 
   it('builds the environment upload and workflow URLs', () => {
     const address = parseWebAppAddress('/environment/workflow/workflow-app')
-    expect(getWebAppApiPath(address, '/files/upload')).toBe('/environment/workflow-app/files/upload')
-    expect(getWebAppApiPath(address, '/workflows/run')).toBe('/environment/workflow-app/workflows/run')
+    expect(getWebAppApiPath(address, '/files/upload')).toBe(
+      '/environment/workflow-app/files/upload',
+    )
+    expect(getWebAppApiPath(address, '/workflows/run')).toBe(
+      '/environment/workflow-app/workflows/run',
+    )
     expect(getWebAppApiPath(address, '/workflows/tasks/task-1/stop')).toBe(
       '/environment/workflow-app/workflows/tasks/task-1/stop',
+    )
+  })
+
+  it('routes only environment login status to the environment API', () => {
+    const address = parseWebAppAddress('/environment/workflow/workflow-app')
+
+    expect(getWebAppPublicApiPath(address, '/login/status?user_id=user-1')).toBe(
+      '/environment/workflow-app/login/status?user_id=user-1',
+    )
+    expect(getWebAppPublicApiPath(address, '/login')).toBe('/login')
+    expect(getWebAppPublicApiPath(address, '/logout')).toBe('/logout')
+    expect(getWebAppPublicApiPath(address, '/email-code-login/validity')).toBe(
+      '/email-code-login/validity',
+    )
+    expect(getWebAppPublicApiPath(address, '/forgot-password')).toBe('/forgot-password')
+    expect(getWebAppPublicApiPath(address, '/enterprise/sso/members/oidc/login')).toBe(
+      '/enterprise/sso/members/oidc/login',
     )
   })
 
