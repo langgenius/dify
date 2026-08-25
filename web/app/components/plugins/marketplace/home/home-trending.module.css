@@ -219,9 +219,14 @@
     border-radius: 16px;
   }
 
+  /* Recommend mobile: already-tinted crop, not the desktop image + mix-blend. */
   :global([data-marketplace-standalone]) .recommendVisual {
     border-radius: 12px;
     background-color: var(--color-text-accent);
+    background-image: url('./assets/recommend-mobile-backdrop.webp');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
   }
 
   :global([data-marketplace-standalone]) .stackedCopy {
@@ -235,17 +240,16 @@
     gap: 4px;
   }
 
-  /* Event/ad mobile: show the full poster instead of cropping it into a
-     357px cover box. Height follows the selected image's aspect ratio. */
+  /* Event/ad mobile: 800×721 slot (Figma 1141:67292). Image fills the box. */
   :global([data-marketplace-standalone]) .imageSlide {
     height: auto;
+    aspect-ratio: 800 / 721;
   }
 
   :global([data-marketplace-standalone]) .imageSlide :is(picture, img) {
     width: 100%;
-    height: auto;
-    aspect-ratio: auto;
-    object-fit: contain;
+    height: 100%;
+    object-fit: cover;
     object-position: center;
   }
 
