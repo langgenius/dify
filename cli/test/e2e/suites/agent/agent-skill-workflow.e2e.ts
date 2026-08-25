@@ -583,6 +583,18 @@ describe('E2E / agent skill — effect guard (no auth)', () => {
     expect(JSON.parse(r.stdout).effect).toBe('write')
   })
 
+  it('[P0] state-mutating import and context switches have effect=write', async () => {
+    for (const args of [
+      ['help', 'import', 'studio-app', '-o', 'json'],
+      ['help', 'use', 'account', '-o', 'json'],
+      ['help', 'use', 'host', '-o', 'json'],
+    ]) {
+      const r = await run(args)
+      expect(r.exitCode).toBe(0)
+      expect(JSON.parse(r.stdout).effect).toBe('write')
+    }
+  })
+
   it('[P0] auth devices revoke effect=destructive — agent must confirm before calling', async () => {
     const r = await run(['help', 'auth', 'devices', 'revoke', '-o', 'json'])
     expect(r.exitCode).toBe(0)
