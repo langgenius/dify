@@ -1,17 +1,43 @@
-.iconLight {
-  display: block;
+.decorations {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
 }
 
-.iconDark {
-  display: none;
+/* 40px cells + 1px divider-subtle lines, matching Figma header/Variant2. */
+.grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(
+      to right,
+      transparent 20px,
+      var(--color-divider-subtle) 20px,
+      var(--color-divider-subtle) 21px,
+      transparent 21px
+    ),
+    linear-gradient(to bottom, var(--color-divider-subtle) 1px, transparent 1px);
+  background-size:
+    41px 100%,
+    100% 41px;
+  background-position:
+    center top,
+    left 40px;
 }
 
-:global(html[data-theme='dark']) .iconLight {
-  display: none;
-}
-
-:global(html[data-theme='dark']) .iconDark {
-  display: block;
+.glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 640px;
+  height: 200px;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse 50% 45% at 50% 45%,
+    var(--color-background-default) 0%,
+    var(--color-background-default) 38%,
+    transparent 72%
+  );
 }
 
 @media (max-width: 879px) {

@@ -26,12 +26,21 @@ describe('HomeHero', () => {
     expect(screen.queryByText('marketplace.home.heroTitle')).not.toBeInTheDocument()
   })
 
-  it('renders the Google mark as an image instead of a blank iconify mask', () => {
+  it('renders the six decorative hero icons as images instead of iconify masks', () => {
     const { container } = render(<HomeHero isMarketplacePlatform />)
-    const google = container.querySelector('img[src*="google"]')
 
-    expect(google).not.toBeNull()
+    for (const name of [
+      'sparkling-fill',
+      'plug-fill',
+      'puzzle-fill',
+      'brain-2-fill',
+      'image-circle-ai-line',
+      'voice-ai-fill',
+    ])
+      expect(container.querySelector(`img[src*="${name}"]`)).not.toBeNull()
+
+    expect(container.querySelector('img[src*="google"]')).toBeNull()
+    expect(container.querySelector('.i-ri-sparkling-fill')).toBeNull()
     expect(container.querySelector('.i-custom-public-common-gmail')).toBeNull()
-    expect(container.querySelector('.i-custom-public-common-dropbox')).toBeNull()
   })
 })
