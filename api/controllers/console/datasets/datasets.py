@@ -478,15 +478,14 @@ class DatasetListApi(Resource):
                 }
             if getattr(whitelist_scope, "unrestricted", False):
                 filtered_dataset_ids = permission_dataset_ids
+                include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
             else:
+                # A restricted dataset whitelist is the highest-priority visibility gate:
+                # default readonly, per-dataset permission overrides, and own-dataset
+                # management must not expose datasets outside this set.
                 filtered_dataset_ids = set(whitelist_scope.resource_ids)
-                if permission_dataset_ids is not None:
-                    filtered_dataset_ids |= permission_dataset_ids
-                elif has_default_readonly:
-                    filtered_dataset_ids = None
             if filtered_dataset_ids is not None:
                 accessible_dataset_ids = sorted(filtered_dataset_ids)
-            include_own_datasets = "dataset.create_and_management" in permissions.workspace.permission_keys
 
         if query.ids:
             datasets, total = DatasetService.get_datasets_by_ids(
