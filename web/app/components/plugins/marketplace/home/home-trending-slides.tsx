@@ -23,6 +23,12 @@ import {
 import { getPluginLinkInMarketplace } from '../utils'
 import background from './assets/background.webp'
 import difyUpdatesArt from './assets/dify-updates-art.png'
+import {
+  EMBEDDED_MOBILE_BANNER_MEDIA,
+  MARKETPLACE_MOBILE_BANNER_MEDIA,
+  marketplaceTabletBannerMedia,
+  resolveEventAdBannerImageSrcs,
+} from './event-ad-banner-image'
 import { buildMarketplaceBannerClickProperties } from './home-trending-track'
 import styles from './home-trending.module.css'
 
@@ -406,9 +412,11 @@ function ImageBannerSlide({
   isMarketplacePlatform: boolean
   page: MarketplaceBannerPage
 }) {
-  const desktopImage = getMarketplaceAssetURL(banner.content.images.desktop)
-  const tabletImage = getMarketplaceAssetURL(banner.content.images.tablet)
-  const mobileImage = getMarketplaceAssetURL(banner.content.images.mobile)
+  const resolved = resolveEventAdBannerImageSrcs({
+    desktop: getMarketplaceAssetURL(banner.content.images.desktop),
+    tablet: getMarketplaceAssetURL(banner.content.images.tablet) || undefined,
+    mobile: getMarketplaceAssetURL(banner.content.images.mobile) || undefined,
+  })
 
   return (
     <Link
@@ -426,15 +434,15 @@ function ImageBannerSlide({
       )}
     >
       <picture className="block size-full">
-        {mobileImage && (
-          <source
-            media={isMarketplacePlatform ? '(max-width: 879px)' : '(max-width: 639px)'}
-            srcSet={mobileImage}
-          />
+        <source
+          media={isMarketplacePlatform ? MARKETPLACE_MOBILE_BANNER_MEDIA : EMBEDDED_MOBILE_BANNER_MEDIA}
+          srcSet={resolved.mobile}
+        />
+        {resolved.tablet && (
+          <source media={marketplaceTabletBannerMedia(isMarketplacePlatform)} srcSet={resolved.tablet} />
         )}
-        {tabletImage && <source media="(max-width: 1023px)" srcSet={tabletImage} />}
         <img
-          src={desktopImage}
+          src={resolved.desktop}
           width={1200}
           height={200}
           alt=""

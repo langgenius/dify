@@ -187,6 +187,36 @@ describe('HomeTrending', () => {
     )
   })
 
+  it('falls back to desktop on the mobile source when an event banner has no mobile asset', () => {
+    const eventWithoutMobile: PluginBanner = {
+      id: 'event-desktop-only',
+      style_type: 'event',
+      title: 'Desktop Event',
+      sort: 0,
+      language: 'en',
+      content: {
+        images: {
+          desktop: '/api/v1/banners/images/banners/event-desktop.png',
+          tablet: '/api/v1/banners/images/banners/event-tablet.png',
+        },
+        link: 'https://dify.ai/event',
+        alt_text: 'Desktop event',
+      },
+    }
+
+    render(<HomeTrending banners={[eventWithoutMobile]} isMarketplacePlatform page="plugins" />)
+
+    const eventLink = screen.getByRole('link', { name: 'Desktop event' })
+    const sources = eventLink.querySelectorAll('source')
+
+    expect(sources[0]).toHaveAttribute('media', '(max-width: 879px)')
+    expect(sources[0]?.getAttribute('srcset')).toContain('event-desktop.png')
+    expect(sources[0]?.getAttribute('srcset')).not.toContain('event-tablet.png')
+    expect(sources[1]).toHaveAttribute('media', '(min-width: 880px) and (max-width: 1023px)')
+    expect(sources[1]?.getAttribute('srcset')).toContain('event-tablet.png')
+    expect(eventLink.querySelector('img')?.getAttribute('src')).toContain('event-desktop.png')
+  })
+
   it('switches to the selected slide from the pagination with the keyboard', async () => {
     const user = userEvent.setup()
 
