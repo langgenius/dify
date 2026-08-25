@@ -805,14 +805,14 @@ describe('Agent access surface cards', () => {
       expect(toast.success).not.toHaveBeenCalled()
     })
 
-    it('should write confirmed API status to the API access and Agent detail caches', async () => {
+    it('should keep raw API enablement separate from effective API access status', async () => {
       const user = userEvent.setup()
-      const initialApiAccess = createAgentApiAccessResponse()
-      const updatedApiAccess = createAgentApiAccessResponse({ enabled: false })
+      const initialApiAccess = createAgentApiAccessResponse({ enabled: false })
+      const updatedApiAccess = createAgentApiAccessResponse({ access_ready: false, enabled: false })
       mocks.apiAccessQueryFn.mockResolvedValueOnce(initialApiAccess)
       mocks.apiEnableMutation.mockResolvedValueOnce(updatedApiAccess)
 
-      const agent = createAgent()
+      const agent = createAgent({ enable_api: false })
       const queryClient = renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
       queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
 
@@ -826,7 +826,7 @@ describe('Agent access surface cards', () => {
       await waitFor(() => {
         expect(queryClient.getQueryData(['agent-api-access', 'agent-1'])).toEqual(updatedApiAccess)
         expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toMatchObject({
-          enable_api: false,
+          enable_api: true,
         })
       })
       expect(toast.success).not.toHaveBeenCalled()

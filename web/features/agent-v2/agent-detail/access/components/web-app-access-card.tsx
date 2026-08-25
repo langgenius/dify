@@ -54,7 +54,6 @@ function WebAppLaunchAction({
     <Button
       variant="secondary"
       size="medium"
-      className="data-disabled:inset-ring-components-button-secondary-border"
       disabled
       focusableWhenDisabled={Boolean(disabledReason)}
     >

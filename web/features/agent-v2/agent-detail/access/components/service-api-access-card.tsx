@@ -31,7 +31,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
       scope: {
         id: `agent-service-api-toggle:${agentId}`,
       },
-      onSuccess: (updatedApiAccess) => {
+      onSuccess: (updatedApiAccess, variables) => {
         queryClient.setQueryData(apiAccessQueryOptions.queryKey, updatedApiAccess)
         queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
           consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
@@ -39,7 +39,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
             agentDetail
               ? {
                   ...agentDetail,
-                  enable_api: updatedApiAccess.enabled,
+                  enable_api: variables.body.enable_api,
                 }
               : agentDetail,
         )
