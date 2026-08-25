@@ -350,7 +350,7 @@ class WorkflowRunRestore:
         if not schema_version:
             logger.warning("Manifest missing schema_version; defaulting to 1.0")
             schema_version = "1.0"
-        schema_version = str(schema_version)
+        schema_version = schema_version
         if schema_version not in SCHEMA_MAPPERS:
             raise ValueError(f"Unsupported schema_version {schema_version}. Add a mapping before restoring.")
         return schema_version

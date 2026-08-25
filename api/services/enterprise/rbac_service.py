@@ -287,9 +287,9 @@ class ResourcePermissionSnapshot(_RBACModel):
     overrides: list[ResourcePermissionKeys] = Field(default_factory=list)
 
     def permission_keys_by_resource_ids(self, resource_ids: list[str]) -> dict[str, list[str]]:
-        result = {str(resource_id): list(self.default_permission_keys) for resource_id in resource_ids}
+        result = {resource_id: list(self.default_permission_keys) for resource_id in resource_ids}
         for override in self.overrides:
-            resource_id = str(override.resource_id)
+            resource_id = override.resource_id
             if resource_id in result:
                 result[resource_id] = list(override.permission_keys)
         return result
@@ -613,7 +613,7 @@ def _legacy_resource_permission_keys_batch(
         permission_keys = snapshot.app.default_permission_keys
     else:
         permission_keys = snapshot.dataset.default_permission_keys
-    return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
+    return {resource_id: list(permission_keys) for resource_id in resource_ids}
 
 
 # ---------- Mutation request models ----------
@@ -757,7 +757,7 @@ def _inner_call(
 
 
 def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str) -> dict[str, str]:
-    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else str(resource_type)
+    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else resource_type
     resource_id = resource_id.strip()
     if resource_type_value == RBACResourceType.APP.value:
         return {"resource_type": resource_type_value, "app_id": resource_id}
