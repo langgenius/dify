@@ -9,6 +9,7 @@ This module tests the email code login mechanism including:
 """
 
 import base64
+from collections.abc import Callable
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
@@ -54,6 +55,11 @@ from services.errors.account import (
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
+
+
+@pytest.fixture(autouse=True)
+def _default_edition(config_overrides: Callable[..., None]) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
 
 
 def encode_code(code: str) -> str:
@@ -197,7 +203,14 @@ class TestEmailCodeLoginSendEmailApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.is_email_send_ip_limit")
     @patch("controllers.console.auth.login.TurnstileService.verify")
-    def test_send_email_code_ip_rate_limited(self, mock_verify, mock_is_ip_limit, mock_db, app: Flask):
+    def test_send_email_code_ip_rate_limited(
+        self,
+        mock_verify,
+        mock_is_ip_limit,
+        mock_db,
+        app: Flask,
+        config_overrides: Callable[..., None],
+    ):
         """
         Test email code sending blocked by IP rate limit.
 
@@ -205,12 +218,11 @@ class TestEmailCodeLoginSendEmailApi:
         - EmailSendIpLimitError is raised when IP limit exceeded
         - Prevents spam and abuse
         """
-        # Arrange
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mock_is_ip_limit.return_value = True
 
         # Act & Assert
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
         ):
             with pytest.raises(EmailSendIpLimitError):
@@ -232,11 +244,12 @@ class TestEmailCodeLoginSendEmailApi:
         mock_db,
         app: Flask,
         mock_account,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         mock_get_user.return_value = mock_account
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             app.test_request_context(
                 "/email-code-login",
                 method="POST",
@@ -268,9 +281,10 @@ class TestEmailCodeLoginSendEmailApi:
         app: Flask,
         service_error: Exception,
         http_error: type[Exception],
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD),
             patch("controllers.console.auth.login.TurnstileService.verify", side_effect=service_error),
             app.test_request_context(
                 "/email-code-login",
@@ -297,11 +311,12 @@ class TestEmailCodeLoginSendEmailApi:
         mock_db,
         app: Flask,
         mock_account,
+        config_overrides: Callable[..., None],
     ):
+        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         mock_get_user.return_value = mock_account
 
         with (
-            patch("controllers.console.auth.login.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY),
             app.test_request_context("/email-code-login", method="POST", json={"email": "test@example.com"}),
         ):
             response = EmailCodeLoginSendEmailApi().post()
