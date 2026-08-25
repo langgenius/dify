@@ -5,25 +5,10 @@ from collections.abc import Callable, Sequence
 from typing import final, override
 
 from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
-from extensions.ext_redis import redis_client
-from graphon.engine.command import AbortCommand, Command, CommandChannel, RedisChannel
+from graphon.engine.command import AbortCommand, Command, CommandChannel
 
 logger = logging.getLogger(__name__)
 ShutdownStateGetter = Callable[[], bool]
-
-
-def send_abort_command(task_id: str, reason: str | None = None) -> None:
-    """Send an abort command to the workflow engine serving ``task_id``."""
-    if not task_id:
-        return
-
-    try:
-        RedisChannel(redis_client, f"workflow:{task_id}:commands").send_command(
-            AbortCommand(reason=reason or "User requested stop")
-        )
-    except Exception:
-        # The legacy stop flag remains the fallback when Redis is unavailable.
-        logger.exception("Failed to send Engine abort command for task %s", task_id)
 
 
 @final

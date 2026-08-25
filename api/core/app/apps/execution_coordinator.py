@@ -7,9 +7,8 @@ from collections.abc import Callable
 from enum import Enum, auto
 
 from configs import dify_config
-from core.app.apps.workflow.command_channels import send_abort_command
 from extensions.ext_redis import redis_client
-from graphon.engine.command import RedisChannel
+from graphon.engine.command import AbortCommand, RedisChannel
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,20 @@ def app_task_command_channel_key(task_id: str) -> str:
 def app_task_stop_flag_key(task_id: str) -> str:
     """Redis key of the legacy generate-task stop flag."""
     return f"generate_task_stopped:{task_id}"
+
+
+def send_abort_command(task_id: str, reason: str | None = None) -> None:
+    """Send an abort command to the workflow engine serving ``task_id``."""
+    if not task_id:
+        return
+
+    try:
+        RedisChannel(redis_client, app_task_command_channel_key(task_id)).send_command(
+            AbortCommand(reason=reason or "User requested stop")
+        )
+    except Exception:
+        # The legacy stop flag remains the fallback when Redis is unavailable.
+        logger.exception("Failed to send Engine abort command for task %s", task_id)
 
 
 def set_app_task_stop_flag(task_id: str) -> None:

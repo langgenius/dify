@@ -1,6 +1,7 @@
 import importlib
 import pkgutil
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
+from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, cast, final, override
@@ -22,7 +23,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     parse_llm_model_selector,
     resolve_llm_model_config,
@@ -58,7 +59,7 @@ from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.enums import BuiltinNodeTypes, NodeExecutionType, NodeType
 from graphon.file.file_manager import file_manager
 from graphon.graph.graph import NodeFactory
 from graphon.model_runtime.memory import PromptMessageMemory
@@ -411,6 +412,12 @@ class DifyNodeFactory(NodeFactory):
             containerize_workflow_tools=self._containerize_workflow_tools,
         )
 
+    @override
+    def with_graph_config(self, graph_config: Mapping[str, Any]) -> "DifyNodeFactory":
+        factory = copy(self)
+        factory.graph_init_params = self.graph_init_params.model_copy(update={"graph_config": graph_config})
+        return factory
+
     @property
     def human_input_run_context(self) -> DifyRunContext:
         if self._human_input_run_context is None:
@@ -442,19 +449,9 @@ class DifyNodeFactory(NodeFactory):
             (including pydantic ValidationError, which subclasses ValueError),
             if node type is unknown, or if no implementation exists for the resolved version
         """
-        adapted_node_config = adapt_node_config_for_graph(node_config)
-        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+        adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
-        node_class = self._resolve_node_class_for_factory(
-            node_type=node_data.type,
-            node_version=str(node_data.version),
-            node_data=node_data,
-        )
-        # Graph configs are initially validated against permissive shared node data.
-        # Re-validate using the resolved node class so workflow-local node schemas
-        # stay explicit and constructors receive the concrete typed payload.
-        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -531,6 +528,29 @@ class DifyNodeFactory(NodeFactory):
             **node_init_kwargs,
         )
         return node
+
+    @override
+    def validate_node(self, node_config: NodeConfigDict) -> NodeExecutionType:
+        adapted_node_config, typed_node_config, node_class, _ = self._validate_node_config(node_config)
+        if typed_node_config["data"].type == BuiltinNodeTypes.HUMAN_INPUT:
+            node_data = DifyHumanInputNodeData.model_validate(adapted_node_config["data"])
+            parse_human_input_delivery_methods(node_data)
+        return node_class.execution_type
+
+    def _validate_node_config(
+        self,
+        node_config: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], NodeConfigDict, type[Node], BaseNodeData]:
+        adapted_node_config = adapt_node_config_for_graph(node_config)
+        typed_node_config = NodeConfigDictAdapter.validate_python(adapted_node_config)
+        node_data = typed_node_config["data"]
+        node_class = self._resolve_node_class_for_factory(
+            node_type=node_data.type,
+            node_version=str(node_data.version),
+            node_data=node_data,
+        )
+        resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        return adapted_node_config, typed_node_config, node_class, resolved_node_data
 
     @staticmethod
     def _validate_resolved_node_data(node_class: type[Node], node_data: BaseNodeData) -> BaseNodeData:

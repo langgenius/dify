@@ -5,11 +5,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from core.app.apps.execution_coordinator import send_abort_command
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
     StopFlagCommandChannel,
-    send_abort_command,
 )
 from graphon.engine.command import AbortCommand, PauseCommand
 
@@ -32,7 +32,7 @@ def test_send_abort_command_uses_workflow_redis_channel(monkeypatch: pytest.Monk
     redis_channel = Mock()
     redis_channel_factory = Mock(return_value=redis_channel)
     monkeypatch.setattr(
-        "core.app.apps.workflow.command_channels.RedisChannel",
+        "core.app.apps.execution_coordinator.RedisChannel",
         redis_channel_factory,
     )
 
@@ -49,7 +49,7 @@ def test_send_abort_command_uses_workflow_redis_channel(monkeypatch: pytest.Monk
 def test_send_abort_command_preserves_legacy_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     redis_channel_factory = Mock()
     redis_channel_factory.return_value.send_command.side_effect = RuntimeError("redis unavailable")
-    monkeypatch.setattr("core.app.apps.workflow.command_channels.RedisChannel", redis_channel_factory)
+    monkeypatch.setattr("core.app.apps.execution_coordinator.RedisChannel", redis_channel_factory)
 
     send_abort_command("task-id")
     send_abort_command("")
