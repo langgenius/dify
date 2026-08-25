@@ -2366,7 +2366,6 @@ describe('SkillDetailPage', () => {
   })
 
   it('updates and removes existing custom metadata from the manifest editor', async () => {
-    const user = userEvent.setup()
     const content =
       '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n  owner: support\n---\n# GitHub Actions Failure Debugging\n'
     mocks.skillDetail = createSkillDetail({
@@ -2382,9 +2381,8 @@ describe('SkillDetailPage', () => {
     renderSkillDetailPage()
 
     const ownerValue = await screen.findByRole('textbox', { name: 'owner value' })
-    await user.clear(ownerValue)
-    await user.type(ownerValue, 'success')
-    await user.tab()
+    fireEvent.change(ownerValue, { target: { value: 'success' } })
+    fireEvent.blur(ownerValue)
 
     await waitFor(
       () => {
@@ -2401,7 +2399,7 @@ describe('SkillDetailPage', () => {
       { timeout: 2500 },
     )
 
-    await user.click(screen.getByRole('button', { name: 'Remove owner' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove owner' }))
 
     await waitFor(
       () => {
