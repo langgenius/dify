@@ -103,6 +103,7 @@ def test_publish_workflow_returns_success(
     with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
         response = inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
             workflow_module.PublishedWorkflowApi(),
+            workflow_module.PublishWorkflowPayload.model_validate({}),
             current_user,
             app_model,
         )
@@ -547,7 +548,10 @@ def test_get_published_workflows_serializes_items_before_session_closes(
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api, "t1", app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
+        query = workflow_module.WorkflowListQuery.model_validate(
+            {"page": "1", "limit": "10", "user_id": "", "named_only": "false"}
+        )
+        response = handler(api, query, "t1", app_model=SimpleNamespace(id="app", workflow_id="wf-1"))
 
     assert response["items"][0]["id"] == "w1"
     assert response["page"] == 1
@@ -806,15 +810,24 @@ def test_advanced_chat_run_conversation_not_exists(app: Flask, monkeypatch: pyte
         method="POST",
         json={"inputs": {}},
     ):
+        payload = workflow_module.AdvancedChatWorkflowRunPayload.model_validate({"inputs": {}})
         with pytest.raises(NotFound):
-            handler(api, Mock(), "t1", app_model=SimpleNamespace(id="app"))
+            handler(api, payload, Mock(), "t1", app_model=SimpleNamespace(id="app"))
 
 
 @pytest.mark.parametrize(
-    ("resource", "payload"),
+    ("resource", "payload_model", "payload"),
     [
-        (workflow_module.DraftWorkflowTriggerRunApi, {"node_id": "node-1"}),
-        (workflow_module.DraftWorkflowTriggerRunAllApi, {"node_ids": ["node-1"]}),
+        (
+            workflow_module.DraftWorkflowTriggerRunApi,
+            workflow_module.DraftWorkflowTriggerRunPayload,
+            {"node_id": "node-1"},
+        ),
+        (
+            workflow_module.DraftWorkflowTriggerRunAllApi,
+            workflow_module.DraftWorkflowTriggerRunAllPayload,
+            {"node_ids": ["node-1"]},
+        ),
     ],
 )
 def test_trigger_run_loads_draft_with_request_session(
@@ -822,6 +835,7 @@ def test_trigger_run_loads_draft_with_request_session(
     monkeypatch: pytest.MonkeyPatch,
     unbound_session: Session,
     resource: type,
+    payload_model: type,
     payload: dict[str, object],
 ) -> None:
     get_draft_workflow = Mock(return_value=None)
@@ -836,7 +850,13 @@ def test_trigger_run_loads_draft_with_request_session(
 
     with app.test_request_context("/", method="POST", json=payload):
         with pytest.raises(ValueError, match="Workflow not found"):
-            handler(resource(), session, SimpleNamespace(id="account-1"), app_model)
+            handler(
+                resource(),
+                payload_model.model_validate(payload),
+                session,
+                SimpleNamespace(id="account-1"),
+                app_model,
+            )
 
     get_draft_workflow.assert_called_once_with(app_model, session=session)
 
@@ -906,7 +926,8 @@ def test_workflow_online_users_filters_inaccessible_workflow(app: Flask, monkeyp
         method="POST",
         json={"app_ids": [app_id_1, app_id_2]},
     ):
-        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
+        args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": [app_id_1, app_id_2]})
+        response = handler(api, args, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert response == {
         "data": [
@@ -963,7 +984,8 @@ def test_workflow_online_users_batches_redis_reads(app: Flask, monkeypatch: pyte
         method="POST",
         json={"app_ids": app_ids},
     ):
-        response = handler(api, "tenant-1", SimpleNamespace(id="account-1"))
+        args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": app_ids})
+        response = handler(api, args, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert len(response["data"]) == len(app_ids)
     assert redis_pipeline_factory.call_count == 2
@@ -989,8 +1011,9 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
         method="POST",
         json={"app_ids": excessive_ids},
     ):
+        args = workflow_module.WorkflowOnlineUsersPayload.model_validate({"app_ids": excessive_ids})
         with pytest.raises(HTTPException) as exc:
-            handler(api, "tenant-1", SimpleNamespace(id="account-1"))
+            handler(api, args, "tenant-1", SimpleNamespace(id="account-1"))
 
     assert exc.value.code == 400
     assert exc.value.description is not None
