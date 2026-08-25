@@ -8,8 +8,8 @@ import * as z from 'zod'
 export const zRecommendedAppDetailResponse = z.object({
   can_trial: z.boolean(),
   export_data: z.string(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
   id: z.string(),
   mode: z.string(),
   name: z.string(),
@@ -19,29 +19,29 @@ export const zRecommendedAppDetailResponse = z.object({
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponse = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
   icon_url: z.string().nullable(),
   id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
+  mode: z.string().nullish().default(null),
+  name: z.string().nullish().default(null),
 })
 
 /**
  * RecommendedAppResponse
  */
 export const zRecommendedAppResponse = z.object({
-  app: zRecommendedAppInfoResponse.nullish(),
+  app: zRecommendedAppInfoResponse.nullish().default(null),
   app_id: z.string(),
   can_trial: z.boolean(),
   categories: z.array(z.string()).optional(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  description: z.string().nullish(),
-  is_listed: z.boolean().nullish(),
-  position: z.int().nullish(),
-  privacy_policy: z.string().nullish(),
+  copyright: z.string().nullish().default(null),
+  custom_disclaimer: z.string().nullish().default(null),
+  description: z.string().nullish().default(null),
+  is_listed: z.boolean().nullish().default(null),
+  position: z.int().nullish().default(null),
+  privacy_policy: z.string().nullish().default(null),
 })
 
 /**
@@ -97,28 +97,28 @@ export const zBannerListResponse = z.array(zBannerResponse)
  * RecommendedAppInfoResponse
  */
 export const zRecommendedAppInfoResponseWritable = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
   id: z.string(),
-  mode: z.string().nullish(),
-  name: z.string().nullish(),
+  mode: z.string().nullish().default(null),
+  name: z.string().nullish().default(null),
 })
 
 /**
  * RecommendedAppResponse
  */
 export const zRecommendedAppResponseWritable = z.object({
-  app: zRecommendedAppInfoResponseWritable.nullish(),
+  app: zRecommendedAppInfoResponseWritable.nullish().default(null),
   app_id: z.string(),
   can_trial: z.boolean(),
   categories: z.array(z.string()).optional(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  description: z.string().nullish(),
-  is_listed: z.boolean().nullish(),
-  position: z.int().nullish(),
-  privacy_policy: z.string().nullish(),
+  copyright: z.string().nullish().default(null),
+  custom_disclaimer: z.string().nullish().default(null),
+  description: z.string().nullish().default(null),
+  is_listed: z.boolean().nullish().default(null),
+  position: z.int().nullish().default(null),
+  privacy_policy: z.string().nullish().default(null),
 })
 
 /**

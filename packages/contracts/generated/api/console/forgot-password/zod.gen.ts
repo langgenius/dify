@@ -7,15 +7,15 @@ import * as z from 'zod'
  */
 export const zForgotPasswordSendPayload = z.object({
   email: z.string(),
-  language: z.string().nullish(),
+  language: z.string().nullish().default(null),
 })
 
 /**
  * ForgotPasswordEmailResponse
  */
 export const zForgotPasswordEmailResponse = z.object({
-  code: z.string().nullish(),
-  data: z.string().nullish(),
+  code: z.string().nullish().default(null),
+  data: z.string().nullish().default(null),
   result: z.string(),
 })
 

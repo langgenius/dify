@@ -18,7 +18,7 @@ export const zWorkflowRunArchiveDownloadPayload = z.object({
 export const zWorkflowRunArchiveSummaryResponse = z.object({
   archive_bytes: z.int(),
   archived_month_count: z.int(),
-  latest_archived_at: z.iso.datetime().nullish(),
+  latest_archived_at: z.iso.datetime().nullish().default(null),
   workflow_run_count: z.int(),
 })
 
@@ -42,13 +42,13 @@ export const zWorkflowRunArchiveDownloadTaskResponse = z.object({
   bundle_count: z.int(),
   created_at: z.iso.datetime(),
   download_id: z.string(),
-  error: z.string().nullish(),
+  error: z.string().nullish().default(null),
   expires_at: z.iso.datetime(),
-  file_name: z.string().nullish(),
-  file_size_bytes: z.int().nullish(),
-  finished_at: z.iso.datetime().nullish(),
+  file_name: z.string().nullish().default(null),
+  file_size_bytes: z.int().nullish().default(null),
+  finished_at: z.iso.datetime().nullish().default(null),
   month: z.int(),
-  started_at: z.iso.datetime().nullish(),
+  started_at: z.iso.datetime().nullish().default(null),
   status: zWorkflowRunArchiveDownloadStatus,
   updated_at: z.iso.datetime(),
   year: z.int(),
@@ -60,7 +60,7 @@ export const zWorkflowRunArchiveDownloadTaskResponse = z.object({
 export const zWorkflowRunArchiveMonthResponse = z.object({
   archive_bytes: z.int(),
   bundle_count: z.int(),
-  download_task: zWorkflowRunArchiveDownloadTaskResponse.nullish(),
+  download_task: zWorkflowRunArchiveDownloadTaskResponse.nullish().default(null),
   latest_archived_at: z.iso.datetime(),
   month: z.int(),
   row_count: z.int(),

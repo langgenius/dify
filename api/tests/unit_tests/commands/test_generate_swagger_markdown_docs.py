@@ -294,9 +294,7 @@ def test_patch_union_schema_markdown_ignores_specs_without_schemas(tmp_path: Pat
 def test_patch_wildcard_media_type_markdown_preserves_literal_wildcard():
     module = _load_generate_swagger_markdown_docs_module()
 
-    patched = module._patch_wildcard_media_type_markdown(
-        "| 200 | Raw file. | ***/***: binary<br> |\n"
-    )
+    patched = module._patch_wildcard_media_type_markdown("| 200 | Raw file. | ***/***: binary<br> |\n")
 
     assert patched == "| 200 | Raw file. | `*/*`: binary<br> |\n"
 

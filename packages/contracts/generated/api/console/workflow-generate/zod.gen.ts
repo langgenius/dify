@@ -13,7 +13,7 @@ import * as z from 'zod'
  */
 export const zWorkflowInstructionSuggestionsPayload = z.object({
   count: z.int().gte(1).lte(6).optional().default(4),
-  language: z.string().nullish(),
+  language: z.string().nullish().default(null),
   mode: z.enum(['advanced-chat', 'workflow']),
 })
 
@@ -89,7 +89,7 @@ export const zWorkflowGenerateErrorCode = z.enum([
 export const zWorkflowGenerateErrorResponse = z.object({
   code: zWorkflowGenerateErrorCode,
   detail: z.string(),
-  node_id: z.string().nullish(),
+  node_id: z.string().nullish().default(null),
 })
 
 /**
@@ -167,7 +167,7 @@ export const zWorkflowGraph = z.object({
  * can reuse its existing handler.
  */
 export const zWorkflowGeneratePayload = z.object({
-  current_graph: zWorkflowGraph.nullish(),
+  current_graph: zWorkflowGraph.nullish().default(null),
   ideal_output: z.string().optional().default(''),
   instruction: z.string(),
   mode: z.enum(['advanced-chat', 'auto', 'workflow']),
@@ -184,7 +184,7 @@ export const zWorkflowGenerateResponse = z.object({
   graph: zWorkflowGraph,
   icon: z.string().optional().default(''),
   message: z.string().optional().default(''),
-  mode: z.enum(['advanced-chat', 'workflow']).nullish(),
+  mode: z.enum(['advanced-chat', 'workflow']).nullish().default(null),
 })
 
 /**
@@ -198,7 +198,7 @@ export const zWorkflowGenerateResultEventResponse = z.object({
   graph: zWorkflowGraph,
   icon: z.string().optional().default(''),
   message: z.string().optional().default(''),
-  mode: z.enum(['advanced-chat', 'workflow']).nullish(),
+  mode: z.enum(['advanced-chat', 'workflow']).nullish().default(null),
 })
 
 /**

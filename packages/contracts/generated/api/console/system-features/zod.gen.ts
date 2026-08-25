@@ -91,7 +91,7 @@ export const zPluginInstallationPermissionModel = z.object({
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
-  protocol: zSsoProtocol.nullable(),
+  protocol: zSsoProtocol.nullable().default(null),
 })
 
 /**
@@ -141,7 +141,7 @@ export const zSystemFeatureModel = z.object({
   }),
   rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
-  sso_enforced_for_signin_protocol: zSsoProtocol.nullable(),
+  sso_enforced_for_signin_protocol: zSsoProtocol.nullable().default(null),
   webapp_auth: zWebAppAuthModel,
 })
 

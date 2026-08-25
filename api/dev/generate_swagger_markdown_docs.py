@@ -187,11 +187,7 @@ def _drop_null_values_for_markdown(value: object) -> object:
     """Remove null object members only from the converter's temporary input."""
 
     if isinstance(value, dict):
-        return {
-            key: _drop_null_values_for_markdown(item)
-            for key, item in value.items()
-            if item is not None
-        }
+        return {key: _drop_null_values_for_markdown(item) for key, item in value.items() if item is not None}
     if isinstance(value, list):
         return [_drop_null_values_for_markdown(item) for item in value]
     return value

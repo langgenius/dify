@@ -15,13 +15,13 @@ export const zAccountPayload = z.object({
  * AppDescribeInfo
  */
 export const zAppDescribeInfo = z.object({
-  description: z.string().nullish(),
+  description: z.string().nullish().default(null),
   id: z.string(),
   is_agent: z.boolean().optional().default(false),
   mode: z.string(),
   name: z.string(),
   service_api_enabled: z.boolean(),
-  updated_at: z.string().nullish(),
+  updated_at: z.string().nullish().default(null),
 })
 
 /**
@@ -32,16 +32,16 @@ export const zAppDescribeInfo = z.object({
  * Empty / omitted → all blocks. Unknown member → ValidationError → 422.
  */
 export const zAppDescribeQuery = z.object({
-  fields: z.string().optional(),
+  fields: z.string().optional().default(null),
 })
 
 /**
  * AppDescribeResponse
  */
 export const zAppDescribeResponse = z.object({
-  info: zAppDescribeInfo.nullish(),
-  input_schema: z.record(z.string(), z.unknown()).nullish(),
-  parameters: z.record(z.string(), z.unknown()).nullish(),
+  info: zAppDescribeInfo.nullish().default(null),
+  input_schema: z.record(z.string(), z.unknown()).nullish().default(null),
+  parameters: z.record(z.string(), z.unknown()).nullish().default(null),
 })
 
 /**
@@ -51,7 +51,7 @@ export const zAppDescribeResponse = z.object({
  */
 export const zAppDslExportQuery = z.object({
   include_secret: z.boolean().optional().default(false),
-  workflow_id: z.uuid().nullish(),
+  workflow_id: z.uuid().nullish().default(null),
 })
 
 /**
@@ -69,22 +69,22 @@ export const zAppDslExportResponse = z.object({
  * Request body for POST /workspaces/<workspace_id>/apps/imports.
  */
 export const zAppDslImportPayload = z.object({
-  app_id: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  app_id: z.string().nullish().default(null),
+  description: z.string().nullish().default(null),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
   mode: z.enum(['yaml-content', 'yaml-url']),
-  name: z.string().nullish(),
-  yaml_content: z.string().nullish(),
-  yaml_url: z.string().nullish(),
+  name: z.string().nullish().default(null),
+  yaml_content: z.string().nullish().default(null),
+  yaml_url: z.string().nullish().default(null),
 })
 
 /**
  * AppInfo
  */
 export const zAppInfo = z.object({
-  description: z.string().nullish(),
+  description: z.string().nullish().default(null),
   id: z.string(),
   mode: z.string(),
   name: z.string(),
@@ -108,13 +108,13 @@ export const zAppMode = z.enum([
  * AppListRow
  */
 export const zAppListRow = z.object({
-  description: z.string().nullish(),
+  description: z.string().nullish().default(null),
   id: z.string(),
   mode: zAppMode,
   name: z.string(),
-  updated_at: z.string().nullish(),
-  workspace_id: z.string().nullish(),
-  workspace_name: z.string().nullish(),
+  updated_at: z.string().nullish().default(null),
+  workspace_id: z.string().nullish().default(null),
+  workspace_name: z.string().nullish().default(null),
 })
 
 /**
@@ -133,12 +133,12 @@ export const zAppListResponse = z.object({
  */
 export const zAppRunRequest = z.object({
   auto_generate_name: z.boolean().optional().default(true),
-  conversation_id: z.string().nullish(),
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  conversation_id: z.string().nullish().default(null),
+  files: z.array(z.record(z.string(), z.unknown())).nullish().default(null),
   inputs: z.record(z.string(), z.unknown()),
-  query: z.string().nullish(),
-  workflow_id: z.string().nullish(),
-  workspace_id: z.string().nullish(),
+  query: z.string().nullish().default(null),
+  workflow_id: z.string().nullish().default(null),
+  workspace_id: z.string().nullish().default(null),
 })
 
 /**
@@ -178,7 +178,7 @@ export const zDeviceLookupQuery = z.object({
  * DeviceLookupResponse
  */
 export const zDeviceLookupResponse = z.object({
-  client_id: z.string().nullish(),
+  client_id: z.string().nullish().default(null),
   expires_in_remaining: z.int().optional().default(0),
   valid: z.boolean(),
 })
@@ -238,8 +238,8 @@ export const zErrorDetail = z.object({
  */
 export const zErrorBody = z.object({
   code: z.string(),
-  details: z.array(zErrorDetail).nullish(),
-  hint: z.string().nullish(),
+  details: z.array(zErrorDetail).nullish().default(null),
+  hint: z.string().nullish().default(null),
   message: z.string(),
   status: z.int(),
 })
@@ -253,21 +253,30 @@ export const zEventStreamResponse = z.string()
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  extension: z.string().nullish(),
-  file_key: z.string().nullish(),
-  id: z.string(),
-  mime_type: z.string().nullish(),
+  conversation_id: z.uuid().nullish().default(null),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  created_by: z.uuid().nullish().default(null),
+  extension: z.string().nullish().default(null),
+  file_key: z.string().nullish().default(null),
+  id: z.uuid(),
+  mime_type: z.string().nullish().default(null),
   name: z.string(),
-  original_url: z.string().nullish(),
-  preview_url: z.string().nullish(),
-  reference: z.string().nullish(),
+  original_url: z.string().nullish().default(null),
+  preview_url: z.string().nullish().default(null),
+  reference: z.string().nullish().default(null),
   size: z.int(),
-  source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  source_url: z.string().nullish().default(null),
+  tenant_id: z.uuid().nullish().default(null),
+  user_id: z.uuid().nullish().default(null),
 })
 
 /**
@@ -302,7 +311,7 @@ export const zHealthResponse = z.object({
  * HumanInputFormDefinitionResponse
  */
 export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
+  expiration_time: z.int().nullish().default(null),
   form_content: z.string(),
   inputs: z.array(z.record(z.string(), z.unknown())).optional(),
   resolved_default_values: z.record(z.string(), z.string()),
@@ -318,8 +327,8 @@ export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'fa
  * Import
  */
 export const zImport = z.object({
-  app_id: z.string().nullish(),
-  app_mode: z.string().nullish(),
+  app_id: z.string().nullish().default(null),
+  app_mode: z.string().nullish().default(null),
   current_dsl_version: z.string().optional().default('0.7.0'),
   error: z.string().optional().default(''),
   id: z.string(),
@@ -344,7 +353,7 @@ export const zHumanInputFormSubmitPayload = z.object({
  */
 export const zMarketplace = z.object({
   marketplace_plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
+  version: z.string().nullish().default(null),
 })
 
 /**
@@ -388,7 +397,7 @@ export const zMemberListQuery = z.object({
  * MemberResponse
  */
 export const zMemberResponse = z.object({
-  avatar: z.string().nullish(),
+  avatar: z.string().nullish().default(null),
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -458,7 +467,7 @@ export const zOpenApiErrorCode = z.enum([
  */
 export const zPackage = z.object({
   plugin_unique_identifier: z.string(),
-  version: z.string().nullish(),
+  version: z.string().nullish().default(null),
 })
 
 /**
@@ -481,7 +490,7 @@ export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package']
  * PluginDependency
  */
 export const zPluginDependency = z.object({
-  current_identifier: z.string().nullish(),
+  current_identifier: z.string().nullish().default(null),
   type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
 })
@@ -525,11 +534,11 @@ export const zSessionListQuery = z.object({
  */
 export const zSessionRow = z.object({
   client_id: z.string(),
-  created_at: z.string().nullish(),
+  created_at: z.string().nullish().default(null),
   device_label: z.string(),
-  expires_at: z.string().nullish(),
+  expires_at: z.string().nullish().default(null),
   id: z.string(),
-  last_used_at: z.string().nullish(),
+  last_used_at: z.string().nullish().default(null),
   prefix: z.string(),
 })
 
@@ -581,8 +590,8 @@ export const zSupportedAppType = z.enum([
  */
 export const zAppListQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zSupportedAppType.nullish(),
-  name: z.string().max(200).nullish(),
+  mode: zSupportedAppType.nullish().default(null),
+  name: z.string().max(200).nullish().default(null),
   page: z.int().gte(1).optional().default(1),
   workspace_id: z.uuid(),
 })
@@ -594,8 +603,8 @@ export const zAppListQuery = z.object({
  */
 export const zPermittedExternalAppsListQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zSupportedAppType.nullish(),
-  name: z.string().max(200).nullish(),
+  mode: zSupportedAppType.nullish().default(null),
+  name: z.string().max(200).nullish().default(null),
   page: z.int().gte(1).optional().default(1),
 })
 
@@ -624,22 +633,22 @@ export const zUsageInfo = z.object({
  */
 export const zMessageMetadata = z.object({
   retriever_resources: z.array(z.record(z.string(), z.unknown())).optional().default([]),
-  usage: zUsageInfo.nullish(),
+  usage: zUsageInfo.nullish().default(null),
 })
 
 /**
  * WorkflowRunData
  */
 export const zWorkflowRunData = z.object({
-  created_at: z.int().nullish(),
-  elapsed_time: z.number().nullish(),
-  error: z.string().nullish(),
-  finished_at: z.int().nullish(),
+  created_at: z.int().nullish().default(null),
+  elapsed_time: z.number().nullish().default(null),
+  error: z.string().nullish().default(null),
+  finished_at: z.int().nullish().default(null),
   id: z.string(),
   outputs: z.record(z.string(), z.unknown()).optional(),
   status: z.string(),
-  total_steps: z.int().nullish(),
-  total_tokens: z.int().nullish(),
+  total_steps: z.int().nullish().default(null),
+  total_tokens: z.int().nullish().default(null),
   workflow_id: z.string(),
 })
 
@@ -647,7 +656,7 @@ export const zWorkflowRunData = z.object({
  * WorkspaceDetailResponse
  */
 export const zWorkspaceDetailResponse = z.object({
-  created_at: z.string().nullish(),
+  created_at: z.string().nullish().default(null),
   current: z.boolean(),
   id: z.string(),
   name: z.string(),
@@ -668,10 +677,10 @@ export const zWorkspacePayload = z.object({
  * AccountResponse
  */
 export const zAccountResponse = z.object({
-  account: zAccountPayload.nullish(),
-  default_workspace_id: z.string().nullish(),
-  subject_email: z.string().nullish(),
-  subject_issuer: z.string().nullish(),
+  account: zAccountPayload.nullish().default(null),
+  default_workspace_id: z.string().nullish().default(null),
+  subject_email: z.string().nullish().default(null),
+  subject_issuer: z.string().nullish().default(null),
   subject_type: z.string(),
   workspaces: z.array(zWorkspacePayload).optional().default([]),
 })
@@ -680,11 +689,11 @@ export const zAccountResponse = z.object({
  * DeviceTokenResponse
  */
 export const zDeviceTokenResponse = z.object({
-  account: zAccountPayload.nullish(),
-  default_workspace_id: z.string().nullish(),
+  account: zAccountPayload.nullish().default(null),
+  default_workspace_id: z.string().nullish().default(null),
   expires_at: z.string(),
-  subject_email: z.string().nullish(),
-  subject_issuer: z.string().nullish(),
+  subject_email: z.string().nullish().default(null),
+  subject_issuer: z.string().nullish().default(null),
   subject_type: z.enum(['account', 'external_sso']),
   token: z.string(),
   token_id: z.string(),

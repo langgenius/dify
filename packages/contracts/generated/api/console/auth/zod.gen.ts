@@ -7,7 +7,7 @@ import * as z from 'zod'
  */
 export const zDatasourceCredentialPayload = z.object({
   credentials: z.record(z.string(), z.unknown()),
-  name: z.string().max(100).nullish(),
+  name: z.string().max(100).nullish().default(null),
 })
 
 /**
@@ -21,8 +21,8 @@ export const zSimpleResultResponse = z.object({
  * DatasourceCustomClientPayload
  */
 export const zDatasourceCustomClientPayload = z.object({
-  client_params: z.record(z.string(), z.unknown()).nullish(),
-  enable_oauth_custom_client: z.boolean().nullish(),
+  client_params: z.record(z.string(), z.unknown()).nullish().default(null),
+  enable_oauth_custom_client: z.boolean().nullish().default(null),
 })
 
 /**
@@ -44,8 +44,8 @@ export const zDatasourceCredentialDeletePayload = z.object({
  */
 export const zDatasourceCredentialUpdatePayload = z.object({
   credential_id: z.string(),
-  credentials: z.record(z.string(), z.unknown()).nullish(),
-  name: z.string().max(100).nullish(),
+  credentials: z.record(z.string(), z.unknown()).nullish().default(null),
+  name: z.string().max(100).nullish().default(null),
 })
 
 /**
@@ -82,9 +82,9 @@ export const zDatasourceCredentialListResponse = z.object({
  */
 export const zI18nObject = z.object({
   en_US: z.string(),
-  ja_JP: z.string().nullish(),
-  pt_BR: z.string().nullish(),
-  zh_Hans: z.string().nullish(),
+  ja_JP: z.string().nullish().default(null),
+  pt_BR: z.string().nullish().default(null),
+  zh_Hans: z.string().nullish().default(null),
 })
 
 /**
@@ -137,17 +137,20 @@ export const zProviderConfigType = z.enum([
  * Model class for common provider settings like credentials
  */
 export const zProviderConfig = z.object({
-  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
-  help: zI18nObject.nullish(),
-  label: zI18nObject.nullish(),
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish().default(null),
+  help: zI18nObject.nullish().default(null),
+  label: zI18nObject.nullish().default(null),
   multiple: z.boolean().optional().default(false),
   name: z.string(),
-  options: z.array(zOption).nullish(),
-  placeholder: zI18nObject.nullish(),
+  options: z.array(zOption).nullish().default(null),
+  placeholder: zI18nObject.nullish().default(null),
   required: z.boolean().optional().default(false),
-  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  scope: z
+    .union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope])
+    .nullish()
+    .default(null),
   type: zProviderConfigType,
-  url: z.string().nullish(),
+  url: z.string().nullish().default(null),
 })
 
 /**

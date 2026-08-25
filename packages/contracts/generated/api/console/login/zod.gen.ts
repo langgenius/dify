@@ -7,7 +7,7 @@ import * as z from 'zod'
  */
 export const zLoginPayload = z.object({
   email: z.string(),
-  invite_token: z.string().nullish(),
+  invite_token: z.string().nullish().default(null),
   password: z.string(),
   remember_me: z.boolean().optional().default(false),
 })
@@ -16,7 +16,7 @@ export const zLoginPayload = z.object({
  * SimpleResultOptionalDataResponse
  */
 export const zSimpleResultOptionalDataResponse = z.object({
-  data: z.string().nullish(),
+  data: z.string().nullish().default(null),
   result: z.string(),
 })
 

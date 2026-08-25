@@ -21,9 +21,9 @@ export const zSimpleResultResponse = z.object({
  */
 export const zNotificationItemResponse = z.object({
   body: z.string(),
-  frequency: z.string().nullish(),
+  frequency: z.string().nullish().default(null),
   lang: z.string(),
-  notification_id: z.string().nullish(),
+  notification_id: z.string().nullish().default(null),
   subtitle: z.string(),
   title: z.string(),
   title_pic_url: z.string(),

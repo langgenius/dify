@@ -13,9 +13,9 @@ export const zApiBaseUrlResponse = z.object({
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
-  created_at: z.int().nullish(),
+  created_at: z.int().nullish().default(null),
   id: z.string(),
-  last_used_at: z.int().nullish(),
+  last_used_at: z.int().nullish().default(null),
   token: z.string(),
   type: z.string(),
 })
@@ -53,10 +53,10 @@ export const zBatchImportPayload = z.object({
  * Flask blueprint initialization.
  */
 export const zExternalDatasetCreatePayload = z.object({
-  description: z.string().max(400).nullish(),
+  description: z.string().max(400).nullish().default(null),
   external_knowledge_api_id: z.string(),
   external_knowledge_id: z.string(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z.record(z.string(), z.unknown()).nullish().default(null),
   name: z.string().min(1).max(100),
 })
 
@@ -80,7 +80,7 @@ export const zUsageCountResponse = z.object({
  * IndexingEstimatePayload
  */
 export const zIndexingEstimatePayload = z.object({
-  dataset_id: z.string().nullish(),
+  dataset_id: z.string().nullish().default(null),
   doc_form: z.string().optional().default('text_model'),
   doc_language: z.string().optional().default('English'),
   indexing_technique: z.string(),
@@ -149,7 +149,7 @@ export const zUrlResponse = z.object({
 export const zDocumentStatusResponse = z.object({
   cleaning_completed_at: z.int().nullable(),
   completed_at: z.int().nullable(),
-  completed_segments: z.int().nullish(),
+  completed_segments: z.int().nullish().default(null),
   error: z.string().nullable(),
   id: z.string(),
   indexing_status: z.string(),
@@ -158,7 +158,7 @@ export const zDocumentStatusResponse = z.object({
   processing_started_at: z.int().nullable(),
   splitting_completed_at: z.int().nullable(),
   stopped_at: z.int().nullable(),
-  total_segments: z.int().nullish(),
+  total_segments: z.int().nullish().default(null),
 })
 
 /**
@@ -172,8 +172,8 @@ export const zDocumentStatusListResponse = z.object({
  * DocumentMetadataUpdatePayload
  */
 export const zDocumentMetadataUpdatePayload = z.object({
-  doc_metadata: z.unknown().optional(),
-  doc_type: z.string().nullish(),
+  doc_metadata: z.unknown().optional().default(null),
+  doc_type: z.string().nullish().default(null),
 })
 
 /**
@@ -195,22 +195,22 @@ export const zDocumentRenamePayload = z.object({
  * SegmentCreatePayload
  */
 export const zSegmentCreatePayload = z.object({
-  answer: z.string().nullish(),
-  attachment_ids: z.array(z.string()).nullish(),
+  answer: z.string().nullish().default(null),
+  attachment_ids: z.array(z.string()).nullish().default(null),
   content: z.string(),
-  keywords: z.array(z.string()).nullish(),
+  keywords: z.array(z.string()).nullish().default(null),
 })
 
 /**
  * SegmentUpdatePayload
  */
 export const zSegmentUpdatePayload = z.object({
-  answer: z.string().nullish(),
-  attachment_ids: z.array(z.string()).nullish(),
+  answer: z.string().nullish().default(null),
+  attachment_ids: z.array(z.string()).nullish().default(null),
   content: z.string(),
-  keywords: z.array(z.string()).nullish(),
+  keywords: z.array(z.string()).nullish().default(null),
   regenerate_child_chunks: z.boolean().optional().default(false),
-  summary: z.string().nullish(),
+  summary: z.string().nullish().default(null),
 })
 
 /**
@@ -239,8 +239,8 @@ export const zErrorDocsResponse = z.object({
  * ExternalHitTestingPayload
  */
 export const zExternalHitTestingPayload = z.object({
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  metadata_filtering_conditions: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z.record(z.string(), z.unknown()).nullish().default(null),
+  metadata_filtering_conditions: z.record(z.string(), z.unknown()).nullish().default(null),
   query: z.string(),
 })
 
@@ -301,9 +301,9 @@ export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_m
  */
 export const zDatasetCreatePayload = z.object({
   description: z.string().max(400).optional().default(''),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-  indexing_technique: z.string().nullish(),
+  external_knowledge_api_id: z.string().nullish().default(null),
+  external_knowledge_id: z.string().nullish().default(null),
+  indexing_technique: z.string().nullish().default(null),
   name: z.string().min(1).max(40),
   permission: zPermissionEnum.nullish().default('only_me'),
   provider: z.string().optional().default('vendor'),
@@ -313,20 +313,20 @@ export const zDatasetCreatePayload = z.object({
  * DatasetUpdatePayload
  */
 export const zDatasetUpdatePayload = z.object({
-  description: z.string().max(400).nullish(),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  icon_info: z.record(z.string(), z.unknown()).nullish(),
-  indexing_technique: z.string().nullish(),
+  description: z.string().max(400).nullish().default(null),
+  embedding_model: z.string().nullish().default(null),
+  embedding_model_provider: z.string().nullish().default(null),
+  external_knowledge_api_id: z.string().nullish().default(null),
+  external_knowledge_id: z.string().nullish().default(null),
+  external_retrieval_model: z.record(z.string(), z.unknown()).nullish().default(null),
+  icon_info: z.record(z.string(), z.unknown()).nullish().default(null),
+  indexing_technique: z.string().nullish().default(null),
   is_multimodal: z.boolean().nullish().default(false),
-  name: z.string().min(1).max(40).nullish(),
-  partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
-  permission: zPermissionEnum.nullish(),
-  retrieval_model: z.record(z.string(), z.unknown()).nullish(),
-  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+  name: z.string().min(1).max(40).nullish().default(null),
+  partial_member_list: z.array(z.record(z.string(), z.string())).nullish().default(null),
+  permission: zPermissionEnum.nullish().default(null),
+  retrieval_model: z.record(z.string(), z.unknown()).nullish().default(null),
+  summary_index_setting: z.record(z.string(), z.unknown()).nullish().default(null),
 })
 
 /**
@@ -342,18 +342,18 @@ export const zDatasetDocMetadataResponse = z.object({
  * DatasetExternalKnowledgeInfoResponse
  */
 export const zDatasetExternalKnowledgeInfoResponse = z.object({
-  external_knowledge_api_endpoint: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_api_name: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
+  external_knowledge_api_endpoint: z.string().nullish().default(null),
+  external_knowledge_api_id: z.string().nullish().default(null),
+  external_knowledge_api_name: z.string().nullish().default(null),
+  external_knowledge_id: z.string().nullish().default(null),
 })
 
 /**
  * DatasetExternalRetrievalModelResponse
  */
 export const zDatasetExternalRetrievalModelResponse = z.object({
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean().nullish(),
+  score_threshold: z.number().nullish().default(null),
+  score_threshold_enabled: z.boolean().nullish().default(null),
   top_k: z.int(),
 })
 
@@ -361,20 +361,20 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
  * DatasetIconInfoResponse
  */
 export const zDatasetIconInfoResponse = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullish(),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
+  icon_url: z.string().nullish().default(null),
 })
 
 /**
  * DatasetSummaryIndexSettingResponse
  */
 export const zDatasetSummaryIndexSettingResponse = z.object({
-  enable: z.boolean().nullish(),
-  model_name: z.string().nullish(),
-  model_provider_name: z.string().nullish(),
-  summary_prompt: z.string().nullish(),
+  enable: z.boolean().nullish().default(null),
+  model_name: z.string().nullish().default(null),
+  model_provider_name: z.string().nullish().default(null),
+  summary_prompt: z.string().nullish().default(null),
 })
 
 /**
@@ -423,9 +423,9 @@ export const zExternalKnowledgeApiListResponse = z.object({
  * PreviewDetail
  */
 export const zPreviewDetail = z.object({
-  child_chunks: z.array(z.string()).nullish(),
+  child_chunks: z.array(z.string()).nullish().default(null),
   content: z.string(),
-  summary: z.string().nullish(),
+  summary: z.string().nullish().default(null),
 })
 
 /**
@@ -442,7 +442,7 @@ export const zQaPreviewDetail = z.object({
 export const zIndexingEstimateResponse = z.object({
   currency: z.string(),
   preview: z.array(zPreviewDetail),
-  qa_preview: z.array(zQaPreviewDetail).nullish(),
+  qa_preview: z.array(zQaPreviewDetail).nullish().default(null),
   tokens: z.int(),
   total_price: z.union([z.number(), z.int()]),
   total_segments: z.int(),
@@ -453,7 +453,7 @@ export const zIndexingEstimateResponse = z.object({
  */
 export const zIndexingEstimate = z.object({
   preview: z.array(zPreviewDetail),
-  qa_preview: z.array(zQaPreviewDetail).nullish(),
+  qa_preview: z.array(zQaPreviewDetail).nullish().default(null),
   total_segments: z.int(),
 })
 
@@ -461,14 +461,14 @@ export const zIndexingEstimate = z.object({
  * DatasetResponse
  */
 export const zDatasetResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  data_source_type: z.string().nullish(),
-  description: z.string().nullish(),
+  created_at: z.int().nullish().default(null),
+  created_by: z.string().nullish().default(null),
+  data_source_type: z.string().nullish().default(null),
+  description: z.string().nullish().default(null),
   id: z.string(),
-  indexing_technique: z.string().nullish(),
+  indexing_technique: z.string().nullish().default(null),
   name: z.string(),
-  permission: z.string().nullish(),
+  permission: z.string().nullish().default(null),
 })
 
 /**
@@ -500,74 +500,74 @@ export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
   type: z.string(),
-  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
+  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish().default(null),
 })
 
 /**
  * DocumentDetailResponse
  */
 export const zDocumentDetailResponse = z.object({
-  archived: z.boolean().nullish(),
-  average_segment_length: z.number().nullish(),
-  completed_at: z.int().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule: z.unknown().optional(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
-  doc_language: z.string().nullish(),
-  doc_metadata: z.array(zDocumentMetadataResponse).nullish(),
-  doc_type: z.string().nullish(),
-  document_process_rule: z.unknown().optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
+  archived: z.boolean().nullish().default(null),
+  average_segment_length: z.number().nullish().default(null),
+  completed_at: z.int().nullish().default(null),
+  created_at: z.int().nullish().default(null),
+  created_by: z.string().nullish().default(null),
+  created_from: z.string().nullish().default(null),
+  data_source_detail_dict: z.unknown().optional().default(null),
+  data_source_info: z.unknown().optional().default(null),
+  data_source_type: z.string().nullish().default(null),
+  dataset_process_rule: z.unknown().optional().default(null),
+  dataset_process_rule_id: z.string().nullish().default(null),
+  disabled_at: z.int().nullish().default(null),
+  disabled_by: z.string().nullish().default(null),
+  display_status: z.string().nullish().default(null),
+  doc_form: z.string().nullish().default(null),
+  doc_language: z.string().nullish().default(null),
+  doc_metadata: z.array(zDocumentMetadataResponse).nullish().default(null),
+  doc_type: z.string().nullish().default(null),
+  document_process_rule: z.unknown().optional().default(null),
+  enabled: z.boolean().nullish().default(null),
+  error: z.string().nullish().default(null),
+  hit_count: z.int().nullish().default(null),
   id: z.string(),
-  indexing_latency: z.number().nullish(),
-  indexing_status: z.string().nullish(),
-  name: z.string().nullish(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  segment_count: z.int().nullish(),
-  tokens: z.int().nullish(),
-  updated_at: z.int().nullish(),
+  indexing_latency: z.number().nullish().default(null),
+  indexing_status: z.string().nullish().default(null),
+  name: z.string().nullish().default(null),
+  need_summary: z.boolean().nullish().default(null),
+  position: z.int().nullish().default(null),
+  segment_count: z.int().nullish().default(null),
+  tokens: z.int().nullish().default(null),
+  updated_at: z.int().nullish().default(null),
 })
 
 /**
  * DocumentResponse
  */
 export const zDocumentResponse = z.object({
-  archived: z.boolean().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
+  archived: z.boolean().nullish().default(null),
+  created_at: z.int().nullish().default(null),
+  created_by: z.string().nullish().default(null),
+  created_from: z.string().nullish().default(null),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish().default(null),
+  data_source_type: z.string().nullish().default(null),
+  dataset_process_rule_id: z.string().nullish().default(null),
+  disabled_at: z.int().nullish().default(null),
+  disabled_by: z.string().nullish().default(null),
+  display_status: z.string().nullish().default(null),
+  doc_form: z.string().nullish().default(null),
   doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
+  enabled: z.boolean().nullish().default(null),
+  error: z.string().nullish().default(null),
+  hit_count: z.int().nullish().default(null),
   id: z.string(),
-  indexing_status: z.string().nullish(),
+  indexing_status: z.string().nullish().default(null),
   name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
+  need_summary: z.boolean().nullish().default(null),
+  position: z.int().nullish().default(null),
+  summary_index_status: z.string().nullish().default(null),
+  tokens: z.int().nullish().default(null),
+  word_count: z.int().nullish().default(null),
 })
 
 /**
@@ -583,33 +583,33 @@ export const zDatasetAndDocumentResponse = z.object({
  * DocumentWithSegmentsResponse
  */
 export const zDocumentWithSegmentsResponse = z.object({
-  archived: z.boolean().nullish(),
-  completed_segments: z.int().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
+  archived: z.boolean().nullish().default(null),
+  completed_segments: z.int().nullish().default(null),
+  created_at: z.int().nullish().default(null),
+  created_by: z.string().nullish().default(null),
+  created_from: z.string().nullish().default(null),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish().default(null),
+  data_source_type: z.string().nullish().default(null),
+  dataset_process_rule_id: z.string().nullish().default(null),
+  disabled_at: z.int().nullish().default(null),
+  disabled_by: z.string().nullish().default(null),
+  display_status: z.string().nullish().default(null),
+  doc_form: z.string().nullish().default(null),
   doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
+  enabled: z.boolean().nullish().default(null),
+  error: z.string().nullish().default(null),
+  hit_count: z.int().nullish().default(null),
   id: z.string(),
-  indexing_status: z.string().nullish(),
+  indexing_status: z.string().nullish().default(null),
   name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  process_rule_dict: z.unknown().optional(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  total_segments: z.int().nullish(),
-  word_count: z.int().nullish(),
+  need_summary: z.boolean().nullish().default(null),
+  position: z.int().nullish().default(null),
+  process_rule_dict: z.unknown().optional().default(null),
+  summary_index_status: z.string().nullish().default(null),
+  tokens: z.int().nullish().default(null),
+  total_segments: z.int().nullish().default(null),
+  word_count: z.int().nullish().default(null),
 })
 
 /**
@@ -629,10 +629,10 @@ export const zJsonValue = z.unknown()
  * DocumentPipelineExecutionLogResponse
  */
 export const zDocumentPipelineExecutionLogResponse = z.object({
-  datasource_info: zJsonValue.nullish(),
-  datasource_node_id: z.string().nullish(),
-  datasource_type: z.string().nullish(),
-  input_data: zJsonValue.nullish(),
+  datasource_info: zJsonValue.nullish().default(null),
+  datasource_node_id: z.string().nullish().default(null),
+  datasource_type: z.string().nullish().default(null),
+  input_data: zJsonValue.nullish().default(null),
 })
 
 /**
@@ -679,7 +679,7 @@ export const zChildChunkDetailResponse = z.object({
  */
 export const zChildChunkUpdateArgs = z.object({
   content: z.string(),
-  id: z.string().nullish(),
+  id: z.string().nullish().default(null),
 })
 
 /**
@@ -693,13 +693,13 @@ export const zChildChunkBatchUpdatePayload = z.object({
  * SummaryEntryResponse
  */
 export const zSummaryEntryResponse = z.object({
-  created_at: z.int().nullish(),
-  error: z.string().nullish(),
+  created_at: z.int().nullish().default(null),
+  error: z.string().nullish().default(null),
   segment_id: z.string(),
   segment_position: z.int(),
   status: z.string(),
-  summary_preview: z.string().nullish(),
-  updated_at: z.int().nullish(),
+  summary_preview: z.string().nullish().default(null),
+  updated_at: z.int().nullish().default(null),
 })
 
 /**
@@ -733,10 +733,10 @@ export const zExternalHitTestingQueryResponse = z.object({
  * ExternalHitTestingRecordResponse
  */
 export const zExternalHitTestingRecordResponse = z.object({
-  content: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  score: z.number().nullish(),
-  title: z.string().nullish(),
+  content: z.string().nullish().default(null),
+  metadata: z.record(z.string(), z.unknown()).nullish().default(null),
+  score: z.number().nullish().default(null),
+  title: z.string().nullish().default(null),
 })
 
 /**
@@ -780,7 +780,7 @@ export const zRelatedAppResponse = z.object({
   icon: z.string().nullable(),
   icon_background: z.string().nullable(),
   icon_type: z.string().nullable(),
-  icon_url: z.string().nullish(),
+  icon_url: z.string().nullish().default(null),
   id: z.string(),
   mode: z.string(),
   name: z.string(),
@@ -798,16 +798,16 @@ export const zRelatedAppListResponse = z.object({
  * DatasetRerankingModelResponse
  */
 export const zDatasetRerankingModelResponse = z.object({
-  reranking_model_name: z.string().nullish(),
-  reranking_provider_name: z.string().nullish(),
+  reranking_model_name: z.string().nullish().default(null),
+  reranking_provider_name: z.string().nullish().default(null),
 })
 
 /**
  * RerankingModel
  */
 export const zRerankingModel = z.object({
-  reranking_model_name: z.string().nullish(),
-  reranking_provider_name: z.string().nullish(),
+  reranking_model_name: z.string().nullish().default(null),
+  reranking_provider_name: z.string().nullish().default(null),
 })
 
 /**
@@ -841,10 +841,10 @@ export const zSegmentation = z.object({
  * Rule
  */
 export const zRule = z.object({
-  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
-  pre_processing_rules: z.array(zPreProcessingRule).nullish(),
-  segmentation: zSegmentation.nullish(),
-  subchunk_segmentation: zSegmentation.nullish(),
+  parent_mode: z.enum(['full-doc', 'paragraph']).nullish().default(null),
+  pre_processing_rules: z.array(zPreProcessingRule).nullish().default(null),
+  segmentation: zSegmentation.nullish().default(null),
+  subchunk_segmentation: zSegmentation.nullish().default(null),
 })
 
 /**
@@ -853,7 +853,7 @@ export const zRule = z.object({
 export const zProcessRuleResponse = z.object({
   limits: z.record(z.string(), z.unknown()),
   mode: zProcessRuleMode,
-  rules: zRule.nullish(),
+  rules: zRule.nullish().default(null),
 })
 
 /**
@@ -861,7 +861,7 @@ export const zProcessRuleResponse = z.object({
  */
 export const zProcessRule = z.object({
   mode: zProcessRuleMode,
-  rules: zRule.nullish(),
+  rules: zRule.nullish().default(null),
 })
 
 /**
@@ -870,7 +870,7 @@ export const zProcessRule = z.object({
 export const zMetadataDetail = z.object({
   id: z.uuid(),
   name: z.string(),
-  value: z.union([z.string(), z.int(), z.number()]).nullish(),
+  value: z.union([z.string(), z.int(), z.number()]).nullish().default(null),
 })
 
 /**
@@ -981,16 +981,16 @@ export const zHitTestingFile = z.object({
  * DatasetKeywordSettingResponse
  */
 export const zDatasetKeywordSettingResponse = z.object({
-  keyword_weight: z.number().nullish(),
+  keyword_weight: z.number().nullish().default(null),
 })
 
 /**
  * DatasetVectorSettingResponse
  */
 export const zDatasetVectorSettingResponse = z.object({
-  embedding_model_name: z.string().nullish(),
-  embedding_provider_name: z.string().nullish(),
-  vector_weight: z.number().nullish(),
+  embedding_model_name: z.string().nullish().default(null),
+  embedding_provider_name: z.string().nullish().default(null),
+  vector_weight: z.number().nullish().default(null),
 })
 
 /**
@@ -999,7 +999,7 @@ export const zDatasetVectorSettingResponse = z.object({
 export const zDatasetWeightedScoreResponse = z.object({
   keyword_setting: zDatasetKeywordSettingResponse.optional(),
   vector_setting: zDatasetVectorSettingResponse.optional(),
-  weight_type: z.string().nullish(),
+  weight_type: z.string().nullish().default(null),
 })
 
 /**
@@ -1007,13 +1007,13 @@ export const zDatasetWeightedScoreResponse = z.object({
  */
 export const zDatasetRetrievalModelResponse = z.object({
   reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
+  reranking_mode: z.string().nullish().default(null),
   reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish(),
+  score_threshold: z.number().nullish().default(null),
   score_threshold_enabled: z.boolean(),
   search_method: z.string(),
   top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish(),
+  weights: zDatasetWeightedScoreResponse.nullish().default(null),
 })
 
 /**
@@ -1031,7 +1031,7 @@ export const zDatasetDetailResponse = z.object({
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
   document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
+  embedding_available: z.boolean().nullish().default(null),
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
@@ -1042,7 +1042,7 @@ export const zDatasetDetailResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
-  maintainer: z.string().nullish(),
+  maintainer: z.string().nullish().default(null),
   name: z.string(),
   permission: z.string(),
   permission_keys: z.array(z.string()).optional(),
@@ -1074,7 +1074,7 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
   document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
+  embedding_available: z.boolean().nullish().default(null),
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
@@ -1085,9 +1085,9 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
-  maintainer: z.string().nullish(),
+  maintainer: z.string().nullish().default(null),
   name: z.string(),
-  partial_member_list: z.array(z.string()).nullish(),
+  partial_member_list: z.array(z.string()).nullish().default(null),
   permission: z.string(),
   permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
@@ -1118,7 +1118,7 @@ export const zDatasetListItemResponse = z.object({
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
   document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
+  embedding_available: z.boolean().nullish().default(null),
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
@@ -1129,7 +1129,7 @@ export const zDatasetListItemResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
-  maintainer: z.string().nullish(),
+  maintainer: z.string().nullish().default(null),
   name: z.string(),
   partial_member_list: z.array(z.string()),
   permission: z.string(),
@@ -1202,7 +1202,10 @@ export const zCondition = z.object({
     '≥',
   ]),
   name: z.string(),
-  value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
+  value: z
+    .union([z.string(), z.array(z.string()), z.number()])
+    .nullish()
+    .default(null),
 })
 
 /**
@@ -1211,7 +1214,7 @@ export const zCondition = z.object({
  * Metadata Filtering Condition.
  */
 export const zMetadataFilteringCondition = z.object({
-  conditions: z.array(zCondition).nullish(),
+  conditions: z.array(zCondition).nullish().default(null),
   logical_operator: z.enum(['and', 'or']).nullish().default('and'),
 })
 
@@ -1235,40 +1238,41 @@ export const zWeightVectorSetting = z.object({
  * WeightModel
  */
 export const zWeightModel = z.object({
-  keyword_setting: zWeightKeywordSetting.nullish(),
-  vector_setting: zWeightVectorSetting.nullish(),
-  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).nullish(),
+  keyword_setting: zWeightKeywordSetting.nullish().default(null),
+  vector_setting: zWeightVectorSetting.nullish().default(null),
+  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).nullish().default(null),
 })
 
 /**
  * RetrievalModel
  */
 export const zRetrievalModel = z.object({
-  metadata_filtering_conditions: zMetadataFilteringCondition.nullish(),
+  metadata_filtering_conditions: zMetadataFilteringCondition.nullish().default(null),
   reranking_enable: z.boolean(),
-  reranking_mode: z.enum(['reranking_model', 'weighted_score']).nullish(),
-  reranking_model: zRerankingModel.nullish(),
-  score_threshold: z.number().nullish(),
+  reranking_mode: z.enum(['reranking_model', 'weighted_score']).nullish().default(null),
+  reranking_model: zRerankingModel.nullish().default(null),
+  score_threshold: z.number().nullish().default(null),
   score_threshold_enabled: z.boolean(),
   search_method: zRetrievalMethod,
   top_k: z.int(),
-  weights: zWeightModel.nullish(),
+  weights: zWeightModel.nullish().default(null),
 })
 
 /**
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.string()).nullish().default(null),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
       score_threshold_enabled: z.boolean().optional(),
       top_k: z.int().optional(),
     })
-    .nullish(),
+    .nullish()
+    .default(null),
   query: z.string().max(250),
-  retrieval_model: zRetrievalModel.nullish(),
+  retrieval_model: zRetrievalModel.nullish().default(null),
 })
 
 /**
@@ -1349,7 +1353,7 @@ export const zDatasetQueryFileInfoResponse = z.object({
 export const zDatasetQueryContentResponse = z.object({
   content: z.string(),
   content_type: z.string(),
-  file_info: zDatasetQueryFileInfoResponse.nullish(),
+  file_info: zDatasetQueryFileInfoResponse.nullish().default(null),
 })
 
 /**
@@ -1380,16 +1384,16 @@ export const zDatasetQueryListResponse = z.object({
  * NotionIcon
  */
 export const zNotionIcon = z.object({
-  emoji: z.string().nullish(),
+  emoji: z.string().nullish().default(null),
   type: z.string(),
-  url: z.string().nullish(),
+  url: z.string().nullish().default(null),
 })
 
 /**
  * NotionPage
  */
 export const zNotionPage = z.object({
-  page_icon: zNotionIcon.nullish(),
+  page_icon: zNotionIcon.nullish().default(null),
   page_id: z.string(),
   page_name: z.string(),
   type: z.string(),
@@ -1409,9 +1413,9 @@ export const zNotionInfo = z.object({
  */
 export const zInfoList = z.object({
   data_source_type: z.enum(['notion_import', 'upload_file', 'website_crawl']),
-  file_info_list: zFileInfo.nullish(),
-  notion_info_list: z.array(zNotionInfo).nullish(),
-  website_info_list: zWebsiteInfo.nullish(),
+  file_info_list: zFileInfo.nullish().default(null),
+  notion_info_list: z.array(zNotionInfo).nullish().default(null),
+  website_info_list: zWebsiteInfo.nullish().default(null),
 })
 
 /**
@@ -1425,21 +1429,21 @@ export const zDataSource = z.object({
  * KnowledgeConfig
  */
 export const zKnowledgeConfig = z.object({
-  data_source: zDataSource.nullish(),
+  data_source: zDataSource.nullish().default(null),
   doc_form: z
     .enum(['hierarchical_model', 'qa_model', 'text_model'])
     .optional()
     .default('text_model'),
   doc_language: z.string().optional().default('English'),
   duplicate: z.boolean().optional().default(true),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
+  embedding_model: z.string().nullish().default(null),
+  embedding_model_provider: z.string().nullish().default(null),
   indexing_technique: z.enum(['economy', 'high_quality']),
   is_multimodal: z.boolean().optional().default(false),
-  name: z.string().nullish(),
-  original_document_id: z.string().nullish(),
-  process_rule: zProcessRule.nullish(),
-  retrieval_model: zRetrievalModel.nullish(),
+  name: z.string().nullish().default(null),
+  original_document_id: z.string().nullish().default(null),
+  process_rule: zProcessRule.nullish().default(null),
+  retrieval_model: zRetrievalModel.nullish().default(null),
   summary_index_setting: z
     .object({
       enable: z.boolean().optional(),
@@ -1447,7 +1451,8 @@ export const zKnowledgeConfig = z.object({
       model_provider_name: z.string().optional(),
       summary_prompt: z.string().optional(),
     })
-    .nullish(),
+    .nullish()
+    .default(null),
 })
 
 export const zGetDatasetsQuery = z.object({

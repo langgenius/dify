@@ -66,7 +66,7 @@ FileUploadObject = Annotated[
                         "detail": {"type": "string"},
                         "transfer_methods": {"type": "array", "items": {"type": "string"}},
                     },
-                }
+                },
             },
         }
     ),

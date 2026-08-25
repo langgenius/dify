@@ -7,7 +7,7 @@ import * as z from 'zod'
  */
 export const zEmailPayload = z.object({
   email: z.string(),
-  language: z.string().nullish(),
+  language: z.string().nullish().default(null),
 })
 
 /**

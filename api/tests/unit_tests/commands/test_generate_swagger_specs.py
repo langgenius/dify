@@ -189,9 +189,7 @@ def test_generate_specs_writes_openapi_with_resolvable_references_and_null_defau
         assert all("nullable" not in value for value in _walk_values(payload) if isinstance(value, dict))
 
     service_payload = json.loads((tmp_path / "service-openapi.json").read_text(encoding="utf-8"))
-    conversation_id = service_payload["components"]["schemas"]["ChatRequestPayload"]["properties"][
-        "conversation_id"
-    ]
+    conversation_id = service_payload["components"]["schemas"]["ChatRequestPayload"]["properties"]["conversation_id"]
     assert "default" in conversation_id
     assert conversation_id["default"] is None
 

@@ -87,18 +87,47 @@ export type SuggestedQuestionsResponse = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<unknown>
 }
 
 export type RemoteFileUploadPayload = {
@@ -147,14 +176,14 @@ export type TrialWorkflowResponse = {
   conversation_variables?: Array<WorkflowConversationVariableResponse>
   created_at?: number | null
   created_by?: TrialSimpleAccount | null
-  environment_variables?: Array<JsonObject2>
-  features?: JsonObject2
-  graph: JsonObject2
+  environment_variables?: Array<JsonObject>
+  features?: JsonObject
+  graph: JsonObject
   hash?: string | null
   id: string
   marked_comment?: string | null
   marked_name?: string | null
-  rag_pipeline_variables?: Array<JsonObject2>
+  rag_pipeline_variables?: Array<JsonObject>
   tool_published?: boolean | null
   updated_at?: number | null
   updated_by?: TrialSimpleAccount | null
@@ -184,29 +213,29 @@ export type TrialAppMode = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion
 
 export type TrialAppModelConfigResponse = {
   agent_mode?: TrialAppAgentMode | null
-  annotation_reply?: JsonObject2 | null
-  chat_prompt_config?: JsonObject2 | null
-  completion_prompt_config?: JsonObject2 | null
+  annotation_reply?: JsonObject | null
+  chat_prompt_config?: JsonObject | null
+  completion_prompt_config?: JsonObject | null
   created_at?: number | null
   created_by?: string | null
-  dataset_configs?: JsonObject2 | null
+  dataset_configs?: JsonObject | null
   dataset_query_variable?: string | null
-  external_data_tools?: Array<JsonObject2>
-  file_upload?: JsonObject2 | null
+  external_data_tools?: Array<JsonObject>
+  file_upload?: JsonObject | null
   model?: TrialAppModel | null
-  more_like_this?: JsonObject2 | null
+  more_like_this?: JsonObject | null
   opening_statement?: string | null
   pre_prompt?: string | null
   prompt_type?: string | null
-  retriever_resource?: JsonObject2 | null
-  sensitive_word_avoidance?: JsonObject2 | null
-  speech_to_text?: JsonObject2 | null
+  retriever_resource?: JsonObject | null
+  sensitive_word_avoidance?: JsonObject | null
+  speech_to_text?: JsonObject | null
   suggested_questions?: Array<string>
-  suggested_questions_after_answer?: JsonObject2 | null
-  text_to_speech?: JsonObject2 | null
+  suggested_questions_after_answer?: JsonObject | null
+  text_to_speech?: JsonObject | null
   updated_at?: number | null
   updated_by?: string | null
-  user_input_form?: Array<JsonObject2>
+  user_input_form?: Array<JsonObject>
 }
 
 export type TrialSiteResponse = {
@@ -263,10 +292,6 @@ export type TrialDatasetResponse = {
   permission_keys?: Array<string>
 }
 
-export type JsonObject = {
-  [key: string]: unknown
-}
-
 export type SystemParameters = {
   audio_file_size_limit: number
   file_size_limit: number
@@ -289,18 +314,18 @@ export type TrialSimpleAccount = {
   name?: string | null
 }
 
-export type JsonObject2 = {
+export type JsonObject = {
   [key: string]: unknown
 }
 
 export type TrialAppAgentMode = {
   enabled?: boolean | null
   strategy?: string | null
-  tools?: Array<JsonObject2>
+  tools?: Array<JsonObject>
 }
 
 export type TrialAppModel = {
-  completion_params?: JsonObject2
+  completion_params?: JsonObject
   mode?: string | null
   name: string
   provider: string

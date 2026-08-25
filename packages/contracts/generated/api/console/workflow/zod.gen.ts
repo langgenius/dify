@@ -11,7 +11,7 @@ export const zEventStreamResponse = z.string()
  * HumanInputPauseTypeResponse
  */
 export const zHumanInputPauseTypeResponse = z.object({
-  backstage_input_url: z.string().nullish(),
+  backstage_input_url: z.string().nullish().default(null),
   form_id: z.string(),
   type: z.literal('human_input'),
 })
@@ -29,7 +29,7 @@ export const zPausedNodeResponse = z.object({
  * WorkflowPauseDetailsResponse
  */
 export const zWorkflowPauseDetailsResponse = z.object({
-  paused_at: z.string().nullish(),
+  paused_at: z.string().nullish().default(null),
   paused_nodes: z.array(zPausedNodeResponse),
 })
 

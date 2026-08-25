@@ -136,18 +136,47 @@ export type ExploreAppMetaResponse = {
 }
 
 export type Parameters = {
-  annotation_reply: JsonObject
-  file_upload: JsonObject
-  more_like_this: JsonObject
+  annotation_reply: {
+    enabled?: boolean
+  }
+  file_upload: {
+    allowed_file_extensions?: Array<string>
+    allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
+    allowed_file_upload_methods?: Array<'local_file' | 'remote_url'>
+    enabled?: boolean
+    image?: {
+      detail?: string
+      enabled?: boolean
+      number_limits?: number
+      transfer_methods?: Array<string>
+    }
+    number_limits?: number
+  }
+  more_like_this: {
+    enabled?: boolean
+  }
   opening_statement?: string | null
-  retriever_resource: JsonObject
-  sensitive_word_avoidance: JsonObject
-  speech_to_text: JsonObject
+  retriever_resource: {
+    enabled?: boolean
+  }
+  sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  speech_to_text: {
+    enabled?: boolean
+  }
   suggested_questions: Array<string>
-  suggested_questions_after_answer: JsonObject
+  suggested_questions_after_answer: {
+    enabled?: boolean
+  }
   system_parameters: SystemParameters
-  text_to_speech: JsonObject
-  user_input_form: Array<JsonObject>
+  text_to_speech: {
+    autoPlay?: string
+    enabled?: boolean
+    language?: string
+    voice?: string
+  }
+  user_input_form: Array<unknown>
 }
 
 export type SavedMessageInfiniteScrollPagination = {
@@ -170,12 +199,25 @@ export type TextToAudioPayload = {
 export type AudioBinaryResponse = Blob | File
 
 export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
+  files?: Array<
+    (
+      | (unknown & {
+          remote_url?: string
+          transfer_method?: 'remote_url'
+          url?: string
+        })
+      | {
+          transfer_method?: 'local_file'
+          upload_file_id: string
+        }
+    ) & {
+      remote_url?: string
+      transfer_method: 'local_file' | 'remote_url'
+      type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+      upload_file_id?: string
+      url?: string
+    }
+  > | null
   inputs: {
     [key: string]: unknown
   }
@@ -228,10 +270,6 @@ export type ExploreMessageListItem = {
   status: string
   total_price?: string | null
   readonly total_tokens: number
-}
-
-export type JsonObject = {
-  [key: string]: unknown
 }
 
 export type SystemParameters = {

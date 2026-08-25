@@ -17,7 +17,7 @@ export const zApiBasedExtensionPayload = z.object({
 export const zApiBasedExtensionResponse = z.object({
   api_endpoint: z.string(),
   api_key: z.string(),
-  created_at: z.int().nullish(),
+  created_at: z.int().nullish().default(null),
   id: z.string(),
   name: z.string(),
 })

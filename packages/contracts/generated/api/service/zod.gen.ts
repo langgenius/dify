@@ -6,11 +6,20 @@ import * as z from 'zod'
  * Annotation
  */
 export const zAnnotation = z.object({
-  answer: z.string().nullish(),
-  created_at: z.int().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string(),
-  question: z.string().nullish(),
+  answer: z.string().nullish().default(null),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  hit_count: z.int().nullish().default(null),
+  id: z.uuid(),
+  question: z.string().nullish().default(null),
 })
 
 /**
@@ -26,16 +35,16 @@ export const zAnnotationCreatePayload = z.object({
  */
 export const zAnnotationJobStatusDetailResponse = z.object({
   error_msg: z.string().optional().default(''),
-  job_id: z.string(),
-  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+  job_id: z.uuid(),
+  job_status: z.string(),
 })
 
 /**
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  job_id: z.string(),
-  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+  job_id: z.uuid(),
+  job_status: z.string(),
 })
 
 /**
@@ -71,15 +80,15 @@ export const zAnnotationReplyActionPayload = z.object({
  * AppFeedbackResponse
  */
 export const zAppFeedbackResponse = z.object({
-  app_id: z.string(),
-  content: z.string().nullish(),
-  conversation_id: z.string(),
+  app_id: z.uuid(),
+  content: z.string().nullish().default(null),
+  conversation_id: z.uuid(),
   created_at: z.string(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
+  from_account_id: z.uuid().nullish().default(null),
+  from_end_user_id: z.uuid().nullish().default(null),
   from_source: z.string(),
-  id: z.string(),
-  message_id: z.string(),
+  id: z.uuid(),
+  message_id: z.uuid(),
   rating: z.string(),
   updated_at: z.string(),
 })
@@ -100,13 +109,6 @@ export const zAppInfoResponse = z.object({
   mode: z.string(),
   name: z.string(),
   tags: z.array(z.string()),
-})
-
-/**
- * AppMetaResponse
- */
-export const zAppMetaResponse = z.object({
-  tool_icons: z.record(z.string(), z.unknown()).optional(),
 })
 
 /**
@@ -131,6 +133,64 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 )
 
 /**
+ * BlockingRetrieverResourceResponse
+ */
+export const zBlockingRetrieverResourceResponse = z.object({
+  content: z.string().nullish().default(null),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  data_source_type: z.string().nullish().default(null),
+  dataset_id: z.uuid().nullish().default(null),
+  dataset_name: z.string().nullish().default(null),
+  document_id: z.uuid().nullish().default(null),
+  document_name: z.string().nullish().default(null),
+  hit_count: z.int().nullish().default(null),
+  id: z.uuid().nullish().default(null),
+  index_node_hash: z.string().nullish().default(null),
+  message_id: z.uuid().nullish().default(null),
+  position: z.int(),
+  score: z.number().nullish().default(null),
+  segment_id: z.uuid().nullish().default(null),
+  segment_position: z.int().nullish().default(null),
+  summary: z.string().nullish().default(null),
+  word_count: z.int().nullish().default(null),
+})
+
+/**
+ * BlockingUsageResponse
+ */
+export const zBlockingUsageResponse = z.object({
+  completion_price: z.string().nullish().default(null),
+  completion_price_unit: z.string().nullish().default(null),
+  completion_tokens: z.int().nullish().default(null),
+  completion_unit_price: z.string().nullish().default(null),
+  currency: z.string().nullish().default(null),
+  latency: z.number().nullish().default(null),
+  prompt_price: z.string().nullish().default(null),
+  prompt_price_unit: z.string().nullish().default(null),
+  prompt_tokens: z.int().nullish().default(null),
+  prompt_unit_price: z.string().nullish().default(null),
+  total_price: z.string().nullish().default(null),
+  total_tokens: z.int().nullish().default(null),
+})
+
+/**
+ * BlockingMetadataResponse
+ */
+export const zBlockingMetadataResponse = z.object({
+  retriever_resources: z.array(zBlockingRetrieverResourceResponse).nullish().default(null),
+  usage: zBlockingUsageResponse.nullish().default(null),
+})
+
+/**
  * ButtonStyle
  *
  * Button styles for user actions.
@@ -138,25 +198,65 @@ export const zBinaryFileResponse = z.custom<Blob | File>(
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 
 /**
+ * ChatMessageBlockingResponse
+ */
+export const zChatMessageBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    }),
+  event: z.literal('message'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+})
+
+/**
  * ChatRequestPayload
  */
 export const zChatRequestPayload = z.object({
   auto_generate_name: z.boolean().optional().default(true),
-  conversation_id: z.string().nullish(),
+  conversation_id: z.string().nullish().default(null),
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.intersection(
+        z.union([
+          z.intersection(
+            z.unknown(),
+            z.object({
+              remote_url: z.string().optional(),
+              transfer_method: z.enum(['remote_url']).optional(),
+              url: z.string().optional(),
+            }),
+          ),
+          z.object({
+            transfer_method: z.enum(['local_file']).optional(),
+            upload_file_id: z.string(),
+          }),
+        ]),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file', 'remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      ),
     )
-    .nullish(),
+    .nullish()
+    .default(null),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  workflow_id: z.string().nullish(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
+  workflow_id: z.string().nullish().default(null),
 })
 
 /**
@@ -164,22 +264,40 @@ export const zChatRequestPayload = z.object({
  */
 export const zChatRequestPayloadWithUser = z.object({
   auto_generate_name: z.boolean().optional().default(true),
-  conversation_id: z.string().nullish(),
+  conversation_id: z.string().nullish().default(null),
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.intersection(
+        z.union([
+          z.intersection(
+            z.unknown(),
+            z.object({
+              remote_url: z.string().optional(),
+              transfer_method: z.enum(['remote_url']).optional(),
+              url: z.string().optional(),
+            }),
+          ),
+          z.object({
+            transfer_method: z.enum(['local_file']).optional(),
+            upload_file_id: z.string(),
+          }),
+        ]),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file', 'remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      ),
     )
-    .nullish(),
+    .nullish()
+    .default(null),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string(),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
   user: z.string(),
-  workflow_id: z.string().nullish(),
+  workflow_id: z.string().nullish().default(null),
 })
 
 /**
@@ -193,7 +311,7 @@ export const zChildChunkCreatePayload = z.object({
  * ChildChunkListQuery
  */
 export const zChildChunkListQuery = z.object({
-  keyword: z.string().nullish(),
+  keyword: z.string().nullish().default(null),
   limit: z.int().gte(1).optional().default(20),
   page: z.int().gte(1).optional().default(1),
 })
@@ -238,22 +356,61 @@ export const zChildChunkUpdatePayload = z.object({
 })
 
 /**
+ * CompletionBlockingResponse
+ */
+export const zCompletionBlockingResponse = z.object({
+  answer: z.string(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    }),
+  event: z.string(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+})
+
+/**
  * CompletionRequestPayload
  */
 export const zCompletionRequestPayload = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.intersection(
+        z.union([
+          z.intersection(
+            z.unknown(),
+            z.object({
+              remote_url: z.string().optional(),
+              transfer_method: z.enum(['remote_url']).optional(),
+              url: z.string().optional(),
+            }),
+          ),
+          z.object({
+            transfer_method: z.enum(['local_file']).optional(),
+            upload_file_id: z.string(),
+          }),
+        ]),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file', 'remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      ),
     )
-    .nullish(),
+    .nullish()
+    .default(null),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
 })
 
 /**
@@ -262,17 +419,35 @@ export const zCompletionRequestPayload = z.object({
 export const zCompletionRequestPayloadWithUser = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.intersection(
+        z.union([
+          z.intersection(
+            z.unknown(),
+            z.object({
+              remote_url: z.string().optional(),
+              transfer_method: z.enum(['remote_url']).optional(),
+              url: z.string().optional(),
+            }),
+          ),
+          z.object({
+            transfer_method: z.enum(['local_file']).optional(),
+            upload_file_id: z.string(),
+          }),
+        ]),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file', 'remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      ),
     )
-    .nullish(),
+    .nullish()
+    .default(null),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
   user: z.string(),
 })
 
@@ -303,14 +478,17 @@ export const zCondition = z.object({
     '≥',
   ]),
   name: z.string(),
-  value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
+  value: z
+    .union([z.string(), z.array(z.string()), z.number()])
+    .nullish()
+    .default(null),
 })
 
 /**
  * ConversationListQuery
  */
 export const zConversationListQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().nullish().default(null),
   limit: z.int().gte(1).lte(100).optional().default(20),
   sort_by: z
     .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])
@@ -322,7 +500,7 @@ export const zConversationRenamePayload = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish(),
+      name: z.string().nullish().default(null),
     }),
     z.object({
       auto_generate: z.literal(false).optional().default(false),
@@ -331,7 +509,7 @@ export const zConversationRenamePayload = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish(),
+    name: z.string().nullish().default(null),
   }),
 )
 
@@ -339,7 +517,7 @@ export const zConversationRenamePayloadWithUser = z.intersection(
   z.union([
     z.object({
       auto_generate: z.literal(true),
-      name: z.string().nullish(),
+      name: z.string().nullish().default(null),
       user: z.string().optional(),
     }),
     z.object({
@@ -350,7 +528,7 @@ export const zConversationRenamePayloadWithUser = z.intersection(
   ]),
   z.object({
     auto_generate: z.boolean().optional().default(false),
-    name: z.string().nullish(),
+    name: z.string().nullish().default(null),
     user: z.string().optional(),
   }),
 )
@@ -359,12 +537,30 @@ export const zConversationRenamePayloadWithUser = z.intersection(
  * ConversationVariableResponse
  */
 export const zConversationVariableResponse = z.object({
-  created_at: z.int().nullish(),
-  description: z.string().nullish(),
-  id: z.string(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  description: z.string().nullish().default(null),
+  id: z.uuid(),
   name: z.string(),
-  updated_at: z.int().nullish(),
-  value: z.string().nullish(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  value: z.string().nullish().default(null),
   value_type: z.string(),
 })
 
@@ -396,9 +592,9 @@ export const zConversationVariableUpdatePayloadWithUser = z.object({
  * ConversationVariablesQuery
  */
 export const zConversationVariablesQuery = z.object({
-  last_id: z.string().nullish(),
+  last_id: z.string().nullish().default(null),
   limit: z.int().gte(1).lte(100).optional().default(20),
-  variable_name: z.string().min(1).max(255).nullish(),
+  variable_name: z.string().min(1).max(255).nullish().default(null),
 })
 
 /**
@@ -437,18 +633,18 @@ export const zDatasetDocMetadataResponse = z.object({
  * DatasetExternalKnowledgeInfoResponse
  */
 export const zDatasetExternalKnowledgeInfoResponse = z.object({
-  external_knowledge_api_endpoint: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_api_name: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
+  external_knowledge_api_endpoint: z.string().nullish().default(null),
+  external_knowledge_api_id: z.string().nullish().default(null),
+  external_knowledge_api_name: z.string().nullish().default(null),
+  external_knowledge_id: z.string().nullish().default(null),
 })
 
 /**
  * DatasetExternalRetrievalModelResponse
  */
 export const zDatasetExternalRetrievalModelResponse = z.object({
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean().nullish(),
+  score_threshold: z.number().nullish().default(null),
+  score_threshold_enabled: z.boolean().nullish().default(null),
   top_k: z.int(),
 })
 
@@ -456,17 +652,17 @@ export const zDatasetExternalRetrievalModelResponse = z.object({
  * DatasetIconInfoResponse
  */
 export const zDatasetIconInfoResponse = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullish(),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
+  icon_url: z.string().nullish().default(null),
 })
 
 /**
  * DatasetKeywordSettingResponse
  */
 export const zDatasetKeywordSettingResponse = z.object({
-  keyword_weight: z.number().nullish(),
+  keyword_weight: z.number().nullish().default(null),
 })
 
 /**
@@ -474,7 +670,7 @@ export const zDatasetKeywordSettingResponse = z.object({
  */
 export const zDatasetListQuery = z.object({
   include_all: z.boolean().optional().default(false),
-  keyword: z.string().nullish(),
+  keyword: z.string().nullish().default(null),
   limit: z.int().optional().default(20),
   page: z.int().optional().default(1),
   tag_ids: z.array(z.string()).optional(),
@@ -533,18 +729,18 @@ export const zDatasetMetadataResponse = z.object({
  * DatasetRerankingModelResponse
  */
 export const zDatasetRerankingModelResponse = z.object({
-  reranking_model_name: z.string().nullish(),
-  reranking_provider_name: z.string().nullish(),
+  reranking_model_name: z.string().nullish().default(null),
+  reranking_provider_name: z.string().nullish().default(null),
 })
 
 /**
  * DatasetSummaryIndexSettingResponse
  */
 export const zDatasetSummaryIndexSettingResponse = z.object({
-  enable: z.boolean().nullish(),
-  model_name: z.string().nullish(),
-  model_provider_name: z.string().nullish(),
-  summary_prompt: z.string().nullish(),
+  enable: z.boolean().nullish().default(null),
+  model_name: z.string().nullish().default(null),
+  model_provider_name: z.string().nullish().default(null),
+  summary_prompt: z.string().nullish().default(null),
 })
 
 /**
@@ -560,9 +756,9 @@ export const zDatasetTagResponse = z.object({
  * DatasetVectorSettingResponse
  */
 export const zDatasetVectorSettingResponse = z.object({
-  embedding_model_name: z.string().nullish(),
-  embedding_provider_name: z.string().nullish(),
-  vector_weight: z.number().nullish(),
+  embedding_model_name: z.string().nullish().default(null),
+  embedding_provider_name: z.string().nullish().default(null),
+  vector_weight: z.number().nullish().default(null),
 })
 
 /**
@@ -571,7 +767,7 @@ export const zDatasetVectorSettingResponse = z.object({
 export const zDatasetWeightedScoreResponse = z.object({
   keyword_setting: zDatasetKeywordSettingResponse.optional(),
   vector_setting: zDatasetVectorSettingResponse.optional(),
-  weight_type: z.string().nullish(),
+  weight_type: z.string().nullish().default(null),
 })
 
 /**
@@ -579,13 +775,13 @@ export const zDatasetWeightedScoreResponse = z.object({
  */
 export const zDatasetRetrievalModelResponse = z.object({
   reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
+  reranking_mode: z.string().nullish().default(null),
   reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish(),
+  score_threshold: z.number().nullish().default(null),
   score_threshold_enabled: z.boolean(),
   search_method: z.string(),
   top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish(),
+  weights: zDatasetWeightedScoreResponse.nullish().default(null),
 })
 
 /**
@@ -603,7 +799,7 @@ export const zDatasetDetailResponse = z.object({
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
   document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
+  embedding_available: z.boolean().nullish().default(null),
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
@@ -614,7 +810,7 @@ export const zDatasetDetailResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
-  maintainer: z.string().nullish(),
+  maintainer: z.string().nullish().default(null),
   name: z.string(),
   permission: z.string(),
   permission_keys: z.array(z.string()).optional(),
@@ -646,7 +842,7 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   doc_form: z.string().nullable(),
   doc_metadata: z.array(zDatasetDocMetadataResponse),
   document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
+  embedding_available: z.boolean().nullish().default(null),
   embedding_model: z.string().nullable(),
   embedding_model_provider: z.string().nullable(),
   enable_api: z.boolean(),
@@ -657,9 +853,9 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
-  maintainer: z.string().nullish(),
+  maintainer: z.string().nullish().default(null),
   name: z.string(),
-  partial_member_list: z.array(z.string()).nullish(),
+  partial_member_list: z.array(z.string()).nullish().default(null),
   permission: z.string(),
   permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
@@ -690,17 +886,17 @@ export const zDatasetListResponse = z.object({
  * DatasourceCredentialInfoResponse
  */
 export const zDatasourceCredentialInfoResponse = z.object({
-  id: z.string().nullish(),
-  is_default: z.boolean().nullish(),
-  name: z.string().nullish(),
-  type: z.string().nullish(),
+  id: z.string().nullish().default(null),
+  is_default: z.boolean().nullish().default(null),
+  name: z.string().nullish().default(null),
+  type: z.string().nullish().default(null),
 })
 
 /**
  * DatasourceNodeRunPayload
  */
 export const zDatasourceNodeRunPayload = z.object({
-  credential_id: z.string().nullish(),
+  credential_id: z.string().nullish().default(null),
   datasource_type: z.enum(['local_file', 'online_document', 'online_drive', 'website_crawl']),
   inputs: z.record(z.string(), z.unknown()),
   is_published: z.boolean(),
@@ -711,11 +907,11 @@ export const zDatasourceNodeRunPayload = z.object({
  */
 export const zDatasourcePluginResponse = z.object({
   credentials: z.array(zDatasourceCredentialInfoResponse).optional(),
-  datasource_type: z.string().nullish(),
-  node_id: z.string().nullish(),
-  plugin_id: z.string().nullish(),
-  provider_name: z.string().nullish(),
-  title: z.string().nullish(),
+  datasource_type: z.string().nullish().default(null),
+  node_id: z.string().nullish().default(null),
+  plugin_id: z.string().nullish().default(null),
+  provider_name: z.string().nullish().default(null),
+  title: z.string().nullish().default(null),
   user_input_variables: z.array(z.record(z.string(), z.unknown())).optional(),
 })
 
@@ -751,12 +947,13 @@ export const zDocumentGetQuery = z.object({
  * DocumentListQuery
  */
 export const zDocumentListQuery = z.object({
-  keyword: z.string().nullish(),
+  keyword: z.string().nullish().default(null),
   limit: z.int().optional().default(20),
   page: z.int().optional().default(1),
   status: z
     .enum(['archived', 'available', 'disabled', 'error', 'indexing', 'paused', 'queuing'])
-    .nullish(),
+    .nullish()
+    .default(null),
 })
 
 /**
@@ -766,76 +963,77 @@ export const zDocumentMetadataResponse = z.object({
   id: z.string(),
   name: z.string(),
   type: z.string(),
-  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish(),
+  value: z.union([z.string(), z.int(), z.number(), z.boolean()]).nullish().default(null),
 })
 
 /**
  * DocumentDetailResponse
  */
 export const zDocumentDetailResponse = z.object({
-  archived: z.boolean().optional(),
-  average_segment_length: z.union([z.int(), z.number()]).optional(),
-  completed_at: z.int().nullish(),
-  created_at: z.int().optional(),
-  created_by: z.string().optional(),
-  created_from: z.string().optional(),
-  data_source_info: z.record(z.string(), z.unknown()).optional(),
-  data_source_type: z.string().optional(),
-  dataset_process_rule: z.record(z.string(), z.unknown()).optional(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().optional(),
-  doc_language: z.string().nullish(),
+  archived: z.boolean().optional().default(null),
+  average_segment_length: z.union([z.int(), z.number()]).optional().default(null),
+  completed_at: z.int().nullish().default(null),
+  created_at: z.int().optional().default(null),
+  created_by: z.string().optional().default(null),
+  created_from: z.string().optional().default(null),
+  data_source_info: z.record(z.string(), z.unknown()).optional().default(null),
+  data_source_type: z.string().optional().default(null),
+  dataset_process_rule: z.record(z.string(), z.unknown()).optional().default(null),
+  dataset_process_rule_id: z.string().nullish().default(null),
+  disabled_at: z.int().nullish().default(null),
+  disabled_by: z.string().nullish().default(null),
+  display_status: z.string().nullish().default(null),
+  doc_form: z.string().optional().default(null),
+  doc_language: z.string().nullish().default(null),
   doc_metadata: z
     .union([z.array(zDocumentMetadataResponse), z.record(z.string(), z.unknown())])
-    .nullish(),
-  doc_type: z.string().nullish(),
-  document_process_rule: z.record(z.string(), z.unknown()).optional(),
-  enabled: z.boolean().optional(),
-  error: z.string().nullish(),
-  hit_count: z.int().optional(),
+    .nullish()
+    .default(null),
+  doc_type: z.string().nullish().default(null),
+  document_process_rule: z.record(z.string(), z.unknown()).optional().default(null),
+  enabled: z.boolean().optional().default(null),
+  error: z.string().nullish().default(null),
+  hit_count: z.int().optional().default(null),
   id: z.string(),
-  indexing_latency: z.number().nullish(),
-  indexing_status: z.string().optional(),
-  name: z.string().optional(),
-  need_summary: z.boolean().optional(),
-  position: z.int().optional(),
-  segment_count: z.int().optional(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  updated_at: z.int().nullish(),
+  indexing_latency: z.number().nullish().default(null),
+  indexing_status: z.string().optional().default(null),
+  name: z.string().optional().default(null),
+  need_summary: z.boolean().optional().default(null),
+  position: z.int().optional().default(null),
+  segment_count: z.int().optional().default(null),
+  summary_index_status: z.string().nullish().default(null),
+  tokens: z.int().nullish().default(null),
+  updated_at: z.int().nullish().default(null),
 })
 
 /**
  * DocumentResponse
  */
 export const zDocumentResponse = z.object({
-  archived: z.boolean().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
-  data_source_type: z.string().nullish(),
-  dataset_process_rule_id: z.string().nullish(),
-  disabled_at: z.int().nullish(),
-  disabled_by: z.string().nullish(),
-  display_status: z.string().nullish(),
-  doc_form: z.string().nullish(),
+  archived: z.boolean().nullish().default(null),
+  created_at: z.int().nullish().default(null),
+  created_by: z.string().nullish().default(null),
+  created_from: z.string().nullish().default(null),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish().default(null),
+  data_source_type: z.string().nullish().default(null),
+  dataset_process_rule_id: z.string().nullish().default(null),
+  disabled_at: z.int().nullish().default(null),
+  disabled_by: z.string().nullish().default(null),
+  display_status: z.string().nullish().default(null),
+  doc_form: z.string().nullish().default(null),
   doc_metadata: z.array(zDocumentMetadataResponse).optional(),
-  enabled: z.boolean().nullish(),
-  error: z.string().nullish(),
-  hit_count: z.int().nullish(),
+  enabled: z.boolean().nullish().default(null),
+  error: z.string().nullish().default(null),
+  hit_count: z.int().nullish().default(null),
   id: z.string(),
-  indexing_status: z.string().nullish(),
+  indexing_status: z.string().nullish().default(null),
   name: z.string(),
-  need_summary: z.boolean().nullish(),
-  position: z.int().nullish(),
-  summary_index_status: z.string().nullish(),
-  tokens: z.int().nullish(),
-  word_count: z.int().nullish(),
+  need_summary: z.boolean().nullish().default(null),
+  position: z.int().nullish().default(null),
+  summary_index_status: z.string().nullish().default(null),
+  tokens: z.int().nullish().default(null),
+  word_count: z.int().nullish().default(null),
 })
 
 /**
@@ -870,10 +1068,10 @@ export const zDocumentStatusPayload = z.object({
 export const zDocumentStatusResponse = z.object({
   cleaning_completed_at: z.int().nullable(),
   completed_at: z.int().nullable(),
-  completed_segments: z.int().nullish(),
+  completed_segments: z.int().nullish().default(null),
   error: z.string().nullable(),
-  error_code: z.string().nullish(),
-  estimated_vector_space_mb: z.int().nullish(),
+  error_code: z.string().nullish().default(null),
+  estimated_vector_space_mb: z.int().nullish().default(null),
   id: z.string(),
   indexing_status: z.string(),
   parsing_completed_at: z.int().nullable(),
@@ -881,8 +1079,8 @@ export const zDocumentStatusResponse = z.object({
   processing_started_at: z.int().nullable(),
   splitting_completed_at: z.int().nullable(),
   stopped_at: z.int().nullable(),
-  total_segments: z.int().nullish(),
-  vector_space_limit_mb: z.int().nullish(),
+  total_segments: z.int().nullish().default(null),
+  vector_space_limit_mb: z.int().nullish().default(null),
 })
 
 /**
@@ -902,14 +1100,14 @@ export const zDocumentStatusListResponse = z.object({
  * `is_anonymous` from `_is_anonymous` to return the stored value.
  */
 export const zEndUserDetail = z.object({
-  app_id: z.string().nullish(),
+  app_id: z.uuid().nullish().default(null),
   created_at: z.iso.datetime(),
-  external_user_id: z.string().nullish(),
-  id: z.string(),
+  external_user_id: z.string().nullish().default(null),
+  id: z.uuid(),
   is_anonymous: z.boolean(),
-  name: z.string().nullish(),
+  name: z.string().nullish().default(null),
   session_id: z.string(),
-  tenant_id: z.string(),
+  tenant_id: z.uuid(),
   type: z.string(),
   updated_at: z.iso.datetime(),
 })
@@ -950,21 +1148,30 @@ export const zFilePreviewQuery = z.object({
  * FileResponse
  */
 export const zFileResponse = z.object({
-  conversation_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  extension: z.string().nullish(),
-  file_key: z.string().nullish(),
-  id: z.string(),
-  mime_type: z.string().nullish(),
+  conversation_id: z.uuid().nullish().default(null),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  created_by: z.uuid().nullish().default(null),
+  extension: z.string().nullish().default(null),
+  file_key: z.string().nullish().default(null),
+  id: z.uuid(),
+  mime_type: z.string().nullish().default(null),
   name: z.string(),
-  original_url: z.string().nullish(),
-  preview_url: z.string().nullish(),
-  reference: z.string().nullish(),
+  original_url: z.string().nullish().default(null),
+  preview_url: z.string().nullish().default(null),
+  reference: z.string().nullish().default(null),
   size: z.int(),
-  source_url: z.string().nullish(),
-  tenant_id: z.string().nullish(),
-  user_id: z.string().nullish(),
+  source_url: z.string().nullish().default(null),
+  tenant_id: z.uuid().nullish().default(null),
+  user_id: z.uuid().nullish().default(null),
 })
 
 /**
@@ -1095,17 +1302,6 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(z.record(z.string(), z.unknown())).optional(),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(z.record(z.string(), z.unknown())).optional(),
-})
-
-/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
@@ -1117,7 +1313,7 @@ export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
  */
 export const zI18nObject = z.object({
   en_US: z.string(),
-  zh_Hans: z.string().nullish(),
+  zh_Hans: z.string().nullish().default(null),
 })
 
 /**
@@ -1131,39 +1327,116 @@ export const zIndexInfoResponse = z.object({
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+/**
+ * ChatPauseReasonResponse
+ *
+ * Public pause reason emitted by a blocking Chatflow execution.
+ */
+export const zChatPauseReasonResponse = z.object({
+  TYPE: z.string(),
+  actions: z.array(zJsonObject).optional(),
+  approval_channels: z.array(z.string()).optional(),
+  display_in_ui: z.boolean().nullish().default(null),
+  expiration_time: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  form_content: z.string().nullish().default(null),
+  form_id: z.uuid().nullish().default(null),
+  form_token: z.string().nullish().default(null),
+  inputs: z.array(zJsonObject).optional(),
+  message: z.string().nullish().default(null),
+  node_id: z.string().nullish().default(null),
+  node_title: z.string().nullish().default(null),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * ChatPausedBlockingDataResponse
+ */
+export const zChatPausedBlockingDataResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    }),
+  elapsed_time: z.number(),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  paused_nodes: z.array(z.string()),
+  reasons: z.array(zChatPauseReasonResponse),
+  status: z.literal('paused'),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * ChatPausedBlockingResponse
+ */
+export const zChatPausedBlockingResponse = z.object({
+  answer: z.string(),
+  conversation_id: z.uuid(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    }),
+  data: zChatPausedBlockingDataResponse,
+  event: z.literal('workflow_paused'),
+  id: z.uuid(),
+  message_id: z.uuid(),
+  metadata: zBlockingMetadataResponse,
+  mode: z.string(),
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * ChatBlockingResponse
+ *
+ * Blocking chat response for a completed message or paused Chatflow.
+ */
+export const zChatBlockingResponse = z.discriminatedUnion('event', [
+  zChatMessageBlockingResponse.extend({ event: z.literal('message') }),
+  zChatPausedBlockingResponse.extend({ event: z.literal('workflow_paused') }),
+])
+
+export const zJsonValue = z.unknown()
 
 /**
  * AgentThought
  */
 export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
+  answer: z.string().nullish().default(null),
+  chain_id: z.string().nullish().default(null),
+  created_at: z.int().nullish().default(null),
   files: z.array(z.string()),
   id: z.string(),
   message_id: z.string(),
-  observation: z.string().nullish(),
+  observation: z.string().nullish().default(null),
   position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
+  thought: z.string().nullish().default(null),
+  tool: z.string().nullish().default(null),
+  tool_input: z.string().nullish().default(null),
   tool_labels: zJsonValue,
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 export const zJsonValueType = z.unknown()
 
@@ -1178,7 +1451,7 @@ export const zHumanInputFormSubmissionData = z.object({
   node_id: z.string(),
   node_title: z.string(),
   rendered_content: z.string(),
-  submitted_data: z.record(z.string(), zJsonValue2).nullish(),
+  submitted_data: z.record(z.string(), zJsonValue2).nullish().default(null),
 })
 
 /**
@@ -1202,7 +1475,7 @@ export const zHumanInputFormSubmitPayloadWithUser = z.object({
  * KnowledgeTagResponse
  */
 export const zKnowledgeTagResponse = z.object({
-  binding_count: z.string().nullish(),
+  binding_count: z.string().nullish().default(null),
   id: z.string(),
   name: z.string(),
   type: z.string(),
@@ -1217,16 +1490,16 @@ export const zKnowledgeTagListResponse = z.array(zKnowledgeTagResponse)
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
-  content: z.string().nullish(),
-  rating: z.enum(['dislike', 'like']).nullish(),
+  content: z.string().nullish().default(null),
+  rating: z.enum(['dislike', 'like']).nullish().default(null),
 })
 
 /**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayloadWithUser = z.object({
-  content: z.string().nullish(),
-  rating: z.enum(['dislike', 'like']).nullish(),
+  content: z.string().nullish().default(null),
+  rating: z.enum(['dislike', 'like']).nullish().default(null),
   user: z.string(),
 })
 
@@ -1234,15 +1507,15 @@ export const zMessageFeedbackPayloadWithUser = z.object({
  * MessageFile
  */
 export const zMessageFile = z.object({
-  belongs_to: z.string().nullish(),
+  belongs_to: z.string().nullish().default(null),
   filename: z.string(),
-  id: z.string(),
-  mime_type: z.string().nullish(),
-  size: z.int().nullish(),
+  id: z.uuid(),
+  mime_type: z.string().nullish().default(null),
+  size: z.int().nullish().default(null),
   transfer_method: z.string(),
   type: z.string(),
-  upload_file_id: z.string().nullish(),
-  url: z.string().nullish(),
+  upload_file_id: z.uuid().nullish().default(null),
+  url: z.string().nullish().default(null),
 })
 
 /**
@@ -1250,7 +1523,7 @@ export const zMessageFile = z.object({
  */
 export const zMessageListQuery = z.object({
   conversation_id: z.string(),
-  first_id: z.string().nullish(),
+  first_id: z.string().nullish().default(null),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
 
@@ -1268,7 +1541,7 @@ export const zMetadataArgs = z.object({
 export const zMetadataDetail = z.object({
   id: z.uuid(),
   name: z.string(),
-  value: z.union([z.string(), z.int(), z.number()]).nullish(),
+  value: z.union([z.string(), z.int(), z.number()]).nullish().default(null),
 })
 
 /**
@@ -1286,7 +1559,7 @@ export const zDocumentMetadataOperation = z.object({
  * Metadata Filtering Condition.
  */
 export const zMetadataFilteringCondition = z.object({
-  conditions: z.array(zCondition).nullish(),
+  conditions: z.array(zCondition).nullish().default(null),
   logical_operator: z.enum(['and', 'or']).nullish().default('and'),
 })
 
@@ -1427,11 +1700,11 @@ export const zPipelineRunApiEntity = z.object({
  * PipelineUploadFileResponse
  */
 export const zPipelineUploadFileResponse = z.object({
-  created_at: z.string().nullish(),
+  created_at: z.string().nullish().default(null),
   created_by: z.string(),
   extension: z.string(),
   id: z.string(),
-  mime_type: z.string().nullish(),
+  mime_type: z.string().nullish().default(null),
   name: z.string(),
   size: z.int(),
 })
@@ -1458,7 +1731,7 @@ export const zProcessRuleMode = z.enum(['automatic', 'custom', 'hierarchical'])
  */
 export const zProviderModelWithStatusEntity = z.object({
   deprecated: z.boolean().optional().default(false),
-  features: z.array(zModelFeature).nullish(),
+  features: z.array(zModelFeature).nullish().default(null),
   fetch_from: zFetchFrom,
   has_invalid_load_balancing_configs: z.boolean().optional().default(false),
   label: zI18nObject,
@@ -1475,8 +1748,8 @@ export const zProviderModelWithStatusEntity = z.object({
  * Model class for provider with models response.
  */
 export const zProviderWithModelsResponse = z.object({
-  icon_small: zI18nObject.nullish(),
-  icon_small_dark: zI18nObject.nullish(),
+  icon_small: zI18nObject.nullish().default(null),
+  icon_small_dark: zI18nObject.nullish().default(null),
   label: zI18nObject,
   models: z.array(zProviderModelWithStatusEntity),
   provider: z.string(),
@@ -1502,8 +1775,8 @@ export const zRequiredServiceApiUserPayload = z.object({
  * RerankingModel
  */
 export const zRerankingModel = z.object({
-  reranking_model_name: z.string().nullish(),
-  reranking_provider_name: z.string().nullish(),
+  reranking_model_name: z.string().nullish().default(null),
+  reranking_provider_name: z.string().nullish().default(null),
 })
 
 /**
@@ -1527,23 +1800,32 @@ export const zRetrievalMethod = z.enum([
  * RetrieverResource
  */
 export const zRetrieverResource = z.object({
-  content: z.string().nullish(),
-  created_at: z.int().nullish(),
-  data_source_type: z.string().nullish(),
-  dataset_id: z.string().nullish(),
-  dataset_name: z.string().nullish(),
-  document_id: z.string().nullish(),
-  document_name: z.string().nullish(),
-  hit_count: z.int().nullish(),
-  id: z.string().optional(),
-  index_node_hash: z.string().nullish(),
-  message_id: z.string().optional(),
+  content: z.string().nullish().default(null),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  data_source_type: z.string().nullish().default(null),
+  dataset_id: z.uuid().nullish().default(null),
+  dataset_name: z.string().nullish().default(null),
+  document_id: z.uuid().nullish().default(null),
+  document_name: z.string().nullish().default(null),
+  hit_count: z.int().nullish().default(null),
+  id: z.uuid().optional(),
+  index_node_hash: z.string().nullish().default(null),
+  message_id: z.uuid().optional(),
   position: z.int(),
-  score: z.number().nullish(),
-  segment_id: z.string().nullish(),
-  segment_position: z.int().nullish(),
-  summary: z.string().nullish(),
-  word_count: z.int().nullish(),
+  score: z.number().nullish().default(null),
+  segment_id: z.uuid().nullish().default(null),
+  segment_position: z.int().nullish().default(null),
+  summary: z.string().nullish().default(null),
+  word_count: z.int().nullish().default(null),
 })
 
 /**
@@ -1562,10 +1844,10 @@ export const zSegmentAttachmentResponse = z.object({
  * SegmentCreateItemPayload
  */
 export const zSegmentCreateItemPayload = z.object({
-  answer: z.string().nullish(),
-  attachment_ids: z.array(z.string()).nullish(),
+  answer: z.string().nullish().default(null),
+  attachment_ids: z.array(z.string()).nullish().default(null),
   content: z.string().min(1),
-  keywords: z.array(z.string()).nullish(),
+  keywords: z.array(z.string()).nullish().default(null),
 })
 
 /**
@@ -1579,7 +1861,7 @@ export const zSegmentCreatePayload = z.object({
  * SegmentListQuery
  */
 export const zSegmentListQuery = z.object({
-  keyword: z.string().nullish(),
+  keyword: z.string().nullish().default(null),
   limit: z.int().gte(1).optional().default(20),
   page: z.int().gte(1).optional().default(1),
   status: z.array(z.string()).optional(),
@@ -1650,13 +1932,13 @@ export const zSegmentListResponse = z.object({
  * SegmentUpdateArgs
  */
 export const zSegmentUpdateArgs = z.object({
-  answer: z.string().nullish(),
-  attachment_ids: z.array(z.string()).nullish(),
-  content: z.string().nullish(),
-  enabled: z.boolean().nullish(),
-  keywords: z.array(z.string()).nullish(),
+  answer: z.string().nullish().default(null),
+  attachment_ids: z.array(z.string()).nullish().default(null),
+  content: z.string().nullish().default(null),
+  enabled: z.boolean().nullish().default(null),
+  keywords: z.array(z.string()).nullish().default(null),
   regenerate_child_chunks: z.boolean().optional().default(false),
-  summary: z.string().nullish(),
+  summary: z.string().nullish().default(null),
 })
 
 /**
@@ -1679,10 +1961,10 @@ export const zSegmentation = z.object({
  * Rule
  */
 export const zRule = z.object({
-  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
-  pre_processing_rules: z.array(zPreProcessingRule).nullish(),
-  segmentation: zSegmentation.nullish(),
-  subchunk_segmentation: zSegmentation.nullish(),
+  parent_mode: z.enum(['full-doc', 'paragraph']).nullish().default(null),
+  pre_processing_rules: z.array(zPreProcessingRule).nullish().default(null),
+  segmentation: zSegmentation.nullish().default(null),
+  subchunk_segmentation: zSegmentation.nullish().default(null),
 })
 
 /**
@@ -1690,7 +1972,7 @@ export const zRule = z.object({
  */
 export const zProcessRule = z.object({
   mode: zProcessRuleMode,
-  rules: zRule.nullish(),
+  rules: zRule.nullish().default(null),
 })
 
 /**
@@ -1706,13 +1988,31 @@ export const zSimpleAccountResponse = z.object({
  * SimpleConversation
  */
 export const zSimpleConversation = z.object({
-  created_at: z.int().nullish(),
-  id: z.string(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValue),
-  introduction: z.string().nullish(),
+  introduction: z.string().nullish().default(null),
   name: z.string(),
   status: z.string(),
-  updated_at: z.int().nullish(),
+  updated_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
 })
 
 /**
@@ -1730,7 +2030,7 @@ export const zConversationInfiniteScrollPagination = z.object({
 export const zSimpleEndUser = z.object({
   id: z.string(),
   is_anonymous: z.boolean(),
-  session_id: z.string().nullish(),
+  session_id: z.string().nullish().default(null),
   type: z.string(),
 })
 
@@ -1738,7 +2038,7 @@ export const zSimpleEndUser = z.object({
  * SimpleFeedback
  */
 export const zSimpleFeedback = z.object({
-  rating: z.string().nullish(),
+  rating: z.string().nullish().default(null),
 })
 
 /**
@@ -1760,18 +2060,18 @@ export const zSimpleResultStringListResponse = z.object({
  * Site
  */
 export const zSite = z.object({
-  chat_color_theme: z.string().nullish(),
+  chat_color_theme: z.string().nullish().default(null),
   chat_color_theme_inverted: z.boolean(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
+  copyright: z.string().nullish().default(null),
+  custom_disclaimer: z.string().nullish().default(null),
   default_language: z.string(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
+  description: z.string().nullish().default(null),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
   icon_url: z.string().nullable(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
+  input_placeholder: z.string().nullish().default(null),
+  privacy_policy: z.string().nullish().default(null),
   show_workflow_steps: z.boolean(),
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
@@ -1792,25 +2092,58 @@ export const zSystemParameters = z.object({
  * Parameters
  */
 export const zParameters = z.object({
-  annotation_reply: zJsonObject,
-  file_upload: zJsonObject,
-  more_like_this: zJsonObject,
-  opening_statement: z.string().nullish(),
-  retriever_resource: zJsonObject,
-  sensitive_word_avoidance: zJsonObject,
-  speech_to_text: zJsonObject,
+  annotation_reply: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  file_upload: z.object({
+    allowed_file_extensions: z.array(z.string()).optional(),
+    allowed_file_types: z
+      .array(z.enum(['audio', 'custom', 'document', 'image', 'video']))
+      .optional(),
+    allowed_file_upload_methods: z.array(z.enum(['local_file', 'remote_url'])).optional(),
+    enabled: z.boolean().optional(),
+    image: z
+      .object({
+        detail: z.string().optional(),
+        enabled: z.boolean().optional(),
+        number_limits: z.int().optional(),
+        transfer_methods: z.array(z.string()).optional(),
+      })
+      .optional(),
+    number_limits: z.int().optional(),
+  }),
+  more_like_this: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  opening_statement: z.string().nullish().default(null),
+  retriever_resource: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  sensitive_word_avoidance: z.object({
+    enabled: z.boolean().optional(),
+  }),
+  speech_to_text: z.object({
+    enabled: z.boolean().optional(),
+  }),
   suggested_questions: z.array(z.string()),
-  suggested_questions_after_answer: zJsonObject,
+  suggested_questions_after_answer: z.object({
+    enabled: z.boolean().optional(),
+  }),
   system_parameters: zSystemParameters,
-  text_to_speech: zJsonObject,
-  user_input_form: z.array(zJsonObject),
+  text_to_speech: z.object({
+    autoPlay: z.string().optional(),
+    enabled: z.boolean().optional(),
+    language: z.string().optional(),
+    voice: z.string().optional(),
+  }),
+  user_input_form: z.array(z.unknown()),
 })
 
 /**
  * TagBindingPayload
  */
 export const zTagBindingPayload = z.object({
-  tag_ids: z.array(z.string()),
+  tag_ids: z.array(z.string()).min(1),
   target_id: z.string(),
 })
 
@@ -1840,7 +2173,7 @@ export const zTagUnbindingPayload = z.union([
     target_id: z.string(),
   }),
   z.object({
-    tag_id: z.string().optional(),
+    tag_id: z.string().nullish(),
     tag_ids: z.array(z.string()).min(1),
     target_id: z.string(),
   }),
@@ -1858,21 +2191,36 @@ export const zTagUpdatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.uuid().nullish(),
-  streaming: z.boolean().nullish(),
-  text: z.string().nullish(),
-  voice: z.string().nullish(),
+  message_id: z.uuid().nullish().default(null),
+  streaming: z.boolean().nullish().default(null),
+  text: z.string().nullish().default(null),
+  voice: z.string().nullish().default(null),
 })
 
 /**
  * TextToAudioPayload
  */
 export const zTextToAudioPayloadWithUser = z.object({
-  message_id: z.uuid().nullish(),
-  streaming: z.boolean().nullish(),
-  text: z.string().nullish(),
+  message_id: z.uuid().nullish().default(null),
+  streaming: z.boolean().nullish().default(null),
+  text: z.string().nullish().default(null),
   user: z.string().optional(),
-  voice: z.string().nullish(),
+  voice: z.string().nullish().default(null),
+})
+
+/**
+ * ToolIcon
+ */
+export const zToolIcon = z.object({
+  background: z.string(),
+  content: z.string(),
+})
+
+/**
+ * AppMetaResponse
+ */
+export const zAppMetaResponse = z.object({
+  tool_icons: z.record(z.string(), z.union([z.string(), zToolIcon])).optional(),
 })
 
 /**
@@ -1889,7 +2237,10 @@ export const zUrlResponse = z.object({
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
-  id: z.string().max(20),
+  id: z
+    .string()
+    .max(20)
+    .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
 })
 
@@ -1936,7 +2287,7 @@ export const zStringSource = z.object({
  * Form input definition.
  */
 export const zParagraphInputConfig = z.object({
-  default: zStringSource.nullish(),
+  default: zStringSource.nullish().default(null),
   output_variable_name: z.string(),
   type: z.literal('paragraph').optional().default('paragraph'),
 })
@@ -1957,7 +2308,7 @@ export const zHumanInputFormDefinition = z.object({
   expiration_time: z.int(),
   form_content: z.string(),
   form_id: z.string(),
-  form_token: z.string().nullish(),
+  form_token: z.string().nullish().default(null),
   inputs: z.array(zFormInputConfig).optional(),
   node_id: z.string(),
   node_title: z.string(),
@@ -1968,11 +2319,31 @@ export const zHumanInputFormDefinition = z.object({
  * HumanInputContent
  */
 export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.nullish(),
-  form_submission_data: zHumanInputFormSubmissionData.nullish(),
+  form_definition: zHumanInputFormDefinition.nullish().default(null),
+  form_submission_data: zHumanInputFormSubmissionData.nullish().default(null),
   submitted: z.boolean(),
   type: zExecutionContentType.optional().default('human_input'),
   workflow_run_id: z.string(),
+})
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  form_content: z.string(),
+  inputs: z.array(zFormInputConfig),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zUserActionConfig),
 })
 
 /**
@@ -1982,17 +2353,26 @@ export const zMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  currency: z.string().nullish(),
-  error: z.string().nullish(),
+  conversation_id: z.uuid(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  currency: z.string().nullish().default(null),
+  error: z.string().nullish().default(null),
   extra_contents: z.array(zHumanInputContent),
-  feedback: zSimpleFeedback.nullish(),
-  id: z.string(),
+  feedback: zSimpleFeedback.nullish().default(null),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  parent_message_id: z.string().nullish(),
+  parent_message_id: z.uuid().nullish().default(null),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -2000,7 +2380,8 @@ export const zMessageListItem = z.object({
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish(),
+    .nullish()
+    .default(null),
   total_tokens: z.int().readonly(),
 })
 
@@ -2033,24 +2414,24 @@ export const zWeightVectorSetting = z.object({
  * WeightModel
  */
 export const zWeightModel = z.object({
-  keyword_setting: zWeightKeywordSetting.nullish(),
-  vector_setting: zWeightVectorSetting.nullish(),
-  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).nullish(),
+  keyword_setting: zWeightKeywordSetting.nullish().default(null),
+  vector_setting: zWeightVectorSetting.nullish().default(null),
+  weight_type: z.enum(['customized', 'keyword_first', 'semantic_first']).nullish().default(null),
 })
 
 /**
  * RetrievalModel
  */
 export const zRetrievalModel = z.object({
-  metadata_filtering_conditions: zMetadataFilteringCondition.nullish(),
+  metadata_filtering_conditions: zMetadataFilteringCondition.nullish().default(null),
   reranking_enable: z.boolean(),
-  reranking_mode: z.enum(['reranking_model', 'weighted_score']).nullish(),
-  reranking_model: zRerankingModel.nullish(),
-  score_threshold: z.number().nullish(),
+  reranking_mode: z.enum(['reranking_model', 'weighted_score']).nullish().default(null),
+  reranking_model: zRerankingModel.nullish().default(null),
+  score_threshold: z.number().nullish().default(null),
   score_threshold_enabled: z.boolean(),
   search_method: zRetrievalMethod,
   top_k: z.int(),
-  weights: zWeightModel.nullish(),
+  weights: zWeightModel.nullish().default(null),
 })
 
 /**
@@ -2058,15 +2439,15 @@ export const zRetrievalModel = z.object({
  */
 export const zDatasetCreatePayload = z.object({
   description: z.string().max(400).optional().default(''),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  embedding_model: z.string().nullish().default(null),
+  embedding_model_provider: z.string().nullish().default(null),
+  external_knowledge_api_id: z.string().nullish().default(null),
+  external_knowledge_id: z.string().nullish().default(null),
+  indexing_technique: z.enum(['economy', 'high_quality']).nullish().default(null),
   name: z.string().min(1).max(40),
   permission: zPermissionEnum.nullish().default('only_me'),
   provider: z.enum(['external', 'vendor']).optional().default('vendor'),
-  retrieval_model: zRetrievalModel.nullish(),
+  retrieval_model: zRetrievalModel.nullish().default(null),
   summary_index_setting: z
     .object({
       enable: z.boolean().optional(),
@@ -2074,36 +2455,39 @@ export const zDatasetCreatePayload = z.object({
       model_provider_name: z.string().optional(),
       summary_prompt: z.string().optional(),
     })
-    .nullish(),
+    .nullish()
+    .default(null),
 })
 
 /**
  * DatasetUpdatePayload
  */
 export const zDatasetUpdatePayload = z.object({
-  description: z.string().max(400).nullish(),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
+  description: z.string().max(400).nullish().default(null),
+  embedding_model: z.string().nullish().default(null),
+  embedding_model_provider: z.string().nullish().default(null),
+  external_knowledge_api_id: z.string().nullish().default(null),
+  external_knowledge_id: z.string().nullish().default(null),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
       score_threshold_enabled: z.boolean().optional(),
       top_k: z.int().optional(),
     })
-    .nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
-  name: z.string().min(1).max(40).nullish(),
+    .nullish()
+    .default(null),
+  indexing_technique: z.enum(['economy', 'high_quality']).nullish().default(null),
+  name: z.string().min(1).max(40).nullish().default(null),
   partial_member_list: z
     .array(
       z.object({
         user_id: z.string().optional(),
       }),
     )
-    .nullish(),
-  permission: zPermissionEnum.nullish(),
-  retrieval_model: zRetrievalModel.nullish(),
+    .nullish()
+    .default(null),
+  permission: zPermissionEnum.nullish().default(null),
+  retrieval_model: zRetrievalModel.nullish().default(null),
 })
 
 /**
@@ -2115,13 +2499,13 @@ export const zDocumentTextCreatePayload = z.object({
     .optional()
     .default('text_model'),
   doc_language: z.string().optional().default('English'),
-  embedding_model: z.string().nullish(),
-  embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
+  embedding_model: z.string().nullish().default(null),
+  embedding_model_provider: z.string().nullish().default(null),
+  indexing_technique: z.enum(['economy', 'high_quality']).nullish().default(null),
   name: z.string(),
-  original_document_id: z.string().nullish(),
-  process_rule: zProcessRule.nullish(),
-  retrieval_model: zRetrievalModel.nullish(),
+  original_document_id: z.string().nullish().default(null),
+  process_rule: zProcessRule.nullish().default(null),
+  retrieval_model: zRetrievalModel.nullish().default(null),
   text: z.string(),
 })
 
@@ -2133,10 +2517,10 @@ export const zDocumentTextUpdate = z.intersection(
         .optional()
         .default('text_model'),
       doc_language: z.string().optional().default('English'),
-      name: z.string(),
-      process_rule: zProcessRule.nullish(),
-      retrieval_model: zRetrievalModel.nullish(),
-      text: z.string(),
+      name: z.string().default(null),
+      process_rule: zProcessRule.nullish().default(null),
+      retrieval_model: zRetrievalModel.nullish().default(null),
+      text: z.string().default(null),
     }),
     z.object({
       doc_form: z
@@ -2144,9 +2528,9 @@ export const zDocumentTextUpdate = z.intersection(
         .optional()
         .default('text_model'),
       doc_language: z.string().optional().default('English'),
-      name: z.string().nullish(),
-      process_rule: zProcessRule.nullish(),
-      retrieval_model: zRetrievalModel.nullish(),
+      name: z.string().nullish().default(null),
+      process_rule: zProcessRule.nullish().default(null),
+      retrieval_model: zRetrievalModel.nullish().default(null),
       text: z.null().optional(),
     }),
   ]),
@@ -2156,10 +2540,10 @@ export const zDocumentTextUpdate = z.intersection(
       .optional()
       .default('text_model'),
     doc_language: z.string().optional().default('English'),
-    name: z.string().nullish(),
-    process_rule: zProcessRule.nullish(),
-    retrieval_model: zRetrievalModel.nullish(),
-    text: z.string().nullish(),
+    name: z.string().nullish().default(null),
+    process_rule: zProcessRule.nullish().default(null),
+    retrieval_model: zRetrievalModel.nullish().default(null),
+    text: z.string().nullish().default(null),
   }),
 )
 
@@ -2167,16 +2551,17 @@ export const zDocumentTextUpdate = z.intersection(
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.string()).nullish().default(null),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
       score_threshold_enabled: z.boolean().optional(),
       top_k: z.int().optional(),
     })
-    .nullish(),
+    .nullish()
+    .default(null),
   query: z.string().max(250),
-  retrieval_model: zRetrievalModel.nullish(),
+  retrieval_model: zRetrievalModel.nullish().default(null),
 })
 
 /**
@@ -2189,45 +2574,194 @@ export const zWorkflowEventsQuery = z.object({
 })
 
 /**
+ * WorkflowFinishedBlockingDataResponse
+ */
+export const zWorkflowFinishedBlockingDataResponse = z.object({
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    }),
+  elapsed_time: z.number(),
+  error: z.string().nullable(),
+  finished_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullable(),
+  id: z.uuid(),
+  outputs: z.record(z.string(), z.unknown()).nullable(),
+  status: z.enum(['failed', 'partial-succeeded', 'stopped', 'succeeded']),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * WorkflowFinishedBlockingResponse
+ */
+export const zWorkflowFinishedBlockingResponse = z.object({
+  data: zWorkflowFinishedBlockingDataResponse,
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
  * WorkflowLogQuery
  */
 export const zWorkflowLogQuery = z.object({
-  created_at__after: z.string().nullish(),
-  created_at__before: z.string().nullish(),
-  created_by_account: z.string().nullish(),
-  created_by_end_user_session_id: z.string().nullish(),
-  keyword: z.string().nullish(),
+  created_at__after: z.string().nullish().default(null),
+  created_at__before: z.string().nullish().default(null),
+  created_by_account: z.string().nullish().default(null),
+  created_by_end_user_session_id: z.string().nullish().default(null),
+  keyword: z.string().nullish().default(null),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
-  status: z.enum(['failed', 'stopped', 'succeeded']).nullish(),
+  status: z.enum(['failed', 'stopped', 'succeeded']).nullish().default(null),
 })
+
+/**
+ * WorkflowPauseReasonResponse
+ *
+ * Public pause reason emitted by a blocking Workflow execution.
+ */
+export const zWorkflowPauseReasonResponse = z.object({
+  TYPE: z.string(),
+  actions: z.array(zJsonObject).optional(),
+  approval_channels: z.array(z.string()).optional(),
+  display_in_ui: z.boolean().nullish().default(null),
+  expiration_time: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  form_content: z.string().nullish().default(null),
+  form_id: z.uuid().nullish().default(null),
+  form_token: z.string().nullish().default(null),
+  inputs: z.array(zJsonObject).optional(),
+  message: z.string().nullish().default(null),
+  node_id: z.string().nullish().default(null),
+  node_title: z.string().nullish().default(null),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * WorkflowPausedBlockingDataResponse
+ */
+export const zWorkflowPausedBlockingDataResponse = z.object({
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    }),
+  elapsed_time: z.number(),
+  error: z.string().nullable(),
+  finished_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullable(),
+  id: z.uuid(),
+  outputs: z.record(z.string(), z.unknown()).nullable(),
+  paused_nodes: z.array(z.string()),
+  reasons: z.array(zWorkflowPauseReasonResponse),
+  status: z.literal('paused'),
+  total_steps: z.int(),
+  total_tokens: z.int(),
+  workflow_id: z.uuid(),
+})
+
+/**
+ * WorkflowPausedBlockingResponse
+ */
+export const zWorkflowPausedBlockingResponse = z.object({
+  data: zWorkflowPausedBlockingDataResponse,
+  task_id: z.uuid(),
+  workflow_run_id: z.uuid(),
+})
+
+/**
+ * WorkflowBlockingResponse
+ *
+ * Blocking workflow response for a finished or paused execution.
+ */
+export const zWorkflowBlockingResponse = z.union([
+  zWorkflowFinishedBlockingResponse,
+  zWorkflowPausedBlockingResponse,
+])
 
 /**
  * WorkflowRunForLogResponse
  */
 export const zWorkflowRunForLogResponse = z.object({
-  created_at: z.int().nullish(),
-  elapsed_time: z.union([z.number(), z.int()]).nullish(),
-  error: z.string().nullish(),
-  exceptions_count: z.int().nullish(),
-  finished_at: z.int().nullish(),
-  id: z.string(),
-  status: z.string().nullish(),
-  total_steps: z.int().nullish(),
-  total_tokens: z.int().nullish(),
-  triggered_from: z.string().nullish(),
-  version: z.string().nullish(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  elapsed_time: z.union([z.number(), z.int()]).nullish().default(null),
+  error: z.string().nullish().default(null),
+  exceptions_count: z.int().nullish().default(null),
+  finished_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  id: z.uuid(),
+  status: z.string().nullish().default(null),
+  total_steps: z.int().nullish().default(null),
+  total_tokens: z.int().nullish().default(null),
+  triggered_from: z.string().nullish().default(null),
+  version: z.string().nullish().default(null),
 })
 
 /**
  * WorkflowAppLogPartialResponse
  */
 export const zWorkflowAppLogPartialResponse = z.object({
-  created_at: z.int().nullish(),
-  created_by_account: zSimpleAccountResponse.nullish(),
-  created_by_end_user: zSimpleEndUser.nullish(),
-  created_by_role: z.string().nullish(),
-  created_from: z.string().nullish(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  created_by_account: zSimpleAccountResponse.nullish().default(null),
+  created_by_end_user: zSimpleEndUser.nullish().default(null),
+  created_by_role: z.string().nullish().default(null),
+  created_from: z.string().nullish().default(null),
   details: z
     .union([
       z.record(z.string(), z.unknown()),
@@ -2237,9 +2771,10 @@ export const zWorkflowAppLogPartialResponse = z.object({
       z.number(),
       z.boolean(),
     ])
-    .nullish(),
-  id: z.string(),
-  workflow_run: zWorkflowRunForLogResponse.nullish(),
+    .nullish()
+    .default(null),
+  id: z.uuid(),
+  workflow_run: zWorkflowRunForLogResponse.nullish().default(null),
 })
 
 /**
@@ -2259,16 +2794,34 @@ export const zWorkflowAppLogPaginationResponse = z.object({
 export const zWorkflowRunPayload = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.intersection(
+        z.union([
+          z.intersection(
+            z.unknown(),
+            z.object({
+              remote_url: z.string().optional(),
+              transfer_method: z.enum(['remote_url']).optional(),
+              url: z.string().optional(),
+            }),
+          ),
+          z.object({
+            transfer_method: z.enum(['local_file']).optional(),
+            upload_file_id: z.string(),
+          }),
+        ]),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file', 'remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      ),
     )
-    .nullish(),
+    .nullish()
+    .default(null),
   inputs: z.record(z.string(), z.unknown()),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
 })
 
 /**
@@ -2277,16 +2830,34 @@ export const zWorkflowRunPayload = z.object({
 export const zWorkflowRunPayloadWithUser = z.object({
   files: z
     .array(
-      z.object({
-        transfer_method: z.enum(['local_file', 'remote_url']),
-        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
-        upload_file_id: z.string().optional(),
-        url: z.string().optional(),
-      }),
+      z.intersection(
+        z.union([
+          z.intersection(
+            z.unknown(),
+            z.object({
+              remote_url: z.string().optional(),
+              transfer_method: z.enum(['remote_url']).optional(),
+              url: z.string().optional(),
+            }),
+          ),
+          z.object({
+            transfer_method: z.enum(['local_file']).optional(),
+            upload_file_id: z.string(),
+          }),
+        ]),
+        z.object({
+          remote_url: z.string().optional(),
+          transfer_method: z.enum(['local_file', 'remote_url']),
+          type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+          upload_file_id: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      ),
     )
-    .nullish(),
+    .nullish()
+    .default(null),
   inputs: z.record(z.string(), z.unknown()),
-  response_mode: z.enum(['blocking', 'streaming']).nullish(),
+  response_mode: z.enum(['blocking', 'streaming']).nullish().default(null),
   user: z.string(),
 })
 
@@ -2294,11 +2865,29 @@ export const zWorkflowRunPayloadWithUser = z.object({
  * WorkflowRunResponse
  */
 export const zWorkflowRunResponse = z.object({
-  created_at: z.int().nullish(),
-  elapsed_time: z.union([z.number(), z.int()]).nullish(),
-  error: z.string().nullish(),
-  finished_at: z.int().nullish(),
-  id: z.string(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  elapsed_time: z.union([z.number(), z.int()]).nullish().default(null),
+  error: z.string().nullish().default(null),
+  finished_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  id: z.uuid(),
   inputs: z
     .union([
       z.record(z.string(), z.unknown()),
@@ -2308,18 +2897,14 @@ export const zWorkflowRunResponse = z.object({
       z.number(),
       z.boolean(),
     ])
-    .nullish(),
+    .nullish()
+    .default(null),
   outputs: z.record(z.string(), z.unknown()).optional(),
   status: z.string(),
-  total_steps: z.int().nullish(),
-  total_tokens: z.int().nullish(),
-  workflow_id: z.string(),
+  total_steps: z.int().nullish().default(null),
+  total_tokens: z.int().nullish().default(null),
+  workflow_id: z.uuid(),
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
 
 /**
  * HumanInputFormSubmitResponse
@@ -2333,17 +2918,26 @@ export const zMessageListItemWritable = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   answer_tokens: z.int().optional().default(0),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  currency: z.string().nullish(),
-  error: z.string().nullish(),
+  conversation_id: z.uuid(),
+  created_at: z.coerce
+    .bigint()
+    .min(BigInt('-9223372036854775808'), {
+      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
+    })
+    .max(BigInt('9223372036854775807'), {
+      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
+    })
+    .nullish()
+    .default(null),
+  currency: z.string().nullish().default(null),
+  error: z.string().nullish().default(null),
   extra_contents: z.array(zHumanInputContent),
-  feedback: zSimpleFeedback.nullish(),
-  id: z.string(),
+  feedback: zSimpleFeedback.nullish().default(null),
+  id: z.uuid(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
   message_tokens: z.int().optional().default(0),
-  parent_message_id: z.string().nullish(),
+  parent_message_id: z.uuid().nullish().default(null),
   provider_response_latency: z.number().optional().default(0),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -2351,7 +2945,8 @@ export const zMessageListItemWritable = z.object({
   total_price: z
     .string()
     .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
-    .nullish(),
+    .nullish()
+    .default(null),
 })
 
 /**
@@ -2367,17 +2962,17 @@ export const zMessageInfiniteScrollPaginationWritable = z.object({
  * Site
  */
 export const zSiteWritable = z.object({
-  chat_color_theme: z.string().nullish(),
+  chat_color_theme: z.string().nullish().default(null),
   chat_color_theme_inverted: z.boolean(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
+  copyright: z.string().nullish().default(null),
+  custom_disclaimer: z.string().nullish().default(null),
   default_language: z.string(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
+  description: z.string().nullish().default(null),
+  icon: z.string().nullish().default(null),
+  icon_background: z.string().nullish().default(null),
+  icon_type: z.string().nullish().default(null),
+  input_placeholder: z.string().nullish().default(null),
+  privacy_policy: z.string().nullish().default(null),
   show_workflow_steps: z.boolean(),
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
@@ -2476,7 +3071,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostChatMessagesResponse = zChatBlockingResponse
 
 export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2497,7 +3092,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
+export const zPostCompletionMessagesResponse = zCompletionBlockingResponse
 
 export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2525,33 +3120,33 @@ export const zGetConversationsQuery = z.object({
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
-export const zDeleteConversationsByCIdBody = zOptionalServiceApiUserPayload
+export const zDeleteConversationsByConversationIdBody = zOptionalServiceApiUserPayload
 
-export const zDeleteConversationsByCIdPath = z.object({
-  c_id: z.uuid(),
+export const zDeleteConversationsByConversationIdPath = z.object({
+  conversation_id: z.uuid(),
 })
 
 /**
  * Conversation deleted successfully.
  */
-export const zDeleteConversationsByCIdResponse = z.void()
+export const zDeleteConversationsByConversationIdResponse = z.void()
 
-export const zPostConversationsByCIdNameBody = zConversationRenamePayloadWithUser
+export const zPostConversationsByConversationIdNameBody = zConversationRenamePayloadWithUser
 
-export const zPostConversationsByCIdNamePath = z.object({
-  c_id: z.uuid(),
+export const zPostConversationsByConversationIdNamePath = z.object({
+  conversation_id: z.uuid(),
 })
 
 /**
  * Conversation renamed successfully.
  */
-export const zPostConversationsByCIdNameResponse = zSimpleConversation
+export const zPostConversationsByConversationIdNameResponse = zSimpleConversation
 
-export const zGetConversationsByCIdVariablesPath = z.object({
-  c_id: z.uuid(),
+export const zGetConversationsByConversationIdVariablesPath = z.object({
+  conversation_id: z.uuid(),
 })
 
-export const zGetConversationsByCIdVariablesQuery = z.object({
+export const zGetConversationsByConversationIdVariablesQuery = z.object({
   last_id: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   user: z.string().optional(),
@@ -2561,21 +3156,22 @@ export const zGetConversationsByCIdVariablesQuery = z.object({
 /**
  * Successfully retrieved conversation variables.
  */
-export const zGetConversationsByCIdVariablesResponse =
+export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse
 
-export const zPutConversationsByCIdVariablesByVariableIdBody =
+export const zPutConversationsByConversationIdVariablesByVariableIdBody =
   zConversationVariableUpdatePayloadWithUser
 
-export const zPutConversationsByCIdVariablesByVariableIdPath = z.object({
-  c_id: z.uuid(),
+export const zPutConversationsByConversationIdVariablesByVariableIdPath = z.object({
+  conversation_id: z.uuid(),
   variable_id: z.uuid(),
 })
 
 /**
  * Variable updated successfully.
  */
-export const zPutConversationsByCIdVariablesByVariableIdResponse = zConversationVariableResponse
+export const zPutConversationsByConversationIdVariablesByVariableIdResponse =
+  zConversationVariableResponse
 
 export const zGetDatasetsQuery = z.object({
   include_all: z.boolean().optional().default(false),
@@ -3130,10 +3726,7 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
 /**
  * Streaming response with node execution events.
  */
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.string()
 
 export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunApiEntity
 
@@ -3144,7 +3737,7 @@ export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
 /**
  * Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object.
  */
-export const zPostDatasetsByDatasetIdPipelineRunResponse = zGeneratedAppResponse
+export const zPostDatasetsByDatasetIdPipelineRunResponse = zWorkflowBlockingResponse
 
 export const zPostDatasetsByDatasetIdRetrieveBody = zHitTestingPayload
 
@@ -3286,11 +3879,11 @@ export const zPostTextToAudioResponse = z.custom<Blob | File>(
   (value) => value instanceof Blob || value instanceof File,
 )
 
-export const zGetWorkflowByTaskIdEventsPath = z.object({
-  task_id: z.string(),
+export const zGetWorkflowByWorkflowRunIdEventsPath = z.object({
+  workflow_run_id: z.string(),
 })
 
-export const zGetWorkflowByTaskIdEventsQuery = z.object({
+export const zGetWorkflowByWorkflowRunIdEventsQuery = z.object({
   continue_on_pause: z.boolean().optional().default(false),
   include_state_snapshot: z.boolean().optional().default(false),
   user: z.string(),
@@ -3299,7 +3892,7 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 /**
  * Server-Sent Events stream. Each event is delivered as `data: {JSON}\n\n`. Event payloads follow the same schemas as the original streaming response.
  */
-export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
+export const zGetWorkflowByWorkflowRunIdEventsResponse = z.string()
 
 export const zGetWorkflowsLogsQuery = z.object({
   created_at__after: z.iso.datetime().optional(),
@@ -3325,7 +3918,7 @@ export const zPostWorkflowsRunBody = zWorkflowRunPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsRunResponse = zWorkflowBlockingResponse
 
 export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
   workflow_run_id: z.string(),
@@ -3359,7 +3952,7 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsByWorkflowIdRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsByWorkflowIdRunResponse = zWorkflowBlockingResponse
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
