@@ -24,6 +24,7 @@ import GetWorkspace from '@/commands/get/workspace/index'
 import ImportStudioApp from '@/commands/import/studio-app/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
+import Search from '@/commands/search/index'
 import SetMember from '@/commands/set/member/index'
 import SkillsInstall from '@/commands/skills/install/index'
 import UseAccount from '@/commands/use/account/index'
@@ -102,6 +103,7 @@ export const commandTree: CommandTree = {
       app: { command: RunApp, subcommands: {} },
     },
   },
+  search: { command: Search, subcommands: {} },
   set: {
     subcommands: {
       member: { command: SetMember, subcommands: {} },

@@ -5,9 +5,7 @@ import { versionInfo } from '@/version/info'
 import { renderSkill } from './skill'
 import { SKILL_TEMPLATE } from './skill-template'
 
-// Self-references the skill is allowed to name — operational pointers, not a
-// command listing. Everything else must be discovered via `help -o json`.
-const SELF_REFERENCES = new Set(['resume app', 'skills install', 'version'])
+const SELF_REFERENCES = new Set(['resume app', 'search', 'skills install', 'version'])
 
 describe('renderSkill', () => {
   it('substitutes the version stamp and changes nothing else', () => {
@@ -25,8 +23,12 @@ describe('renderSkill', () => {
     expect(renderSkill({ version: versionInfo.version })).not.toContain('{{')
   })
 
-  it('points at the machine-readable surface instead of inlining it', () => {
-    expect(renderSkill({ version: versionInfo.version })).toContain('difyctl help -o json')
+  it('uses search then per-command help while retaining the troubleshooting sitemap', () => {
+    const skill = renderSkill({ version: versionInfo.version })
+    expect(skill).toContain('difyctl search "<intent>" -o json')
+    expect(skill).toContain('difyctl help <path> -o json')
+    expect(skill).toContain('difyctl help agent')
+    expect(skill).toContain('difyctl help -o json')
   })
 
   it('enumerates no command from the tree (zero drift surface)', () => {
