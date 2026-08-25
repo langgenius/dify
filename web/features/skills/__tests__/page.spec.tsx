@@ -382,6 +382,16 @@ describe('SkillsPage', () => {
     })
   })
 
+  it('uses the localized Skills search hint as the search placeholder', async () => {
+    renderSkillsPage()
+
+    expect(
+      await screen.findByRole('searchbox', {
+        name: 'skill.skillManagement.searchLabel',
+      }),
+    ).toHaveAttribute('placeholder', 'skill.skillManagement.searchPlaceholder')
+  })
+
   it('clears stale tag names from the URL-backed filter state', async () => {
     mocks.queryState.tag = ['renamed-tag']
 

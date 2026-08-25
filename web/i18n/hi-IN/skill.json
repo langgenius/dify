@@ -238,7 +238,7 @@
   "skillManagement.publishedAt": "{{time}} प्रकाशित",
   "skillManagement.referenceCount_one": "{{count}} एजेंट",
   "skillManagement.referenceCount_other": "{{count}} एजेंट",
-  "skillManagement.searchLabel": "खोज कौशल",
+  "skillManagement.searchLabel": "कौशल खोजें",
   "skillManagement.searchPlaceholder": "नाम या विवरण से खोजें",
   "skillManagement.tags": "टैग्स",
   "skillManagement.title": "कौशल"

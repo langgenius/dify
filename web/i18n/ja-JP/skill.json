@@ -238,7 +238,7 @@
   "skillManagement.publishedAt": "{{time}} に公開",
   "skillManagement.referenceCount_one": "{{count}} 個の Agent",
   "skillManagement.referenceCount_other": "{{count}} 個の Agent",
-  "skillManagement.searchLabel": "検索スキル",
+  "skillManagement.searchLabel": "スキルを検索",
   "skillManagement.searchPlaceholder": "名前または説明で検索",
   "skillManagement.tags": "タグ",
   "skillManagement.title": "スキル"
