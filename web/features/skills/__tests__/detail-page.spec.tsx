@@ -3168,7 +3168,7 @@ describe('SkillDetailPage', () => {
     expect(screen.queryByTestId('skill-detail-sidebar-header')).not.toBeInTheDocument()
     expect(screen.getByTestId('skill-detail-sidebar-shell')).toHaveClass('w-16')
 
-    await user.click(
+    fireEvent.click(
       screen.getByRole('button', {
         name: 'skill.skillManagement.detail.expandSidebar',
       }),
