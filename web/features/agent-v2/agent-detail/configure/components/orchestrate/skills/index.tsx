@@ -36,6 +36,11 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
+import {
+  getSkillErrorCode,
+  getSkillErrorDetailString,
+  normalizeSkillError,
+} from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
@@ -44,14 +49,12 @@ import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigApiContext } from '../config-context'
-import {
-  useAgentOrchestrateReadOnly,
-  useAgentOrchestrateViewingVersion,
-} from '../read-only-context'
+import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
 const WORKSPACE_SKILLS_PAGE_SIZE = 20
+const MAX_AGENT_LIBRARY_SKILLS = 20
 
 function AgentSkillAddMenuItem({
   badge,
@@ -416,7 +419,7 @@ function WorkspaceAgentSkillItem({
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-48">
           <DropdownMenuItem className="gap-2" onClick={handleOpenInLibrary}>
             <span
               aria-hidden
@@ -452,11 +455,12 @@ function WorkspaceAgentSkillItem({
 
 export function AgentSkills() {
   const { t } = useTranslation('agentV2')
+  const { t: tSkill } = useTranslation('skill')
   const { t: tCommon } = useTranslation('common')
   const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
-  const isViewingVersion = useAgentOrchestrateViewingVersion()
+  const readOnly = useAgentOrchestrateReadOnly()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuView, setAddMenuView] = useState<'menu' | 'workspace-selector'>('menu')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -482,6 +486,7 @@ export function AgentSkills() {
   const agentSkillBindingsQuery = useQuery({
     ...agentSkillBindingsQueryOptions,
   })
+  const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
     useMutation(consoleQuery.workspaces.current.agents.byAgentId.skills.put.mutationOptions())
   const workspaceSkills = agentSkillBindingsQuery.data?.data ?? []
@@ -503,7 +508,7 @@ export function AgentSkills() {
 
   const replaceWorkspaceSkillBindings = useCallback(
     (skillIds: string[], onSuccess?: () => void) => {
-      if (isViewingVersion) return
+      if (readOnly || !hasLoadedAgentSkillBindings) return
 
       replaceAgentSkillBindings(
         {
@@ -515,11 +520,37 @@ export function AgentSkills() {
           },
         },
         {
-          onError: () => {
+          onError: async (error) => {
+            const normalizedError = await normalizeSkillError(error)
+            const errorCode = getSkillErrorCode(normalizedError)
+            if (errorCode === 'too_many_agent_skills') {
+              toast.error(
+                t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
+              )
+              return
+            }
+            if (errorCode === 'skill_name_conflict') {
+              toast.error(
+                tSkill(($) => $['skillManagement.errors.nameConflict'], {
+                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                }),
+              )
+              return
+            }
             toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.saveFailed']))
           },
           onSuccess: () => {
             invalidateAgentSkillBindings()
+            void queryClient.invalidateQueries({
+              queryKey: consoleQuery.agent.byAgentId.composer.get.key({
+                type: 'query',
+                input: {
+                  params: {
+                    agent_id: apiContext.agentId,
+                  },
+                },
+              }),
+            })
             onSuccess?.()
           },
         },
@@ -527,10 +558,13 @@ export function AgentSkills() {
     },
     [
       apiContext.agentId,
+      hasLoadedAgentSkillBindings,
       invalidateAgentSkillBindings,
-      isViewingVersion,
+      queryClient,
+      readOnly,
       replaceAgentSkillBindings,
       t,
+      tSkill,
     ],
   )
 
@@ -580,10 +614,18 @@ export function AgentSkills() {
 
   const handleSelectWorkspaceSkill = useCallback(
     (skill: SkillResponse) => {
-      if (!skill.latest_published_version_id || boundSkillIds.includes(skill.id)) return
+      if (
+        !hasLoadedAgentSkillBindings ||
+        !skill.latest_published_version_id ||
+        boundSkillIds.includes(skill.id)
+      )
+        return
+      if (boundSkillIds.length >= MAX_AGENT_LIBRARY_SKILLS) {
+        toast.error(t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']))
+        return
+      }
 
       replaceWorkspaceSkillBindings([...boundSkillIds, skill.id], () => {
-        toast.success(t(($) => $['agentDetail.configure.skills.workspaceSelector.addSuccess']))
         promptAddCallbackRef.current?.({
           description: skill.description,
           id: skill.name,
@@ -594,7 +636,7 @@ export function AgentSkills() {
         setAddMenuView('menu')
       })
     },
-    [boundSkillIds, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, hasLoadedAgentSkillBindings, replaceWorkspaceSkillBindings, t],
   )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
@@ -604,14 +646,9 @@ export function AgentSkills() {
 
   const handleRemoveWorkspaceSkill = useCallback(
     (skillId: string) => {
-      replaceWorkspaceSkillBindings(
-        boundSkillIds.filter((item) => item !== skillId),
-        () => {
-          toast.success(t(($) => $['agentDetail.configure.skills.workspaceSelector.removeSuccess']))
-        },
-      )
+      replaceWorkspaceSkillBindings(boundSkillIds.filter((item) => item !== skillId))
     },
-    [boundSkillIds, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, replaceWorkspaceSkillBindings],
   )
 
   const handleRemoveSkill = useCallback(
@@ -669,7 +706,7 @@ export function AgentSkills() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={
-          !isViewingVersion && (
+          !readOnly && (
             <Popover open={addMenuOpen} onOpenChange={handleAddMenuOpenChange}>
               <PopoverTrigger
                 render={
@@ -687,7 +724,7 @@ export function AgentSkills() {
               <PopoverContent
                 placement="bottom-end"
                 sideOffset={4}
-                popupClassName={
+                className={
                   addMenuView === 'menu'
                     ? 'w-[280px] bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'
                     : 'w-[320px] overflow-visible border-none bg-transparent p-0 shadow-none'
@@ -716,7 +753,7 @@ export function AgentSkills() {
                 ) : (
                   <WorkspaceSkillSelector
                     boundSkillIds={boundSkillIds}
-                    isBindingPending={isReplacingAgentSkillBindings}
+                    isBindingPending={!hasLoadedAgentSkillBindings || isReplacingAgentSkillBindings}
                     onSelect={handleSelectWorkspaceSkill}
                   />
                 )}
@@ -735,7 +772,7 @@ export function AgentSkills() {
             {workspaceSkills.map((skill) => (
               <WorkspaceAgentSkillItem
                 key={skill.id}
-                canRemove={!isViewingVersion}
+                canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveWorkspaceSkill}
               />
@@ -744,7 +781,7 @@ export function AgentSkills() {
               <AgentSkillItem
                 key={skill.id}
                 apiContext={apiContext}
-                canRemove={!isViewingVersion}
+                canRemove={!readOnly}
                 skill={skill}
                 onRemove={handleRemoveSkill}
               />

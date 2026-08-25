@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "去看看",
   "stepByStepTour.tasks.studio.title": "在 Studio 中管理你的應用",
   "stepByStepTour.title": "認識 Dify",
+  "svgRenderer.generatingImage": "圖片生成中...",
   "swaggerAPIAsToolPage.description": "使用 OpenAPI/Swagger 規格將任意 API 作為工具匯入。設定一次，即可在工作流程中重複使用。",
   "tag.addNew": "建立新標籤",
   "tag.addTag": "新增標籤",

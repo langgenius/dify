@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "Xem thử",
   "stepByStepTour.tasks.studio.title": "Quản lý ứng dụng của bạn trong Studio",
   "stepByStepTour.title": "Làm quen với Dify",
+  "svgRenderer.generatingImage": "Đang tạo hình ảnh…",
   "swaggerAPIAsToolPage.description": "Nhập bất kỳ API nào làm công cụ bằng đặc tả OpenAPI/Swagger. Cấu hình một lần và tái sử dụng trong các workflow.",
   "tag.addNew": "Thêm thẻ mới",
   "tag.addTag": "thêm thẻ",

@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "Lihat dulu",
   "stepByStepTour.tasks.studio.title": "Kelola app Anda di Studio",
   "stepByStepTour.title": "Kenali Dify",
+  "svgRenderer.generatingImage": "Sedang membuat gambar…",
   "swaggerAPIAsToolPage.description": "Impor API apa pun sebagai alat menggunakan spesifikasi OpenAPI/Swagger. Konfigurasikan sekali dan gunakan kembali di workflow Anda.",
   "tag.addNew": "Tambahkan tag baru",
   "tag.addTag": "Tambahkan tag",

@@ -642,6 +642,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "ລອງໄປເບິ່ງ",
   "stepByStepTour.tasks.studio.title": "ຈັດການແອັບຂອງທ່ານໃນສະຕູດິໂອ",
   "stepByStepTour.title": "ມາຮູ້ຈັກກັບ Dify",
+  "svgRenderer.generatingImage": "ກຳລັງສ້າງຮູບພາບ…",
   "swaggerAPIAsToolPage.description": "ນຳເຂົ້າ API ໃດໆເປັນເຄື່ອງມືໂດຍໃຊ້ OpenAPI/Swagger specs. ຕັ້ງຄ່າຄັ້ງດຽວ ແລະ ນຳໃຊ້ຄືນໃໝ່ໃນ Workflows ຂອງທ່ານ.",
   "tag.addNew": "ເພີ່ມແທັກໃໝ່",
   "tag.addTag": "ເພີ່ມແທັກ",

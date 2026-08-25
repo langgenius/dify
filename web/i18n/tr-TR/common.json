@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "Göz atın",
   "stepByStepTour.tasks.studio.title": "Uygulamalarınızı Studio'da yönetin",
   "stepByStepTour.title": "Dify'ı tanıyın",
+  "svgRenderer.generatingImage": "Görsel oluşturuluyor…",
   "swaggerAPIAsToolPage.description": "OpenAPI/Swagger özelliklerini kullanarak herhangi bir API’yi araç olarak içe aktarın. Bir kez yapılandırın ve workflowlarda yeniden kullanın.",
   "tag.addNew": "Yeni etiket ekle",
   "tag.addTag": "Etiket ekle",

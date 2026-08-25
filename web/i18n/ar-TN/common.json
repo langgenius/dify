@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "ألقِ نظرة",
   "stepByStepTour.tasks.studio.title": "أدر تطبيقاتك في Studio",
   "stepByStepTour.title": "تعرّف على Dify",
+  "svgRenderer.generatingImage": "جارٍ إنشاء الصورة...",
   "swaggerAPIAsToolPage.description": "استورد أي API كأداة باستخدام مواصفات OpenAPI/Swagger. اضبطها مرة واحدة وأعد استخدامها عبر workflows.",
   "tag.addNew": "إضافة علامة جديدة",
   "tag.addTag": "إضافة علامات",

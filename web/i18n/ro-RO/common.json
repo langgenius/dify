@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "Aruncă o privire",
   "stepByStepTour.tasks.studio.title": "Gestionează-ți aplicațiile în Studio",
   "stepByStepTour.title": "Cunoaște Dify",
+  "svgRenderer.generatingImage": "Se generează imaginea…",
   "swaggerAPIAsToolPage.description": "Importă orice API ca instrument folosind specificații OpenAPI/Swagger. Configurează o dată și reutilizează în workflowuri.",
   "tag.addNew": "Adăugați o etichetă nouă",
   "tag.addTag": "Adăugați etichete",

@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "देखें",
   "stepByStepTour.tasks.studio.title": "Studio में अपने ऐप manage करें",
   "stepByStepTour.title": "Dify को जानें",
+  "svgRenderer.generatingImage": "इमेज बनाई जा रही है…",
   "swaggerAPIAsToolPage.description": "OpenAPI/Swagger स्पेक्स का उपयोग करके किसी भी API को टूल के रूप में आयात करें। एक बार कॉन्फ़िगर करें और workflows में पुनः उपयोग करें।",
   "tag.addNew": "नया टैग जोड़ें",
   "tag.addTag": "टैग जोड़ें",

@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "Bekijk het",
   "stepByStepTour.tasks.studio.title": "Beheer je apps in Studio",
   "stepByStepTour.title": "Maak kennis met Dify",
+  "svgRenderer.generatingImage": "De afbeelding wordt gegenereerd…",
   "swaggerAPIAsToolPage.description": "Importeer elke API als tool met OpenAPI/Swagger-specificaties. Configureer eenmaal en hergebruik in je workflows.",
   "tag.addNew": "Add new tag",
   "tag.addTag": "Add tags",

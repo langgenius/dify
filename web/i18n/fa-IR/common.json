@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "نگاهی بیندازید",
   "stepByStepTour.tasks.studio.title": "برنامه‌های خود را در Studio مدیریت کنید",
   "stepByStepTour.title": "با Dify آشنا شوید",
+  "svgRenderer.generatingImage": "در حال تولید تصویر…",
   "swaggerAPIAsToolPage.description": "هر API را با مشخصات OpenAPI/Swagger به‌عنوان ابزار وارد کنید. یک‌بار پیکربندی کنید و در workflowها دوباره استفاده کنید.",
   "tag.addNew": "افزودن برچسب جدید",
   "tag.addTag": "افزودن برچسب‌ها",

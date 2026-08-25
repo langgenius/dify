@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "Jeter un œil",
   "stepByStepTour.tasks.studio.title": "Gérez vos apps dans Studio",
   "stepByStepTour.title": "Découvrez Dify",
+  "svgRenderer.generatingImage": "Génération de l’image…",
   "swaggerAPIAsToolPage.description": "Importez n’importe quelle API comme outil avec des spécifications OpenAPI/Swagger. Configurez-la une fois et réutilisez-la dans vos workflows.",
   "tag.addNew": "Ajouter une nouvelle balise",
   "tag.addTag": "ajouter une balise",

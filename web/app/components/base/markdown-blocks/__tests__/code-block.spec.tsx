@@ -268,12 +268,12 @@ describe('CodeBlock', () => {
       const user = userEvent.setup()
       render(<CodeBlock className="language-svg">{'<svg/>'}</CodeBlock>)
 
-      expect(await screen.findByText(/Error rendering SVG/i))!.toBeInTheDocument()
+      expect(await screen.findByText('common.svgRenderer.generatingImage'))!.toBeInTheDocument()
 
       const svgToggleButton = screen.getAllByRole('button')[0]
       await user.click(svgToggleButton!)
 
-      expect(screen.queryByText(/Error rendering SVG/i)).not.toBeInTheDocument()
+      expect(screen.queryByText('common.svgRenderer.generatingImage')).not.toBeInTheDocument()
     })
 
     it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {

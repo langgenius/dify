@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "살펴보기",
   "stepByStepTour.tasks.studio.title": "Studio에서 앱 관리하기",
   "stepByStepTour.title": "Dify 알아보기",
+  "svgRenderer.generatingImage": "이미지를 생성하고 있습니다…",
   "swaggerAPIAsToolPage.description": "OpenAPI/Swagger 사양을 사용해 모든 API를 도구로 가져오세요. 한 번 구성하고 workflow 전반에서 재사용할 수 있습니다.",
   "tag.addNew": "새 태그 추가",
   "tag.addTag": "태그 추가",

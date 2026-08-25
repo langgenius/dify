@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "ลองดู",
   "stepByStepTour.tasks.studio.title": "จัดการแอปของคุณใน Studio",
   "stepByStepTour.title": "ทำความรู้จักกับ Dify",
+  "svgRenderer.generatingImage": "กำลังสร้างรูปภาพ…",
   "swaggerAPIAsToolPage.description": "นำเข้า API ใด ๆ เป็นเครื่องมือด้วยสเปก OpenAPI/Swagger กำหนดค่าเพียงครั้งเดียวแล้วนำกลับมาใช้ซ้ำใน workflow ได้",
   "tag.addNew": "เพิ่มแท็กใหม่",
   "tag.addTag": "เพิ่มแท็ก",

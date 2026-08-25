@@ -645,6 +645,7 @@
   "stepByStepTour.tasks.studio.primaryActionLabel": "見てみる",
   "stepByStepTour.tasks.studio.title": "Studio でアプリを管理",
   "stepByStepTour.title": "Dify を知ろう",
+  "svgRenderer.generatingImage": "画像を生成しています…",
   "swaggerAPIAsToolPage.description": "OpenAPI/Swagger 仕様を使って任意の API をツールとして取り込めます。一度設定すれば、複数のワークフローで再利用できます。",
   "tag.addNew": "新しいタグを追加",
   "tag.addTag": "タグを追加",
