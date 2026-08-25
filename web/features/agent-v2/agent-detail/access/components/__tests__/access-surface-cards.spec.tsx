@@ -576,7 +576,8 @@ describe('Agent access surface cards', () => {
       ).toBeDisabled()
     })
 
-    it('should keep the Web App switch disabled until the Agent is published', () => {
+    it('should explain that publishing enables the Web App switch and launch action', async () => {
+      const user = userEvent.setup()
       renderWithQueryClient(
         <WebAppAccessCard
           agent={createAgent({ access_ready: false, enable_site: false })}
@@ -585,11 +586,30 @@ describe('Agent access surface cards', () => {
         />,
       )
 
-      expect(
-        screen.getByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.webApp.title"}',
+      })
+      expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
+
+      await user.tab()
+      expect(accessSwitch).toHaveFocus()
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'agentV2.agentDetail.access.publishRequired',
+      )
+
+      await user.tab()
+      await waitFor(() => {
+        expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+      })
+
+      await user.hover(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.access.webApp.actions.launch',
         }),
-      ).toHaveAttribute('aria-disabled', 'true')
+      )
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'agentV2.agentDetail.access.publishRequired',
+      )
     })
   })
 
@@ -699,7 +719,8 @@ describe('Agent access surface cards', () => {
       })
     })
 
-    it('should disable the Service API switch and key action until the Agent is published', async () => {
+    it('should explain that publishing enables the Service API switch', async () => {
+      const user = userEvent.setup()
       mocks.apiAccessQueryFn.mockResolvedValueOnce({
         access_ready: false,
         api_key_count: 0,
@@ -709,16 +730,22 @@ describe('Agent access surface cards', () => {
 
       renderWithQueryClient(<ServiceApiAccessCard agentId="agent-1" />)
 
-      expect(
-        await screen.findByRole('switch', {
-          name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
-        }),
-      ).toHaveAttribute('aria-disabled', 'true')
+      await screen.findByText('https://api.example.test/v1')
+      const accessSwitch = screen.getByRole('switch', {
+        name: 'agentV2.agentDetail.access.toggleSurface:{"name":"agentV2.agentDetail.access.serviceApi.title"}',
+      })
+      expect(accessSwitch).toHaveAttribute('aria-disabled', 'true')
       expect(
         screen.getByRole('button', {
           name: /agentV2\.agentDetail\.access\.serviceApi\.actions\.apiKey/,
         }),
       ).toBeDisabled()
+
+      await user.tab()
+      expect(accessSwitch).toHaveFocus()
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'agentV2.agentDetail.access.publishRequired',
+      )
     })
   })
 
