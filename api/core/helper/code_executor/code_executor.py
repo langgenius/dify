@@ -108,8 +108,19 @@ class CodeExecutor:
         # from the persistent one.
         response = None
         last_exc: Exception | None = None
-        attempts = dify_config.CODE_EXECUTION_PROXY_RETRY_COUNT + 1
-        delay = dify_config.CODE_EXECUTION_PROXY_RETRY_DELAY
+        # Coerce the typed-but-env-loaded config values into the
+        # concrete numeric types the retry loop needs. Pydantic
+        # validation guarantees runtime types, but type-checkers see
+        # the env-loader return type as `int | None` / `float | None`,
+        # so \`attempts + 1\` and \`time.sleep(delay)\` would both fail
+        # without a narrowing step here.
+        retry_count = int(dify_config.CODE_EXECUTION_PROXY_RETRY_COUNT or 0)
+        retry_delay: float = (
+            dify_config.CODE_EXECUTION_PROXY_RETRY_DELAY
+            if dify_config.CODE_EXECUTION_PROXY_RETRY_DELAY is not None
+            else 0.0
+        )
+        attempts = retry_count + 1
         for attempt in range(attempts):
             try:
                 response = client.post(
@@ -132,8 +143,8 @@ class CodeExecutor:
                     " please check if the sandbox service is running."
                     f" ( Error: {str(e)} )"
                 ) from e
-            if attempt + 1 < attempts and delay > 0:
-                time.sleep(delay)
+            if attempt + 1 < attempts and retry_delay > 0:
+                time.sleep(retry_delay)
 
         if response is None:
             if last_exc is not None:
