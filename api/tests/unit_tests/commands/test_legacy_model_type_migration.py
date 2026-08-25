@@ -434,7 +434,7 @@ def test_dataset_permission_rbac_migration_uses_dataset_creator_as_operator(
     assert calls[0]["tenant_id"] == "tenant-1"
     assert calls[0]["account_id"] == "creator-account-1"
     assert calls[0]["dataset_id"] == "dataset-1"
-    assert calls[0]["payload"].scope is rbac_module.RBACResourceWhitelistScope.SPECIFIC
+    assert calls[0]["payload"].automatic_include_workspace_members is False
 
 
 def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_changes(
@@ -482,7 +482,7 @@ def test_dataset_permission_rbac_migration_dry_run_outputs_structured_proposed_c
             "tenant_id": "tenant-1",
             "account_id": "creator-account-1",
             "dataset_id": "dataset-1",
-            "payload": {"scope": "specific"},
+            "payload": {"automatic_include_workspace_members": False},
         },
     }
     assert events[1]["target_account_id"] == "member-account-1"
