@@ -31,6 +31,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { useProviderContextSelector } from '@/context/provider-context'
 import {
   agentComposerSkillsAtom,
   removeAgentSkillAtom,
@@ -466,6 +467,7 @@ export function AgentSkills() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentConfigApiContext()
+  const enableSkill = useProviderContextSelector((state) => state.enableSkill)
   const skills = useAtomValue(agentComposerSkillsAtom)
   const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
   const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
@@ -485,6 +487,7 @@ export function AgentSkills() {
     })
   const agentSkillBindingsQuery = useQuery({
     ...agentSkillBindingsQueryOptions,
+    enabled: enableSkill,
   })
   const hasLoadedAgentSkillBindings = agentSkillBindingsQuery.data !== undefined
   const { isPending: isReplacingAgentSkillBindings, mutate: replaceAgentSkillBindings } =
@@ -568,22 +571,25 @@ export function AgentSkills() {
     ],
   )
 
-  const handlePromptAdd = useCallback((options?: AgentOrchestrateAddActionOptions) => {
-    promptAddCallbackRef.current = options?.onAdded
-    if (options?.skillSource === 'library') {
-      setAddMenuView('workspace-selector')
+  const handlePromptAdd = useCallback(
+    (options?: AgentOrchestrateAddActionOptions) => {
+      promptAddCallbackRef.current = options?.onAdded
+      if (options?.skillSource === 'library' && enableSkill) {
+        setAddMenuView('workspace-selector')
+        setAddMenuOpen(true)
+        return
+      }
+
+      if (options?.skillSource === 'upload') {
+        setIsUploadOpen(true)
+        return
+      }
+
+      setAddMenuView('menu')
       setAddMenuOpen(true)
-      return
-    }
-
-    if (options?.skillSource === 'upload') {
-      setIsUploadOpen(true)
-      return
-    }
-
-    setAddMenuView('menu')
-    setAddMenuOpen(true)
-  }, [])
+    },
+    [enableSkill],
+  )
   useRegisterAgentOrchestrateAddAction('skills', handlePromptAdd)
 
   const handleAddMenuOpenChange = useCallback((open: boolean) => {
@@ -595,8 +601,10 @@ export function AgentSkills() {
   }, [])
 
   const handleOpenWorkspaceSelector = useCallback(() => {
+    if (!enableSkill) return
+
     setAddMenuView('workspace-selector')
-  }, [])
+  }, [enableSkill])
 
   const handleOpenUploadFromMenu = useCallback(() => {
     setAddMenuOpen(false)
@@ -615,6 +623,7 @@ export function AgentSkills() {
   const handleSelectWorkspaceSkill = useCallback(
     (skill: SkillResponse) => {
       if (
+        !enableSkill ||
         !hasLoadedAgentSkillBindings ||
         !skill.latest_published_version_id ||
         boundSkillIds.includes(skill.id)
@@ -636,7 +645,7 @@ export function AgentSkills() {
         setAddMenuView('menu')
       })
     },
-    [boundSkillIds, hasLoadedAgentSkillBindings, replaceWorkspaceSkillBindings, t],
+    [boundSkillIds, enableSkill, hasLoadedAgentSkillBindings, replaceWorkspaceSkillBindings, t],
   )
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
@@ -714,7 +723,7 @@ export function AgentSkills() {
                     aria-label={t(($) => $['agentDetail.configure.skills.add'])}
                     variant="ghost"
                     size="small"
-                    className="shrink-0 gap-1 px-2"
+                    className="shrink-0 gap-1 px-2 data-popup-open:bg-state-base-hover"
                   >
                     <span aria-hidden className="i-ri-add-line size-3.5" />
                     <span>{tCommon(($) => $['operation.add'])}</span>
@@ -732,14 +741,16 @@ export function AgentSkills() {
               >
                 {addMenuView === 'menu' ? (
                   <>
-                    <AgentSkillAddMenuItem
-                      iconClassName="i-custom-vender-agent-v2-building-blocks"
-                      label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
-                      description={t(
-                        ($) => $['agentDetail.configure.skills.addMenu.workspace.description'],
-                      )}
-                      onClick={handleOpenWorkspaceSelector}
-                    />
+                    {enableSkill && (
+                      <AgentSkillAddMenuItem
+                        iconClassName="i-custom-vender-agent-v2-building-blocks"
+                        label={t(($) => $['agentDetail.configure.skills.addMenu.workspace.label'])}
+                        description={t(
+                          ($) => $['agentDetail.configure.skills.addMenu.workspace.description'],
+                        )}
+                        onClick={handleOpenWorkspaceSelector}
+                      />
+                    )}
                     <AgentSkillAddMenuItem
                       badge={t(($) => $['agentDetail.configure.skills.addMenu.upload.badge'])}
                       iconClassName="i-ri-upload-cloud-2-line"
@@ -751,11 +762,15 @@ export function AgentSkills() {
                     />
                   </>
                 ) : (
-                  <WorkspaceSkillSelector
-                    boundSkillIds={boundSkillIds}
-                    isBindingPending={!hasLoadedAgentSkillBindings || isReplacingAgentSkillBindings}
-                    onSelect={handleSelectWorkspaceSkill}
-                  />
+                  enableSkill && (
+                    <WorkspaceSkillSelector
+                      boundSkillIds={boundSkillIds}
+                      isBindingPending={
+                        !hasLoadedAgentSkillBindings || isReplacingAgentSkillBindings
+                      }
+                      onSelect={handleSelectWorkspaceSkill}
+                    />
+                  )
                 )}
               </PopoverContent>
             </Popover>

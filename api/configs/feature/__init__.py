@@ -1294,7 +1294,7 @@ class DataSetConfig(BaseSettings):
 class SkillConfig(BaseSettings):
     ENABLE_SKILL: bool = Field(
         description="Enable or disable Skill feature entry points",
-        default=False,
+        default=True,
     )
 
 

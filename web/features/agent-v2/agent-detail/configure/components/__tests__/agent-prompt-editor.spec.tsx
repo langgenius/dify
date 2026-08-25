@@ -199,6 +199,11 @@ vi.mock('@/context/workspace-state', async () => {
   }))
 })
 
+vi.mock('@/context/provider-context', () => ({
+  useProviderContextSelector: (selector: (state: { enableSkill: boolean }) => unknown) =>
+    selector({ enableSkill: true }),
+}))
+
 vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
   useAllCustomTools: () => ({ data: [] }),
