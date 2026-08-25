@@ -118,15 +118,14 @@ def register_new_agent_beta_workflow_publish_after_commit(
     reject_on_worker_lost=True,
 )
 def ensure_new_agent_beta_participation_task(self, source_id: str, source_type: str = "revision") -> None:
-    if source_type == "revision":
-        ensure = BillingService.ensure_new_agent_beta_revision
-    elif source_type == "workflow":
-        ensure = BillingService.ensure_new_agent_beta_workflow
-    else:
+    if source_type not in {"revision", "workflow"}:
         raise ValueError(f"Unsupported New Agent Beta source type: {source_type}")
 
     try:
-        ensure(source_id)
+        if source_type == "revision":
+            BillingService.ensure_new_agent_beta_revision(source_id)
+        else:
+            BillingService.ensure_new_agent_beta_workflow(source_id)
     except Exception as exc:
         if self.request.retries >= _MAX_RETRIES:
             logger.exception(
