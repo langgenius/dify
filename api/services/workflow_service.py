@@ -94,6 +94,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from tasks.new_agent_beta_task import register_new_agent_beta_workflow_publish_after_commit
 
 
 @dataclass(frozen=True)
@@ -683,6 +684,7 @@ class WorkflowService:
         account: Account,
         marked_name: str = "",
         marked_comment: str = "",
+        record_inline_agent_publish: bool = False,
     ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
@@ -748,11 +750,17 @@ class WorkflowService:
 
         # commit db session changes
         session.add(workflow)
-        WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+        has_inline_agent = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
             session=session,
             draft_workflow=draft_workflow,
             published_workflow=workflow,
         )
+        if record_inline_agent_publish and has_inline_agent:
+            register_new_agent_beta_workflow_publish_after_commit(
+                session=session,
+                published_workflow_id=workflow.id,
+                published_at=workflow.created_at,
+            )
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)

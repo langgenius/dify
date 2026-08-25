@@ -1311,6 +1311,7 @@ class PublishedWorkflowApi(Resource):
                 account=current_user,
                 marked_name=args.marked_name or "",
                 marked_comment=args.marked_comment or "",
+                record_inline_agent_publish=app_model.mode == AppMode.WORKFLOW,
             )
 
             # Update app_model within the same session to ensure atomicity

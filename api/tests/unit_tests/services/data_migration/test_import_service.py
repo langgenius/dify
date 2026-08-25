@@ -507,6 +507,7 @@ def test_ensure_workflow_app_is_published_updates_current_workflow(
     )
 
     assert database.session.get(App, app_id).workflow_id == "published-workflow"
+    assert "record_inline_agent_publish" not in publish.call_args.kwargs
 
 
 @pytest.mark.parametrize("id_strategy", [IdStrategy.PRESERVE_ID, IdStrategy.GENERATE_NEW_ID])

@@ -13,7 +13,9 @@ from tasks.new_agent_beta_task import (
     NEW_AGENT_BETA_QUEUE,
     ensure_new_agent_beta_participation_task,
     register_new_agent_beta_publish_after_commit,
+    register_new_agent_beta_workflow_publish_after_commit,
     schedule_new_agent_beta_ensure,
+    schedule_new_agent_beta_workflow_ensure,
 )
 
 
@@ -90,6 +92,44 @@ def test_rolled_back_publish_is_never_dispatched(monkeypatch: pytest.MonkeyPatch
     dispatch.assert_not_called()
 
 
+def test_workflow_publish_event_is_dispatched_only_after_commit(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _configure_cloud_publish(monkeypatch)
+    dispatch = MagicMock()
+    monkeypatch.setattr(task_module, "schedule_new_agent_beta_workflow_ensure", dispatch)
+    sqlite_session.begin()
+
+    register_new_agent_beta_workflow_publish_after_commit(
+        session=sqlite_session,
+        published_workflow_id="workflow-1",
+        published_at=datetime(2026, 8, 12, 1, 0),
+    )
+
+    dispatch.assert_not_called()
+    sqlite_session.commit()
+    dispatch.assert_called_once_with("workflow-1")
+
+
+def test_rolled_back_workflow_publish_is_never_dispatched(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _configure_cloud_publish(monkeypatch)
+    dispatch = MagicMock()
+    monkeypatch.setattr(task_module, "schedule_new_agent_beta_workflow_ensure", dispatch)
+    sqlite_session.begin()
+
+    register_new_agent_beta_workflow_publish_after_commit(
+        session=sqlite_session,
+        published_workflow_id="workflow-1",
+        published_at=datetime(2026, 8, 12, 1, 0),
+    )
+    sqlite_session.rollback()
+    sqlite_session.commit()
+
+    dispatch.assert_not_called()
+
+
 def test_non_cloud_publish_skips_revision_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(task_module.dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
     session = MagicMock()
@@ -136,6 +176,16 @@ def test_broker_failure_does_not_propagate(monkeypatch: pytest.MonkeyPatch) -> N
     schedule_new_agent_beta_ensure("revision-1")
 
 
+def test_workflow_broker_failure_does_not_propagate(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        ensure_new_agent_beta_participation_task,
+        "delay",
+        MagicMock(side_effect=RuntimeError("broker unavailable")),
+    )
+
+    schedule_new_agent_beta_workflow_ensure("workflow-1")
+
+
 def test_task_calls_billing_with_revision_id(monkeypatch: pytest.MonkeyPatch) -> None:
     ensure = MagicMock()
     monkeypatch.setattr(BillingService, "ensure_new_agent_beta_revision", ensure)
@@ -143,6 +193,15 @@ def test_task_calls_billing_with_revision_id(monkeypatch: pytest.MonkeyPatch) ->
     ensure_new_agent_beta_participation_task.run("revision-1")
 
     ensure.assert_called_once_with("revision-1")
+
+
+def test_workflow_task_calls_billing_with_published_workflow_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    ensure = MagicMock()
+    monkeypatch.setattr(BillingService, "ensure_new_agent_beta_workflow", ensure)
+
+    ensure_new_agent_beta_participation_task.run("workflow-1", "workflow")
+
+    ensure.assert_called_once_with("workflow-1")
 
 
 def test_task_is_redelivered_when_worker_is_lost() -> None:
@@ -164,6 +223,23 @@ def test_task_retries_billing_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         ensure_new_agent_beta_participation_task.run("revision-1")
 
     retry.assert_called_once_with(exc=error, countdown=30)
+
+
+def test_workflow_task_retries_billing_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    error = RuntimeError("billing unavailable")
+    monkeypatch.setattr(BillingService, "ensure_new_agent_beta_workflow", MagicMock(side_effect=error))
+    retry = MagicMock(side_effect=RuntimeError("retry scheduled"))
+    monkeypatch.setattr(ensure_new_agent_beta_participation_task, "retry", retry)
+
+    with pytest.raises(RuntimeError, match="retry scheduled"):
+        ensure_new_agent_beta_participation_task.run("workflow-1", "workflow")
+
+    retry.assert_called_once_with(exc=error, countdown=30)
+
+
+def test_task_rejects_unknown_source_type() -> None:
+    with pytest.raises(ValueError, match="Unsupported New Agent Beta source type"):
+        ensure_new_agent_beta_participation_task.run("source-1", "unknown")
 
 
 def test_task_caps_exponential_retry_delay(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -188,4 +264,16 @@ def test_billing_contract_uses_internal_ensure_endpoint(monkeypatch: pytest.Monk
     send_request.assert_called_once_with(
         "POST",
         "/new-agent-beta/revisions/revision-1/ensure",
+    )
+
+
+def test_billing_workflow_contract_uses_internal_ensure_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    send_request = MagicMock(return_value={"status": "issued"})
+    monkeypatch.setattr(BillingService, "_send_request", send_request)
+
+    BillingService.ensure_new_agent_beta_workflow("workflow-1")
+
+    send_request.assert_called_once_with(
+        "POST",
+        "/new-agent-beta/workflows/workflow-1/ensure",
     )
