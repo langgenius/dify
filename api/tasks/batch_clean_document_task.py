@@ -68,7 +68,9 @@ def batch_clean_document_task(
                 total_image_upload_file_ids.extend(
                     session.scalars(
                         select(SegmentAttachmentBinding.attachment_id).where(
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
                             SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
                             SegmentAttachmentBinding.segment_id.in_(segment_ids),
                         )
                     ).all()
@@ -171,7 +173,10 @@ def batch_clean_document_task(
                 try:
                     with session_factory.create_session() as session:
                         binding_delete_stmt = delete(SegmentAttachmentBinding).where(
-                            SegmentAttachmentBinding.segment_id.in_(batch)
+                            SegmentAttachmentBinding.tenant_id == segments[0].tenant_id,
+                            SegmentAttachmentBinding.dataset_id == dataset_id,
+                            SegmentAttachmentBinding.document_id.in_(document_ids),
+                            SegmentAttachmentBinding.segment_id.in_(batch),
                         )
                         session.execute(binding_delete_stmt)
                         segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.id.in_(batch))
