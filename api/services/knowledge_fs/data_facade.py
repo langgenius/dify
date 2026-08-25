@@ -48,6 +48,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDocumentUploadAcceptedResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
+    KnowledgeFSEmbeddingSettingsResponse,
     KnowledgeFSFindQuery,
     KnowledgeFSGoldenQuestionBulkImportPayload,
     KnowledgeFSGoldenQuestionBulkImportRemotePayload,
@@ -93,6 +94,7 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSResearchTaskPlanResponse,
     KnowledgeFSResearchTaskResponse,
     KnowledgeFSRetrievalProfileUpdatePayload,
+    KnowledgeFSRetrievalSettingsResponse,
     KnowledgeFSSettingsPayload,
     KnowledgeFSSettingsResponse,
     KnowledgeFSSettingsUpdateResponse,
@@ -561,10 +563,21 @@ class KnowledgeFSDataFacade:
                 )
             else:
                 raise KnowledgeFSProductRequestRejectedError(status_code=422)
-            return KnowledgeFSSettingsUpdateResponse(
-                migration=KnowledgeFSProfileMigrationResponse.model_validate(migration_raw),
-                settings=current,
+            if isinstance(migration_raw, dict) and ("runState" in migration_raw or "run_state" in migration_raw):
+                return KnowledgeFSSettingsUpdateResponse(
+                    migration=KnowledgeFSProfileMigrationResponse.model_validate(migration_raw),
+                    settings=current,
+                )
+            if payload.embedding is not None:
+                KnowledgeFSEmbeddingSettingsResponse.model_validate(migration_raw)
+            else:
+                KnowledgeFSRetrievalSettingsResponse.model_validate(migration_raw)
+            refreshed = self.get_settings(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                control_space_id=control_space_id,
             )
+            return KnowledgeFSSettingsUpdateResponse(settings=refreshed)
 
         raw = self._interactive(
             tenant_id=tenant_id,

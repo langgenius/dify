@@ -1287,6 +1287,77 @@ def test_active_settings_use_durable_profile_migration_routes() -> None:
     }
 
 
+def test_active_settings_accept_direct_unpublished_profile_activation() -> None:
+    class DirectActivationRemote(ActiveSettingsRemote):
+        def execute_json(self, request: KnowledgeFSRemoteJSONRequest):
+            if request.operation_id == "updateRetrievalProfile":
+                self.requests.append(request)
+                return {
+                    "defaultMode": "fast",
+                    "reasoningModel": {
+                        "model": "reason-v1",
+                        "pluginId": "plugin-1",
+                        "provider": "provider-1",
+                    },
+                    "rerank": {
+                        "enabled": True,
+                        "model": {
+                            "model": "rerank-v1",
+                            "pluginId": "plugin-1",
+                            "provider": "provider-1",
+                        },
+                    },
+                    "revision": 5,
+                    "scoreThreshold": {"enabled": True, "stage": "rerank", "value": 0.51},
+                    "topK": 3,
+                }
+            return super().execute_json(request)
+
+    remote = DirectActivationRemote()
+    facade = KnowledgeFSDataFacade(
+        broker=RecordingBroker(),
+        remote=remote,
+    )  # type: ignore[arg-type]
+
+    result = facade.update_settings(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-1",
+        payload=KnowledgeFSSettingsPayload(
+            expected_revision=9,
+            retrieval=KnowledgeFSProductRetrievalProfile(
+                default_mode="fast",
+                reasoning_model=KnowledgeFSProfileModelSelection(
+                    model="reason-v1",
+                    plugin_id="plugin-1",
+                    provider="provider-1",
+                ),
+                rerank=KnowledgeFSProductRerankProfile(
+                    enabled=True,
+                    model=KnowledgeFSProfileModelSelection(
+                        model="rerank-v1",
+                        plugin_id="plugin-1",
+                        provider="provider-1",
+                    ),
+                ),
+                score_threshold=KnowledgeFSProductScoreThreshold(
+                    enabled=True,
+                    stage="rerank",
+                    value=0.51,
+                ),
+                top_k=3,
+            ),
+        ),
+    )
+
+    assert result.migration is None
+    assert [request.operation_id for request in remote.requests] == [
+        "getSettings",
+        "updateRetrievalProfile",
+        "getSettings",
+    ]
+
+
 def test_setup_required_settings_without_active_profile_use_product_settings_route() -> None:
     remote = ActiveSettingsRemote(
         active_profile_available=False,
