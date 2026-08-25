@@ -5,7 +5,12 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models.agent import Agent, AgentScope, WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentScope,
+    WorkflowAgentBindingType,
+    WorkflowAgentNodeBinding,
+)
 from models.enums import AppStatus
 from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
@@ -194,12 +199,13 @@ def test_publish_copy_uses_current_roster_snapshot() -> None:
     session.scalar.return_value = active_agent
     session.scalars.return_value = SimpleNamespace(all=lambda: [binding])
 
-    WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
+    has_inline_agent = WorkflowAgentPublishService.copy_agent_node_bindings_to_published(
         session=session,
         draft_workflow=draft_workflow,
         published_workflow=published_workflow,
     )
 
+    assert has_inline_agent is False
     copied = session.add.call_args.args[0]
     assert copied.agent_id == "roster-agent"
     assert copied.current_snapshot_id == "active-snapshot"
@@ -279,7 +285,7 @@ def test_publish_binding_copy_keeps_previous_published_owner(
         published_workflow=published_workflow,
     )
 
-    assert result is None
+    assert result is True
     assert sqlite_session.get(WorkflowAgentNodeBinding, previous_inline_binding.id) is previous_inline_binding
     assert sqlite_session.get(WorkflowAgentNodeBinding, previous_roster_binding.id) is previous_roster_binding
     copied = sqlite_session.scalar(

@@ -241,6 +241,10 @@ class BillingService:
         cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
 
     @classmethod
+    def ensure_new_agent_beta_workflow(cls, workflow_id: str) -> None:
+        cls._send_request("POST", f"/new-agent-beta/workflows/{workflow_id}/ensure")
+
+    @classmethod
     def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
         params = {"tenant_id": tenant_id}
         if exclude_vector_space:
