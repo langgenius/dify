@@ -7,9 +7,6 @@ return while they stand one up."""
 from __future__ import annotations
 
 import logging
-from unittest.mock import patch
-
-import pytest
 
 from clients.agent_backend.factory import create_agent_backend_run_client
 
@@ -53,10 +50,7 @@ def test_use_fake_false_no_base_url_falls_back_to_fake_with_warning(caplog):
         )
 
     assert isinstance(client, FakeAgentBackendRunClient)
-    assert any(
-        "AGENT_BACKEND_BASE_URL is not configured" in record.getMessage()
-        for record in caplog.records
-    )
+    assert any("AGENT_BACKEND_BASE_URL is not configured" in record.getMessage() for record in caplog.records)
 
 
 def test_use_fake_false_empty_string_base_url_falls_back_to_fake(caplog):
@@ -77,7 +71,6 @@ def test_use_fake_false_empty_string_base_url_falls_back_to_fake(caplog):
 def test_use_fake_false_no_base_url_no_warning_when_use_fake_already_on(caplog):
     """When the operator already opted into fake mode, we don't need
     the warning — the log is for the unexpected misconfiguration."""
-    from clients.agent_backend.fake_client import FakeAgentBackendRunClient
 
     with caplog.at_level(logging.WARNING, logger="clients.agent_backend.factory"):
         create_agent_backend_run_client(
@@ -86,7 +79,4 @@ def test_use_fake_false_no_base_url_no_warning_when_use_fake_already_on(caplog):
             use_fake=True,
         )
 
-    assert not any(
-        "AGENT_BACKEND_BASE_URL is not configured" in record.getMessage()
-        for record in caplog.records
-    )
+    assert not any("AGENT_BACKEND_BASE_URL is not configured" in record.getMessage() for record in caplog.records)
