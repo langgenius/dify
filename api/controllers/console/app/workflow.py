@@ -53,8 +53,8 @@ from controllers.console.wraps import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.execution_coordinator import send_abort_command
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
-from core.app.apps.workflow.command_channels import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.file_access import DatabaseFileAccessController
 from core.db.session_factory import session_factory

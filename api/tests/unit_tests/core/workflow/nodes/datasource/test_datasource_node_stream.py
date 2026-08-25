@@ -12,7 +12,7 @@ from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult, StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
@@ -35,7 +35,11 @@ def test_node_integration_minimal_stream(mocker: MockerFixture) -> None:
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
     )
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    graph_runtime_state = RuntimeState(
+        variable_pool=variable_pool,
+        start_at=time.perf_counter(),
+        workflow_id=graph_init_params.workflow_id,
+    )
 
     class _Mgr:
         @classmethod

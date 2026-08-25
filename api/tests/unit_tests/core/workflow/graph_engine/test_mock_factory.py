@@ -5,10 +5,12 @@ The factory follows the same config adaptation path as production
 implementations before instantiation.
 """
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, override
 
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import DifyNodeFactory
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.nodes.base.node import Node
@@ -82,6 +84,23 @@ class MockNodeFactory(DifyNodeFactory):
             graph_init_params=self.graph_init_params,
             graph_runtime_state=graph_runtime_state,
             mock_config=self.mock_config,
+        )
+
+    @override
+    def _resolve_node_class_for_factory(
+        self,
+        *,
+        node_type: NodeType,
+        node_version: str,
+        node_data: Mapping[str, Any] | BaseNodeData | None = None,
+    ) -> type[Node]:
+        mock_class = self._mock_node_types.get(node_type)
+        if mock_class is not None:
+            return mock_class
+        return super()._resolve_node_class_for_factory(
+            node_type=node_type,
+            node_version=node_version,
+            node_data=node_data,
         )
 
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
